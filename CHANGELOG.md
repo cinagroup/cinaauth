@@ -5,6 +5,167 @@ All notable changes to the AuthFramework project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0-rc1] - 2025-10-06
+
+### ⚠️ Breaking Changes
+
+- **Removed `auth_modular` module**: The separate modular AuthFramework implementation has been removed
+  - All functionality consolidated into the main `AuthFramework` (from `auth` module)
+  - The modular version was a stripped-down duplicate that lacked enterprise features
+  - Migration: Simply use `auth_framework::AuthFramework` - all methods are available
+  - **Rationale**: Single source of truth, eliminates confusion, easier maintenance
+  - **Impact**: Pre-release (v0.5.0-rc1), minimal user impact expected
+
+### 🐛 Bug Fixes
+
+- **Fixed coset dependency conflict**: Downgraded coset from 0.4 to 0.3.8 to match passkey dependencies
+  - Resolves type mismatch errors in passkey/WebAuthn code
+  - All passkey features now compile correctly
+
+### 🎉 OAuth 2.1 Complete Implementation
+
+- **Token Introspection (RFC 7662)**: Full implementation of token introspection endpoint
+  - Active/inactive token status validation
+  - Token metadata exposure (exp, scope, client_id)
+  - Authentication requirements for introspection requests
+  - Error handling for invalid/expired tokens
+  - **9 comprehensive tests, 100% passing**
+- **Pushed Authorization Requests / PAR (RFC 9126)**: Enhanced security workflow implementation
+  - Request object submission and validation
+  - Request URI generation and management
+  - Expiration handling for request objects
+  - Integration with authorization endpoint
+  - **9 comprehensive tests, 100% passing**
+- **Device Authorization Flow (RFC 8628)**: Complete device flow for IoT and CLI applications
+  - Device code generation and management
+  - User code verification and display
+  - Polling endpoint with proper rate limiting
+  - Token issuance after user authorization
+  - Expiration and error handling
+  - **14 comprehensive tests, 100% passing**
+- **End-to-End OAuth 2.1 Integration**: Complete OAuth 2.1 flow testing
+  - Authorization code flow with all components
+  - Token lifecycle management
+  - Comprehensive integration scenarios
+  - **9 integration tests, 100% passing**
+
+### 🛡️ Advanced Security Features
+
+- **Rate Limiting System**: Production-grade rate limiting implementation
+  - Per-client rate limiting configuration
+  - Burst protection with configurable windows
+  - Distributed rate limiting support
+  - Memory-efficient tracking
+  - **12 comprehensive tests, 100% passing**
+- **DoS Protection**: Advanced denial-of-service protection
+  - Slowloris attack detection and mitigation
+  - Resource exhaustion prevention
+  - Request timeout enforcement
+  - Connection limit management
+  - **10 comprehensive tests, 100% passing**
+- **IP Blacklisting**: Threat prevention and geolocation blocking
+  - Dynamic IP blacklist management
+  - Geolocation-based blocking
+  - Automatic threat intelligence integration
+  - Temporary and permanent blocking
+  - **12 comprehensive tests, 100% passing**
+- **MFA Flow Testing**: Multi-factor authentication implementation
+  - TOTP generation and verification
+  - MFA enrollment workflows
+  - Recovery code management
+  - Session-based MFA state tracking
+  - **18 comprehensive tests, 100% passing**
+
+### 📊 Test Suite Excellence
+
+- **Comprehensive Test Coverage**: **93 tests total, 100% passing**
+  - 41 OAuth 2.1 protocol tests
+  - 52 security implementation tests
+  - Full integration test coverage
+  - Performance validation complete
+- **Test Organization**: Improved test structure and documentation
+  - Separate test files for each OAuth 2.1 component
+  - Dedicated security test suites
+  - Integration test scenarios
+  - All test results documented in docs/development/TESTING_RESULTS.md
+
+### 🏗️ Production Readiness
+
+- **Authorization Server Complete**: Full OAuth 2.1 authorization server capabilities
+  - Token introspection for resource servers
+  - PAR for enhanced security workflows
+  - Device flow for IoT and CLI applications
+  - Multi-factor authentication enforcement
+  - DoS and DDoS protection built-in
+- **Performance Validated**: All tests passing with good performance characteristics
+  - Fast test execution times
+  - Efficient resource usage
+  - Scalable architecture
+
+### 📚 Documentation Improvements
+
+- **Test Documentation**: Complete testing results documentation
+  - Consolidated TESTING_RESULTS.md in docs/development/
+  - Individual test suite results and timings
+  - Integration test scenarios documented
+- **Documentation Cleanup**: Streamlined project documentation
+  - Archived completion reports (16 files)
+  - Consolidated testing documentation
+  - Reduced root directory clutter (80% reduction)
+  - Core documentation maintained and updated
+
+### 🔧 Developer Experience
+
+- **Enhanced Testing Infrastructure**: Improved test organization and execution
+  - Individual test suite execution
+  - Clear test output and reporting
+  - Performance metrics tracking
+- **Better Error Messages**: Improved error handling throughout OAuth 2.1 implementation
+- **Code Quality**: All tests passing with clean compilation
+
+## [0.5.0-alpha] - 2025-01-25
+
+### 🔥 Major Security Enhancements (Phase 2: Password & Email Validation)
+
+- **Enhanced Password Validation**: Completely overhauled password validation system with granular complexity requirements
+  - Added 8 new SecurityConfig fields: `require_uppercase`, `require_lowercase`, `require_digit`, `require_special`, `min_complexity_criteria`
+  - Advanced minimum complexity criteria system (meet N of 4 possible criteria)
+  - Individual requirement toggles for maximum flexibility
+  - Maintains backward compatibility with existing password validation
+- **RFC 5322 Email Validation**: Implemented industry-standard email validation using `email_address` crate
+  - Full RFC 5322 compliance for email format validation
+  - Advanced parsing with configurable options
+  - Comprehensive edge case handling for production use
+- **Configuration System Overhaul**: Enhanced SecurityConfig with comprehensive security controls
+  - Added `LockoutConfig` structure for account lockout management
+  - Added `OAuth2SecurityConfig` for OAuth2-specific security settings
+  - Enhanced helper methods (`secure()`, `development()`) with all new fields
+  - All existing configurations updated to use `..Default::default()` pattern
+- **API Integration**: Updated admin endpoints to use enhanced validation
+  - User creation endpoint now validates passwords using all SecurityConfig criteria
+  - Proper email validation integrated into user management
+  - Config access via `AuthFramework::config()` method
+
+### 🧪 Testing Excellence
+
+- **Comprehensive Test Suite**: Added 12 new validation tests covering all enhancement scenarios
+  - Password complexity criteria testing with various combinations
+  - Email validation testing with valid/invalid cases and edge cases
+  - Integration testing for admin API endpoints
+  - All tests passing: **405/408** (3 server integration tests ignored)
+
+### 🔧 Developer Experience
+
+- **Enhanced Error Messages**: Improved validation error messages with specific criteria feedback
+- **Flexible Configuration**: Developers can now configure exact security requirements per environment
+- **Backward Compatibility**: All existing code continues to work without modification
+
+### 📦 Dependencies
+
+- **Added**: `email_address = "0.2"` for professional-grade email validation
+
+This release represents a major step toward our "Perfect 10/10 Security" goal, completing Phase 2 of our 8-enhancement security roadmap.
+
 ## [0.4.2] - 2025-08-24
 
 ### 🛠️ Fixed

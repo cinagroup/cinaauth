@@ -312,10 +312,10 @@ impl SecureMfaService {
         for _ in 0..count {
             // Generate a secure 16-character alphanumeric backup code
             let mut code_bytes = [0u8; 10]; // 10 bytes = 80 bits of entropy
-            self.rng.fill(&mut code_bytes)?;
+            self.rng.fill(&mut code_bytes).map_err(|_| "Failed to generate random bytes".to_string())?;
 
             // Convert to base32 for human readability (no ambiguous characters)
-            let code = base32::encode(base32::Alphabet::RFC4648 { padding: false }, &code_bytes);
+            let code = base32::encode(base32::Alphabet::Rfc4648 { padding: false }, &code_bytes);
 
             // Format as XXXX-XXXX-XXXX-XXXX for readability
             let formatted_code = format!(
@@ -512,5 +512,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-
-

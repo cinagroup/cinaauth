@@ -1,0 +1,12 @@
+# Security Schemes
+# This file defines authentication and authorization mechanisms used by the API
+
+bearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
+    description: |
+        JWT Bearer token authentication. Include the token in the Authorization header:
+        ```
+        Authorization: Bearer <your-access-token>
+        ```

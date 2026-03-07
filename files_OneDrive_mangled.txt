@@ -1,0 +1,200 @@
+ Volume in drive C is OS
+ Volume Serial Number is 0459-68DF
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework
+
+10/04/2025  04:22 AM                18 -TUF-Laptop.gitignore
+10/05/2025  10:04 PM           200,300 Cargo-TUF-Laptop.lock
+10/05/2025  10:05 PM            11,575 Cargo-TUF-Laptop.toml
+10/06/2025  11:44 AM            16,386 CHANGELOG-TUF-Laptop.md
+09/30/2025  09:06 AM               719 public-TUF-Laptop.pem
+10/05/2025  10:33 PM            50,661 README-TUF-Laptop.md
+10/05/2025  10:34 PM             4,066 RELEASE_NOTES-TUF-Laptop.md
+               7 File(s)        283,725 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.git
+
+10/06/2025  11:48 AM               963 COMMIT_EDITMSG-TUF-Laptop
+10/17/2025  12:41 PM               239 FETCH_HEAD-TUF-Laptop
+10/06/2025  11:48 AM           106,569 index-TUF-Laptop
+               3 File(s)        107,771 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.git\logs
+
+10/06/2025  11:48 AM             3,843 HEAD-TUF-Laptop
+               1 File(s)          3,843 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.git\logs\refs\heads
+
+10/06/2025  11:48 AM             3,660 main-TUF-Laptop
+               1 File(s)          3,660 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.git\logs\refs\remotes\origin
+
+10/03/2025  02:21 PM             1,478 main-TUF-Laptop
+               1 File(s)          1,478 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.git\refs\heads
+
+10/06/2025  11:48 AM                41 main-TUF-Laptop
+               1 File(s)             41 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.git\refs\remotes\origin
+
+10/03/2025  02:21 PM                41 main-TUF-Laptop
+               1 File(s)             41 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.venv
+
+10/04/2025  03:39 PM                 1 -TUF-Laptop.gitignore
+10/04/2025  03:39 PM               208 pyvenv-TUF-Laptop.cfg
+               2 File(s)            209 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.venv\Lib\site-packages\certifi-2025.8.3.dist-info
+
+10/04/2025  03:39 PM                 2 INSTALLER-TUF-Laptop
+10/04/2025  03:39 PM               956 RECORD-TUF-Laptop
+               2 File(s)            958 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.venv\Lib\site-packages\idna-3.10.dist-info
+
+10/04/2025  03:39 PM                 2 INSTALLER-TUF-Laptop
+10/04/2025  03:39 PM             1,096 RECORD-TUF-Laptop
+               2 File(s)          1,098 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\.venv\Scripts
+
+10/04/2025  03:39 PM             4,145 activate-TUF-Laptop
+10/04/2025  03:39 PM             2,712 activate-TUF-Laptop.bat
+10/04/2025  03:39 PM             4,247 activate-TUF-Laptop.fish
+10/04/2025  03:39 PM             2,792 Activate-TUF-Laptop.ps1
+10/04/2025  03:39 PM             1,730 deactivate-TUF-Laptop.bat
+10/04/2025  03:32 PM           241,152 python-TUF-Laptop.exe
+10/04/2025  03:32 PM           237,568 pythonw-TUF-Laptop.exe
+               7 File(s)        494,346 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\examples
+
+10/06/2025  09:30 AM             3,785 simple_oauth2_server-TUF-Laptop.rs
+10/06/2025  08:45 AM               852 smskit_integration-TUF-Laptop.rs
+               2 File(s)          4,637 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\migration
+
+10/06/2025  11:42 AM               473 test_plan_status-TUF-Laptop.json
+               1 File(s)            473 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src
+
+10/06/2025  06:09 AM           139,320 auth-TUF-Laptop.rs
+10/04/2025  07:12 AM            24,895 builders-TUF-Laptop.rs
+10/05/2025  10:15 PM            10,794 lib-TUF-Laptop.rs
+               3 File(s)        175,009 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\admin
+
+10/06/2025  11:39 AM            27,068 cli-TUF-Laptop.rs
+09/30/2025  09:06 AM            12,493 mod-TUF-Laptop.rs
+10/06/2025  11:39 AM            19,650 web-TUF-Laptop.rs
+               3 File(s)         59,211 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\api
+
+10/06/2025  11:39 AM            19,007 admin-TUF-Laptop.rs
+10/06/2025  11:26 AM            30,792 auth-TUF-Laptop.rs
+10/01/2025  07:06 PM            17,165 health-TUF-Laptop.rs
+10/05/2025  10:32 PM            10,417 mfa-TUF-Laptop.rs
+10/05/2025  04:29 AM             3,692 mod-TUF-Laptop.rs
+10/05/2025  10:32 PM            21,687 oauth-TUF-Laptop.rs
+10/01/2025  07:06 PM             8,682 responses-TUF-Laptop.rs
+10/05/2025  04:29 AM            16,960 server-TUF-Laptop.rs
+10/05/2025  10:32 PM            15,355 users-TUF-Laptop.rs
+               9 File(s)        143,757 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\architecture
+
+09/30/2025  09:06 AM            26,137 mod-TUF-Laptop.rs
+               1 File(s)         26,137 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\config
+
+10/02/2025  12:20 PM            25,362 mod-TUF-Laptop.rs
+               1 File(s)         25,362 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\integrations
+
+09/30/2025  09:06 AM            18,651 actix_web-TUF-Laptop.rs
+10/04/2025  07:14 PM            16,300 axum-TUF-Laptop.rs
+               2 File(s)         34,951 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\methods
+
+10/06/2025  11:15 AM            38,296 mod-TUF-Laptop.rs
+               1 File(s)         38,296 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\methods\passkey
+
+09/30/2025  09:06 AM            59,058 mod-TUF-Laptop.rs
+               1 File(s)         59,058 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\methods\saml
+
+10/06/2025  11:39 AM            30,213 mod-TUF-Laptop.rs
+               1 File(s)         30,213 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\observability
+
+09/30/2025  09:06 AM            20,303 mod-TUF-Laptop.rs
+               1 File(s)         20,303 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\security
+
+10/02/2025  01:17 PM            30,607 presets-TUF-Laptop.rs
+09/30/2025  09:06 AM             4,735 secure_jwt-TUF-Laptop.rs
+09/30/2025  09:06 AM            17,474 secure_session_config-TUF-Laptop.rs
+               3 File(s)         52,816 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\server\core
+
+09/30/2025  09:06 AM            16,730 common_jwt-TUF-Laptop.rs
+09/30/2025  09:06 AM            13,126 common_validation-TUF-Laptop.rs
+               2 File(s)         29,856 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\server\oauth
+
+10/05/2025  11:51 AM               591 mod-TUF-Laptop.rs
+               1 File(s)            591 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\server\oidc
+
+09/30/2025  09:06 AM            33,410 oidc_user_registration-TUF-Laptop.rs
+               1 File(s)         33,410 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\server\security
+
+09/30/2025  09:06 AM             4,203 mod-TUF-Laptop.rs
+               1 File(s)          4,203 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\storage
+
+09/30/2025  09:06 AM            18,891 mysql-TUF-Laptop.rs
+10/06/2025  11:39 AM            23,142 unified-TUF-Laptop.rs
+               2 File(s)         42,033 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\src\tokens
+
+09/30/2025  09:06 AM            22,941 mod-TUF-Laptop.rs
+               1 File(s)         22,941 bytes
+
+ Directory of C:\Users\cires\OneDrive\Documents\projects\AuthFramework\tests
+
+03/06/2026  01:04 PM            26,131 comprehensive_api_tests-TUF-Laptop.rs
+10/04/2025  06:28 PM             1,039 custom_storage_builder-TUF-Laptop.rs
+03/06/2026  01:04 PM            42,090 edge_case_comprehensive_tests-TUF-Laptop.rs
+10/04/2025  06:28 PM            27,736 simple_comprehensive_tests-TUF-Laptop.rs
+10/04/2025  06:28 PM            23,507 working_comprehensive_tests-TUF-Laptop.rs
+               5 File(s)        120,503 bytes
+
+     Total Files Listed:
+              70 File(s)      1,820,930 bytes
+               0 Dir(s)  1,938,306,879,488 bytes free

@@ -1,0 +1,372 @@
+# RBAC Schemas
+# Data structures for Role-Based Access Control management
+
+Role:
+    type: object
+    description: Role definition with permissions
+    properties:
+        id:
+            type: string
+            format: uuid
+            description: Unique role identifier
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+            type: string
+            description: Role name (unique within system)
+            example: "content-moderator"
+            pattern: "^[a-z0-9-_]+$"
+        display_name:
+            type: string
+            description: Human-readable role name
+            example: "Content Moderator"
+        description:
+            type: string
+            description: Role description
+            example: "Can review and moderate user-generated content"
+        permissions:
+            type: array
+            description: List of permission strings
+            items:
+                type: string
+            example: ["content:read", "content:approve", "content:reject"]
+        parent_role:
+            type: string
+            nullable: true
+            description: Parent role name (for role hierarchy)
+            example: "moderator"
+        system_role:
+            type: boolean
+            description: Whether this is a system-defined role (cannot be modified)
+            example: false
+        created_at:
+            type: string
+            format: date-time
+            description: Role creation timestamp
+            example: "2024-01-20T15:30:45Z"
+        updated_at:
+            type: string
+            format: date-time
+            description: Last role update timestamp
+            example: "2024-01-20T15:30:45Z"
+    required:
+        - id
+        - name
+        - display_name
+        - permissions
+        - system_role
+        - created_at
+        - updated_at
+
+CreateRoleRequest:
+    type: object
+    description: Request to create a new role
+    properties:
+        name:
+            type: string
+            description: Role name (unique, lowercase with hyphens)
+            example: "content-moderator"
+            pattern: "^[a-z0-9-_]+$"
+        display_name:
+            type: string
+            description: Human-readable role name
+            example: "Content Moderator"
+        description:
+            type: string
+            description: Role description
+            example: "Can review and moderate user-generated content"
+        permissions:
+            type: array
+            description: List of permission strings
+            items:
+                type: string
+            example: ["content:read", "content:approve", "content:reject"]
+        parent_role:
+            type: string
+            nullable: true
+            description: Parent role name (inherits parent permissions)
+            example: "moderator"
+    required:
+        - name
+        - display_name
+        - permissions
+
+UpdateRoleRequest:
+    type: object
+    description: Request to update an existing role
+    properties:
+        display_name:
+            type: string
+            description: Human-readable role name
+            example: "Senior Content Moderator"
+        description:
+            type: string
+            description: Role description
+            example: "Can review, moderate, and train other moderators"
+        permissions:
+            type: array
+            description: List of permission strings (replaces existing)
+            items:
+                type: string
+            example:
+                [
+                    "content:read",
+                    "content:approve",
+                    "content:reject",
+                    "moderator:train"
+                ]
+        parent_role:
+            type: string
+            nullable: true
+            description: Parent role name
+            example: "moderator"
+
+AssignRoleRequest:
+    type: object
+    description: Request to assign a role to a user
+    properties:
+        role_name:
+            type: string
+            description: Name of role to assign
+            example: "content-moderator"
+        user_id:
+            type: string
+            format: uuid
+            description: User identifier
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        expires_at:
+            type: string
+            format: date-time
+            nullable: true
+            description: Optional expiration timestamp for temporal access
+            example: "2024-12-31T23:59:59Z"
+    required:
+        - role_name
+        - user_id
+
+BulkAssignRolesRequest:
+    type: object
+    description: Request to assign multiple roles to multiple users
+    properties:
+        assignments:
+            type: array
+            description: Array of role assignments
+            items:
+                type: object
+                properties:
+                    role_name:
+                        type: string
+                        example: "content-moderator"
+                    user_id:
+                        type: string
+                        format: uuid
+                        example: "123e4567-e89b-12d3-a456-426614174000"
+                    expires_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        example: "2024-12-31T23:59:59Z"
+                required:
+                    - role_name
+                    - user_id
+            minItems: 1
+            maxItems: 100
+    required:
+        - assignments
+
+CheckPermissionRequest:
+    type: object
+    description: Request to check if user has specific permission
+    properties:
+        user_id:
+            type: string
+            format: uuid
+            description: User identifier
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        permission:
+            type: string
+            description: Permission string to check
+            example: "content:approve"
+        resource:
+            type: string
+            nullable: true
+            description: Optional resource identifier for context-aware checks
+            example: "content:12345"
+    required:
+        - user_id
+        - permission
+
+CheckPermissionResponse:
+    type: object
+    description: Permission check result
+    properties:
+        allowed:
+            type: boolean
+            description: Whether user has the permission
+            example: true
+        roles:
+            type: array
+            description: Roles that grant this permission
+            items:
+                type: string
+            example: ["content-moderator", "admin"]
+        reason:
+            type: string
+            description: Explanation of decision
+            example: "User has 'content-moderator' role which includes 'content:approve' permission"
+    required:
+        - allowed
+
+ElevateRoleRequest:
+    type: object
+    description: Request to temporarily elevate to a higher role
+    properties:
+        role_name:
+            type: string
+            description: Name of role to elevate to
+            example: "admin"
+        reason:
+            type: string
+            description: Justification for elevation (logged for audit)
+            example: "Emergency system maintenance required"
+        duration:
+            type: integer
+            description: "Duration in seconds (max: 3600)"
+            example: 1800
+            minimum: 60
+            maximum: 3600
+    required:
+        - role_name
+        - reason
+        - duration
+
+RoleAssignment:
+    type: object
+    description: User role assignment record
+    properties:
+        id:
+            type: string
+            format: uuid
+            description: Assignment identifier
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        user_id:
+            type: string
+            format: uuid
+            description: User identifier
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        role_name:
+            type: string
+            description: Assigned role name
+            example: "content-moderator"
+        assigned_by:
+            type: string
+            format: uuid
+            description: User ID of admin who made assignment
+            example: "789e0123-e45b-67d8-a901-234567890abc"
+        assigned_at:
+            type: string
+            format: date-time
+            description: Assignment timestamp
+            example: "2024-01-20T15:30:45Z"
+        expires_at:
+            type: string
+            format: date-time
+            nullable: true
+            description: Expiration timestamp (null for permanent)
+            example: "2024-12-31T23:59:59Z"
+        status:
+            type: string
+            enum: [active, expired, revoked]
+            description: Assignment status
+            example: "active"
+    required:
+        - id
+        - user_id
+        - role_name
+        - assigned_by
+        - assigned_at
+        - status
+
+AuditLogEntry:
+    type: object
+    description: RBAC audit log entry
+    properties:
+        id:
+            type: string
+            format: uuid
+            description: Log entry identifier
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2024-01-20T15:30:45Z"
+        action:
+            type: string
+            enum:
+                [
+                    role_created,
+                    role_updated,
+                    role_deleted,
+                    role_assigned,
+                    role_revoked,
+                    permission_checked,
+                    role_elevated
+                ]
+            description: Action performed
+            example: "role_assigned"
+        actor:
+            type: string
+            format: uuid
+            description: User ID of person who performed action
+            example: "789e0123-e45b-67d8-a901-234567890abc"
+        target:
+            type: string
+            description: Target of action (role name, user ID, etc.)
+            example: "content-moderator"
+        details:
+            type: object
+            description: Additional action-specific details
+            example:
+                role_name: "content-moderator"
+                user_id: "123e4567-e89b-12d3-a456-426614174000"
+                reason: "Promoted to moderator role"
+        ip_address:
+            type: string
+            description: IP address of actor
+            example: "192.168.1.100"
+        user_agent:
+            type: string
+            description: User agent string
+            example: "Mozilla/5.0..."
+    required:
+        - id
+        - timestamp
+        - action
+        - actor
+        - target
+
+RoleListResponse:
+    allOf:
+        - $ref: "./common.yaml#/PaginatedResponse"
+        - type: object
+          properties:
+              data:
+                  type: object
+                  properties:
+                      items:
+                          type: array
+                          items:
+                              $ref: "#/Role"
+
+AuditLogResponse:
+    allOf:
+        - $ref: "./common.yaml#/PaginatedResponse"
+        - type: object
+          properties:
+              data:
+                  type: object
+                  properties:
+                      items:
+                          type: array
+                          items:
+                              $ref: "#/AuditLogEntry"

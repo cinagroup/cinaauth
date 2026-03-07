@@ -593,17 +593,16 @@ impl OAuthProvider {
         let config = self.config();
         let client = reqwest::Client::new();
 
-        let mut params = vec![
-            ("grant_type", "authorization_code"),
-            ("client_id", client_id),
-            ("client_secret", client_secret),
-            ("code", authorization_code),
-            ("redirect_uri", redirect_uri),
-        ];
+        let mut params = HashMap::new();
+        params.insert("grant_type".to_string(), "authorization_code".to_string());
+        params.insert("client_id".to_string(), client_id.to_string());
+        params.insert("client_secret".to_string(), client_secret.to_string());
+        params.insert("code".to_string(), authorization_code.to_string());
+        params.insert("redirect_uri".to_string(), redirect_uri.to_string());
 
         // Add PKCE verifier if provided
         if let Some(verifier) = code_verifier {
-            params.push(("code_verifier", verifier));
+            params.insert("code_verifier".to_string(), verifier.to_string());
         }
 
         let response = client.post(&config.token_url).form(&params).send().await?;
@@ -638,14 +637,17 @@ impl OAuthProvider {
 
         let client = reqwest::Client::new();
 
-        let params = vec![
-            ("grant_type", "refresh_token"),
-            ("client_id", client_id),
-            ("client_secret", client_secret),
-            ("refresh_token", refresh_token),
-        ];
+        let mut params = HashMap::new();
+        params.insert("grant_type".to_string(), "refresh_token".to_string());
+        params.insert("client_id".to_string(), client_id.to_string());
+        params.insert("client_secret".to_string(), client_secret.to_string());
+        params.insert("refresh_token".to_string(), refresh_token.to_string());
 
-        let response = client.post(&config.token_url).form(&params).send().await?;
+        let response = client
+            .post(&config.token_url)
+            .form(&params)
+            .send()
+            .await?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -796,9 +798,12 @@ impl OAuthProvider {
         })?;
 
         let client = reqwest::Client::new();
+        let mut params = HashMap::new();
+        params.insert("token".to_string(), access_token.to_string());
+
         let response = client
             .post(&revocation_url)
-            .form(&[("token", access_token)])
+            .form(&params)
             .send()
             .await?;
 
@@ -831,7 +836,9 @@ impl OAuthProvider {
         let client = reqwest::Client::new();
 
         let scope_string = scope.unwrap_or(&config.default_scopes).join(" ");
-        let params = vec![("client_id", client_id), ("scope", scope_string.as_str())];
+        let mut params = HashMap::new();
+        params.insert("client_id".to_string(), client_id.to_string());
+        params.insert("scope".to_string(), scope_string);
 
         let response = client
             .post(config.device_authorization_url.as_deref().unwrap())
@@ -869,11 +876,13 @@ impl OAuthProvider {
 
         let client = reqwest::Client::new();
 
-        let params = vec![
-            ("client_id", client_id),
-            ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
-            ("device_code", device_code),
-        ];
+        let mut params = HashMap::new();
+        params.insert("client_id".to_string(), client_id.to_string());
+        params.insert(
+            "grant_type".to_string(),
+            "urn:ietf:params:oauth:grant-type:device_code".to_string(),
+        );
+        params.insert("device_code".to_string(), device_code.to_string());
 
         let response = client.post(&config.token_url).form(&params).send().await?;
 
@@ -894,7 +903,7 @@ impl OAuthProvider {
 pub fn generate_state() -> String {
     let mut bytes = [0u8; 32];
     use rand::RngCore;
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().fill_bytes(&mut bytes);
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }
 
@@ -904,7 +913,7 @@ pub fn generate_pkce() -> (String, String) {
     use ring::digest;
 
     // Generate code verifier (43-128 characters)
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut bytes = [0u8; 96]; // 96 bytes = 128 base64 characters
     rng.fill_bytes(&mut bytes);
     let code_verifier = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes);
@@ -1386,5 +1395,3 @@ mod tests {
         assert_ne!(challenge1, challenge2);
     }
 }
-
-

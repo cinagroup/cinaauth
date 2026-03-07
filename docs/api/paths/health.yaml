@@ -1,0 +1,146 @@
+# Health and Monitoring Endpoints
+# Infrastructure endpoints for health checks, readiness, liveness, and metrics
+# Note: These endpoints are UNVERSIONED for operational stability
+
+health:
+    get:
+        tags:
+            - Health
+        summary: Basic health check
+        description: |
+            Returns basic service health status. This endpoint is unversioned for stability 
+            with deployment tools (Kubernetes, load balancers, monitoring systems).
+        operationId: healthCheck
+        responses:
+            "200":
+                description: Service is healthy
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/health.yaml#/HealthStatus"
+            "503":
+                description: Service is unhealthy
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../components/responses.yaml#/InternalServerError"
+
+healthDetailed:
+    get:
+        tags:
+            - Health
+        summary: Detailed health check
+        description: |
+            Returns detailed service health including dependency status (database, cache, storage).
+            Provides response times and error information for troubleshooting.
+        operationId: detailedHealthCheck
+        responses:
+            "200":
+                description: Detailed health information
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/health.yaml#/DetailedHealthStatus"
+            "503":
+                description: Service is unhealthy or degraded
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../components/responses.yaml#/InternalServerError"
+
+readiness:
+    get:
+        tags:
+            - Health
+        summary: Readiness check
+        description: |
+            Kubernetes readiness probe endpoint. Returns whether the service is ready to 
+            accept traffic. Checks critical dependencies like database connectivity.
+        operationId: readinessCheck
+        responses:
+            "200":
+                description: Service is ready
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/health.yaml#/ReadinessStatus"
+            "503":
+                description: Service is not ready
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiError"
+                                - type: object
+                                  properties:
+                                      error:
+                                          properties:
+                                              code:
+                                                  example: "NOT_READY"
+
+liveness:
+    get:
+        tags:
+            - Health
+        summary: Liveness check
+        description: |
+            Kubernetes liveness probe endpoint. Returns whether the service is alive and 
+            should not be restarted. Checks basic process health without dependency checks.
+        operationId: livenessCheck
+        responses:
+            "200":
+                description: Service is alive
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/health.yaml#/LivenessStatus"
+            "503":
+                description: Service is not alive (should be restarted)
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../components/responses.yaml#/InternalServerError"
+
+metrics:
+    get:
+        tags:
+            - Health
+        summary: Prometheus metrics
+        description: |
+            Returns Prometheus-formatted metrics for monitoring and alerting.
+            This endpoint is unversioned for compatibility with Prometheus scrapers.
+        operationId: getMetrics
+        responses:
+            "200":
+                description: Prometheus metrics
+                content:
+                    text/plain:
+                        schema:
+                            type: string
+                            example: |
+                                # HELP auth_requests_total Total number of authentication requests
+                                # TYPE auth_requests_total counter
+                                auth_requests_total{method="login"} 1234
+                                # HELP auth_active_sessions Current number of active sessions
+                                # TYPE auth_active_sessions gauge
+                                auth_active_sessions 450

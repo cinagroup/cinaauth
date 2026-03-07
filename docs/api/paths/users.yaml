@@ -1,0 +1,102 @@
+# User Management Endpoints
+# User profile and account management
+# All user endpoints are under /api/v1/users
+
+profile:
+    get:
+        tags:
+            - Users
+        summary: Get user profile
+        description: Get current authenticated user's complete profile information
+        operationId: getUserProfile
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: User profile retrieved
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/users.yaml#/UserProfile"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+    patch:
+        tags:
+            - Users
+        summary: Update user profile
+        description: |
+            Update current user's profile information. Only provided fields will be updated.
+            Some fields like username and email may require additional verification.
+        operationId: updateUserProfile
+        security:
+            - bearerAuth: []
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/users.yaml#/UpdateProfileRequest"
+        responses:
+            "200":
+                description: Profile updated successfully
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/users.yaml#/UserProfile"
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+password:
+    post:
+        tags:
+            - Users
+        summary: Change password
+        description: |
+            Change current user's password. Requires current password for verification.
+            New password must meet complexity requirements.
+        operationId: changePassword
+        security:
+            - bearerAuth: []
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/users.yaml#/ChangePasswordRequest"
+        responses:
+            "200":
+                description: Password changed successfully
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              message:
+                                                  type: string
+                                                  example: "Password successfully changed"
+            "400":
+                description: Invalid password or doesn't meet requirements
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"

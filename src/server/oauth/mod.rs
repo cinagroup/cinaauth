@@ -5,16 +5,17 @@
 //! - OAuth 2.1 enhanced security features
 //! - Pushed Authorization Requests (PAR)
 //! - Rich Authorization Requests
+//! - Device Authorization Grant (RFC 8628)
 
+pub mod device;
 pub mod oauth2;
 pub mod oauth21;
 pub mod par;
 pub mod rich_authorization_requests;
 
-// Re-export commonly used types
-pub use oauth2::*;
-pub use oauth21::*;
-pub use par::*;
-pub use rich_authorization_requests::*;
+// Re-export commonly used types - avoid wildcard imports to prevent duplicate definitions
+pub use oauth2::OAuth2Server;
+pub use oauth21::OAuth21Server;
+pub use par::PARManager;
 
 

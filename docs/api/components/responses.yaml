@@ -1,0 +1,159 @@
+# Common Responses
+# Reusable response definitions for standard HTTP status codes
+
+BadRequest:
+    description: Bad request - Invalid input parameters
+    content:
+        application/json:
+            schema:
+                $ref: "../schemas/common.yaml#/ApiError"
+            examples:
+                validationError:
+                    summary: Validation error example
+                    value:
+                        success: false
+                        error:
+                            code: "VALIDATION_ERROR"
+                            message: "Invalid input parameters"
+                            details:
+                                field: "email"
+                                issue: "Invalid email format"
+                        timestamp: "2024-01-20T15:30:45Z"
+
+Unauthorized:
+    description: Unauthorized - Missing or invalid authentication
+    content:
+        application/json:
+            schema:
+                $ref: "../schemas/common.yaml#/ApiError"
+            examples:
+                missingToken:
+                    summary: Missing authentication token
+                    value:
+                        success: false
+                        error:
+                            code: "MISSING_TOKEN"
+                            message: "Authentication token is required"
+                            details: null
+                        timestamp: "2024-01-20T15:30:45Z"
+                invalidToken:
+                    summary: Invalid authentication token
+                    value:
+                        success: false
+                        error:
+                            code: "INVALID_TOKEN"
+                            message: "The provided authentication token is invalid or expired"
+                            details: null
+                        timestamp: "2024-01-20T15:30:45Z"
+
+Forbidden:
+    description: Forbidden - Insufficient permissions
+    content:
+        application/json:
+            schema:
+                $ref: "../schemas/common.yaml#/ApiError"
+            examples:
+                insufficientPermissions:
+                    summary: Insufficient permissions
+                    value:
+                        success: false
+                        error:
+                            code: "FORBIDDEN"
+                            message: "You do not have permission to perform this action"
+                            details:
+                                required_role: "admin"
+                                user_role: "user"
+                        timestamp: "2024-01-20T15:30:45Z"
+
+NotFound:
+    description: Resource not found
+    content:
+        application/json:
+            schema:
+                $ref: "../schemas/common.yaml#/ApiError"
+            examples:
+                resourceNotFound:
+                    summary: Resource not found
+                    value:
+                        success: false
+                        error:
+                            code: "NOT_FOUND"
+                            message: "The requested resource was not found"
+                            details:
+                                resource_type: "user"
+                                resource_id: "123e4567-e89b-12d3-a456-426614174000"
+                        timestamp: "2024-01-20T15:30:45Z"
+
+Conflict:
+    description: Conflict - Resource already exists
+    content:
+        application/json:
+            schema:
+                $ref: "../schemas/common.yaml#/ApiError"
+            examples:
+                userExists:
+                    summary: User already exists
+                    value:
+                        success: false
+                        error:
+                            code: "USER_EXISTS"
+                            message: "A user with this email already exists"
+                            details:
+                                email: "user@example.com"
+                        timestamp: "2024-01-20T15:30:45Z"
+
+RateLimit:
+    description: Rate limit exceeded
+    content:
+        application/json:
+            schema:
+                $ref: "../schemas/common.yaml#/ApiError"
+            examples:
+                rateLimitExceeded:
+                    summary: Rate limit exceeded
+                    value:
+                        success: false
+                        error:
+                            code: "RATE_LIMIT_EXCEEDED"
+                            message: "Too many requests. Please try again later."
+                            details:
+                                retry_after: 60
+                        timestamp: "2024-01-20T15:30:45Z"
+    headers:
+        X-RateLimit-Limit:
+            schema:
+                type: integer
+            description: Request limit per time window
+            example: 100
+        X-RateLimit-Remaining:
+            schema:
+                type: integer
+            description: Remaining requests in current window
+            example: 0
+        X-RateLimit-Reset:
+            schema:
+                type: integer
+            description: Unix timestamp when rate limit resets
+            example: 1642690305
+        Retry-After:
+            schema:
+                type: integer
+            description: Seconds until rate limit resets
+            example: 60
+
+InternalServerError:
+    description: Internal server error
+    content:
+        application/json:
+            schema:
+                $ref: "../schemas/common.yaml#/ApiError"
+            examples:
+                serverError:
+                    summary: Internal server error
+                    value:
+                        success: false
+                        error:
+                            code: "INTERNAL_ERROR"
+                            message: "An unexpected error occurred"
+                            details: null
+                        timestamp: "2024-01-20T15:30:45Z"

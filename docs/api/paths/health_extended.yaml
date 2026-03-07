@@ -1,0 +1,183 @@
+# Extended Health Check Endpoints
+# Additional health monitoring beyond basic health checks
+
+/api/v1/health/dependencies:
+    get:
+        summary: Check Dependency Health
+        description: |
+            Comprehensive health check of all external dependencies and internal services.
+            Useful for monitoring systems, troubleshooting, and ensuring system reliability.
+
+            **Checks Performed**:
+            - Storage backend connectivity and performance
+            - Rate limiter functionality
+            - Token manager operations
+            - MFA services
+            - OAuth/OIDC providers
+            - External threat intelligence feeds (if enabled)
+            - Cache systems (if configured)
+
+            **Security**: Requires authentication. Returns sanitized information (no secrets).
+        operationId: checkDependencies
+        tags:
+            - Health & Monitoring
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: Dependency health check completed
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                status:
+                                    type: string
+                                    enum:
+                                        - healthy
+                                        - degraded
+                                        - unhealthy
+                                    description: Overall dependency health status
+                                    example: "healthy"
+                                timestamp:
+                                    type: string
+                                    format: date-time
+                                    description: Check timestamp
+                                    example: "2025-10-01T12:00:00Z"
+                                dependencies:
+                                    type: object
+                                    description: Health status of each dependency
+                                    additionalProperties:
+                                        type: object
+                                        properties:
+                                            status:
+                                                type: string
+                                                enum:
+                                                    - healthy
+                                                    - degraded
+                                                    - unhealthy
+                                                    - unknown
+                                                description: Dependency status
+                                                example: "healthy"
+                                            response_time_ms:
+                                                type: integer
+                                                description: Response time in milliseconds
+                                                example: 5
+                                            last_check:
+                                                type: string
+                                                format: date-time
+                                                description: Last successful check timestamp
+                                                example: "2025-10-01T12:00:00Z"
+                                            error:
+                                                type: string
+                                                description: Error message if unhealthy
+                                                example: "Connection timeout"
+                                            details:
+                                                type: object
+                                                description: Additional dependency-specific details
+                                                properties:
+                                                    version:
+                                                        type: string
+                                                        example: "1.0.0"
+                                                    connection_pool_size:
+                                                        type: integer
+                                                        example: 10
+                                                    active_connections:
+                                                        type: integer
+                                                        example: 3
+                                            required:
+                                                - status
+                                                - response_time_ms
+                                                - last_check
+                                summary:
+                                    type: object
+                                    properties:
+                                        total_dependencies:
+                                            type: integer
+                                            description: Total number of dependencies checked
+                                            example: 7
+                                        healthy_count:
+                                            type: integer
+                                            description: Number of healthy dependencies
+                                            example: 6
+                                        degraded_count:
+                                            type: integer
+                                            description: Number of degraded dependencies
+                                            example: 1
+                                        unhealthy_count:
+                                            type: integer
+                                            description: Number of unhealthy dependencies
+                                            example: 0
+                            required:
+                                - status
+                                - timestamp
+                                - dependencies
+                                - summary
+                        example:
+                            status: "healthy"
+                            timestamp: "2025-10-01T12:00:00Z"
+                            dependencies:
+                                storage:
+                                    status: "healthy"
+                                    response_time_ms: 5
+                                    last_check: "2025-10-01T12:00:00Z"
+                                    details:
+                                        type: "postgres"
+                                        version: "14.5"
+                                        connection_pool_size: 20
+                                        active_connections: 3
+                                rate_limiter:
+                                    status: "healthy"
+                                    response_time_ms: 1
+                                    last_check: "2025-10-01T12:00:00Z"
+                                    details:
+                                        type: "redis"
+                                        requests_per_minute: 1250
+                                token_manager:
+                                    status: "healthy"
+                                    response_time_ms: 2
+                                    last_check: "2025-10-01T12:00:00Z"
+                                    details:
+                                        active_tokens: 150
+                                        tokens_issued_today: 450
+                                mfa_service:
+                                    status: "healthy"
+                                    response_time_ms: 3
+                                    last_check: "2025-10-01T12:00:00Z"
+                                    details:
+                                        totp_verifications_today: 89
+                                oauth_provider:
+                                    status: "healthy"
+                                    response_time_ms: 8
+                                    last_check: "2025-10-01T12:00:00Z"
+                                    details:
+                                        active_clients: 12
+                                        tokens_issued_today: 230
+                                threat_intelligence:
+                                    status: "degraded"
+                                    response_time_ms: 1500
+                                    last_check: "2025-10-01T11:55:00Z"
+                                    error: "Feed update delayed"
+                                    details:
+                                        last_successful_update: "2025-10-01T10:00:00Z"
+                                        feeds_enabled: 3
+                                        feeds_healthy: 2
+                                cache:
+                                    status: "healthy"
+                                    response_time_ms: 1
+                                    last_check: "2025-10-01T12:00:00Z"
+                                    details:
+                                        type: "redis"
+                                        hit_rate_percent: 92.5
+                                        memory_used_mb: 128
+                            summary:
+                                total_dependencies: 7
+                                healthy_count: 6
+                                degraded_count: 1
+                                unhealthy_count: 0
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+            "403":
+                $ref: "../components/responses.yaml#/Forbidden"
+            "500":
+                $ref: "../components/responses.yaml#/InternalServerError"

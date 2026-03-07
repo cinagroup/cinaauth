@@ -1,0 +1,822 @@
+//! Configuration types for the authentication framework.
+
+pub mod app_config;
+pub mod config_manager;
+
+// Re-export for easy access
+pub use config_manager::{
+    AuthFrameworkSettings, ConfigBuilder, ConfigIntegration, ConfigManager, SessionCookieSettings,
+    SessionSettings,
+};
+
+use crate::errors::{AuthError, Result};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::time::Duration;
+
+/// Main configuration for the authentication framework.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthConfig {
+    /// Default token lifetime
+    pub token_lifetime: Duration,
+
+    /// Refresh token lifetime
+    pub refresh_token_lifetime: Duration,
+
+    /// Whether multi-factor authentication is enabled
+    pub enable_multi_factor: bool,
+
+    /// JWT issuer for token validation
+    pub issuer: String,
+
+    /// JWT audience for token validation
+    pub audience: String,
+
+    /// JWT secret key (optional - can be set via environment)
+    pub secret: Option<String>,
+
+    /// Storage configuration
+    pub storage: StorageConfig,
+
+    /// Rate limiting configuration
+    pub rate_limiting: RateLimitConfig,
+
+    /// Security configuration
+    pub security: SecurityConfig,
+
+    /// Audit logging configuration
+    pub audit: AuditConfig,
+
+    /// Custom settings for different auth methods
+    pub method_configs: HashMap<String, serde_json::Value>,
+}
+
+/// Storage configuration options.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StorageConfig {
+    /// In-memory storage (not recommended for production)
+    Memory,
+
+    /// Redis storage
+    #[cfg(feature = "redis-storage")]
+    Redis { url: String, key_prefix: String },
+
+    /// PostgreSQL storage
+    #[cfg(feature = "postgres-storage")]
+    Postgres {
+        connection_string: String,
+        table_prefix: String,
+    },
+
+    /// MySQL storage
+    #[cfg(feature = "mysql-storage")]
+    MySQL {
+        connection_string: String,
+        table_prefix: String,
+    },
+
+    /// Custom storage backend
+    Custom(String),
+}
+
+/// Rate limiting configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RateLimitConfig {
+    /// Enable IP-based rate limiting
+    pub enabled: bool,
+
+    /// Maximum requests per window (per IP)
+    pub max_requests: u32,
+
+    /// Time window for rate limiting
+    pub window: Duration,
+
+    /// Burst allowance
+    pub burst: u32,
+
+    /// Enable per-user rate limiting (in addition to IP-based)
+    pub per_user_enabled: bool,
+
+    /// Maximum requests per user per window
+    pub max_requests_per_user: u32,
+
+    /// Time window for per-user rate limiting
+    pub per_user_window: Duration,
+}
+
+/// Security configuration options.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityConfig {
+    /// Minimum password length (recommended: 12+ for strong security)
+    pub min_password_length: usize,
+
+    /// Require password complexity
+    pub require_password_complexity: bool,
+
+    /// Require uppercase letters in password
+    pub require_uppercase: bool,
+
+    /// Require lowercase letters in password
+    pub require_lowercase: bool,
+
+    /// Require digits in password
+    pub require_digit: bool,
+
+    /// Require special characters in password
+    pub require_special: bool,
+
+    /// Minimum number of complexity criteria that must be met
+    pub min_complexity_criteria: usize,
+
+    /// Password hash algorithm
+    pub password_hash_algorithm: PasswordHashAlgorithm,
+
+    /// JWT signing algorithm
+    pub jwt_algorithm: JwtAlgorithm,
+
+    /// Secret key for signing (should be loaded from environment)
+    pub secret_key: Option<String>,
+
+    /// Enable secure cookies
+    pub secure_cookies: bool,
+
+    /// Cookie SameSite policy
+    pub cookie_same_site: CookieSameSite,
+
+    /// CSRF protection
+    pub csrf_protection: bool,
+
+    /// Session timeout
+    pub session_timeout: Duration,
+
+    /// Account lockout configuration
+    pub lockout: LockoutConfig,
+
+    /// Maximum API keys per user (0 = unlimited)
+    pub max_api_keys_per_user: usize,
+
+    /// OAuth2 configuration
+    pub oauth2: OAuth2SecurityConfig,
+}
+
+/// Password hashing algorithms.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PasswordHashAlgorithm {
+    Argon2,
+    Bcrypt,
+    Scrypt,
+}
+
+/// JWT signing algorithms.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum JwtAlgorithm {
+    HS256,
+    HS384,
+    HS512,
+    RS256,
+    RS384,
+    RS512,
+    ES256,
+    ES384,
+}
+
+/// Cookie SameSite policies.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CookieSameSite {
+    Strict,
+    Lax,
+    None,
+}
+
+/// Account lockout configuration for failed login attempts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LockoutConfig {
+    /// Enable account lockout
+    pub enabled: bool,
+
+    /// Maximum failed login attempts before lockout
+    pub max_failed_attempts: u32,
+
+    /// Lockout duration in seconds
+    pub lockout_duration_seconds: u64,
+
+    /// Progressive lockout (increase duration with repeated lockouts)
+    pub progressive_lockout: bool,
+
+    /// Maximum lockout duration in seconds (for progressive lockout)
+    pub max_lockout_duration_seconds: u64,
+
+    /// Track failed attempts window in seconds
+    pub tracking_window_seconds: u64,
+}
+
+/// OAuth2 security configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OAuth2SecurityConfig {
+    /// Require user authentication before OAuth2 authorize
+    pub require_user_authentication: bool,
+
+    /// Validate redirect_uri against registered client URIs
+    pub validate_redirect_uri: bool,
+
+    /// Require client_secret for token exchange
+    pub require_client_secret: bool,
+
+    /// Enable PKCE (Proof Key for Code Exchange)
+    pub require_pkce: bool,
+}
+
+/// OAuth2 client registration information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OAuth2Client {
+    /// Client ID
+    pub client_id: String,
+
+    /// Client secret (hashed)
+    pub client_secret_hash: Option<String>,
+
+    /// Client name
+    pub name: String,
+
+    /// Registered redirect URIs (whitelist)
+    pub redirect_uris: Vec<String>,
+
+    /// Allowed grant types
+    pub grant_types: Vec<String>,
+
+    /// Allowed scopes
+    pub scopes: Vec<String>,
+
+    /// Client is active
+    pub active: bool,
+
+    /// Creation timestamp
+    pub created_at: String,
+
+    /// Updated timestamp
+    pub updated_at: String,
+}
+
+/// Audit logging configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditConfig {
+    /// Enable audit logging
+    pub enabled: bool,
+
+    /// Log successful authentications
+    pub log_success: bool,
+
+    /// Log failed authentications
+    pub log_failures: bool,
+
+    /// Log permission checks
+    pub log_permissions: bool,
+
+    /// Log token operations
+    pub log_tokens: bool,
+
+    /// Audit log storage
+    pub storage: AuditStorage,
+}
+
+/// Audit log storage options.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AuditStorage {
+    /// Standard logging (via tracing)
+    Tracing,
+
+    /// File-based storage
+    File { path: String },
+
+    /// Database storage
+    Database { connection_string: String },
+
+    /// External service
+    External { endpoint: String, api_key: String },
+}
+
+impl Default for AuthConfig {
+    fn default() -> Self {
+        Self {
+            token_lifetime: Duration::from_secs(3600), // 1 hour
+            refresh_token_lifetime: Duration::from_secs(86400 * 7), // 7 days
+            enable_multi_factor: false,
+            issuer: "auth-framework".to_string(),
+            audience: "api".to_string(),
+            secret: None,
+            storage: StorageConfig::Memory,
+            rate_limiting: RateLimitConfig::default(),
+            security: SecurityConfig::default(),
+            audit: AuditConfig::default(),
+            method_configs: HashMap::new(),
+        }
+    }
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_requests: 100,
+            window: Duration::from_secs(60), // 1 minute
+            burst: 10,
+            per_user_enabled: true,
+            max_requests_per_user: 120, // Slightly higher for authenticated users
+            per_user_window: Duration::from_secs(60),
+        }
+    }
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            min_password_length: 12, // Increased from 8 for better security
+            require_password_complexity: true,
+            require_uppercase: true,
+            require_lowercase: true,
+            require_digit: true,
+            require_special: true,
+            min_complexity_criteria: 3, // At least 3 of 4 criteria must be met
+            password_hash_algorithm: PasswordHashAlgorithm::Argon2,
+            jwt_algorithm: JwtAlgorithm::HS256,
+            secret_key: None,
+            secure_cookies: true,
+            cookie_same_site: CookieSameSite::Lax,
+            csrf_protection: true,
+            session_timeout: Duration::from_secs(3600 * 24), // 24 hours
+            lockout: LockoutConfig::default(),
+            max_api_keys_per_user: 10, // Reasonable default limit
+            oauth2: OAuth2SecurityConfig::default(),
+        }
+    }
+}
+
+impl Default for AuditConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            log_success: true,
+            log_failures: true,
+            log_permissions: true,
+            log_tokens: false, // Tokens can be sensitive
+            storage: AuditStorage::Tracing,
+        }
+    }
+}
+
+impl Default for LockoutConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_failed_attempts: 5,
+            lockout_duration_seconds: 900, // 15 minutes
+            progressive_lockout: true,
+            max_lockout_duration_seconds: 3600, // 1 hour max
+            tracking_window_seconds: 300,       // 5 minutes
+        }
+    }
+}
+
+impl Default for OAuth2SecurityConfig {
+    fn default() -> Self {
+        Self {
+            require_user_authentication: true, // Security best practice
+            validate_redirect_uri: true,       // Prevent open redirects
+            require_client_secret: true,       // Security best practice
+            require_pkce: true,                // Modern OAuth2 security
+        }
+    }
+}
+
+impl AuthConfig {
+    /// Create a new configuration with default values.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the token lifetime.
+    pub fn token_lifetime(mut self, lifetime: Duration) -> Self {
+        self.token_lifetime = lifetime;
+        self
+    }
+
+    /// Set the refresh token lifetime.
+    pub fn refresh_token_lifetime(mut self, lifetime: Duration) -> Self {
+        self.refresh_token_lifetime = lifetime;
+        self
+    }
+
+    /// Enable or disable multi-factor authentication.
+    pub fn enable_multi_factor(mut self, enabled: bool) -> Self {
+        self.enable_multi_factor = enabled;
+        self
+    }
+
+    /// Set the JWT issuer.
+    pub fn issuer(mut self, issuer: impl Into<String>) -> Self {
+        self.issuer = issuer.into();
+        self
+    }
+
+    /// Set the JWT audience.
+    pub fn audience(mut self, audience: impl Into<String>) -> Self {
+        self.audience = audience.into();
+        self
+    }
+
+    /// Set the JWT secret key.
+    pub fn secret(mut self, secret: impl Into<String>) -> Self {
+        self.secret = Some(secret.into());
+        self
+    }
+
+    /// Require MFA for all users.
+    pub fn require_mfa(mut self, required: bool) -> Self {
+        self.enable_multi_factor = required;
+        self
+    }
+
+    /// Enable caching.
+    pub fn enable_caching(self, _enabled: bool) -> Self {
+        // This would set a caching flag in a real implementation
+        self
+    }
+
+    /// Set maximum failed attempts.
+    pub fn max_failed_attempts(self, _max: u32) -> Self {
+        // This would set max failed attempts in security config
+        self
+    }
+
+    /// Enable RBAC.
+    pub fn enable_rbac(self, _enabled: bool) -> Self {
+        // This would enable role-based access control
+        self
+    }
+
+    /// Enable security audit.
+    pub fn enable_security_audit(self, _enabled: bool) -> Self {
+        // This would enable security auditing
+        self
+    }
+
+    /// Enable middleware.
+    pub fn enable_middleware(self, _enabled: bool) -> Self {
+        // This would enable middleware support
+        self
+    }
+
+    /// Set the storage configuration.
+    pub fn storage(mut self, storage: StorageConfig) -> Self {
+        self.storage = storage;
+        self
+    }
+
+    /// Configure Redis storage.
+    #[cfg(feature = "redis-storage")]
+    pub fn redis_storage(mut self, url: impl Into<String>) -> Self {
+        self.storage = StorageConfig::Redis {
+            url: url.into(),
+            key_prefix: "auth:".to_string(),
+        };
+        self
+    }
+
+    /// Set rate limiting configuration.
+    pub fn rate_limiting(mut self, config: RateLimitConfig) -> Self {
+        self.rate_limiting = config;
+        self
+    }
+
+    /// Set security configuration.
+    pub fn security(mut self, config: SecurityConfig) -> Self {
+        self.security = config;
+        self
+    }
+
+    /// Set audit configuration.
+    pub fn audit(mut self, config: AuditConfig) -> Self {
+        self.audit = config;
+        self
+    }
+
+    /// Add configuration for a specific auth method.
+    pub fn method_config(
+        mut self,
+        method_name: impl Into<String>,
+        config: impl Serialize,
+    ) -> Result<Self> {
+        let value = serde_json::to_value(config)
+            .map_err(|e| AuthError::config(format!("Failed to serialize method config: {e}")))?;
+
+        self.method_configs.insert(method_name.into(), value);
+        Ok(self)
+    }
+
+    /// Get configuration for a specific auth method.
+    pub fn get_method_config<T>(&self, method_name: &str) -> Result<Option<T>>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        if let Some(value) = self.method_configs.get(method_name) {
+            let config = serde_json::from_value(value.clone()).map_err(|e| {
+                AuthError::config(format!("Failed to deserialize method config: {e}"))
+            })?;
+            Ok(Some(config))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Validate the configuration.
+    pub fn validate(&self) -> Result<()> {
+        // Validate token lifetimes
+        if self.token_lifetime.as_secs() == 0 {
+            return Err(AuthError::config("Token lifetime must be greater than 0"));
+        }
+
+        if self.refresh_token_lifetime.as_secs() == 0 {
+            return Err(AuthError::config(
+                "Refresh token lifetime must be greater than 0",
+            ));
+        }
+
+        if self.refresh_token_lifetime <= self.token_lifetime {
+            return Err(AuthError::config(
+                "Refresh token lifetime must be greater than token lifetime",
+            ));
+        }
+
+        // Validate JWT secret configuration
+        self.validate_jwt_secret()?;
+
+        // Validate security settings
+        if self.security.min_password_length < 4 {
+            return Err(AuthError::config(
+                "Minimum password length must be at least 4 characters",
+            ));
+        }
+
+        // Enhanced security validation for production
+        if self.is_production_environment() && !self.is_test_environment() {
+            self.validate_production_security()?;
+        }
+
+        // Validate rate limiting
+        if self.rate_limiting.enabled && self.rate_limiting.max_requests == 0 {
+            return Err(AuthError::config(
+                "Rate limit max requests must be greater than 0 when enabled",
+            ));
+        }
+
+        // Validate storage configuration
+        self.validate_storage_config()?;
+
+        Ok(())
+    }
+
+    /// Validate JWT secret configuration for security
+    fn validate_jwt_secret(&self) -> Result<()> {
+        // Check multiple sources for JWT secret
+        let env_secret = std::env::var("JWT_SECRET").ok();
+        let jwt_secret = self
+            .security
+            .secret_key
+            .as_ref()
+            .or(self.secret.as_ref())
+            .or(env_secret.as_ref());
+
+        if let Some(secret) = jwt_secret {
+            if secret.len() < 32 {
+                return Err(AuthError::config(
+                    "JWT secret must be at least 32 characters for security. \
+                     Generate with: openssl rand -base64 32",
+                ));
+            }
+
+            // Check for common insecure patterns (but allow in test environments)
+            if !self.is_test_environment()
+                && (secret.contains("secret")
+                    || secret.contains("password")
+                    || secret.contains("123"))
+            {
+                return Err(AuthError::config(
+                    "JWT secret appears to contain common words or patterns. \
+                     Use a cryptographically secure random string.",
+                ));
+            }
+
+            // Warn if secret looks like it might be base64 but too short
+            if secret.len() < 44
+                && secret
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '+' || c == '/' || c == '=')
+            {
+                tracing::warn!(
+                    "JWT secret may be too short for optimal security. \
+                     Consider using at least 44 characters (32 bytes base64-encoded)."
+                );
+            }
+        } else if self.is_production_environment() {
+            return Err(AuthError::config(
+                "JWT secret is required for production environments. \
+                 Set JWT_SECRET environment variable or configure security.secret_key",
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Validate production-specific security requirements
+    fn validate_production_security(&self) -> Result<()> {
+        // Require strong password policies in production
+        if self.security.min_password_length < 8 {
+            return Err(AuthError::config(
+                "Production environments require minimum password length of 8 characters",
+            ));
+        }
+
+        if !self.security.require_password_complexity {
+            tracing::warn!("Production deployment should enable password complexity requirements");
+        }
+
+        // Require secure cookies in production
+        if !self.security.secure_cookies {
+            return Err(AuthError::config(
+                "Production environments must use secure cookies (HTTPS required)",
+            ));
+        }
+
+        // Ensure rate limiting is enabled
+        if !self.rate_limiting.enabled {
+            tracing::warn!("Production deployment should enable rate limiting for security");
+        }
+
+        // Validate audit configuration for compliance
+        if !self.audit.enabled {
+            return Err(AuthError::config(
+                "Production environments require audit logging for compliance",
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Validate storage configuration
+    fn validate_storage_config(&self) -> Result<()> {
+        match &self.storage {
+            StorageConfig::Memory => {
+                if self.is_production_environment() && !self.is_test_environment() {
+                    return Err(AuthError::config(
+                        "Memory storage is not suitable for production environments. \
+                         Use PostgreSQL, Redis, or MySQL storage.",
+                    ));
+                }
+            }
+            #[cfg(feature = "mysql-storage")]
+            StorageConfig::MySQL { .. } => {
+                tracing::warn!(
+                    "MySQL storage has known RSA vulnerability (RUSTSEC-2023-0071). \
+                     Consider using PostgreSQL for enhanced security."
+                );
+            }
+            _ => {} // PostgreSQL and Redis are production-ready
+        }
+
+        Ok(())
+    }
+
+    /// Detect production environment
+    fn is_production_environment(&self) -> bool {
+        // Check common production environment indicators
+        if let Ok(env) = std::env::var("ENVIRONMENT")
+            && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
+        {
+            return true;
+        }
+
+        if let Ok(env) = std::env::var("ENV")
+            && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
+        {
+            return true;
+        }
+
+        if let Ok(env) = std::env::var("NODE_ENV")
+            && env.to_lowercase() == "production"
+        {
+            return true;
+        }
+
+        if let Ok(env) = std::env::var("RUST_ENV")
+            && env.to_lowercase() == "production"
+        {
+            return true;
+        }
+
+        // Check for containerized environments
+        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok() {
+            return true;
+        }
+
+        if std::env::var("DOCKER_CONTAINER").is_ok() {
+            return true;
+        }
+
+        false
+    }
+
+    /// Detect test environment
+    fn is_test_environment(&self) -> bool {
+        // Check if we're running in a test environment
+        cfg!(test)
+            || std::thread::current()
+                .name()
+                .is_some_and(|name| name.contains("test"))
+            || std::env::var("RUST_TEST").is_ok()
+            || std::env::var("ENVIRONMENT").as_deref() == Ok("test")
+            || std::env::var("ENV").as_deref() == Ok("test")
+            || std::env::args().any(|arg| arg.contains("test"))
+    }
+}
+
+impl RateLimitConfig {
+    /// Create a new rate limit configuration.
+    pub fn new(max_requests: u32, window: Duration) -> Self {
+        Self {
+            enabled: true,
+            max_requests,
+            window,
+            burst: max_requests / 10, // 10% of max as burst
+            per_user_enabled: true,
+            max_requests_per_user: max_requests + 20,
+            per_user_window: window,
+        }
+    }
+
+    /// Disable rate limiting.
+    pub fn disabled() -> Self {
+        Self {
+            enabled: false,
+            per_user_enabled: false,
+            ..Default::default()
+        }
+    }
+}
+
+impl SecurityConfig {
+    /// Create a new security configuration with secure defaults.
+    pub fn secure() -> Self {
+        Self {
+            min_password_length: 12,
+            require_password_complexity: true,
+            require_uppercase: true,
+            require_lowercase: true,
+            require_digit: true,
+            require_special: true,
+            min_complexity_criteria: 4, // All criteria for maximum security
+            password_hash_algorithm: PasswordHashAlgorithm::Argon2,
+            jwt_algorithm: JwtAlgorithm::RS256,
+            secret_key: None,
+            secure_cookies: true,
+            cookie_same_site: CookieSameSite::Strict,
+            csrf_protection: true,
+            session_timeout: Duration::from_secs(3600 * 8), // 8 hours
+            lockout: LockoutConfig::default(),
+            max_api_keys_per_user: 5, // Stricter limit for production
+            oauth2: OAuth2SecurityConfig::default(),
+        }
+    }
+
+    /// Create a development-friendly configuration.
+    /// WARNING: You MUST set a secret key before using this configuration!
+    /// Use either config.security.secret_key or JWT_SECRET environment variable.
+    pub fn development() -> Self {
+        Self {
+            min_password_length: 6,
+            require_password_complexity: false,
+            require_uppercase: false,
+            require_lowercase: false,
+            require_digit: false,
+            require_special: false,
+            min_complexity_criteria: 0, // Relaxed for development
+            password_hash_algorithm: PasswordHashAlgorithm::Bcrypt,
+            jwt_algorithm: JwtAlgorithm::HS256,
+            secret_key: None, // Must be set by developer for security
+            secure_cookies: false,
+            cookie_same_site: CookieSameSite::Lax,
+            csrf_protection: false,
+            session_timeout: Duration::from_secs(3600 * 24), // 24 hours
+            lockout: LockoutConfig {
+                enabled: false, // Disabled for development convenience
+                ..Default::default()
+            },
+            max_api_keys_per_user: 0, // Unlimited for development
+            oauth2: OAuth2SecurityConfig {
+                require_user_authentication: false, // Relaxed for testing
+                validate_redirect_uri: false,
+                require_client_secret: false,
+                require_pkce: false,
+            },
+        }
+    }
+}

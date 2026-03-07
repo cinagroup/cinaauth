@@ -136,6 +136,9 @@ pub struct AuthFramework {
     /// Audit manager for security event logging
     audit_manager: Arc<crate::audit::AuditLogger<Arc<crate::storage::MemoryStorage>>>,
 
+    /// Security manager for rate limiting, DoS protection, and IP blacklisting
+    security_manager: Arc<crate::api::SecurityManager>,
+
     /// Framework initialization state
     initialized: bool,
 }
@@ -185,6 +188,7 @@ impl AuthFramework {
                 crate::monitoring::MonitoringConfig::default(),
             )),
             audit_manager,
+            security_manager: Arc::new(crate::api::SecurityManager::new()),
             initialized: false,
         }
     }
@@ -267,8 +271,26 @@ impl AuthFramework {
                 crate::monitoring::MonitoringConfig::default(),
             )),
             audit_manager,
+            security_manager: Arc::new(crate::api::SecurityManager::new()),
             initialized: false,
         })
+    }
+
+    /// Replace the storage backend with a custom implementation.
+    ///
+    /// This will swap the internal storage Arc so subsequent operations use
+    /// the provided storage instance. Implementations that rely on a
+    /// different concrete storage may need additional reconfiguration by the
+    /// caller.
+    pub fn replace_storage(&mut self, storage: std::sync::Arc<dyn AuthStorage>) {
+        self.storage = storage;
+    }
+
+    /// Convenience constructor that creates a framework with a custom storage instance.
+    pub fn new_with_storage(config: AuthConfig, storage: std::sync::Arc<dyn AuthStorage>) -> Self {
+        let mut framework = Self::new(config);
+        framework.replace_storage(storage);
+        framework
     }
 
     /// Register an authentication method.
@@ -1055,11 +1077,10 @@ impl AuthFramework {
 
             // Check current rate limiting status for common authentication endpoints
             let test_key = "auth:password:127.0.0.1";
-            let remaining = rate_limiter.remaining_requests(test_key);
+            let _remaining = rate_limiter.remaining_requests(test_key);
 
             info!(
-                "Rate limiter active - remaining requests for test key: {}",
-                remaining
+                "Rate limiter active - test key configured with remaining requests available"
             );
 
             info!(
@@ -1415,7 +1436,7 @@ impl AuthFramework {
         use ring::hmac;
 
         // Decode base32 secret
-        let secret_bytes = base32::decode(base32::Alphabet::RFC4648 { padding: true }, secret)
+        let secret_bytes = base32::decode(base32::Alphabet::Rfc4648 { padding: true }, secret)
             .ok_or_else(|| AuthError::InvalidInput("Invalid TOTP secret format".to_string()))?;
 
         // Create HMAC key for TOTP (using SHA1 as per RFC)
@@ -1631,7 +1652,7 @@ impl AuthFramework {
                 .map_err(|_| AuthError::crypto("Failed to generate secure random bytes"))?;
 
             // Convert to base32 for human readability
-            let code = base32::encode(base32::Alphabet::RFC4648 { padding: false }, &bytes);
+            let code = base32::encode(base32::Alphabet::Rfc4648 { padding: false }, &bytes);
 
             // Format as XXXX-XXXX-XXXX-XXXX for readability
             let formatted_code = format!(
@@ -1703,6 +1724,206 @@ impl AuthFramework {
         Ok(challenge_id)
     }
 
+    /// Get reference to the storage backend.
+    pub fn storage(&self) -> Arc<dyn AuthStorage> {
+        self.storage.clone()
+    }
+
+    /// Register a new user with username, email, and password.
+    pub async fn register_user(
+        &mut self,
+        username: &str,
+        email: &str,
+        password: &str,
+    ) -> Result<String> {
+        debug!("Registering new user: {}", username);
+
+        // Check if username already exists
+        let username_key = format!("user:username:{}", username);
+        if self.storage.get_kv(&username_key).await?.is_some() {
+            return Err(AuthError::validation(
+                "Username already exists".to_string(),
+            ));
+        }
+
+        // Check if email already exists
+        let email_key = format!("user:email:{}", email);
+        if self.storage.get_kv(&email_key).await?.is_some() {
+            return Err(AuthError::validation(
+                "Email already exists".to_string(),
+            ));
+        }
+
+        // Generate user ID
+        let user_id = crate::utils::string::generate_id(Some("user"));
+
+        // Hash password
+        let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
+            .map_err(|e| AuthError::crypto(format!("Failed to hash password: {}", e)))?;
+
+        // Store user data
+        let user_data = serde_json::json!({
+            "user_id": user_id,
+            "username": username,
+            "email": email,
+            "password_hash": password_hash,
+            "created_at": chrono::Utc::now().to_rfc3339(),
+        });
+
+        let user_key = format!("user:{}", user_id);
+        self.storage
+            .store_kv(&user_key, user_data.to_string().as_bytes(), None)
+            .await?;
+
+        // Store lookups for username and email
+        self.storage
+            .store_kv(&username_key, user_id.as_bytes(), None)
+            .await?;
+        self.storage
+            .store_kv(&email_key, user_id.as_bytes(), None)
+            .await?;
+
+        info!("User '{}' registered successfully", username);
+        Ok(user_id)
+    }
+
+    /// Check if a username exists.
+    pub async fn username_exists(&self, username: &str) -> Result<bool> {
+        let username_key = format!("user:username:{}", username);
+        Ok(self.storage.get_kv(&username_key).await?.is_some())
+    }
+
+    /// Check if an email exists.
+    pub async fn email_exists(&self, email: &str) -> Result<bool> {
+        let email_key = format!("user:email:{}", email);
+        Ok(self.storage.get_kv(&email_key).await?.is_some())
+    }
+
+    /// Get user data by username.
+    pub async fn get_user_by_username(
+        &self,
+        username: &str,
+    ) -> Result<HashMap<String, serde_json::Value>> {
+        let username_key = format!("user:username:{}", username);
+
+        match self.storage.get_kv(&username_key).await? {
+            Some(user_id_data) => {
+                let user_id = String::from_utf8(user_id_data)
+                    .map_err(|e| AuthError::crypto(format!("Invalid user ID format: {}", e)))?;
+                let user_key = format!("user:{}", user_id);
+
+                match self.storage.get_kv(&user_key).await? {
+                    Some(user_data) => {
+                        let user_json = String::from_utf8(user_data)
+                            .map_err(|e| AuthError::crypto(format!("Invalid user data format: {}", e)))?;
+                        let user_obj: serde_json::Value =
+                            serde_json::from_str(&user_json).map_err(|e| {
+                                AuthError::crypto(format!("Failed to parse user data: {}", e))
+                            })?;
+
+                        if let Some(obj) = user_obj.as_object() {
+                            Ok(obj.into_iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+                        } else {
+                            Err(AuthError::validation(
+                                "Invalid user data structure".to_string(),
+                            ))
+                        }
+                    }
+                    None => Err(AuthError::validation(
+                        "User not found".to_string(),
+                    )),
+                }
+            }
+            None => Err(AuthError::validation("User not found".to_string())),
+        }
+    }
+
+    /// Update user password.
+    pub async fn update_user_password(
+        &self,
+        username: &str,
+        new_password: &str,
+    ) -> Result<()> {
+        debug!("Updating password for user: {}", username);
+
+        // Get user ID from username
+        let username_key = format!("user:username:{}", username);
+        let user_id_data = self
+            .storage
+            .get_kv(&username_key)
+            .await?
+            .ok_or_else(|| AuthError::validation("User not found".to_string()))?;
+
+        let user_id = String::from_utf8(user_id_data)
+            .map_err(|e| AuthError::crypto(format!("Invalid user ID format: {}", e)))?;
+
+        // Get current user data
+        let user_key = format!("user:{}", user_id);
+        let user_data_bytes = self
+            .storage
+            .get_kv(&user_key)
+            .await?
+            .ok_or_else(|| AuthError::validation("User not found".to_string()))?;
+
+        let user_json_str = String::from_utf8(user_data_bytes)
+            .map_err(|e| AuthError::crypto(format!("Invalid user data format: {}", e)))?;
+
+        let mut user_data: serde_json::Value = serde_json::from_str(&user_json_str)
+            .map_err(|e| AuthError::crypto(format!("Failed to parse user data: {}", e)))?;
+
+        // Hash new password
+        let password_hash = bcrypt::hash(new_password, bcrypt::DEFAULT_COST)
+            .map_err(|e| AuthError::crypto(format!("Failed to hash password: {}", e)))?;
+
+        // Update password hash in user data
+        user_data["password_hash"] = serde_json::json!(password_hash);
+        user_data["updated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
+
+        // Store updated user data
+        self.storage
+            .store_kv(&user_key, user_data.to_string().as_bytes(), None)
+            .await?;
+
+        info!("Password updated for user: {}", username);
+        Ok(())
+    }
+
+    /// Delete a user by username.
+    pub async fn delete_user(&self, username: &str) -> Result<()> {
+        debug!("Deleting user: {}", username);
+
+        // Get user ID from username
+        let username_key = format!("user:username:{}", username);
+        let user_id_data = self
+            .storage
+            .get_kv(&username_key)
+            .await?
+            .ok_or_else(|| AuthError::validation("User not found".to_string()))?;
+
+        let user_id = String::from_utf8(user_id_data)
+            .map_err(|e| AuthError::crypto(format!("Invalid user ID format: {}", e)))?;
+
+        // Get user email for cleanup
+        let user_key = format!("user:{}", user_id);
+        if let Some(user_data_bytes) = self.storage.get_kv(&user_key).await? {
+            if let Ok(user_json_str) = String::from_utf8(user_data_bytes) {
+                if let Ok(user_data) = serde_json::from_str::<serde_json::Value>(&user_json_str) {
+                    if let Some(email) = user_data.get("email").and_then(|v| v.as_str()) {
+                        let email_key = format!("user:email:{}", email);
+                        let _ = self.storage.delete_kv(&email_key).await;
+                    }
+                }
+            }
+        }
+
+        // Delete user data
+        let _ = self.storage.delete_kv(&user_key).await;
+        let _ = self.storage.delete_kv(&username_key).await;
+
+        info!("User '{}' deleted successfully", username);
+        Ok(())
+    }
+
     /// Get user's TOTP secret from secure storage
     async fn get_user_totp_secret(&self, user_id: &str) -> Result<String> {
         // In production, this would be retrieved from secure storage with proper encryption
@@ -1715,7 +1936,7 @@ impl AuthFramework {
 
         // Convert to base32 for TOTP compatibility
         Ok(base32::encode(
-            base32::Alphabet::RFC4648 { padding: true },
+            base32::Alphabet::Rfc4648 { padding: true },
             &hash[0..20], // Use first 160 bits (20 bytes)
         ))
     }
@@ -1861,7 +2082,7 @@ impl AuthFramework {
         type HmacSha1 = Hmac<Sha1>;
 
         // Decode base32 secret to bytes
-        let key_bytes = decode(Alphabet::RFC4648 { padding: true }, secret)
+        let key_bytes = decode(Alphabet::Rfc4648 { padding: true }, secret)
             .ok_or_else(|| AuthError::validation("Invalid base32 secret"))?;
 
         // Convert time counter to bytes (big-endian)
@@ -2314,6 +2535,30 @@ impl AuthFramework {
     /// ```
     pub fn get_monitoring_manager(&self) -> Arc<crate::monitoring::MonitoringManager> {
         self.monitoring_manager.clone()
+    }
+
+    /// Get the security manager for rate limiting, DoS protection, and IP blacklisting
+    ///
+    /// Returns Some(Arc<SecurityManager>) if the framework is properly initialized,
+    /// None otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let security_manager = auth_framework.get_security_manager();
+    ///
+    /// if let Some(manager) = security_manager {
+    ///     // Check blacklist
+    ///     if !manager.check_blacklist(ip).await {
+    ///         // IP is blacklisted
+    ///     }
+    ///     
+    ///     // Get statistics
+    ///     let stats = manager.get_stats().await;
+    /// }
+    /// ```
+    pub fn get_security_manager(&self) -> Option<Arc<crate::api::SecurityManager>> {
+        Some(self.security_manager.clone())
     }
 
     /// Get current performance metrics

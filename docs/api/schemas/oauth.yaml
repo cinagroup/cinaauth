@@ -1,0 +1,650 @@
+# OAuth 2.0 and OIDC Schemas
+# Data structures for OAuth authorization server and OpenID Connect
+
+OAuthTokenRequest:
+    type: object
+    description: OAuth 2.0 token request (RFC 6749)
+    properties:
+        grant_type:
+            type: string
+            enum:
+                [
+                    authorization_code,
+                    refresh_token,
+                    client_credentials,
+                    password,
+                    urn:ietf:params:oauth:grant-type:token-exchange
+                ]
+            description: OAuth grant type
+            example: "authorization_code"
+        code:
+            type: string
+            description: Authorization code (for authorization_code grant)
+            example: "abc123def456"
+        redirect_uri:
+            type: string
+            format: uri
+            description: Redirect URI (for authorization_code grant, must match original)
+            example: "https://client.example.com/callback"
+        client_id:
+            type: string
+            description: OAuth client identifier
+            example: "client_123"
+        client_secret:
+            type: string
+            description: OAuth client secret (for confidential clients)
+            example: "secret_456"
+        refresh_token:
+            type: string
+            description: Refresh token (for refresh_token grant)
+            example: "refresh_abc123"
+        username:
+            type: string
+            description: Username (for password grant)
+            example: "user@example.com"
+        password:
+            type: string
+            format: password
+            description: Password (for password grant)
+            example: "SecurePassword123!"
+        scope:
+            type: string
+            description: Requested scope (space-separated)
+            example: "openid profile email"
+        code_verifier:
+            type: string
+            description: PKCE code verifier (RFC 7636)
+            example: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+        # Token Exchange (RFC 8693) parameters
+        subject_token:
+            type: string
+            description: Security token representing subject identity (for token-exchange grant)
+            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        subject_token_type:
+            type: string
+            description: Subject token type identifier
+            example: "urn:ietf:params:oauth:token-type:access_token"
+        actor_token:
+            type: string
+            description: Security token representing actor identity (optional)
+            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        actor_token_type:
+            type: string
+            description: Actor token type identifier
+            example: "urn:ietf:params:oauth:token-type:access_token"
+        requested_token_type:
+            type: string
+            description: Requested token type
+            example: "urn:ietf:params:oauth:token-type:access_token"
+        audience:
+            type: string
+            description: Target audience for token exchange
+            example: "https://api.example.com"
+        resource:
+            type: string
+            description: Target resource URI
+            example: "https://resource.example.com"
+    required:
+        - grant_type
+
+OAuthTokenResponse:
+    type: object
+    description: OAuth 2.0 token response
+    properties:
+        access_token:
+            type: string
+            description: OAuth 2.0 access token
+            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+            type: string
+            description: Token type (always "Bearer")
+            example: "Bearer"
+        expires_in:
+            type: integer
+            description: Access token lifetime in seconds
+            example: 3600
+            minimum: 1
+        refresh_token:
+            type: string
+            description: Refresh token (if applicable)
+            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        scope:
+            type: string
+            description: Granted scope (space-separated)
+            example: "openid profile email"
+        id_token:
+            type: string
+            description: OpenID Connect ID token (if openid scope requested)
+            example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+        # Token Exchange additional fields
+        issued_token_type:
+            type: string
+            description: Type of issued token (for token-exchange grant)
+            example: "urn:ietf:params:oauth:token-type:access_token"
+    required:
+        - access_token
+        - token_type
+        - expires_in
+
+RevokeTokenRequest:
+    type: object
+    description: OAuth 2.0 token revocation request (RFC 7009)
+    properties:
+        token:
+            type: string
+            description: Token to revoke
+            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type_hint:
+            type: string
+            enum: [access_token, refresh_token]
+            description: Hint about token type (optional optimization)
+            example: "access_token"
+        client_id:
+            type: string
+            description: OAuth client identifier
+            example: "client_123"
+        client_secret:
+            type: string
+            description: OAuth client secret
+            example: "secret_456"
+    required:
+        - token
+
+IntrospectTokenRequest:
+    type: object
+    description: OAuth 2.0 token introspection request (RFC 7662)
+    properties:
+        token:
+            type: string
+            description: Token to introspect
+            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type_hint:
+            type: string
+            enum: [access_token, refresh_token]
+            description: Hint about token type
+            example: "access_token"
+        client_id:
+            type: string
+            description: OAuth client identifier
+            example: "client_123"
+        client_secret:
+            type: string
+            description: OAuth client secret
+            example: "secret_456"
+    required:
+        - token
+
+TokenIntrospectionResponse:
+    type: object
+    description: OAuth 2.0 token introspection response
+    properties:
+        active:
+            type: boolean
+            description: Whether the token is currently active
+            example: true
+        scope:
+            type: string
+            description: Space-separated list of scopes
+            example: "openid profile email"
+        client_id:
+            type: string
+            description: Client identifier
+            example: "client_123"
+        username:
+            type: string
+            description: Username of token owner
+            example: "user@example.com"
+        token_type:
+            type: string
+            description: Token type
+            example: "Bearer"
+        exp:
+            type: integer
+            description: Expiration timestamp (Unix epoch)
+            example: 1642690245
+        iat:
+            type: integer
+            description: Issued at timestamp (Unix epoch)
+            example: 1642686645
+        nbf:
+            type: integer
+            description: Not before timestamp (Unix epoch)
+            example: 1642686645
+        sub:
+            type: string
+            description: Subject identifier (user ID)
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        aud:
+            type: string
+            description: Audience (intended recipient)
+            example: "https://api.example.com"
+        iss:
+            type: string
+            description: Issuer identifier
+            example: "https://auth.example.com"
+        jti:
+            type: string
+            description: JWT ID (unique token identifier)
+            example: "550e8400-e29b-41d4-a716-446655440000"
+    required:
+        - active
+
+OidcDiscoveryDocument:
+    type: object
+    description: OpenID Connect discovery document (RFC 8414)
+    properties:
+        issuer:
+            type: string
+            format: uri
+            description: Issuer identifier URL
+            example: "https://auth.example.com"
+        authorization_endpoint:
+            type: string
+            format: uri
+            description: OAuth 2.0 authorization endpoint
+            example: "https://auth.example.com/api/v1/oauth/authorize"
+        token_endpoint:
+            type: string
+            format: uri
+            description: OAuth 2.0 token endpoint
+            example: "https://auth.example.com/api/v1/oauth/token"
+        userinfo_endpoint:
+            type: string
+            format: uri
+            description: OpenID Connect userinfo endpoint
+            example: "https://auth.example.com/api/v1/oauth/userinfo"
+        jwks_uri:
+            type: string
+            format: uri
+            description: JSON Web Key Set document location
+            example: "https://auth.example.com/api/v1/oauth/jwks"
+        registration_endpoint:
+            type: string
+            format: uri
+            description: Dynamic client registration endpoint (optional)
+            example: "https://auth.example.com/api/v1/oauth/register"
+        scopes_supported:
+            type: array
+            description: Supported OAuth 2.0 scopes
+            items:
+                type: string
+            example: ["openid", "profile", "email", "offline_access"]
+        response_types_supported:
+            type: array
+            description: Supported OAuth 2.0 response types
+            items:
+                type: string
+            example:
+                [
+                    "code",
+                    "token",
+                    "id_token",
+                    "code token",
+                    "code id_token",
+                    "token id_token",
+                    "code token id_token"
+                ]
+        grant_types_supported:
+            type: array
+            description: Supported OAuth 2.0 grant types
+            items:
+                type: string
+            example:
+                [
+                    "authorization_code",
+                    "refresh_token",
+                    "client_credentials",
+                    "urn:ietf:params:oauth:grant-type:token-exchange"
+                ]
+        subject_types_supported:
+            type: array
+            description: Supported subject identifier types
+            items:
+                type: string
+            example: ["public", "pairwise"]
+        id_token_signing_alg_values_supported:
+            type: array
+            description: Supported JWS signing algorithms for ID tokens
+            items:
+                type: string
+            example: ["RS256", "ES256", "HS256"]
+        token_endpoint_auth_methods_supported:
+            type: array
+            description: Supported client authentication methods
+            items:
+                type: string
+            example:
+                [
+                    "client_secret_basic",
+                    "client_secret_post",
+                    "client_secret_jwt",
+                    "private_key_jwt"
+                ]
+        claims_supported:
+            type: array
+            description: Supported OIDC claims
+            items:
+                type: string
+            example:
+                [
+                    "sub",
+                    "iss",
+                    "aud",
+                    "exp",
+                    "iat",
+                    "auth_time",
+                    "nonce",
+                    "email",
+                    "email_verified",
+                    "name",
+                    "given_name",
+                    "family_name"
+                ]
+        code_challenge_methods_supported:
+            type: array
+            description: Supported PKCE code challenge methods
+            items:
+                type: string
+            example: ["S256", "plain"]
+    required:
+        - issuer
+        - authorization_endpoint
+        - token_endpoint
+        - jwks_uri
+        - response_types_supported
+        - subject_types_supported
+        - id_token_signing_alg_values_supported
+
+JwkSet:
+    type: object
+    description: JSON Web Key Set (RFC 7517)
+    properties:
+        keys:
+            type: array
+            description: Array of JSON Web Keys
+            items:
+                $ref: "#/Jwk"
+    required:
+        - keys
+
+Jwk:
+    type: object
+    description: JSON Web Key (RFC 7517)
+    properties:
+        kty:
+            type: string
+            description: Key type
+            example: "RSA"
+        use:
+            type: string
+            description: Public key use
+            example: "sig"
+        kid:
+            type: string
+            description: Key ID
+            example: "2024-01-key-1"
+        alg:
+            type: string
+            description: Algorithm
+            example: "RS256"
+        n:
+            type: string
+            description: RSA modulus (Base64urlUInt-encoded)
+            example: "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM..."
+        e:
+            type: string
+            description: RSA exponent (Base64urlUInt-encoded)
+            example: "AQAB"
+        x:
+            type: string
+            description: EC X coordinate (for EC keys)
+            example: "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4"
+        y:
+            type: string
+            description: EC Y coordinate (for EC keys)
+            example: "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM"
+        crv:
+            type: string
+            description: EC curve name (for EC keys)
+            example: "P-256"
+    required:
+        - kty
+        - use
+        - kid
+
+UserInfoResponse:
+    type: object
+    description: OpenID Connect UserInfo response (OIDC Core 5.3)
+    properties:
+        sub:
+            type: string
+            description: Subject identifier (user ID)
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+            type: string
+            description: Full name
+            example: "John Doe"
+        given_name:
+            type: string
+            description: First name
+            example: "John"
+        family_name:
+            type: string
+            description: Last name
+            example: "Doe"
+        email:
+            type: string
+            format: email
+            description: Email address
+            example: "user@example.com"
+        email_verified:
+            type: boolean
+            description: Whether email has been verified
+            example: true
+        phone_number:
+            type: string
+            description: Phone number
+            example: "+1234567890"
+        phone_number_verified:
+            type: boolean
+            description: Whether phone number has been verified
+            example: false
+        picture:
+            type: string
+            format: uri
+            description: Profile picture URL
+            example: "https://example.com/avatars/user123.jpg"
+        locale:
+            type: string
+            description: User's locale
+            example: "en-US"
+        zoneinfo:
+            type: string
+            description: User's timezone
+            example: "America/New_York"
+        updated_at:
+            type: integer
+            description: Last profile update timestamp (Unix epoch)
+            example: 1642686645
+    required:
+        - sub
+
+ClientRegistrationRequest:
+    type: object
+    description: OAuth 2.0 Dynamic Client Registration Request (RFC 7591)
+    properties:
+        redirect_uris:
+            type: array
+            items:
+                type: string
+                format: uri
+            description: Array of redirect URIs
+            example: ["https://client.example.com/callback"]
+        token_endpoint_auth_method:
+            type: string
+            enum:
+                - client_secret_post
+                - client_secret_basic
+                - client_secret_jwt
+                - private_key_jwt
+                - none
+            description: Token endpoint authentication method
+            example: "client_secret_basic"
+        grant_types:
+            type: array
+            items:
+                type: string
+            description: Grant types that the client will use
+            example: ["authorization_code", "refresh_token"]
+        response_types:
+            type: array
+            items:
+                type: string
+            description: Response types that the client will use
+            example: ["code"]
+        client_name:
+            type: string
+            description: Human-readable name of the client
+            example: "My Example App"
+        client_uri:
+            type: string
+            format: uri
+            description: URL of the home page of the client
+            example: "https://client.example.com"
+        logo_uri:
+            type: string
+            format: uri
+            description: URL of the logo for the client
+            example: "https://client.example.com/logo.png"
+        scope:
+            type: string
+            description: Space-separated scope values
+            example: "openid profile email"
+        contacts:
+            type: array
+            items:
+                type: string
+                format: email
+            description: Contact information for the client
+            example: ["contact@example.com"]
+        tos_uri:
+            type: string
+            format: uri
+            description: URL of the terms of service
+            example: "https://client.example.com/tos"
+        policy_uri:
+            type: string
+            format: uri
+            description: URL of the privacy policy
+            example: "https://client.example.com/privacy"
+        jwks_uri:
+            type: string
+            format: uri
+            description: URL for the client's JSON Web Key Set
+            example: "https://client.example.com/jwks"
+        software_id:
+            type: string
+            description: Software identifier of the client
+            example: "4NRB1-0XZABZI9E6-5SM3R"
+        software_version:
+            type: string
+            description: Software version of the client
+            example: "1.0.0"
+
+ClientRegistrationResponse:
+    type: object
+    description: OAuth 2.0 Dynamic Client Registration Response (RFC 7591)
+    properties:
+        client_id:
+            type: string
+            description: OAuth 2.0 client identifier
+            example: "client_abc123"
+        client_secret:
+            type: string
+            description: OAuth 2.0 client secret (for confidential clients)
+            example: "secret_xyz789"
+        client_id_issued_at:
+            type: integer
+            description: Time at which the client identifier was issued (Unix epoch)
+            example: 1735686000
+        client_secret_expires_at:
+            type: integer
+            description: Time at which the client secret will expire (0 = never expires)
+            example: 0
+        registration_access_token:
+            type: string
+            description: Token used to access client configuration endpoint
+            example: "reg_token_abc123"
+        registration_client_uri:
+            type: string
+            format: uri
+            description: Location of the client configuration endpoint
+            example: "https://auth.example.com/api/v1/oauth/register/client_abc123"
+        redirect_uris:
+            type: array
+            items:
+                type: string
+                format: uri
+            description: Registered redirect URIs
+            example: ["https://client.example.com/callback"]
+        token_endpoint_auth_method:
+            type: string
+            description: Token endpoint authentication method
+            example: "client_secret_basic"
+        grant_types:
+            type: array
+            items:
+                type: string
+            description: Registered grant types
+            example: ["authorization_code", "refresh_token"]
+        response_types:
+            type: array
+            items:
+                type: string
+            description: Registered response types
+            example: ["code"]
+        client_name:
+            type: string
+            description: Human-readable name of the client
+            example: "My Example App"
+        client_uri:
+            type: string
+            format: uri
+            description: URL of the home page of the client
+            example: "https://client.example.com"
+    required:
+        - client_id
+        - registration_access_token
+        - registration_client_uri
+
+TokenResponse:
+    type: object
+    description: Standard OAuth 2.0 token response
+    properties:
+        access_token:
+            type: string
+            description: OAuth 2.0 access token
+            example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+            type: string
+            description: Token type (always "Bearer")
+            example: "Bearer"
+        expires_in:
+            type: integer
+            description: Token lifetime in seconds
+            example: 3600
+        refresh_token:
+            type: string
+            description: Refresh token (if issued)
+            example: "refresh_abc123"
+        scope:
+            type: string
+            description: Granted scopes (space-separated)
+            example: "read write"
+        id_token:
+            type: string
+            description: OpenID Connect ID token (if OIDC)
+            example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+    required:
+        - access_token
+        - token_type

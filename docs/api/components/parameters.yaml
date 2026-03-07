@@ -1,0 +1,46 @@
+# Common Parameters
+# Reusable query parameters used across multiple endpoints
+
+PageParam:
+    name: page
+    in: query
+    description: Page number (1-based)
+    schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+LimitParam:
+    name: limit
+    in: query
+    description: Number of items per page
+    schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+SortParam:
+    name: sort
+    in: query
+    description: Sort field and direction (e.g., "created_at:desc")
+    schema:
+        type: string
+        example: "created_at:desc"
+
+FilterParam:
+    name: filter
+    in: query
+    description: Filter criteria in JSON format
+    schema:
+        type: string
+        example: '{"status":"active"}'
+
+ClientId:
+    name: client_id
+    in: path
+    required: true
+    description: OAuth 2.0 client identifier
+    schema:
+        type: string
+        example: "client_abc123"

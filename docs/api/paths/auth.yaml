@@ -1,0 +1,146 @@
+# Authentication Endpoints
+# User authentication, token management, and session control
+# All authentication endpoints are under /api/v1/auth
+
+login:
+    post:
+        tags:
+            - Authentication
+        summary: User login
+        description: |
+            Authenticate user with username/password and return access and refresh tokens.
+            Supports optional MFA verification and "remember me" functionality.
+        operationId: login
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/auth.yaml#/LoginRequest"
+                    examples:
+                        basic:
+                            summary: Basic login
+                            value:
+                                username: "user@example.com"
+                                password: "SecurePassword123!"
+                                remember_me: false
+                        withMFA:
+                            summary: Login with MFA
+                            value:
+                                username: "user@example.com"
+                                password: "SecurePassword123!"
+                                mfa_code: "123456"
+        responses:
+            "200":
+                description: Login successful
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/auth.yaml#/LoginResponse"
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+            "429":
+                $ref: "../components/responses.yaml#/RateLimit"
+
+refresh:
+    post:
+        tags:
+            - Authentication
+        summary: Refresh access token
+        description: |
+            Use a valid refresh token to obtain a new access token without re-authentication.
+            The refresh token remains valid unless explicitly revoked.
+        operationId: refreshToken
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/auth.yaml#/RefreshTokenRequest"
+        responses:
+            "200":
+                description: Token refreshed successfully
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/auth.yaml#/TokenResponse"
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+            "401":
+                description: Invalid or expired refresh token
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+
+logout:
+    post:
+        tags:
+            - Authentication
+        summary: User logout
+        description: |
+            Invalidate current session and revoke access and refresh tokens.
+            Requires valid access token in Authorization header.
+        operationId: logout
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: Logout successful
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              message:
+                                                  type: string
+                                                  example: "Successfully logged out"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+validate:
+    post:
+        tags:
+            - Authentication
+        summary: Validate access token
+        description: |
+            Validate an access token and return associated user information.
+            Use this endpoint to verify token validity and fetch current user context.
+        operationId: validateToken
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: Token is valid
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/auth.yaml#/TokenValidationResponse"
+            "401":
+                description: Invalid or expired token
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"

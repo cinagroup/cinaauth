@@ -1,0 +1,25 @@
+# Redocly Configuration for AuthFramework API Documentation
+# https://redocly.com/docs/cli/configuration/
+
+# For theming, use CLI options or embed in OpenAPI spec with x-redocly extension
+# Theme configuration is NOT supported in redocly.yaml
+
+extends:
+  - recommended
+
+rules:
+  operation-summary: error
+  operation-description: warn
+  tag-description: warn
+  no-unused-components: warn
+
+# To apply themes, use one of these approaches:
+#
+# 1. CLI Options:
+#    redocly build-docs docs/api/openapi-modular.yaml --output docs/api/index.html --theme.openapi.theme.colors.primary.main="#2563eb"
+#
+# 2. x-redocly Extension in OpenAPI spec:
+#    Add x-redocly section to info block in openapi-modular.yaml
+#
+# 3. Custom HTML Template:
+#    Create docs/api/template.hbs with custom styling

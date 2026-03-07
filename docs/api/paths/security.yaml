@@ -1,0 +1,373 @@
+# Security API Endpoints
+# Advanced security features and threat intelligence
+
+/api/v1/security/check-ip:
+    post:
+        summary: Check IP Reputation
+        description: |
+            Check the reputation of an IP address against threat intelligence feeds.
+            Returns risk level, whether the IP is malicious, and associated threat categories.
+
+            **Use Cases**:
+            - Fraud prevention before allowing high-risk actions
+            - Additional verification for suspicious login attempts
+            - Rate limiting or blocking decisions
+            - Security audit logging
+
+            **Security**: 
+            - Requires authentication (Bearer token)
+            - Requires `security:check_ip` permission
+            - Rate limited to prevent abuse (100 requests per minute per user)
+            - Audit logged for security review
+
+            **Data Sources**:
+            - Internal threat intelligence feeds (if configured)
+            - Cached results to improve performance
+            - Real-time lookups for unknown IPs
+        operationId: checkIpReputation
+        tags:
+            - Security
+            - Threat Intelligence
+        security:
+            - bearerAuth: []
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        required:
+                            - ip_address
+                        properties:
+                            ip_address:
+                                type: string
+                                format: ipv4-or-ipv6
+                                description: IP address to check (IPv4 or IPv6)
+                                example: "192.168.1.100"
+                            check_context:
+                                type: string
+                                description: Context for the check (e.g., "login", "api_access", "transaction")
+                                example: "login"
+                                enum:
+                                    - login
+                                    - registration
+                                    - api_access
+                                    - transaction
+                                    - admin_action
+                                    - other
+        responses:
+            "200":
+                description: IP reputation check completed
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                ip_address:
+                                    type: string
+                                    description: IP address that was checked
+                                    example: "192.168.1.100"
+                                is_malicious:
+                                    type: boolean
+                                    description: Whether the IP is flagged as malicious
+                                    example: false
+                                risk_level:
+                                    type: string
+                                    enum:
+                                        - low
+                                        - medium
+                                        - high
+                                        - critical
+                                    description: Overall risk level assessment
+                                    example: "low"
+                                risk_score:
+                                    type: integer
+                                    minimum: 0
+                                    maximum: 100
+                                    description: Numeric risk score (0 = safe, 100 = highest risk)
+                                    example: 15
+                                categories:
+                                    type: array
+                                    items:
+                                        type: string
+                                    description: Threat categories associated with this IP
+                                    example: []
+                                details:
+                                    type: object
+                                    description: Detailed threat intelligence information
+                                    properties:
+                                        is_tor_exit:
+                                            type: boolean
+                                            description: Whether IP is a Tor exit node
+                                            example: false
+                                        is_vpn:
+                                            type: boolean
+                                            description: Whether IP is a VPN endpoint
+                                            example: false
+                                        is_proxy:
+                                            type: boolean
+                                            description: Whether IP is a proxy server
+                                            example: false
+                                        is_datacenter:
+                                            type: boolean
+                                            description: Whether IP is from a datacenter
+                                            example: false
+                                        is_residential:
+                                            type: boolean
+                                            description: Whether IP is a residential connection
+                                            example: true
+                                        country:
+                                            type: string
+                                            description: Country code (ISO 3166-1 alpha-2)
+                                            example: "US"
+                                        asn:
+                                            type: integer
+                                            description: Autonomous System Number
+                                            example: 7922
+                                        asn_name:
+                                            type: string
+                                            description: Autonomous System Name
+                                            example: "Comcast Cable Communications"
+                                        last_seen:
+                                            type: string
+                                            format: date-time
+                                            description: When this IP was last seen in threat feeds
+                                            example: null
+                                        first_seen:
+                                            type: string
+                                            format: date-time
+                                            description: When this IP was first seen in threat feeds
+                                            example: null
+                                        feed_sources:
+                                            type: array
+                                            items:
+                                                type: string
+                                            description: Threat feed sources that flagged this IP
+                                            example: []
+                                metadata:
+                                    type: object
+                                    properties:
+                                        check_timestamp:
+                                            type: string
+                                            format: date-time
+                                            description: When the check was performed
+                                            example: "2025-10-01T12:00:00Z"
+                                        cache_hit:
+                                            type: boolean
+                                            description: Whether result was from cache
+                                            example: true
+                                        cache_age_seconds:
+                                            type: integer
+                                            description: Age of cached result in seconds
+                                            example: 300
+                                        feeds_checked:
+                                            type: integer
+                                            description: Number of threat feeds checked
+                                            example: 5
+                                recommendations:
+                                    type: object
+                                    description: Recommended actions based on risk level
+                                    properties:
+                                        allow:
+                                            type: boolean
+                                            description: Whether to allow the action
+                                            example: true
+                                        require_additional_auth:
+                                            type: boolean
+                                            description: Whether to require additional authentication (e.g., MFA)
+                                            example: false
+                                        block:
+                                            type: boolean
+                                            description: Whether to block the action
+                                            example: false
+                                        rate_limit:
+                                            type: boolean
+                                            description: Whether to apply stricter rate limiting
+                                            example: false
+                                        log_for_review:
+                                            type: boolean
+                                            description: Whether to flag for security review
+                                            example: false
+                            required:
+                                - ip_address
+                                - is_malicious
+                                - risk_level
+                                - risk_score
+                                - categories
+                                - details
+                                - metadata
+                                - recommendations
+                        examples:
+                            safe_ip:
+                                summary: Safe residential IP
+                                value:
+                                    ip_address: "192.168.1.100"
+                                    is_malicious: false
+                                    risk_level: "low"
+                                    risk_score: 5
+                                    categories: []
+                                    details:
+                                        is_tor_exit: false
+                                        is_vpn: false
+                                        is_proxy: false
+                                        is_datacenter: false
+                                        is_residential: true
+                                        country: "US"
+                                        asn: 7922
+                                        asn_name: "Comcast Cable Communications"
+                                        last_seen: null
+                                        first_seen: null
+                                        feed_sources: []
+                                    metadata:
+                                        check_timestamp: "2025-10-01T12:00:00Z"
+                                        cache_hit: true
+                                        cache_age_seconds: 300
+                                        feeds_checked: 5
+                                    recommendations:
+                                        allow: true
+                                        require_additional_auth: false
+                                        block: false
+                                        rate_limit: false
+                                        log_for_review: false
+
+                            suspicious_vpn:
+                                summary: Suspicious VPN IP
+                                value:
+                                    ip_address: "45.142.212.61"
+                                    is_malicious: false
+                                    risk_level: "medium"
+                                    risk_score: 45
+                                    categories: ["vpn", "anonymizer"]
+                                    details:
+                                        is_tor_exit: false
+                                        is_vpn: true
+                                        is_proxy: false
+                                        is_datacenter: true
+                                        is_residential: false
+                                        country: "NL"
+                                        asn: 60068
+                                        asn_name: "CDN77.com"
+                                        last_seen: null
+                                        first_seen: null
+                                        feed_sources: []
+                                    metadata:
+                                        check_timestamp: "2025-10-01T12:00:00Z"
+                                        cache_hit: false
+                                        cache_age_seconds: 0
+                                        feeds_checked: 5
+                                    recommendations:
+                                        allow: true
+                                        require_additional_auth: true
+                                        block: false
+                                        rate_limit: true
+                                        log_for_review: true
+
+                            malicious_ip:
+                                summary: Known malicious IP
+                                value:
+                                    ip_address: "185.220.101.35"
+                                    is_malicious: true
+                                    risk_level: "critical"
+                                    risk_score: 95
+                                    categories:
+                                        [
+                                            "tor_exit",
+                                            "malware_c2",
+                                            "brute_force"
+                                        ]
+                                    details:
+                                        is_tor_exit: true
+                                        is_vpn: false
+                                        is_proxy: false
+                                        is_datacenter: true
+                                        is_residential: false
+                                        country: "DE"
+                                        asn: 202425
+                                        asn_name: "IP Volume inc"
+                                        last_seen: "2025-10-01T10:30:00Z"
+                                        first_seen: "2025-09-15T08:00:00Z"
+                                        feed_sources:
+                                            [
+                                                "spamhaus_drop",
+                                                "emerging_threats",
+                                                "tor_exits"
+                                            ]
+                                    metadata:
+                                        check_timestamp: "2025-10-01T12:00:00Z"
+                                        cache_hit: true
+                                        cache_age_seconds: 120
+                                        feeds_checked: 5
+                                    recommendations:
+                                        allow: false
+                                        require_additional_auth: false
+                                        block: true
+                                        rate_limit: true
+                                        log_for_review: true
+
+            "400":
+                description: Invalid request
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+                        example:
+                            error: "invalid_ip_address"
+                            message: "The provided IP address format is invalid"
+                            details:
+                                ip_address: "not-an-ip"
+                                expected_format: "IPv4 or IPv6"
+
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+            "403":
+                description: Forbidden - insufficient permissions
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+                        example:
+                            error: "insufficient_permissions"
+                            message: "User lacks required permission: security:check_ip"
+                            details:
+                                required_permission: "security:check_ip"
+                                user_permissions:
+                                    ["read:profile", "write:profile"]
+
+            "429":
+                description: Rate limit exceeded
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+                        example:
+                            error: "rate_limit_exceeded"
+                            message: "IP reputation check rate limit exceeded (100 requests per minute)"
+                            details:
+                                limit: 100
+                                window_seconds: 60
+                                retry_after_seconds: 45
+                headers:
+                    Retry-After:
+                        schema:
+                            type: integer
+                        description: Seconds to wait before retrying
+                        example: 45
+                    X-RateLimit-Limit:
+                        schema:
+                            type: integer
+                        description: Rate limit ceiling
+                        example: 100
+                    X-RateLimit-Remaining:
+                        schema:
+                            type: integer
+                        description: Requests remaining
+                        example: 0
+                    X-RateLimit-Reset:
+                        schema:
+                            type: integer
+                        description: Unix timestamp when limit resets
+                        example: 1735689645
+
+            "500":
+                $ref: "../components/responses.yaml#/InternalServerError"

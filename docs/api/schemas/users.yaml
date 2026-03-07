@@ -1,0 +1,244 @@
+# User Management Schemas
+# Data structures for user profiles and account management
+
+UserProfile:
+    type: object
+    description: Complete user profile information
+    properties:
+        id:
+            type: string
+            format: uuid
+            description: Unique user identifier
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        username:
+            type: string
+            description: Username
+            example: "user@example.com"
+        email:
+            type: string
+            format: email
+            description: User email address
+            example: "user@example.com"
+        first_name:
+            type: string
+            nullable: true
+            description: User's first name
+            example: "John"
+        last_name:
+            type: string
+            nullable: true
+            description: User's last name
+            example: "Doe"
+        phone:
+            type: string
+            nullable: true
+            description: Phone number
+            example: "+1234567890"
+        timezone:
+            type: string
+            nullable: true
+            description: User's timezone
+            example: "America/New_York"
+        locale:
+            type: string
+            nullable: true
+            description: User's locale preference
+            example: "en-US"
+        avatar_url:
+            type: string
+            format: uri
+            nullable: true
+            description: URL to user's avatar image
+            example: "https://example.com/avatars/user123.jpg"
+        roles:
+            type: array
+            description: User roles
+            items:
+                type: string
+            example: ["user", "developer"]
+        mfa_enabled:
+            type: boolean
+            description: Whether MFA is enabled
+            example: false
+        email_verified:
+            type: boolean
+            description: Whether email has been verified
+            example: true
+        account_status:
+            type: string
+            enum: [active, suspended, locked, deleted]
+            description: Current account status
+            example: "active"
+        created_at:
+            type: string
+            format: date-time
+            description: Account creation timestamp
+            example: "2024-01-20T15:30:45Z"
+        updated_at:
+            type: string
+            format: date-time
+            description: Last profile update timestamp
+            example: "2024-01-20T15:30:45Z"
+        last_login:
+            type: string
+            format: date-time
+            nullable: true
+            description: Last login timestamp
+            example: "2024-01-20T15:30:45Z"
+    required:
+        - id
+        - username
+        - email
+        - mfa_enabled
+        - email_verified
+        - account_status
+        - created_at
+        - updated_at
+
+UpdateProfileRequest:
+    type: object
+    description: User profile update request
+    properties:
+        first_name:
+            type: string
+            nullable: true
+            description: User's first name
+            example: "John"
+        last_name:
+            type: string
+            nullable: true
+            description: User's last name
+            example: "Doe"
+        phone:
+            type: string
+            nullable: true
+            description: Phone number
+            example: "+1234567890"
+        timezone:
+            type: string
+            nullable: true
+            description: User's timezone
+            example: "America/New_York"
+        locale:
+            type: string
+            nullable: true
+            description: User's locale preference
+            example: "en-US"
+        avatar_url:
+            type: string
+            format: uri
+            nullable: true
+            description: URL to user's avatar image
+            example: "https://example.com/avatars/user123.jpg"
+
+ChangePasswordRequest:
+    type: object
+    description: Password change request
+    properties:
+        current_password:
+            type: string
+            format: password
+            description: Current password for verification
+            example: "CurrentPassword123!"
+        new_password:
+            type: string
+            format: password
+            description: New password (must meet complexity requirements)
+            example: "NewSecurePassword123!"
+    required:
+        - current_password
+        - new_password
+
+CreateUserRequest:
+    type: object
+    description: Request to create a new user account (admin only)
+    properties:
+        username:
+            type: string
+            description: Username (must be unique)
+            example: "newuser@example.com"
+        email:
+            type: string
+            format: email
+            description: Email address (must be unique)
+            example: "newuser@example.com"
+        password:
+            type: string
+            format: password
+            description: Initial password
+            example: "SecurePassword123!"
+        roles:
+            type: array
+            description: Initial roles to assign
+            items:
+                type: string
+            example: ["user"]
+            default: ["user"]
+        first_name:
+            type: string
+            nullable: true
+            description: User's first name
+            example: "Jane"
+        last_name:
+            type: string
+            nullable: true
+            description: User's last name
+            example: "Smith"
+        email_verified:
+            type: boolean
+            description: Whether to mark email as pre-verified
+            default: false
+        send_welcome_email:
+            type: boolean
+            description: Whether to send welcome email with setup instructions
+            default: true
+    required:
+        - username
+        - email
+        - password
+
+UpdateUserRequest:
+    type: object
+    description: Admin request to update user account
+    properties:
+        email:
+            type: string
+            format: email
+            description: New email address
+            example: "newemail@example.com"
+        first_name:
+            type: string
+            nullable: true
+            example: "Jane"
+        last_name:
+            type: string
+            nullable: true
+            example: "Smith"
+        roles:
+            type: array
+            description: New roles (replaces existing)
+            items:
+                type: string
+            example: ["user", "moderator"]
+        account_status:
+            type: string
+            enum: [active, suspended, locked]
+            description: Account status
+            example: "active"
+        email_verified:
+            type: boolean
+            description: Email verification status
+            example: true
+
+UserListResponse:
+    allOf:
+        - $ref: "./common.yaml#/PaginatedResponse"
+        - type: object
+          properties:
+              data:
+                  type: object
+                  properties:
+                      items:
+                          type: array
+                          items:
+                              $ref: "#/UserProfile"

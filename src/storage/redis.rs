@@ -69,7 +69,7 @@ impl RedisStorage {
 
     async fn get_connection(&self) -> Result<MultiplexedConnection> {
         self.client
-            .get_multiplexed_tokio_connection()
+            .get_multiplexed_async_connection()
             .await
             .map_err(|e| AuthError::Storage(StorageError::connection_failed(e.to_string())))
     }

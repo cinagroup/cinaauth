@@ -11,18 +11,26 @@ pub mod metrics;
 pub mod mfa;
 pub mod middleware;
 pub mod oauth;
+pub mod oauth2;
+pub mod oauth_advanced;
+pub mod oauth_simple;
 pub mod openapi;
 pub mod responses;
+pub mod security;
+pub mod security_simple;
 pub mod server;
 pub mod users;
 pub mod validation;
 pub mod versioning;
+pub mod webauthn;
+pub mod saml;
 
 #[cfg(feature = "enhanced-rbac")]
 #[cfg(feature = "role-system")]
 pub mod rbac_endpoints;
 
 pub use responses::{ApiError, ApiResponse, ApiResult};
+pub use security::SecurityManager;
 pub use server::ApiServer;
 
 use crate::AuthFramework;

@@ -104,11 +104,10 @@ use std::{collections::HashMap, sync::RwLock};
 #[cfg(feature = "passkeys")]
 use std::time::Duration;
 
-#[cfg(feature = "passkeys")]
-use coset::iana;
+// coset::iana is used through passkey crate, removed direct import to avoid version mismatch
 #[cfg(feature = "passkeys")]
 use passkey::{
-    authenticator::{Authenticator, UserCheck, UserValidationMethod},
+    authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod},
     client::Client,
     types::{
         Bytes, Passkey,
@@ -125,6 +124,8 @@ use passkey::{
     },
 };
 #[cfg(feature = "passkeys")]
+use coset::iana::Algorithm;
+#[cfg(feature = "passkeys")]
 use passkey_client::DefaultClientData;
 #[cfg(feature = "passkeys")]
 use url::Url;
@@ -140,7 +141,7 @@ impl UserValidationMethod for PasskeyUserValidation {
 
     async fn check_user<'a>(
         &self,
-        _credential: Option<&'a Passkey>,
+        _credential: UiHint<'a, Passkey>,
         presence: bool,
         verification: bool,
     ) -> std::result::Result<UserCheck, Ctap2Error> {
@@ -342,9 +343,9 @@ impl PasskeyAuthMethod {
 
         // Create user entity
         let user_entity = PublicKeyCredentialUserEntity {
-            id: user_id.as_bytes().to_vec().into(),
-            display_name: user_display_name.into(),
-            name: user_name.into(),
+            id: Bytes::from(user_id.as_bytes().to_vec()),
+            display_name: user_display_name.to_string(),
+            name: user_name.to_string(),
         };
 
         // Create credential creation options
@@ -359,11 +360,11 @@ impl PasskeyAuthMethod {
                 pub_key_cred_params: vec![
                     PublicKeyCredentialParameters {
                         ty: PublicKeyCredentialType::PublicKey,
-                        alg: iana::Algorithm::ES256,
+                        alg: Algorithm::ES256 as i64,
                     },
                     PublicKeyCredentialParameters {
                         ty: PublicKeyCredentialType::PublicKey,
-                        alg: iana::Algorithm::RS256,
+                        alg: Algorithm::RS256 as i64,
                     },
                 ],
                 timeout: Some(self.config.timeout_ms),
@@ -580,8 +581,23 @@ impl AuthMethod for PasskeyAuthMethod {
                     );
 
                     // Use advanced verification methods for production security
-                    let public_key_jwk = registration.public_key_jwk.clone();
-                    let stored_counter = registration.signature_counter;
+                    // Parse the stored passkey data to get the required information
+                    let passkey_data: serde_json::Value =
+                        serde_json::from_str(&registration.passkey_data).map_err(|e| {
+                            AuthError::InvalidCredential {
+                                credential_type: "passkey".to_string(),
+                                message: format!("Failed to parse stored passkey data: {}", e),
+                            }
+                        })?;
+
+                    let public_key_jwk = passkey_data
+                        .get("public_key")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null);
+                    let stored_counter = passkey_data
+                        .get("signature_counter")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0) as u32;
 
                     // Generate expected challenge (in production, use session-stored challenge)
                     let expected_challenge = b"production_challenge_placeholder"; // Production: use session challenge
@@ -605,8 +621,31 @@ impl AuthMethod for PasskeyAuthMethod {
 
                             // Update counter to prevent replay attacks
                             let mut updated_registration = registration.clone();
-                            updated_registration.signature_counter =
-                                verification_result.new_counter;
+
+                            // Update the passkey data with the new counter
+                            let mut passkey_data: serde_json::Value = serde_json::from_str(
+                                &updated_registration.passkey_data,
+                            )
+                            .map_err(|e| AuthError::InvalidCredential {
+                                credential_type: "passkey".to_string(),
+                                message: format!("Failed to parse stored passkey data: {}", e),
+                            })?;
+
+                            passkey_data["signature_counter"] = serde_json::Value::Number(
+                                serde_json::Number::from(verification_result.new_counter),
+                            );
+
+                            updated_registration.passkey_data =
+                                serde_json::to_string(&passkey_data).map_err(|e| {
+                                    AuthError::InvalidCredential {
+                                        credential_type: "passkey".to_string(),
+                                        message: format!(
+                                            "Failed to serialize updated passkey data: {}",
+                                            e
+                                        ),
+                                    }
+                                })?;
+
                             updated_registration.last_used = Some(SystemTime::now());
 
                             {

@@ -1,0 +1,486 @@
+    Checking auth-framework v0.4.2 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
+warning: unused import: `ApiResult`
+ --> src\api\oauth_advanced.rs:9:18
+  |
+9 | use crate::api::{ApiResult, ApiState};
+  |                  ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::errors::AuthError`
+  --> src\api\oauth_advanced.rs:10:5
+   |
+10 | use crate::errors::AuthError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `debug`, `info`, and `warn`
+  --> src\api\oauth_advanced.rs:19:11
+   |
+19 | use log::{debug, info, warn};
+   |           ^^^^^  ^^^^  ^^^^
+
+warning: unexpected `cfg` condition value: `smskit`
+   --> src\auth_modular\mod.rs:221:11
+    |
+221 |     #[cfg(feature = "smskit")]
+    |           ^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `smskit` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `actix-integration`
+   --> src\errors.rs:764:7
+    |
+764 | #[cfg(feature = "actix-integration")]
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `actix-integration` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+  --> src\methods\mod.rs:19:7
+   |
+19 | #[cfg(feature = "enhanced-device-flow")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+   = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `ldap-auth`
+   --> src\methods\mod.rs:178:7
+    |
+178 | #[cfg(feature = "ldap-auth")]
+    |       ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `ldap-auth` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+  --> src\methods\enhanced_device\mod.rs:30:7
+   |
+30 | #[cfg(feature = "enhanced-device-flow")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+   = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+  --> src\methods\enhanced_device\mod.rs:51:7
+   |
+51 | #[cfg(feature = "enhanced-device-flow")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+   = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+   --> src\methods\enhanced_device\mod.rs:112:7
+    |
+112 | #[cfg(feature = "enhanced-device-flow")]
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+   --> src\methods\enhanced_device\mod.rs:165:11
+    |
+165 | #[cfg(not(feature = "enhanced-device-flow"))]
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+   --> src\methods\enhanced_device\mod.rs:176:11
+    |
+176 | #[cfg(not(feature = "enhanced-device-flow"))]
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+   --> src\methods\enhanced_device\mod.rs:195:11
+    |
+195 | #[cfg(not(feature = "enhanced-device-flow"))]
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `ldap-auth`
+   --> src\methods\mod.rs:154:11
+    |
+154 |     #[cfg(feature = "ldap-auth")]
+    |           ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `ldap-auth` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+   --> src\methods\mod.rs:159:11
+    |
+159 |     #[cfg(feature = "enhanced-device-flow")]
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `ldap-auth`
+   --> src\methods\mod.rs:261:19
+    |
+261 |             #[cfg(feature = "ldap-auth")]
+    |                   ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `ldap-auth` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `enhanced-device-flow`
+   --> src\methods\mod.rs:266:19
+    |
+266 |             #[cfg(feature = "enhanced-device-flow")]
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `enhanced-device-flow` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `docker-tests`
+   --> src\testing\test_infrastructure.rs:118:7
+    |
+118 | #[cfg(feature = "docker-tests")]
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `docker-tests` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `unicode-support`
+   --> src\security\secure_utils.rs:166:15
+    |
+166 |         #[cfg(feature = "unicode-support")]
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `unicode-support` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `unicode-support`
+   --> src\security\secure_utils.rs:177:19
+    |
+177 |         #[cfg(not(feature = "unicode-support"))]
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `unicode-support` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `axum-integration`
+   --> src\lib.rs:222:11
+    |
+222 |     #[cfg(feature = "axum-integration")]
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `axum-integration` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `actix-integration`
+   --> src\lib.rs:225:11
+    |
+225 |     #[cfg(feature = "actix-integration")]
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `actix-integration` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `warp-integration`
+   --> src\lib.rs:228:11
+    |
+228 |     #[cfg(feature = "warp-integration")]
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `warp-integration` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `axum-integration`
+   --> src\prelude.rs:139:7
+    |
+139 | #[cfg(feature = "axum-integration")]
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `axum-integration` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `actix-integration`
+   --> src\prelude.rs:144:7
+    |
+144 | #[cfg(feature = "actix-integration")]
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `actix-integration` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `warp-integration`
+   --> src\prelude.rs:147:7
+    |
+147 | #[cfg(feature = "warp-integration")]
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `actix-web`, `admin-binary`, `api-server`, `askama`, `aws-lc-rs`, `axum`, `bumpalo`, `chacha20poly1305`, `clap`, `cli`, `colored`, `config-hot-reload`, `console`, `coset`, `crossterm`, `default`, `dialoguer`, `distributed-rate-limiting`, `ed25519-dalek`, `enhanced-crypto`, `enhanced-observability`, `enhanced-rbac`, `event-sourcing`, `fips-compliance`, `futures`, `futures-util`, `indicatif`, `metrics`, `metrics-prometheus`, `mysql-storage`, `notify`, `object-pool`, `opentelemetry`, `opentelemetry-jaeger`, and `opentelemetry-otlp` and 30 more
+    = help: consider adding `warp-integration` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+   --> src\api\security.rs:367:11
+    |
+367 |     next: Next<B>,
+    |           ^^^^--- help: remove the unnecessary generics
+    |           |
+    |           expected 0 generic arguments
+    |
+note: struct defined here, with 0 generic parameters
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.8\src\middleware\from_fn.rs:338:12
+    |
+338 | pub struct Next {
+    |            ^^^^
+
+error[E0599]: no method named `get_security_manager` found for struct `Arc<auth::AuthFramework>` in the current scope
+   --> src\api\security.rs:372:55
+    |
+372 |     let security_manager = match state.auth_framework.get_security_manager() {
+    |                                                       ^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `get_security_metrics` with a similar name
+    |
+372 -     let security_manager = match state.auth_framework.get_security_manager() {
+372 +     let security_manager = match state.auth_framework.get_security_metrics() {
+    |
+
+error[E0308]: mismatched types
+   --> src\api\security.rs:374:36
+    |
+363 | pub async fn security_middleware<B>(
+    |                                  - found this type parameter
+...
+374 |         None => return Ok(next.run(request).await), // No security manager, allow request
+    |                                --- ^^^^^^^ expected `Request<Body>`, found `Request<B>`
+    |                                |
+    |                                arguments to this method are incorrect
+    |
+    = note: expected struct `axum::http::Request<axum::body::Body>`
+               found struct `axum::http::Request<B>`
+note: method defined here
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.8\src\middleware\from_fn.rs:344:18
+    |
+344 |     pub async fn run(mut self, req: Request) -> Response {
+    |                  ^^^
+
+error[E0282]: type annotations needed
+   --> src\api\security.rs:372:9
+    |
+372 |     let security_manager = match state.auth_framework.get_security_manager() {
+    |         ^^^^^^^^^^^^^^^^
+...
+378 |     if !security_manager.check_blacklist(ip).await {
+    |         ---------------- type must be known at this point
+    |
+help: consider giving `security_manager` an explicit type
+    |
+372 |     let security_manager: /* Type */ = match state.auth_framework.get_security_manager() {
+    |                         ++++++++++++
+
+error[E0308]: mismatched types
+   --> src\api\security.rs:393:17
+    |
+363 | pub async fn security_middleware<B>(
+    |                                  - found this type parameter
+...
+393 |     Ok(next.run(request).await)
+    |             --- ^^^^^^^ expected `Request<Body>`, found `Request<B>`
+    |             |
+    |             arguments to this method are incorrect
+    |
+    = note: expected struct `axum::http::Request<axum::body::Body>`
+               found struct `axum::http::Request<B>`
+note: method defined here
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.8\src\middleware\from_fn.rs:344:18
+    |
+344 |     pub async fn run(mut self, req: Request) -> Response {
+    |                  ^^^
+
+error[E0599]: no method named `get_security_manager` found for struct `Arc<auth::AuthFramework>` in the current scope
+   --> src\api\security.rs:404:55
+    |
+404 |     let security_manager = match state.auth_framework.get_security_manager() {
+    |                                                       ^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `get_security_metrics` with a similar name
+    |
+404 -     let security_manager = match state.auth_framework.get_security_manager() {
+404 +     let security_manager = match state.auth_framework.get_security_metrics() {
+    |
+
+error[E0282]: type annotations needed
+   --> src\api\security.rs:404:9
+    |
+404 |     let security_manager = match state.auth_framework.get_security_manager() {
+    |         ^^^^^^^^^^^^^^^^
+...
+409 |     let stats = security_manager.get_stats().await;
+    |                 ---------------- type must be known at this point
+    |
+help: consider giving `security_manager` an explicit type
+    |
+404 |     let security_manager: /* Type */ = match state.auth_framework.get_security_manager() {
+    |                         ++++++++++++
+
+error[E0599]: no method named `get_security_manager` found for struct `Arc<auth::AuthFramework>` in the current scope
+   --> src\api\security.rs:424:55
+    |
+424 |     let security_manager = match state.auth_framework.get_security_manager() {
+    |                                                       ^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `get_security_metrics` with a similar name
+    |
+424 -     let security_manager = match state.auth_framework.get_security_manager() {
+424 +     let security_manager = match state.auth_framework.get_security_metrics() {
+    |
+
+error[E0282]: type annotations needed
+   --> src\api\security.rs:424:9
+    |
+424 |     let security_manager = match state.auth_framework.get_security_manager() {
+    |         ^^^^^^^^^^^^^^^^
+...
+429 |     security_manager.add_to_blacklist(request.ip).await;
+    |     ---------------- type must be known at this point
+    |
+help: consider giving `security_manager` an explicit type
+    |
+424 |     let security_manager: /* Type */ = match state.auth_framework.get_security_manager() {
+    |                         ++++++++++++
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+   --> src\api\security.rs:430:13
+    |
+430 |     Ok(Json(ApiResponse::success_with_message(
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+431 |         "IP added to blacklist",
+    |         ----------------------- argument #1 of type `()` is missing
+    |
+note: associated function defined here
+   --> src\api\responses.rs:112:12
+    |
+112 |     pub fn success_with_message(data: T, message: impl Into<String>) -> Self {
+    |            ^^^^^^^^^^^^^^^^^^^^ -------
+help: provide the argument
+    |
+430 -     Ok(Json(ApiResponse::success_with_message(
+431 -         "IP added to blacklist",
+432 -     )))
+430 +     Ok(Json(ApiResponse::success_with_message((), "IP added to blacklist")))
+    |
+
+error[E0599]: no method named `get_security_manager` found for struct `Arc<auth::AuthFramework>` in the current scope
+   --> src\api\security.rs:440:55
+    |
+440 |     let security_manager = match state.auth_framework.get_security_manager() {
+    |                                                       ^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `get_security_metrics` with a similar name
+    |
+440 -     let security_manager = match state.auth_framework.get_security_manager() {
+440 +     let security_manager = match state.auth_framework.get_security_metrics() {
+    |
+
+error[E0282]: type annotations needed
+   --> src\api\security.rs:440:9
+    |
+440 |     let security_manager = match state.auth_framework.get_security_manager() {
+    |         ^^^^^^^^^^^^^^^^
+...
+445 |     security_manager.remove_from_blacklist(request.ip).await;
+    |     ---------------- type must be known at this point
+    |
+help: consider giving `security_manager` an explicit type
+    |
+440 |     let security_manager: /* Type */ = match state.auth_framework.get_security_manager() {
+    |                         ++++++++++++
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+   --> src\api\security.rs:446:13
+    |
+446 |     Ok(Json(ApiResponse::success_with_message(
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+447 |         "IP removed from blacklist",
+    |         --------------------------- argument #1 of type `()` is missing
+    |
+note: associated function defined here
+   --> src\api\responses.rs:112:12
+    |
+112 |     pub fn success_with_message(data: T, message: impl Into<String>) -> Self {
+    |            ^^^^^^^^^^^^^^^^^^^^ -------
+help: provide the argument
+    |
+446 -     Ok(Json(ApiResponse::success_with_message(
+447 -         "IP removed from blacklist",
+448 -     )))
+446 +     Ok(Json(ApiResponse::success_with_message((), "IP removed from blacklist")))
+    |
+
+error[E0063]: missing field `client_assertion` in initializer of `token_introspection::IntrospectionClientCredentials`
+   --> src\api\oauth_advanced.rs:125:39
+    |
+125 | ...                   return Ok(IntrospectionClientCredentials {
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `client_assertion`
+
+error[E0063]: missing field `client_assertion` in initializer of `token_introspection::IntrospectionClientCredentials`
+   --> src\api\oauth_advanced.rs:139:19
+    |
+139 |         return Ok(IntrospectionClientCredentials {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `client_assertion`
+
+error[E0063]: missing field `client_assertion` in initializer of `token_introspection::IntrospectionClientCredentials`
+   --> src\api\oauth_advanced.rs:155:19
+    |
+155 |         return Ok(IntrospectionClientCredentials {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `client_assertion`
+
+warning: use of deprecated method `jsonwebtoken::Validation::insecure_disable_signature_validation`: Use `jsonwebtoken::dangerous::insecure_decode` if you require this functionality.
+    --> src\server\token_exchange\advanced_token_exchange.rs:1231:20
+     |
+1231 |         validation.insecure_disable_signature_validation(); // For introspection only
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated method `jsonwebtoken::Validation::insecure_disable_signature_validation`: Use `jsonwebtoken::dangerous::insecure_decode` if you require this functionality.
+  --> src\security\secure_jwt.rs:97:24
+   |
+97 |             validation.insecure_disable_signature_validation();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0061, E0063, E0107, E0282, E0308, E0599.
+For more information about an error, try `rustc --explain E0061`.
+warning: `auth-framework` (lib) generated 28 warnings
+error: could not compile `auth-framework` (lib) due to 16 previous errors; 28 warnings emitted

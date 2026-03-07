@@ -1,0 +1,144 @@
+# Multi-Factor Authentication Schemas
+# Data structures for MFA setup, verification, and management
+
+MFASetupResponse:
+    type: object
+    description: MFA setup information for TOTP configuration
+    properties:
+        secret:
+            type: string
+            description: Base32-encoded TOTP secret key
+            example: "JBSWY3DPEHPK3PXP"
+        qr_code:
+            type: string
+            description: Base64-encoded QR code image for easy scanning
+            example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAT..."
+        backup_codes:
+            type: array
+            description: One-time use backup codes for account recovery
+            items:
+                type: string
+            example:
+                ["12345678", "87654321", "11223344", "44332211", "55667788"]
+            minItems: 5
+            maxItems: 10
+        setup_uri:
+            type: string
+            format: uri
+            description: TOTP setup URI (otpauth://) for authenticator apps
+            example: "otpauth://totp/AuthFramework:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=AuthFramework"
+        expires_in:
+            type: integer
+            description: Seconds until setup must be completed
+            example: 300
+            minimum: 1
+    required:
+        - secret
+        - qr_code
+        - backup_codes
+        - setup_uri
+        - expires_in
+
+MFAVerifyRequest:
+    type: object
+    description: Request to verify TOTP or backup code
+    properties:
+        code:
+            type: string
+            description: 6-digit TOTP code or 8-digit backup code
+            example: "123456"
+            pattern: "^[0-9]{6,8}$"
+    required:
+        - code
+
+MFAVerifyResponse:
+    type: object
+    description: MFA verification result
+    properties:
+        verified:
+            type: boolean
+            description: Whether the code was valid
+            example: true
+        backup_codes:
+            type: array
+            description: Remaining backup codes (only returned if backup code was used)
+            items:
+                type: string
+            example: ["87654321", "11223344", "44332211"]
+        message:
+            type: string
+            description: Additional information about verification result
+            example: "MFA successfully enabled"
+    required:
+        - verified
+
+DisableMFARequest:
+    type: object
+    description: Request to disable MFA (requires authentication)
+    properties:
+        password:
+            type: string
+            format: password
+            description: Current password for verification
+            example: "CurrentPassword123!"
+        code:
+            type: string
+            description: Current TOTP code or backup code
+            example: "123456"
+            pattern: "^[0-9]{6,8}$"
+    required:
+        - password
+        - code
+
+MFAStatusResponse:
+    type: object
+    description: Current MFA configuration status
+    properties:
+        enabled:
+            type: boolean
+            description: Whether MFA is currently enabled
+            example: true
+        method:
+            type: string
+            enum: [totp, sms, email]
+            description: MFA method in use
+            example: "totp"
+        backup_codes_remaining:
+            type: integer
+            description: Number of unused backup codes
+            example: 5
+            minimum: 0
+        configured_at:
+            type: string
+            format: date-time
+            description: When MFA was first configured
+            example: "2024-01-20T15:30:45Z"
+        last_used:
+            type: string
+            format: date-time
+            nullable: true
+            description: Last time MFA was successfully verified
+            example: "2024-01-20T15:30:45Z"
+    required:
+        - enabled
+
+RegenerateBackupCodesResponse:
+    type: object
+    description: New backup codes after regeneration
+    properties:
+        backup_codes:
+            type: array
+            description: Newly generated backup codes (invalidates all previous codes)
+            items:
+                type: string
+            example:
+                ["98765432", "23456789", "34567890", "45678901", "56789012"]
+            minItems: 5
+            maxItems: 10
+        warning:
+            type: string
+            description: Important warning about code storage
+            example: "Store these codes securely. Previous backup codes are no longer valid."
+    required:
+        - backup_codes
+        - warning

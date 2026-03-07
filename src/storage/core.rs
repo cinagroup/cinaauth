@@ -323,7 +323,7 @@ impl RedisStorage {
     /// Get a Redis connection.
     async fn get_connection(&self) -> Result<redis::aio::MultiplexedConnection> {
         self.client
-            .get_multiplexed_tokio_connection()
+            .get_multiplexed_async_connection()
             .await
             .map_err(|e| {
                 StorageError::connection_failed(format!("Failed to get Redis connection: {e}"))

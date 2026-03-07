@@ -49,6 +49,10 @@ pub use core::{
 
 // OAuth 2.0/2.1 re-exports
 pub use oauth::{
+    device::{
+        DeviceAuthManager, DeviceAuthorizationRequest, DeviceAuthorizationResponse,
+        DeviceAuthorizationStatus, DeviceTokenRequest, StoredDeviceAuthorization,
+    },
     oauth2::OAuth2Server,
     oauth21::OAuth21Server,
     par::PARManager,

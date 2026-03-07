@@ -1,0 +1,191 @@
+# Multi-Factor Authentication Endpoints
+# MFA setup, verification, and management
+# All MFA endpoints are under /api/v1/mfa
+
+setup:
+    post:
+        tags:
+            - MFA
+        summary: Setup MFA (TOTP)
+        description: |
+            Initialize MFA setup for current user. Returns QR code, secret key, and backup codes.
+            User must complete setup by verifying with /mfa/verify endpoint within 5 minutes.
+        operationId: setupMFA
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: MFA setup information generated
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/mfa.yaml#/MFASetupResponse"
+            "400":
+                description: MFA already enabled
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+                        example:
+                            success: false
+                            error:
+                                code: "MFA_ALREADY_ENABLED"
+                                message: "MFA is already enabled for this account"
+                                details: null
+                            timestamp: "2024-01-20T15:30:45Z"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+verify:
+    post:
+        tags:
+            - MFA
+        summary: Verify and enable MFA
+        description: |
+            Verify TOTP code to complete MFA setup. Once verified, MFA will be required 
+            for all future logins. Backup codes can also be used for verification.
+        operationId: verifyMFA
+        security:
+            - bearerAuth: []
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/mfa.yaml#/MFAVerifyRequest"
+        responses:
+            "200":
+                description: MFA verified and enabled
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/mfa.yaml#/MFAVerifyResponse"
+            "400":
+                description: Invalid or expired code
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+                        example:
+                            success: false
+                            error:
+                                code: "INVALID_MFA_CODE"
+                                message: "The provided MFA code is invalid or expired"
+                                details: null
+                            timestamp: "2024-01-20T15:30:45Z"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+disable:
+    post:
+        tags:
+            - MFA
+        summary: Disable MFA
+        description: |
+            Disable MFA for current user. Requires both password and current MFA code 
+            for security. This action is logged in the audit trail.
+        operationId: disableMFA
+        security:
+            - bearerAuth: []
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/mfa.yaml#/DisableMFARequest"
+        responses:
+            "200":
+                description: MFA disabled successfully
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              message:
+                                                  type: string
+                                                  example: "MFA has been disabled"
+            "400":
+                description: Invalid password or MFA code
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+status:
+    get:
+        tags:
+            - MFA
+        summary: Get MFA status
+        description: Get current MFA configuration status and details
+        operationId: getMFAStatus
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: MFA status retrieved
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/mfa.yaml#/MFAStatusResponse"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+regenerateBackupCodes:
+    post:
+        tags:
+            - MFA
+        summary: Regenerate backup codes
+        description: |
+            Generate new backup codes for MFA recovery. This invalidates all previous 
+            backup codes. Requires MFA verification.
+        operationId: regenerateBackupCodes
+        security:
+            - bearerAuth: []
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/mfa.yaml#/MFAVerifyRequest"
+        responses:
+            "200":
+                description: New backup codes generated
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/mfa.yaml#/RegenerateBackupCodesResponse"
+            "400":
+                description: Invalid MFA code or MFA not enabled
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"

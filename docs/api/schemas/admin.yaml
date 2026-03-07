@@ -1,0 +1,342 @@
+# Administrative Schemas
+# Data structures for system administration and statistics
+
+SystemStats:
+    type: object
+    description: System-wide statistics and metrics
+    properties:
+        users:
+            type: object
+            description: User-related statistics
+            properties:
+                total:
+                    type: integer
+                    description: Total number of users
+                    example: 1500
+                    minimum: 0
+                active:
+                    type: integer
+                    description: Number of active users
+                    example: 1200
+                    minimum: 0
+                new_today:
+                    type: integer
+                    description: New users registered today
+                    example: 25
+                    minimum: 0
+                new_this_week:
+                    type: integer
+                    description: New users registered this week
+                    example: 180
+                    minimum: 0
+                new_this_month:
+                    type: integer
+                    description: New users registered this month
+                    example: 720
+                    minimum: 0
+            required:
+                - total
+                - active
+                - new_today
+        sessions:
+            type: object
+            description: Session-related statistics
+            properties:
+                active:
+                    type: integer
+                    description: Current active sessions
+                    example: 450
+                    minimum: 0
+                peak_today:
+                    type: integer
+                    description: Peak concurrent sessions today
+                    example: 680
+                    minimum: 0
+                total_today:
+                    type: integer
+                    description: Total sessions created today
+                    example: 1250
+                    minimum: 0
+            required:
+                - active
+                - peak_today
+        oauth:
+            type: object
+            description: OAuth-related statistics
+            properties:
+                clients:
+                    type: integer
+                    description: Number of registered OAuth clients
+                    example: 15
+                    minimum: 0
+                active_tokens:
+                    type: integer
+                    description: Number of active access tokens
+                    example: 2300
+                    minimum: 0
+                tokens_issued_today:
+                    type: integer
+                    description: Tokens issued today
+                    example: 3450
+                    minimum: 0
+                tokens_revoked_today:
+                    type: integer
+                    description: Tokens revoked today
+                    example: 120
+                    minimum: 0
+            required:
+                - clients
+                - active_tokens
+        rbac:
+            type: object
+            description: RBAC-related statistics
+            properties:
+                roles:
+                    type: integer
+                    description: Total number of roles
+                    example: 25
+                    minimum: 0
+                role_assignments:
+                    type: integer
+                    description: Total active role assignments
+                    example: 3400
+                    minimum: 0
+                permission_checks_today:
+                    type: integer
+                    description: Permission checks performed today
+                    example: 125000
+                    minimum: 0
+            required:
+                - roles
+                - role_assignments
+        security:
+            type: object
+            description: Security-related statistics
+            properties:
+                mfa_enabled_users:
+                    type: integer
+                    description: Users with MFA enabled
+                    example: 890
+                    minimum: 0
+                failed_login_attempts_today:
+                    type: integer
+                    description: Failed login attempts today
+                    example: 47
+                    minimum: 0
+                locked_accounts:
+                    type: integer
+                    description: Currently locked accounts
+                    example: 3
+                    minimum: 0
+                suspicious_activities_today:
+                    type: integer
+                    description: Suspicious activities detected today
+                    example: 8
+                    minimum: 0
+            required:
+                - mfa_enabled_users
+                - failed_login_attempts_today
+        system:
+            type: object
+            description: System health and performance
+            properties:
+                uptime:
+                    type: integer
+                    description: System uptime in seconds
+                    example: 86400
+                    minimum: 0
+                memory_usage:
+                    type: number
+                    description: Memory usage percentage
+                    example: 67.5
+                    minimum: 0
+                    maximum: 100
+                cpu_usage:
+                    type: number
+                    description: CPU usage percentage
+                    example: 23.8
+                    minimum: 0
+                    maximum: 100
+                disk_usage:
+                    type: number
+                    description: Disk usage percentage
+                    example: 45.2
+                    minimum: 0
+                    maximum: 100
+                database_connections:
+                    type: integer
+                    description: Active database connections
+                    example: 42
+                    minimum: 0
+                cache_hit_rate:
+                    type: number
+                    description: Cache hit rate percentage
+                    example: 94.7
+                    minimum: 0
+                    maximum: 100
+            required:
+                - uptime
+                - memory_usage
+                - cpu_usage
+        timestamp:
+            type: string
+            format: date-time
+            description: Statistics collection timestamp
+            example: "2024-01-20T15:30:45Z"
+    required:
+        - users
+        - sessions
+        - oauth
+        - system
+        - timestamp
+
+SystemEvent:
+    type: object
+    description: System-level event log entry
+    properties:
+        id:
+            type: string
+            format: uuid
+            description: Event identifier
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2024-01-20T15:30:45Z"
+        level:
+            type: string
+            enum: [debug, info, warning, error, critical]
+            description: Event severity level
+            example: "warning"
+        category:
+            type: string
+            enum: [authentication, authorization, system, security, audit]
+            description: Event category
+            example: "security"
+        message:
+            type: string
+            description: Event message
+            example: "Multiple failed login attempts detected for user"
+        details:
+            type: object
+            description: Additional event-specific details
+            example:
+                user_id: "123e4567-e89b-12d3-a456-426614174000"
+                ip_address: "192.168.1.100"
+                attempt_count: 5
+        source:
+            type: string
+            description: Event source component
+            example: "authentication-service"
+    required:
+        - id
+        - timestamp
+        - level
+        - category
+        - message
+
+ConfigurationUpdate:
+    type: object
+    description: System configuration update request
+    properties:
+        setting:
+            type: string
+            description: Configuration setting key
+            example: "auth.session_timeout"
+        value:
+            description: New setting value (type varies by setting)
+            oneOf:
+                - type: string
+                - type: number
+                - type: boolean
+                - type: object
+            example: 3600
+        reason:
+            type: string
+            description: Reason for configuration change
+            example: "Increasing session timeout for improved user experience"
+    required:
+        - setting
+        - value
+        - reason
+
+BackupRequest:
+    type: object
+    description: System backup request
+    properties:
+        include_users:
+            type: boolean
+            description: Include user data in backup
+            default: true
+        include_sessions:
+            type: boolean
+            description: Include active sessions in backup
+            default: false
+        include_oauth_clients:
+            type: boolean
+            description: Include OAuth client configurations in backup
+            default: true
+        include_rbac:
+            type: boolean
+            description: Include RBAC roles and assignments in backup
+            default: true
+        encryption_password:
+            type: string
+            format: password
+            description: Password for backup encryption (recommended)
+            example: "SecureBackupPassword123!"
+
+BackupResponse:
+    type: object
+    description: System backup result
+    properties:
+        backup_id:
+            type: string
+            format: uuid
+            description: Backup identifier
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        created_at:
+            type: string
+            format: date-time
+            description: Backup creation timestamp
+            example: "2024-01-20T15:30:45Z"
+        size_bytes:
+            type: integer
+            description: Backup size in bytes
+            example: 52428800
+            minimum: 0
+        download_url:
+            type: string
+            format: uri
+            description: Temporary download URL (expires in 1 hour)
+            example: "https://api.example.com/admin/backups/550e8400-e29b-41d4-a716-446655440000/download"
+        expires_at:
+            type: string
+            format: date-time
+            description: Download URL expiration timestamp
+            example: "2024-01-20T16:30:45Z"
+        checksum:
+            type: string
+            description: SHA-256 checksum of backup file
+            example: "a3d5e6f7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5"
+    required:
+        - backup_id
+        - created_at
+        - size_bytes
+        - download_url
+        - expires_at
+        - checksum
+
+SystemEventLogResponse:
+    allOf:
+        - $ref: "./common.yaml#/PaginatedResponse"
+        - type: object
+          properties:
+              data:
+                  type: object
+                  properties:
+                      items:
+                          type: array
+                          items:
+                              $ref: "#/SystemEvent"

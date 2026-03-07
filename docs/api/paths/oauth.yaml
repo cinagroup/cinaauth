@@ -1,0 +1,349 @@
+# OAuth 2.0 and OpenID Connect Endpoints
+# OAuth authorization server and OIDC provider endpoints
+# All OAuth endpoints are under /api/v1/oauth
+
+authorize:
+    get:
+        tags:
+            - OAuth
+        summary: OAuth 2.0 authorization endpoint
+        description: |
+            OAuth 2.0 authorization endpoint (RFC 6749). Initiates authorization code flow 
+            or implicit flow. Supports PKCE (RFC 7636) for public clients.
+        operationId: authorize
+        parameters:
+            - name: response_type
+              in: query
+              required: true
+              schema:
+                  type: string
+                  enum: [code, token, id_token]
+              description: OAuth response type
+              example: "code"
+            - name: client_id
+              in: query
+              required: true
+              schema:
+                  type: string
+              description: OAuth client identifier
+              example: "client_123"
+            - name: redirect_uri
+              in: query
+              required: true
+              schema:
+                  type: string
+                  format: uri
+              description: Redirect URI (must be pre-registered)
+              example: "https://client.example.com/callback"
+            - name: scope
+              in: query
+              schema:
+                  type: string
+              description: Requested scope (space-separated)
+              example: "openid profile email"
+            - name: state
+              in: query
+              schema:
+                  type: string
+              description: Opaque state value for CSRF protection
+              example: "xyz123"
+            - name: code_challenge
+              in: query
+              schema:
+                  type: string
+              description: PKCE code challenge
+              example: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+            - name: code_challenge_method
+              in: query
+              schema:
+                  type: string
+                  enum: [S256, plain]
+              description: PKCE code challenge method
+              example: "S256"
+            - name: nonce
+              in: query
+              schema:
+                  type: string
+              description: OIDC nonce for replay protection
+              example: "n-0S6_WzA2Mj"
+        responses:
+            "302":
+                description: Redirect to client redirect_uri with authorization code or error
+                headers:
+                    Location:
+                        schema:
+                            type: string
+                        description: Redirect URI with code/error
+                        examples:
+                            success:
+                                value: "https://client.example.com/callback?code=abc123&state=xyz123"
+                            error:
+                                value: "https://client.example.com/callback?error=invalid_request&error_description=Missing+client_id&state=xyz123"
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+
+token:
+    post:
+        tags:
+            - OAuth
+        summary: OAuth 2.0 token endpoint
+        description: |
+            OAuth 2.0 token endpoint (RFC 6749). Supports multiple grant types:
+            - authorization_code: Exchange authorization code for tokens
+            - refresh_token: Refresh access token
+            - client_credentials: Client authentication
+            - password: Resource owner password credentials (if enabled)
+            - urn:ietf:params:oauth:grant-type:token-exchange: RFC 8693 token exchange
+        operationId: token
+        requestBody:
+            required: true
+            content:
+                application/x-www-form-urlencoded:
+                    schema:
+                        $ref: "../schemas/oauth.yaml#/OAuthTokenRequest"
+                application/json:
+                    schema:
+                        $ref: "../schemas/oauth.yaml#/OAuthTokenRequest"
+        responses:
+            "200":
+                description: Token issued successfully
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/oauth.yaml#/OAuthTokenResponse"
+            "400":
+                description: Invalid request parameters
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                error:
+                                    type: string
+                                    example: "invalid_grant"
+                                error_description:
+                                    type: string
+                                    example: "The provided authorization code is invalid or expired"
+            "401":
+                description: Invalid client credentials
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                error:
+                                    type: string
+                                    example: "invalid_client"
+                                error_description:
+                                    type: string
+                                    example: "Client authentication failed"
+
+revoke:
+    post:
+        tags:
+            - OAuth
+        summary: OAuth 2.0 token revocation
+        description: |
+            Revoke an access or refresh token (RFC 7009). Revoked tokens become immediately 
+            invalid and cannot be used for authentication or refresh operations.
+        operationId: revokeToken
+        requestBody:
+            required: true
+            content:
+                application/x-www-form-urlencoded:
+                    schema:
+                        $ref: "../schemas/oauth.yaml#/RevokeTokenRequest"
+                application/json:
+                    schema:
+                        $ref: "../schemas/oauth.yaml#/RevokeTokenRequest"
+        responses:
+            "200":
+                description: Token revoked successfully (or token was already invalid)
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              message:
+                                                  type: string
+                                                  example: "Token revoked successfully"
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+            "401":
+                description: Invalid client credentials
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+
+introspect:
+    post:
+        tags:
+            - OAuth
+        summary: OAuth 2.0 token introspection
+        description: |
+            Introspect an access or refresh token to determine its validity and metadata (RFC 7662).
+            Requires client authentication.
+        operationId: introspectToken
+        requestBody:
+            required: true
+            content:
+                application/x-www-form-urlencoded:
+                    schema:
+                        $ref: "../schemas/oauth.yaml#/IntrospectTokenRequest"
+                application/json:
+                    schema:
+                        $ref: "../schemas/oauth.yaml#/IntrospectTokenRequest"
+        responses:
+            "200":
+                description: Token introspection result
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/oauth.yaml#/TokenIntrospectionResponse"
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+            "401":
+                description: Invalid client credentials
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiError"
+
+tokenExchange:
+    post:
+        tags:
+            - OAuth
+        summary: OAuth 2.0 token exchange
+        description: |
+            Exchange one token for another (RFC 8693). Supports delegation and impersonation 
+            scenarios. Use grant_type=urn:ietf:params:oauth:grant-type:token-exchange.
+        operationId: tokenExchange
+        requestBody:
+            required: true
+            content:
+                application/x-www-form-urlencoded:
+                    schema:
+                        $ref: "../schemas/oauth.yaml#/OAuthTokenRequest"
+                    example:
+                        grant_type: "urn:ietf:params:oauth:grant-type:token-exchange"
+                        subject_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                        subject_token_type: "urn:ietf:params:oauth:token-type:access_token"
+                        requested_token_type: "urn:ietf:params:oauth:token-type:access_token"
+                        audience: "https://api.example.com"
+                        scope: "read write"
+                application/json:
+                    schema:
+                        $ref: "../schemas/oauth.yaml#/OAuthTokenRequest"
+        responses:
+            "200":
+                description: Token exchange successful
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/oauth.yaml#/OAuthTokenResponse"
+            "400":
+                description: Invalid token exchange request
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                error:
+                                    type: string
+                                    example: "invalid_request"
+                                error_description:
+                                    type: string
+                                    example: "Missing required parameter: subject_token"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+# OpenID Connect Endpoints
+
+wellKnownOpenidConfiguration:
+    get:
+        tags:
+            - OAuth
+            - OIDC
+        summary: OpenID Connect discovery
+        description: |
+            OpenID Connect discovery endpoint (RFC 8414). Returns OIDC provider configuration 
+            including endpoints, supported features, and capabilities. This endpoint is 
+            UNVERSIONED per OIDC specification (must be at /.well-known/openid-configuration).
+        operationId: oidcDiscovery
+        responses:
+            "200":
+                description: OIDC discovery document
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/oauth.yaml#/OidcDiscoveryDocument"
+
+jwks:
+    get:
+        tags:
+            - OAuth
+            - OIDC
+        summary: JSON Web Key Set
+        description: |
+            JWKS endpoint containing public keys for JWT signature verification (RFC 7517).
+            Clients should cache this and refresh periodically or when signature verification fails.
+        operationId: jwks
+        responses:
+            "200":
+                description: JSON Web Key Set
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/oauth.yaml#/JwkSet"
+
+userinfo:
+    get:
+        tags:
+            - OAuth
+            - OIDC
+        summary: OpenID Connect UserInfo
+        description: |
+            OIDC UserInfo endpoint (OIDC Core 5.3). Returns claims about the authenticated user.
+            Requires valid access token with 'openid' scope.
+        operationId: userinfo
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: User information
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/oauth.yaml#/UserInfoResponse"
+            "401":
+                description: Invalid or missing access token
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                error:
+                                    type: string
+                                    example: "invalid_token"
+                                error_description:
+                                    type: string
+                                    example: "The access token is invalid or expired"
+            "403":
+                description: Insufficient scope (openid scope required)
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                error:
+                                    type: string
+                                    example: "insufficient_scope"
+                                error_description:
+                                    type: string
+                                    example: "The request requires 'openid' scope"

@@ -155,6 +155,7 @@ pub mod api;
 pub mod admin;
 
 pub mod auth;
+pub mod tenant; // Multi-tenant support for native multi-tenant deployments
 pub mod auth_modular; // Modular authentication components
 pub mod authentication; // Reorganized authentication modules
 pub mod errors;
@@ -332,6 +333,11 @@ pub use session::manager::{
     DeviceInfo, Session, SessionConfig, SessionManager as LegacySessionManager, SessionState,
 };
 pub use utils::rate_limit::RateLimiter;
+
+// Multi-tenant support
+pub use tenant::{
+    TenantContext, TenantId, TenantMetadata, TenantRegistry, TenantRegistryBuilder,
+};
 
 // Monitoring and metrics
 pub use monitoring::{
