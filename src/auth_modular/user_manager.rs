@@ -167,32 +167,59 @@ impl UserManager {
         Ok(is_valid)
     }
 
-    /// Validate user input for security
+    /// Validate user input for security.
+    ///
+    /// Combines a character whitelist with pattern checks for common injection
+    /// vectors. Rejects HTML tags, null bytes, path traversal sequences,
+    /// template injection markers, and dangerous URI schemes.
     pub async fn validate_user_input(&self, input: &str) -> Result<bool> {
         debug!("Validating user input");
 
-        // Comprehensive security validation
-        let is_valid = !input.contains('<')
-            && !input.contains('>')
-            && !input.contains("script")
-            && !input.contains("javascript:")
-            && !input.contains("data:")
-            && !input.contains("file:")
-            && !input.contains("${")  // Template injection
-            && !input.contains("{{")  // Template injection
-            && !input.contains("'}") && !input.contains("'}")  // Template injection
-            && !input.contains("'; DROP") && !input.contains("' DROP") // SQL injection
-            && !input.contains("; DROP") && !input.contains(";DROP") // SQL injection
-            && !input.contains("--") // SQL comments
-            && !input.contains("../") // Path traversal
-            && !input.contains("..\\") // Path traversal (Windows)
-            && !input.contains('\0') // Null byte injection
-            && !input.contains("%00") // URL encoded null byte
-            && !input.contains("jndi:") // LDAP injection
-            && !input.contains("%3C") && !input.contains("%3E") // URL encoded < >
-            && input.len() <= 1000;
+        if input.is_empty() || input.len() > 1000 {
+            return Ok(false);
+        }
 
-        Ok(is_valid)
+        // Character whitelist: reject control characters and angle brackets.
+        if !input.chars().all(|c| {
+            if c.is_control() {
+                matches!(c, ' ' | '\t' | '\n' | '\r')
+            } else {
+                !matches!(c, '<' | '>')
+            }
+        }) {
+            return Ok(false);
+        }
+
+        let lower = input.to_ascii_lowercase();
+        if lower.contains("%3c") || lower.contains("%3e") || lower.contains("%00") {
+            return Ok(false);
+        }
+        if lower.contains("javascript:")
+            || lower.contains("data:")
+            || lower.contains("file:")
+            || lower.contains("jndi:")
+        {
+            return Ok(false);
+        }
+        if input.contains("${") || input.contains("{{") {
+            return Ok(false);
+        }
+        if input.contains("../") || input.contains("..\\") {
+            return Ok(false);
+        }
+        if input.contains('\0') {
+            return Ok(false);
+        }
+        if lower.contains("; drop")
+            || lower.contains(";drop")
+            || lower.contains("' drop")
+            || lower.contains("'; drop")
+            || lower.contains("--")
+        {
+            return Ok(false);
+        }
+
+        Ok(true)
     }
 
     /// Map user attribute
@@ -242,26 +269,42 @@ impl UserManager {
     pub async fn get_user_info(&self, user_id: &str) -> Result<UserInfo> {
         debug!("Getting user info for '{}'", user_id);
 
-        // For now, return a basic user info structure
-        // In a real implementation, this would query a user database
-        Ok(UserInfo {
-            id: user_id.to_string(),
-            username: format!("user_{}", user_id),
-            email: None,
-            name: None,
-            roles: vec!["user".to_string()],
-            active: true,
-            attributes: HashMap::new(),
-        })
+        let key = format!("user:{}", user_id);
+        if let Some(data) = self.storage.get_kv(&key).await? {
+            let user_data: serde_json::Value = serde_json::from_slice(&data)
+                .map_err(|e| AuthError::internal(format!("Failed to parse user data: {e}")))?;
+
+            Ok(UserInfo {
+                id: user_data["user_id"].as_str().unwrap_or(user_id).to_string(),
+                username: user_data["username"].as_str().unwrap_or("").to_string(),
+                email: user_data["email"].as_str().map(String::from),
+                name: user_data["name"].as_str().map(String::from),
+                roles: user_data["roles"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_else(|| vec!["user".to_string()]),
+                active: user_data["active"].as_bool().unwrap_or(true),
+                attributes: HashMap::new(),
+            })
+        } else {
+            Err(AuthError::validation(format!("User '{user_id}' not found")))
+        }
     }
 
     /// Check if user exists
     pub async fn user_exists(&self, user_id: &str) -> Result<bool> {
         debug!("Checking if user '{}' exists", user_id);
 
-        // For now, assume all non-empty user IDs exist
-        // In a real implementation, this would check a user database
-        Ok(!user_id.is_empty())
+        if user_id.is_empty() {
+            return Ok(false);
+        }
+
+        let key = format!("user:{}", user_id);
+        Ok(self.storage.get_kv(&key).await?.is_some())
     }
 }
 
