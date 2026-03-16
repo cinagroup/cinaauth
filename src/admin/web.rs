@@ -395,10 +395,17 @@ async fn config_edit_handler(
 
 #[cfg(feature = "web-gui")]
 async fn users_handler(State(state): State<AppState>) -> impl IntoResponse {
-    // Derive user count from active sessions in the server status.
-    // A real storage query (e.g. storage.list_users()) requires AppState to hold
-    // an AuthStorage reference, which is not yet wired up.
-    let user_count = {
+    let user_count = if let Some(ref af) = state.auth_framework {
+        // Load the user ID index maintained by register_user() to count registered users
+        match af.storage().get_kv("users:index").await {
+            Ok(Some(bytes)) => {
+                let user_ids: Vec<String> = serde_json::from_slice(&bytes).unwrap_or_default();
+                user_ids.len()
+            }
+            _ => 0,
+        }
+    } else {
+        // Fallback to active sessions if no auth framework is available
         let status = state.server_status.read().await;
         status.active_sessions as usize
     };
@@ -645,13 +652,17 @@ async fn api_config_update_handler(
 ) -> impl IntoResponse {
     tracing::info!(payload = ?payload, "API config update via admin GUI");
 
-    // In a real implementation:
-    // 1. Validate the configuration
-    // 2. Update the configuration
-    // 3. Hot-reload if supported
-    // 4. Return success/error
-
-    state.reload_config().await.ok();
+    // Attempt to reload the configuration.
+    // In a fully dynamic implementation, we would extract the payload values 
+    // and write them back to `AuthFrameworkSettings` backing file. 
+    // For now we just trigger a config refresh from disk.
+    if let Err(e) = state.reload_config().await {
+        tracing::error!("Failed to reload config: {}", e);
+        return axum::Json(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to reload config: {}", e)
+        }));
+    }
 
     axum::Json(serde_json::json!({
         "success": true,
