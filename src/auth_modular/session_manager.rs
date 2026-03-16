@@ -92,10 +92,13 @@ impl SessionManager {
 
     /// Get all sessions for a user
     pub async fn get_user_sessions(&self, user_id: &str) -> Result<Vec<(String, SessionData)>> {
-        // Note: This would require storage backend support for querying by user_id
-        // For now, return empty vector as this would be a more complex implementation
         debug!("Getting all sessions for user '{}'", user_id);
-        Ok(vec![])
+        let sessions = self.storage.list_user_sessions(user_id).await?;
+        Ok(sessions
+            .into_iter()
+            .filter(|s| !s.is_expired())
+            .map(|s| (s.session_id.clone(), s))
+            .collect())
     }
 
     /// Delete all sessions for a user
@@ -115,9 +118,8 @@ impl SessionManager {
     /// Clean up expired sessions
     pub async fn cleanup_expired_sessions(&self) -> Result<()> {
         debug!("Cleaning up expired sessions");
-
-        // This would require storage backend support for bulk cleanup
-        // For now, this is handled by the storage implementation's cleanup_expired method
+        self.storage.cleanup_expired().await?;
+        info!("Expired sessions cleaned up");
         Ok(())
     }
 

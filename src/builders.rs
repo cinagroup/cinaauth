@@ -636,9 +636,27 @@ impl OAuth2Builder {
     }
 
     /// Complete OAuth2 configuration and return to main builder
-    pub fn done(self) -> AuthBuilder {
-        // OAuth2 configuration would be stored in method_configs
-        // This is a simplified version
+    pub fn done(mut self) -> AuthBuilder {
+        let mut oauth2_config = serde_json::Map::new();
+        if let Some(client_id) = self.client_id {
+            oauth2_config.insert("client_id".to_string(), serde_json::Value::String(client_id));
+        }
+        if let Some(client_secret) = self.client_secret {
+            oauth2_config.insert(
+                "client_secret".to_string(),
+                serde_json::Value::String(client_secret),
+            );
+        }
+        if let Some(redirect_uri) = self.redirect_uri {
+            oauth2_config.insert(
+                "redirect_uri".to_string(),
+                serde_json::Value::String(redirect_uri),
+            );
+        }
+        self.parent.config.method_configs.insert(
+            "oauth2".to_string(),
+            serde_json::Value::Object(oauth2_config),
+        );
         self.parent
     }
 }

@@ -699,10 +699,43 @@ async fn api_users_handler(State(state): State<AppState>) -> impl IntoResponse {
 }
 
 #[cfg(feature = "web-gui")]
-async fn api_security_handler(State(_state): State<AppState>) -> impl IntoResponse {
-    // Security events are not yet exposed via a queryable storage API.
-    // Return an empty list rather than returning hardcoded fictitious events
-    // that could mislead operators reviewing the admin GUI.
-    let events: Vec<SecurityEvent> = vec![];
+async fn api_security_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let mut events: Vec<SecurityEvent> = Vec::new();
+
+    if let Some(ref af) = state.auth_framework {
+        // Query recent permission/security audit logs via the public API
+        if let Ok(logs) = af
+            .get_permission_audit_logs(None, None, None, Some(50))
+            .await
+        {
+            for (i, log_line) in logs.into_iter().enumerate() {
+                // Log format: "[timestamp] EventType user=uid outcome=Outcome - description"
+                let (timestamp, rest) = log_line
+                    .strip_prefix('[')
+                    .and_then(|s| s.split_once("] "))
+                    .unwrap_or(("", &log_line));
+                let event_type = rest.split_whitespace().next().unwrap_or("Unknown");
+                let user = rest
+                    .split("user=")
+                    .nth(1)
+                    .and_then(|s| s.split_whitespace().next())
+                    .map(|s| s.to_string());
+                events.push(SecurityEvent {
+                    id: format!("evt_{}", i + 1),
+                    timestamp: timestamp.to_string(),
+                    event_type: event_type.to_string(),
+                    user,
+                    ip_address: None,
+                    details: rest.to_string(),
+                    severity: if rest.contains("Denied") || rest.contains("Failure") {
+                        "warning".to_string()
+                    } else {
+                        "info".to_string()
+                    },
+                });
+            }
+        }
+    }
+
     axum::Json(events)
 }

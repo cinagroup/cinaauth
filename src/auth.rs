@@ -803,10 +803,29 @@ impl AuthFramework {
         // Remove the challenge
         challenges.remove(&challenge.id);
 
+        // Look up user roles from storage
+        let user_key = format!("user:{}", challenge.user_id);
+        let scopes = if let Ok(Some(data)) = self.storage.get_kv(&user_key).await {
+            serde_json::from_slice::<serde_json::Value>(&data)
+                .ok()
+                .and_then(|v| {
+                    v.get("roles").and_then(|r| {
+                        r.as_array().map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect::<Vec<_>>()
+                        })
+                    })
+                })
+                .unwrap_or_else(|| vec!["user".to_string()])
+        } else {
+            vec!["user".to_string()]
+        };
+
         // Create authentication token
         let token = self.token_manager.create_auth_token(
             &challenge.user_id,
-            vec![], // Scopes would be determined by user permissions
+            scopes,
             "mfa",
             None,
         )?;

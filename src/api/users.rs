@@ -452,16 +452,30 @@ pub async fn get_sessions(
     match extract_bearer_token(&headers) {
         Some(token) => {
             match validate_api_token(&state.auth_framework, &token).await {
-                Ok(_auth_token) => {
-                    // Session listing requires the login path to create storage-backed
-                    // sessions via store_session().  The current implementation issues
-                    // JWT tokens only and does not create storage sessions on login,
-                    // so there is nothing to list here.  Return 501 rather than an
-                    // empty success so callers know the feature is not yet implemented.
-                    ApiResponse::<Vec<SessionInfo>>::error_typed(
-                        "NOT_IMPLEMENTED",
-                        "Session listing is not yet implemented",
-                    )
+                Ok(auth_token) => {
+                    let storage = state.auth_framework.storage();
+                    match storage.list_user_sessions(&auth_token.user_id).await {
+                        Ok(sessions) => {
+                            let session_list: Vec<SessionInfo> = sessions
+                                .into_iter()
+                                .filter(|s| !s.is_expired())
+                                .map(|s| SessionInfo {
+                                    id: s.session_id.clone(),
+                                    device: s.user_agent.unwrap_or_default(),
+                                    location: String::new(),
+                                    ip_address: s.ip_address.unwrap_or_default(),
+                                    created_at: s.created_at.to_rfc3339(),
+                                    last_active: s.last_activity.to_rfc3339(),
+                                    is_current: false,
+                                })
+                                .collect();
+                            ApiResponse::success(session_list)
+                        }
+                        Err(_e) => ApiResponse::error_typed(
+                            "SESSION_ERROR",
+                            "Failed to retrieve sessions",
+                        ),
+                    }
                 }
                 Err(_e) => ApiResponse::error_typed("USER_ERROR", "Session operation failed"),
             }

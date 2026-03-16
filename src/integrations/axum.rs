@@ -49,11 +49,11 @@
 use crate::{AuthError, AuthFramework, AuthToken};
 use axum::{
     Json, Router,
-    extract::{FromRequestParts, Request, State},
+    extract::{FromRef, FromRequestParts, Request, State},
     http::{StatusCode, header::AUTHORIZATION, request::Parts},
     middleware::Next,
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -269,9 +269,9 @@ impl AuthRouter {
     pub fn build(self) -> Router<Arc<AuthFramework>> {
         Router::new()
             .route(&self.login_path, post(login_handler))
-            // .route(&self.logout_path, post(logout_handler))  // Temporarily disabled due to trait issues
+            .route(&self.logout_path, post(logout_handler))
             .route(&self.refresh_path, post(refresh_handler))
-        // .route(&self.profile_path, get(profile_handler))  // Temporarily disabled due to trait issues
+            .route(&self.profile_path, get(profile_handler))
     }
 }
 
@@ -315,11 +315,18 @@ async fn login_handler(
 
 /// Logout handler for authenticated users
 pub async fn logout_handler(
-    State(_auth): State<Arc<AuthFramework>>,
+    State(auth): State<Arc<AuthFramework>>,
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, AuthError> {
-    // In a real implementation, you'd revoke the token
-    tracing::info!("User {} logged out", user.user_id);
+    // Revoke the user's current token
+    let storage = auth.storage();
+    let jti = &user.token.token_id;
+    if !jti.is_empty() {
+        let key = format!("revoked_token:{}", jti);
+        let ttl = std::time::Duration::from_secs(7 * 24 * 60 * 60); // 7 days
+        let _ = storage.store_kv(&key, b"revoked", Some(ttl)).await;
+    }
+    tracing::info!("User {} logged out, token revoked", user.user_id);
     Ok(Json(
         serde_json::json!({"message": "Successfully logged out"}),
     ))
@@ -363,11 +370,29 @@ async fn refresh_handler(
 }
 
 /// User profile handler for authenticated users
-pub async fn profile_handler(user: AuthenticatedUser) -> Result<impl IntoResponse, AuthError> {
+pub async fn profile_handler(
+    State(auth): State<Arc<AuthFramework>>,
+    user: AuthenticatedUser,
+) -> Result<impl IntoResponse, AuthError> {
+    // Look up full user profile from storage
+    let storage = auth.storage();
+    let key = format!("user:{}", user.user_id);
+    let (username, email) = if let Ok(Some(data)) = storage.get_kv(&key).await {
+        if let Ok(profile) = serde_json::from_slice::<serde_json::Value>(&data) {
+            (
+                profile.get("username").and_then(|v| v.as_str()).map(String::from),
+                profile.get("email").and_then(|v| v.as_str()).map(String::from),
+            )
+        } else {
+            (None, None)
+        }
+    } else {
+        (None, None)
+    };
     Ok(Json(UserInfo {
         id: user.user_id,
-        username: None, // Would come from user store
-        email: None,    // Would come from user store
+        username,
+        email,
         roles: user.roles,
     }))
 }
@@ -412,15 +437,13 @@ fn extract_bearer_token(request: &Request) -> Result<String, AuthError> {
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,
-    Arc<AuthFramework>: FromRequestParts<S>,
+    Arc<AuthFramework>: FromRef<S>,
 {
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        // Extract auth framework from state
-        let auth = Arc::<AuthFramework>::from_request_parts(parts, state)
-            .await
-            .map_err(|_| AuthError::internal("Failed to extract auth framework from state"))?;
+        // Extract auth framework from state via FromRef
+        let auth: Arc<AuthFramework> = Arc::from_ref(state);
 
         // Extract token from request
         let token_str = extract_bearer_token_from_parts(parts)?;

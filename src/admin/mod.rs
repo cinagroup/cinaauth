@@ -186,14 +186,33 @@ impl AppState {
     }
 
     pub async fn get_health_status(&self) -> HealthStatus {
-        // Simplified health check - in a real implementation this would
-        // check database connections, external services, etc.
-        HealthStatus::Healthy
+        // Check storage connectivity if auth_framework is available
+        if let Some(ref af) = self.auth_framework {
+            let storage = af.storage();
+            // Attempt a lightweight storage operation to verify connectivity
+            match storage.get_kv("health_check_ping").await {
+                Ok(_) => {
+                    let status = self.server_status.read().await;
+                    if status.web_server_running {
+                        HealthStatus::Healthy
+                    } else {
+                        HealthStatus::Warning("Web server not running".to_string())
+                    }
+                }
+                Err(e) => HealthStatus::Critical(format!("Storage unavailable: {}", e)),
+            }
+        } else {
+            HealthStatus::Warning("AuthFramework not attached".to_string())
+        }
     }
 
     pub async fn reload_config(&self) -> Result<()> {
-        // Reload configuration logic here
-        // For now, just update the timestamp
+        // Re-read configuration from sources
+        let new_settings = self.config_manager.get_auth_settings()?;
+        {
+            let mut config = self.config.write().await;
+            *config = new_settings;
+        }
         let mut status = self.server_status.write().await;
         status.last_config_update = Some(chrono::Utc::now());
         Ok(())
@@ -277,9 +296,40 @@ impl AppState {
 
     /// Get recent security events for display in TUI
     pub async fn get_recent_security_events(&self) -> Result<Vec<SecurityEvent>> {
-        // A proper audit-log storage backend is not yet implemented.
-        // Return an empty list until structured event logging is added.
-        Ok(vec![])
+        if let Some(ref af) = self.auth_framework {
+            let logs = af
+                .get_permission_audit_logs(None, None, None, Some(20))
+                .await?;
+            let events = logs
+                .into_iter()
+                .map(|log_line| {
+                    // Log format: "[timestamp] EventType user=uid outcome=Outcome - description"
+                    let (ts, rest) = log_line
+                        .strip_prefix('[')
+                        .and_then(|s| s.split_once("] "))
+                        .unwrap_or(("", &log_line));
+                    let event_type = rest.split_whitespace().next().unwrap_or("Unknown");
+                    let user_id = rest
+                        .split("user=")
+                        .nth(1)
+                        .and_then(|s| s.split_whitespace().next())
+                        .map(|s| s.to_string());
+                    let timestamp = chrono::DateTime::parse_from_rfc3339(ts)
+                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                        .unwrap_or_else(|_| chrono::Utc::now());
+                    SecurityEvent {
+                        timestamp,
+                        event_type: event_type.to_string(),
+                        description: rest.to_string(),
+                        ip_address: None,
+                        user_id,
+                    }
+                })
+                .collect();
+            Ok(events)
+        } else {
+            Ok(vec![])
+        }
     }
 } // Command line interface types and functions
 #[cfg(feature = "cli")]

@@ -687,8 +687,12 @@ pub async fn check_permission(
                 } else {
                     "Permission denied".to_string()
                 },
-                required_roles: Vec::new(), // Would be populated from role analysis
-                missing_permissions: Vec::new(), // Would be populated from permission analysis
+                required_roles: vec![request.resource.clone()],
+                missing_permissions: if granted {
+                    Vec::new()
+                } else {
+                    vec![format!("{}:{}", request.action, request.resource)]
+                },
             };
 
             Ok(Json(ApiResponse::success(response)))

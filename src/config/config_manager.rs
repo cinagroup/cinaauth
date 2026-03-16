@@ -376,10 +376,16 @@ impl ConfigManager {
     }
 
     /// Get all keys with a specific prefix
-    pub fn get_keys_with_prefix(&self, _prefix: &str) -> Vec<String> {
-        // This would require access to the internal structure
-        // For now, we'll provide a simplified implementation
-        Vec::new()
+    pub fn get_keys_with_prefix(&self, prefix: &str) -> Vec<String> {
+        // Try to deserialize the prefix as a table to enumerate its keys
+        if let Ok(table) = self.config.get_table(prefix) {
+            table
+                .keys()
+                .map(|k| format!("{}.{}", prefix, k))
+                .collect()
+        } else {
+            Vec::new()
+        }
     }
 
     /// Get configuration sources used
