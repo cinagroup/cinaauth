@@ -1,0 +1,1272 @@
+    Blocking waiting for file lock on artifact directory
+   Compiling auth-framework v0.5.0-rc1 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 59s
+     Running unittests src\lib.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\auth_framework-33dda40ac9f1d80a.exe)
+
+running 483 tests
+test analytics::dashboard::tests::test_alert_status_checking ... ok
+test analytics::dashboard::tests::test_dashboard_config_default ... ok
+test analytics::tests::test_analytics_config_default ... ok
+test analytics::tests::test_time_range_creation ... ok
+test api::openapi::tests::test_swagger_ui_generation ... ok
+test audit::tests::test_correlation_id_generation ... ok
+test api::metrics::tests::test_percentile_calculation ... ok
+test audit::tests::test_request_metadata_builder ... ok
+test authentication::mfa::tests::test_masking ... ok
+test analytics::dashboard::tests::test_dashboard_manager_creation ... ok
+test api::rbac_endpoints::tests::test_create_role_success ... ok
+test analytics::tests::test_analytics_manager_creation ... ok
+test api::metrics::tests::test_error_tracking ... ok
+test api::validation::tests::test_suspicious_content_detection ... ok
+test analytics::tests::test_record_event ... ok
+test api::rbac_endpoints::tests::test_create_role_unauthorized ... ok
+test api::rbac_endpoints::tests::test_permission_check ... ok
+test api::metrics::tests::test_metrics_collection ... ok
+test api::validation::tests::test_rate_limiter ... ok
+test authorization_enhanced::context::tests::test_context_builder_creation ... ok
+test authorization::tests::test_permission_matching ... ok
+test authorization_enhanced::context::tests::test_risk_calculation ... ok
+test authorization_enhanced::context::tests::test_device_detection ... ok
+test authorization::tests::test_role_hierarchy ... ok
+test authentication::mfa::tests::test_backup_codes ... ok
+test authorization_enhanced::context::tests::test_time_classification ... ok
+test api::metrics::tests::test_prometheus_format ... ok
+test auth::tests::test_framework_initialization ... ok
+test authentication::mfa::tests::test_totp_generation ... ok
+test authorization_enhanced::middleware::tests::test_context_building ... ok
+test authorization_enhanced::middleware::tests::test_elevation_requirement ... ok
+test authorization_enhanced::middleware::tests::test_public_endpoint_detection ... ok
+test authorization_enhanced::middleware::tests::test_sensitive_endpoint_detection ... ok
+test auth::tests::test_method_registration ... ok
+test auth_modular::tests::test_mfa_manager_access ... ok
+test auth_modular::tests::test_modular_framework_initialization ... ok
+test authorization::tests::test_access_condition_evaluation ... ok
+test api::openapi::tests::test_openapi_spec_generation ... ok
+test cli::tests::test_terminal_formatting ... ok
+test auth::tests::test_cleanup_expired_data ... ok
+test analytics::dashboard::tests::test_create_rbac_overview_dashboard ... ok
+test cli::tests::test_progress_bar ... ok
+test config::app_config::tests::test_config_builder ... ok
+test auth::tests::test_session_management ... ok
+test authorization_enhanced::service::tests::test_role_assignment_and_permission_check ... ok
+test authorization_enhanced::service::tests::test_authorization_service_creation ... ok
+test authorization_enhanced::service::tests::test_role_hierarchy ... ok
+test authorization_enhanced::hierarchy_tests_fixed::hierarchy_feature_tests::test_hierarchy_features_on_existing_roles ... ok
+test authorization_enhanced::hierarchy_tests_fixed::hierarchy_feature_tests::test_parent_role_id_api_integration ... ok
+test authorization_enhanced::hierarchy_tests_fixed::hierarchy_feature_tests::test_all_new_hierarchy_methods ... ok
+test deployment::automation::tests::test_automation_creation ... ok
+test deployment::health::tests::test_filesystem_health_check ... ok
+test deployment::automation::tests::test_deployment_execution ... ok
+test deployment::config::tests::test_config_validation ... ok
+test deployment::config::tests::test_config_manager_creation ... ok
+test deployment::health::tests::test_memory_health_check ... ok
+test deployment::config::tests::test_load_from_env ... ok
+test deployment::config::tests::test_set_value ... ok
+test deployment::health::tests::test_add_health_check ... ok
+test deployment::health::tests::test_extract_host_port ... ok
+test config::config_manager::tests::test_config_manager_default ... ok
+test deployment::health::tests::test_health_monitor_creation ... ok
+test deployment::config::tests::test_config_watcher ... ok
+test deployment::monitoring::tests::test_prometheus_export ... ok
+test deployment::monitoring::tests::test_monitoring_system_creation ... ok
+test deployment::health::tests::test_remove_health_check ... ok
+test deployment::monitoring::tests::test_metric_recording ... ok
+test deployment::scaling::tests::test_apply_scaling_decision ... ok
+test deployment::monitoring::tests::test_metric_registration ... ok
+test deployment::scaling::tests::test_auto_scaler_creation ... ok
+test distributed::tests::test_local_only_returns_zero ... ok
+test auth::tests::test_token_validation ... ok
+test deployment::scaling::tests::test_metrics_addition ... ok
+test distributed_rate_limiting::tests::test_exponential_backoff ... ok
+test deployment::scaling::tests::test_scaling_decision_scale_up ... ok
+test deployment::tests::test_config_validation ... ok
+test deployment::tests::test_deployment_manager_creation ... ok
+test distributed_rate_limiting::tests::test_rate_limit_configurations ... ok
+test deployment::tests::test_health_check ... ok
+test distributed::tests::test_custom_store_returns_fixed_count ... ok
+test deployment::health::tests::test_disk_usage_health_check ... ok
+test deployment::config::tests::test_load_from_toml_file ... ok
+test distributed::tests::test_multiple_calls_consistent ... ok
+test deployment::scaling::tests::test_scaling_decision_no_action ... ok
+test errors::tests::test_auth_error_creation ... ok
+test errors::tests::test_error_context_preservation ... ok
+test deployment::tests::test_deployment_metrics ... ok
+test errors::tests::test_error_serialization ... ok
+test distributed::tests::test_dyn_dispatch ... ok
+test distributed_rate_limiting::tests::test_rate_limit_key_generation ... ok
+test errors::tests::test_cli_error_conversion ... ok
+test api::server::tests::test_auth_required_endpoints ... ok
+test errors::tests::test_error_variants_coverage ... ok
+test errors::tests::test_auth_error_categorization ... ok
+test errors::tests::test_error_chain ... ok
+test api::server::tests::test_health_endpoint ... ok
+test api::server::tests::test_cors_headers ... ok
+test errors::tests::test_error_equality ... ok
+test errors::tests::test_error_message_safety ... ok
+test errors::tests::test_error_source ... ok
+test errors::tests::test_actix_web_integration ... ok
+test errors::tests::test_configuration_error ... ok
+test deployment::tests::test_deployment_initialization ... ok
+test errors::tests::test_validation_error ... ok
+test distributed::tests::test_local_only_is_send_sync ... ok
+test config::config_manager::tests::test_config_builder_basic ... ok
+test errors::tests::test_oauth_specific_errors ... ok
+test errors::tests::test_from_conversions ... ok
+test errors::tests::test_rate_limit_error ... ok
+test config::config_manager::tests::test_config_sources ... ok
+test config::config_manager::tests::test_application_specific_config ... ok
+test methods::client_cert::tests::test_config_builder_chain ... ok
+test methods::client_cert::tests::test_config_default ... ok
+test methods::client_cert::tests::test_empty_der_rejected ... ok
+test methods::enhanced_device::tests::test_authenticate_empty_challenge_returns_false ... ok
+test methods::client_cert::tests::test_wrong_credential_type_rejected ... ok
+test methods::enhanced_device::tests::test_authenticate_at_minimum_trust_score_passes ... ok
+test methods::enhanced_device::tests::test_authenticate_short_device_id_fails ... ok
+test methods::client_cert::tests::test_garbage_der_rejected ... ok
+test methods::enhanced_device::tests::test_authenticate_valid_device_and_challenge ... ok
+test methods::enhanced_device::tests::test_challenge_empty ... ok
+test methods::enhanced_device::tests::test_challenge_invalid_chars ... ok
+test methods::enhanced_device::tests::test_challenge_too_short ... ok
+test methods::enhanced_device::tests::test_challenge_valid_base64url ... ok
+test methods::enhanced_device::tests::test_device_binding_valid_uuid_format ... ok
+test methods::enhanced_device::tests::test_challenge_valid_hex_16_chars ... ok
+test methods::enhanced_device::tests::test_device_binding_invalid_chars ... ok
+test errors::tests::test_concurrent_error_creation ... ok
+test methods::enhanced_device::tests::test_new_stores_device_id ... ok
+test methods::enhanced_device::tests::test_trust_score_clean_device_is_1_0 ... ok
+test methods::enhanced_device::tests::test_trust_score_always_in_range ... ok
+test methods::client_cert::tests::test_expired_cert_rejected ... ok
+test methods::client_cert::tests::test_future_cert_rejected ... ok
+test methods::client_cert::tests::test_require_san_rejects_cert_without_san ... ok
+test methods::enhanced_device::tests::test_trust_score_new_and_test_device ... ok
+test methods::hardware_token::tests::test_hardware_token_config_default ... ok
+test methods::hardware_token::tests::test_fido2_token_type_is_unknown ... ok
+test methods::enhanced_device::tests::test_trust_score_test_device_is_reduced ... ok
+test methods::hardware_token::tests::test_unknown_token_type_returns_false ... ok
+test methods::hardware_token::tests::test_with_config_builder ... ok
+test methods::enhanced_device::tests::test_device_binding_too_short ... ok
+test methods::enhanced_device::tests::test_trust_score_new_device_is_reduced ... ok
+test methods::hardware_token::tests::test_new_stores_fields ... ok
+test methods::client_cert::tests::test_subject_allowlist_blocks_non_matching_cn ... ok
+test methods::client_cert::tests::test_issuer_allowlist_blocks_unmatched_issuer ... ok
+test methods::client_cert::tests::test_issuer_dn_populated_in_identity ... ok
+test methods::client_cert::tests::test_issuer_allowlist_permits_self_signed_when_matches ... ok
+test methods::client_cert::tests::test_client_cert_from_tls_constructor ... ok
+test methods::client_cert::tests::test_trusted_ca_rejects_when_no_ca_matches ... ok
+test methods::client_cert::tests::test_valid_cert_accepted ... ok
+test methods::client_cert::tests::test_trusted_ca_accepts_when_issuer_dn_matches ... ok
+test methods::client_cert::tests::test_subject_allowlist_permits_matching_cn ... ok
+test methods::hardware_token::tests::test_yubikey_empty_challenge ... ok
+test methods::hardware_token::tests::test_yubikey_too_long ... ok
+test methods::hardware_token::tests::test_yubikey_too_short ... ok
+test methods::hardware_token::tests::test_yubikey_format_only_without_api_config ... ok
+test methods::hardware_token::tests::test_yubikey_wrong_prefix ... ok
+test methods::hardware_token::tests::test_yubikey_valid_otp_without_config_returns_err ... ok
+test methods::passkey::tests::test_invalid_passkey_config ... ok
+test methods::passkey::tests::test_passkey_config_validation ... ok
+test migration::analyzers::tests::test_detect_json_system_type ... ok
+test migration::converters::tests::test_permission_converter ... ok
+test migration::analyzers::tests::test_calculate_hierarchy_depth ... ok
+test migration::converters::tests::test_role_converter ... ok
+test migration::converters::tests::test_system_converter ... ok
+test migration::analyzers::tests::test_analyze_json_config ... ok
+test migration::converters::tests::test_user_assignment_converter ... ok
+test migration::planners::tests::test_assess_risk_level ... ok
+test migration::validators::tests::test_circular_dependency_detection ... ok
+test migration::planners::tests::test_identify_critical_roles ... ok
+test migration::planners::tests::test_generate_gradual_migration_plan ... ok
+test migration::tests::test_migration_strategy_serialization ... ok
+test migration::tests::test_risk_level_ordering ... ok
+test methods::hardware_token::tests::test_yubikey_bad_format_skips_api ... ok
+test migration::planners::tests::test_generate_direct_mapping_plan ... ok
+test migration::validators::tests::test_has_circular_dependencies ... ok
+test migration::tests::test_migration_manager_creation ... ok
+test migration::tests::test_legacy_system_type_serialization ... ok
+test monitoring::tests::test_auth_request_recording ... ok
+test migration::validators::tests::test_validate_phase_dependencies ... ok
+test monitoring::tests::test_health_check ... ok
+test monitoring::tests::test_prometheus_export ... ok
+test monitoring::tests::test_security_event_recording ... ok
+test permissions::abac_delegation_tests::tests::test_abac_grant ... ok
+test permissions::abac_delegation_tests::tests::test_delegation_expired ... ok
+test permissions::tests::test_permission_checker ... ok
+test migration::executors::tests::test_execute_migration_plan_dry_run ... ok
+test monitoring::tests::test_monitoring_manager_creation ... ok
+test permissions::abac_delegation_tests::tests::test_abac_deny ... ok
+test permissions::abac_delegation_tests::tests::test_delegation_grant ... ok
+test permissions::tests::test_permission_implies ... ok
+test permissions::tests::test_permission_matching ... ok
+test permissions::tests::test_permission_parsing ... ok
+test permissions::tests::test_role_permissions ... ok
+test permissions::tests::test_user_permissions ... ok
+test methods::hardware_token::tests::test_yubikey_api_bad_otp_status ... ok
+test methods::hardware_token::tests::test_yubikey_api_replayed_otp ... ok
+test methods::hardware_token::tests::test_yubikey_api_ok ... ok
+test providers::tests::test_authorization_url ... ok
+test migration::executors::tests::test_execute_migration_plan_real ... ok
+test migration::executors::tests::test_execute_migration_plan_with_role_system_creates_role ... ok
+test providers::tests::test_generate_pkce ... ok
+test migration::executors::tests::test_execute_migration_plan_permission_registry_feeds_create_role ... ok
+test providers::tests::test_generate_state ... ok
+test providers::tests::test_provider_config ... ok
+test saml_assertions::tests::test_expired_assertion_validation ... ok
+test saml_assertions::tests::test_saml_assertion_builder ... ok
+test migration::executors::tests::test_manifest_only_mode_completes_without_role_system ... ok
+test migration::executors::tests::test_execute_migration_plan_with_role_system_assigns_user ... ok
+test saml_assertions::tests::test_saml_assertion_validation ... ok
+test saml_assertions::tests::test_saml_assertion_xml ... ok
+test sdks::javascript::tests::test_typescript_generation ... ok
+test sdks::javascript::tests::test_sdk_generation ... ok
+test sdks::tests::test_sdk_generation_config ... ok
+test sdks::tests::test_supported_languages ... ok
+test sdks::tests::test_multi_language_generation ... ok
+test security::secure_session::tests::test_risk_score_calculation ... ok
+test security::secure_mfa::tests::test_secure_code_generation ... ok
+test security::secure_session::tests::test_secure_session_creation ... ok
+test security::secure_mfa::tests::test_rate_limiting ... ok
+test security::secure_session::tests::test_concurrent_session_limit ... ok
+test security::secure_mfa::tests::test_invalid_code_rejection ... ok
+test security::secure_session_config::tests::test_ip_subnet_checking ... ok
+test security::secure_mfa::tests::test_mfa_challenge_flow ... ok
+test security::secure_session::tests::test_session_rotation ... ok
+test security::secure_session_config::tests::test_security_validation_result_enum ... ok
+test security::secure_session_config::tests::test_session_security_config_presets ... ok
+test security::secure_utils::tests::test_constant_time_comparison ... ok
+test security::secure_utils::tests::test_constant_time_comparison_edge_cases ... ok
+test security::secure_utils::tests::test_email_validation ... ok
+test security::secure_utils::tests::test_email_validation_comprehensive ... ok
+test security::secure_session_config::tests::test_suspicious_user_agent_detection ... ok
+test security::secure_utils::tests::test_input_sanitization ... ok
+test security::secure_session_config::tests::test_user_agent_similarity ... ok
+test security::secure_utils::tests::test_input_sanitization_comprehensive ... ok
+test security::secure_utils::tests::test_input_validation ... ok
+test security::secure_utils::tests::test_input_validation_edge_cases ... ok
+test security::secure_utils::tests::test_secure_random_generation ... ok
+test security::secure_utils::tests::test_secure_random_generation_length ... ok
+test security::secure_utils::tests::test_secure_comparison_timing ... ok
+test security::secure_utils::tests::test_secure_string ... ok
+test security::secure_utils::tests::test_secure_random_generation_uniqueness ... ok
+test security::secure_utils::tests::test_secure_string_compare ... ok
+test security::secure_utils::tests::test_secure_string_multiple_operations ... ok
+test security::secure_utils::tests::test_secure_string_zeroization ... ok
+test security::secure_utils::tests::test_token_verification ... ok
+test security::secure_utils::tests::test_token_verification_false_positives ... ok
+test security::tests::test_forbidden_patterns ... ok
+test security::tests::test_password_validation ... ok
+test security::timing_protection::tests::test_constant_time_compare ... ok
+test security::timing_protection::tests::test_constant_time_string_compare ... ok
+test server::core::client_registry::tests::test_client_validation ... ok
+test server::core::federated_authentication_orchestration::tests::test_config_creation ... ok
+test server::core::client_registry::tests::test_client_registry_operations ... ok
+test server::core::federated_authentication_orchestration::tests::test_identity_provider_creation ... ok
+test server::core::federated_authentication_orchestration::tests::test_orchestration_request_creation ... ok
+test server::core::metadata::tests::test_metadata_builder ... ok
+test server::core::client_registration::tests::test_public_client_registration ... ok
+test server::core::metadata::tests::test_metadata_provider ... ok
+test server::core::client_registration::tests::test_client_registration ... ok
+test server::core::metadata::tests::test_metadata_validation ... ok
+test server::core::metadata::tests::test_oauth21_specific_metadata ... ok
+test server::core::metadata::tests::test_mtls_metadata ... ok
+test server::core::stepped_up_auth::tests::test_step_up_completion ... ok
+test server::core::stepped_up_auth::tests::test_step_up_evaluation_basic ... ok
+test server::core::stepped_up_auth::tests::test_step_up_evaluation_high_risk ... ok
+test server::core::stepped_up_auth::tests::test_step_up_initiation ... ok
+test server::jwt::jwt_access_tokens::tests::test_invalid_claims_validation ... ok
+test server::jwt::jwt_access_tokens::tests::test_introspection_response ... ok
+test server::jwt::jwt_access_tokens::tests::test_authorization_details ... ok
+test server::jwt::jwt_access_tokens::tests::test_jwt_access_token_creation ... ok
+test server::jwt::jwt_best_practices::tests::test_algorithm_strength_classification ... ok
+test server::jwt::jwt_best_practices::tests::test_jwt_best_practices_validation ... ok
+test server::jwt::jwt_access_tokens::tests::test_jwt_access_token_validation ... ok
+test server::jwt::jwt_access_tokens::tests::test_scope_validation ... ok
+test server::jwt::jwt_best_practices::tests::test_security_level_configuration ... ok
+test security::secure_session::tests::test_session_cleanup ... ok
+test server::jwt::jwt_best_practices::tests::test_token_format_validation ... ok
+test server::jwt::jwt_introspection::tests::test_audience_validation ... ok
+test server::jwt::jwt_introspection::tests::test_jwt_introspection_response_creation ... ok
+test server::jwt::private_key_jwt::tests::test_cleanup_interval_configuration ... ok
+test server::jwt::jwt_introspection::tests::test_inactive_token_response ... ok
+test server::jwt::private_key_jwt::tests::test_cleanup_expired_jtis ... ok
+test server::jwt::jwt_introspection::tests::test_jwt_introspection_verification ... ok
+test server::jwt::private_key_jwt::tests::test_cleanup_interval_update ... ok
+test server::jwt::private_key_jwt::tests::test_cleanup_interval_used_in_cleanup_method ... ok
+test server::jwt::private_key_jwt::tests::test_client_registration ... ok
+test server::jwt::private_key_jwt::tests::test_create_client_assertion ... ok
+test server::jwt::private_key_jwt::tests::test_create_client_assertion_rs256_requires_pem_key ... ok
+test server::jwt::private_key_jwt::tests::test_jti_replay_protection ... ok
+test server::jwt::private_key_jwt::tests::test_jwt_timing_validation ... ok
+test server::jwt::private_key_jwt::tests::test_enhanced_jwt_validation_integration ... ok
+test server::jwt::private_key_jwt::tests::test_jwt_token_revocation_integration ... ok
+test server::jwt::private_key_jwt::tests::test_scheduled_cleanup_integration ... ok
+test server::oauth::device::tests::test_create_authorization ... ok
+test server::oauth::device::tests::test_authorize_and_poll ... ok
+test server::oauth::device::tests::test_deny_device ... ok
+test server::oauth::device::tests::test_poll_pending ... ok
+test server::oauth::device::tests::test_slow_down ... ok
+test server::oauth::oauth21::tests::test_oauth21_security_validations ... ok
+test server::oauth::oauth21::tests::test_oauth21_server_configuration ... ok
+test server::oauth::oauth21::tests::test_oauth21_server_creation ... ok
+test server::oauth::oauth2::tests::test_oauth2_server_creation ... ok
+test server::oauth::par::tests::test_invalid_request_validation ... ok
+test server::oauth::par::tests::test_statistics ... ok
+test server::oauth::rich_authorization_requests::tests::test_authorization_detail_validation ... ok
+test server::oauth::rich_authorization_requests::tests::test_permission_grant_generation ... ok
+test server::oauth::par::tests::test_store_and_consume_request ... ok
+test server::oauth::rich_authorization_requests::tests::test_rar_config_creation ... ok
+test server::oidc::core::tests::test_algorithm_to_string_conversion ... ok
+test server::oauth::rich_authorization_requests::tests::test_unsupported_type_validation ... ok
+test server::oidc::core::tests::test_authorization_request_missing_openid_scope ... ok
+test server::oidc::core::tests::test_authorization_request_validation ... ok
+test server::oidc::core::tests::test_discovery_document ... ok
+test server::oidc::core::tests::test_jwks_generation ... ok
+test server::oidc::core::tests::test_oidc_config_default ... ok
+test server::oidc::core::tests::test_id_token_creation ... ok
+test server::oidc::core::tests::test_logout_handling ... ok
+test server::oidc::core::tests::test_subject_type_serialization ... ok
+test server::oidc::core::tests::test_oidc_provider_creation ... ok
+test server::oidc::oidc_advanced_jarm::tests::test_form_post_html_generation ... ok
+test server::oidc::oidc_advanced_jarm::tests::test_custom_claims_validation ... ok
+test server::oidc::oidc_advanced_jarm::tests::test_delivery_mode_validation ... ok
+test server::oidc::oidc_backchannel_logout::tests::test_discovery_metadata ... ok
+test server::oidc::oidc_advanced_jarm::tests::test_jarm_response_creation ... ok
+test server::oidc::oidc_backchannel_logout::tests::test_logout_token_generation ... ok
+test server::oidc::oidc_backchannel_logout::tests::test_retryable_status_codes ... ok
+test server::oidc::oidc_backchannel_logout::tests::test_logout_token_with_additional_events ... ok
+test server::oidc::oidc_enhanced_ciba::tests::test_ciba_polling_pending ... ok
+test server::oidc::oidc_enhanced_ciba::tests::test_ciba_request_initiation ... ok
+test server::oidc::oidc_enhanced_ciba::tests::test_ciba_completion_flow ... ok
+test server::oidc::oidc_error_extensions::tests::test_custom_error_mappings ... ok
+test server::oidc::oidc_error_extensions::tests::test_custom_error_mappings_real_world_scenario ... ok
+test server::oidc::oidc_enhanced_ciba::tests::test_session_manager_integration ... ok
+test server::oidc::oidc_error_extensions::tests::test_standard_error_code_resolution ... ok
+test server::oidc::oidc_error_extensions::tests::test_error_code_descriptions ... ok
+test server::oidc::oidc_error_extensions::tests::test_error_response_from_unknown_identifier ... ok
+test server::oidc::oidc_extensions::tests::test_ekyc_verification ... ok
+test server::oidc::oidc_extensions::tests::test_heart_session_creation ... ok
+test security::timing_protection::tests::test_random_delay ... ok
+test server::oidc::oidc_frontchannel_logout::tests::test_frontchannel_logout_html_generation ... ok
+test server::oidc::oidc_extensions::tests::test_fastfed_federation ... ok
+test server::oidc::oidc_session_management::tests::test_check_session_iframe_generation ... ok
+test server::oidc::oidc_response_modes::tests::test_jarm_response_generation ... ok
+test server::oidc::oidc_response_modes::tests::test_multiple_response_types_parsing ... ok
+test server::oidc::oidc_extensions::tests::test_oidc_extensions_creation ... ok
+test server::oidc::oidc_session_management::tests::test_session_creation ... ok
+test server::oidc::oidc_error_extensions::tests::test_unmet_auth_requirements_error ... ok
+test server::oidc::oidc_user_registration::tests::test_registration_initiation ... ok
+test server::security::caep_continuous_access::tests::test_caep_event_creation ... ok
+test server::security::dpop::tests::test_dpop_confirmation ... ok
+test server::oidc::oidc_response_modes::tests::test_form_post_html_generation ... ok
+test server::security::dpop::tests::test_jwk_thumbprint_calculation ... ok
+test server::oidc::oidc_user_registration::tests::test_error_manager_session_handling ... ok
+test server::oidc::oidc_user_registration::tests::test_registration_data_validation ... ok
+test server::oidc::oidc_user_registration::tests::test_registration_request_detection ... ok
+test server::security::dpop::tests::test_nonce_cleanup ... ok
+test server::security::caep_continuous_access::tests::test_caep_config_creation ... ok
+test server::security::caep_continuous_access::tests::test_severity_comparison ... ok
+test server::security::dpop::tests::test_access_token_hash ... ok
+test server::oidc::oidc_frontchannel_logout::tests::test_frontchannel_url_validation ... ok
+test server::oidc::oidc_user_registration::tests::test_error_manager_custom_configuration ... ok
+test server::security::dpop::tests::test_dpop_manager_creation ... ok
+test server::security::dpop::tests::test_uri_normalization ... ok
+test server::oidc::oidc_frontchannel_logout::tests::test_frontchannel_logout_url_building ... ok
+test server::security::fapi::tests::test_fapi_manager_creation ... ok
+test server::security::fapi::tests::test_fapi_request_validation ... ok
+test server::security::fapi::tests::test_fapi_response_generation ... ok
+test server::security::fapi::tests::test_fapi_session_management ... ok
+test server::security::fapi::tests::test_fapi_token_generation ... ok
+test server::security::mtls::tests::test_certificate_confirmation ... ok
+test server::security::x509_signing::tests::test_aws_sigv4_authorization_format ... ok
+test server::oidc::oidc_enhanced_ciba::tests::test_binding_message_validation ... ok
+test server::security::mtls::tests::test_client_registration ... ok
+test server::security::mtls::tests::test_mtls_manager_creation ... ok
+test server::oidc::oidc_user_registration::tests::test_error_manager_integration ... ok
+test server::security::x509_signing::tests::test_aws_secrets_missing_access_key ... ok
+test server::security::x509_signing::tests::test_azure_vault_missing_tenant_id ... ok
+test server::security::x509_signing::tests::test_certificate_filter ... ok
+test server::security::x509_signing::tests::test_certificate_profile ... ok
+test server::security::x509_signing::tests::test_x509_extract_certificate_pem_keeps_first_only ... ok
+test server::security::x509_signing::tests::test_hsm_missing_library_field ... ok
+test server::security::x509_signing::tests::test_hsm_invalid_json_config ... ok
+test server::security::x509_signing::tests::test_x509_extract_certificate_pem_single_cert ... ok
+test server::security::x509_signing::tests::test_x509_extract_certificate_pem_strips_key ... ok
+test server::security::x509_signing::tests::test_x509_manager_creation ... ok
+test server::token_exchange::advanced_token_exchange::tests::test_delegation_link_creation ... ok
+test server::token_exchange::advanced_token_exchange::tests::test_config_creation ... ok
+test server::token_exchange::advanced_token_exchange::tests::test_exchange_context_creation ... ok
+test server::token_exchange::advanced_token_exchange::tests::test_exchange_request_creation ... ok
+test server::token_exchange::core::tests::test_exchange_scenario_determination ... ok
+test server::token_exchange::advanced_token_exchange::tests::test_jwt_key_functionality ... ok
+test server::token_exchange::core::tests::test_token_type_parsing ... ok
+test server::token_exchange::core::tests::test_token_exchange_manager_creation ... ok
+test server::token_exchange::token_exchange_common::tests::test_extract_scopes ... ok
+test server::token_exchange::token_exchange_common::tests::test_factory_manager_type_determination ... ok
+test server::token_exchange::token_exchange_common::tests::test_use_case_recommendations ... ok
+test server::security::x509_signing::tests::test_hsm_nonexistent_library_path ... ok
+test server::token_exchange::token_exchange_common::tests::test_normalize_token_type ... ok
+test server::token_exchange::token_exchange_common::tests::test_validation_utils_token_type ... ok
+test server::token_exchange::core::tests::test_invalid_grant_type ... ok
+test server::token_exchange::token_exchange_common::tests::test_validation_utils_grant_type ... ok
+test server::token_exchange::token_exchange_factory::tests::test_advanced_setup_guide ... ok
+test server::token_exchange::token_exchange_factory::tests::test_setup_guide_generation ... ok
+test server::token_exchange::token_exchange_factory::tests::test_basic_manager_creation ... ok
+test server::token_exchange::token_introspection::tests::test_client_credentials_extraction ... ok
+test server::token_exchange::token_introspection::tests::test_client_credentials_validation ... ok
+test server::token_exchange::token_introspection::tests::test_introspection_handler_request_parsing ... ok
+test server::token_exchange::token_introspection::tests::test_inactive_token_introspection ... ok
+test server::token_exchange::token_introspection::tests::test_metadata_generation ... ok
+test server::token_exchange::token_introspection::tests::test_token_introspection_response_creation ... ok
+test server::token_exchange::token_introspection::tests::test_rate_limiting ... ok
+test session::manager::tests::test_device_fingerprint_generation ... ok
+test session::manager::tests::test_risk_calculation ... ok
+test storage::core::tests::test_memory_storage ... ok
+test storage::core::tests::test_kv_storage ... ok
+test storage::core::tests::test_session_storage ... ok
+test storage::dashmap_memory::tests::test_basic_token_operations ... ok
+test storage::encryption::tests::test_encryption_roundtrip ... ok
+test storage::encryption::tests::test_key_generation ... ok
+test storage::encryption::tests::test_storage_encryption ... ok
+test storage::memory::tests::test_in_memory_session_operations ... ok
+test tenant::context::tests::test_tenant_activation ... ok
+test storage::memory::tests::test_in_memory_token_operations ... ok
+test tenant::context::tests::test_tenant_context_creation ... ok
+test tenant::context::tests::test_tenant_id_validation ... ok
+test testing::test_infrastructure::tests::test_environment_isolation ... ok
+test testing::test_infrastructure::tests::test_secure_random_generation ... ok
+test tenant::registry::tests::test_duplicate_tenant_registration ... ok
+test tenant::tests::test_tenant_registry_builder ... ok
+test testing::test_infrastructure::tests::test_secure_test_data_generation ... ok
+test tenant::registry::tests::test_tenant_activation_deactivation ... ok
+test tenant::registry::tests::test_tenant_creation_with_minimal_config ... ok
+test tenant::registry::tests::test_register_and_get_tenant ... ok
+test tenant::registry::tests::test_tenant_data_isolation ... ok
+test tokens::tests::test_auth_token_creation ... ok
+test tenant::registry::tests::test_list_tenants ... ok
+test tokens::tests::test_token_revocation ... ok
+test utils::crypto::tests::test_generate_hex_token ... ok
+test utils::crypto::tests::test_generate_secure_token ... ok
+test utils::crypto::tests::test_generate_token ... ok
+test utils::password::tests::test_password_strength ... ok
+test utils::string::tests::test_generate_id ... ok
+test utils::string::tests::test_generate_uuid ... ok
+test utils::string::tests::test_sanitize_string ... ok
+test utils::validation::tests::test_password_validation ... ok
+test tenant::registry::tests::test_concurrent_tenant_registration ... ok
+test ws_security::tests::test_certificate_header ... ok
+test ws_security::tests::test_password_digest ... ok
+test ws_security::tests::test_timestamp_creation ... ok
+test ws_security::tests::test_username_token_creation ... ok
+test ws_security::tests::test_xml_generation ... ok
+test ws_trust::tests::test_sts_issue_saml_token ... ok
+test ws_trust::tests::test_sts_issue_jwt_token ... ok
+test ws_trust::tests::test_sts_soap_request_generation ... ok
+test tokens::tests::test_token_expiry ... ok
+test utils::validation::tests::test_username_validation ... ok
+test utils::validation::tests::test_email_validation ... ok
+test security::timing_protection::tests::test_timing_safe_operation ... ok
+test distributed_rate_limiting::tests::test_in_memory_rate_limiter ... ok
+test server::oauth::par::tests::test_request_expiration ... ok
+test storage::memory::tests::test_in_memory_expiration ... ok
+test storage::dashmap_memory::tests::test_cleanup_expired ... ok
+test server::oauth::device::tests::test_expiration ... ok
+test utils::rate_limit::tests::test_cleanup ... ok
+test storage::dashmap_memory::tests::test_concurrent_operations_no_deadlock ... ok
+test storage::dashmap_memory::tests::test_kv_operations ... ok
+test storage::dashmap_memory::tests::test_session_operations ... ok
+test distributed_rate_limiting::tests::test_penalty_system ... ok
+test storage::dashmap_memory::tests::test_ttl_expiration ... ok
+test testing::test_infrastructure::tests::test_environment_guard ... ok
+test testing::utilities::test_failing_mock_storage ... ok
+test testing::utilities::test_mock_storage ... ok
+test testing::utilities::test_secret_loading_from_config ... ok
+test testing::utilities::test_secret_missing_returns_error ... ok
+test testing::utilities::test_secret_loading_from_env ... ok
+test utils::rate_limit::tests::test_rate_limiter ... ok
+test utils::password::tests::test_password_hashing ... ok
+test server::oidc::oidc_session_management::tests::test_session_validity ... ok
+test deployment::health::tests::test_http_health_check ... ok
+test server::oidc::oidc_advanced_jarm::tests::test_jwe_encrypt_decrypt_roundtrip ... ok
+test security::secure_utils::tests::test_password_hashing_security ... ok
+test security::secure_utils::tests::test_password_hashing_edge_cases ... ok
+
+test result: ok. 483 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.73s
+
+     Running unittests src\bin\oauth2_test_server.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\oauth2_test_server-35dfa1eda78ef6f7.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\security_audit.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_audit-afebe9174fb99d5a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\test_oauth2.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\test_oauth2-7e213763e35a50ac.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\code_quality_audit.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\code_quality_audit-a9900f8f047af917.exe)
+
+running 8 tests
+test test_no_todos_in_examples ... ok
+test test_examples_are_complete ... ok
+test test_audit_allow_dead_code_directives ... ok
+test test_no_unimplemented_in_source ... ok
+test test_audit_panics_in_source ... ok
+test test_no_todos_in_source_code ... ok
+test test_security_anti_patterns ... ok
+test test_no_hardcoded_secrets ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+     Running tests\comprehensive_api_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\comprehensive_api_tests-8df046bbd378872b.exe)
+
+running 50 tests
+test edge_case_tests::test_config_validation_edge_cases ... ok
+test framework_lifecycle_tests::test_framework_new_with_invalid_secret ... ok
+test framework_lifecycle_tests::test_framework_new_with_env_var_fallback ... ok
+test api_key_tests::test_validate_api_key_nonexistent ... ok
+test framework_lifecycle_tests::test_framework_initialization_success ... ok
+test framework_lifecycle_tests::test_new_framework_with_full_config ... ok
+test framework_lifecycle_tests::test_framework_double_initialization ... ok
+test mfa_tests::test_register_email_no_at_symbol ... ok
+test authentication_tests::test_authenticate_with_uninitialized_framework ... ok
+test edge_case_tests::test_memory_safety_with_large_configs ... ok
+test api_key_tests::test_validate_api_key_empty ... ok
+test edge_case_tests::test_concurrent_initialization ... ok
+test mfa_tests::test_register_email_invalid_domain ... ok
+test monitoring_tests::test_get_security_metrics ... ok
+test mfa_tests::test_register_email_invalid_format ... ok
+test mfa_tests::test_register_email_valid ... ok
+test method_registration_tests::test_register_multiple_methods ... ok
+test framework_lifecycle_tests::test_new_framework_with_minimal_config ... ok
+test mfa_tests::test_verify_sms_code_invalid_challenge ... ok
+test monitoring_tests::test_cleanup_expired_data ... ok
+test rate_limiting_tests::test_rate_limiting_disabled ... ok
+test method_registration_tests::test_register_method_overwrite ... ok
+test mfa_tests::test_register_email_empty ... ok
+test mfa_tests::test_initiate_email_challenge_success ... ok
+test method_registration_tests::test_register_password_method ... ok
+test mfa_tests::test_register_email_no_domain ... ok
+test token_management_tests::test_create_auth_token_success ... ok
+test mfa_tests::test_initiate_sms_challenge_success ... ok
+test mfa_tests::test_initiate_sms_challenge_empty_user ... ok
+test token_management_tests::test_validate_token_uninitialized_framework ... ok
+test session_tests::test_get_nonexistent_session ... ok
+test monitoring_tests::test_get_stats ... ok
+test user_management_tests::test_validate_display_name_valid ... ok
+test token_management_tests::test_token_manager_access ... ok
+test session_tests::test_delete_nonexistent_session ... ok
+test user_management_tests::test_validate_user_input_safe ... ok
+test session_tests::test_list_user_tokens_empty ... ok
+test rate_limiting_tests::test_rate_limiting_enabled ... ok
+test token_management_tests::test_create_auth_token_with_unknown_method ... ok
+test user_management_tests::test_validate_username_too_long ... ok
+test user_management_tests::test_validate_user_input_potentially_malicious ... ok
+test user_management_tests::test_validate_username_valid ... ok
+test user_management_tests::test_validate_username_empty ... ok
+test user_management_tests::test_validate_display_name_empty ... ok
+test authentication_tests::test_authenticate_with_unknown_method ... ok
+test authentication_tests::test_authenticate_api_key_empty_key ... ok
+test authentication_tests::test_authenticate_with_metadata ... ok
+test authentication_tests::test_authenticate_jwt_empty_token ... ok
+test authentication_tests::test_authenticate_password_empty_credentials ... ok
+test authentication_tests::test_authenticate_with_localhost_ip_warning ... ok
+
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests\critical_authentication_security.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\critical_authentication_security-25a0d32961d13804.exe)
+
+running 6 tests
+test test_session_management_security ... ok
+test test_user_id_generation_security ... ok
+test test_password_timing_attack_resistance ... ok
+test test_user_scope_authorization ... ok
+test test_authentication_requires_valid_password ... ok
+test test_authentication_injection_prevention ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.77s
+
+     Running tests\critical_security_detection.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\critical_security_detection-dda2d64c335dc29e.exe)
+
+running 7 tests
+test test_comprehensive_todo_audit ... ok
+test test_detect_hardcoded_scopes ... ok
+test test_detect_hardcoded_user123_vulnerability ... ok
+test test_detect_missing_client_secret_validation ... ok
+test test_detect_missing_refresh_token_validation ... ok
+test test_oauth2_implementation_completeness ... ok
+test test_security_audit_effectiveness ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\custom_storage_builder.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\custom_storage_builder-76d5a9b15793c419.exe)
+
+running 1 test
+test build_with_custom_storage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\edge_case_comprehensive_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\edge_case_comprehensive_tests-5b0af58916c69388.exe)
+
+running 24 tests
+test configuration_edge_cases::test_config_with_special_characters ... ok
+test configuration_edge_cases::test_config_with_extreme_values ... ok
+test concurrency_tests::test_concurrent_mfa_operations ... ok
+test security_edge_cases::test_input_validation_against_injection_attacks ... ok
+test error_handling_tests::test_invalid_configuration_handling ... ok
+test error_handling_tests::test_graceful_degradation_under_stress ... ok
+test configuration_edge_cases::test_reconfiguration_during_runtime ... ok
+test security_edge_cases::test_session_fixation_prevention ... ok
+test resource_management_tests::test_storage_backend_failure_handling ... ok
+test security_edge_cases::test_csrf_token_uniqueness ... ok
+test security_edge_cases::test_jwt_signature_tampering_detection ... ok
+test concurrency_tests::test_concurrent_permission_checking ... ok
+test resource_management_tests::test_large_scope_arrays ... ok
+test concurrency_tests::test_concurrent_token_creation_and_validation ... ok
+test resource_management_tests::test_memory_exhaustion_protection ... ok
+test authentication_edge_cases::test_authentication_during_framework_shutdown ... ok
+test authentication_edge_cases::test_concurrent_authentication_requests ... ok
+test authentication_edge_cases::test_authentication_with_very_long_inputs ... ok
+test security_edge_cases::test_timing_attack_resistance ... ok
+test error_handling_tests::test_partial_system_failure_recovery ... ok
+test authentication_edge_cases::test_authentication_with_null_bytes ... ok
+test test_comprehensive_edge_case_integration ... ok
+test authentication_edge_cases::test_malformed_jwt_tokens ... ok
+test authentication_edge_cases::test_authentication_with_unicode_edge_cases ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.19s
+
+     Running tests\edge_cases_comprehensive.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\edge_cases_comprehensive-2dac196d4010acea.exe)
+
+running 9 tests
+test test_concurrent_data_races ... ok
+test test_session_expiration_edge_cases ... ok
+test test_extreme_input_sizes ... ok
+test test_error_propagation_consistency ... ok
+test test_framework_reinitialization ... ok
+test test_memory_cleanup_edge_cases ... ok
+test test_boundary_value_analysis ... ok
+test test_special_character_handling ... ok
+test test_token_validation_edge_cases ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.68s
+
+     Running tests\enterprise_auth_integration.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\enterprise_auth_integration-0c7517192ad3bdad.exe)
+
+running 5 tests
+test tests::test_saml_assertion_attributes ... ok
+test tests::test_token_validation_and_cancellation ... ok
+test tests::test_ws_security_password_types ... ok
+test tests::test_ws_trust_jwt_tokens ... ok
+test tests::test_complete_enterprise_auth_flow ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\error_path_comprehensive.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\error_path_comprehensive-a7b062494f7f2200.exe)
+
+running 15 tests
+test test_concurrent_operation_safety ... ok
+test test_memory_pressure_scenarios ... ok
+test test_invalid_config_handling ... ok
+test test_boundary_conditions ... ok
+test test_credential_validation_edge_cases ... ok
+test test_resource_exhaustion_recovery ... ok
+test test_error_message_consistency ... ok
+test test_invalid_jwt_token_handling ... ok
+test test_cleanup_operations_error_handling ... ok
+test test_malformed_input_handling ... ok
+test test_authentication_method_error_paths ... ok
+test test_session_storage_error_recovery ... ok
+test test_double_initialization_error ... ok
+test test_uninitialized_framework_operations ... ok
+test test_token_expiration_edge_cases ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.41s
+
+     Running tests\final_comprehensive_security_audit.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\final_comprehensive_security_audit-32ce3fe78a2d7084.exe)
+
+running 2 tests
+test test_previous_audit_effectiveness ... ok
+test test_complete_security_audit_failure_demonstration ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\integration_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\integration_tests-f07f6a2c6b19d5c8.exe)
+
+running 6 tests
+test test_database_migration_integration ... ok
+test test_comprehensive_integration ... ok
+test test_all_integrations_comprehensive ... ok
+test test_device_fingerprinting_integration ... ok
+test test_no_dead_code_in_integrations ... ok
+test test_resource_hierarchy_integration ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\multi_tenant_integration.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\multi_tenant_integration-b79e08f5092a23e8.exe)
+
+running 21 tests
+test multi_tenant_tests::test_tenant_id_validation_comprehensive ... ok
+test multi_tenant_tests::test_builder_with_custom_config ... ok
+test multi_tenant_tests::test_nonexistent_tenant_operations ... ok
+test multi_tenant_tests::test_builder_creates_empty_registry ... ok
+test multi_tenant_tests::test_deactivate_already_inactive_tenant ... ok
+test multi_tenant_tests::test_rapid_activation_deactivation ... ok
+test multi_tenant_tests::test_duplicate_tenant_registration_fails ... ok
+test multi_tenant_tests::test_tenant_lifecycle_with_framework_ops ... ok
+test multi_tenant_tests::test_per_tenant_configuration ... ok
+test multi_tenant_tests::test_complete_tenant_lifecycle ... ok
+test multi_tenant_tests::test_activate_already_active_tenant ... ok
+test multi_tenant_tests::test_tenant_metadata_persistence ... ok
+test multi_tenant_tests::test_remove_and_reregister_tenant ... ok
+test multi_tenant_tests::test_multiple_tenants_isolation ... ok
+test multi_tenant_tests::test_multi_tenant_saas_scenario ... ok
+test multi_tenant_tests::test_list_all_tenant_ids ... ok
+test multi_tenant_tests::test_concurrent_read_access_to_frameworks ... ok
+test multi_tenant_tests::test_list_active_tenants ... ok
+test multi_tenant_tests::test_concurrent_mixed_operations ... ok
+test multi_tenant_tests::test_concurrent_tenant_registration ... ok
+test multi_tenant_tests::test_large_number_of_tenants ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\oauth21_e2e_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\oauth21_e2e_tests-87bdc37cd15e3b15.exe)
+
+running 9 tests
+test test_e2e_par_to_authorization_flow ... ok
+test test_e2e_par_expiration ... ok
+test test_e2e_par_with_pkce_full_flow ... ok
+test test_e2e_device_authorization_denial ... ok
+test test_e2e_device_user_code_lookup ... ok
+test test_e2e_device_authorization_slow_down ... ok
+test test_e2e_device_authorization_complete_flow ... ok
+test test_e2e_multiple_par_requests ... ok
+test test_e2e_token_lifecycle ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\oauth2_compilation_test.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\oauth2_compilation_test-53de8bf4adb5c8f2.exe)
+
+running 1 test
+test test_oauth2_module_compilation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\oauth2_integration_test.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\oauth2_integration_test-45bf2e16ec025237.exe)
+
+running 7 tests
+test oauth2_integration_tests::test_oauth2_authorization_invalid_response_type ... ok
+test oauth2_integration_tests::test_oauth2_revoke_endpoint ... ok
+test oauth2_integration_tests::test_oauth2_authorization_endpoint ... ok
+test oauth2_integration_tests::test_oauth2_invalid_pkce_fails ... ok
+test oauth2_integration_tests::test_oauth2_token_endpoint_authorization_code ... ok
+test oauth2_integration_tests::test_oauth2_pkce_s256_validation ... ok
+test oauth2_integration_tests::test_oauth2_userinfo_endpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+
+     Running tests\oauth_advanced_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\oauth_advanced_tests-5c03d4058979ce83.exe)
+
+running 19 tests
+test test_introspect_token_invalid_basic_auth ... ok
+test test_par_with_pkce ... ok
+test test_par_missing_redirect_uri ... ok
+test test_introspect_token_missing_auth ... ok
+test test_par_invalid_response_type ... ok
+test test_introspect_token_valid_basic_auth ... ok
+test test_par_with_state ... ok
+test test_par_empty_scope ... ok
+test test_introspect_token_post_body_auth ... ok
+test test_par_missing_client_id ... ok
+test test_introspect_token_with_hint ... ok
+test test_introspect_token_empty_token ... ok
+test test_par_valid_request ... ok
+test test_revoke_endpoint_persists_jti_revocation_key ... ok
+test test_introspect_token_bearer_auth_rejected ... ok
+test test_par_persists_request_params_in_storage ... ok
+test test_par_with_nonce ... ok
+test test_par_multiple_requests_unique_uris ... ok
+test test_introspect_reports_revoked_token_as_inactive ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\oauth_device_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\oauth_device_tests-b1568b0b3e598066.exe)
+
+running 14 tests
+test test_device_auth_invalid_user_code ... ok
+test test_device_auth_multiple_scopes ... ok
+test test_device_auth_validation_missing_client_id ... ok
+test test_device_auth_invalid_device_code ... ok
+test test_device_auth_get_by_user_code ... ok
+test test_device_auth_verification_uri_complete ... ok
+test test_device_auth_creation ... ok
+test test_device_auth_authorize_flow ... ok
+test test_device_auth_user_code_format ... ok
+test test_device_auth_slow_down ... ok
+test test_device_auth_deny_flow ... ok
+test test_device_auth_pending_status ... ok
+test test_device_auth_authorize_expired_code ... ok
+test test_device_auth_expiration ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests\oauth_introspection_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\oauth_introspection_tests-f18e2e634e5c7f7e.exe)
+
+running 9 tests
+test test_introspect_invalid_token ... ok
+test test_introspect_expired_oauth2_token ... ok
+test test_token_refresh ... ok
+test test_introspection_endpoint_integration ... ok
+test test_multiple_scopes_handling ... ok
+test test_introspect_oauth2_opaque_token ... ok
+test test_token_manager_validation ... ok
+test test_introspect_valid_jwt_token ... ok
+test test_introspect_expired_jwt_token ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests\oauth_par_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\oauth_par_tests-62fa3820bfad09d0.exe)
+
+running 9 tests
+test test_par_validation_invalid_redirect_uri ... ok
+test test_par_validation_missing_client_id ... ok
+test test_par_single_use ... ok
+test test_par_invalid_request_uri ... ok
+test test_par_with_pkce ... ok
+test test_par_multiple_scopes ... ok
+test test_par_additional_params ... ok
+test test_par_store_and_consume ... ok
+test test_par_expiration ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests\profile_utils_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\profile_utils_tests-a568884a938408c9.exe)
+
+running 7 tests
+test test_extract_profile_github ... ok
+test test_extract_profile_custom ... ok
+test test_extract_profile_google ... ok
+test test_to_auth_token ... ok
+test test_user_profile_builder ... ok
+test test_user_profile_display_name ... ok
+test test_from_id_token ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\rfc_compliance_final.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\rfc_compliance_final-87af27a27d9ccb1c.exe)
+
+running 8 tests
+test test_display_rfc_implementation_summary ... ok
+test test_oauth2_rfc6749_foundation ... ok
+test test_storage_oauth2_support ... ok
+test test_token_manager_hmac_compliance ... ok
+test test_jwt_rfc7519_compliance ... ok
+test test_comprehensive_rfc_integration ... ok
+test test_oauth2_scope_handling ... ok
+test test_rfc_test_suite_functionality ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\rfc_compliance_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\rfc_compliance_tests-638d10461d6897de.exe)
+
+running 5 tests
+test oauth2_basic_tests::test_grant_types_available ... ok
+test pkce_tests::test_pkce_generation ... ok
+test oauth2_basic_tests::test_oauth2_server_creation ... ok
+test jwt_tests::test_jwt_method_creation ... ok
+test jwt_tests::test_framework_with_jwt ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\security_comprehensive.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_comprehensive-3e0bc8b1728f35c2.exe)
+
+running 13 tests
+test test_security_audit_documentation_exists ... ok
+test test_jwt_signature_validation_security ... ok
+test test_concurrent_session_limits ... ok
+test test_unicode_normalization_attacks ... ok
+test test_input_injection_attacks ... ok
+test test_rate_limiting_boundary_conditions ... ok
+test test_jwt_manipulation_attacks ... ok
+test test_resource_exhaustion_protection ... ok
+test test_error_information_disclosure ... ok
+test test_session_hijacking_prevention ... ok
+test test_timing_attack_resistance ... ok
+test test_session_validation_strictness ... ok
+test test_dos_protection_mechanisms ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.35s
+
+     Running tests\security_dos_protection_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_dos_protection_tests-96dc056adb2c0c44.exe)
+
+running 10 tests
+test test_distributed_rate_limiter_dos_protection ... ok
+test test_connection_flooding_protection ... ok
+test test_system_stability_under_load ... ok
+test test_concurrent_request_handling ... ok
+test test_request_size_limit_enforcement ... ok
+test test_recovery_after_attack ... ok
+test test_mixed_attack_scenarios ... ok
+test test_slow_request_attack_protection ... ok
+test test_request_timeout_protection ... ok
+test test_resource_exhaustion_protection has been running for over 60 seconds
+test test_resource_exhaustion_protection ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 108.04s
+
+     Running tests\security_ip_blacklisting_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_ip_blacklisting_tests-3cfe4cdc24c6d065.exe)
+
+running 12 tests
+test test_multiple_ip_blacklisting ... ok
+test test_basic_ip_blacklisting ... ok
+test test_integration_with_dos_protection ... ok
+test test_error_handling ... ok
+test test_blacklist_reason_tracking ... ok
+test test_concurrent_blacklist_operations ... ok
+test test_ipv4_and_ipv6_support ... ok
+test test_blacklist_persistence_design ... ok
+test test_private_vs_public_ip_handling ... ok
+test test_ip_address_validation ... ok
+test test_security_statistics_tracking ... ok
+test test_blacklist_isolation ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\security_mfa_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_mfa_tests-25c6d47c7ab5b680.exe)
+
+running 18 tests
+test test_secure_mfa_code_generation ... ok
+test test_totp_secret_validation ... ok
+test test_totp_configuration_flexibility ... ok
+test test_mfa_unenrollment_security ... ok
+test test_qr_code_url_generation ... ok
+test test_backup_codes_security ... ok
+test test_totp_code_generation ... ok
+test test_mfa_method_types ... ok
+test test_mfa_challenge_expiration ... ok
+test test_totp_secret_generation ... ok
+test test_totp_code_verification_with_time_window ... ok
+test test_totp_replay_attack_prevention ... ok
+test test_totp_invalid_code_rejection ... ok
+test test_mfa_challenge_creation_and_verification ... ok
+test test_mfa_rate_limiting ... ok
+test test_mfa_attempt_limiting ... ok
+test test_mfa_complete_enrollment_flow ... ok
+test test_concurrent_mfa_operations ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\security_rate_limiting_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_rate_limiting_tests-dafe0581f899639f.exe)
+
+running 12 tests
+test test_per_user_rate_limiting ... ok
+test test_dos_protection_via_rate_limiting ... ok
+test test_rate_limit_key_isolation ... ok
+test test_concurrent_rate_limiting ... ok
+test test_rate_limit_burst_allowance ... ok
+test test_basic_ip_rate_limiting ... ok
+test test_rate_limit_cleanup ... ok
+test test_rate_limit_window_reset ... ok
+test test_rate_limit_sliding_window ... ok
+test test_rate_limit_with_penalty ... ok
+test test_distributed_rate_limiter_token_bucket ... ok
+test test_device_auth_polling_rate_limit ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.01s
+
+     Running tests\security_validation_comprehensive.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_validation_comprehensive-cd3b800c59a8d7e1.exe)
+
+running 21 tests
+test test_login_requires_username ... ok
+test test_oauth2_authorize_requires_client_id ... ok
+test test_oauth2_token_exchange_invalid_grant_type ... ok
+test test_login_requires_password ... ok
+test test_refresh_token_rejects_invalid_token ... ok
+test test_oauth2_authorize_requires_redirect_uri ... ok
+test test_api_key_creation_requires_auth ... ok
+test test_registration_rejects_weak_password ... ok
+test test_registration_requires_username ... ok
+test test_registration_requires_email ... ok
+test test_registration_requires_password ... ok
+test test_oauth2_authorize_invalid_response_type ... ok
+test test_refresh_token_requires_token ... ok
+test test_registration_rejects_invalid_email ... ok
+test test_login_with_invalid_credentials ... ok
+test test_registration_success ... ok
+test test_registration_rejects_duplicate_email ... ok
+test test_registration_rejects_duplicate_username ... ok
+test test_refresh_token_success ... ok
+test test_successful_login_flow ... ok
+test test_refresh_token_rejects_access_token ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.94s
+
+     Running tests\security_validation_critical.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_validation_critical-ecfa448025cee8cd.exe)
+
+running 2 tests
+test test_no_insecure_payload_extraction ... ok
+test test_jwt_signature_validation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\security_validation_test.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_validation_test-698cd85b501839e9.exe)
+
+running 2 tests
+test test_no_insecure_payload_extraction ... ok
+test test_jwt_signature_bypass_prevention ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\security_vulnerability_detection.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\security_vulnerability_detection-1688fa9fdd23ffe3.exe)
+
+running 16 tests
+test test_constant_time_comparison ... ok
+test test_entropy_validation ... ok
+test integration_security_tests::test_complete_oauth2_flow_security ... ok
+test test_scope_escalation_prevention ... ok
+test integration_security_tests::test_token_expiration_enforcement ... ok
+test integration_security_tests::test_rate_limiting_protection ... ok
+test test_cross_client_token_isolation ... ok
+test test_authentication_error_types ... ok
+test test_refresh_token_validation_required ... ok
+test test_timing_attack_resistance ... ok
+test test_session_invalidation_on_logout ... ok
+test test_user_identity_isolation ... ok
+test test_x509_certificate_generation ... ok
+test test_no_security_todos_in_critical_paths ... ok
+test test_no_hardcoded_credentials_in_source ... ok
+test test_client_secret_validation_required ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.37s
+
+     Running tests\simple_comprehensive_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\simple_comprehensive_tests-4055475a2c22b090.exe)
+
+running 24 tests
+test monitoring_tests::test_statistics ... ok
+test monitoring_tests::test_cleanup_expired_data ... ok
+test basic_framework_tests::test_minimal_config ... ok
+test csrf_tests::test_csrf_token_operations ... ok
+test monitoring_tests::test_security_metrics ... ok
+test validation_tests::test_username_validation ... ok
+test mfa_tests::test_mfa_verification ... ok
+test basic_framework_tests::test_framework_creation_and_initialization ... ok
+test mfa_tests::test_email_registration ... ok
+test mfa_tests::test_email_challenge ... ok
+test mfa_tests::test_sms_challenge ... ok
+test token_tests::test_token_creation ... ok
+test validation_tests::test_password_strength_validation ... ok
+test validation_tests::test_user_input_validation ... ok
+test token_tests::test_token_with_unknown_method ... ok
+test session_tests::test_session_operations ... ok
+test validation_tests::test_display_name_validation ... ok
+test token_tests::test_token_validation ... ok
+test authentication_tests::test_unknown_authentication_method ... ok
+test authentication_tests::test_api_key_authentication ... ok
+test authentication_tests::test_password_authentication ... ok
+test authentication_tests::test_jwt_authentication ... ok
+test test_comprehensive_integration ... ok
+test authentication_tests::test_empty_credentials ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests\simple_enterprise_test.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\simple_enterprise_test-639a8821a6a13129.exe)
+
+running 8 tests
+test test_saml_assertion_validation ... ok
+test test_saml_assertion_creation ... ok
+test test_ws_security_timestamp ... ok
+test test_ws_security_username_token ... ok
+test test_ws_trust_soap_request_generation ... ok
+test test_ws_trust_jwt_token_issuance ... ok
+test test_ws_trust_saml_token_issuance ... ok
+test test_complete_enterprise_workflow ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\simple_integration_test.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\simple_integration_test-1f494affe061c8a5.exe)
+
+running 4 tests
+test test_migration_system_works ... ok
+test test_integration_success_summary ... ok
+test test_device_fingerprinting_works ... ok
+test test_resource_hierarchy_works ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\simplified_comprehensive_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\simplified_comprehensive_tests-6e19b941e1760882.exe)
+
+running 28 tests
+test edge_case_tests::test_user_profile_with_minimal_data ... ok
+test user_profile_tests::test_user_profile_creation ... ok
+test token_tests::test_token_metadata ... ok
+test session_tests::test_session_creation ... ok
+test token_tests::test_token_expiration ... ok
+test memory_storage_tests::test_token_deletion ... ok
+test error_handling_tests::test_delete_nonexistent_session ... ok
+test user_profile_tests::test_user_profile_additional_data ... ok
+test edge_case_tests::test_empty_user_id_tokens ... ok
+test integration_tests::test_user_sessions_listing ... ok
+test memory_storage_tests::test_key_value_storage ... ok
+test session_tests::test_session_data ... ok
+test memory_storage_tests::test_session_deletion ... ok
+test token_tests::test_token_creation ... ok
+test integration_tests::test_token_access_by_access_token ... ok
+test edge_case_tests::test_token_with_empty_scopes ... ok
+test error_handling_tests::test_nonexistent_token_retrieval ... ok
+test edge_case_tests::test_token_with_no_user_profile ... ok
+test memory_storage_tests::test_session_storage_and_retrieval ... ok
+test error_handling_tests::test_delete_nonexistent_token ... ok
+test error_handling_tests::test_nonexistent_session_retrieval ... ok
+test memory_storage_tests::test_token_storage_and_retrieval ... ok
+test auth_framework_tests::test_auth_framework_initialization ... ok
+test memory_storage_tests::test_list_user_tokens ... ok
+test integration_tests::test_bulk_token_operations ... ok
+test auth_framework_tests::test_jwt_method_registration ... ok
+test integration_tests::test_full_auth_workflow ... ok
+test edge_case_tests::test_concurrent_token_operations ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\test_coverage_gaps.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\test_coverage_gaps-3949bfdb8744561f.exe)
+
+running 6 tests
+test demonstrate_boundary_condition_gaps ... ok
+test demonstrate_input_validation_gaps ... ok
+test demonstrate_error_propagation_gaps ... ok
+test demonstrate_storage_failure_gap ... ok
+test demonstrate_concurrency_gap ... ok
+test demonstrate_uninitialized_framework_gap ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+
+     Running tests\test_helpers.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\test_helpers-03188cd9b05999b7.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\token_edge_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\token_edge_tests-e564cc2dc68831b8.exe)
+
+running 3 tests
+test tests::test_token_type_and_subject ... ok
+test tests::test_token_revocation ... ok
+test tests::test_token_expiry ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.00s
+
+     Running tests\token_exchange_integration.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\token_exchange_integration-7775472185cf6bd4.exe)
+
+running 7 tests
+test test_performance_characteristics ... ok
+test test_factory_recommendations ... ok
+test test_manager_type_determination ... ok
+test test_setup_instructions ... ok
+test test_validation_utilities ... ok
+test test_advanced_manager_trait_implementation ... ok
+test test_basic_manager_trait_implementation ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\vulnerability_testing_analysis.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\vulnerability_testing_analysis-c248862262790cc5.exe)
+
+running 10 tests
+test comprehensive_testing_strategy::test_exhaustive_mfa_testing_strategy ... ok
+test vulnerability_analysis::test_mfa_vulnerability_detection_analysis ... ok
+test vulnerability_analysis::test_unimplemented_functionality_analysis ... ok
+test security_impact_analysis::test_comprehensive_testing_effectiveness ... ok
+test security_impact_analysis::test_vulnerability_impact_analysis ... ok
+test vulnerability_analysis::test_registration_vulnerability_analysis ... ok
+test comprehensive_testing_strategy::test_security_property_testing ... ok
+test vulnerability_analysis::test_security_testing_checklist ... ok
+test vulnerability_analysis::test_totp_secret_vulnerability_analysis ... ok
+test comprehensive_testing_strategy::test_static_analysis_patterns ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\webauthn_saml_api_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\webauthn_saml_api_tests-669c0a05e2242b62.exe)
+
+running 5 tests
+test test_webauthn_credential_list ... ok
+test test_webauthn_registration_init ... ok
+test test_saml_metadata ... ok
+test test_saml_idp_list ... ok
+test test_saml_sso_initiation ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\working_comprehensive_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\working_comprehensive_tests-6a716ad4fb913c92.exe)
+
+running 13 tests
+test test_credential_types ... ok
+test test_session_management ... ok
+test test_framework_creation_and_initialization ... ok
+test test_api_key_management ... ok
+test test_error_handling ... ok
+test test_method_registration_all_types ... ok
+test test_cleanup_operations ... ok
+test test_validation_functions ... ok
+test test_end_to_end_integration ... ok
+test test_token_operations ... ok
+test test_mfa_challenge_handling ... ok
+test test_authentication_flows ... ok
+test test_mfa_operations ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.83s
+
+     Running tests\working_integration_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\working_integration_tests-ec1a3b612544b236.exe)
+
+running 5 tests
+test test_device_info_creation ... ok
+test test_memory_storage_basic_operations ... ok
+test test_permission_checker_basic_functionality ... ok
+test test_jwt_token_lifecycle ... ok
+test test_basic_auth_framework_integration ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests auth_framework
+
+running 41 tests
+test src\auth.rs - auth::AuthFramework (line 108) ... ignored
+test src\auth.rs - auth::AuthFramework::get_monitoring_manager (line 2792) ... ignored
+test src\auth.rs - auth::AuthFramework::get_security_manager (line 2812) ... ignored
+test src\auth.rs - auth::SecurityAuditStats::requires_immediate_attention (line 3646) ... ignored
+test src\auth.rs - auth::SecurityAuditStats::security_alert_message (line 3679) ... ignored
+test src\auth_modular\mfa\mod.rs - auth_modular::mfa::MfaManager (line 66) ... ignored
+test src\auth_modular\mod.rs - auth_modular (line 35) ... ignored
+test src\builders.rs - builders (line 34) ... ignored
+test src\builders.rs - builders (line 51) ... ignored
+test src\distributed.rs - distributed (line 15) ... ignored
+test src\errors.rs - errors (line 28) ... ignored
+test src\errors.rs - errors::AuthError (line 101) ... ignored
+test src\methods\client_cert\mod.rs - methods::client_cert::ClientCertAuthMethod (line 149) ... ignored
+test src\methods\passkey\mod.rs - methods::passkey (line 52) ... ignored
+test src\methods\passkey\mod.rs - methods::passkey::PasskeyAuthMethod (line 207) ... ignored
+test src\migration\executors.rs - migration::executors::execute_migration_plan_with_role_system (line 79) ... ignored
+test src\builders.rs - builders (line 10) - compile ... ok
+test src\server\core\common_jwt.rs - server::core::common_jwt::JwtManager (line 173) ... ignored
+test src\server\core\common_validation.rs - server::core::common_validation::collect_validation_errors (line 381) ... ignored
+test src\server\core\federated_authentication_orchestration.rs - server::core::federated_authentication_orchestration (line 36) ... ignored
+test src\server\core\stepped_up_auth.rs - server::core::stepped_up_auth (line 24) ... ignored
+test src\server\jwt\private_key_jwt.rs - server::jwt::private_key_jwt (line 19) ... ignored
+test src\server\oauth\rich_authorization_requests.rs - server::oauth::rich_authorization_requests (line 32) ... ignored
+test src\security\presets.rs - security::presets (line 38) - compile ... ok
+test src\server\oidc\oidc_advanced_jarm.rs - server::oidc::oidc_advanced_jarm (line 25) ... ignored
+test src\security\presets.rs - security::presets (line 15) - compile ... ok
+test src\server\oidc\oidc_enhanced_ciba.rs - server::oidc::oidc_enhanced_ciba (line 24) ... ignored
+test src\lib.rs - (line 30) - compile ... ok
+test src\server\oidc\oidc_error_extensions.rs - server::oidc::oidc_error_extensions (line 25) ... ignored
+test src\server\oidc\oidc_user_registration.rs - server::oidc::oidc_user_registration (line 30) ... ignored
+test src\server\security\caep_continuous_access.rs - server::security::caep_continuous_access (line 30) ... ignored
+test src\prelude.rs - prelude (line 58) - compile ... ok
+test src\server\security\mod.rs - server::security (line 42) ... ignored
+test src\server\token_exchange\advanced_token_exchange.rs - server::token_exchange::advanced_token_exchange (line 37) ... ignored
+test src\server\token_exchange\core.rs - server::token_exchange::core (line 32) ... ignored
+test src\tokens\mod.rs - tokens::TokenManager::new_rsa (line 467) ... ignored
+test src\prelude.rs - prelude (line 7) ... ok
+test src\security\secure_utils.rs - security::secure_utils::constant_time_compare (line 295) ... ok
+test src\security\secure_utils.rs - security::secure_utils::generate_secure_token (line 332) ... ok

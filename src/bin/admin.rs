@@ -73,7 +73,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load configuration
     let settings = load_config(&args.config, &args.env_prefix).await?;
-    let app_state = AppState::new(settings)?;
+
+    // Build an AuthFramework from the loaded configuration so that admin GUI
+    // handlers can query live storage (users, audit events, etc.).
+    let auth_framework = {
+        let mut af = auth_framework::AuthFramework::new(settings.auth.clone());
+        // Initialise storage connections; ignore errors so the admin CLI can
+        // still function even when no storage backend is reachable.
+        if let Err(e) = af.initialize().await {
+            tracing::warn!(error = %e, "AuthFramework initialisation failed; storage queries will return empty results");
+        }
+        std::sync::Arc::new(af)
+    };
+
+    let app_state = AppState::new(settings)?.with_auth_framework(auth_framework);
 
     match args.interface {
         Interface::Cli { command } => {

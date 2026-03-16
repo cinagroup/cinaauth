@@ -31,6 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         host: "127.0.0.1".to_string(),
         port: 8080,
         enable_cors: true,
+        allowed_origins: vec!["http://localhost:3000".to_string()],
         max_body_size: 1024 * 1024, // 1MB
         enable_tracing: true,
     };

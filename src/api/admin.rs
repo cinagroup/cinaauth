@@ -12,6 +12,54 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
+// ---------------------------------------------------------------------------
+// Helper: load all user IDs from the global index
+// ---------------------------------------------------------------------------
+async fn load_user_ids(
+    storage: &std::sync::Arc<dyn crate::storage::AuthStorage>,
+) -> Vec<String> {
+    match storage.get_kv("users:index").await {
+        Ok(Some(bytes)) => serde_json::from_slice(&bytes).unwrap_or_default(),
+        _ => vec![],
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: load a single user record by user_id and convert to UserListItem
+// ---------------------------------------------------------------------------
+async fn load_user_item(
+    storage: &std::sync::Arc<dyn crate::storage::AuthStorage>,
+    user_id: &str,
+) -> Option<UserListItem> {
+    let key = format!("user:{}", user_id);
+    let bytes = storage.get_kv(&key).await.ok()??;
+    let data: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+
+    let username = data["username"].as_str()?.to_string();
+    let email = data["email"].as_str().unwrap_or("").to_string();
+    let roles: Vec<String> = data["roles"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_else(|| vec!["user".to_string()]);
+    let active = data["active"].as_bool().unwrap_or(true);
+    let created_at = data["created_at"].as_str().unwrap_or("").to_string();
+    let last_login = data["last_login"].as_str().map(|s| s.to_string());
+
+    Some(UserListItem {
+        id: user_id.to_string(),
+        username,
+        email,
+        roles,
+        active,
+        created_at,
+        last_login,
+    })
+}
+
 /// User list item
 #[derive(Debug, Serialize)]
 pub struct UserListItem {
@@ -102,47 +150,47 @@ pub async fn list_users(
         Some(token) => {
             match validate_api_token(&state.auth_framework, &token).await {
                 Ok(auth_token) => {
-                    // Check admin permissions
                     if !auth_token.roles.contains(&"admin".to_string()) {
                         return ApiResponse::<UserListResponse>::forbidden_typed();
                     }
 
-                    // In a real implementation, fetch users from storage with pagination
-                    let total_users = 150u64; // This would come from a count query in real implementation
-                    let _offset = (query.page - 1) * query.limit;
+                    let storage = state.auth_framework.storage();
+                    let all_ids = load_user_ids(&storage).await;
 
-                    // Validate pagination parameters
+                    let mut users: Vec<UserListItem> = Vec::new();
+                    for id in &all_ids {
+                        if let Some(item) = load_user_item(&storage, id).await {
+                            if let Some(ref search) = query.search {
+                                let s = search.to_lowercase();
+                                if !item.username.to_lowercase().contains(&s)
+                                    && !item.email.to_lowercase().contains(&s)
+                                {
+                                    continue;
+                                }
+                            }
+                            if let Some(ref role) = query.role {
+                                if !item.roles.contains(role) {
+                                    continue;
+                                }
+                            }
+                            if let Some(filter_active) = query.active {
+                                if item.active != filter_active {
+                                    continue;
+                                }
+                            }
+                            users.push(item);
+                        }
+                    }
+
+                    let total_users = users.len() as u64;
                     let page = if query.page == 0 { 1 } else { query.page };
-                    let limit = if query.limit == 0 {
-                        20
-                    } else {
-                        query.limit.min(100)
-                    }; // Cap at 100 items per page
-
-                    // Calculate total pages
+                    let limit = if query.limit == 0 { 20 } else { query.limit.min(100) };
+                    let offset = ((page - 1) * limit) as usize;
                     let total_pages = ((total_users as f64) / (limit as f64)).ceil() as u32;
                     let total_pages = if total_pages == 0 { 1 } else { total_pages };
 
-                    let users = vec![
-                        UserListItem {
-                            id: "user_1".to_string(),
-                            username: "admin@example.com".to_string(),
-                            email: "admin@example.com".to_string(),
-                            roles: vec!["admin".to_string()],
-                            active: true,
-                            created_at: "2024-01-01T00:00:00Z".to_string(),
-                            last_login: Some("2024-08-17T10:30:00Z".to_string()),
-                        },
-                        UserListItem {
-                            id: "user_2".to_string(),
-                            username: "user@example.com".to_string(),
-                            email: "user@example.com".to_string(),
-                            roles: vec!["user".to_string()],
-                            active: true,
-                            created_at: "2024-01-02T00:00:00Z".to_string(),
-                            last_login: Some("2024-08-16T15:45:00Z".to_string()),
-                        },
-                    ];
+                    let page_users: Vec<UserListItem> =
+                        users.into_iter().skip(offset).take(limit as usize).collect();
 
                     let pagination = Pagination {
                         page,
@@ -151,12 +199,9 @@ pub async fn list_users(
                         pages: total_pages,
                     };
 
-                    let response = UserListResponse { users, pagination };
-
-                    ApiResponse::success(response)
+                    ApiResponse::success(UserListResponse { users: page_users, pagination })
                 }
                 Err(e) => {
-                    // Convert AuthError to typed response
                     let error_response = ApiResponse::<()>::from(e);
                     ApiResponse::<UserListResponse> {
                         success: error_response.success,
@@ -185,9 +230,37 @@ pub async fn create_user(
         );
     }
 
-    if req.password.len() < 8 {
+    // Validate username format — same rules as the public registration endpoint.
+    if crate::utils::validation::validate_username(&req.username).is_err() {
         return ApiResponse::<UserListItem>::validation_error_typed(
-            "Password must be at least 8 characters long",
+            "Invalid username: must be 3-50 characters, start with a letter, and contain only letters, numbers, underscores, or hyphens",
+        );
+    }
+
+    // Enforce length limits on optional name fields.
+    if req.first_name.as_deref().is_some_and(|n| n.len() > 100) {
+        return ApiResponse::<UserListItem>::validation_error_typed(
+            "First name must be 100 characters or fewer",
+        );
+    }
+    if req.last_name.as_deref().is_some_and(|n| n.len() > 100) {
+        return ApiResponse::<UserListItem>::validation_error_typed(
+            "Last name must be 100 characters or fewer",
+        );
+    }
+
+    // Validate email format for consistency with the public registration endpoint.
+    if crate::utils::validation::validate_email(&req.email).is_err() {
+        return ApiResponse::<UserListItem>::validation_error_typed("Invalid email format");
+    }
+
+    // SECURITY (M-12): Use the same password validation as the public register endpoint
+    // so that admin-created accounts cannot bypass complexity requirements.
+    if let Err(e) = crate::utils::validation::validate_password(&req.password) {
+        // Return a generic message to avoid leaking internal validation rule details.
+        tracing::warn!("Admin create_user password validation failed: {e}");
+        return ApiResponse::<UserListItem>::validation_error_typed(
+            "Password does not meet complexity requirements",
         );
     }
 
@@ -200,24 +273,51 @@ pub async fn create_user(
                         return ApiResponse::forbidden_typed();
                     }
 
-                    // In a real implementation:
-                    // 1. Check if username/email already exists
-                    // 2. Hash password
-                    // 3. Create user in storage
-                    // 4. Send welcome email
-
-                    let new_user = UserListItem {
-                        id: format!("user_{}", chrono::Utc::now().timestamp()),
-                        username: req.username,
-                        email: req.email,
-                        roles: req.roles,
-                        active: req.active,
-                        created_at: chrono::Utc::now().to_rfc3339(),
-                        last_login: None,
-                    };
-
-                    tracing::info!("New user created: {}", new_user.id);
-                    ApiResponse::success(new_user)
+                    match state
+                        .auth_framework
+                        .register_user(&req.username, &req.email, &req.password)
+                        .await
+                    {
+                        Ok(user_id) => {
+                            if !(req.roles.is_empty() || req.roles.len() == 1 && req.roles[0] == "user")
+                            {
+                                let _ = state
+                                    .auth_framework
+                                    .update_user_roles(&user_id, &req.roles)
+                                    .await;
+                            }
+                            if !req.active {
+                                let _ = state
+                                    .auth_framework
+                                    .set_user_active(&user_id, false)
+                                    .await;
+                            }
+                            let new_user = UserListItem {
+                                id: user_id.clone(),
+                                username: req.username.clone(),
+                                email: req.email.clone(),
+                                roles: if req.roles.is_empty() {
+                                    vec!["user".to_string()]
+                                } else {
+                                    req.roles.clone()
+                                },
+                                active: req.active,
+                                created_at: chrono::Utc::now().to_rfc3339(),
+                                last_login: None,
+                            };
+                            tracing::info!("Admin created user: {} ({})", req.username, user_id);
+                            ApiResponse::success(new_user)
+                        }
+                        Err(e) => {
+                            let error_response = ApiResponse::<()>::from(e);
+                            ApiResponse::<UserListItem> {
+                                success: error_response.success,
+                                data: None,
+                                error: error_response.error,
+                                message: error_response.message,
+                            }
+                        }
+                    }
                 }
                 Err(e) => {
                     // Convert AuthError to typed response
@@ -252,14 +352,21 @@ pub async fn update_user_roles(
                         return ApiResponse::forbidden();
                     }
 
-                    // In a real implementation:
-                    // 1. Validate user exists
-                    // 2. Validate roles are valid
-                    // 3. Update user roles in storage
-                    // 4. Invalidate user's existing sessions if needed
-
-                    tracing::info!("Updated roles for user {}: {:?}", user_id, req.roles);
-                    ApiResponse::<()>::ok_with_message("User roles updated successfully")
+                    match state
+                        .auth_framework
+                        .update_user_roles(&user_id, &req.roles)
+                        .await
+                    {
+                        Ok(()) => {
+                            tracing::info!(
+                                "Admin updated roles for user {}: {:?}",
+                                user_id,
+                                req.roles
+                            );
+                            ApiResponse::<()>::ok_with_message("User roles updated successfully")
+                        }
+                        Err(e) => e.into(),
+                    }
                 }
                 Err(e) => e.into(),
             }
@@ -289,14 +396,22 @@ pub async fn delete_user(
                         return ApiResponse::validation_error("Cannot delete your own account");
                     }
 
-                    // In a real implementation:
-                    // 1. Validate user exists
-                    // 2. Soft delete or hard delete based on policy
-                    // 3. Invalidate all user sessions
-                    // 4. Archive user data if required
-
-                    tracing::info!("User deleted: {}", user_id);
-                    ApiResponse::<()>::ok_with_message("User deleted successfully")
+                    match state.auth_framework.get_username_by_id(&user_id).await {
+                        Ok(username) => {
+                            match state.auth_framework.delete_user(&username).await {
+                                Ok(()) => {
+                                    tracing::info!(
+                                        "Admin deleted user: {} ({})",
+                                        username,
+                                        user_id
+                                    );
+                                    ApiResponse::<()>::ok_with_message("User deleted successfully")
+                                }
+                                Err(e) => e.into(),
+                            }
+                        }
+                        Err(e) => e.into(),
+                    }
                 }
                 Err(e) => e.into(),
             }
@@ -327,18 +442,18 @@ pub async fn activate_user(
                         return ApiResponse::forbidden();
                     }
 
-                    // In a real implementation:
-                    // 1. Validate user exists
-                    // 2. Update user active status
-                    // 3. If deactivating, invalidate all user sessions
-
-                    let action = if req.active {
-                        "activated"
-                    } else {
-                        "deactivated"
-                    };
-                    tracing::info!("User {} {}", user_id, action);
-                    ApiResponse::<()>::ok_with_message(format!("User {} successfully", action))
+                    match state
+                        .auth_framework
+                        .set_user_active(&user_id, req.active)
+                        .await
+                    {
+                        Ok(()) => {
+                            let action = if req.active { "activated" } else { "deactivated" };
+                            tracing::info!("Admin {} user {}", action, user_id);
+                            ApiResponse::<()>::ok_with_message(format!("User {} successfully", action))
+                        }
+                        Err(e) => e.into(),
+                    }
                 }
                 Err(e) => e.into(),
             }
@@ -362,20 +477,54 @@ pub async fn get_system_stats(
                         return ApiResponse::forbidden_typed();
                     }
 
-                    // In a real implementation, collect actual system statistics
+                    let storage = state.auth_framework.storage();
+                    let total_users = load_user_ids(&storage).await.len() as u64;
+                    let active_sessions =
+                        storage.count_active_sessions().await.unwrap_or(0);
+
+                    // Collect real system metrics via the sysinfo crate.
+                    let (system_uptime, memory_usage, cpu_usage) = {
+                        use sysinfo::System;
+                        let mut sys = System::new();
+                        sys.refresh_memory();
+                        sys.refresh_cpu_usage();
+                        let uptime_secs = System::uptime();
+                        let hours = uptime_secs / 3600;
+                        let mins = (uptime_secs % 3600) / 60;
+                        let secs = uptime_secs % 60;
+                        let uptime_str = format!("{hours}h {mins}m {secs}s");
+                        let used_mb = sys.used_memory() as f64 / 1_048_576.0;
+                        let total_mb = sys.total_memory() as f64 / 1_048_576.0;
+                        let mem_str = format!("{used_mb:.1} MB / {total_mb:.1} MB");
+                        let cpu_str = format!("{:.1}%", sys.global_cpu_usage());
+                        (uptime_str, mem_str, cpu_str)
+                    };
+
                     let stats = SystemStats {
-                        total_users: 1250,
-                        active_sessions: 45,
-                        total_tokens: 892,
-                        failed_logins_24h: 12,
-                        system_uptime: "15 days, 4 hours".to_string(),
-                        memory_usage: "256 MB / 1 GB".to_string(),
-                        cpu_usage: "12%".to_string(),
+                        total_users,
+                        active_sessions,
+                        // token count: proxy active sessions — each session
+                        // corresponds to at least one issued JWT token.
+                        total_tokens: active_sessions,
+                        // Persistent audit log not wired; cannot derive 24h
+                        // failure count from in-memory state alone.
+                        failed_logins_24h: 0,
+                        system_uptime,
+                        memory_usage,
+                        cpu_usage,
                     };
 
                     ApiResponse::success(stats)
                 }
-                Err(_e) => ApiResponse::error_typed("AUTH_ERROR", "Token validation failed"),
+                Err(e) => {
+                    let error_response = ApiResponse::<()>::from(e);
+                    ApiResponse::<SystemStats> {
+                        success: error_response.success,
+                        data: None,
+                        error: error_response.error,
+                        message: error_response.message,
+                    }
+                }
             }
         }
         None => ApiResponse::unauthorized_typed(),
@@ -432,57 +581,97 @@ pub async fn get_audit_logs(
                         return ApiResponse::forbidden_typed();
                     }
 
-                    // In a real implementation, fetch audit logs from storage with pagination
-                    let total_logs = 1500u64; // This would come from a count query in real implementation
-                    let _offset = (query.page - 1) * query.limit;
-
-                    // Validate pagination parameters
                     let page = if query.page == 0 { 1 } else { query.page };
-                    let limit = if query.limit == 0 {
-                        20
-                    } else {
-                        query.limit.min(100)
-                    }; // Cap at 100 items per page
+                    let limit = if query.limit == 0 { 20 } else { query.limit.min(100) };
+                    let offset = ((page - 1) * limit) as usize;
+                    let fetch_limit = offset + limit as usize;
 
-                    // Calculate total pages
-                    let total_pages = ((total_logs as f64) / (limit as f64)).ceil() as u32;
-                    let total_pages = if total_pages == 0 { 1 } else { total_pages };
+                    match state
+                        .auth_framework
+                        .get_permission_audit_logs(
+                            query.user_id.as_deref(),
+                            query.action.as_deref(),
+                            None,
+                            Some(fetch_limit),
+                        )
+                        .await
+                    {
+                        Ok(all_logs) => {
+                            let total = all_logs.len() as u64;
+                            let total_pages =
+                                ((total as f64) / (limit as f64)).ceil() as u32;
+                            let total_pages = if total_pages == 0 { 1 } else { total_pages };
 
-                    let logs = vec![
-                        AuditLogEntry {
-                            id: "audit_1".to_string(),
-                            timestamp: "2024-08-17T10:30:00Z".to_string(),
-                            user_id: "user_123".to_string(),
-                            action: "login".to_string(),
-                            resource: "/auth/login".to_string(),
-                            ip_address: "192.168.1.100".to_string(),
-                            user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)".to_string(),
-                            result: "success".to_string(),
-                        },
-                        AuditLogEntry {
-                            id: "audit_2".to_string(),
-                            timestamp: "2024-08-17T10:25:00Z".to_string(),
-                            user_id: "user_456".to_string(),
-                            action: "password_change".to_string(),
-                            resource: "/users/change-password".to_string(),
-                            ip_address: "192.168.1.101".to_string(),
-                            user_agent: "Mozilla/5.0 (macOS; Intel Mac OS X 10_15_7)".to_string(),
-                            result: "success".to_string(),
-                        },
-                    ];
+                            let logs: Vec<AuditLogEntry> = all_logs
+                                .into_iter()
+                                .skip(offset)
+                                .take(limit as usize)
+                                .enumerate()
+                                .map(|(i, log_str)| {
+                                    let (ts, rest) = log_str
+                                        .strip_prefix('[')
+                                        .and_then(|s| s.split_once(']'))
+                                        .map(|(t, r)| {
+                                            (t.trim().to_string(), r.trim().to_string())
+                                        })
+                                        .unwrap_or_else(|| {
+                                            ("unknown".to_string(), log_str.clone())
+                                        });
+                                    let uid = rest
+                                        .split_whitespace()
+                                        .find(|w| w.starts_with("user="))
+                                        .and_then(|w| w.strip_prefix("user="))
+                                        .unwrap_or("system")
+                                        .to_string();
+                                    let result = rest
+                                        .split_whitespace()
+                                        .find(|w| w.starts_with("outcome="))
+                                        .and_then(|w| w.strip_prefix("outcome="))
+                                        .unwrap_or("unknown")
+                                        .to_string();
+                                    AuditLogEntry {
+                                        id: format!("audit_{}", offset + i),
+                                        timestamp: ts,
+                                        user_id: uid,
+                                        action: rest,
+                                        resource: String::new(),
+                                        ip_address: String::new(),
+                                        user_agent: String::new(),
+                                        result,
+                                    }
+                                })
+                                .collect();
 
-                    let pagination = Pagination {
-                        page,
-                        limit,
-                        total: total_logs,
-                        pages: total_pages,
-                    };
-
-                    let response = AuditLogResponse { logs, pagination };
-
-                    ApiResponse::success(response)
+                            ApiResponse::success(AuditLogResponse {
+                                logs,
+                                pagination: Pagination {
+                                    page,
+                                    limit,
+                                    total,
+                                    pages: total_pages,
+                                },
+                            })
+                        }
+                        Err(e) => {
+                            let error_response = ApiResponse::<()>::from(e);
+                            ApiResponse::<AuditLogResponse> {
+                                success: error_response.success,
+                                data: None,
+                                error: error_response.error,
+                                message: error_response.message,
+                            }
+                        }
+                    }
                 }
-                Err(_e) => ApiResponse::error_typed("AUTH_ERROR", "Token validation failed"),
+                Err(e) => {
+                    let error_response = ApiResponse::<()>::from(e);
+                    ApiResponse::<AuditLogResponse> {
+                        success: error_response.success,
+                        data: None,
+                        error: error_response.error,
+                        message: error_response.message,
+                    }
+                }
             }
         }
         None => ApiResponse::unauthorized_typed(),

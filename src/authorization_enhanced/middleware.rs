@@ -368,10 +368,34 @@ mod tests {
 
     #[test]
     fn test_context_building() {
-        // This would require setting up a mock request, which is complex
-        // In a real test, we'd create a proper test request and verify context
-        let context: HashMap<String, String> = HashMap::new();
-        assert!(context.is_empty()); // Placeholder test
+        use crate::tokens::AuthToken;
+        use std::time::Duration;
+
+        // Build a token with the admin role — should grant all permissions.
+        let mut admin_token =
+            AuthToken::new("admin-user", "tok", Duration::from_secs(3600), "test");
+        admin_token.roles = vec!["admin".into()];
+        assert!(check_token_permission(&admin_token, "read", "users"));
+        assert!(check_token_permission(&admin_token, "delete", "secrets"));
+
+        // Token with explicit permission should pass only for that permission.
+        let mut limited_token =
+            AuthToken::new("regular-user", "tok2", Duration::from_secs(3600), "test");
+        limited_token.permissions = vec!["read:users".into()];
+        assert!(check_token_permission(&limited_token, "read", "users"));
+        assert!(!check_token_permission(&limited_token, "write", "users"));
+
+        // Wildcard permission should pass for any action on the matching prefix.
+        let mut wildcard_token =
+            AuthToken::new("power-user", "tok3", Duration::from_secs(3600), "test");
+        wildcard_token.permissions = vec!["read:*".into()];
+        assert!(check_token_permission(&wildcard_token, "read", "anything"));
+
+        // Verify is_public_endpoint and is_sensitive_endpoint agree on common paths.
+        assert!(is_public_endpoint("/health"));
+        assert!(!is_public_endpoint("/admin/users"));
+        assert!(is_sensitive_endpoint("/admin/system/config"));
+        assert!(!is_sensitive_endpoint("/api/health"));
     }
 }
 

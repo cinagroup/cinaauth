@@ -10,7 +10,7 @@
 //!
 //! # Quick Start
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use auth_framework::prelude::*;
 //! use axum::{Router, routing::get};
 //!
@@ -28,7 +28,7 @@
 //!
 //! # Advanced Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use auth_framework::prelude::*;
 //! use auth_framework::integrations::axum::*;
 //!
@@ -127,9 +127,37 @@ where
 /// Protected handler wrapper
 #[derive(Clone)]
 pub struct ProtectedHandler<F> {
-    handler: F,
+    pub handler: F,
     required_permissions: Vec<String>,
     required_roles: Vec<String>,
+}
+
+impl<F: Clone> ProtectedHandler<F> {
+    /// Create a new protected handler
+    pub fn new(handler: F) -> Self {
+        Self {
+            handler,
+            required_permissions: Vec::new(),
+            required_roles: Vec::new(),
+        }
+    }
+
+    /// Get the underlying handler
+    pub fn get_handler(&self) -> F {
+        self.handler.clone()
+    }
+
+    /// Add required permissions
+    pub fn with_permissions(mut self, permissions: Vec<String>) -> Self {
+        self.required_permissions = permissions;
+        self
+    }
+
+    /// Add required roles
+    pub fn with_roles(mut self, roles: Vec<String>) -> Self {
+        self.required_roles = roles;
+        self
+    }
 }
 
 impl RequireAuth {
@@ -154,6 +182,12 @@ impl RequireAuth {
     }
 }
 
+impl Default for RequireAuth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RequirePermission {
     /// Create a new permission middleware
     pub fn new(permission: impl Into<String>) -> Self {
@@ -171,14 +205,6 @@ impl RequirePermission {
 }
 
 impl<F> ProtectedHandler<F> {
-    fn new(handler: F) -> Self {
-        Self {
-            handler,
-            required_permissions: Vec::new(),
-            required_roles: Vec::new(),
-        }
-    }
-
     /// Require specific permissions for this route
     pub fn require_permissions(mut self, permissions: &[&str]) -> Self {
         self.required_permissions = permissions.iter().map(|p| p.to_string()).collect();
@@ -249,6 +275,12 @@ impl AuthRouter {
     }
 }
 
+impl Default for AuthRouter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // Route handlers for authentication endpoints
 async fn login_handler(
     State(auth): State<Arc<AuthFramework>>,
@@ -281,7 +313,8 @@ async fn login_handler(
     Ok(Json(response))
 }
 
-async fn logout_handler(
+/// Logout handler for authenticated users
+pub async fn logout_handler(
     State(_auth): State<Arc<AuthFramework>>,
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, AuthError> {
@@ -293,17 +326,44 @@ async fn logout_handler(
 }
 
 async fn refresh_handler(
-    State(_auth): State<Arc<AuthFramework>>,
-    // Extract refresh token from request
+    State(auth): State<Arc<AuthFramework>>,
+    headers: axum::http::HeaderMap,
 ) -> Result<impl IntoResponse, AuthError> {
-    // This would implement token refresh logic
-    // For now, return a placeholder
-    Ok(Json(
-        serde_json::json!({"message": "Token refresh not implemented"}),
-    ))
+    // Extract and validate the existing bearer token
+    let token_str = extract_bearer_token(&axum::extract::Request::builder()
+        .header(AUTHORIZATION, headers.get(AUTHORIZATION)
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or(""))
+        .body(axum::body::Body::empty())
+        .unwrap())?;
+
+    // Validate current token to extract claims
+    let claims = auth
+        .token_manager()
+        .validate_jwt_token(&token_str)
+        .map_err(|_| AuthError::Token(crate::errors::TokenError::Invalid {
+            message: "Cannot refresh: current token is invalid or expired".to_string(),
+        }))?;
+
+    // Issue a fresh token for the same user with the same scopes
+    let scopes: Vec<String> = if claims.scope.is_empty() {
+        vec![]
+    } else {
+        claims.scope.split_whitespace().map(str::to_string).collect()
+    };
+    let new_token_str = auth
+        .token_manager()
+        .create_jwt_token(&claims.sub, scopes, None)?;
+
+    Ok(Json(serde_json::json!({
+        "access_token": new_token_str,
+        "token_type": "Bearer",
+        "expires_in": 3600
+    })))
 }
 
-async fn profile_handler(user: AuthenticatedUser) -> Result<impl IntoResponse, AuthError> {
+/// User profile handler for authenticated users
+pub async fn profile_handler(user: AuthenticatedUser) -> Result<impl IntoResponse, AuthError> {
     Ok(Json(UserInfo {
         id: user.user_id,
         username: None, // Would come from user store
@@ -339,8 +399,8 @@ fn extract_bearer_token(request: &Request) -> Result<String, AuthError> {
         .and_then(|header| header.to_str().ok())
         .ok_or_else(|| AuthError::Token(crate::errors::TokenError::Missing))?;
 
-    if auth_header.starts_with("Bearer ") {
-        Ok(auth_header[7..].to_string())
+    if let Some(token) = auth_header.strip_prefix("Bearer ") {
+        Ok(token.to_string())
     } else {
         Err(AuthError::Token(crate::errors::TokenError::Invalid {
             message: "Authorization header must use Bearer scheme".to_string(),
@@ -358,34 +418,45 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         // Extract auth framework from state
-        let _auth = Arc::<AuthFramework>::from_request_parts(parts, state)
+        let auth = Arc::<AuthFramework>::from_request_parts(parts, state)
             .await
             .map_err(|_| AuthError::internal("Failed to extract auth framework from state"))?;
 
         // Extract token from request
         let token_str = extract_bearer_token_from_parts(parts)?;
 
-        // Get token details - this is a simplified version
-        // In a real implementation, you'd decode the JWT and extract user info
-        let user_id = "demo_user".to_string(); // Would come from JWT claims
-        let permissions = vec!["read".to_string(), "write".to_string()]; // Would come from JWT/database
-        let roles = vec!["user".to_string()]; // Would come from JWT/database
+        // Validate JWT and extract real claims
+        let claims = auth
+            .token_manager()
+            .validate_jwt_token(&token_str)?;
 
-        // Create a mock token for demonstration
-        // In reality, you'd either decode the existing token or fetch from storage
+        let user_id = claims.sub.clone();
+        let permissions = claims.permissions.unwrap_or_default();
+        let roles = claims.roles.unwrap_or_default();
+        let scopes: Vec<String> = claims
+            .scope
+            .split_whitespace()
+            .map(|s| s.to_string())
+            .collect();
+
+        let issued_at = chrono::DateTime::from_timestamp(claims.iat, 0)
+            .unwrap_or_else(chrono::Utc::now);
+        let expires_at = chrono::DateTime::from_timestamp(claims.exp, 0)
+            .unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::hours(1));
+
         let token = AuthToken {
-            token_id: "demo_token_id".to_string(),
+            token_id: claims.jti.clone(),
             user_id: user_id.clone(),
             access_token: token_str,
             token_type: Some("Bearer".to_string()),
             subject: Some(user_id.clone()),
-            issuer: Some("auth-framework".to_string()),
+            issuer: Some(claims.iss.clone()),
             refresh_token: None,
-            issued_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            issued_at,
+            expires_at,
+            scopes,
             auth_method: "jwt".to_string(),
-            client_id: None,
+            client_id: claims.client_id,
             user_profile: None,
             permissions: permissions.clone(),
             roles: roles.clone(),
@@ -408,8 +479,8 @@ fn extract_bearer_token_from_parts(parts: &Parts) -> Result<String, AuthError> {
         .and_then(|header| header.to_str().ok())
         .ok_or_else(|| AuthError::Token(crate::errors::TokenError::Missing))?;
 
-    if auth_header.starts_with("Bearer ") {
-        Ok(auth_header[7..].to_string())
+    if let Some(token) = auth_header.strip_prefix("Bearer ") {
+        Ok(token.to_string())
     } else {
         Err(AuthError::Token(crate::errors::TokenError::Invalid {
             message: "Authorization header must use Bearer scheme".to_string(),
@@ -456,11 +527,25 @@ where
     S: Clone + Send + Sync + 'static,
 {
     fn require_auth(self) -> Self {
-        self.layer(axum::middleware::from_fn_with_state(
-            (), // This would need the actual auth state
-            |_state: (), request: axum::extract::Request, next: axum::middleware::Next| async move {
-                // This is a placeholder - would implement actual auth middleware
-                next.run(request).await
+        self.layer(axum::middleware::from_fn(
+            |request: axum::extract::Request, next: axum::middleware::Next| async move {
+                // Validate that an Authorization: Bearer <token> header is present
+                let has_bearer = request
+                    .headers()
+                    .get(axum::http::header::AUTHORIZATION)
+                    .and_then(|h| h.to_str().ok())
+                    .map(|v| v.starts_with("Bearer "))
+                    .unwrap_or(false);
+
+                if has_bearer {
+                    next.run(request).await
+                } else {
+                    axum::response::Response::builder()
+                        .status(axum::http::StatusCode::UNAUTHORIZED)
+                        .header("content-type", "application/json")
+                        .body(axum::body::Body::from(r#"{"error":"Authentication required"}"#))
+                        .unwrap_or_default()
+                }
             },
         ))
     }

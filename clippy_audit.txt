@@ -1,0 +1,2 @@
+    Checking auth-framework v0.5.0-rc1 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 14.91s

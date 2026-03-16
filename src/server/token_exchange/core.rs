@@ -31,10 +31,15 @@
 //!
 //! ```rust,no_run
 //! use auth_framework::server::token_exchange::{TokenExchangeManager, TokenExchangeRequest};
-//! use auth_framework::secure_jwt::{SecureJwtValidator, SecureJwtConfig};
+//! use auth_framework::{SecureJwtValidator, SecureJwtConfig};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let jwt_validator = SecureJwtValidator::new(SecureJwtConfig::default());
+//! // Default generates a cryptographically random per-instance secret.
+//! // For stable keys shared across nodes, set `jwt_secret` explicitly.
+//! let jwt_validator = SecureJwtValidator::new(SecureJwtConfig {
+//!     jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
+//!     ..SecureJwtConfig::default()
+//! });
 //! let mut manager = TokenExchangeManager::new(jwt_validator);
 //!
 //! let request = TokenExchangeRequest {
@@ -405,7 +410,7 @@ impl TokenExchangeManager {
 
         // Use secure JWT validation with proper cryptographic verification
         self.jwt_validator
-            .validate_token(token, &decoding_key, true)
+            .validate_token(token, &decoding_key)
             .map_err(|e| {
                 AuthError::auth_method("token_exchange", format!("JWT validation failed: {}", e))
             })
@@ -767,7 +772,7 @@ impl TokenExchangeService for TokenExchangeManager {
 
                 match self
                     .jwt_validator
-                    .validate_token(token, &decoding_key, true)
+                    .validate_token(token, &decoding_key)
                 {
                     Ok(claims) => {
                         // Convert timestamp to DateTime

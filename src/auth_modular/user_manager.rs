@@ -57,7 +57,7 @@ impl UserManager {
         let key_data = serde_json::json!({
             "user_id": user_id,
             "created_at": chrono::Utc::now(),
-            "expires_at": expires_in.map(|d| chrono::Utc::now() + chrono::Duration::from_std(d).unwrap())
+            "expires_at": expires_in.map(|d| chrono::Utc::now() + chrono::Duration::from_std(d).unwrap_or(chrono::Duration::days(365 * 10)))
         });
 
         let storage_key = format!("api_key:{}", api_key);

@@ -28,7 +28,7 @@
 //! # Usage Examples
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oidc_user_registration::{RegistrationManager, RegistrationConfig, RegistrationRequest};
+//! use auth_framework::server::oidc::oidc_user_registration::{RegistrationManager, RegistrationConfig, RegistrationRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let mut manager = RegistrationManager::new(RegistrationConfig::default());
@@ -54,8 +54,11 @@
 
 use crate::errors::{AuthError, Result};
 use crate::server::oidc::oidc_error_extensions::{OidcErrorCode, OidcErrorManager, OidcErrorResponse};
+use crate::storage::AuthStorage;
+use tracing::warn;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// User registration request parameters
@@ -175,7 +178,7 @@ impl Default for RegistrationConfig {
 }
 
 /// User registration manager
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RegistrationManager {
     /// Configuration
     config: RegistrationConfig,
@@ -183,6 +186,18 @@ pub struct RegistrationManager {
     error_manager: OidcErrorManager,
     /// Active registration sessions
     registration_sessions: HashMap<String, RegistrationData>,
+    /// Optional storage backend for persisting completed registrations
+    storage: Option<Arc<dyn AuthStorage>>,
+}
+
+impl std::fmt::Debug for RegistrationManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RegistrationManager")
+            .field("config", &self.config)
+            .field("sessions", &self.registration_sessions.len())
+            .field("has_storage", &self.storage.is_some())
+            .finish()
+    }
 }
 
 impl RegistrationManager {
@@ -192,6 +207,17 @@ impl RegistrationManager {
             config,
             error_manager: OidcErrorManager::default(),
             registration_sessions: HashMap::new(),
+            storage: None,
+        }
+    }
+
+    /// Create new registration manager with storage backend for user persistence
+    pub fn with_storage(config: RegistrationConfig, storage: Arc<dyn AuthStorage>) -> Self {
+        Self {
+            config,
+            error_manager: OidcErrorManager::default(),
+            registration_sessions: HashMap::new(),
+            storage: Some(storage),
         }
     }
 
@@ -201,6 +227,7 @@ impl RegistrationManager {
             config,
             error_manager,
             registration_sessions: HashMap::new(),
+            storage: None,
         }
     }
 
@@ -488,7 +515,19 @@ impl RegistrationManager {
     }
 
     /// Complete user registration and create user account
-    pub fn complete_registration(&mut self, registration_id: &str) -> Result<RegistrationResponse> {
+    ///
+    /// When a storage backend has been provided via [`RegistrationManager::with_storage`],
+    /// the newly registered user is persisted to storage using the same key layout as
+    /// `AuthFramework::register_user` so that downstream endpoints (e.g. `userinfo`) can
+    /// retrieve the profile immediately after registration.
+    ///
+    /// If no storage backend is configured the session is still consumed and an
+    /// authorisation code is issued, but the user is **not** persisted — callers must
+    /// wire in storage via `with_storage` before this path is production-ready.
+    pub async fn complete_registration(
+        &mut self,
+        registration_id: &str,
+    ) -> Result<RegistrationResponse> {
         // Validate registration data using error manager
         self.validate_registration_completeness(registration_id, None)?;
 
@@ -504,16 +543,99 @@ impl RegistrationManager {
         let mut registration = self.registration_sessions.remove(registration_id).unwrap(); // Safe because we checked above
 
         // Generate new user subject identifier
-        let sub = format!("user_{}", Uuid::new_v4());
+        let sub = crate::utils::string::generate_id(Some("user"));
 
         // Mark registration as completed
         registration.completed = true;
 
-        // In a real implementation, this would:
-        // 1. Create user account in the database
-        // 2. Send verification emails/SMS if required
-        // 3. Generate authorization code for the client
-        // 4. Store user profile data
+        // Persist the user to storage when a backend has been configured.
+        if let Some(storage) = &self.storage {
+            // Derive a username: prefer preferred_username, fall back to the local
+            // part of the email address, and finally the sub itself.
+            let username = registration
+                .preferred_username
+                .clone()
+                .or_else(|| {
+                    registration
+                        .email
+                        .as_deref()
+                        .and_then(|e| e.split('@').next())
+                        .map(|s| s.to_string())
+                })
+                .unwrap_or_else(|| sub.clone());
+
+            let email = registration
+                .email
+                .clone()
+                .unwrap_or_else(|| format!("{}@unknown.invalid", sub));
+
+            // A password may be supplied in custom_fields["password"] (e.g. from an
+            // interactive registration form).  If absent, generate a strong temporary
+            // password so the account is accessible; the client receives it in the
+            // RegistrationResponse and should prompt an immediate password change.
+            let plain_password = registration
+                .custom_fields
+                .get("password")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("tmp_{}", Uuid::new_v4()));
+
+            let password_hash =
+                bcrypt::hash(&plain_password, bcrypt::DEFAULT_COST).map_err(|e| {
+                    AuthError::crypto(format!("Failed to hash password during registration: {}", e))
+                })?;
+
+            let user_data = serde_json::json!({
+                "user_id": sub,
+                "username": username,
+                "email": email,
+                "password_hash": password_hash,
+                "given_name": registration.given_name,
+                "family_name": registration.family_name,
+                "name": registration.name,
+                "phone_number": registration.phone_number,
+                "picture": registration.picture,
+                "roles": ["user"],
+                "active": true,
+                "created_at": chrono::Utc::now().to_rfc3339(),
+            });
+
+            // Store indexed entries following the same layout as auth.rs::register_user.
+            storage
+                .store_kv(
+                    &format!("user:{}", sub),
+                    user_data.to_string().as_bytes(),
+                    None,
+                )
+                .await?;
+            storage
+                .store_kv(
+                    &format!("user:username:{}", username),
+                    sub.as_bytes(),
+                    None,
+                )
+                .await?;
+            storage
+                .store_kv(
+                    &format!("user:email:{}", email),
+                    sub.as_bytes(),
+                    None,
+                )
+                .await?;
+
+            tracing::info!(
+                "OIDC registration complete: user '{}' (sub={}) persisted to storage",
+                username,
+                sub
+            );
+        } else {
+            warn!(
+                "OIDC user registration for sub '{}' completed the session but did NOT persist \
+                 the user to storage. Provide a storage backend via \
+                 RegistrationManager::with_storage() to enable user persistence.",
+                sub
+            );
+        }
 
         // Generate authorization code for successful registration
         let authorization_code = format!("reg_auth_{}", Uuid::new_v4());

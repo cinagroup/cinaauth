@@ -94,7 +94,10 @@ impl Default for OAuth2Config {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TokenRequest {
     pub grant_type: String,
-    pub client_id: String,
+    /// Client identifier. Optional here because HTTP clients may use HTTP Basic auth
+    /// (`Authorization: Basic …`) instead of embedding it in the request body.
+    #[serde(default)]
+    pub client_id: Option<String>,
     pub client_secret: Option<String>,
     pub code: Option<String>,
     pub redirect_uri: Option<String>,
@@ -262,16 +265,19 @@ impl OAuth2Server {
         &self,
         request: TokenRequest,
     ) -> Result<TokenResponse> {
+        let client_id = request
+            .client_id
+            .ok_or_else(|| AuthError::auth_method("oauth2", "client_id is required"))?;
         // Validate client credentials FIRST
         let storage = self.token_storage.read().await;
         let _client = storage
-            .get_client_credentials(&request.client_id)
+            .get_client_credentials(&client_id)
             .await?
             .ok_or_else(|| AuthError::auth_method("oauth2", "Invalid client_id"))?;
 
         // CRITICAL FIX: Validate client secret properly
         if !storage
-            .validate_client_credentials(&request.client_id, request.client_secret.as_deref())
+            .validate_client_credentials(&client_id, request.client_secret.as_deref())
             .await?
         {
             return Err(AuthError::auth_method(
@@ -295,7 +301,7 @@ impl OAuth2Server {
             })?;
 
         // Validate code belongs to this client
-        if auth_code.client_id != request.client_id {
+        if auth_code.client_id != client_id {
             return Err(AuthError::auth_method(
                 "oauth2",
                 "Authorization code does not belong to client",
@@ -351,10 +357,13 @@ impl OAuth2Server {
 
     /// Handle refresh token grant with proper validation
     async fn handle_refresh_token_grant(&self, request: TokenRequest) -> Result<TokenResponse> {
+        let client_id = request
+            .client_id
+            .ok_or_else(|| AuthError::auth_method("oauth2", "client_id is required"))?;
         // Validate client credentials
         let storage = self.token_storage.read().await;
         if !storage
-            .validate_client_credentials(&request.client_id, request.client_secret.as_deref())
+            .validate_client_credentials(&client_id, request.client_secret.as_deref())
             .await?
         {
             return Err(AuthError::auth_method(
@@ -382,7 +391,7 @@ impl OAuth2Server {
         }
 
         // Validate token belongs to this client
-        if stored_token.client_id != request.client_id {
+        if stored_token.client_id != client_id {
             return Err(AuthError::auth_method(
                 "oauth2",
                 "Refresh token does not belong to client",
@@ -436,16 +445,19 @@ impl OAuth2Server {
         &self,
         request: TokenRequest,
     ) -> Result<TokenResponse> {
+        let client_id = request
+            .client_id
+            .ok_or_else(|| AuthError::auth_method("oauth2", "client_id is required"))?;
         // Validate client credentials
         let storage = self.token_storage.read().await;
         let client = storage
-            .get_client_credentials(&request.client_id)
+            .get_client_credentials(&client_id)
             .await?
             .ok_or_else(|| AuthError::auth_method("oauth2", "Invalid client_id"))?;
 
         // CRITICAL FIX: Validate client secret properly
         if !storage
-            .validate_client_credentials(&request.client_id, request.client_secret.as_deref())
+            .validate_client_credentials(&client_id, request.client_secret.as_deref())
             .await?
         {
             return Err(AuthError::auth_method(
@@ -477,7 +489,7 @@ impl OAuth2Server {
 
         // Generate access token (no user context for client credentials)
         let access_token = self
-            .generate_access_token(&request.client_id, None, &authorized_scopes)
+            .generate_access_token(&client_id, None, &authorized_scopes)
             .await?;
 
         Ok(TokenResponse {
@@ -643,6 +655,20 @@ impl OAuth2Server {
         storage.cleanup_expired_tokens().await
     }
 
+    /// Add user credentials to the server's token storage.
+    ///
+    /// Use this to register users before calling `authenticate_user`.
+    /// In production this is typically called during server setup or via an
+    /// administrative API; in tests it provides a way to seed known users
+    /// without hardcoding them in the library itself.
+    pub async fn add_user_credentials(
+        &self,
+        creds: crate::oauth2_enhanced_storage::UserCredentials,
+    ) -> Result<()> {
+        let mut storage = self.token_storage.write().await;
+        storage.store_user_credentials(creds).await
+    }
+
     /// Authenticate user and create session
     pub async fn authenticate_user(
         &self,
@@ -798,8 +824,12 @@ impl OAuth2Server {
 
     /// Get user email from user store
     async fn get_user_email(&self, username: &str) -> Result<Option<String>> {
-        // In production, this would query the user database
-        Ok(Some(format!("{}@example.com", username)))
+        let storage = self.token_storage.read().await;
+        match storage.get_user_credentials(username).await {
+            Ok(Some(creds)) => Ok(creds.email),
+            // User not found or storage error — return None rather than a fabricated address.
+            _ => Ok(None),
+        }
     }
 
     /// Get user context from session

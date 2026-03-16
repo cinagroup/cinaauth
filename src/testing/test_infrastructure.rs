@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 /// Environment variable isolation for tests
 /// This ensures tests cannot interfere with each other or the host system
@@ -74,10 +74,22 @@ impl Drop for TestEnvironment {
     }
 }
 
-/// RAII guard for test environment isolation
-/// Usage: let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+/// Serializes all tests that mutate process-global environment variables.
+/// A `'static`-lifetime mutex is used so the `MutexGuard` can live in the struct.
+static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+/// RAII guard for test environment isolation.
+///
+/// Acquires a process-wide mutex before touching any environment variable,
+/// so parallel test threads cannot race each other when setting/restoring
+/// `JWT_SECRET`, `RUST_TEST`, etc.
+///
+/// Usage: `let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");`
 pub struct TestEnvironmentGuard {
+    /// Env-var state saved for restoration on drop. Drops FIRST (declaration order).
     _env: TestEnvironment,
+    /// Serialization lock. Drops SECOND, releasing the mutex AFTER env vars are restored.
+    _lock: MutexGuard<'static, ()>,
 }
 
 impl Default for TestEnvironmentGuard {
@@ -88,9 +100,23 @@ impl Default for TestEnvironmentGuard {
 
 impl TestEnvironmentGuard {
     pub fn new() -> Self {
-        Self {
-            _env: TestEnvironment::new(),
-        }
+        // Acquire the serialization lock BEFORE touching any env var.
+        // This prevents parallel tests from interleaving set/restore operations
+        // on shared process-global environment variables (e.g. JWT_SECRET).
+        // The guard is held for the entire lifetime of `TestEnvironmentGuard`.
+        let _lock = ENV_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            // If a previous test panicked while holding the lock the mutex is "poisoned".
+            // Recover the inner value so tests can still run cleanly.
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        let mut env = TestEnvironment::new();
+        // Signal to the library that we are running in a test environment.
+        // This allows `is_test_environment()` in config validation to relax
+        // checks that would otherwise reject test-only secrets (e.g. short secrets).
+        env.set_var("RUST_TEST", "1");
+        Self { _env: env, _lock }
     }
 
     pub fn with_jwt_secret(mut self, secret: &str) -> Self {
@@ -297,16 +323,18 @@ macro_rules! test_with_containers {
     };
 }
 
-/// Thread-safe test execution coordination
-static TEST_MUTEX: OnceLock<Arc<Mutex<()>>> = OnceLock::new();
-
-/// Ensure only one test that modifies global state runs at a time
+/// Ensure only one test that modifies global state runs at a time.
+///
+/// Reuses the same `ENV_LOCK` mutex that `TestEnvironmentGuard` uses,
+/// so explicit calls to this helper compose correctly with the guard.
 pub fn with_global_lock<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let mutex = TEST_MUTEX.get_or_init(|| Arc::new(Mutex::new(())));
-    let _guard = mutex.lock().unwrap();
+    let _guard = ENV_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     f()
 }
 
@@ -331,15 +359,24 @@ mod tests {
 
     #[test]
     fn test_environment_guard() {
-        let original_value = env::var("JWT_SECRET").ok();
+        // Use a variable name that is unique to this test so parallel tests do not interfere.
+        // JWT_SECRET is used by many tests concurrently, making it an unsuitable choice.
+        const TEST_KEY: &str = "AUTH_FW_GUARD_ISOLATION_TEST_ONLY";
+
+        // Ensure the var is absent before we start
+        unsafe { env::remove_var(TEST_KEY) };
+        assert!(env::var(TEST_KEY).is_err(), "TEST_KEY should not exist before test");
 
         {
-            let _guard = TestEnvironmentGuard::new().with_jwt_secret("isolated-test-secret");
-            assert_eq!(env::var("JWT_SECRET").unwrap(), "isolated-test-secret");
+            let _guard = TestEnvironmentGuard::new().with_custom_var(TEST_KEY, "isolated-value");
+            assert_eq!(env::var(TEST_KEY).unwrap(), "isolated-value");
         }
 
-        // Should be restored automatically
-        assert_eq!(env::var("JWT_SECRET").ok(), original_value);
+        // Variable should be removed (restored to None) after guard is dropped
+        assert!(
+            env::var(TEST_KEY).is_err(),
+            "TEST_KEY should be absent after guard is dropped"
+        );
     }
 
     #[test]

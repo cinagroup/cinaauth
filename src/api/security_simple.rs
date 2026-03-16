@@ -57,15 +57,18 @@ pub async fn blacklist_ip_endpoint(
     };
 
     {
-        let mut blacklist = IP_BLACKLIST.write().unwrap();
+        let Ok(mut blacklist) = IP_BLACKLIST.write() else {
+            return ApiResponse::error_typed("internal_error", "Security subsystem unavailable");
+        };
         blacklist.insert(ip);
     }
 
     // Update security stats
     {
-        let mut stats = SECURITY_STATS.write().unwrap();
-        stats.blocked_requests += 1;
-        stats.last_updated = Some(chrono::Utc::now().timestamp());
+        if let Ok(mut stats) = SECURITY_STATS.write() {
+            stats.blocked_requests += 1;
+            stats.last_updated = Some(chrono::Utc::now().timestamp());
+        }
     }
 
     let data = json!({
@@ -91,15 +94,18 @@ pub async fn unblock_ip_endpoint(
     };
 
     let removed = {
-        let mut blacklist = IP_BLACKLIST.write().unwrap();
+        let Ok(mut blacklist) = IP_BLACKLIST.write() else {
+            return ApiResponse::error_typed("internal_error", "Security subsystem unavailable");
+        };
         blacklist.remove(&ip)
     };
 
     if removed {
         // Update security stats
         {
-            let mut stats = SECURITY_STATS.write().unwrap();
-            stats.last_updated = Some(chrono::Utc::now().timestamp());
+            if let Ok(mut stats) = SECURITY_STATS.write() {
+                stats.last_updated = Some(chrono::Utc::now().timestamp());
+            }
         }
 
         let data = json!({
@@ -129,8 +135,8 @@ pub async fn unblock_ip_endpoint(
 pub async fn stats_endpoint(
     State(_state): State<ApiState>,
 ) -> ApiResponse<SecurityStatsResponse> {
-    let stats = SECURITY_STATS.read().unwrap().clone();
-    let blacklist_size = IP_BLACKLIST.read().unwrap().len();
+    let stats = SECURITY_STATS.read().map(|s| s.clone()).unwrap_or_default();
+    let blacklist_size = IP_BLACKLIST.read().map(|b| b.len()).unwrap_or(0);
 
     let response_data = SecurityStatsResponse {
         blocked_requests: stats.blocked_requests,
@@ -145,19 +151,21 @@ pub async fn stats_endpoint(
 
 /// Check if an IP address is blacklisted (for middleware use)
 pub fn is_ip_blacklisted(ip: &IpAddr) -> bool {
-    IP_BLACKLIST.read().unwrap().contains(ip)
+    IP_BLACKLIST.read().map(|b| b.contains(ip)).unwrap_or(false)
 }
 
 /// Increment failed authentication attempts (for middleware use)
 pub fn increment_failed_auth() {
-    let mut stats = SECURITY_STATS.write().unwrap();
-    stats.failed_auth_attempts += 1;
-    stats.last_updated = Some(chrono::Utc::now().timestamp());
+    if let Ok(mut stats) = SECURITY_STATS.write() {
+        stats.failed_auth_attempts += 1;
+        stats.last_updated = Some(chrono::Utc::now().timestamp());
+    }
 }
 
 /// Increment suspicious activity counter (for middleware use)
 pub fn increment_suspicious_activity() {
-    let mut stats = SECURITY_STATS.write().unwrap();
-    stats.suspicious_activity += 1;
-    stats.last_updated = Some(chrono::Utc::now().timestamp());
+    if let Ok(mut stats) = SECURITY_STATS.write() {
+        stats.suspicious_activity += 1;
+        stats.last_updated = Some(chrono::Utc::now().timestamp());
+    }
 }

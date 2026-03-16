@@ -4,7 +4,6 @@ use super::{SecurityEvent, SecurityEventSeverity, SecurityEventType};
 use crate::errors::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
 /// Alert configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlertConfig {
@@ -271,40 +270,186 @@ impl AlertManager {
     async fn send_to_channel(&self, alert: &Alert, channel: &NotificationChannel) -> Result<()> {
         match channel {
             NotificationChannel::Email { recipients } => {
-                // In production: Send email using SMTP or email service API
-                tracing::info!(
-                    "EMAIL ALERT to {:?}: {} - {}",
-                    recipients,
-                    alert.title,
-                    alert.message
+                use lettre::{
+                    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+                    message::Mailbox,
+                    transport::smtp::authentication::Credentials,
+                };
+
+                // SMTP is configured via environment variables so no credentials are
+                // embedded in the AlertConfig serialisation:
+                //   AUTH_SMTP_HOST     — required; disables email channel if unset
+                //   AUTH_SMTP_PORT     — optional (default 587, STARTTLS)
+                //   AUTH_SMTP_FROM     — optional (default "alerts@<host>")
+                //   AUTH_SMTP_USERNAME — optional
+                //   AUTH_SMTP_PASSWORD — optional
+                let smtp_host = match std::env::var("AUTH_SMTP_HOST") {
+                    Ok(h) => h,
+                    Err(_) => {
+                        tracing::warn!(
+                            recipients = ?recipients,
+                            title = %alert.title,
+                            severity = ?alert.severity,
+                            "EMAIL ALERT: set AUTH_SMTP_HOST to enable SMTP delivery"
+                        );
+                        return Ok(());
+                    }
+                };
+                let smtp_port: u16 = std::env::var("AUTH_SMTP_PORT")
+                    .ok()
+                    .and_then(|p| p.parse().ok())
+                    .unwrap_or(587);
+                let from_addr =
+                    std::env::var("AUTH_SMTP_FROM").unwrap_or_else(|_| format!("alerts@{}", smtp_host));
+
+                let from_mailbox: Mailbox = match from_addr.parse() {
+                    Ok(m) => m,
+                    Err(e) => {
+                        tracing::error!(from = %from_addr, error = %e, "Invalid AUTH_SMTP_FROM address");
+                        return Ok(());
+                    }
+                };
+
+                let mut builder =
+                    match AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&smtp_host) {
+                        Ok(b) => b.port(smtp_port),
+                        Err(e) => {
+                            tracing::error!(host = %smtp_host, error = %e, "Failed to create SMTP transport");
+                            return Ok(());
+                        }
+                    };
+                if let (Ok(user), Ok(pass)) = (
+                    std::env::var("AUTH_SMTP_USERNAME"),
+                    std::env::var("AUTH_SMTP_PASSWORD"),
+                ) {
+                    builder = builder.credentials(Credentials::new(user, pass));
+                }
+                let mailer = builder.build();
+
+                let subject = format!("[{:?}] {}", alert.severity, alert.title);
+                let body = format!(
+                    "Alert: {}\nSeverity: {:?}\nSource: {}\nMessage: {}\nTimestamp: {}",
+                    alert.title, alert.severity, alert.source, alert.message, alert.timestamp
                 );
+
+                for recipient in recipients {
+                    let to_mailbox: Mailbox = match recipient.parse() {
+                        Ok(m) => m,
+                        Err(e) => {
+                            tracing::error!(
+                                recipient = %recipient, error = %e,
+                                "Invalid recipient address — skipping"
+                            );
+                            continue;
+                        }
+                    };
+                    match Message::builder()
+                        .from(from_mailbox.clone())
+                        .to(to_mailbox)
+                        .subject(&subject)
+                        .body(body.clone())
+                    {
+                        Ok(email) => {
+                            if let Err(e) = mailer.send(email).await {
+                                tracing::error!(
+                                    recipient = %recipient, error = %e,
+                                    "Failed to send email alert"
+                                );
+                            } else {
+                                tracing::info!(
+                                    recipient = %recipient,
+                                    "Email alert sent: {}", alert.title
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                recipient = %recipient, error = %e,
+                                "Failed to build email message"
+                            );
+                        }
+                    }
+                }
             }
             NotificationChannel::Slack { webhook_url } => {
-                // In production: Send POST request to Slack webhook
-                tracing::info!(
-                    "SLACK ALERT to {}: {} - {}",
-                    webhook_url,
-                    alert.title,
-                    alert.message
-                );
+                let payload = serde_json::json!({
+                    "text": format!(
+                        "*[{:?}]* {} — {}",
+                        alert.severity, alert.title, alert.message
+                    )
+                });
+                let client = reqwest::Client::new();
+                if let Err(e) = client
+                    .post(webhook_url)
+                    .json(&payload)
+                    .send()
+                    .await
+                {
+                    tracing::error!(
+                        webhook_url = %webhook_url,
+                        error = %e,
+                        "Failed to send Slack alert"
+                    );
+                } else {
+                    tracing::info!(webhook_url = %webhook_url, "Slack alert sent: {}", alert.title);
+                }
             }
             NotificationChannel::Teams { webhook_url } => {
-                // In production: Send POST request to Teams webhook
-                tracing::info!(
-                    "TEAMS ALERT to {}: {} - {}",
-                    webhook_url,
-                    alert.title,
-                    alert.message
-                );
+                // Microsoft Teams Incoming Webhook message card format.
+                let payload = serde_json::json!({
+                    "@type": "MessageCard",
+                    "@context": "http://schema.org/extensions",
+                    "themeColor": match alert.severity {
+                        AlertSeverity::Critical => "FF0000",
+                        AlertSeverity::Warning  => "FFA500",
+                        AlertSeverity::Info     => "0078D7",
+                    },
+                    "summary": &alert.title,
+                    "sections": [{
+                        "activityTitle": &alert.title,
+                        "activityText": &alert.message,
+                        "facts": [
+                            { "name": "Severity", "value": format!("{:?}", alert.severity) },
+                            { "name": "Source",   "value": &alert.source },
+                        ]
+                    }]
+                });
+                let client = reqwest::Client::new();
+                if let Err(e) = client
+                    .post(webhook_url)
+                    .json(&payload)
+                    .send()
+                    .await
+                {
+                    tracing::error!(
+                        webhook_url = %webhook_url,
+                        error = %e,
+                        "Failed to send Teams alert"
+                    );
+                } else {
+                    tracing::info!(webhook_url = %webhook_url, "Teams alert sent: {}", alert.title);
+                }
             }
-            NotificationChannel::Webhook { url, headers: _ } => {
-                // In production: Send POST request to generic webhook
-                tracing::info!(
-                    "WEBHOOK ALERT to {}: {} - {}",
-                    url,
-                    alert.title,
-                    alert.message
-                );
+            NotificationChannel::Webhook { url, headers } => {
+                let payload = serde_json::json!({
+                    "id":       &alert.id,
+                    "title":    &alert.title,
+                    "message":  &alert.message,
+                    "severity": format!("{:?}", alert.severity),
+                    "source":   &alert.source,
+                    "metrics":  &alert.metrics,
+                    "timestamp": alert.timestamp,
+                });
+                let client = reqwest::Client::new();
+                let mut req = client.post(url).json(&payload);
+                for (k, v) in headers {
+                    req = req.header(k, v);
+                }
+                if let Err(e) = req.send().await {
+                    tracing::error!(url = %url, error = %e, "Failed to send webhook alert");
+                } else {
+                    tracing::info!(url = %url, "Webhook alert sent: {}", alert.title);
+                }
             }
             NotificationChannel::Log { level } => match level.as_str() {
                 "error" => tracing::error!("ALERT: {} - {}", alert.title, alert.message),

@@ -111,7 +111,7 @@ pub use crate::methods::saml;
 
 // Re-export tokens and user data
 pub use crate::authentication::credentials::Credential;
-pub use crate::providers::{OAuthProvider, OAuthProviderConfig, UserProfile};
+pub use crate::providers::{OAuthProvider, OAuthProviderConfig, ProviderProfile};
 pub use crate::tokens::{AuthToken, TokenMetadata};
 
 // Re-export permissions and roles
@@ -120,7 +120,7 @@ pub use crate::permissions::{Permission, PermissionChecker, Role};
 // Re-export authorization if enhanced RBAC is enabled
 #[cfg(feature = "enhanced-rbac")]
 pub use crate::authorization::{
-    AccessCondition, AuthorizationEngine, Permission as AuthzPermission, Role as AuthzRole,
+    AbacPermission as AuthzPermission, AbacRole as AuthzRole, AccessCondition, AuthorizationEngine,
 };
 
 // Re-export storage abstractions
@@ -129,7 +129,6 @@ pub use crate::storage::{AuthStorage, MemoryStorage, SessionData};
 // Re-export session management
 pub use crate::security::secure_session::{
     DeviceFingerprint, SecureSession, SecureSessionConfig, SecureSessionManager, SecurityFlags,
-    SessionState as SecureSessionState,
 };
 pub use crate::session::manager::{
     DeviceInfo, Session, SessionConfig, SessionManager as LegacySessionManager, SessionState,
@@ -190,7 +189,7 @@ pub use crate::oauth2_server::{
     TokenResponse,
 };
 
-// Builder patterns and ergonomic helpers (to be implemented)
+// Builder patterns and ergonomic helpers
 pub use crate::builders::*;
 
 // Time duration helpers for ergonomic configuration
@@ -274,7 +273,7 @@ pub type AsyncAuthHandler =
     std::pin::Pin<Box<dyn std::future::Future<Output = AuthFrameworkResult<()>> + Send>>;
 
 // Import security presets from the security module
-pub use crate::security::SecurityPreset; // Performance presets for optimization (to be implemented)
+pub use crate::security::SecurityPreset; // Performance presets for optimization
 #[derive(Debug, Clone)]
 pub enum PerformancePreset {
     /// Optimized for high request throughput
@@ -287,7 +286,7 @@ pub enum PerformancePreset {
     Balanced,
 }
 
-// Use case presets for common application types (to be implemented)
+// Use case presets for common application types
 #[derive(Debug, Clone)]
 pub enum UseCasePreset {
     /// Web application with sessions and cookies

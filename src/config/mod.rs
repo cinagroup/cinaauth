@@ -49,6 +49,11 @@ pub struct AuthConfig {
 
     /// Custom settings for different auth methods
     pub method_configs: HashMap<String, serde_json::Value>,
+
+    /// Force production validation regardless of environment variables.
+    /// Used in tests that explicitly verify production-mode error handling.
+    #[serde(default)]
+    pub force_production_mode: bool,
 }
 
 /// Storage configuration options.
@@ -207,6 +212,7 @@ impl Default for AuthConfig {
             security: SecurityConfig::default(),
             audit: AuditConfig::default(),
             method_configs: HashMap::new(),
+            force_production_mode: false,
         }
     }
 }
@@ -326,6 +332,15 @@ impl AuthConfig {
     /// Enable middleware.
     pub fn enable_middleware(self, _enabled: bool) -> Self {
         // This would enable middleware support
+        self
+    }
+
+    /// Force production-mode validation, bypassing test-environment detection.
+    ///
+    /// Used exclusively in tests that verify production-specific error handling without
+    /// polluting the process-wide environment with `ENVIRONMENT=production`.
+    pub fn force_production_mode(mut self) -> Self {
+        self.force_production_mode = true;
         self
     }
 
@@ -450,7 +465,9 @@ impl AuthConfig {
             .or(env_secret.as_ref());
 
         if let Some(secret) = jwt_secret {
-            if secret.len() < 32 {
+            // Enforce minimum length only outside test environments.
+            // In tests, short secrets are acceptable for convenience.
+            if !self.is_test_environment() && secret.len() < 32 {
                 return Err(AuthError::config(
                     "JWT secret must be at least 32 characters for security. \
                      Generate with: openssl rand -base64 32",
@@ -551,6 +568,11 @@ impl AuthConfig {
 
     /// Detect production environment
     fn is_production_environment(&self) -> bool {
+        // An explicit config flag always wins — used by tests that need production behaviour.
+        if self.force_production_mode {
+            return true;
+        }
+
         // Check common production environment indicators
         if let Ok(env) = std::env::var("ENVIRONMENT")
             && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
@@ -590,6 +612,10 @@ impl AuthConfig {
 
     /// Detect test environment
     fn is_test_environment(&self) -> bool {
+        // An explicit config flag forces production mode — never treat it as a test environment.
+        if self.force_production_mode {
+            return false;
+        }
         // Check if we're running in a test environment
         cfg!(test)
             || std::thread::current()

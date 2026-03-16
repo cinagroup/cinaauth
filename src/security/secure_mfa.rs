@@ -2,35 +2,16 @@
 // Fixes critical security vulnerabilities in MFA code generation and validation
 
 use crate::errors::{AuthError, Result};
+use crate::methods::{MfaChallenge, MfaType};
 use crate::storage::AuthStorage;
 use base64::Engine;
 use dashmap::DashMap;
 use ring::rand::{SecureRandom, SystemRandom};
-use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use subtle::ConstantTimeEq;
 use zeroize::ZeroizeOnDrop;
-
-/// Secure MFA challenge with proper entropy and expiration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MfaChallenge {
-    pub challenge_id: String,
-    pub user_id: String,
-    pub challenge_type: MfaChallengeType,
-    pub code_hash: String,
-    pub created_at: SystemTime,
-    pub expires_at: SystemTime,
-    pub attempts: u32,
-    pub max_attempts: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum MfaChallengeType {
-    Sms,
-    Email,
-    Totp,
-}
 
 /// Secure MFA code that zeros itself when dropped
 #[derive(Debug, Clone, ZeroizeOnDrop)]
@@ -145,7 +126,7 @@ impl SecureMfaService {
     pub async fn create_challenge(
         &self,
         user_id: &str,
-        challenge_type: MfaChallengeType,
+        mfa_type: MfaType,
         code_length: usize,
     ) -> Result<(String, SecureMfaCode)> {
         // Check rate limiting
@@ -161,17 +142,19 @@ impl SecureMfaService {
         let salt = self.generate_salt()?;
         let code_hash = self.hash_code(secure_code.as_str(), &salt)?;
 
-        // Create challenge
-        let now = SystemTime::now();
+        // Create challenge using the canonical methods::MfaChallenge type
+        let now = chrono::Utc::now();
         let challenge = MfaChallenge {
-            challenge_id: challenge_id.clone(),
+            id: challenge_id.clone(),
             user_id: user_id.to_string(),
-            challenge_type,
-            code_hash,
+            mfa_type,
             created_at: now,
-            expires_at: now + Duration::from_secs(300), // 5 minutes
+            expires_at: now + chrono::Duration::seconds(300), // 5 minutes
             attempts: 0,
             max_attempts: 3,
+            code_hash: Some(code_hash),
+            message: None,
+            data: HashMap::new(),
         };
 
         // Store challenge and salt
@@ -222,7 +205,7 @@ impl SecureMfaService {
         };
 
         // Check if challenge is expired
-        if SystemTime::now() > challenge.expires_at {
+        if chrono::Utc::now() > challenge.expires_at {
             // Clean up expired challenge
             self.cleanup_challenge(challenge_id).await?;
             return Ok(false);
@@ -259,12 +242,13 @@ impl SecureMfaService {
         // Hash provided code with same salt
         let provided_hash = self.hash_code(provided_code, &salt)?;
 
-        // Constant-time comparison
+        // Constant-time comparison (code_hash is Option<String>)
         let is_valid = challenge
             .code_hash
-            .as_bytes()
-            .ct_eq(provided_hash.as_bytes())
-            .into();
+            .as_ref()
+            .is_some_and(|stored_hash| {
+                stored_hash.as_bytes().ct_eq(provided_hash.as_bytes()).into()
+            });
 
         if is_valid {
             // Clean up successful challenge
@@ -436,7 +420,7 @@ mod tests {
 
         // Create challenge
         let (challenge_id, code) = mfa_service
-            .create_challenge("user123", MfaChallengeType::Sms, 6)
+            .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
             .await
             .unwrap();
 
@@ -461,7 +445,7 @@ mod tests {
         let mfa_service = SecureMfaService::new(storage);
 
         let (challenge_id, _code) = mfa_service
-            .create_challenge("user123", MfaChallengeType::Sms, 6)
+            .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
             .await
             .unwrap();
 
@@ -500,14 +484,14 @@ mod tests {
         // Should succeed first few times
         for _ in 0..5 {
             let result = mfa_service
-                .create_challenge("user123", MfaChallengeType::Sms, 6)
+                .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
                 .await;
             assert!(result.is_ok());
         }
 
         // Should fail due to rate limiting
         let result = mfa_service
-            .create_challenge("user123", MfaChallengeType::Sms, 6)
+            .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
             .await;
         assert!(result.is_err());
     }

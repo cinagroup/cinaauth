@@ -78,7 +78,7 @@ pub use oidc::{
     },
     oidc_enhanced_ciba::{
         AuthenticationContext, AuthenticationMode, CibaRequestStatus, CibaTokenResponse,
-        ConsentInfo, ConsentStatus, DeviceBinding, DeviceInfo, EnhancedCibaAuthRequest,
+        CibaDeviceInfo, ConsentInfo, ConsentStatus, DeviceBinding, EnhancedCibaAuthRequest,
         EnhancedCibaAuthResponse, EnhancedCibaConfig, EnhancedCibaManager, GeoLocation,
         UserIdentifierHint,
     },
@@ -99,7 +99,7 @@ pub use oidc::{
     //     RpInitiatedLogoutRequest, RpInitiatedLogoutResponse,
     // },
     oidc_session_management::{
-        OidcSession, SessionCheckRequest, SessionCheckResponse, SessionManager, SessionState,
+        OidcSession, OidcSessionState, SessionCheckRequest, SessionCheckResponse, SessionManager,
     },
     oidc_user_registration::{
         RegistrationData, RegistrationManager, RegistrationRequest, RegistrationResponse,
@@ -153,6 +153,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::SystemTime;
 
+// Re-export the canonical ClientType for use via `server::ClientType`.
+pub use crate::client::ClientType;
+
 // Temporarily commenting out the full AuthServer struct until OAuth modules are fixed
 // This will be re-enabled once the base64 and type system issues are resolved
 
@@ -160,15 +163,6 @@ use std::time::SystemTime;
 #[derive(Debug, Clone, Default)]
 pub struct WorkingServerConfig {
     // Temporarily simplified until hierarchical imports are resolved
-}
-
-/// Client type for minimal functionality
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ClientType {
-    /// Public client (cannot securely store credentials)
-    Public,
-    /// Confidential client (can securely store credentials)
-    Confidential,
 }
 
 /// Trait for server-side authentication providers

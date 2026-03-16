@@ -39,13 +39,21 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,no_run
 //! use auth_framework::server::security::{DpopManager, FapiManager};
+//! use auth_framework::{SecureJwtValidator, SecureJwtConfig};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # let dpop_proof: String = todo!();
+//! # let access_token: String = todo!();
+//! # let request: () = ();
+//! let jwt_validator = SecureJwtValidator::new(SecureJwtConfig::default());
 //!
 //! // DPoP for token binding
 //! let dpop_manager = DpopManager::new(jwt_validator);
 //! let dpop_result = dpop_manager.validate_dpop_proof(
-//!     dpop_proof,
+//!     &dpop_proof,
 //!     "POST",
 //!     "https://api.example.com/resource",
 //!     Some(&access_token),
@@ -53,8 +61,11 @@
 //! ).await?;
 //!
 //! // FAPI compliance validation
-//! let fapi_manager = FapiManager::new(config);
-//! let fapi_validation = fapi_manager.validate_request(&request).await?;
+//! # let config: auth_framework::server::security::fapi::FapiConfig = todo!();
+//! // FapiManager requires dpop_manager, mtls_manager, par_manager, private_key_jwt_manager, and jwt_validator
+//! # let fapi_manager: auth_framework::server::security::FapiManager = todo!();
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # Performance Considerations

@@ -7,7 +7,7 @@ use auth_framework::{
     AuthConfig, AuthFramework, AuthToken,
     config::SecurityConfig,
     methods::{AuthMethodEnum, JwtMethod},
-    providers::UserProfile,
+    providers::ProviderProfile,
     storage::{AuthStorage, MemoryStorage, SessionData},
 };
 use chrono::Utc;
@@ -136,7 +136,7 @@ impl AuthCli {
             let user_id = format!("user_{}", username);
 
             // Create a user profile with complete information
-            let user_profile = UserProfile::new()
+            let user_profile = ProviderProfile::new()
                 .with_id(&user_id)
                 .with_provider("local")
                 .with_name(Some(name))
@@ -211,7 +211,7 @@ impl AuthCli {
         };
         let email = format!("{}@example.com", username);
 
-        let user_profile = UserProfile::new()
+        let user_profile = ProviderProfile::new()
             .with_id(&user_id)
             .with_provider("local")
             .with_name(Some(display_name))

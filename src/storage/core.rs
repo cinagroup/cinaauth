@@ -126,7 +126,7 @@ pub struct MemoryStorage {
     // Primary storage using DashMap for deadlock-free operations
     inner: crate::storage::dashmap_memory::DashMapMemoryStorage,
     // RBAC storage still uses RwLock for compatibility (lower concurrency requirements)
-    roles: Arc<RwLock<HashMap<String, crate::authorization::Role>>>,
+    roles: Arc<RwLock<HashMap<String, crate::authorization::AbacRole>>>,
     user_roles: Arc<RwLock<Vec<crate::authorization::UserRole>>>,
 }
 
@@ -157,7 +157,7 @@ impl MemoryStorage {
 // In-memory AuthorizationStorage implementation for RBAC examples
 #[async_trait::async_trait]
 impl crate::authorization::AuthorizationStorage for MemoryStorage {
-    async fn store_role(&self, role: &crate::authorization::Role) -> crate::errors::Result<()> {
+    async fn store_role(&self, role: &crate::authorization::AbacRole) -> crate::errors::Result<()> {
         let mut roles = self.roles.write().unwrap();
         roles.insert(role.id.clone(), role.clone());
         Ok(())
@@ -166,12 +166,12 @@ impl crate::authorization::AuthorizationStorage for MemoryStorage {
     async fn get_role(
         &self,
         role_id: &str,
-    ) -> crate::errors::Result<Option<crate::authorization::Role>> {
+    ) -> crate::errors::Result<Option<crate::authorization::AbacRole>> {
         let roles = self.roles.read().unwrap();
         Ok(roles.get(role_id).cloned())
     }
 
-    async fn update_role(&self, role: &crate::authorization::Role) -> crate::errors::Result<()> {
+    async fn update_role(&self, role: &crate::authorization::AbacRole) -> crate::errors::Result<()> {
         let mut roles = self.roles.write().unwrap();
         roles.insert(role.id.clone(), role.clone());
         Ok(())
@@ -183,7 +183,7 @@ impl crate::authorization::AuthorizationStorage for MemoryStorage {
         Ok(())
     }
 
-    async fn list_roles(&self) -> crate::errors::Result<Vec<crate::authorization::Role>> {
+    async fn list_roles(&self) -> crate::errors::Result<Vec<crate::authorization::AbacRole>> {
         let roles = self.roles.read().unwrap();
         Ok(roles.values().cloned().collect())
     }
@@ -825,27 +825,55 @@ impl crate::audit::AuditStorage for MemoryStorage {
 
     async fn get_statistics(
         &self,
-        _query: &crate::audit::StatsQuery,
+        query: &crate::audit::StatsQuery,
     ) -> Result<crate::audit::AuditStatistics> {
-        // For now, return basic statistics
-        // PRODUCTION: Full audit statistics available with integrated audit storage
+        use std::collections::HashMap;
 
-        let total_events = 0; // Placeholder
-        let event_type_counts = std::collections::HashMap::new();
-        let risk_level_counts = std::collections::HashMap::new();
-        let outcome_counts = std::collections::HashMap::new();
-        let time_series = Vec::new();
-        let top_users = Vec::new();
-        let top_ips = Vec::new();
+        // Pull all events matching the time range in the query.
+        let audit_query = crate::audit::AuditQuery {
+            event_types: None,
+            user_id: None,
+            risk_level: None,
+            outcome: None,
+            time_range: Some(crate::audit::TimeRange {
+                start: query.time_range.start,
+                end: query.time_range.end,
+            }),
+            ip_address: None,
+            resource_type: None,
+            actor_id: None,
+            correlation_id: None,
+            limit: None,
+            offset: None,
+            sort_order: crate::audit::SortOrder::TimestampAsc,
+        };
+        let events = self.query_events(&audit_query).await?;
+        let total_events = events.len() as u64;
+
+        let mut event_type_counts: HashMap<String, u64> = HashMap::new();
+        let mut risk_level_counts: HashMap<String, u64> = HashMap::new();
+        let mut outcome_counts: HashMap<String, u64> = HashMap::new();
+
+        for event in &events {
+            *event_type_counts
+                .entry(format!("{:?}", event.event_type))
+                .or_insert(0) += 1;
+            *risk_level_counts
+                .entry(format!("{:?}", event.risk_level))
+                .or_insert(0) += 1;
+            *outcome_counts
+                .entry(format!("{:?}", event.outcome))
+                .or_insert(0) += 1;
+        }
 
         Ok(crate::audit::AuditStatistics {
             total_events,
             event_type_counts,
             risk_level_counts,
             outcome_counts,
-            time_series,
-            top_users,
-            top_ips,
+            time_series: Vec::new(),
+            top_users: Vec::new(),
+            top_ips: Vec::new(),
         })
     }
 }
@@ -853,11 +881,7 @@ impl crate::audit::AuditStorage for MemoryStorage {
 impl MemoryStorage {
     /// Helper method to list KV keys with a prefix
     async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> {
-        // Simple implementation for memory storage
-        // In a real implementation, this would scan the internal key-value store
-        // For now, return empty as we don't have direct access to internal storage
-        let _prefix = prefix; // Acknowledge parameter
-        Ok(Vec::new())
+        Ok(self.inner.list_kv_keys_by_prefix(prefix))
     }
 }
 

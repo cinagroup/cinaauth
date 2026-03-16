@@ -293,7 +293,7 @@ impl IPSecurityUtils {
             std::env::var("MAXMIND_DB_PATH").unwrap_or_else(|_| "GeoLite2-City.mmdb".to_string());
 
         if !Path::new(&db_path).exists() {
-            log::debug!(
+            tracing::debug!(
                 "MaxMind database not found at {}, using fallback geolocation",
                 db_path
             );
@@ -307,28 +307,33 @@ impl IPSecurityUtils {
         };
 
         match maxminddb::Reader::open_readfile(&db_path) {
-            Ok(reader) => match reader.lookup::<maxminddb::geoip2::City>(ip_addr) {
-                Ok(Some(city)) => {
-                    if let Some(location) = city.location
-                        && let (Some(lat), Some(lon)) = (location.latitude, location.longitude)
-                    {
-                        log::debug!("MaxMind lookup for {}: lat={}, lon={}", ip, lat, lon);
-                        return Some((lat, lon));
+            Ok(reader) => match reader.lookup(ip_addr) {
+                Ok(result) => match result.decode::<maxminddb::geoip2::City>() {
+                    Ok(Some(city)) => {
+                        let location = &city.location;
+                        if let (Some(lat), Some(lon)) = (location.latitude, location.longitude) {
+                            tracing::debug!("MaxMind lookup for {}: lat={}, lon={}", ip, lat, lon);
+                            return Some((lat, lon));
+                        }
+                        tracing::debug!("MaxMind lookup for {} returned no coordinates", ip);
+                        None
                     }
-                    log::debug!("MaxMind lookup for {} returned no coordinates", ip);
-                    None
-                }
-                Ok(None) => {
-                    log::debug!("MaxMind lookup for {} returned no data", ip);
-                    None
+                    Ok(None) => {
+                        tracing::debug!("MaxMind lookup returned no data for {}", ip);
+                        None
+                    }
+                    Err(e) => {
+                        tracing::debug!("MaxMind lookup failed for {}: {}", ip, e);
+                        None
+                    }
                 }
                 Err(e) => {
-                    log::debug!("MaxMind lookup failed for {}: {}", ip, e);
+                    tracing::debug!("MaxMind lookup failed for {}: {}", ip, e);
                     None
                 }
             },
             Err(e) => {
-                log::warn!("Failed to open MaxMind database: {}", e);
+                tracing::warn!("Failed to open MaxMind database: {}", e);
                 None
             }
         }
@@ -363,8 +368,8 @@ impl UserAgentUtils {
         for (i, row) in matrix.iter_mut().enumerate().take(len1 + 1) {
             row[0] = i;
         }
-        for j in 0..=len2 {
-            matrix[0][j] = j;
+        for (j, cell) in matrix[0].iter_mut().enumerate() {
+            *cell = j;
         }
         let ua1_chars: Vec<char> = ua1.chars().collect();
         let ua2_chars: Vec<char> = ua2.chars().collect();

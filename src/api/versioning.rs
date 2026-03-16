@@ -60,9 +60,9 @@ pub async fn version_middleware(request: Request, next: Next) -> Result<Response
         .unwrap_or(&default_version)
         .to_header_value();
 
-    response
-        .headers_mut()
-        .insert("api-version", version.parse().unwrap());
+    if let Ok(header_value) = version.parse() {
+        response.headers_mut().insert("api-version", header_value);
+    }
 
     Ok(response)
 }

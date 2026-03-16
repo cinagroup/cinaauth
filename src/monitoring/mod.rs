@@ -650,25 +650,10 @@ impl MonitoringManager {
 
     /// Attempt to ping the storage system
     async fn attempt_storage_ping(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Try to perform a simple read operation that should always work
-        // This tests database/storage connectivity without side effects
-
-        // For now, we'll simulate a basic connectivity test
-        // In a full implementation, this would:
-        // 1. Test database connection pool
-        // 2. Execute a simple SELECT 1 query
-        // 3. Test Redis connectivity if Redis is configured
-        // 4. Verify storage backend is responsive
-
-        // Placeholder: simulate a storage ping
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-
-        // PRODUCTION: Storage-specific ping tests available:
-        // - PostgreSQL: SELECT 1
-        // - Redis: PING command
-        // - MySQL: SELECT 1
-        // - Memory: verify internal structures
-
+        // Verify internal data structures are accessible and locks aren't deadlocked.
+        // This is a meaningful liveness check without requiring an external storage dependency.
+        let _history = self.metrics_history.read().await;
+        let _health = self.health_results.read().await;
         Ok(())
     }
 

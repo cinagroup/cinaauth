@@ -1,0 +1,27 @@
+   Compiling auth-framework v0.5.0-rc11 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13.63s
+     Running tests\users_api_tests.rs (C:\Users\cires\.cache\auth-framework\target\debug\deps\users_api_tests-4eacfdc8e546e11c.exe)
+
+running 19 tests
+test users_api_tests::test_update_profile_requires_auth ... ok
+test users_api_tests::test_register_rejects_username_with_special_chars ... ok
+test users_api_tests::test_register_rejects_username_starting_with_digit ... ok
+test users_api_tests::test_register_conflict_message_is_generic ... ok
+test users_api_tests::test_change_password_rejects_weak_password ... ok
+test users_api_tests::test_update_profile_valid_email_accepted ... ok
+test users_api_tests::test_admin_create_user_rejects_invalid_email ... ok
+test users_api_tests::test_update_profile_rejects_invalid_email ... ok
+test users_api_tests::test_update_profile_rejects_long_last_name ... ok
+test users_api_tests::test_update_profile_rejects_long_first_name ... ok
+test users_api_tests::test_update_profile_no_email_succeeds ... ok
+test users_api_tests::test_admin_create_user_rejects_invalid_username ... ok
+test users_api_tests::test_refresh_rejects_revoked_token ... ok
+test users_api_tests::test_admin_create_user_rejects_long_first_name ... ok
+test users_api_tests::test_update_profile_maintains_email_index ... ok
+test users_api_tests::test_login_response_includes_roles ... ok
+test users_api_tests::test_admin_create_user_valid_email_accepted ... ok
+test users_api_tests::test_revoke_session_requires_ownership ... ok
+test users_api_tests::test_change_password_accepts_strong_password ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.90s
+

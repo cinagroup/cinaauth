@@ -54,7 +54,7 @@ pub struct StorageValue {
 /// Storage data variants
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StorageData {
-    Token(AuthToken),
+    Token(Box<AuthToken>),
     TokenRef(String),           // Reference to token ID for access token lookups
     UserTokenList(Vec<String>), // List of token IDs for user
     Session(SessionData),
@@ -99,7 +99,7 @@ impl UnifiedStorage {
         let storage = Arc::new(DashMap::with_capacity(config.initial_capacity));
 
         #[cfg(feature = "object-pool")]
-        let token_pool = Pool::new(config.pool_size, || pooled_defaults::create_default_token());
+        let token_pool = Pool::new(config.pool_size, pooled_defaults::create_default_token);
 
         #[cfg(feature = "object-pool")]
         let session_pool = Pool::new(config.pool_size, || {
@@ -236,6 +236,24 @@ impl UnifiedStorage {
         }
     }
 
+    /// Get the token pool if available
+    #[cfg(feature = "object-pool")]
+    pub fn get_token_pool(&self) -> &Pool<AuthToken> {
+        &self.token_pool
+    }
+
+    /// Get the session pool if available
+    #[cfg(feature = "object-pool")]
+    pub fn get_session_pool(&self) -> &Pool<SessionData> {
+        &self.session_pool
+    }
+
+    /// Get the memory arena if available
+    #[cfg(feature = "bumpalo")]
+    pub fn get_arena(&self) -> &Arc<parking_lot::Mutex<Bump>> {
+        &self.arena
+    }
+
     /// Internal method to store value with automatic memory tracking
     fn store_internal(
         &self,
@@ -310,7 +328,7 @@ impl AuthStorage for UnifiedStorage {
         // Store the main token
         self.store_internal(
             StorageKey::Token(token.token_id.clone()),
-            StorageData::Token(token.clone()),
+            StorageData::Token(Box::new(token.clone())),
             Some(Duration::from_secs(
                 (token.expires_at.timestamp() - chrono::Utc::now().timestamp()) as u64,
             )),
@@ -345,7 +363,7 @@ impl AuthStorage for UnifiedStorage {
     async fn get_token(&self, token_id: &str) -> Result<Option<AuthToken>> {
         if let Some(value) = self.get_internal(&StorageKey::Token(token_id.to_string())) {
             match value.data {
-                StorageData::Token(token) => Ok(Some(token)),
+                StorageData::Token(token) => Ok(Some(*token)),
                 _ => Ok(None),
             }
         } else {
@@ -508,7 +526,7 @@ impl AuthStorage for UnifiedStorage {
         self.store_internal(
             StorageKey::KeyValue(key.to_string()),
             StorageData::KeyValue(value.to_vec()),
-            ttl.or_else(|| Some(self.default_ttl)),
+            ttl.or(Some(self.default_ttl)),
         )
     }
 

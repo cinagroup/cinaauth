@@ -235,6 +235,7 @@ fn bench_framework_init(c: &mut Criterion) {
                 security: SecurityConfig::default(),
                 audit: AuditConfig::default(),
                 method_configs: std::collections::HashMap::new(),
+                force_production_mode: false,
             };
 
             let _framework = black_box(AuthFramework::new(config));

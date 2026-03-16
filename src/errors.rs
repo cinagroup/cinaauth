@@ -25,23 +25,35 @@
 //!
 //! # Example Error Handling
 //!
-//! ```rust
+//! ```rust,no_run
 //! use auth_framework::{AuthFramework, AuthError};
+//! use auth_framework::authentication::credentials::Credential;
+//! use auth_framework::authentication::CredentialMetadata;
 //!
-//! match auth_framework.authenticate("password", credential, metadata).await {
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # let auth_framework: AuthFramework = todo!();
+//! # let credential: Credential = todo!();
+//! # fn handle_success<T>(_: T) {}
+//! # fn respond_with_auth_failure() {}
+//! # fn respond_with_rate_limit(_: Option<u64>) {}
+//! # fn respond_with_system_error() {}
+//! match auth_framework.authenticate("password", credential).await {
 //!     Ok(result) => handle_success(result),
-//!     Err(AuthError::InvalidCredential { credential_type, message }) => {
+//!     Err(AuthError::InvalidCredential { credential_type, message, .. }) => {
 //!         log::warn!("Invalid {} credential: {}", credential_type, message);
 //!         respond_with_auth_failure()
 //!     },
-//!     Err(AuthError::RateLimited { retry_after, .. }) => {
-//!         respond_with_rate_limit(retry_after)
+//!     Err(AuthError::RateLimit { message, .. }) => {
+//!         respond_with_rate_limit(None)
 //!     },
 //!     Err(e) => {
 //!         log::error!("Authentication system error: {}", e);
 //!         respond_with_system_error()
 //!     }
 //! }
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # Security Considerations
@@ -98,27 +110,26 @@ pub type Result<T, E = AuthError> = std::result::Result<T, E>;
 ///
 /// # Enhanced Error Handling
 ///
-/// ```rust
+/// ```rust,no_run
 /// use auth_framework::AuthError;
 ///
+/// # let auth_result: auth_framework::errors::Result<()> = Ok(());
 /// // Enhanced error handling with contextual help
 /// match auth_result {
 ///     Err(AuthError::Configuration { message, help, docs_url, .. }) => {
-///         eprintln!("❌ Configuration Error: {}", message);
+///         eprintln!("Configuration Error: {}", message);
 ///         if let Some(help) = help {
-///             eprintln!("💡 Help: {}", help);
+///             eprintln!("Help: {}", help);
 ///         }
 ///         if let Some(docs) = docs_url {
-///             eprintln!("📖 See: {}", docs);
+///             eprintln!("See: {}", docs);
 ///         }
 ///     },
-///     Err(AuthError::InvalidCredential { credential_type, message, suggested_fix, .. }) => {
-///         eprintln!("🔐 Invalid {}: {}", credential_type, message);
-///         if let Some(fix) = suggested_fix {
-///             eprintln!("🔧 Suggested fix: {}", fix);
-///         }
+///     Err(AuthError::InvalidCredential { credential_type, message, .. }) => {
+///         eprintln!("Invalid {}: {}", credential_type, message);
 ///     },
 ///     // ... handle other error types
+///     _ => {}
 /// }
 /// ```
 ///
@@ -803,7 +814,9 @@ impl actix_web::ResponseError for AuthError {
             AuthError::Token(_) => actix_web::http::StatusCode::UNAUTHORIZED,
             AuthError::Permission(_) => actix_web::http::StatusCode::FORBIDDEN,
             AuthError::RateLimit { .. } => actix_web::http::StatusCode::TOO_MANY_REQUESTS,
-            AuthError::Configuration { .. } | AuthError::Storage(_) => {
+            AuthError::Internal { .. }
+            | AuthError::Configuration { .. }
+            | AuthError::Storage(_) => {
                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
             }
             _ => actix_web::http::StatusCode::BAD_REQUEST,

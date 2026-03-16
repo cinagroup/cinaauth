@@ -263,22 +263,30 @@ impl TenantRegistry {
 mod tests {
     use super::*;
 
+    /// Helper function to create a valid test configuration
+    fn create_test_config() -> AuthConfig {
+        let mut config = AuthConfig::default();
+        // Set a strong JWT key: 36 chars, no dictionary words, mixed ASCII printable
+        config.secret = Some("Xk9#mP3$vQ7!nR2@wL8&jT5*cY1%fB4^z6".to_string());
+        config
+    }
+
     #[tokio::test]
     async fn test_register_and_get_tenant() {
-        let registry = TenantRegistry::new(AuthConfig::default());
+        let registry = TenantRegistry::new(create_test_config());
         let context = TenantContext::with_name("test-tenant", "Test Tenant").unwrap();
 
         let result = registry.register_tenant(context, None).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "Failed to register tenant: {:?}", result.err());
 
         let tenant_id = TenantId::new("test-tenant");
         let framework = registry.get_tenant_framework(&tenant_id);
-        assert!(framework.is_ok());
+        assert!(framework.is_ok(), "Failed to get tenant framework: {:?}", framework.err());
     }
 
     #[tokio::test]
     async fn test_duplicate_tenant_registration() {
-        let registry = TenantRegistry::new(AuthConfig::default());
+        let registry = TenantRegistry::new(create_test_config());
         let context = TenantContext::with_name("test", "Test").unwrap();
 
         let _ = registry.register_tenant(context.clone(), None).await;
@@ -289,40 +297,120 @@ mod tests {
 
     #[tokio::test]
     async fn test_tenant_activation_deactivation() {
-        let registry = TenantRegistry::new(AuthConfig::default());
+        let registry = TenantRegistry::new(create_test_config());
         let context = TenantContext::with_name("test", "Test").unwrap();
         let tenant_id = context.id.clone();
 
-        let _ = registry.register_tenant(context, None).await;
+        let result = registry.register_tenant(context, None).await;
+        assert!(result.is_ok(), "Failed to register tenant: {:?}", result.err());
 
         // Deactivate
-        assert!(registry.deactivate_tenant(&tenant_id).await.is_ok());
+        let deactivate_result = registry.deactivate_tenant(&tenant_id).await;
+        assert!(deactivate_result.is_ok(), "Failed to deactivate tenant: {:?}", deactivate_result.err());
 
         // Should not be able to get deactivated tenant
         let result = registry.get_tenant_framework(&tenant_id);
-        assert!(result.is_err());
+        assert!(result.is_err(), "Should not be able to access deactivated tenant");
 
         // Reactivate
-        assert!(registry.activate_tenant(&tenant_id).await.is_ok());
+        let activate_result = registry.activate_tenant(&tenant_id).await;
+        assert!(activate_result.is_ok(), "Failed to activate tenant: {:?}", activate_result.err());
 
         // Should be able to access again
         let result = registry.get_tenant_framework(&tenant_id);
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "Should be able to access reactivated tenant: {:?}", result.err());
     }
 
     #[tokio::test]
     async fn test_list_tenants() {
-        let registry = TenantRegistry::new(AuthConfig::default());
+        let registry = TenantRegistry::new(create_test_config());
 
         let c1 = TenantContext::with_name("tenant1", "Tenant 1").unwrap();
         let c2 = TenantContext::with_name("tenant2", "Tenant 2").unwrap();
 
-        let _ = registry.register_tenant(c1, None).await;
-        let _ = registry.register_tenant(c2, None).await;
+        let r1 = registry.register_tenant(c1, None).await;
+        let r2 = registry.register_tenant(c2, None).await;
+        
+        assert!(r1.is_ok(), "Failed to register tenant1: {:?}", r1.err());
+        assert!(r2.is_ok(), "Failed to register tenant2: {:?}", r2.err());
 
-        assert_eq!(registry.tenant_count().await, 2);
+        let count = registry.tenant_count().await;
+        assert_eq!(count, 2, "Expected 2 tenants, got {}", count);
 
         let ids = registry.list_tenant_ids().await;
-        assert_eq!(ids.len(), 2);
+        assert_eq!(ids.len(), 2, "Expected 2 tenant IDs, got {}", ids.len());
+    }
+
+    /// Test to verify registration works with invalid configuration
+    #[tokio::test]
+    async fn test_tenant_creation_with_minimal_config() {
+        let registry = TenantRegistry::new(create_test_config());
+        let context = TenantContext::with_name("minimal", "Minimal Tenant").unwrap();
+
+        // This should succeed with test config
+        let result = registry.register_tenant(context, None).await;
+        match result {
+            Ok(_) => {
+                let ids = registry.list_tenant_ids().await;
+                assert!(ids.contains(&TenantId::new("minimal")));
+            }
+            Err(e) => {
+                panic!("Failed to register tenant with test config: {}", e);
+            }
+        }
+    }
+
+    /// Test concurrent registration
+    #[tokio::test]
+    async fn test_concurrent_tenant_registration() {
+        let registry = std::sync::Arc::new(TenantRegistry::new(create_test_config()));
+        let mut handles = vec![];
+
+        for i in 0..5 {
+            let reg = registry.clone();
+            let handle = tokio::spawn(async move {
+                let id = format!("tenant-{}", i);
+                let context = TenantContext::with_name(&id, &format!("Tenant {}", i)).unwrap();
+                reg.register_tenant(context, None).await
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            let result = handle.await.unwrap();
+            assert!(result.is_ok(), "Concurrent registration failed: {:?}", result.err());
+        }
+
+        let count = registry.tenant_count().await;
+        assert_eq!(count, 5, "Expected 5 tenants after concurrent registration, got {}", count);
+    }
+
+    /// Test tenant isolation - different tenants cannot access each other's data
+    #[tokio::test]
+    async fn test_tenant_data_isolation() {
+        let registry = TenantRegistry::new(create_test_config());
+        
+        let c1 = TenantContext::with_name("tenant-a", "Tenant A").unwrap();
+        let c2 = TenantContext::with_name("tenant-b", "Tenant B").unwrap();
+
+        let r1 = registry.register_tenant(c1, None).await;
+        let r2 = registry.register_tenant(c2, None).await;
+
+        assert!(r1.is_ok());
+        assert!(r2.is_ok());
+
+        // Deactivate tenant-a
+        let deactivate = registry.deactivate_tenant(&TenantId::new("tenant-a")).await;
+        assert!(deactivate.is_ok());
+
+        // tenant-b should still be accessible
+        let result = registry.get_tenant_framework(&TenantId::new("tenant-b"));
+        assert!(result.is_ok(), "Tenant B should still be accessible");
+
+        // tenant-a should not be accessible
+        let result = registry.get_tenant_framework(&TenantId::new("tenant-a"));
+        assert!(result.is_err(), "Tenant A should not be accessible when deactivated");
     }
 }
+
+

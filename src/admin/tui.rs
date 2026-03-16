@@ -167,82 +167,19 @@ impl TuiApp {
                 "oauth2.google.client_id".to_string(),
                 "threat_intel.enabled".to_string(),
             ],
-            users: vec![
-                User {
-                    id: "1".to_string(),
-                    email: "admin@example.com".to_string(),
-                    active: true,
-                    created: "2024-01-01".to_string(),
-                    last_login: Some("2024-08-10 14:30:15".to_string()),
-                },
-                User {
-                    id: "2".to_string(),
-                    email: "user@example.com".to_string(),
-                    active: true,
-                    created: "2024-01-02".to_string(),
-                    last_login: Some("2024-08-10 13:45:32".to_string()),
-                },
-                User {
-                    id: "3".to_string(),
-                    email: "inactive@example.com".to_string(),
-                    active: false,
-                    created: "2024-01-03".to_string(),
-                    last_login: None,
-                },
-            ],
-            security_events: vec![
-                SecurityEvent {
-                    timestamp: "2024-08-10 14:30:15".to_string(),
-                    event_type: "login_success".to_string(),
-                    user: Some("admin@example.com".to_string()),
-                    details: "Successful login from 192.168.1.100".to_string(),
-                    severity: "info".to_string(),
-                },
-                SecurityEvent {
-                    timestamp: "2024-08-10 14:25:42".to_string(),
-                    event_type: "login_failure".to_string(),
-                    user: Some("invalid@example.com".to_string()),
-                    details: "Failed login attempt from 203.0.113.1".to_string(),
-                    severity: "warning".to_string(),
-                },
-                SecurityEvent {
-                    timestamp: "2024-08-10 14:20:33".to_string(),
-                    event_type: "password_reset".to_string(),
-                    user: Some("user@example.com".to_string()),
-                    details: "Password reset requested".to_string(),
-                    severity: "info".to_string(),
-                },
-            ],
-            server_logs: vec![
-                LogEntry {
-                    timestamp: "2024-08-10 14:35:12".to_string(),
-                    level: "INFO".to_string(),
-                    component: "web_server".to_string(),
-                    message: "Server started on port 8080".to_string(),
-                },
-                LogEntry {
-                    timestamp: "2024-08-10 14:34:58".to_string(),
-                    level: "INFO".to_string(),
-                    component: "config".to_string(),
-                    message: "Configuration loaded successfully".to_string(),
-                },
-                LogEntry {
-                    timestamp: "2024-08-10 14:34:55".to_string(),
-                    level: "DEBUG".to_string(),
-                    component: "auth".to_string(),
-                    message: "JWT validation service initialized".to_string(),
-                },
-            ],
+            // Users, security events, and logs are populated by load_initial_data()
+            // from the live AuthFramework state; start empty so no stale data is shown.
+            users: vec![],
+            security_events: vec![],
+            server_logs: vec![],
         }
     }
 
     pub async fn load_initial_data(&mut self) {
-        // PRODUCTION FIX: Load actual data from the auth service state
         tracing::debug!("Loading real data from AuthFramework state");
 
         // Update system information from real state
         if let Ok(server_info) = self.state.get_server_info().await {
-            // Update mock data with real information where available
             tracing::info!("Loaded server info: version {}", server_info.version);
         }
 
@@ -256,9 +193,17 @@ impl TuiApp {
 
         // Load real security events from monitoring
         if let Ok(security_events) = self.state.get_recent_security_events().await {
-            // Update security events with real data
             if !security_events.is_empty() {
-                tracing::info!("Loaded {} recent security events", security_events.len());
+                self.security_events = security_events
+                    .into_iter()
+                    .map(|e| SecurityEvent {
+                        timestamp: e.timestamp.to_rfc3339(),
+                        event_type: e.event_type,
+                        user: e.user_id,
+                        details: e.description,
+                        severity: "info".to_string(),
+                    })
+                    .collect();
             }
         }
 

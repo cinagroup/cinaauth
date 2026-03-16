@@ -1,6 +1,7 @@
 // Secure session management with enhanced security measures
 use super::secure_utils::{SecureComparison, SecureRandomGen};
 use crate::errors::{AuthError, Result};
+use crate::session::manager::SessionState;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -58,18 +59,6 @@ pub struct SecureSession {
 
     /// Session rotation count
     pub rotation_count: u32,
-}
-
-/// Session state with security considerations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum SessionState {
-    Active,
-    Expired,
-    Revoked,
-    Suspended,
-    RequiresMfa,
-    RequiresRotation,
-    HighRisk,
 }
 
 /// Device fingerprint for tracking sessions

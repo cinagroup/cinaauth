@@ -323,7 +323,7 @@ impl AnalyticsManager {
 
         if self.config.real_time_enabled {
             // Process event immediately for real-time analytics
-            self.process_real_time_event(self.event_buffer.last().unwrap())
+            self.process_real_time_event(self.event_buffer.last().expect("buffer non-empty after push"))
                 .await?;
         }
 
@@ -494,7 +494,7 @@ impl TimeRange {
     /// Create time range for today
     pub fn today() -> Self {
         let now = chrono::Utc::now();
-        let start = now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc();
+        let start = now.date_naive().and_hms_opt(0, 0, 0).expect("0,0,0 are valid h/m/s values").and_utc();
         let end = now;
         Self { start, end }
     }

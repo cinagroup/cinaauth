@@ -2,110 +2,114 @@
 //!
 //! Authentication, authorization, rate limiting, and other middleware
 
-use crate::api::{ApiResponse, ApiState, extract_bearer_token, validate_api_token};
+use crate::api::{ApiResponse, ApiState};
+use crate::distributed_rate_limiting::RateLimitResult;
 use axum::{
-    extract::{Request, State},
+    extract::{Request},
+    http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
 };
 use std::time::{Duration, Instant};
 
-/// Authentication middleware
-pub async fn auth_middleware(
-    State(state): State<ApiState>,
-    mut request: Request,
-    next: Next,
-) -> Result<Response, Response> {
-    // Skip auth for public endpoints
-    let path = request.uri().path();
-    if is_public_endpoint(path) {
-        return Ok(next.run(request).await);
-    }
-
-    // Extract token from headers
-    let headers = request.headers();
-    match extract_bearer_token(headers) {
-        Some(token) => {
-            // Validate token
-            match validate_api_token(&state.auth_framework, &token).await {
-                Ok(auth_token) => {
-                    // Add auth token to request extensions for use in handlers
-                    request.extensions_mut().insert(auth_token);
-                    Ok(next.run(request).await)
-                }
-                Err(_) => {
-                    let error_response = ApiResponse::<()>::unauthorized();
-                    Err(error_response.into_response())
-                }
-            }
-        }
-        None => {
-            let error_response = ApiResponse::<()>::unauthorized();
-            Err(error_response.into_response())
-        }
-    }
-}
-
-/// Admin authorization middleware
-pub async fn admin_middleware(
-    State(_state): State<ApiState>,
+/// Rate limiting middleware backed by [`DistributedRateLimiter`].
+///
+/// Uses the client IP address (from `X-Forwarded-For`, then `X-Real-IP`, falling back to
+/// `"unknown"`) as the rate-limiting key.  Returns **429 Too Many Requests** when the limit
+/// is exceeded and adds standard `X-RateLimit-*` response headers on every response.
+pub async fn rate_limit_middleware_with_state(
+    state: ApiState,
     request: Request,
     next: Next,
 ) -> Result<Response, Response> {
-    // Get auth token from extensions (should be set by auth_middleware)
-    match request.extensions().get::<crate::tokens::AuthToken>() {
-        Some(auth_token) => {
-            if auth_token.roles.contains(&"admin".to_string()) {
-                Ok(next.run(request).await)
-            } else {
-                let error_response = ApiResponse::<()>::forbidden();
-                Err(error_response.into_response())
+    // Derive a stable key from the client IP.
+    // SECURITY (H-4): Validate the extracted value as a real IP address before using it
+    // as a rate-limit key.  An attacker who can set arbitrary X-Forwarded-For headers
+    // could bypass per-IP limiting by injecting a fabricated first address.  Requiring a
+    // valid parse means only syntactically correct IPs are accepted; anything else falls
+    // through to the next header or the fallback string "unknown".
+    let client_key = request
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.split(',').next())
+        .map(str::trim)
+        .and_then(|s| s.parse::<std::net::IpAddr>().ok().map(|ip| ip.to_string()))
+        .or_else(|| {
+            request
+                .headers()
+                .get("x-real-ip")
+                .and_then(|v| v.to_str().ok())
+                .map(str::trim)
+                .and_then(|s| s.parse::<std::net::IpAddr>().ok().map(|ip| ip.to_string()))
+        })
+        .unwrap_or_else(|| {
+            tracing::warn!(
+                "Rate limiter: no identifiable client IP from X-Forwarded-For or X-Real-IP; \
+                 falling back to shared 'unidentified' bucket"
+            );
+            "unidentified".to_string()
+        });
+
+    match state.rate_limiter.check_rate_limit(&client_key).await {
+        Ok(RateLimitResult::Allowed { remaining, reset_at }) => {
+            let mut response = next.run(request).await;
+            let headers = response.headers_mut();
+            let reset_secs = reset_at
+                .checked_duration_since(Instant::now())
+                .unwrap_or(Duration::ZERO)
+                .as_secs();
+            if let Ok(v) = remaining.to_string().parse() {
+                headers.insert("X-RateLimit-Remaining", v);
             }
+            if let Ok(v) = reset_secs.to_string().parse() {
+                headers.insert("X-RateLimit-Reset", v);
+            }
+            Ok(response)
         }
-        None => {
-            // If no auth token, user is not authenticated
-            let error_response = ApiResponse::<()>::unauthorized();
-            Err(error_response.into_response())
+        Ok(RateLimitResult::Denied { retry_after, .. }) => {
+            tracing::warn!(client = %client_key, "Rate limit exceeded");
+            let mut response = ApiResponse::<()>::error(
+                "RATE_LIMIT_EXCEEDED",
+                "Too many requests — please retry after the indicated delay",
+            )
+            .into_response();
+            *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+            let headers = response.headers_mut();
+            if let Ok(v) = retry_after.as_secs().to_string().parse() {
+                headers.insert("Retry-After", v);
+            }
+            Err(response)
+        }
+        Ok(RateLimitResult::Blocked { unblock_at, reason }) => {
+            tracing::warn!(client = %client_key, reason = %reason, "Client is blocked");
+            let mut response = ApiResponse::<()>::error(
+                "CLIENT_BLOCKED",
+                "Access temporarily blocked due to repeated rate limit violations",
+            )
+            .into_response();
+            *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+            let unblock_secs = unblock_at
+                .checked_duration_since(Instant::now())
+                .unwrap_or(Duration::ZERO)
+                .as_secs();
+            if let Ok(v) = unblock_secs.to_string().parse() {
+                let headers = response.headers_mut();
+                headers.insert("Retry-After", v);
+            }
+            Err(response)
+        }
+        Err(e) => {
+            // Fail open: log the error and allow the request to proceed.
+            tracing::error!(error = %e, "Rate limiter error — allowing request");
+            Ok(next.run(request).await)
         }
     }
 }
 
-/// Rate limiting middleware
-pub async fn rate_limit_middleware(request: Request, next: Next) -> Result<Response, Response> {
-    // In a real implementation, use a distributed rate limiter like Redis
-    // For now, just add rate limit headers
-
-    let mut response = next.run(request).await;
-
-    // Add rate limit headers
-    let headers = response.headers_mut();
-    headers.insert("X-RateLimit-Limit", "100".parse().unwrap());
-    headers.insert("X-RateLimit-Remaining", "95".parse().unwrap());
-    headers.insert("X-RateLimit-Reset", "1692278400".parse().unwrap()); // Unix timestamp
-
-    Ok(response)
-}
-
-/// CORS middleware
-pub async fn cors_middleware(request: Request, next: Next) -> Response {
-    let response = next.run(request).await;
-
-    let mut response = response;
-    let headers = response.headers_mut();
-
-    headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
-    headers.insert(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS".parse().unwrap(),
-    );
-    headers.insert(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Authorization".parse().unwrap(),
-    );
-    headers.insert("Access-Control-Max-Age", "3600".parse().unwrap());
-
-    response
-}
+// cors_middleware was removed: it set `Access-Control-Allow-Origin: *` which is
+// inappropriate for an authentication service.  Use tower-http's `CorsLayer`
+// with a configured `AllowOrigin` list instead.
 
 /// Logging middleware
 pub async fn logging_middleware(request: Request, next: Next) -> Response {
@@ -155,21 +159,34 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
     let mut response = response;
     let headers = response.headers_mut();
 
-    // Security headers
-    headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
-    headers.insert("X-Frame-Options", "DENY".parse().unwrap());
-    headers.insert("X-XSS-Protection", "1; mode=block".parse().unwrap());
+    // Security headers — all values are well-known static strings so from_static is safe.
+    headers.insert(
+        "X-Content-Type-Options",
+        axum::http::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        "X-Frame-Options",
+        axum::http::HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        "X-XSS-Protection",
+        axum::http::HeaderValue::from_static("1; mode=block"),
+    );
     headers.insert(
         "Strict-Transport-Security",
-        "max-age=31536000; includeSubDomains".parse().unwrap(),
+        axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
     );
     headers.insert(
         "Referrer-Policy",
-        "strict-origin-when-cross-origin".parse().unwrap(),
+        axum::http::HeaderValue::from_static("strict-origin-when-cross-origin"),
     );
     headers.insert(
         "Permissions-Policy",
-        "camera=(), microphone=(), geolocation=()".parse().unwrap(),
+        axum::http::HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
+    );
+    headers.insert(
+        "Content-Security-Policy",
+        axum::http::HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'"),
     );
 
     response
@@ -185,17 +202,6 @@ pub async fn timeout_middleware(request: Request, next: Next) -> Result<Response
                 ApiResponse::<()>::error("REQUEST_TIMEOUT", "Request timed out after 30 seconds");
             Err(error_response.into_response())
         }
-    }
-}
-
-/// Check if endpoint is public (doesn't require authentication)
-fn is_public_endpoint(path: &str) -> bool {
-    match path {
-        "/health" | "/health/detailed" | "/metrics" | "/readiness" | "/liveness" => true,
-        "/auth/login" | "/auth/refresh" | "/auth/providers" => true,
-        "/oauth/authorize" | "/oauth/token" | "/oauth/.well-known/openid_configuration" => true,
-        _ if path.starts_with("/oauth/.well-known/") => true,
-        _ => false,
     }
 }
 

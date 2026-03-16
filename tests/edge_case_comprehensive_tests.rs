@@ -731,7 +731,7 @@ mod security_edge_cases {
             let _session_id = format!("session_{}", i);
             // Generate CSRF token using basic secure random generation
             use base64::engine::{Engine as _, general_purpose};
-            use rand::RngCore;
+            use rand::Rng;
 
             let mut rng = rand::rng();
             let mut token_bytes = [0u8; 32];

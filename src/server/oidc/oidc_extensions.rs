@@ -865,12 +865,12 @@ impl SharedSignalsManager {
         let transmitters = self.transmitters.read().await;
         for (receiver_url, transmitter) in transmitters.iter() {
             match transmitter.send_event(&event_jwt, receiver_url).await {
-                Ok(_) => log::info!("Security event sent to {}", receiver_url),
-                Err(e) => log::error!("Failed to send event to {}: {}", receiver_url, e),
+                Ok(_) => tracing::info!("Security event sent to {}", receiver_url),
+                Err(e) => tracing::error!("Failed to send event to {}: {}", receiver_url, e),
             }
         }
 
-        log::info!("Security event transmitted: {:?}", event);
+        tracing::info!("Security event transmitted: {:?}", event);
         Ok(())
     }
 
@@ -903,10 +903,10 @@ impl SharedSignalsManager {
             "account_disabled" => self.handle_account_disabled(&event).await?,
             "credential_change" => self.handle_credential_change(&event).await?,
             "fraud_detected" => self.handle_fraud_detection(&event).await?,
-            _ => log::warn!("Unknown security event type: {}", event.event_type),
+            _ => tracing::warn!("Unknown security event type: {}", event.event_type),
         }
 
-        log::info!("Processed security event: {:?}", event);
+        tracing::info!("Processed security event: {:?}", event);
         Ok(())
     }
 
@@ -1177,15 +1177,25 @@ impl SharedSignalsManager {
             "action_required": "invalidate_user_tokens"
         });
 
-        // Simulate notifying multiple resource servers
-        let resource_servers = vec!["api.example.com", "app.example.com", "admin.example.com"];
-        for server in resource_servers {
+        // Notify all registered transmitter endpoints.
+        // Endpoints are populated when SignalTransmitter records are registered;
+        // if none are registered the notification is a no-op (logged at debug level).
+        let transmitters = self.transmitters.read().await;
+        if transmitters.is_empty() {
             tracing::debug!(
-                "Notifying resource server {} about account disabled: {}",
-                server,
+                "No registered signal transmitters — skipping account-disabled notification for user {}",
                 user_id
             );
-            // In production: HTTP POST to server's security endpoint
+        } else {
+            for (id, tx) in transmitters.iter() {
+                for endpoint in &tx.endpoints {
+                    tracing::debug!(
+                        "Notifying transmitter {} endpoint {} about account disabled: {}",
+                        id, endpoint, user_id
+                    );
+                    // In production: reqwest POST to endpoint with signed JWT payload
+                }
+            }
         }
 
         tracing::info!("Sent account disabled notifications for user: {}", user_id);
@@ -1259,11 +1269,10 @@ impl SharedSignalsManager {
     async fn remove_session_from_store(&self, session_id: &str) -> Result<()> {
         tracing::debug!("Removing session {} from active sessions store", session_id);
 
-        // In production, this would interact with the session store (Redis, database, etc.)
-        // For now, we'll simulate the removal
-        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-
-        tracing::info!("Session {} removed from active store", session_id);
+        // In production: interact with the session store (Redis, database, etc.)
+        // to delete the session record.  This is a no-op until the backing store
+        // is wired into SharedSignalsManager.
+        tracing::info!("Session {} removed from active store (no-op: no backing store configured)", session_id);
         Ok(())
     }
 
@@ -1303,16 +1312,23 @@ impl SharedSignalsManager {
             "issuer": &self.config.endpoint_url
         });
 
-        // Simulate notifying multiple resource servers
-        let resource_servers = vec!["api.example.com", "app.example.com", "admin.example.com"];
-        for server in resource_servers {
-            tracing::info!(
-                "Notified resource server {} of session revocation: {}",
-                server,
-                notification
+        // Notify all registered transmitter endpoints.
+        let transmitters = self.transmitters.read().await;
+        if transmitters.is_empty() {
+            tracing::debug!(
+                "No registered signal transmitters — skipping session-revocation notification for session {}",
+                session_id
             );
-            // In production: make HTTP POST to server's revocation endpoint
-            tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+        } else {
+            for (id, tx) in transmitters.iter() {
+                for endpoint in &tx.endpoints {
+                    tracing::info!(
+                        "Notifying transmitter {} endpoint {} of session revocation: {}",
+                        id, endpoint, notification
+                    );
+                    // In production: reqwest POST to endpoint with signed JWT payload
+                }
+            }
         }
 
         Ok(())
@@ -1413,7 +1429,7 @@ impl SharedSignalsManager {
     }
 
     async fn handle_fraud_detection(&self, event: &SecurityEvent) -> Result<()> {
-        log::info!("Handling fraud detection for event: {}", event.event_id);
+        tracing::info!("Handling fraud detection for event: {}", event.event_id);
         // Implement fraud detection response
         Ok(())
     }
@@ -1426,7 +1442,7 @@ impl SharedSignalsManager {
     ) -> Result<()> {
         let mut receivers = self.receivers.write().await;
         receivers.insert(receiver_id.clone(), receiver);
-        log::info!("Signal receiver registered: {}", receiver_id);
+        tracing::info!("Signal receiver registered: {}", receiver_id);
         Ok(())
     }
 
@@ -1434,7 +1450,7 @@ impl SharedSignalsManager {
     pub async fn unregister_receiver(&self, receiver_id: &str) -> Result<()> {
         let mut receivers = self.receivers.write().await;
         if receivers.remove(receiver_id).is_some() {
-            log::info!("Signal receiver unregistered: {}", receiver_id);
+            tracing::info!("Signal receiver unregistered: {}", receiver_id);
             Ok(())
         } else {
             Err(AuthError::auth_method(
@@ -1709,7 +1725,7 @@ pub struct EventTransmitter {
 
 impl EventTransmitter {
     pub async fn send_event(&self, event_jwt: &str, receiver_url: &str) -> Result<()> {
-        log::info!("Sending event JWT to {}: {}", receiver_url, event_jwt);
+        tracing::info!("Sending event JWT to {}: {}", receiver_url, event_jwt);
         // In production, this would send HTTP POST to receiver endpoint
         Ok(())
     }

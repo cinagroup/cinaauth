@@ -1,6 +1,6 @@
 //! String utility functions for the AuthFramework.
 
-use rand::{Rng, rng};
+use rand::{RngExt, rng};
 
 /// Generate a random ID with optional prefix
 pub fn generate_id(prefix: Option<&str>) -> String {

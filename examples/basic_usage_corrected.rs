@@ -9,7 +9,7 @@
 use auth_framework::{
     AuthConfig, AuthFramework, AuthToken,
     methods::{AuthMethodEnum, JwtMethod},
-    providers::UserProfile,
+    providers::ProviderProfile,
     storage::{AuthStorage, MemoryStorage, SessionData},
     tokens::TokenMetadata,
 };
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Auth framework initialized with JWT method");
 
     // 5. Create a test user profile
-    let user_profile = UserProfile {
+    let user_profile = ProviderProfile {
         id: Some("user123".to_string()),
         provider: Some("local".to_string()),
         username: Some("demo_user".to_string()),
@@ -114,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Create a test authentication token
-fn create_test_token(user_profile: &UserProfile) -> Result<AuthToken, Box<dyn std::error::Error>> {
+fn create_test_token(user_profile: &ProviderProfile) -> Result<AuthToken, Box<dyn std::error::Error>> {
     let now = Utc::now();
     let user_id = user_profile.id.as_ref().unwrap().clone();
 
@@ -151,7 +151,7 @@ fn create_test_token(user_profile: &UserProfile) -> Result<AuthToken, Box<dyn st
 
 /// Create a test session
 fn create_test_session(
-    user_profile: &UserProfile,
+    user_profile: &ProviderProfile,
 ) -> Result<SessionData, Box<dyn std::error::Error>> {
     let now = Utc::now();
     let user_id = user_profile.id.as_ref().unwrap().clone();

@@ -63,20 +63,23 @@ pub use sms_kit::SmsKitManager as SmsManager;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
 /// use auth_framework::auth_modular::mfa::MfaManager;
+/// use std::sync::Arc;
 ///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # let storage: Arc<dyn auth_framework::storage::AuthStorage> = todo!();
 /// // Create MFA manager with storage backend
 /// let mfa_manager = MfaManager::new(storage);
 ///
-/// // Setup TOTP for a user
-/// let setup_result = mfa_manager.totp.setup_totp("user123", "user@example.com").await?;
+/// // Generate a TOTP secret for a user (store it and show QR code to the user)
+/// let secret = mfa_manager.totp.generate_secret("user123").await?;
 ///
-/// // Generate challenge
-/// let challenge = mfa_manager.create_challenge("user123", MfaMethodType::Totp).await?;
-///
-/// // Verify user's response
-/// let verification = mfa_manager.verify_challenge(&challenge.id, "123456").await?;
+/// // Verify a TOTP code during an authentication attempt
+/// let is_valid = mfa_manager.totp.verify_code("user123", "123456").await?;
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// # Thread Safety
@@ -107,8 +110,7 @@ pub struct MfaManager {
     /// Active MFA challenges
     challenges: Arc<RwLock<HashMap<String, MfaChallenge>>>,
 
-    /// Storage backend
-    /// PRODUCTION FIX: Available for direct manager operations and fallback scenarios
+    /// Storage backend for direct manager operations and fallback scenarios
     storage: Arc<dyn AuthStorage>,
 }
 
@@ -251,9 +253,13 @@ impl MfaManager {
                 cross_method_challenge.id.clone(),
                 MfaChallenge {
                     id: cross_method_challenge.id.clone(),
-                    mfa_type: crate::methods::MfaType::Totp, // Placeholder for cross-method challenge
+                    mfa_type: crate::methods::MfaType::MultiMethod,
                     user_id: user_id.to_string(),
                     expires_at: cross_method_challenge.expires_at,
+                    created_at: chrono::Utc::now(),
+                    attempts: 0,
+                    max_attempts: 3,
+                    code_hash: None,
                     message: Some("Complete all required authentication methods".to_string()),
                     data: {
                         let mut data = HashMap::new();

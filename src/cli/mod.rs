@@ -1,7 +1,6 @@
-/// CLI progress bar and formatting stubs
-pub struct CliProgressBar {
-    // In a real implementation, use indicatif::ProgressBar
-}
+/// Minimal CLI progress bar using terminal output.
+/// For richer progress bars, consider the `indicatif` crate.
+pub struct CliProgressBar {}
 
 impl CliProgressBar {
     pub fn new(msg: &str) -> Self {

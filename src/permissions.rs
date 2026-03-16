@@ -1,4 +1,7 @@
-/// Attribute-Based Access Control (ABAC) stub
+/// Attribute-Based Access Control (ABAC) policy.
+///
+/// Associates a set of attribute rules with the permissions they grant.
+/// Evaluated by [`PermissionChecker::check_advanced_permission`].
 #[derive(Debug, Clone)]
 pub struct AbacPolicy {
     pub attributes: HashMap<String, serde_json::Value>,
@@ -12,7 +15,10 @@ pub struct AbacRule {
     pub permission: Permission,
 }
 
-/// Delegation model stub
+/// Permission delegation record.
+///
+/// Represents a delegator granting a subset of their permissions to a delegatee,
+/// optionally for a limited time window.
 #[derive(Debug, Clone)]
 pub struct Delegation {
     pub delegator: String,
@@ -116,6 +122,9 @@ pub struct Permission {
 /// Represents a role with associated permissions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Role {
+    /// Optional unique identifier (populated when persisted via `AuthorizationEngine`)
+    pub id: Option<String>,
+
     /// Role name
     pub name: String,
 
@@ -130,6 +139,15 @@ pub struct Role {
 
     /// Whether this role is active
     pub active: bool,
+
+    /// Arbitrary metadata key-value pairs
+    pub metadata: HashMap<String, String>,
+
+    /// When the role was created (populated when loaded from persistent storage)
+    pub created_at: Option<std::time::SystemTime>,
+
+    /// When the role was last modified
+    pub updated_at: Option<std::time::SystemTime>,
 }
 
 /// User permissions and roles.
@@ -265,11 +283,15 @@ impl Role {
     /// Create a new role.
     pub fn new(name: impl Into<String>) -> Self {
         Self {
+            id: None,
             name: name.into(),
             description: None,
             permissions: HashSet::new(),
             parent_roles: HashSet::new(),
             active: true,
+            metadata: HashMap::new(),
+            created_at: None,
+            updated_at: None,
         }
     }
 
@@ -390,7 +412,10 @@ impl UserPermissions {
             self.computed_permissions = Some(all_permissions);
         }
 
-        self.computed_permissions.as_ref().unwrap()
+        // SAFETY: guaranteed Some — either it was Some on entry or we just assigned it above.
+        self.computed_permissions
+            .as_ref()
+            .expect("computed_permissions is always Some after this block")
     }
 
     /// Check if the user has a specific permission.
@@ -401,6 +426,26 @@ impl UserPermissions {
     ) -> bool {
         let all_permissions = self.compute_permissions(role_resolver);
         all_permissions.iter().any(|p| p.implies(permission))
+    }
+}
+
+/// Returns `true` if `broader` is a higher-privilege action that implies `required`.
+///
+/// Action hierarchy:
+/// - `"manage"` / `"admin"` imply all common CRUD + management actions
+/// - `"write"` / `"update"` imply `"read"`
+fn broader_action_implies(broader: &str, required: &str) -> bool {
+    // Wildcard is handled in Permission::implies; exact match is handled before calling this.
+    if broader == required {
+        return true;
+    }
+    match broader {
+        "manage" | "admin" => matches!(
+            required,
+            "read" | "write" | "delete" | "create" | "list" | "update" | "get"
+        ),
+        "write" | "update" => matches!(required, "read" | "get" | "list"),
+        _ => false,
     }
 }
 
@@ -463,6 +508,24 @@ impl PermissionChecker {
             .or_insert_with(|| UserPermissions::new(user_id));
 
         user_perms.add_role(role);
+    }
+
+    /// Count the number of defined roles.
+    pub fn role_count(&self) -> usize {
+        self.roles.len()
+    }
+
+    /// Count the number of users that have explicit permissions recorded.
+    pub fn user_count(&self) -> usize {
+        self.user_permissions.len()
+    }
+
+    /// Count the total number of direct permissions across all users.
+    pub fn total_direct_permission_count(&self) -> usize {
+        self.user_permissions
+            .values()
+            .map(|up| up.direct_permissions.len())
+            .sum()
     }
 
     /// Check if a user has a specific permission.
@@ -611,9 +674,10 @@ impl PermissionChecker {
         // Find direct parent resources
         for (parent_resource, children) in hierarchy {
             if children.contains(&resource.to_string()) {
-                // Check if user has permission on the parent resource
-                let parent_permission = Permission::new(action, parent_resource);
-                if self.check_permission(user_id, &parent_permission)? {
+                // Check if user has the exact permission on the parent resource, OR any
+                // higher-privilege action that implies the required action (e.g. "manage"
+                // implies "read" and "write").
+                if self.check_permission_with_action_hierarchy(user_id, action, parent_resource)? {
                     return Ok(true);
                 }
 
@@ -625,6 +689,39 @@ impl PermissionChecker {
         }
 
         Ok(false)
+    }
+
+    /// Check if a user has permission for `action` on `resource`, considering action hierarchy.
+    ///
+    /// In addition to an exact match, higher-privilege actions imply less-privileged ones:
+    /// - `"manage"` / `"admin"` imply `"read"`, `"write"`, `"delete"`, `"create"`, `"list"`, `"update"`
+    /// - `"write"` / `"update"` imply `"read"`
+    fn check_permission_with_action_hierarchy(
+        &mut self,
+        user_id: &str,
+        required_action: &str,
+        resource: &str,
+    ) -> Result<bool> {
+        // First try exact match via the standard path
+        let exact = Permission::new(required_action, resource);
+        if self.check_permission(user_id, &exact).unwrap_or(false) {
+            return Ok(true);
+        }
+
+        // Walk user's permissions and check action hierarchy
+        let role_resolver = |role_name: &str| self.roles.get(role_name).cloned();
+        let user_perms = match self.user_permissions.get_mut(user_id) {
+            Some(p) => p,
+            None => return Ok(false),
+        };
+        let all_perms = user_perms.compute_permissions(&role_resolver);
+
+        Ok(all_perms.iter().any(|p| {
+            let resource_match = p.resource == "*" || p.resource == resource;
+            let action_match =
+                p.action == "*" || broader_action_implies(&p.action, required_action);
+            resource_match && action_match
+        }))
     }
 
     /// Create some default roles for common use cases.

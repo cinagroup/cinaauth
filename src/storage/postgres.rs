@@ -20,55 +20,128 @@ impl PostgresStorage {
         Self { pool }
     }
 
-    /// Initialize database tables
+    /// Initialize database tables.
+    ///
+    /// Creates the `auth_tokens`, `sessions`, and `kv_store` tables together with
+    /// their secondary indexes if they do not already exist.  Safe to call on every
+    /// application startup (`IF NOT EXISTS` / `IF NOT EXISTS` guards are idempotent).
+    ///
+    /// # Errors
+    /// Returns an error if any DDL statement fails (e.g. insufficient privileges).
     pub async fn migrate(&self) -> Result<()> {
+        // Each statement is executed separately because sqlx::query() accepts
+        // exactly one SQL statement per call.
+
+        // --- auth_tokens table ---
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS auth_tokens (
-                token_id VARCHAR(255) PRIMARY KEY,
-                user_id VARCHAR(255) NOT NULL,
-                access_token TEXT NOT NULL UNIQUE,
+                token_id    VARCHAR(255) PRIMARY KEY,
+                user_id     VARCHAR(255) NOT NULL,
+                access_token TEXT        NOT NULL UNIQUE,
                 refresh_token TEXT,
-                token_type VARCHAR(50),
-                expires_at TIMESTAMPTZ NOT NULL,
-                scopes TEXT[],
-                issued_at TIMESTAMPTZ NOT NULL,
+                token_type  VARCHAR(50),
+                expires_at  TIMESTAMPTZ  NOT NULL,
+                scopes      TEXT[],
+                issued_at   TIMESTAMPTZ  NOT NULL,
                 auth_method VARCHAR(100) NOT NULL,
-                subject VARCHAR(255),
-                issuer VARCHAR(255),
-                client_id VARCHAR(255),
-                metadata JSONB,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                INDEX idx_auth_tokens_user_id (user_id),
-                INDEX idx_auth_tokens_access_token (access_token),
-                INDEX idx_auth_tokens_expires_at (expires_at)
-            );
-
-            CREATE TABLE IF NOT EXISTS sessions (
-                session_id VARCHAR(255) PRIMARY KEY,
-                user_id VARCHAR(255) NOT NULL,
-                data JSONB NOT NULL,
-                expires_at TIMESTAMPTZ,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                INDEX idx_sessions_user_id (user_id),
-                INDEX idx_sessions_expires_at (expires_at)
-            );
-
-            CREATE TABLE IF NOT EXISTS kv_store (
-                key VARCHAR(255) PRIMARY KEY,
-                value BYTEA NOT NULL,
-                expires_at TIMESTAMPTZ,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                INDEX idx_kv_store_expires_at (expires_at)
-            );
+                subject     VARCHAR(255),
+                issuer      VARCHAR(255),
+                client_id   VARCHAR(255),
+                metadata    JSONB,
+                created_at  TIMESTAMPTZ  DEFAULT NOW()
+            )
             "#,
         )
         .execute(&self.pool)
         .await
         .map_err(|e| {
             AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
-                "Migration failed: {}",
-                e
+                "Migration failed (auth_tokens): {e}"
+            )))
+        })?;
+
+        // Secondary indexes for auth_tokens (PostgreSQL requires separate CREATE INDEX statements)
+        for (name, col) in [
+            ("idx_auth_tokens_user_id", "user_id"),
+            ("idx_auth_tokens_access_token", "access_token"),
+            ("idx_auth_tokens_expires_at", "expires_at"),
+        ] {
+            sqlx::query(&format!(
+                "CREATE INDEX IF NOT EXISTS {name} ON auth_tokens ({col})"
+            ))
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
+                    "Migration failed (index {name}): {e}"
+                )))
+            })?;
+        }
+
+        // --- sessions table ---
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS sessions (
+                session_id VARCHAR(255) PRIMARY KEY,
+                user_id    VARCHAR(255) NOT NULL,
+                data       JSONB        NOT NULL,
+                expires_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ  DEFAULT NOW()
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
+                "Migration failed (sessions): {e}"
+            )))
+        })?;
+
+        for (name, col) in [
+            ("idx_sessions_user_id", "user_id"),
+            ("idx_sessions_expires_at", "expires_at"),
+        ] {
+            sqlx::query(&format!(
+                "CREATE INDEX IF NOT EXISTS {name} ON sessions ({col})"
+            ))
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
+                    "Migration failed (index {name}): {e}"
+                )))
+            })?;
+        }
+
+        // --- kv_store table ---
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS kv_store (
+                key        VARCHAR(512) PRIMARY KEY,
+                value      BYTEA        NOT NULL,
+                expires_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ  DEFAULT NOW()
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
+                "Migration failed (kv_store): {e}"
+            )))
+        })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_kv_store_expires_at ON kv_store (expires_at)",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
+                "Migration failed (index idx_kv_store_expires_at): {e}"
             )))
         })?;
 

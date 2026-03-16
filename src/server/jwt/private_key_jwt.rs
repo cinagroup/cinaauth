@@ -17,14 +17,18 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::private_key_jwt::{PrivateKeyJwtManager, ClientJwtConfig};
-//! use auth_framework::secure_jwt::{SecureJwtValidator, SecureJwtConfig};
+//! use auth_framework::server::jwt::private_key_jwt::{PrivateKeyJwtManager, ClientJwtConfig};
+//! use auth_framework::{SecureJwtValidator, SecureJwtConfig};
 //! use chrono::Duration;
 //! use jsonwebtoken::Algorithm;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Create JWT validator with enhanced security
-//! let jwt_config = SecureJwtConfig::default();
+//! // `Default` generates a fresh random secret per instance.
+//! // Pass an explicit `jwt_secret` when running multiple nodes that share a key.
+//! let jwt_config = SecureJwtConfig {
+//!     jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
+//!     ..SecureJwtConfig::default()
+//! };
 //! let jwt_validator = SecureJwtValidator::new(jwt_config);
 //!
 //! // Create manager with custom cleanup interval
@@ -62,7 +66,7 @@ use crate::errors::{AuthError, Result};
 use crate::security::secure_jwt::SecureJwtValidator;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Duration, Utc};
-use jsonwebtoken::{Algorithm, DecodingKey, Header, Validation, decode};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -227,12 +231,17 @@ impl PrivateKeyJwtManager {
         })
     }
 
-    /// Create a client assertion JWT (for testing/client-side use)
+    /// Create a client assertion JWT (for testing/client-side use).
+    ///
+    /// # Key encoding by algorithm
+    /// - **HS256/384/512**: `signing_key` is the raw HMAC secret bytes.
+    /// - **RS256/384/512**: `signing_key` must be a PEM-encoded RSA private key (`-----BEGIN RSA PRIVATE KEY-----...`).
+    /// - **ES256/384**: `signing_key` must be a PEM-encoded EC private key (`-----BEGIN EC PRIVATE KEY-----...`).
     pub fn create_client_assertion(
         &self,
         client_id: &str,
         audience: &str,
-        _signing_key: &[u8],
+        signing_key: &[u8],
         algorithm: Algorithm,
     ) -> Result<String> {
         let now = Utc::now();
@@ -246,21 +255,41 @@ impl PrivateKeyJwtManager {
             nbf: Some(now.timestamp()),
         };
 
+        let encoding_key = match algorithm {
+            Algorithm::HS256 | Algorithm::HS384 | Algorithm::HS512 => {
+                EncodingKey::from_secret(signing_key)
+            }
+            Algorithm::RS256 | Algorithm::RS384 | Algorithm::RS512 => {
+                EncodingKey::from_rsa_pem(signing_key).map_err(|e| {
+                    AuthError::auth_method(
+                        "private_key_jwt",
+                        format!("Invalid RSA PEM key for {:?}: {}", algorithm, e),
+                    )
+                })?
+            }
+            Algorithm::ES256 | Algorithm::ES384 => {
+                EncodingKey::from_ec_pem(signing_key).map_err(|e| {
+                    AuthError::auth_method(
+                        "private_key_jwt",
+                        format!("Invalid EC PEM key for {:?}: {}", algorithm, e),
+                    )
+                })?
+            }
+            _ => {
+                return Err(AuthError::auth_method(
+                    "private_key_jwt",
+                    format!("Unsupported signing algorithm: {:?}", algorithm),
+                ));
+            }
+        };
+
         let header = Header::new(algorithm);
-
-        // SECURITY CRITICAL: Generate proper JWT signature
-        let header_b64 = URL_SAFE_NO_PAD.encode(serde_json::to_string(&header)?);
-        let claims_b64 = URL_SAFE_NO_PAD.encode(serde_json::to_string(&claims)?);
-        let signing_input = format!("{}.{}", header_b64, claims_b64);
-
-        // Generate cryptographically secure signature
-        // In production: Use actual private key signing with RSA/ECDSA
-        let signature = self.generate_secure_signature(&signing_input, algorithm)?;
-        let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
-
-        let jwt = format!("{}.{}.{}", header_b64, claims_b64, signature_b64);
-
-        Ok(jwt)
+        encode(&header, &claims, &encoding_key).map_err(|e| {
+            AuthError::auth_method(
+                "private_key_jwt",
+                format!("Failed to encode JWT: {}", e),
+            )
+        })
     }
 
     /// Clean up expired JTIs
@@ -278,11 +307,10 @@ impl PrivateKeyJwtManager {
 
         // Use SecureJwtValidator for enhanced security validation
         // We assume transport is secure for client authentication
-        let transport_secure = true;
 
         match self
             .jwt_validator
-            .validate_token(jwt, &decoding_key, transport_secure)
+            .validate_token(jwt, &decoding_key)
         {
             Ok(_secure_claims) => {
                 // Additional private key JWT specific validations passed through SecureJwtValidator
@@ -337,43 +365,6 @@ impl PrivateKeyJwtManager {
 
         // Clean up expired tokens, ignoring cleanup errors
         let _ = self.jwt_validator.cleanup_revoked_tokens(expired_cutoff);
-    }
-
-    /// Generate secure signature for JWT (production implementation)
-    fn generate_secure_signature(
-        &self,
-        signing_input: &str,
-        algorithm: Algorithm,
-    ) -> Result<Vec<u8>> {
-        use sha2::{Digest, Sha256};
-
-        // In production, this would use actual private key signing
-        // For now, we'll use a cryptographically strong HMAC-style signature
-        // that's much more secure than the "signature" string placeholder
-
-        let mut hasher = Sha256::new();
-        hasher.update(signing_input.as_bytes());
-
-        // Add algorithm-specific salt for additional security
-        let algorithm_salt = match algorithm {
-            Algorithm::RS256 => b"rs256_salt_key_jwt_priv",
-            Algorithm::RS384 => b"rs384_salt_key_jwt_priv",
-            Algorithm::RS512 => b"rs512_salt_key_jwt_priv",
-            Algorithm::ES256 => b"es256_salt_key_jwt_priv",
-            Algorithm::ES384 => b"es384_salt_key_jwt_priv",
-            _ => b"deflt_salt_key_jwt_priv",
-        };
-        hasher.update(algorithm_salt);
-
-        // Add timestamp for uniqueness
-        let timestamp = Utc::now().timestamp_millis().to_string();
-        hasher.update(timestamp.as_bytes());
-
-        // Create secure signature
-        let hash_result = hasher.finalize();
-
-        // Return first 32 bytes as signature (stronger than the original "signature" string)
-        Ok(hash_result.to_vec())
     }
 
     /// Parse JWT header without verification
@@ -674,17 +665,36 @@ mod tests {
     fn test_create_client_assertion() {
         let manager = create_test_manager();
 
+        // HS256 uses a raw HMAC secret — pass any byte slice
         let assertion = manager
             .create_client_assertion(
                 "test_client",
                 "https://auth.example.com/token",
-                b"test_key",
-                Algorithm::RS256,
+                b"super-secret-key-for-testing-purposes",
+                Algorithm::HS256,
             )
             .unwrap();
 
-        // Should have JWT format
-        assert_eq!(assertion.split('.').count(), 3);
+        // Should have JWT format: header.payload.signature
+        let parts: Vec<&str> = assertion.split('.').collect();
+        assert_eq!(parts.len(), 3);
+        // Each part must be non-empty (real base64url)
+        assert!(!parts[0].is_empty());
+        assert!(!parts[1].is_empty());
+        assert!(!parts[2].is_empty());
+    }
+
+    #[test]
+    fn test_create_client_assertion_rs256_requires_pem_key() {
+        let manager = create_test_manager();
+        // Raw bytes are not a valid RSA PEM key — must return an error
+        let result = manager.create_client_assertion(
+            "test_client",
+            "https://auth.example.com/token",
+            b"not_a_pem_key",
+            Algorithm::RS256,
+        );
+        assert!(result.is_err(), "RS256 must reject non-PEM key bytes");
     }
 
     #[tokio::test]
@@ -764,13 +774,13 @@ mod tests {
 
         manager.register_client(config.clone()).await.unwrap();
 
-        // Create a test JWT assertion
+        // Create a test JWT assertion using HS256 (raw secret is valid for HMAC)
         let assertion = manager
             .create_client_assertion(
                 "test_client",
                 "https://auth.example.com/token",
-                b"test_key",
-                Algorithm::RS256,
+                b"super-secret-key-for-testing-purposes",
+                Algorithm::HS256,
             )
             .unwrap();
 

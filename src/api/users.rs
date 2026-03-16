@@ -84,16 +84,24 @@ pub async fn get_profile(
                                 username: user_profile
                                     .username
                                     .unwrap_or_else(|| format!("user_{}", auth_token.user_id)),
-                                email: user_profile.email.unwrap_or_else(|| {
-                                    format!("{}@example.com", auth_token.user_id)
-                                }),
+                                email: user_profile.email.unwrap_or_default(),
                                 first_name,
                                 last_name,
                                 roles: auth_token.roles,
                                 permissions: auth_token.permissions,
                                 mfa_enabled,
-                                created_at: chrono::Utc::now().to_rfc3339(), // Default to current time
-                                updated_at: chrono::Utc::now().to_rfc3339(),
+                                created_at: user_profile
+                                    .additional_data
+                                    .get("created_at")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
+                                updated_at: user_profile
+                                    .additional_data
+                                    .get("updated_at")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
                             };
 
                             ApiResponse::success(profile)
@@ -104,22 +112,12 @@ pub async fn get_profile(
                                 auth_token.user_id,
                                 e
                             );
-
-                            // Fallback profile if storage fetch fails
-                            let profile = UserProfile {
-                                id: auth_token.user_id.clone(),
-                                username: format!("user_{}", auth_token.user_id),
-                                email: format!("{}@example.com", auth_token.user_id),
-                                first_name: Some("Unknown".to_string()),
-                                last_name: Some("User".to_string()),
-                                roles: auth_token.roles,
-                                permissions: auth_token.permissions,
-                                mfa_enabled: false,
-                                created_at: "2024-01-01T00:00:00Z".to_string(),
-                                updated_at: chrono::Utc::now().to_rfc3339(),
-                            };
-
-                            ApiResponse::success(profile)
+                            // M-7: Return an error instead of a fabricated profile so callers
+                            // cannot mistake placeholder data for real user information.
+                            ApiResponse::error_typed(
+                                "PROFILE_UNAVAILABLE",
+                                "User profile could not be retrieved; please try again",
+                            )
                         }
                     }
                 }
@@ -141,38 +139,109 @@ pub async fn update_profile(
         Some(token) => {
             match validate_api_token(&state.auth_framework, &token).await {
                 Ok(auth_token) => {
-                    // Update user profile in storage
-                    let updated_profile_data = crate::providers::UserProfile {
-                        id: Some(auth_token.user_id.clone()),
-                        provider: Some("local".to_string()),
-                        username: Some(format!("user_{}", auth_token.user_id)),
-                        name: match (&req.first_name, &req.last_name) {
-                            (Some(first), Some(last)) => Some(format!("{} {}", first, last)),
-                            (Some(first), None) => Some(first.clone()),
-                            (None, Some(last)) => Some(last.clone()),
-                            (None, None) => None,
-                        },
-                        email: req.email.clone(),
-                        email_verified: Some(false),
-                        picture: None,
-                        locale: None,
-                        additional_data: std::collections::HashMap::new(),
-                    };
+                    // Validate email format before storing to ensure consistency with
+                    // the public registration endpoint.
+                    if let Some(ref email) = req.email {
+                        if crate::utils::validation::validate_email(email).is_err() {
+                            return ApiResponse::validation_error_typed(
+                                "Invalid email format",
+                            );
+                        }
+                    }
 
-                    // Store updated profile (in a real implementation, update storage)
+                    // Enforce length limits on name fields to prevent storage abuse.
+                    if req.first_name.as_deref().is_some_and(|n| n.len() > 100) {
+                        return ApiResponse::validation_error_typed(
+                            "First name must be 100 characters or fewer",
+                        );
+                    }
+                    if req.last_name.as_deref().is_some_and(|n| n.len() > 100) {
+                        return ApiResponse::validation_error_typed(
+                            "Last name must be 100 characters or fewer",
+                        );
+                    }
+
+                    // Persist updated profile to storage
+                    let storage = state.auth_framework.storage();
+                    let user_key = format!("user:{}", auth_token.user_id);
+                    let current_data = storage.get_kv(&user_key).await.ok().flatten();
+                    let mut user_json: serde_json::Value = current_data
+                        .and_then(|b| serde_json::from_slice(&b).ok())
+                        .unwrap_or_else(|| serde_json::json!({}));
+
+                    // Maintain the email reverse-lookup index so duplicate-email
+                    // detection at registration keeps working after an email change.
+                    if let Some(ref new_email) = req.email {
+                        let old_email = user_json["email"].as_str().unwrap_or("").to_string();
+                        if old_email != *new_email {
+                            // SECURITY: Verify the new email is not already claimed
+                            // by another user before updating the index.
+                            let new_email_key = format!("user:email:{}", new_email);
+                            if let Ok(Some(existing)) = storage.get_kv(&new_email_key).await {
+                                let owner = String::from_utf8_lossy(&existing).to_string();
+                                if owner != auth_token.user_id {
+                                    return ApiResponse::error_typed(
+                                        "CONFLICT",
+                                        "Email address is already in use",
+                                    );
+                                }
+                            }
+                            // Delete the old mapping.
+                            if !old_email.is_empty() {
+                                let _ = storage
+                                    .delete_kv(&format!("user:email:{}", old_email))
+                                    .await;
+                            }
+                            // Write the new email → user_id mapping.
+                            let _ = storage
+                                .store_kv(
+                                    &new_email_key,
+                                    auth_token.user_id.as_bytes(),
+                                    None,
+                                )
+                                .await;
+                        }
+                        user_json["email"] = serde_json::json!(new_email);
+                    }
+                    let name = match (&req.first_name, &req.last_name) {
+                        (Some(f), Some(l)) => Some(format!("{} {}", f, l)),
+                        (Some(f), None) => Some(f.clone()),
+                        (None, Some(l)) => Some(l.clone()),
+                        (None, None) => None,
+                    };
+                    if let Some(ref n) = name {
+                        user_json["name"] = serde_json::json!(n);
+                    }
+                    user_json["updated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
+
+                    if let Ok(serialized) = serde_json::to_vec(&user_json) {
+                        let _ = storage.store_kv(&user_key, &serialized, None).await;
+                    }
+
                     tracing::info!(
-                        "Updating profile for user: {} with data: {:?}",
-                        auth_token.user_id,
-                        updated_profile_data
+                        "Profile updated for user: {}",
+                        auth_token.user_id
                     );
+
+                    // Read back the stored values to build an accurate response.
+                    let (stored_username, stored_email, stored_created_at) = {
+                        let fresh = storage.get_kv(&user_key).await.ok().flatten();
+                        let j: serde_json::Value = fresh
+                            .and_then(|b| serde_json::from_slice(&b).ok())
+                            .unwrap_or_default();
+                        (
+                            j["username"].as_str().map(|s| s.to_string()),
+                            j["email"].as_str().unwrap_or("").to_string(),
+                            j["created_at"].as_str().unwrap_or("").to_string(),
+                        )
+                    };
 
                     // Return updated profile response
                     let updated_profile = UserProfile {
                         id: auth_token.user_id.clone(),
-                        username: format!("user_{}", auth_token.user_id),
-                        email: req
-                            .email
-                            .unwrap_or_else(|| format!("{}@example.com", auth_token.user_id)),
+                        username: stored_username
+                            .unwrap_or_else(|| format!("user_{}", auth_token.user_id)),
+                        email: stored_email,
                         first_name: req.first_name,
                         last_name: req.last_name,
                         roles: auth_token.roles,
@@ -182,8 +251,11 @@ pub async fn update_profile(
                             &auth_token.user_id,
                         )
                         .await,
-                        created_at: chrono::Utc::now().to_rfc3339(), // Default to current time
-                        updated_at: chrono::Utc::now().to_rfc3339(),
+                        created_at: stored_created_at,
+                        updated_at: user_json["updated_at"]
+                            .as_str()
+                            .unwrap_or("")
+                            .to_string(),
                     };
 
                     ApiResponse::success(updated_profile)
@@ -206,22 +278,53 @@ pub async fn change_password(
         return ApiResponse::validation_error("Current password and new password are required");
     }
 
-    if req.new_password.len() < 8 {
-        return ApiResponse::validation_error("New password must be at least 8 characters long");
+    // Enforce the same password complexity requirements as registration.
+    if let Err(e) = crate::utils::validation::validate_password(&req.new_password) {
+        return ApiResponse::validation_error_typed(format!("{e}"));
     }
 
     match extract_bearer_token(&headers) {
         Some(token) => {
             match validate_api_token(&state.auth_framework, &token).await {
                 Ok(auth_token) => {
-                    // In a real implementation:
-                    // 1. Verify current password
-                    // 2. Hash new password
-                    // 3. Update password in storage
-                    // 4. Optionally invalidate all existing sessions
+                    // Verify current password against stored hash
+                    match state
+                        .auth_framework
+                        .verify_user_password(&auth_token.user_id, &req.current_password)
+                        .await
+                    {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            return ApiResponse::validation_error("Current password is incorrect");
+                        }
+                        Err(_) => {
+                            // Return the same generic message regardless of error type
+                            // to avoid distinguishing wrong-password from storage errors.
+                            return ApiResponse::validation_error("Current password is incorrect");
+                        }
+                    }
 
-                    tracing::info!("Password changed for user: {}", auth_token.user_id);
-                    ApiResponse::<()>::ok_with_message("Password changed successfully")
+                    // Get the username (update_user_password takes username)
+                    let username = match state
+                        .auth_framework
+                        .get_username_by_id(&auth_token.user_id)
+                        .await
+                    {
+                        Ok(u) => u,
+                        Err(e) => return ApiResponse::<()>::from(e),
+                    };
+
+                    match state
+                        .auth_framework
+                        .update_user_password(&username, &req.new_password)
+                        .await
+                    {
+                        Ok(()) => {
+                            tracing::info!("Password changed for user: {}", auth_token.user_id);
+                            ApiResponse::<()>::ok_with_message("Password changed successfully")
+                        }
+                        Err(e) => ApiResponse::<()>::from(e),
+                    }
                 }
                 Err(e) => ApiResponse::<()>::from(e),
             }
@@ -241,26 +344,97 @@ pub async fn get_user_profile(
         Some(token) => {
             match validate_api_token(&state.auth_framework, &token).await {
                 Ok(auth_token) => {
-                    // Check if user has admin permissions
                     if !auth_token.roles.contains(&"admin".to_string()) {
                         return ApiResponse::<UserProfile>::forbidden_typed();
                     }
 
-                    // In a real implementation, fetch user profile from storage
-                    let profile = UserProfile {
-                        id: user_id.clone(),
-                        username: format!("user_{}", user_id),
-                        email: format!("{}@example.com", user_id),
-                        first_name: Some("User".to_string()),
-                        last_name: Some("Name".to_string()),
-                        roles: vec!["user".to_string()],
-                        permissions: vec!["read:profile".to_string()],
-                        mfa_enabled: false,
-                        created_at: "2024-01-01T00:00:00Z".to_string(),
-                        updated_at: "2024-01-01T00:00:00Z".to_string(),
-                    };
+                    match state.auth_framework.get_user_profile(&user_id).await {
+                        Ok(user_profile) => {
+                            // Load roles from the canonical user record (same
+                            // pattern as validate_api_token) rather than hard-coding [].
+                            // Load both roles and permissions from the canonical user
+                            // record so the admin profile view stays consistent with
+                            // what validate_api_token returns for the user's own token.
+                            let user_kv_bytes = {
+                                let uk = format!("user:{}", user_id);
+                                state.auth_framework.storage().get_kv(&uk).await.ok().flatten()
+                            };
+                            let user_kv_json: serde_json::Value = user_kv_bytes
+                                .as_deref()
+                                .and_then(|b| serde_json::from_slice(b).ok())
+                                .unwrap_or_default();
 
-                    ApiResponse::success(profile)
+                            let profile_roles: Vec<String> = user_kv_json["roles"]
+                                .as_array()
+                                .map(|a| {
+                                    a.iter()
+                                        .filter_map(|v| v.as_str().map(String::from))
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+
+                            let profile_permissions: Vec<String> = user_kv_json["permissions"]
+                                .as_array()
+                                .map(|a| {
+                                    a.iter()
+                                        .filter_map(|v| v.as_str().map(String::from))
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+
+                            let (first_name, last_name) = if let Some(name) = &user_profile.name {
+                                let parts: Vec<&str> = name.split_whitespace().collect();
+                                if parts.len() >= 2 {
+                                    (Some(parts[0].to_string()), Some(parts[1..].join(" ")))
+                                } else if parts.len() == 1 {
+                                    (Some(parts[0].to_string()), None)
+                                } else {
+                                    (None, None)
+                                }
+                            } else {
+                                (None, None)
+                            };
+
+                            let profile = UserProfile {
+                                id: user_id.clone(),
+                                username: user_profile
+                                    .username
+                                    .unwrap_or_else(|| format!("user_{}", user_id)),
+                                email: user_profile.email.unwrap_or_default(),
+                                first_name,
+                                last_name,
+                                roles: profile_roles,
+                                permissions: profile_permissions,
+                                mfa_enabled: user_profile
+                                    .additional_data
+                                    .get("mfa_enabled")
+                                    .and_then(|v| v.as_bool())
+                                    .unwrap_or(false),
+                                created_at: user_profile
+                                    .additional_data
+                                    .get("created_at")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
+                                updated_at: user_profile
+                                    .additional_data
+                                    .get("updated_at")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
+                            };
+                            ApiResponse::success(profile)
+                        }
+                        Err(e) => {
+                            let error_response = ApiResponse::<()>::from(e);
+                            ApiResponse::<UserProfile> {
+                                success: error_response.success,
+                                data: None,
+                                error: error_response.error,
+                                message: error_response.message,
+                            }
+                        }
+                    }
                 }
                 Err(_e) => ApiResponse::error_typed("USER_ERROR", "User operation failed"),
             }
@@ -279,29 +453,15 @@ pub async fn get_sessions(
         Some(token) => {
             match validate_api_token(&state.auth_framework, &token).await {
                 Ok(_auth_token) => {
-                    // In a real implementation, fetch sessions from storage
-                    let sessions = vec![
-                        SessionInfo {
-                            id: "session_1".to_string(),
-                            device: "Chrome on Windows".to_string(),
-                            location: "New York, NY".to_string(),
-                            ip_address: "192.168.1.1".to_string(),
-                            created_at: "2024-01-01T10:00:00Z".to_string(),
-                            last_active: "2024-01-01T12:00:00Z".to_string(),
-                            is_current: true,
-                        },
-                        SessionInfo {
-                            id: "session_2".to_string(),
-                            device: "Safari on iPhone".to_string(),
-                            location: "San Francisco, CA".to_string(),
-                            ip_address: "10.0.0.1".to_string(),
-                            created_at: "2023-12-30T08:00:00Z".to_string(),
-                            last_active: "2023-12-31T09:30:00Z".to_string(),
-                            is_current: false,
-                        },
-                    ];
-
-                    ApiResponse::success(sessions)
+                    // Session listing requires the login path to create storage-backed
+                    // sessions via store_session().  The current implementation issues
+                    // JWT tokens only and does not create storage sessions on login,
+                    // so there is nothing to list here.  Return 501 rather than an
+                    // empty success so callers know the feature is not yet implemented.
+                    ApiResponse::<Vec<SessionInfo>>::error_typed(
+                        "NOT_IMPLEMENTED",
+                        "Session listing is not yet implemented",
+                    )
                 }
                 Err(_e) => ApiResponse::error_typed("USER_ERROR", "Session operation failed"),
             }
@@ -332,10 +492,36 @@ pub async fn revoke_session(
     match extract_bearer_token(&headers) {
         Some(token) => {
             match validate_api_token(&state.auth_framework, &token).await {
-                Ok(_auth_token) => {
-                    // In a real implementation, remove session from storage
-                    tracing::info!("Revoking session: {}", session_id);
-                    ApiResponse::<()>::ok_with_message("Session revoked successfully")
+                Ok(auth_token) => {
+                    let storage = state.auth_framework.storage();
+
+                    // SECURITY: Verify that the session belongs to the authenticated user
+                    // before deleting it; without this check any authenticated user can
+                    // terminate any other user's session by guessing the session_id.
+                    match storage.get_session(&session_id).await {
+                        Ok(Some(ref session)) if session.user_id == auth_token.user_id => {}
+                        Ok(Some(_)) => {
+                            return ApiResponse::<()>::error_typed(
+                                "FORBIDDEN",
+                                "You do not have permission to revoke this session",
+                            );
+                        }
+                        Ok(None) => {
+                            return ApiResponse::<()>::error_typed(
+                                "NOT_FOUND",
+                                "Session not found",
+                            );
+                        }
+                        Err(e) => return ApiResponse::<()>::from(e),
+                    }
+
+                    match storage.delete_session(&session_id).await {
+                        Ok(()) => {
+                            tracing::info!("Revoked session: {}", session_id);
+                            ApiResponse::<()>::ok_with_message("Session revoked successfully")
+                        }
+                        Err(e) => ApiResponse::<()>::from(e),
+                    }
                 }
                 Err(e) => ApiResponse::<()>::from(e),
             }
@@ -344,22 +530,14 @@ pub async fn revoke_session(
     }
 }
 
-/// Helper function for MFA status integration
+/// Helper function for MFA status integration.
+///
+/// Delegates to the canonical implementation in [`crate::api::mfa`] which
+/// checks the `mfa_enabled:{user_id}` KV key written by the MFA verification
+/// flow.
 async fn check_user_mfa_status(
     auth_framework: &std::sync::Arc<crate::AuthFramework>,
     user_id: &str,
 ) -> bool {
-    // Check if user has MFA enabled in storage
-    // This is a simplified check - in a real implementation, you would query the MFA service
-    match auth_framework.get_user_profile(user_id).await {
-        Ok(profile) => {
-            // Check for MFA-related attributes in user profile
-            profile
-                .additional_data
-                .get("mfa_enabled")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false)
-        }
-        Err(_) => false, // Default to false if profile fetch fails
-    }
+    crate::api::mfa::check_user_mfa_status(auth_framework, user_id).await
 }

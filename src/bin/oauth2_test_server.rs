@@ -5,9 +5,7 @@
 
 use auth_framework::{AuthFramework, AuthConfig, api::ApiServer};
 use std::sync::Arc;
-use tokio;
 use tracing::info;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

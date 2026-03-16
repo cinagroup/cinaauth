@@ -365,21 +365,22 @@ impl EnhancedDevice {
 
     /// Calculate device trust score
     async fn calculate_trust_score(&self) -> f64 {
-        // Simulate trust score calculation based on various factors
-        let mut score = 1.0;
+        // Simulate trust score calculation based on verifiable device properties.
+        // In production this would query MDM, EDR, and attestation services.
+        let mut score = 1.0_f64;
 
-        // Device age factor (newer devices might be less trusted initially)
+        // Newly-registered devices start with a lower initial trust score
         if self.device_id.contains("new") {
             score -= 0.1;
         }
 
-        // Device type factor
+        // Test/development devices are considered less trusted
         if self.device_id.contains("test") {
-            score -= 0.2; // Test devices are less trusted
+            score -= 0.2;
         }
 
-        // Simulate random trust factors
-        score - (self.device_id.len() % 3) as f64 * 0.1
+        // Clamp to [0.0, 1.0] so callers always receive a valid score
+        score.clamp(0.0, 1.0)
     }
 
     /// Validate device-specific challenge
@@ -392,18 +393,215 @@ impl EnhancedDevice {
         // 3. Check challenge freshness and replay protection
         // 4. Verify device-specific cryptographic proof
 
-        // Simulate challenge validation
-        let expected_response = format!("device_{}_{}", self.device_id, challenge);
-        let response_hash = format!("hash_{}", expected_response);
-
-        // Simple validation - in production this would be proper cryptography
-        if challenge.len() >= 16 && response_hash.len() == 32 {
-            tracing::debug!("Device challenge validation successful");
-            Ok(true)
-        } else {
-            tracing::warn!("Device challenge validation failed - invalid format");
-            Ok(false)
+        // Minimum length requirement — too-short challenges cannot provide replay protection
+        if challenge.len() < 16 {
+            tracing::warn!("Device challenge too short ({} chars) for: {}", challenge.len(), self.device_id);
+            return Ok(false);
         }
+
+        // The challenge must consist only of URL-safe base64 / hex characters
+        // (alphanumeric, '+', '/', '-', '_', '=')
+        let valid_chars = challenge
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '-' | '_' | '='));
+
+        if !valid_chars {
+            tracing::warn!("Device challenge contains invalid characters for: {}", self.device_id);
+            return Ok(false);
+        }
+
+        tracing::debug!("Device challenge validation successful");
+        Ok(true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn device(id: &str) -> EnhancedDevice {
+        EnhancedDevice::new(id.to_string())
+    }
+
+    // ── EnhancedDevice::new ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_new_stores_device_id() {
+        let d = device("my-device-abc123");
+        assert_eq!(d.device_id, "my-device-abc123");
+    }
+
+    // ── verify_device_binding ────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_device_binding_valid_uuid_format() {
+        let d = device("550e8400-e29b-41d4-a716-446655440000");
+        // UUID-style device_id is ≥ 8 chars and only alphanumeric + dash
+        let result = d.verify_device_binding().await.unwrap();
+        assert!(result, "UUID-format device ID should pass binding check");
+    }
+
+    #[tokio::test]
+    async fn test_device_binding_too_short() {
+        let d = device("abc123"); // 6 chars — below 8
+        assert!(
+            !d.verify_device_binding().await.unwrap(),
+            "Device IDs shorter than 8 chars must fail"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_device_binding_invalid_chars() {
+        let d = device("device@with#special!chars");
+        assert!(
+            !d.verify_device_binding().await.unwrap(),
+            "Device IDs with special chars (not alphanumeric/-) must fail"
+        );
+    }
+
+    // ── calculate_trust_score ────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_trust_score_clean_device_is_1_0() {
+        let d = device("abcd1234efgh5678"); // no "new" or "test" in name
+        let score = d.calculate_trust_score().await;
+        assert!(
+            (score - 1.0).abs() < f64::EPSILON,
+            "Clean device should score 1.0, got {score}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_trust_score_new_device_is_reduced() {
+        let d = device("newdevice-abcd1234");
+        let score = d.calculate_trust_score().await;
+        assert!(
+            score < 1.0,
+            "Device containing 'new' should have score < 1.0, got {score}"
+        );
+        assert!(
+            (score - 0.9).abs() < f64::EPSILON,
+            "Expected 0.9, got {score}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_trust_score_test_device_is_reduced() {
+        let d = device("testdevice-abcd1234");
+        let score = d.calculate_trust_score().await;
+        assert!(
+            (score - 0.8).abs() < f64::EPSILON,
+            "Expected 0.8 for 'test' device, got {score}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_trust_score_new_and_test_device() {
+        let d = device("new-testdevice-abcd1234");
+        let score = d.calculate_trust_score().await;
+        // 1.0 - 0.1 (new) - 0.2 (test) = 0.7
+        assert!(
+            (score - 0.7).abs() < f64::EPSILON,
+            "Expected 0.7 for device containing both 'new' and 'test', got {score}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_trust_score_always_in_range() {
+        // Even extreme inputs should stay in [0.0, 1.0]
+        for id in &[
+            "new-test-device-id",
+            "new-new-new-test-test-test-device",
+            "aaaaaaaaaaaaa",
+        ] {
+            let score = device(id).calculate_trust_score().await;
+            assert!(
+                score >= 0.0 && score <= 1.0,
+                "Trust score {score} out of range [0,1] for '{id}'"
+            );
+        }
+    }
+
+    // ── validate_device_challenge ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_challenge_valid_hex_16_chars() {
+        let d = device("abcdefgh-1234");
+        let challenge = "0123456789abcdef"; // 16 hex chars
+        assert!(d.validate_device_challenge(challenge).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_challenge_valid_base64url() {
+        let d = device("abcdefgh-1234");
+        let challenge = "SGVsbG8gV29ybGQh"; // base64url, 16 chars
+        assert!(d.validate_device_challenge(challenge).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_challenge_too_short() {
+        let d = device("abcdefgh-1234");
+        assert!(
+            !d.validate_device_challenge("short123").await.unwrap(),
+            "Challenge < 16 chars must be rejected"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_challenge_empty() {
+        let d = device("abcdefgh-1234");
+        assert!(!d.validate_device_challenge("").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_challenge_invalid_chars() {
+        let d = device("abcdefgh-1234");
+        // Contains space and exclamation mark — invalid
+        let challenge = "Hello World!!!!!";
+        assert!(
+            !d.validate_device_challenge(challenge).await.unwrap(),
+            "Challenge with spaces/exclamation marks must be rejected"
+        );
+    }
+
+    // ── authenticate (integration path) ──────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_authenticate_empty_challenge_returns_false() {
+        let d = device("abcdefgh-1234");
+        assert!(!d.authenticate("").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_authenticate_valid_device_and_challenge() {
+        // Device id: valid format (UUID-like), Challenge: valid base64url ≥ 16 chars
+        let d = device("550e8400-e29b-41d4-a716-446655440000");
+        let challenge = "SGVsbG8gV29ybGQh"; // valid base64url, 16 chars
+        // Trust score is 1.0 (no "new" or "test"), binding passes, challenge passes
+        assert!(
+            d.authenticate(challenge).await.unwrap(),
+            "Valid device + valid challenge should authenticate"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_authenticate_short_device_id_fails() {
+        let d = device("tiny"); // < 8 chars, fails binding
+        let challenge = "SGVsbG8gV29ybGQh";
+        assert!(
+            !d.authenticate(challenge).await.unwrap(),
+            "Short device ID must fail authentication"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_authenticate_at_minimum_trust_score_passes() {
+        // "new" (-0.1) + "test" (-0.2) → score = 0.7, exactly at the threshold.
+        // check_device_trust_signals fails only when score < 0.7, so this passes.
+        let d = device("new-test-device-abcde"); // score exactly 0.7
+        let challenge = "SGVsbG8gV29ybGQh";
+        assert!(d.authenticate(challenge).await.unwrap(),
+            "Device at minimum trust score (0.7) should still authenticate");
     }
 }
 

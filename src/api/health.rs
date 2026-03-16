@@ -243,74 +243,22 @@ pub async fn detailed_health_check(
 
 /// GET /metrics
 /// Prometheus metrics endpoint
-pub async fn metrics(State(_state): State<ApiState>) -> impl IntoResponse {
-    // Generate Prometheus format metrics
-    let metrics_text = format!(
-        r#"# HELP auth_framework_requests_total Total number of HTTP requests
-# TYPE auth_framework_requests_total counter
-auth_framework_requests_total{{method="GET",endpoint="/health"}} 1245
-auth_framework_requests_total{{method="POST",endpoint="/auth/login"}} 892
-auth_framework_requests_total{{method="GET",endpoint="/users/profile"}} 654
-
-# HELP auth_framework_response_duration_seconds Request duration in seconds
-# TYPE auth_framework_response_duration_seconds histogram
-auth_framework_response_duration_seconds_bucket{{le="0.01"}} 150
-auth_framework_response_duration_seconds_bucket{{le="0.05"}} 280
-auth_framework_response_duration_seconds_bucket{{le="0.1"}} 450
-auth_framework_response_duration_seconds_bucket{{le="0.5"}} 850
-auth_framework_response_duration_seconds_bucket{{le="1.0"}} 890
-auth_framework_response_duration_seconds_bucket{{le="+Inf"}} 892
-auth_framework_response_duration_seconds_sum 45.2
-auth_framework_response_duration_seconds_count 892
-
-# HELP auth_framework_active_sessions Current number of active sessions
-# TYPE auth_framework_active_sessions gauge
-auth_framework_active_sessions 45
-
-# HELP auth_framework_failed_logins_total Total number of failed login attempts
-# TYPE auth_framework_failed_logins_total counter
-auth_framework_failed_logins_total 23
-
-# HELP auth_framework_tokens_issued_total Total number of tokens issued
-# TYPE auth_framework_tokens_issued_total counter
-auth_framework_tokens_issued_total 1567
-
-# HELP auth_framework_tokens_validated_total Total number of tokens validated
-# TYPE auth_framework_tokens_validated_total counter
-auth_framework_tokens_validated_total 8945
-
-# HELP auth_framework_database_connections Current database connections
-# TYPE auth_framework_database_connections gauge
-auth_framework_database_connections 10
-
-# HELP auth_framework_memory_usage_bytes Memory usage in bytes
-# TYPE auth_framework_memory_usage_bytes gauge
-auth_framework_memory_usage_bytes {{type="heap"}} 268435456
-auth_framework_memory_usage_bytes {{type="stack"}} 8388608
-
-# HELP auth_framework_uptime_seconds System uptime in seconds
-# TYPE auth_framework_uptime_seconds counter
-auth_framework_uptime_seconds {}
-"#,
-        15 * 24 * 3600 + 4 * 3600 + 32 * 60 // 15 days, 4 hours, 32 minutes
-    );
+pub async fn metrics(State(state): State<ApiState>) -> impl IntoResponse {
+    let metrics_text = state.auth_framework.export_prometheus_metrics().await;
 
     Response::builder()
         .status(StatusCode::OK)
         .header("content-type", "text/plain; version=0.0.4")
         .body(metrics_text)
-        .unwrap()
+        .expect("infallible: String body is always valid")
 }
 
 /// GET /readiness
 /// Kubernetes readiness probe endpoint
-pub async fn readiness_check(State(_state): State<ApiState>) -> impl IntoResponse {
-    // In a real implementation, check if the service is ready to accept traffic
-    // - Database connections are available
-    // - Required services are responsive
-    // - Initialization is complete
-
-    let ready = true; // Placeholder
+pub async fn readiness_check(State(state): State<ApiState>) -> impl IntoResponse {
+    // Check if the auth framework is ready to accept traffic by trying to get stats.
+    // A successful stats call confirms storage, token manager, and core services are up.
+    let ready = state.auth_framework.get_stats().await.is_ok();
 
     if ready {
         (StatusCode::OK, "Ready").into_response()
@@ -321,19 +269,11 @@ pub async fn readiness_check(State(_state): State<ApiState>) -> impl IntoRespons
 
 /// GET /liveness
 /// Kubernetes liveness probe endpoint
-pub async fn liveness_check(State(_state): State<ApiState>) -> impl IntoResponse {
-    // In a real implementation, check if the service is alive
-    // - Process is running
-    // - Not in a deadlock
-    // - Can respond to requests
-
-    let alive = true; // Placeholder
-
-    if alive {
-        (StatusCode::OK, "Alive").into_response()
-    } else {
-        (StatusCode::SERVICE_UNAVAILABLE, "Dead").into_response()
-    }
+pub async fn liveness_check(State(state): State<ApiState>) -> impl IntoResponse {
+    // Verify the service can perform a basic operation — completing the await on
+    // get_performance_metrics confirms the async runtime is not deadlocked.
+    state.auth_framework.get_performance_metrics().await;
+    (StatusCode::OK, "Alive").into_response()
 }
 
 /// Internal health check functions
@@ -459,39 +399,76 @@ async fn get_uptime() -> String {
 }
 
 async fn get_memory_info() -> MemoryInfo {
-    // This is a simplified implementation
-    // In production, you would use proper system monitoring libraries
+    use sysinfo::System;
+    let mut sys = System::new();
+    sys.refresh_memory();
+
+    let total_mb = (sys.total_memory() / (1024 * 1024)) as u64;
+    let used_mb = (sys.used_memory() / (1024 * 1024)) as u64;
+    let free_mb = (sys.available_memory() / (1024 * 1024)) as u64;
+    let usage_percent = if total_mb > 0 {
+        (used_mb as f64 / total_mb as f64) * 100.0
+    } else {
+        0.0
+    };
+
     MemoryInfo {
-        total_mb: 8192, // 8GB
-        used_mb: 2048,  // 2GB
-        free_mb: 6144,  // 6GB
-        usage_percent: 25.0,
+        total_mb,
+        used_mb,
+        free_mb,
+        usage_percent,
     }
 }
 
 async fn get_cpu_usage() -> f64 {
-    // Simplified CPU usage
-    // In production, use system monitoring libraries like sysinfo
-    15.5
+    use sysinfo::System;
+    let mut sys = System::new();
+    sys.refresh_cpu_all();
+    // sysinfo needs a short delay between refreshes for meaningful CPU data.
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    sys.refresh_cpu_all();
+    sys.global_cpu_usage() as f64
 }
 
 async fn get_disk_info() -> DiskInfo {
-    // Simplified disk usage
+    use sysinfo::Disks;
+    let disks = Disks::new_with_refreshed_list();
+    let (mut total, mut used) = (0u64, 0u64);
+    for disk in disks.list() {
+        total += disk.total_space();
+        used += disk.total_space() - disk.available_space();
+    }
+    let total_gb = total / (1024 * 1024 * 1024);
+    let used_gb = used / (1024 * 1024 * 1024);
+    let free_gb = total_gb.saturating_sub(used_gb);
+    let usage_percent = if total_gb > 0 {
+        (used_gb as f64 / total_gb as f64) * 100.0
+    } else {
+        0.0
+    };
+
     DiskInfo {
-        total_gb: 512,
-        used_gb: 256,
-        free_gb: 256,
-        usage_percent: 50.0,
+        total_gb,
+        used_gb,
+        free_gb,
+        usage_percent,
     }
 }
 
 async fn get_network_info() -> NetworkInfo {
-    // Simplified network info
+    use sysinfo::Networks;
+    let networks = Networks::new_with_refreshed_list();
+    let (mut sent, mut received) = (0u64, 0u64);
+    for (_name, data) in networks.list() {
+        sent += data.total_transmitted();
+        received += data.total_received();
+    }
+
     NetworkInfo {
-        requests_per_minute: 150,
-        active_connections: 25,
-        bytes_sent: 1024 * 1024 * 100,    // 100MB
-        bytes_received: 1024 * 1024 * 50, // 50MB
+        requests_per_minute: 0, // Application-level metric; not available from OS counters.
+        active_connections: 0,  // Application-level metric; not available from OS counters.
+        bytes_sent: sent,
+        bytes_received: received,
     }
 }
 

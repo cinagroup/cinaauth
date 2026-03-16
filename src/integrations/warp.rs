@@ -1,4 +1,4 @@
-/// Advanced middleware hooks (request/response, error mapping) stub
+/// Advanced middleware hooks for request/response interception and error mapping
 pub trait AdvancedMiddlewareHooks {
     fn on_request(&self, _req: &warp::http::Request<warp::hyper::body::Incoming>) {}
     fn on_response(&self, _res: &warp::http::Response<warp::hyper::body::Incoming>) {}
@@ -12,9 +12,10 @@ use crate::authorization::{AccessContext, AuthorizationStorage};
 
 use crate::{
     AuthError, AuthFramework, Result,
-    authorization::{AuthorizationEngine, Permission},
+    authorization::{AuthorizationEngine, AbacPermission},
     tokens::AuthToken,
 };
+use chrono::TimeZone as _;
 use std::sync::Arc;
 use warp::{Filter, Rejection, Reply};
 
@@ -31,22 +32,58 @@ pub fn with_auth(
     auth_framework: Arc<AuthFramework>,
 ) -> impl Filter<Extract = (AuthToken,), Error = Rejection> + Clone {
     warp::header::<String>("authorization").and_then(move |auth_header: String| {
-        let _auth_framework = auth_framework.clone();
+        let auth_framework = auth_framework.clone();
         async move {
-            extract_token_from_header(&auth_header)
-                .and_then(|token_str| {
-                    // In a real implementation, you'd validate the token here
-                    // For now, we'll create a mock validation
-                    validate_token_secure(&token_str)
-                })
-                .map_err(|e| warp::reject::custom(AuthRejection { error: e }))
+            // Extract the raw bearer token
+            let token_str = extract_token_from_header(&auth_header)
+                .map_err(|e| warp::reject::custom(AuthRejection { error: e }))?;
+
+            // Validate using the framework's TokenManager (full HMAC/RSA signature verification)
+            let claims = auth_framework
+                .token_manager()
+                .validate_jwt_token(&token_str)
+                .map_err(|e| warp::reject::custom(AuthRejection { error: e }))?;
+
+            // Convert the validated JwtClaims into an AuthToken
+            let exp_ts = chrono::Utc.timestamp_opt(claims.exp, 0)
+                .single()
+                .unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::seconds(3600));
+            let iat_ts = chrono::Utc.timestamp_opt(claims.iat, 0)
+                .single()
+                .unwrap_or_else(chrono::Utc::now);
+            let scopes = claims
+                .scope
+                .split_whitespace()
+                .map(|s| s.to_string())
+                .collect();
+
+            let token = AuthToken {
+                token_id: claims.jti.clone(),
+                user_id: claims.sub.clone(),
+                access_token: token_str,
+                refresh_token: None,
+                token_type: Some("Bearer".to_string()),
+                expires_at: exp_ts,
+                scopes,
+                issued_at: iat_ts,
+                auth_method: "jwt".to_string(),
+                client_id: claims.client_id,
+                user_profile: None,
+                permissions: claims.permissions.unwrap_or_default(),
+                roles: claims.roles.unwrap_or_default(),
+                metadata: crate::tokens::TokenMetadata::default(),
+                subject: Some(claims.sub),
+                issuer: Some(claims.iss),
+            };
+
+            Ok::<AuthToken, warp::Rejection>(token)
         }
     })
 }
 
 /// Warp filter for checking permissions
 pub fn with_permission<S>(
-    permission: Permission,
+    permission: AbacPermission,
     authorization: Arc<AuthorizationEngine<S>>,
 ) -> impl Filter<Extract = ((),), Error = Rejection> + Clone
 where
@@ -198,9 +235,16 @@ fn extract_token_from_header(auth_header: &str) -> Result<String> {
     Ok(auth_header[7..].to_string())
 }
 
-/// Secure token validation implementation
+/// Structural and claims validation for contexts where no signing key is available.
+///
+/// **This function does NOT verify the JWT cryptographic signature.** It validates:
+/// - JWT base64url structure (three parts)
+/// - Required claims (`sub`, `exp`)
+/// - Token expiration
+///
+/// For full signature verification, use [`with_auth`] which delegates to the
+/// framework's [`TokenManager::validate_jwt_token`].
 fn validate_token_secure(token_str: &str) -> Result<AuthToken> {
-    // Enhanced JWT validation - no longer accepts any token
 
     // Basic format validation
     if token_str.len() < 10 {
@@ -233,8 +277,8 @@ fn validate_token_secure(token_str: &str) -> Result<AuthToken> {
         }
     }
 
-    // In production, this would validate the signature
-    // For now, decode and validate the payload structure
+    // Decode and validate the payload structure — signature is not verified here.
+    // Use `with_auth()` for full cryptographic validation.
     let payload_json = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(parts[1])
         .map_err(|_| AuthError::auth_method("warp_integration", "Failed to decode payload"))?;
@@ -282,12 +326,19 @@ fn validate_token_secure(token_str: &str) -> Result<AuthToken> {
         access_token: token_str.to_string(),
         refresh_token: None,
         token_type: Some("Bearer".to_string()),
-        expires_at: chrono::DateTime::from_timestamp(exp, 0)
+        expires_at: chrono::Utc.timestamp_opt(exp, 0)
+            .single()
             .unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::seconds(3600)),
         scopes,
-        issued_at: chrono::DateTime::from_timestamp(iat, 0).unwrap_or_else(chrono::Utc::now),
+        issued_at: chrono::Utc.timestamp_opt(iat, 0)
+            .single()
+            .unwrap_or_else(chrono::Utc::now),
         auth_method: "jwt".to_string(),
-        client_id: Some("test_client".to_string()),
+        client_id: payload
+            .get("client_id")
+            .or_else(|| payload.get("azp"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
         user_profile: None,
         permissions: payload
             .get("permissions")

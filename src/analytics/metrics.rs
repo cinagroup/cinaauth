@@ -36,8 +36,8 @@ impl Default for MetricsConfig {
 
 /// Metrics collector
 pub struct MetricsCollector {
-    #[allow(dead_code)]
-    config: MetricsConfig,
+    /// Configuration — retained for use in future metric-processing implementations.
+    _config: MetricsConfig,
     current_metrics: HashMap<String, f64>,
 }
 
@@ -45,7 +45,7 @@ impl MetricsCollector {
     /// Create new metrics collector
     pub fn new(config: MetricsConfig) -> Self {
         Self {
-            config,
+            _config: config,
             current_metrics: HashMap::new(),
         }
     }

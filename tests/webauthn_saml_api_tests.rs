@@ -1,6 +1,6 @@
 //! Integration tests for WebAuthn and SAML API endpoints
 
-use auth_framework::api::ApiState;
+use auth_framework::api::ApiServer;
 use auth_framework::{AuthConfig, AuthFramework};
 use axum::{
     body::Body,
@@ -12,12 +12,11 @@ use tower::ServiceExt;
 
 async fn create_test_app() -> axum::Router {
     let auth_framework = Arc::new(AuthFramework::new(AuthConfig::default()));
-    let state = ApiState::new(auth_framework)
+    let server = ApiServer::new(auth_framework);
+    server
+        .build_router()
         .await
-        .expect("Failed to create API state");
-
-    // Build router manually since create_router doesn't exist
-    axum::Router::new().with_state(state)
+        .expect("Failed to build router for tests")
 }
 
 #[tokio::test]
@@ -26,7 +25,7 @@ async fn test_webauthn_registration_init() {
 
     let request = Request::builder()
         .method("POST")
-        .uri("/api/webauthn/registration/init")
+        .uri("/api/v1/webauthn/registration/init")
         .header("content-type", "application/json")
         .body(Body::from(
             json!({
@@ -46,21 +45,20 @@ async fn test_webauthn_registration_init() {
         .await
         .unwrap();
     let body_str = String::from_utf8(body.to_vec()).unwrap();
-    println!("WebAuthn registration init response: {}", body_str);
 
-    // Parse response as JSON to verify structure
     let response_json: serde_json::Value = serde_json::from_str(&body_str).unwrap();
     assert_eq!(response_json["success"], true);
     assert!(response_json["data"].is_object());
 }
 
+#[cfg(feature = "saml")]
 #[tokio::test]
 async fn test_saml_metadata() {
     let app = create_test_app().await;
 
     let request = Request::builder()
         .method("GET")
-        .uri("/api/saml/metadata")
+        .uri("/api/v1/saml/metadata")
         .body(Body::empty())
         .unwrap();
 
@@ -71,32 +69,41 @@ async fn test_saml_metadata() {
         .await
         .unwrap();
     let body_str = String::from_utf8(body.to_vec()).unwrap();
-    println!("SAML metadata response: {}", body_str);
 
-    // Verify it's XML content
     assert!(body_str.contains("<?xml"));
     assert!(body_str.contains("EntityDescriptor"));
     assert!(body_str.contains("SPSSODescriptor"));
 }
 
+#[cfg(feature = "saml")]
 #[tokio::test]
 async fn test_saml_sso_initiation() {
+    // Build app with pre-populated IdP config so the endpoint can look it up.
     let auth_framework = Arc::new(AuthFramework::new(AuthConfig::default()));
-    let state = ApiState {
-        auth_framework,
-        #[cfg(feature = "enhanced-rbac")]
-        authorization_service: Arc::new(
-            auth_framework::authorization_enhanced::AuthorizationService::new()
-                .await
-                .unwrap(),
-        ),
-    };
+    let idp_config = serde_json::json!({
+        "entity_id": "https://idp.example.com",
+        "sso_url": "https://idp.example.com/sso",
+        "slo_url": "https://idp.example.com/slo",
+        "certificate": ""
+    });
+    auth_framework
+        .storage()
+        .store_kv(
+            "saml_idp:https://idp.example.com",
+            idp_config.to_string().as_bytes(),
+            None,
+        )
+        .await
+        .unwrap();
 
-    let app = axum::Router::new().with_state(state);
+    let app = ApiServer::new(auth_framework)
+        .build_router()
+        .await
+        .expect("Failed to build router for tests");
 
     let request = Request::builder()
         .method("POST")
-        .uri("/api/saml/sso")
+        .uri("/api/v1/saml/sso")
         .header("content-type", "application/json")
         .body(Body::from(
             json!({
@@ -115,9 +122,7 @@ async fn test_saml_sso_initiation() {
         .await
         .unwrap();
     let body_str = String::from_utf8(body.to_vec()).unwrap();
-    println!("SAML SSO init response: {}", body_str);
 
-    // Parse response as JSON to verify structure
     let response_json: serde_json::Value = serde_json::from_str(&body_str).unwrap();
     assert_eq!(response_json["success"], true);
     assert!(response_json["data"]["redirect_url"].is_string());
@@ -126,22 +131,12 @@ async fn test_saml_sso_initiation() {
 
 #[tokio::test]
 async fn test_webauthn_credential_list() {
-    let auth_framework = Arc::new(AuthFramework::new(AuthConfig::default()));
-    let state = ApiState {
-        auth_framework,
-        #[cfg(feature = "enhanced-rbac")]
-        authorization_service: Arc::new(
-            auth_framework::authorization_enhanced::AuthorizationService::new()
-                .await
-                .unwrap(),
-        ),
-    };
+    let app = create_test_app().await;
 
-    let app = axum::Router::new().with_state(state);
-
+    // Requesting without authentication should be rejected
     let request = Request::builder()
         .method("GET")
-        .uri("/api/webauthn/credentials/testuser")
+        .uri("/api/v1/webauthn/credentials/testuser")
         .body(Body::empty())
         .unwrap();
 
@@ -152,32 +147,21 @@ async fn test_webauthn_credential_list() {
         .await
         .unwrap();
     let body_str = String::from_utf8(body.to_vec()).unwrap();
-    println!("WebAuthn credentials list response: {}", body_str);
 
-    // Parse response as JSON to verify structure
     let response_json: serde_json::Value = serde_json::from_str(&body_str).unwrap();
-    assert_eq!(response_json["success"], true);
-    assert!(response_json["data"].is_array());
+    // Endpoint now requires authentication — unauthenticated access returns error
+    assert_eq!(response_json["success"], false);
+    assert_eq!(response_json["error"]["code"], "UNAUTHORIZED");
 }
 
+#[cfg(feature = "saml")]
 #[tokio::test]
 async fn test_saml_idp_list() {
-    let auth_framework = Arc::new(AuthFramework::new(AuthConfig::default()));
-    let state = ApiState {
-        auth_framework,
-        #[cfg(feature = "enhanced-rbac")]
-        authorization_service: Arc::new(
-            auth_framework::authorization_enhanced::AuthorizationService::new()
-                .await
-                .unwrap(),
-        ),
-    };
-
-    let app = axum::Router::new().with_state(state);
+    let app = create_test_app().await;
 
     let request = Request::builder()
         .method("GET")
-        .uri("/api/saml/idps")
+        .uri("/api/v1/saml/idps")
         .body(Body::empty())
         .unwrap();
 
@@ -188,9 +172,7 @@ async fn test_saml_idp_list() {
         .await
         .unwrap();
     let body_str = String::from_utf8(body.to_vec()).unwrap();
-    println!("SAML IdPs list response: {}", body_str);
 
-    // Parse response as JSON to verify structure
     let response_json: serde_json::Value = serde_json::from_str(&body_str).unwrap();
     assert_eq!(response_json["success"], true);
     assert!(response_json["data"].is_array());

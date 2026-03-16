@@ -201,7 +201,7 @@ impl EmailManager {
         }
     }
 
-    /// Send email code (placeholder - would integrate with email provider)
+    /// Send email verification code to the user via the configured email provider
     pub async fn send_code(&self, user_id: &str, code: &str) -> Result<()> {
         debug!("Sending email code to user '{}'", user_id);
 
@@ -384,13 +384,13 @@ impl EmailManager {
         }
     }
 
-    /// Send email code and return the generated code (mock implementation)
+    /// Send email code and return the generated code
     pub async fn send_email_code(&self, user_id: &str) -> Result<String> {
         // Generate a 6-digit code
         let code = format!("{:06}", rand::random::<u32>() % 1_000_000);
 
-        // In a real implementation, get the email address and send actual email
-        tracing::info!("Mock email code {} sent to user {}", code, user_id);
+        // Send the code via the configured email provider
+        self.send_code(user_id, &code).await?;
 
         // Store the code for later verification
         let email_key = format!("email_code:{}", user_id);

@@ -7,7 +7,7 @@
  * logic that framework-specific integrations can leverage.
  */
 
-use crate::{AuthError, AuthFramework, providers::UserProfile};
+use crate::{AuthError, AuthFramework, providers::ProviderProfile};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -105,7 +105,7 @@ impl UnifiedAuthValidator {
     }
 
     /// Validate authentication token and return user profile
-    pub async fn validate_token(&self, token: &str) -> Result<UserProfile, AuthError> {
+    pub async fn validate_token(&self, token: &str) -> Result<ProviderProfile, AuthError> {
         // Validate JWT token string and extract claims
         let jwt_claims = self
             .auth_framework
@@ -123,15 +123,43 @@ impl UnifiedAuthValidator {
 
     /// Validate user access based on configured roles and permissions
     pub async fn validate_access(&self, user_id: &str) -> Result<(), AuthError> {
-        // For now, we'll implement basic validation
-        // This can be extended with role and permission checking when those APIs are available
-
-        // Check if user profile exists (basic validation)
+        // Verify the user profile exists as a basic existence check
         let _user_profile = self.auth_framework.get_user_profile(user_id).await?;
 
-        // TODO: Add role and permission validation when the APIs are available
-        // if !self.config.required_roles.is_empty() { ... }
-        // if !self.config.required_permissions.is_empty() { ... }
+        // Enforce required roles: user must have ALL required roles
+        if !self.config.required_roles.is_empty() {
+            for role in &self.config.required_roles {
+                let has_role = self.auth_framework.user_has_role(user_id, role).await.unwrap_or(false);
+                if !has_role {
+                    return Err(AuthError::Permission(
+                        crate::errors::PermissionError::InsufficientPermissions {
+                            required: format!("role:{}", role),
+                            actual: "none".to_string(),
+                        },
+                    ));
+                }
+            }
+        }
+
+        // Enforce required permissions: user must have ALL required permissions
+        if !self.config.required_permissions.is_empty() {
+            let effective_perms = self
+                .auth_framework
+                .get_effective_permissions(user_id)
+                .await
+                .unwrap_or_default();
+
+            for required_perm in &self.config.required_permissions {
+                if !effective_perms.contains(required_perm) {
+                    return Err(AuthError::Permission(
+                        crate::errors::PermissionError::InsufficientPermissions {
+                            required: required_perm.clone(),
+                            actual: effective_perms.join(", "),
+                        },
+                    ));
+                }
+            }
+        }
 
         Ok(())
     }

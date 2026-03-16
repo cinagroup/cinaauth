@@ -134,7 +134,7 @@ pub struct HealthMonitor {
 impl HealthMonitor {
     /// Create new health monitor
     pub fn new(config: HealthMonitorConfig) -> Self {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
 
         Self {
             config,
@@ -263,7 +263,7 @@ impl HealthMonitor {
                         response_time,
                         timestamp: SystemTime::now()
                             .duration_since(UNIX_EPOCH)
-                            .unwrap()
+                            .unwrap_or_default()
                             .as_secs(),
                         metadata: HashMap::new(),
                     };
@@ -290,46 +290,64 @@ impl HealthMonitor {
             response_time,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs(),
             metadata: HashMap::new(),
         }
     }
 
-    /// Check HTTP endpoint health
+    /// Check HTTP endpoint health by issuing a real HEAD/GET request.
     async fn check_http(&self, endpoint: &str) -> Result<HealthStatus, HealthError> {
-        // Simulate HTTP health check
-        if endpoint.starts_with("http") {
-            Ok(HealthStatus::Healthy)
-        } else {
-            Err(HealthError::CheckFailed(
-                "Invalid HTTP endpoint".to_string(),
-            ))
+        if !endpoint.starts_with("http") {
+            return Err(HealthError::CheckFailed(
+                "Invalid HTTP endpoint: must start with http".to_string(),
+            ));
+        }
+
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .map_err(|e| HealthError::Network(e.to_string()))?;
+
+        match client.head(endpoint).send().await {
+            Ok(response) => {
+                let status = response.status().as_u16();
+                if status < 500 {
+                    Ok(HealthStatus::Healthy)
+                } else {
+                    Ok(HealthStatus::Unhealthy)
+                }
+            }
+            Err(e) if e.is_connect() || e.is_timeout() => Ok(HealthStatus::Unhealthy),
+            Err(e) => Err(HealthError::Network(e.to_string())),
         }
     }
 
-    /// Check database connectivity
+    /// Check database connectivity by opening a TCP connection to the endpoint.
+    ///
+    /// `endpoint` should be `"host:port"` — e.g. `"localhost:5432"` for PostgreSQL
+    /// or `"postgres://user:pass@localhost:5432/db"` (the host:port is extracted).
     async fn check_database(&self, endpoint: &str) -> Result<HealthStatus, HealthError> {
-        // Simulate database health check
-        if !endpoint.is_empty() {
-            Ok(HealthStatus::Healthy)
-        } else {
-            Err(HealthError::CheckFailed(
+        if endpoint.is_empty() {
+            return Err(HealthError::CheckFailed(
                 "Database endpoint not configured".to_string(),
-            ))
+            ));
         }
+        let addr = extract_host_port(endpoint);
+        tcp_connect_check(&addr).await
     }
 
-    /// Check Redis connectivity
+    /// Check Redis connectivity by opening a TCP connection to the endpoint.
+    ///
+    /// `endpoint` should be `"host:port"` — e.g. `"localhost:6379"`.
     async fn check_redis(&self, endpoint: &str) -> Result<HealthStatus, HealthError> {
-        // Simulate Redis health check
-        if !endpoint.is_empty() {
-            Ok(HealthStatus::Healthy)
-        } else {
-            Err(HealthError::CheckFailed(
+        if endpoint.is_empty() {
+            return Err(HealthError::CheckFailed(
                 "Redis endpoint not configured".to_string(),
-            ))
+            ));
         }
+        let addr = extract_host_port(endpoint);
+        tcp_connect_check(&addr).await
     }
 
     /// Check filesystem health
@@ -397,7 +415,7 @@ impl HealthMonitor {
 
     /// Update system metrics
     async fn update_system_metrics(&mut self) -> Result<(), HealthError> {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
 
         self.system_metrics = SystemMetrics {
             cpu_usage: self.get_cpu_usage().await?,
@@ -412,48 +430,220 @@ impl HealthMonitor {
         Ok(())
     }
 
-    /// Get CPU usage percentage
+    /// Get CPU usage percentage.
+    ///
+    /// Reads `/proc/stat` on Linux and falls back to a cross-platform
+    /// `sysinfo`-compatible placeholder.  Returns a value in [0.0, 1.0].
     async fn get_cpu_usage(&self) -> Result<f64, HealthError> {
-        // Simulate CPU usage
-        Ok(0.45)
+        #[cfg(target_os = "linux")]
+        {
+            use std::fs;
+            // Two-sample measurement is ideal but would require state; a
+            // single-sample approximation reads the running-total for a quick
+            // health-endpoint response.
+            if let Ok(contents) = fs::read_to_string("/proc/stat") {
+                if let Some(line) = contents.lines().next() {
+                    // cpu user nice system idle iowait irq softirq …
+                    let parts: Vec<u64> = line
+                        .split_ascii_whitespace()
+                        .skip(1)
+                        .filter_map(|s| s.parse().ok())
+                        .collect();
+                    if parts.len() >= 4 {
+                        let idle = parts[3];
+                        let total: u64 = parts.iter().sum();
+                        if total > 0 {
+                            return Ok(1.0 - idle as f64 / total as f64);
+                        }
+                    }
+                }
+            }
+        }
+        // Non-Linux platforms: report 0.0 (unknown).
+        // A production deployment should integrate the `sysinfo` crate for
+        // cross-platform CPU metrics.
+        tracing::debug!("CPU usage not available on this platform; reporting 0.0");
+        Ok(0.0)
     }
 
-    /// Get memory usage percentage
+    /// Get memory usage percentage.
+    ///
+    /// Reads `/proc/meminfo` on Linux; returns 0.0 on other platforms.
     async fn get_memory_usage(&self) -> Result<f64, HealthError> {
-        // Simulate memory usage
-        Ok(0.65)
+        #[cfg(target_os = "linux")]
+        {
+            use std::fs;
+            if let Ok(contents) = fs::read_to_string("/proc/meminfo") {
+                let mut total = 0u64;
+                let mut available = 0u64;
+                for line in contents.lines() {
+                    if line.starts_with("MemTotal:") {
+                        total = line
+                            .split_ascii_whitespace()
+                            .nth(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0);
+                    } else if line.starts_with("MemAvailable:") {
+                        available = line
+                            .split_ascii_whitespace()
+                            .nth(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0);
+                    }
+                }
+                if total > 0 {
+                    return Ok(1.0 - available as f64 / total as f64);
+                }
+            }
+        }
+        tracing::debug!("Memory usage not available on this platform; reporting 0.0");
+        Ok(0.0)
     }
 
-    /// Get disk usage percentage
-    async fn get_disk_usage(&self, _path: &str) -> Result<f64, HealthError> {
-        // Simulate disk usage
-        Ok(0.55)
+    /// Get disk usage percentage for `path`.
+    ///
+    /// Returns a value in `[0.0, 1.0]` representing the fraction of disk space
+    /// used.  Uses `sysinfo::Disks` to enumerate mounted file-systems and finds
+    /// the one whose mount-point is the longest prefix of `path` (i.e. the most
+    /// specific mount point).  Falls back to the first listed disk if no prefix
+    /// match is found, and returns `0.0` only when no disks are available.
+    async fn get_disk_usage(&self, path: &str) -> Result<f64, HealthError> {
+        use sysinfo::Disks;
+        let disks = Disks::new_with_refreshed_list();
+
+        // Find the mount-point that is the longest prefix of `path`.
+        let mut best: Option<(usize, f64)> = None; // (prefix_len, usage)
+        for disk in disks.list() {
+            let mount = disk.mount_point().to_string_lossy();
+            let total = disk.total_space();
+            if total == 0 {
+                continue;
+            }
+            let available = disk.available_space();
+            let usage = 1.0 - (available as f64 / total as f64);
+
+            if path.starts_with(mount.as_ref()) {
+                let len = mount.len();
+                match best {
+                    Some((prev_len, _)) if len > prev_len => best = Some((len, usage)),
+                    None => best = Some((len, usage)),
+                    _ => {}
+                }
+            }
+        }
+
+        if let Some((_, usage)) = best {
+            return Ok(usage.clamp(0.0, 1.0));
+        }
+
+        // Fallback: use first available disk.
+        if let Some(disk) = disks.list().first() {
+            let total = disk.total_space();
+            if total > 0 {
+                let available = disk.available_space();
+                let usage = 1.0 - (available as f64 / total as f64);
+                tracing::debug!(
+                    "No disk mount point matched '{}'; using first available disk",
+                    path
+                );
+                return Ok(usage.clamp(0.0, 1.0));
+            }
+        }
+
+        tracing::debug!("No disks found; reporting disk usage 0.0 for '{}'", path);
+        Ok(0.0)
     }
 
-    /// Get network I/O metrics
+    /// Get network I/O metrics.
+    ///
+    /// Reads `/proc/net/dev` on Linux; returns zeroed metrics on other platforms.
     async fn get_network_io(&self) -> Result<NetworkIoMetrics, HealthError> {
-        // Simulate network I/O metrics
+        #[cfg(target_os = "linux")]
+        {
+            use std::fs;
+            if let Ok(contents) = fs::read_to_string("/proc/net/dev") {
+                let mut bytes_recv = 0u64;
+                let mut pkts_recv = 0u64;
+                let mut bytes_sent = 0u64;
+                let mut pkts_sent = 0u64;
+                for line in contents.lines().skip(2) {
+                    // iface: rx_bytes rx_pkts … tx_bytes tx_pkts …
+                    let fields: Vec<&str> = line.split_ascii_whitespace().collect();
+                    if fields.len() >= 10 {
+                        bytes_recv += fields[1].parse::<u64>().unwrap_or(0);
+                        pkts_recv  += fields[2].parse::<u64>().unwrap_or(0);
+                        bytes_sent += fields[9].parse::<u64>().unwrap_or(0);
+                        pkts_sent  += fields[10].parse::<u64>().unwrap_or(0);
+                    }
+                }
+                return Ok(NetworkIoMetrics {
+                    bytes_sent,
+                    bytes_received: bytes_recv,
+                    packets_sent: pkts_sent,
+                    packets_received: pkts_recv,
+                });
+            }
+        }
+        tracing::debug!("Network I/O metrics not available on this platform; reporting zeroes");
         Ok(NetworkIoMetrics {
-            bytes_sent: 1024000,
-            bytes_received: 2048000,
-            packets_sent: 1000,
-            packets_received: 1500,
+            bytes_sent: 0,
+            bytes_received: 0,
+            packets_sent: 0,
+            packets_received: 0,
         })
     }
 
-    /// Get process count
+    /// Get the number of running processes.
+    ///
+    /// Counts entries in `/proc` on Linux; returns 0 on other platforms.
     async fn get_process_count(&self) -> Result<u32, HealthError> {
-        // Simulate process count
-        Ok(150)
+        #[cfg(target_os = "linux")]
+        {
+            use std::fs;
+            if let Ok(entries) = fs::read_dir("/proc") {
+                let count = entries
+                    .filter_map(|e| e.ok())
+                    .filter(|e| {
+                        e.file_name()
+                            .to_str()
+                            .map(|s| s.chars().all(|c| c.is_ascii_digit()))
+                            .unwrap_or(false)
+                    })
+                    .count();
+                return Ok(count as u32);
+            }
+        }
+        tracing::debug!("Process count not available on this platform; reporting 0");
+        Ok(0)
     }
 
-    /// Get load average
+    /// Get load averages.
+    ///
+    /// Reads `/proc/loadavg` on Linux; returns zeroes on other platforms.
     async fn get_load_average(&self) -> Result<LoadAverage, HealthError> {
-        // Simulate load average
+        #[cfg(target_os = "linux")]
+        {
+            use std::fs;
+            if let Ok(contents) = fs::read_to_string("/proc/loadavg") {
+                let parts: Vec<f64> = contents
+                    .split_ascii_whitespace()
+                    .take(3)
+                    .filter_map(|s| s.parse().ok())
+                    .collect();
+                if parts.len() >= 3 {
+                    return Ok(LoadAverage {
+                        one_minute: parts[0],
+                        five_minutes: parts[1],
+                        fifteen_minutes: parts[2],
+                    });
+                }
+            }
+        }
+        tracing::debug!("Load average not available on this platform; reporting zeroes");
         Ok(LoadAverage {
-            one_minute: 1.2,
-            five_minutes: 1.1,
-            fifteen_minutes: 0.9,
+            one_minute: 0.0,
+            five_minutes: 0.0,
+            fifteen_minutes: 0.0,
         })
     }
 
@@ -499,7 +689,7 @@ impl HealthMonitor {
             HealthStatus::Unknown
         };
 
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
 
         self.service_health = ServiceHealth {
             service_name: self.service_health.service_name.clone(),
@@ -539,8 +729,14 @@ impl HealthMonitor {
     /// Send alert to configured endpoints
     async fn send_alert(&self, message: &str) -> Result<(), HealthError> {
         for endpoint in &self.config.alert_endpoints {
-            // Simulate sending alert
-            println!("ALERT to {}: {}", endpoint, message);
+            // Real HTTP dispatch to `endpoint` requires an HTTP client (e.g. reqwest).
+            // Until that integration is added, log the alert through the structured
+            // logging system so it is visible in production log streams.
+            tracing::warn!(
+                target: "health_alert",
+                alert_endpoint = %endpoint,
+                "HEALTH ALERT: {message}"
+            );
         }
         Ok(())
     }
@@ -593,6 +789,61 @@ impl Default for HealthCheck {
             enabled: true,
             critical: false,
             tags: HashMap::new(),
+        }
+    }
+}
+
+/// Extract a `"host:port"` address from an endpoint string.
+///
+/// Handles plain `"host:port"` strings as well as full URIs like
+/// `"postgres://user:pass@host:port/db"` or `"redis://host:port"`.
+fn extract_host_port(endpoint: &str) -> String {
+    // If it looks like a URI, extract the authority component.
+    if let Some(rest) = endpoint
+        .strip_prefix("postgres://")
+        .or_else(|| endpoint.strip_prefix("postgresql://"))
+        .or_else(|| endpoint.strip_prefix("redis://"))
+        .or_else(|| endpoint.strip_prefix("mysql://"))
+        .or_else(|| endpoint.strip_prefix("mongodb://"))
+        .or_else(|| endpoint.strip_prefix("http://"))
+        .or_else(|| endpoint.strip_prefix("https://"))
+    {
+        // Drop any user-info (user:pass@)
+        let after_auth = if let Some(at_pos) = rest.rfind('@') {
+            &rest[at_pos + 1..]
+        } else {
+            rest
+        };
+        // Keep only the host:port portion (drop /path?query etc.)
+        let host_port = after_auth
+            .split('/')
+            .next()
+            .unwrap_or(after_auth);
+        return host_port.to_string();
+    }
+    endpoint.to_string()
+}
+
+/// Attempt a TCP connection to `addr` with a 5-second timeout.
+///
+/// Returns [`HealthStatus::Healthy`] on success, [`HealthStatus::Unhealthy`]
+/// on connection refused / timeout, and a [`HealthError::Network`] only for
+/// unexpected I/O errors.
+async fn tcp_connect_check(addr: &str) -> Result<HealthStatus, HealthError> {
+    match tokio::time::timeout(
+        Duration::from_secs(5),
+        tokio::net::TcpStream::connect(addr),
+    )
+    .await
+    {
+        Ok(Ok(_stream)) => Ok(HealthStatus::Healthy),
+        Ok(Err(e)) => {
+            tracing::debug!("TCP health check to {} failed: {}", addr, e);
+            Ok(HealthStatus::Unhealthy)
+        }
+        Err(_timeout) => {
+            tracing::debug!("TCP health check to {} timed out", addr);
+            Ok(HealthStatus::Unhealthy)
         }
     }
 }
@@ -651,9 +902,20 @@ mod tests {
         let config = HealthMonitorConfig::default();
         let monitor = HealthMonitor::new(config);
 
-        let result = monitor.check_http("http://localhost:8080/health").await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), HealthStatus::Healthy);
+        // Invalid scheme: expect an error, not a health status.
+        let result = monitor.check_http("/local/path").await;
+        assert!(result.is_err(), "non-http URL should return Err");
+
+        // Valid HTTP URL pointing at a server that is not running:
+        // the real client returns HealthStatus::Unhealthy (connection refused),
+        // not an error.
+        let result = monitor.check_http("http://localhost:19999/health").await;
+        assert!(result.is_ok(), "connection-refused should yield Ok(Unhealthy), not Err");
+        assert_eq!(
+            result.unwrap(),
+            HealthStatus::Unhealthy,
+            "unreachable host should be Unhealthy"
+        );
     }
 
     #[tokio::test]
@@ -664,6 +926,26 @@ mod tests {
         let result = monitor.check_filesystem("/tmp").await;
         // This might fail on Windows, but demonstrates the concept
         let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_disk_usage_health_check() {
+        let config = HealthMonitorConfig::default();
+        let monitor = HealthMonitor::new(config);
+
+        // "/" on Unix, "C:\" on Windows — both are valid paths for the root disk.
+        #[cfg(unix)]
+        let path = "/";
+        #[cfg(windows)]
+        let path = "C:\\";
+
+        let usage = monitor.get_disk_usage(path).await;
+        assert!(usage.is_ok(), "get_disk_usage returned Err: {:?}", usage.err());
+        let value = usage.unwrap();
+        assert!(
+            (0.0..=1.0).contains(&value),
+            "Disk usage {value} is out of [0.0, 1.0]"
+        );
     }
 
     #[tokio::test]
@@ -680,6 +962,31 @@ mod tests {
             HealthStatus::Healthy | HealthStatus::Degraded | HealthStatus::Unhealthy
         ));
     }
+
+    #[test]
+    fn test_extract_host_port() {
+        // Plain host:port — returned as-is.
+        assert_eq!(extract_host_port("localhost:5432"), "localhost:5432");
+
+        // PostgreSQL URI with credentials.
+        assert_eq!(
+            extract_host_port("postgres://user:pass@db.example.com:5432/mydb"),
+            "db.example.com:5432"
+        );
+
+        // Redis URI without credentials.
+        assert_eq!(extract_host_port("redis://cache.host:6379"), "cache.host:6379");
+
+        // Redis URI with path.
+        assert_eq!(extract_host_port("redis://cache.host:6379/0"), "cache.host:6379");
+
+        // MySQL URI.
+        assert_eq!(
+            extract_host_port("mysql://root@localhost:3306/app"),
+            "localhost:3306"
+        );
+
+        // Bare endpoint with no scheme.
+        assert_eq!(extract_host_port("192.168.1.1:9200"), "192.168.1.1:9200");
+    }
 }
-
-

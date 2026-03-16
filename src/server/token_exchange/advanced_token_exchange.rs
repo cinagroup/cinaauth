@@ -35,7 +35,7 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::advanced_token_exchange::*;
+//! use auth_framework::server::token_exchange::advanced_token_exchange::*;
 //! use auth_framework::server::SessionManager;
 //! use std::sync::Arc;
 //!
@@ -267,7 +267,7 @@ pub struct ExchangeContext {
     pub delegation_chain: Vec<DelegationLink>,
 
     /// Original request metadata
-    pub original_request: Option<RequestMetadata>,
+    pub original_request: Option<ExchangeRequestMetadata>,
 
     /// Security context
     pub security_context: Option<SecurityContext>,
@@ -321,9 +321,9 @@ pub enum DelegationRestriction {
     },
 }
 
-/// Original request metadata
+/// Original request metadata for token exchange context
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RequestMetadata {
+pub struct ExchangeRequestMetadata {
     /// Original client ID
     pub client_id: String,
 
@@ -567,7 +567,7 @@ pub struct ExchangeAuditInfo {
     pub subject_info: SubjectInfo,
 
     /// Actor information (if applicable)
-    pub actor_info: Option<ActorInfo>,
+    pub actor_info: Option<TokenActorInfo>,
 
     /// Policy decisions applied
     pub policy_decisions: Vec<PolicyDecision>,
@@ -615,9 +615,9 @@ pub struct SubjectInfo {
     pub attributes: HashMap<String, serde_json::Value>,
 }
 
-/// Actor information for audit
+/// Actor information for token delegation/impersonation (RFC 8693)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ActorInfo {
+pub struct TokenActorInfo {
     /// Actor identifier
     pub actor: String,
 
@@ -739,7 +739,7 @@ pub trait TokenExchangeProcessor: Send + Sync {
     async fn generate_exchanged_token(
         &self,
         subject_info: &SubjectInfo,
-        actor_info: Option<&ActorInfo>,
+        actor_info: Option<&TokenActorInfo>,
         request: &AdvancedTokenExchangeRequest,
     ) -> Result<String>;
 }
@@ -1080,7 +1080,7 @@ impl AdvancedTokenExchangeManager {
     async fn validate_and_extract_actor_info(
         &self,
         request: &AdvancedTokenExchangeRequest,
-    ) -> Result<ActorInfo> {
+    ) -> Result<TokenActorInfo> {
         let actor_token = request.actor_token.as_ref().unwrap();
         let actor_token_type = request.actor_token_type.as_ref().unwrap();
 
@@ -1089,7 +1089,7 @@ impl AdvancedTokenExchangeManager {
             .validate_actor_token(actor_token, actor_token_type)
             .await?;
 
-        Ok(ActorInfo {
+        Ok(TokenActorInfo {
             actor: token_info
                 .metadata
                 .get("sub")
@@ -1107,7 +1107,7 @@ impl AdvancedTokenExchangeManager {
         &self,
         request: &AdvancedTokenExchangeRequest,
         _subject_info: &SubjectInfo,
-        actor_info: &Option<ActorInfo>,
+        actor_info: &Option<TokenActorInfo>,
     ) -> TokenExchangeType {
         if actor_info.is_some() {
             TokenExchangeType::Delegation
@@ -1135,7 +1135,7 @@ impl AdvancedTokenExchangeManager {
         &self,
         exchange_type: TokenExchangeType,
         _subject_info: &SubjectInfo,
-        actor_info: &Option<ActorInfo>,
+        actor_info: &Option<TokenActorInfo>,
         _request: &AdvancedTokenExchangeRequest,
         _context: &ExchangeContext,
     ) -> Result<ExchangeAuditInfo> {
@@ -1225,12 +1225,10 @@ impl AdvancedTokenExchangeManager {
 
     /// Introspect and validate any JWT token using the manager's keys
     pub fn introspect_jwt_token(&self, token: &str) -> Result<serde_json::Value> {
-        use jsonwebtoken::{Algorithm, Validation, decode};
+        use jsonwebtoken::dangerous;
 
-        let mut validation = Validation::new(Algorithm::RS256);
-        validation.insecure_disable_signature_validation(); // For introspection only
-
-        let token_data = decode::<serde_json::Value>(token, &self.decoding_key, &validation)
+        // For introspection only, decode without signature verification
+        let token_data = dangerous::insecure_decode::<serde_json::Value>(token)
             .map_err(|e| AuthError::InvalidToken(format!("Token introspection failed: {}", e)))?;
 
         Ok(token_data.claims)

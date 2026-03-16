@@ -50,6 +50,7 @@ fn create_working_config() -> AuthConfig {
             storage: auth_framework::config::AuditStorage::Tracing,
         },
         method_configs: HashMap::new(),
+        force_production_mode: false,
     }
 }
 

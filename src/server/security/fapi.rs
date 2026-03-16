@@ -390,7 +390,7 @@ impl FapiManager {
         // Validate using SecureJwtValidator with enhanced security features
         match self
             .jwt_validator
-            .validate_token(request_object, decoding_key, true)
+            .validate_token(request_object, decoding_key)
         {
             Ok(secure_claims) => {
                 // Decode JWT header to get algorithm
@@ -856,7 +856,7 @@ impl FapiManager {
             let audit_entry = format!("[{}] FAPI AUDIT: {} - {}", timestamp, event, details);
 
             // In production, write to secure audit log storage
-            log::info!("{}", audit_entry);
+            tracing::info!("{}", audit_entry);
         }
         Ok(())
     }
@@ -893,11 +893,9 @@ impl FapiManager {
             }
         }
 
-        // If no client ID found, use a hash-based approach for identification
-        use std::hash::{Hash, Hasher};
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        cert_bytes.hash(&mut hasher);
-        let cert_hash = format!("cert_client_{:x}", hasher.finish());
+        // If no client ID found, use SHA-256 of the certificate bytes for a stable identifier
+        use sha2::{Digest, Sha256};
+        let cert_hash = format!("cert_client_{}", hex::encode(Sha256::digest(cert_bytes)));
 
         tracing::info!(
             "Generated hash-based client ID from certificate: {}",

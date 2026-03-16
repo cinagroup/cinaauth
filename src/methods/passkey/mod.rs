@@ -49,28 +49,30 @@
 //!
 //! # Example Usage
 //!
-//! ```rust
+//! ```rust,no_run
 //! use auth_framework::methods::passkey::{PasskeyAuthMethod, PasskeyConfig};
+//! use auth_framework::tokens::TokenManager;
 //!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # let token_manager: TokenManager = todo!();
 //! // Configure passkey authentication
 //! let config = PasskeyConfig {
 //!     rp_name: "Example Corp".to_string(),
 //!     rp_id: "example.com".to_string(),
 //!     origin: "https://example.com".to_string(),
-//!     timeout: 60000,
-//!     require_user_verification: true,
+//!     timeout_ms: 60000,
+//!     user_verification: "required".to_string(),
+//!     authenticator_attachment: None,
+//!     require_resident_key: false,
 //! };
 //!
 //! let passkey_method = PasskeyAuthMethod::new(config, token_manager)?;
-//!
-//! // Registration flow
-//! let reg_challenge = passkey_method.start_registration(
-//!     "user123",
-//!     "user@example.com"
-//! ).await?;
-//!
-//! // Authentication flow
-//! let auth_challenge = passkey_method.start_authentication("user123").await?;
+//! // With the `passkeys` feature enabled:
+//! // passkey_method.register_passkey("user123", "user@example.com", "User Name").await?;
+//! // passkey_method.initiate_authentication("user123").await?;
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # Browser Compatibility
@@ -141,7 +143,7 @@ impl UserValidationMethod for PasskeyUserValidation {
 
     async fn check_user<'a>(
         &self,
-        _credential: UiHint<'a, Passkey>,
+        _hint: UiHint<'a, Passkey>,
         presence: bool,
         verification: bool,
     ) -> std::result::Result<UserCheck, Ctap2Error> {
@@ -204,24 +206,29 @@ impl UserValidationMethod for PasskeyUserValidation {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
 /// use auth_framework::methods::passkey::{PasskeyAuthMethod, PasskeyConfig};
+/// use auth_framework::tokens::TokenManager;
 ///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # let token_manager: TokenManager = todo!();
 /// let config = PasskeyConfig {
 ///     rp_name: "Example Corp".to_string(),
 ///     rp_id: "example.com".to_string(),
 ///     origin: "https://example.com".to_string(),
-///     timeout: 60000,
-///     require_user_verification: true,
+///     timeout_ms: 60000,
+///     user_verification: "required".to_string(),
+///     authenticator_attachment: None,
+///     require_resident_key: false,
 /// };
 ///
 /// let passkey_method = PasskeyAuthMethod::new(config, token_manager)?;
-///
-/// // Register a new passkey
-/// let challenge = passkey_method.start_registration("user123", "user@example.com").await?;
-///
-/// // Authenticate with passkey
-/// let auth_challenge = passkey_method.start_authentication("user123").await?;
+/// // With the `passkeys` feature enabled:
+/// // passkey_method.register_passkey("user123", "user@example.com", "User Name").await?;
+/// // passkey_method.initiate_authentication("user123").await?;
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// # Thread Safety
@@ -240,15 +247,21 @@ pub struct PasskeyAuthMethod {
     pub token_manager: TokenManager,
     /// Storage for registered passkeys (in production, use a database)
     pub registered_passkeys: RwLock<HashMap<String, PasskeyRegistration>>,
+    /// Pending challenges keyed by credential_id (populated during initiate_authentication).
+    /// Only present when the `passkeys` feature is enabled.
+    #[cfg(feature = "passkeys")]
+    pending_challenges: RwLock<HashMap<String, Vec<u8>>>,
 }
 
 impl std::fmt::Debug for PasskeyAuthMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PasskeyAuthMethod")
-            .field("config", &self.config)
-            .field("token_manager", &"<TokenManager>") // TokenManager doesn't implement Debug
-            .field("registered_passkeys", &"<RwLock<HashMap>>") // RwLock contents not accessible in debug
-            .finish()
+        let mut s = f.debug_struct("PasskeyAuthMethod");
+        s.field("config", &self.config);
+        s.field("token_manager", &"<TokenManager>");
+        s.field("registered_passkeys", &"<RwLock<HashMap>>");
+        #[cfg(feature = "passkeys")]
+        s.field("pending_challenges", &"<RwLock<HashMap>>");
+        s.finish()
     }
 }
 
@@ -306,6 +319,7 @@ impl PasskeyAuthMethod {
                 config,
                 token_manager,
                 registered_passkeys: RwLock::new(HashMap::new()),
+                pending_challenges: RwLock::new(HashMap::new()),
             })
         }
 
@@ -360,11 +374,11 @@ impl PasskeyAuthMethod {
                 pub_key_cred_params: vec![
                     PublicKeyCredentialParameters {
                         ty: PublicKeyCredentialType::PublicKey,
-                        alg: Algorithm::ES256 as i64,
+                        alg: Algorithm::ES256,
                     },
                     PublicKeyCredentialParameters {
                         ty: PublicKeyCredentialType::PublicKey,
-                        alg: Algorithm::RS256 as i64,
+                        alg: Algorithm::RS256,
                     },
                 ],
                 timeout: Some(self.config.timeout_ms),
@@ -413,32 +427,45 @@ impl PasskeyAuthMethod {
         &self,
         user_id: Option<&str>,
     ) -> Result<CredentialRequestOptions> {
-        let challenge: Bytes = random_vec(32).into();
+        let challenge_bytes = random_vec(32);
+        let challenge: Bytes = challenge_bytes.clone().into();
 
-        let allow_credentials = if let Some(user_id) = user_id {
-            // Filter credentials for specific user
+        let allow_credential_ids: Vec<(Vec<u8>, String)> = {
             let passkeys = self.registered_passkeys.read().unwrap();
-            passkeys
-                .values()
-                .filter(|reg| reg.user_id == user_id)
-                .map(|reg| PublicKeyCredentialDescriptor {
-                    ty: PublicKeyCredentialType::PublicKey,
-                    id: reg.credential_id.clone().into(),
-                    transports: None,
-                })
-                .collect()
-        } else {
-            // Allow any registered credential (usernameless authentication)
-            let passkeys = self.registered_passkeys.read().unwrap();
-            passkeys
-                .values()
-                .map(|reg| PublicKeyCredentialDescriptor {
-                    ty: PublicKeyCredentialType::PublicKey,
-                    id: reg.credential_id.clone().into(),
-                    transports: None,
-                })
-                .collect()
+            let iter: Box<dyn Iterator<Item = &PasskeyRegistration>> =
+                if let Some(uid) = user_id {
+                    Box::new(passkeys.values().filter(move |reg| reg.user_id == uid))
+                } else {
+                    Box::new(passkeys.values())
+                };
+            iter.map(|reg| {
+                (
+                    reg.credential_id.clone(),
+                    URL_SAFE_NO_PAD.encode(&reg.credential_id),
+                )
+            })
+            .collect()
         };
+
+        // Store the challenge for each credential that may respond, and under "latest"
+        // so complete_authentication / AuthMethod::authenticate can verify it.
+        {
+            let mut challenges = self.pending_challenges.write().unwrap();
+            for (_, cred_id_b64) in &allow_credential_ids {
+                challenges.insert(cred_id_b64.clone(), challenge_bytes.clone());
+            }
+            // Always save under "latest" as a fallback for usernameless flows.
+            challenges.insert("latest".to_string(), challenge_bytes.clone());
+        }
+
+        let allow_credentials: Vec<PublicKeyCredentialDescriptor> = allow_credential_ids
+            .into_iter()
+            .map(|(raw_id, _)| PublicKeyCredentialDescriptor {
+                ty: PublicKeyCredentialType::PublicKey,
+                id: raw_id.into(),
+                transports: None,
+            })
+            .collect();
 
         let request_options = CredentialRequestOptions {
             public_key: PublicKeyCredentialRequestOptions {
@@ -480,47 +507,99 @@ impl PasskeyAuthMethod {
                 .clone()
         };
 
-        // SECURITY: Implement proper WebAuthn verification
-        // Note: For a production implementation, we would need to:
-        // 1. Parse the assertion_response JSON properly
-        // 2. Verify the challenge matches what was sent
-        // 3. Verify the origin matches expected origin
-        // 4. Verify the RP ID hash is correct
-        // 5. Verify signature using proper WebAuthn library
-        // 6. Verify counter has increased (replay attack protection)
+        // Serialize the credential to the JSON format expected by advanced_verification_flow
+        // (same format as the Credential::Passkey path in authenticate()).
+        let assertion_response = serde_json::to_string(credential_response).map_err(|e| {
+            AuthError::InvalidCredential {
+                credential_type: "passkey".to_string(),
+                message: format!("Failed to serialize credential response: {}", e),
+            }
+        })?;
 
-        // For now, we'll do basic validation since the PasskeyRegistration struct
-        // doesn't have the expected fields for a full WebAuthn implementation
-        tracing::debug!(
-            "Performing basic passkey validation - production should use proper WebAuthn library"
+        // Load stored passkey data (public key + counter).
+        let passkey_data: serde_json::Value =
+            serde_json::from_str(&registration.passkey_data).map_err(|e| {
+                AuthError::InvalidCredential {
+                    credential_type: "passkey".to_string(),
+                    message: format!("Failed to parse stored passkey data: {}", e),
+                }
+            })?;
+
+        let public_key_jwk = passkey_data
+            .get("public_key")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        let stored_counter = passkey_data
+            .get("signature_counter")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as u32;
+
+        // Retrieve the stored challenge for this credential.
+        let expected_challenge_bytes: Vec<u8> = {
+            let challenges = self.pending_challenges.read().unwrap();
+            challenges
+                .get(&credential_id_b64)
+                .or_else(|| challenges.get("latest"))
+                .cloned()
+                .ok_or_else(|| {
+                    AuthError::validation(
+                        "No pending challenge found; call initiate_authentication first",
+                    )
+                })?
+        };
+
+        // Full cryptographic verification (challenge, origin, RP ID hash, signature, counter).
+        let verification_result = self
+            .advanced_verification_flow(
+                &assertion_response,
+                expected_challenge_bytes.as_slice(),
+                stored_counter,
+                &public_key_jwk,
+            )
+            .await?;
+
+        if !verification_result.signature_valid {
+            return Err(AuthError::validation("Passkey signature verification failed"));
+        }
+
+        // Update stored counter and last-used timestamp.
+        let mut passkey_data: serde_json::Value =
+            serde_json::from_str(&registration.passkey_data).map_err(|e| {
+                AuthError::InvalidCredential {
+                    credential_type: "passkey".to_string(),
+                    message: format!(
+                        "Failed to parse stored passkey data during counter update: {}",
+                        e
+                    ),
+                }
+            })?;
+        passkey_data["signature_counter"] = serde_json::Value::Number(
+            serde_json::Number::from(verification_result.new_counter),
         );
-
-        // Basic validation - in production, use webauthn-rs or similar library
-        let expected_origin = &self.config.origin;
-        tracing::debug!("Expected origin: {}", expected_origin);
-
-        // Update last used timestamp
+        registration.passkey_data =
+            serde_json::to_string(&passkey_data).map_err(|e| AuthError::InvalidCredential {
+                credential_type: "passkey".to_string(),
+                message: format!("Failed to serialize updated passkey data: {}", e),
+            })?;
         registration.last_used = Some(SystemTime::now());
 
-        // Update the registration back to storage
         {
             let mut passkeys = self.registered_passkeys.write().unwrap();
             passkeys.insert(credential_id_b64.clone(), registration.clone());
         }
 
-        // Update last used timestamp
-        registration.last_used = Some(SystemTime::now());
-
-        // Create authentication token
+        // Issue authentication token.
         let token = self.token_manager.create_jwt_token(
             &registration.user_id,
-            vec![],                          // No specific scopes for passkey auth
-            Some(Duration::from_secs(3600)), // 1 hour
+            vec![],
+            Some(Duration::from_secs(3600)),
         )?;
 
         tracing::info!(
-            "Successfully authenticated user with passkey: {}",
-            registration.user_id
+            "Passkey authentication successful for user: {} (counter: {} -> {})",
+            registration.user_id,
+            stored_counter,
+            verification_result.new_counter
         );
         Ok(AuthToken::new(
             &registration.user_id,
@@ -574,7 +653,6 @@ impl AuthMethod for PasskeyAuthMethod {
                             .ok_or_else(|| AuthError::validation("Unknown credential ID"))?
                     };
 
-                    // PRODUCTION FIX: Use advanced verification with proper security
                     tracing::debug!(
                         "Processing passkey assertion for credential: {}",
                         credential_id_b64
@@ -599,14 +677,26 @@ impl AuthMethod for PasskeyAuthMethod {
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0) as u32;
 
-                    // Generate expected challenge (in production, use session-stored challenge)
-                    let expected_challenge = b"production_challenge_placeholder"; // Production: use session challenge
+                    // Retrieve the stored challenge for this credential (set during initiate_authentication).
+                    // Fall back to "latest" for usernameless flows.
+                    let expected_challenge_bytes: Vec<u8> = {
+                        let challenges = self.pending_challenges.read().unwrap();
+                        challenges
+                            .get(&credential_id_b64)
+                            .or_else(|| challenges.get("latest"))
+                            .cloned()
+                            .ok_or_else(|| {
+                                AuthError::validation(
+                                    "No pending challenge found; call initiate_authentication first",
+                                )
+                            })?
+                    };
 
                     // Perform advanced verification with replay protection
                     match self
                         .advanced_verification_flow(
                             &assertion_response,
-                            expected_challenge,
+                            expected_challenge_bytes.as_slice(),
                             stored_counter,
                             &public_key_jwk,
                         )
@@ -857,9 +947,13 @@ impl PasskeyAuthMethod {
         // Step 7: Extract and verify counter for replay protection using helper method
         let new_counter = self.extract_counter_from_assertion(assertion_response)?;
 
-        if new_counter <= stored_counter {
+        // Per WebAuthn spec §6.1 step 17: if the stored counter was 0 and the
+        // authenticator returns 0, the authenticator does not support counters
+        // (many platform authenticators). Only reject when the counter is non-zero
+        // but failed to advance — that indicates a replay or cloned authenticator.
+        if new_counter != 0 && new_counter <= stored_counter {
             return Err(AuthError::validation(
-                "Counter did not increase - possible replay attack",
+                "Counter did not increase - possible replay attack or cloned authenticator",
             ));
         }
 
@@ -921,50 +1015,32 @@ impl PasskeyAuthMethod {
                     .decode(e.as_bytes())
                     .map_err(|_| AuthError::validation("Invalid 'e' base64"))?;
 
-                // Create DER-encoded RSA public key
-                let mut public_key_der = Vec::new();
-                public_key_der.push(0x30); // SEQUENCE
+                // Use ring's RsaPublicKeyComponents to avoid hand-rolling DER.
+                // This accepts raw n/e bytes and handles SubjectPublicKeyInfo encoding
+                // internally, correctly handling 2048-bit+ moduli.
+                let n_ref: &[u8] = &n_bytes;
+                let e_ref: &[u8] = &e_bytes;
+                let rsa_key = signature::RsaPublicKeyComponents { n: n_ref, e: e_ref };
 
-                let length_pos = public_key_der.len();
-                public_key_der.push(0x00); // Placeholder
-
-                // Add modulus
-                public_key_der.push(0x02); // INTEGER
-                if n_bytes[0] & 0x80 != 0 {
-                    public_key_der.push((n_bytes.len() + 1) as u8);
-                    public_key_der.push(0x00);
-                } else {
-                    public_key_der.push(n_bytes.len() as u8);
-                }
-                public_key_der.extend_from_slice(&n_bytes);
-
-                // Add exponent
-                public_key_der.push(0x02); // INTEGER
-                if e_bytes[0] & 0x80 != 0 {
-                    public_key_der.push((e_bytes.len() + 1) as u8);
-                    public_key_der.push(0x00);
-                } else {
-                    public_key_der.push(e_bytes.len() as u8);
-                }
-                public_key_der.extend_from_slice(&e_bytes);
-
-                // Update sequence length
-                let content_len = public_key_der.len() - 2;
-                public_key_der[length_pos] = content_len as u8;
-
-                let verification_algorithm = match algorithm {
-                    "RS256" => &signature::RSA_PKCS1_2048_8192_SHA256,
-                    "RS384" => &signature::RSA_PKCS1_2048_8192_SHA384,
-                    "RS512" => &signature::RSA_PKCS1_2048_8192_SHA512,
+                match algorithm {
+                    "RS256" => rsa_key.verify(
+                        &signature::RSA_PKCS1_2048_8192_SHA256,
+                        signed_data,
+                        signature_bytes,
+                    ),
+                    "RS384" => rsa_key.verify(
+                        &signature::RSA_PKCS1_2048_8192_SHA384,
+                        signed_data,
+                        signature_bytes,
+                    ),
+                    "RS512" => rsa_key.verify(
+                        &signature::RSA_PKCS1_2048_8192_SHA512,
+                        signed_data,
+                        signature_bytes,
+                    ),
                     _ => return Err(AuthError::validation("Unsupported RSA algorithm")),
-                };
-
-                let public_key =
-                    signature::UnparsedPublicKey::new(verification_algorithm, &public_key_der);
-
-                public_key
-                    .verify(signed_data, signature_bytes)
-                    .map_err(|_| AuthError::validation("RSA signature verification failed"))?;
+                }
+                .map_err(|_| AuthError::validation("RSA signature verification failed"))?;
             }
             "EC" => {
                 // Extract EC public key components
@@ -1271,7 +1347,6 @@ impl PasskeyAuthMethod {
 
     /// Verify WebAuthn assertion signature (simplified implementation)
     /// In production, use a proper WebAuthn library like `webauthn-rs`
-    /// PRODUCTION FIX: Now properly integrated into authentication flow
     fn verify_assertion_signature(
         &self,
         assertion_response: &str,
@@ -1317,8 +1392,7 @@ impl PasskeyAuthMethod {
         Ok(())
     }
 
-    /// Extract counter from WebAuthn assertion response
-    /// PRODUCTION FIX: Now properly integrated for replay attack protection
+    /// Extract counter from WebAuthn assertion response for replay attack protection
     fn extract_counter_from_assertion(&self, assertion_response: &str) -> Result<u32> {
         use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 
@@ -1338,42 +1412,29 @@ impl PasskeyAuthMethod {
             })?;
 
         // Decode base64 authenticator data
-        let auth_data_bytes = match URL_SAFE_NO_PAD.decode(authenticator_data) {
-            Ok(bytes) => bytes,
-            Err(_) => {
-                // Fallback: generate counter from current time for compatibility
-                tracing::warn!("Failed to decode authenticatorData, using fallback counter");
-                let current_time = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs() as u32;
-                return Ok(current_time);
-            }
-        };
+        let auth_data_bytes = URL_SAFE_NO_PAD
+            .decode(authenticator_data)
+            .map_err(|_| AuthError::validation("authenticatorData is not valid base64url"))?;
 
         // AuthenticatorData structure:
         // rpIdHash (32 bytes) + flags (1 byte) + counter (4 bytes) + ...
-        if auth_data_bytes.len() >= 37 {
-            // Extract counter from bytes 33-36 (big-endian u32)
-            let counter_bytes: [u8; 4] = [
-                auth_data_bytes[33],
-                auth_data_bytes[34],
-                auth_data_bytes[35],
-                auth_data_bytes[36],
-            ];
-
-            let counter = u32::from_be_bytes(counter_bytes);
-            tracing::debug!("Extracted signature counter: {}", counter);
-            Ok(counter)
-        } else {
-            // Fallback: generate counter from current time
-            tracing::warn!("AuthenticatorData too short, using fallback counter");
-            let current_time = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as u32;
-            Ok(current_time)
+        if auth_data_bytes.len() < 37 {
+            return Err(AuthError::validation(
+                "authenticatorData is too short to contain a counter",
+            ));
         }
+
+        // Extract counter from bytes 33-36 (big-endian u32)
+        let counter_bytes: [u8; 4] = [
+            auth_data_bytes[33],
+            auth_data_bytes[34],
+            auth_data_bytes[35],
+            auth_data_bytes[36],
+        ];
+
+        let counter = u32::from_be_bytes(counter_bytes);
+        tracing::debug!("Extracted signature counter: {}", counter);
+        Ok(counter)
     }
 }
 

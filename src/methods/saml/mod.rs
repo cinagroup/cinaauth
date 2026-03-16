@@ -85,9 +85,11 @@ pub struct SamlIdpMetadata {
     pub slo_url: Option<String>,
 }
 
-/// SAML assertion data after validation
+/// SAML assertion data after validation — the parsed/authenticated result
+/// returned by [`SamlAuthMethod`]. Distinct from [`crate::saml_assertions::SamlAssertion`],
+/// which is the full SAML 2.0 domain object model used by WS-Security.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SamlAssertion {
+pub struct ValidatedSamlAssertion {
     /// Subject (user identifier)
     pub subject: String,
     /// Attributes from the assertion
@@ -104,81 +106,81 @@ pub struct SamlAssertion {
     pub session_index: Option<String>,
 }
 
-/// SAML response structure with comprehensive validation fields
+/// SAML response structure with comprehensive validation fields (XML deserialization only)
 #[derive(Debug, Deserialize)]
-struct SamlResponse {
+pub(super) struct SamlResponse {
     #[serde(rename = "Issuer")]
-    issuer: Option<SamlIssuer>,
+    pub issuer: Option<SamlIssuer>,
     #[serde(rename = "Assertion")]
-    assertions: Option<Vec<SamlAssertionXml>>,
+    pub assertions: Option<Vec<SamlAssertionXml>>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlIssuer {
+pub(super) struct SamlIssuer {
     #[serde(rename = "$text")]
-    value: String,
+    pub(super) value: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlAssertionXml {
+pub(super) struct SamlAssertionXml {
     #[serde(rename = "Issuer")]
-    issuer: SamlIssuer,
+    pub issuer: SamlIssuer,
     #[serde(rename = "Subject")]
-    subject: Option<SamlSubject>,
+    pub subject: Option<SamlSubject>,
     #[serde(rename = "AttributeStatement")]
-    attribute_statements: Option<Vec<SamlAttributeStatement>>,
+    pub attribute_statements: Option<Vec<SamlAttributeStatement>>,
     #[serde(rename = "AuthnStatement")]
-    authn_statements: Option<Vec<SamlAuthnStatement>>,
+    pub authn_statements: Option<Vec<SamlAuthnStatement>>,
     #[serde(rename = "Conditions")]
-    conditions: Option<SamlConditions>,
+    pub conditions: Option<SamlConditions>,
     #[serde(rename = "IssueInstant")]
-    issue_instant: Option<String>,
+    pub issue_instant: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlConditions {
+pub(super) struct SamlConditions {
     #[serde(rename = "NotBefore")]
-    not_before: Option<String>,
+    pub(super) not_before: Option<String>,
     #[serde(rename = "NotOnOrAfter")]
-    not_on_or_after: Option<String>,
+    pub(super) not_on_or_after: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlSubject {
+pub(super) struct SamlSubject {
     #[serde(rename = "NameID")]
-    name_id: Option<SamlNameId>,
+    pub(super) name_id: Option<SamlNameId>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlNameId {
+pub(super) struct SamlNameId {
     #[serde(rename = "$text")]
-    value: String,
+    pub(super) value: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlAttributeStatement {
+pub(super) struct SamlAttributeStatement {
     #[serde(rename = "Attribute")]
-    attributes: Vec<SamlAttribute>,
+    pub(super) attributes: Vec<SamlAttribute>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlAttribute {
+pub(super) struct SamlAttribute {
     #[serde(rename = "Name")]
-    name: String,
+    pub(super) name: String,
     #[serde(rename = "AttributeValue")]
-    values: Vec<SamlAttributeValue>,
+    pub(super) values: Vec<SamlAttributeValue>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlAttributeValue {
+pub(super) struct SamlAttributeValue {
     #[serde(rename = "$text")]
-    value: String,
+    pub(super) value: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct SamlAuthnStatement {
+pub(super) struct SamlAuthnStatement {
     #[serde(rename = "SessionIndex")]
-    session_index: Option<String>,
+    pub(super) session_index: Option<String>,
 }
 
 impl SamlAuthMethod {
@@ -239,7 +241,7 @@ impl SamlAuthMethod {
 
     /// Parse ISO 8601 timestamp to SystemTime
     /// Used for SAML assertion timestamp validation
-    fn parse_timestamp(&self, timestamp: &str) -> Result<SystemTime> {
+    pub fn parse_timestamp(&self, timestamp: &str) -> Result<SystemTime> {
         use chrono::DateTime;
 
         // Try to parse as ISO 8601 datetime
@@ -254,7 +256,7 @@ impl SamlAuthMethod {
     }
 
     /// Validate SAML assertion timestamps and issuer
-    fn validate_assertion_security(
+    pub(super) fn validate_assertion_security(
         &self,
         assertion: &SamlAssertionXml,
         expected_issuer: &str,
@@ -287,10 +289,10 @@ impl SamlAuthMethod {
     }
 
     /// Comprehensive SAML response validation using all available fields
-    async fn validate_saml_response_comprehensive(
+    pub async fn validate_saml_response_comprehensive(
         &self,
         saml_response: &str,
-    ) -> Result<SamlAssertion> {
+    ) -> Result<ValidatedSamlAssertion> {
         // First try to parse as structured XML using quick-xml
         if let Ok(parsed_response) = from_str::<SamlResponse>(saml_response) {
             return self
@@ -303,10 +305,10 @@ impl SamlAuthMethod {
     }
 
     /// Validate structured SAML response with comprehensive security checks
-    async fn validate_structured_saml_response(
+    pub(super) async fn validate_structured_saml_response(
         &self,
         response: SamlResponse,
-    ) -> Result<SamlAssertion> {
+    ) -> Result<ValidatedSamlAssertion> {
         // Validate response-level issuer if present
         if let Some(response_issuer) = &response.issuer {
             let issuer = &response_issuer.value;
@@ -386,7 +388,7 @@ impl SamlAuthMethod {
                     .and_then(|stmt| stmt.session_index.clone());
 
                 // Create validated assertion
-                return Ok(SamlAssertion {
+                return Ok(ValidatedSamlAssertion {
                     subject: user_id,
                     attributes,
                     issuer: issuer.clone(),
@@ -406,7 +408,7 @@ impl SamlAuthMethod {
     }
 
     /// Parse and validate SAML assertion from XML
-    fn parse_saml_assertion(&self, assertion_xml: &str, issuer: &str) -> Result<SamlAssertion> {
+    fn parse_saml_assertion(&self, assertion_xml: &str, issuer: &str) -> Result<ValidatedSamlAssertion> {
         // Parse the XML assertion using quick-xml
         let assertion: SamlAssertionXml = from_str(assertion_xml)
             .map_err(|e| AuthError::validation(format!("Failed to parse SAML assertion: {}", e)))?;
@@ -456,7 +458,7 @@ impl SamlAuthMethod {
         // Validate assertion time constraints for security
         self.validate_assertion_time_constraints(issue_instant, not_before, not_on_or_after)?;
 
-        Ok(SamlAssertion {
+        Ok(ValidatedSamlAssertion {
             subject,
             attributes,
             issuer: issuer.to_string(),
@@ -468,7 +470,7 @@ impl SamlAuthMethod {
     }
 
     /// Validate SAML response with basic signature verification
-    async fn validate_saml_response(&self, saml_response: &str) -> Result<SamlAssertion> {
+    async fn validate_saml_response(&self, saml_response: &str) -> Result<ValidatedSamlAssertion> {
         // Decode base64 if needed
         let decoded_response = if saml_response.starts_with('<') {
             saml_response.to_string()
@@ -690,8 +692,8 @@ impl AuthMethod for SamlAuthMethod {
                 }
             };
 
-            // Validate SAML response and extract assertion
-            let assertion = match self.validate_saml_response(&saml_response).await {
+            // Validate SAML response and extract assertion using comprehensive validation
+            let assertion = match self.validate_saml_response_comprehensive(&saml_response).await {
                 Ok(assertion) => assertion,
                 Err(e) => {
                     tracing::warn!("SAML authentication failed: {}", e);
@@ -809,5 +811,72 @@ mod tests {
             saml.identity_providers
                 .contains_key("https://example.com/idp")
         );
+    }
+
+    #[test]
+    fn test_saml_response_structure_internal() {
+        // SamlResponse is an internal XML-deserialization type (pub(super))
+        // accessible within this module and its tests
+        let response_data = r#"
+            <Response xmlns="urn:oasis:names:tc:SAML:2.0:protocol">
+                <Issuer xmlns="urn:oasis:names:tc:SAML:2.0:assertion">example.com</Issuer>
+            </Response>
+        "#;
+
+        let _test_response: Result<SamlResponse, _> = quick_xml::de::from_str(response_data);
+    }
+
+    #[test]
+    fn test_saml_assertion_xml_structure_internal() {
+        // SamlAssertionXml is an internal XML-deserialization type (pub(super))
+        let xml_data = r#"
+            <Assertion xmlns="urn:oasis:names:tc:SAML:2.0:assertion">
+                <Issuer>example.com</Issuer>
+            </Assertion>
+        "#;
+
+        let _test_assertion: Result<SamlAssertionXml, _> = quick_xml::de::from_str(xml_data);
+    }
+
+    #[test]
+    fn test_saml_issuer_internal() {
+        // SamlIssuer is internal to the SAML XML parsing pipeline
+        let issuer = SamlIssuer {
+            value: "https://idp.example.com".to_string(),
+        };
+        assert_eq!(issuer.value, "https://idp.example.com");
+    }
+
+    #[test]
+    fn test_saml_attribute_statement_internal() {
+        // SamlAttributeStatement and related types are internal XML-parsing types
+        let attr_value = SamlAttributeValue {
+            value: "developer".to_string(),
+        };
+        assert_eq!(attr_value.value, "developer");
+
+        let attribute = SamlAttribute {
+            name: "role".to_string(),
+            values: vec![attr_value],
+        };
+        assert_eq!(attribute.name, "role");
+        assert_eq!(attribute.values.len(), 1);
+
+        let attr_stmt = SamlAttributeStatement {
+            attributes: vec![attribute],
+        };
+        assert_eq!(attr_stmt.attributes.len(), 1);
+    }
+
+    #[test]
+    fn test_saml_conditions_internal() {
+        // SamlConditions is an internal XML-parsing type; the public SAML 2.0 domain
+        // type is crate::saml_assertions::SamlConditions
+        let conditions = SamlConditions {
+            not_before: Some("2024-01-01T00:00:00Z".to_string()),
+            not_on_or_after: Some("2024-12-31T23:59:59Z".to_string()),
+        };
+        assert!(conditions.not_before.is_some());
+        assert!(conditions.not_on_or_after.is_some());
     }
 }

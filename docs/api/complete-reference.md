@@ -818,43 +818,9 @@ Verifies password reset token validity.
 
 ## Email Verification API
 
-### POST /auth/verify-email
-
-Verifies email address with token.
-
-**Request:**
-
-```json
-{
-  "token": "email_verification_token"
-}
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "message": "Email verified successfully"
-}
-```
-
-### POST /auth/resend-verification
-
-Resends email verification.
-
-**Request Headers:**
-
-```http
-Authorization: Bearer <access_token>
-```
-
-**Response (200 OK):**
-
-```json
-{
-  "message": "Verification email sent"
-}
-```
+Email verification endpoints are not implemented in the current server release.
+Do not depend on `/auth/verify-email` or `/auth/resend-verification` until the
+server ships those routes in a future version.
 
 ## Role and Permission Management API
 

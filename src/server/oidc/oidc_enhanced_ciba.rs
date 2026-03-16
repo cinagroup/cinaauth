@@ -22,7 +22,7 @@
 //! # Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oidc_enhanced_ciba::{
+//! use auth_framework::server::oidc::oidc_enhanced_ciba::{
 //!     EnhancedCibaManager, EnhancedCibaConfig, AuthenticationMode, BackchannelAuthParams, UserIdentifierHint
 //! };
 //!
@@ -30,7 +30,7 @@
 //! let config = EnhancedCibaConfig::default();
 //! let ciba_manager = EnhancedCibaManager::new(config);
 //!
-//! // Initiate backchannel authentication
+//! // Initiate backchannel authentication (poll mode - no notification token needed)
 //! let request = ciba_manager.initiate_backchannel_auth(
 //!     BackchannelAuthParams {
 //!         client_id: "client123",
@@ -38,8 +38,11 @@
 //!         binding_message: Some("Please authenticate for payment authorization".to_string()),
 //!         auth_context: None,
 //!         scopes: vec!["openid".to_string()],
-//!         mode: AuthenticationMode::Push,
+//!         mode: AuthenticationMode::Poll,
 //!         client_notification_endpoint: None,
+//!         // For ping/push modes, supply the client_notification_token so the
+//!         // server can forward it verbatim as the Bearer header (CIBA spec §11).
+//!         client_notification_token: None,
 //!     }
 //! ).await?;
 //! # Ok(())
@@ -201,6 +204,10 @@ pub struct EnhancedCibaAuthRequest {
     pub mode: AuthenticationMode,
     /// Client notification endpoint (for ping/push)
     pub client_notification_endpoint: Option<String>,
+    /// CIBA spec §11: Bearer token supplied by the client for backchannel notifications.
+    /// The server MUST forward this token verbatim as the `Authorization: Bearer` header
+    /// when delivering ping/push notifications.
+    pub client_notification_token: Option<String>,
     /// Request expiry time
     pub expires_at: DateTime<Utc>,
     /// Request creation time
@@ -257,7 +264,7 @@ pub struct AuthenticationContext {
     /// Geographic location
     pub location: Option<GeoLocation>,
     /// Device information
-    pub device_info: Option<DeviceInfo>,
+    pub device_info: Option<CibaDeviceInfo>,
     /// Custom context attributes
     pub custom_attributes: HashMap<String, serde_json::Value>,
 }
@@ -277,7 +284,7 @@ pub struct GeoLocation {
 
 /// Device information for CIBA requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeviceInfo {
+pub struct CibaDeviceInfo {
     /// Device identifier
     pub device_id: String,
     /// Device type (mobile, desktop, etc.)
@@ -383,6 +390,10 @@ pub struct BackchannelAuthParams<'a> {
     pub scopes: Vec<String>,
     pub mode: AuthenticationMode,
     pub client_notification_endpoint: Option<String>,
+    /// CIBA spec §11: the Bearer token to use in backchannel ping/push notifications.
+    /// The client supplies this value; the server MUST forward it verbatim.
+    /// Required when `mode` is `Ping` or `Push`.
+    pub client_notification_token: Option<String>,
 }
 
 /// Enhanced CIBA manager
@@ -511,6 +522,18 @@ impl EnhancedCibaManager {
             ));
         }
 
+        // CIBA spec §7.1: client_notification_token is REQUIRED for ping/push modes.
+        // The server must forward it verbatim when delivering backchannel notifications.
+        if matches!(
+            params.mode,
+            AuthenticationMode::Ping | AuthenticationMode::Push
+        ) && params.client_notification_token.is_none()
+        {
+            return Err(AuthError::validation(
+                "client_notification_token is required for ping and push notification modes (CIBA spec §7.1)".to_string(),
+            ));
+        }
+
         let auth_req_id = Uuid::new_v4().to_string();
         let now = Utc::now();
         let expires_at = now + self.config.default_auth_req_expiry;
@@ -556,6 +579,7 @@ impl EnhancedCibaManager {
             scopes: params.scopes,
             mode: params.mode.clone(),
             client_notification_endpoint: params.client_notification_endpoint,
+            client_notification_token: params.client_notification_token,
             expires_at,
             created_at: now,
             status: CibaRequestStatus::Pending,
@@ -719,19 +743,12 @@ impl EnhancedCibaManager {
                     }
                     // Implement proper JWT validation for id_token_hint
                     match self.validate_id_token_hint(token) {
-                        Ok(claims) => {
-                            // Extract subject from validated JWT claims
-                            claims.sub
-                        }
+                        Ok(claims) => claims.sub,
                         Err(e) => {
-                            tracing::warn!("JWT validation failed for id_token_hint: {}", e);
-                            // Fallback: generate deterministic subject for testing
-                            // In production, this should reject the request
-                            use std::collections::hash_map::DefaultHasher;
-                            use std::hash::{Hash, Hasher};
-                            let mut hasher = DefaultHasher::new();
-                            token.hash(&mut hasher);
-                            format!("fallback_subject_{}", hasher.finish())
+                            return Err(AuthError::InvalidToken(format!(
+                                "id_token_hint validation failed: {}",
+                                e
+                            )));
                         }
                     }
                 }
@@ -783,7 +800,16 @@ impl EnhancedCibaManager {
                 AuthenticationMode::Ping | AuthenticationMode::Push
             ) && let Some(ref endpoint) = request.client_notification_endpoint
             {
-                self.send_notification(endpoint.as_str(), auth_req_id)
+                let token = request
+                    .client_notification_token
+                    .as_deref()
+                    .ok_or_else(|| {
+                        AuthError::internal(
+                            "client_notification_token missing for ping/push notification; \
+                             this should have been validated at request initiation",
+                        )
+                    })?;
+                self.send_notification(endpoint.as_str(), auth_req_id, token)
                     .await?;
             }
         } else {
@@ -799,7 +825,16 @@ impl EnhancedCibaManager {
     }
 
     /// Send notification to client with retry and authentication
-    async fn send_notification(&self, endpoint: &str, auth_req_id: &str) -> Result<()> {
+    ///
+    /// Per CIBA spec §11 the `client_notification_token` supplied by the client
+    /// in the original backchannel-auth request is forwarded verbatim as the
+    /// `Authorization: Bearer` header.
+    async fn send_notification(
+        &self,
+        endpoint: &str,
+        auth_req_id: &str,
+        client_notification_token: &str,
+    ) -> Result<()> {
         let notification_data = serde_json::json!({
             "auth_req_id": auth_req_id,
             "timestamp": Utc::now(),
@@ -825,10 +860,10 @@ impl EnhancedCibaManager {
                 ))
                 .header("Content-Type", "application/json")
                 .header("User-Agent", "AuthFramework-CIBA/1.0")
-                // In production, add proper authentication header
+                // CIBA spec §11: forward the client-supplied notification token verbatim.
                 .header(
                     "Authorization",
-                    format!("Bearer {}", self.generate_notification_token(auth_req_id)?),
+                    format!("Bearer {}", client_notification_token),
                 )
                 .json(&notification_data);
 
@@ -870,21 +905,6 @@ impl EnhancedCibaManager {
 
         // All retries exhausted
         Err(last_error.unwrap_or_else(|| AuthError::internal("All notification attempts failed")))
-    }
-
-    /// Generate notification authentication token
-    fn generate_notification_token(&self, auth_req_id: &str) -> Result<String> {
-        // In production, this would generate a proper JWT for notification authentication
-        // For now, generate a simple token
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        auth_req_id.hash(&mut hasher);
-        self.config.issuer.hash(&mut hasher);
-        chrono::Utc::now().timestamp().hash(&mut hasher);
-
-        Ok(format!("notif_{:016x}", hasher.finish()))
     }
 
     /// Generate tokens for completed authentication request
@@ -1036,7 +1056,7 @@ impl EnhancedCibaManager {
     /// Extract subject from ID token hint with proper JWT validation
     fn extract_subject_from_id_token(&self, token: &str) -> Result<String> {
         if let Some(ref decoding_key) = self.config.decoding_key {
-            match self.jwt_validator.validate_token(token, decoding_key, true) {
+            match self.jwt_validator.validate_token(token, decoding_key) {
                 Ok(claims) => Ok(claims.sub),
                 Err(e) => Err(AuthError::InvalidToken(format!(
                     "Invalid ID token hint: {}",
@@ -1044,76 +1064,65 @@ impl EnhancedCibaManager {
                 ))),
             }
         } else {
-            // Fallback to basic validation if no decoding key
-            if token.split('.').count() != 3 {
-                return Err(AuthError::InvalidToken("Invalid JWT format".to_string()));
-            }
-
-            // Generate deterministic subject for testing
-            use std::collections::hash_map::DefaultHasher;
-            use std::hash::{Hash, Hasher};
-            let mut hasher = DefaultHasher::new();
-            token.hash(&mut hasher);
-            Ok(format!("id_token_subject_{}", hasher.finish()))
+            Err(AuthError::internal(
+                "No JWT decoding key configured; cannot validate id_token_hint",
+            ))
         }
     }
 
-    /// Compute authentication context hash for token claims
+    /// Compute a SHA-256 hash of the authentication context for embedding in token claims.
     fn compute_auth_context_hash(
         &self,
         auth_context: &Option<AuthenticationContext>,
     ) -> Option<String> {
+        use sha2::{Digest, Sha256};
         auth_context.as_ref().map(|ctx| {
-            use std::collections::hash_map::DefaultHasher;
-            use std::hash::{Hash, Hasher};
-
-            let mut hasher = DefaultHasher::new();
+            let mut hasher = Sha256::new();
             if let Some(amount) = ctx.transaction_amount {
-                amount.to_bits().hash(&mut hasher);
+                hasher.update(amount.to_bits().to_le_bytes());
             }
             if let Some(ref currency) = ctx.transaction_currency {
-                currency.hash(&mut hasher);
+                hasher.update(currency.as_bytes());
             }
             if let Some(risk) = ctx.risk_score {
-                risk.to_bits().hash(&mut hasher);
+                hasher.update(risk.to_bits().to_le_bytes());
             }
-
-            format!("ctx_{}", hasher.finish())
+            format!("ctx_{}", hex::encode(hasher.finalize()))
         })
     }
 
-    /// Generate device fingerprint for device binding
+    /// Generate a SHA-256 device fingerprint for device binding.
+    ///
+    /// SHA-256 replaces `DefaultHasher` (which is non-deterministic across
+    /// compiler versions and process restarts, and non-cryptographic).
     fn generate_device_fingerprint(&self, params: &BackchannelAuthParams) -> Result<String> {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use sha2::{Digest, Sha256};
 
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = Sha256::new();
 
-        // Hash client ID
-        params.client_id.hash(&mut hasher);
+        hasher.update(params.client_id.as_bytes());
 
-        // Hash device info if available in auth context
         if let Some(ref auth_context) = params.auth_context
             && let Some(ref device_info) = auth_context.device_info
         {
-            device_info.device_id.hash(&mut hasher);
-            device_info.device_type.hash(&mut hasher);
+            hasher.update(device_info.device_id.as_bytes());
+            hasher.update(device_info.device_type.as_bytes());
             if let Some(ref os) = device_info.os {
-                os.hash(&mut hasher);
+                hasher.update(os.as_bytes());
             }
             if let Some(ref browser) = device_info.browser {
-                browser.hash(&mut hasher);
+                hasher.update(browser.as_bytes());
             }
             if let Some(ref ip) = device_info.ip_address {
-                ip.hash(&mut hasher);
+                hasher.update(ip.as_bytes());
             }
         }
 
-        // Include timestamp for uniqueness but rounded to hour for consistency
+        // Round to hour for same-hour consistency while limiting replay window
         let hour_timestamp = chrono::Utc::now().timestamp() / 3600;
-        hour_timestamp.hash(&mut hasher);
+        hasher.update(hour_timestamp.to_le_bytes());
 
-        Ok(format!("device_fp_{:016x}", hasher.finish()))
+        Ok(format!("device_fp_{}", hex::encode(hasher.finalize())))
     }
 
     /// Get authentication request by ID
@@ -1259,7 +1268,7 @@ impl EnhancedCibaManager {
     }
 
     /// Validate ID token hint JWT
-    fn validate_id_token_hint(&self, token: &str) -> Result<IdTokenClaims> {
+    fn validate_id_token_hint(&self, token: &str) -> Result<IdTokenHintClaims> {
         // Basic JWT structure validation
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {
@@ -1284,7 +1293,7 @@ impl EnhancedCibaManager {
             .map_err(|_| AuthError::InvalidToken("Invalid JWT payload UTF-8".to_string()))?;
 
         // Parse JWT claims
-        let claims: IdTokenClaims = serde_json::from_str(&payload_str)
+        let claims: IdTokenHintClaims = serde_json::from_str(&payload_str)
             .map_err(|e| AuthError::InvalidToken(format!("Invalid JWT claims: {}", e)))?;
 
         // Basic validation checks
@@ -1313,9 +1322,11 @@ impl EnhancedCibaManager {
     }
 }
 
-/// ID Token Claims structure for JWT validation
+/// ID Token hint claims structure for lenient JWT parsing during CIBA id_token_hint validation.
+/// Fields are all optional (except `sub`) because incoming JWTs may omit non-required claims.
+/// Distinct from `oidc::core::IdTokenClaims`, which represents a fully-formed issued ID token.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IdTokenClaims {
+struct IdTokenHintClaims {
     /// Subject identifier
     pub sub: String,
     /// Issued at time
@@ -1363,6 +1374,7 @@ mod tests {
             scopes: vec!["openid".to_string(), "profile".to_string()],
             mode: AuthenticationMode::Poll,
             client_notification_endpoint: None,
+            client_notification_token: None,
         };
 
         let response = manager.initiate_backchannel_auth(params).await.unwrap();
@@ -1384,6 +1396,7 @@ mod tests {
             scopes: vec!["openid".to_string()],
             mode: AuthenticationMode::Poll,
             client_notification_endpoint: None,
+            client_notification_token: None,
         };
 
         let response = manager.initiate_backchannel_auth(params).await.unwrap();
@@ -1413,6 +1426,7 @@ mod tests {
             scopes: vec!["openid".to_string(), "profile".to_string()],
             mode: AuthenticationMode::Poll,
             client_notification_endpoint: None,
+            client_notification_token: None,
         };
 
         let response = manager.initiate_backchannel_auth(params).await.unwrap();
@@ -1454,6 +1468,7 @@ mod tests {
             scopes: vec!["openid".to_string()],
             mode: AuthenticationMode::Poll,
             client_notification_endpoint: None,
+            client_notification_token: None,
         };
 
         let result = rt.block_on(manager.initiate_backchannel_auth(params));
@@ -1484,6 +1499,7 @@ mod tests {
             scopes: vec!["openid".to_string(), "payment".to_string()],
             mode: AuthenticationMode::Poll,
             client_notification_endpoint: None,
+            client_notification_token: None,
         };
 
         let response = manager.initiate_backchannel_auth(params).await.unwrap();

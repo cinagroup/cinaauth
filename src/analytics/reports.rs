@@ -40,14 +40,14 @@ impl Default for ReportConfig {
 
 /// Report generator
 pub struct ReportGenerator {
-    #[allow(dead_code)]
-    config: ReportConfig,
+    /// Configuration — retained for use in future report-rendering implementations.
+    _config: ReportConfig,
 }
 
 impl ReportGenerator {
     /// Create new report generator
     pub fn new(config: ReportConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 
     /// Generate report

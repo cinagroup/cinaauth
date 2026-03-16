@@ -185,13 +185,15 @@ impl TieredStorageManager {
                     if should_promote {
                         // Promote to higher tier
                         Self::promote_data(
-                            key, metadata, &hot_tier, &warm_tier, &cold_tier, &stats,
+                            key, metadata, &hot_tier, &warm_tier, &cold_tier, &stats, &config,
                         )
                         .await;
                     } else if should_demote {
                         // Demote to lower tier
-                        Self::demote_data(key, metadata, &hot_tier, &warm_tier, &cold_tier, &stats)
-                            .await;
+                        Self::demote_data(
+                            key, metadata, &hot_tier, &warm_tier, &cold_tier, &stats, &config,
+                        )
+                        .await;
                     }
                 }
             }
@@ -221,55 +223,127 @@ impl TieredStorageManager {
     }
 
     async fn promote_data(
-        _key: &str,
+        key: &str,
         metadata: &mut AccessMetadata,
-        _hot_tier: &Arc<dyn AuthStorage + Send + Sync>,
-        _warm_tier: &Arc<dyn AuthStorage + Send + Sync>,
-        _cold_tier: &Arc<dyn AuthStorage + Send + Sync>,
+        hot_tier: &Arc<dyn AuthStorage + Send + Sync>,
+        warm_tier: &Arc<dyn AuthStorage + Send + Sync>,
+        cold_tier: &Arc<dyn AuthStorage + Send + Sync>,
         stats: &Arc<TieredStorageStats>,
+        config: &TieredStorageConfig,
     ) {
-        let _source_tier = match metadata.current_tier {
-            StorageTier::Cold => _cold_tier,
-            StorageTier::Warm => _warm_tier,
+        let (source_tier, target_tier, target_ttl): (
+            &Arc<dyn AuthStorage + Send + Sync>,
+            &Arc<dyn AuthStorage + Send + Sync>,
+            Duration,
+        ) = match metadata.current_tier {
+            StorageTier::Cold => (cold_tier, warm_tier, config.warm_tier_ttl),
+            StorageTier::Warm => (warm_tier, hot_tier, config.hot_tier_ttl),
             StorageTier::Hot => return, // Already at highest tier
         };
 
-        let _target_tier = match metadata.current_tier {
-            StorageTier::Cold => _warm_tier,
-            StorageTier::Warm => _hot_tier,
-            StorageTier::Hot => return,
-        };
-
-        // Move data between tiers (simplified - would need actual implementation)
-        // This is a placeholder for the actual data movement logic
-        stats.promotions.fetch_add(1, Ordering::Relaxed);
-
-        metadata.current_tier = match metadata.current_tier {
-            StorageTier::Cold => StorageTier::Warm,
-            StorageTier::Warm => StorageTier::Hot,
-            StorageTier::Hot => StorageTier::Hot,
-        };
+        match source_tier.get_kv(key).await {
+            Ok(Some(data)) => {
+                if let Err(e) = target_tier.store_kv(key, &data, Some(target_ttl)).await {
+                    tracing::warn!(
+                        "Tier promotion: failed to write '{}' to target tier: {}",
+                        key,
+                        e
+                    );
+                    return;
+                }
+                if let Err(e) = source_tier.delete_kv(key).await {
+                    // Data is already in the target tier; log and continue rather than abort.
+                    tracing::warn!(
+                        "Tier promotion: failed to delete '{}' from source tier (duplicate tolerated): {}",
+                        key,
+                        e
+                    );
+                }
+                stats.promotions.fetch_add(1, Ordering::Relaxed);
+                metadata.current_tier = match metadata.current_tier {
+                    StorageTier::Cold => StorageTier::Warm,
+                    StorageTier::Warm => StorageTier::Hot,
+                    StorageTier::Hot => StorageTier::Hot,
+                };
+            }
+            Ok(None) => {
+                tracing::debug!(
+                    "Tier promotion: key '{}' not found in source tier; skipping",
+                    key
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Tier promotion: failed to read '{}' from source tier: {}",
+                    key,
+                    e
+                );
+            }
+        }
     }
 
     async fn demote_data(
-        _key: &str,
+        key: &str,
         metadata: &mut AccessMetadata,
-        _hot_tier: &Arc<dyn AuthStorage + Send + Sync>,
-        _warm_tier: &Arc<dyn AuthStorage + Send + Sync>,
-        _cold_tier: &Arc<dyn AuthStorage + Send + Sync>,
+        hot_tier: &Arc<dyn AuthStorage + Send + Sync>,
+        warm_tier: &Arc<dyn AuthStorage + Send + Sync>,
+        cold_tier: &Arc<dyn AuthStorage + Send + Sync>,
         stats: &Arc<TieredStorageStats>,
+        config: &TieredStorageConfig,
     ) {
         if metadata.current_tier == StorageTier::Cold {
             return; // Already at lowest tier
         }
 
-        stats.demotions.fetch_add(1, Ordering::Relaxed);
-
-        metadata.current_tier = match metadata.current_tier {
-            StorageTier::Hot => StorageTier::Warm,
-            StorageTier::Warm => StorageTier::Cold,
-            StorageTier::Cold => StorageTier::Cold,
+        // Cold tier has no TTL (archival storage).
+        let (source_tier, target_tier, target_ttl): (
+            &Arc<dyn AuthStorage + Send + Sync>,
+            &Arc<dyn AuthStorage + Send + Sync>,
+            Option<Duration>,
+        ) = match metadata.current_tier {
+            StorageTier::Hot => (hot_tier, warm_tier, Some(config.warm_tier_ttl)),
+            StorageTier::Warm => (warm_tier, cold_tier, None),
+            StorageTier::Cold => return,
         };
+
+        match source_tier.get_kv(key).await {
+            Ok(Some(data)) => {
+                if let Err(e) = target_tier.store_kv(key, &data, target_ttl).await {
+                    tracing::warn!(
+                        "Tier demotion: failed to write '{}' to target tier: {}",
+                        key,
+                        e
+                    );
+                    return;
+                }
+                if let Err(e) = source_tier.delete_kv(key).await {
+                    tracing::warn!(
+                        "Tier demotion: failed to delete '{}' from source tier (duplicate tolerated): {}",
+                        key,
+                        e
+                    );
+                }
+                stats.demotions.fetch_add(1, Ordering::Relaxed);
+                metadata.current_tier = match metadata.current_tier {
+                    StorageTier::Hot => StorageTier::Warm,
+                    StorageTier::Warm => StorageTier::Cold,
+                    StorageTier::Cold => StorageTier::Cold,
+                };
+            }
+            Ok(None) => {
+                tracing::debug!(
+                    "Tier demotion: key '{}' not found in source tier; skipping",
+                    key
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Tier demotion: failed to read '{}' from source tier: {}",
+                    key,
+                    e
+                );
+            }
+        }
     }
 
     async fn track_access(&self, key: &str, tier: StorageTier) {
@@ -332,6 +406,24 @@ impl TieredStorageManager {
             promotions: self.stats.promotions.load(Ordering::Relaxed),
             demotions: self.stats.demotions.load(Ordering::Relaxed),
         }
+    }
+
+    /// Retrieve data from hot tier with access tracking
+    pub async fn get_from_hot(&self, key: &str) -> Option<Vec<u8>> {
+        self.track_access(key, StorageTier::Hot).await;
+        self.hot_tier.get_kv(key).await.ok().flatten()
+    }
+
+    /// Retrieve data from warm tier with access tracking
+    pub async fn get_from_warm(&self, key: &str) -> Option<Vec<u8>> {
+        self.track_access(key, StorageTier::Warm).await;
+        self.warm_tier.get_kv(key).await.ok().flatten()
+    }
+
+    /// Retrieve data from cold tier with access tracking
+    pub async fn get_from_cold(&self, key: &str) -> Option<Vec<u8>> {
+        self.track_access(key, StorageTier::Cold).await;
+        self.cold_tier.get_kv(key).await.ok().flatten()
     }
 }
 
@@ -396,6 +488,12 @@ impl Default for EventSourcingConfig {
             max_events_in_memory: 10_000,
             event_retention_days: 365,
         }
+    }
+}
+
+impl Default for EventSourcingManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -585,7 +683,7 @@ impl ConfigHotReloadManager {
                         )
                         .await
                         {
-                            eprintln!("Error handling config file change: {}", e);
+                            tracing::error!("Error handling config file change: {}", e);
                         }
                     });
                 }
@@ -650,7 +748,7 @@ impl ConfigHotReloadManager {
                         let _ = broadcaster.send(change_event);
                     }
                     Err(e) => {
-                        eprintln!("Failed to reload config: {}", e);
+                        tracing::error!("Failed to reload config: {}", e);
                     }
                 }
             }
@@ -725,6 +823,30 @@ mod tests {
         let stats = manager.get_stats();
         assert_eq!(stats.total_requests, 3);
         assert!(stats.hot_tier_hit_rate > 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_tiered_storage_accessor_methods() {
+        let hot_tier = Arc::new(InMemoryStorage::new()) as Arc<dyn AuthStorage + Send + Sync>;
+        let warm_tier = Arc::new(InMemoryStorage::new()) as Arc<dyn AuthStorage + Send + Sync>;
+        let cold_tier = Arc::new(InMemoryStorage::new()) as Arc<dyn AuthStorage + Send + Sync>;
+
+        let manager = TieredStorageManager::new(hot_tier, warm_tier, cold_tier);
+
+        // Test accessor methods with access tracking
+        let _ = manager.get_from_hot("key1").await;
+        let _ = manager.get_from_warm("key2").await;
+        let _ = manager.get_from_cold("key3").await;
+
+        let stats = manager.get_stats();
+        assert_eq!(stats.total_requests, 3);
+        
+        // Use approximate equality for floating point comparisons
+        let expected_rate = 100.0 / 3.0;
+        let tolerance = 1e-10;
+        assert!((stats.hot_tier_hit_rate - expected_rate).abs() < tolerance);
+        assert!((stats.warm_tier_hit_rate - expected_rate).abs() < tolerance);
+        assert!((stats.cold_tier_hit_rate - expected_rate).abs() < tolerance);
     }
 
     #[tokio::test]

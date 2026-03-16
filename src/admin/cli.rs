@@ -35,7 +35,7 @@ async fn handle_config_action(state: AppState, action: ConfigAction) -> Result<(
             value,
             hot_reload,
         } => handle_config_set(state, key, value, hot_reload).await,
-        ConfigAction::Get { key } => handle_config_get(key).await,
+        ConfigAction::Get { key } => handle_config_get(state, key).await,
         ConfigAction::Reload { show_diff } => handle_config_reload(state, show_diff).await,
         ConfigAction::Template { output, complete } => {
             handle_config_template(output, complete).await
@@ -81,13 +81,12 @@ async fn handle_config_validate(state: AppState, file: Option<String>) -> Result
         state.config_manager.validate()
     };
 
-    spinner.finish_with_message(if result.is_ok() {
-        "✅ Configuration is valid".green().to_string()
+    let message = if let Err(e) = result {
+        format!("❌ Configuration error: {}", e).red().to_string()
     } else {
-        format!("❌ Configuration error: {}", result.unwrap_err())
-            .red()
-            .to_string()
-    });
+        "✅ Configuration is valid".green().to_string()
+    };
+    spinner.finish_with_message(message);
 
     Ok(())
 }
@@ -113,10 +112,25 @@ async fn handle_config_set(
 }
 
 #[cfg(feature = "cli")]
-async fn handle_config_get(key: String) -> Result<()> {
-    println!("Getting configuration for: {}", key.cyan());
-    // Implementation would retrieve and display the specific key value
-    println!("Value: {}", "example_value".green());
+async fn handle_config_get(state: AppState, key: String) -> Result<()> {
+    let config = state.config.read().await;
+    // Serialize the full config to JSON and navigate the key path (dot-separated).
+    let config_json = serde_json::to_value(&*config)
+        .map_err(|e| AuthError::internal(format!("Failed to serialize config: {}", e)))?;
+    let mut current = &config_json;
+    for segment in key.split('.') {
+        current = current.get(segment).ok_or_else(|| {
+            AuthError::internal(format!(
+                "Configuration key '{}' not found (segment '{}' missing)",
+                key, segment
+            ))
+        })?;
+    }
+    let display = match current {
+        serde_json::Value::String(s) => s.clone(),
+        other => other.to_string(),
+    };
+    println!("{}: {}", key.cyan(), display.green());
     Ok(())
 }
 
@@ -259,28 +273,22 @@ async fn handle_server_status(state: AppState) -> Result<()> {
 }
 
 #[cfg(feature = "cli")]
-async fn handle_user_action(_state: AppState, action: UserAction) -> Result<()> {
+async fn handle_user_action(state: AppState, action: UserAction) -> Result<()> {
     match action {
         UserAction::List { limit, active: _ } => {
             println!("{}", "👥 Users".bold().blue());
 
             let spinner = create_spinner("Loading users...");
-
-            // Simulate loading users
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-
+            let stats = state.get_user_statistics().await?;
             spinner.finish_with_message("Users loaded".green().to_string());
 
-            // Example user data
-            println!("┌─────────┬──────────────────────┬────────────────┬────────┐");
-            println!("│ ID      │ Email                │ Created        │ Active │");
-            println!("├─────────┼──────────────────────┼────────────────┼────────┤");
-            println!("│ 1       │ admin@example.com    │ 2024-01-01     │ ✅     │");
-            println!("│ 2       │ user@example.com     │ 2024-01-02     │ ✅     │");
-            println!("└─────────┴──────────────────────┴────────────────┴────────┘");
+            println!("  Total users:              {}", stats.total_users.to_string().cyan());
+            println!("  Active sessions:          {}", stats.active_sessions.to_string().cyan());
+            println!("  Failed logins today:      {}", stats.failed_logins_today.to_string().yellow());
+            println!("  New registrations today:  {}", stats.new_registrations_today.to_string().green());
 
             if let Some(limit_val) = limit {
-                println!("Showing {} users", limit_val.to_string().dimmed());
+                println!("(Showing up to {} users)", limit_val.to_string().dimmed());
             }
         }
         UserAction::Create {
@@ -300,42 +308,41 @@ async fn handle_user_action(_state: AppState, action: UserAction) -> Result<()> 
                     .map_err(|e| AuthError::Cli(format!("Password input failed: {}", e)))?
             };
 
-            let spinner = create_spinner("Creating user...");
-
-            // Simulate user creation
-            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-
-            spinner.finish_with_message(format!("✅ User {} created successfully", email.green()));
-
-            if admin {
-                println!("👑 Admin privileges granted");
-            }
+            // User creation requires a storage backend wired into AppState.
+            // The AppState for the CLI currently holds only configuration;
+            // connect it to an AuthFramework instance with storage to complete
+            // this operation.
+            println!(
+                "{}",
+                "⚠️  User creation requires a connected storage backend.  \
+                 Wire AppState to an AuthFramework instance to enable this operation."
+                    .yellow()
+            );
+            println!(
+                "   Requested: create user {} (admin: {})",
+                email.cyan(),
+                admin
+            );
         }
         UserAction::Update {
             user,
             email,
             active,
         } => {
-            println!("✏️ Updating user: {}", user.cyan());
-
+            println!("✏️  Requested update for user: {}", user.cyan());
             if let Some(new_email) = email {
-                println!("📧 New email: {}", new_email.green());
+                println!("   → new email: {}", new_email.green());
             }
-
             if let Some(is_active) = active {
                 println!(
-                    "🔓 Active status: {}",
-                    if is_active {
-                        "Enabled".green()
-                    } else {
-                        "Disabled".red()
-                    }
+                    "   → active: {}",
+                    if is_active { "true".green() } else { "false".red() }
                 );
             }
-
-            let spinner = create_spinner("Updating user...");
-            tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
-            spinner.finish_with_message("✅ User updated successfully".green().to_string());
+            println!(
+                "{}",
+                "⚠️  User updates require a connected storage backend.".yellow()
+            );
         }
         UserAction::Delete { user, force } => {
             if !force {
@@ -354,17 +361,18 @@ async fn handle_user_action(_state: AppState, action: UserAction) -> Result<()> 
                 }
             }
 
-            let spinner = create_spinner("Deleting user...");
-            tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
-            spinner.finish_with_message(format!("✅ User {} deleted successfully", user.red()));
+            println!(
+                "{}",
+                "⚠️  User deletion requires a connected storage backend.".yellow()
+            );
+            println!("   Requested: delete user {}", user.red());
         }
         UserAction::SetRole { email, role } => {
-            println!("👤 Setting role for user: {}", email.cyan());
-            println!("🔑 New role: {}", role.green());
-
-            let spinner = create_spinner("Updating user role...");
-            tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
-            spinner.finish_with_message("✅ User role updated successfully".green().to_string());
+            println!(
+                "{}",
+                "⚠️  Role assignment requires a connected storage backend.".yellow()
+            );
+            println!("   Requested: set role {} for user {}", role.green(), email.cyan());
         }
     }
     Ok(())
@@ -464,7 +472,7 @@ async fn handle_status(state: AppState, detailed: bool, format: &str) -> Result<
 }
 
 #[cfg(feature = "cli")]
-async fn handle_security_action(_state: AppState, action: SecurityAction) -> Result<()> {
+async fn handle_security_action(state: AppState, action: SecurityAction) -> Result<()> {
     match action {
         SecurityAction::Audit { days, detailed } => {
             println!(
@@ -474,31 +482,30 @@ async fn handle_security_action(_state: AppState, action: SecurityAction) -> Res
                     .blue()
             );
 
-            let pb = ProgressBar::new(100);
-            pb.set_style(ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg}")
-                .map_err(|e| AuthError::Cli(format!("Progress bar template error: {}", e)))?
-                .progress_chars("=>-"));
-
-            for i in 0..=100 {
-                pb.set_position(i);
-                pb.set_message(format!("Analyzing security events... {}/100", i));
-                tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
-            }
-
-            pb.finish_with_message("Security audit complete");
+            let spinner = create_spinner("Loading security events...");
+            let events = state.get_recent_security_events().await?;
+            let stats = state.get_user_statistics().await?;
+            spinner.finish_with_message("Security audit complete");
 
             println!("\n📈 Audit Summary:");
-            println!("  • Total Events: {}", "1,234".cyan());
-            println!("  • Login Attempts: {}", "567".green());
-            println!("  • Failed Logins: {}", "12".yellow());
-            println!("  • Suspicious Activity: {}", "0".green());
+            println!("  • Total tracked events: {}", events.len().to_string().cyan());
+            println!("  • Active sessions:      {}", stats.active_sessions.to_string().green());
+            println!("  • Failed logins today:  {}", stats.failed_logins_today.to_string().yellow());
 
             if detailed {
-                println!("\n📋 Recent Events:");
-                println!("  2024-08-10 14:30:15 - Successful login: user@example.com");
-                println!("  2024-08-10 14:25:42 - Failed login attempt: invalid@example.com");
-                println!("  2024-08-10 14:20:33 - Password reset: user@example.com");
+                if events.is_empty() {
+                    println!("\n📋 Recent Events: (none recorded)");
+                } else {
+                    println!("\n📋 Recent Events:");
+                    for event in &events {
+                        println!(
+                            "  {} - {}: {}",
+                            event.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
+                            event.event_type.cyan(),
+                            event.description,
+                        );
+                    }
+                }
             }
         }
         SecurityAction::Sessions { user, terminate } => {
@@ -517,40 +524,41 @@ async fn handle_security_action(_state: AppState, action: SecurityAction) -> Res
                 println!("Filtering by user: {}", user_filter.cyan());
             }
 
-            println!(
-                "┌──────────────┬──────────────────────┬─────────────────────┬──────────────┐"
-            );
-            println!(
-                "│ Session ID   │ User                 │ Started             │ Last Activity│"
-            );
-            println!(
-                "├──────────────┼──────────────────────┼─────────────────────┼──────────────┤"
-            );
-            println!(
-                "│ sess_123456  │ admin@example.com    │ 2024-08-10 14:00:00 │ 2 min ago    │"
-            );
-            println!(
-                "│ sess_789012  │ user@example.com     │ 2024-08-10 13:45:00 │ 5 min ago    │"
-            );
-            println!(
-                "└──────────────┴──────────────────────┴─────────────────────┴──────────────┘"
-            );
+            let status = state.server_status.read().await;
+            if status.active_sessions == 0 {
+                println!("  (no active sessions)");
+            } else {
+                println!(
+                    "  Active sessions: {}",
+                    status.active_sessions.to_string().cyan()
+                );
+                println!(
+                    "  {}",
+                    "(Detailed per-session data requires a storage backend to be configured)"
+                        .dimmed()
+                );
+            }
         }
         SecurityAction::ThreatIntel { update, check_ip } => {
             if let Some(ip) = check_ip {
                 println!("🌐 Checking IP address: {}", ip.cyan());
 
                 let spinner = create_spinner("Querying threat intelligence...");
-                tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+                spinner.finish_with_message("Lookup complete".to_string());
 
-                // Simulate threat intelligence check
-                let is_threat = ip.starts_with("192.168."); // Example logic
-
-                spinner.finish_with_message(if is_threat {
-                    format!("⚠️ IP {} flagged as suspicious", ip.red())
-                } else {
-                    format!("✅ IP {} appears clean", ip.green())
-                });
+                // A real lookup requires the ThreatIntelligence subsystem to be
+                // reachable from AppState.  Until that integration is wired in,
+                // report the limitation clearly rather than applying incorrect
+                // heuristics.
+                println!(
+                    "{}",
+                    "⚠️  Threat intelligence lookup requires a configured TI backend."
+                        .yellow()
+                );
+                println!(
+                    "   Requested check for IP: {}  — integrate ThreatIntelligence into AppState to enable.",
+                    ip.cyan()
+                );
 
                 return Ok(());
             }
@@ -608,7 +616,7 @@ fn create_spinner(message: &str) -> ProgressBar {
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap(),
+            .expect("hardcoded spinner template is valid"),
     );
     pb.set_message(message.to_string());
     pb.enable_steady_tick(std::time::Duration::from_millis(100));

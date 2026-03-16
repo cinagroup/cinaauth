@@ -15,7 +15,9 @@ impl MySqlMigrationManager {
         Self { pool }
     }
 
-    /// Run all pending migrations (stub)
+    /// Run all pending migrations.
+    ///
+    /// Currently creates the `users` table if it does not already exist.
     pub async fn migrate(&self) -> Result<(), sqlx::Error> {
         // Example: create users table if not exists
         sqlx::query(

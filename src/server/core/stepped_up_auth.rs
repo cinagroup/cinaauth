@@ -22,7 +22,7 @@
 //! # Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::stepped_up_auth::{
+//! use auth_framework::server::core::stepped_up_auth::{
 //!     SteppedUpAuthManager, StepUpConfig, AuthenticationLevel, StepUpContext
 //! };
 //! use std::collections::HashMap;
@@ -645,6 +645,7 @@ impl SteppedUpAuthManager {
             scopes: vec!["step_up".to_string()],
             mode: AuthenticationMode::Poll, // Default to poll mode for step-up
             client_notification_endpoint: None,
+            client_notification_token: None, // poll mode does not require a notification token
         };
 
         let ciba_request = ciba_manager.initiate_backchannel_auth(auth_params).await?;
@@ -710,7 +711,7 @@ impl SteppedUpAuthManager {
                 .await
             {
                 // Log error but don't fail the step-up completion
-                eprintln!("Warning: Failed to update session auth level: {}", e);
+                tracing::warn!("Failed to update session auth level: {}", e);
             }
 
             request.target_level
@@ -953,7 +954,7 @@ impl SteppedUpAuthManager {
                 let now = chrono::Utc::now().timestamp() as u64;
                 let is_valid = matches!(
                     session.state,
-                    crate::server::oidc::oidc_session_management::SessionState::Authenticated
+                    crate::server::oidc::oidc_session_management::OidcSessionState::Authenticated
                 ) && now - session.last_activity < 3600; // Default timeout
                 Ok(is_valid)
             }

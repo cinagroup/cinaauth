@@ -13,6 +13,10 @@
         # Impact: Low risk in our authentication context as we don't expose raw RSA operations
         # Tracking: Will update when sqlx/openidconnect provide fixed versions
         "RUSTSEC-2023-0071",
+        # `paste` crate unmaintained - transitive dependency via cryptoki 0.7.0
+        # Impact: None; `paste` is a compile-time macro crate with no runtime attack surface
+        # Tracking: Will resolve when cryptoki drops `paste` or migrates to an alternative
+        "RUSTSEC-2024-0436",
     ]
 
 [licenses]

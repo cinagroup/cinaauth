@@ -128,6 +128,7 @@ pub struct AuditEntryResponse {
     pub result: String,
     pub context: HashMap<String, String>,
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub description: String,
 }
 
 /// Query parameters for listing roles
@@ -222,10 +223,13 @@ pub async fn create_role(
             // Fetch the created role to get complete info
             match state.authorization_service.get_role(&request.name).await {
                 Ok(Some(role)) => {
-                    // Convert PermissionSet to vector of permissions
-                    // For now, use a placeholder since we need to understand the PermissionSet API better
-                    let permissions_strings: Vec<String> =
-                        vec!["read:resource".to_string(), "write:resource".to_string()];
+                    // Convert PermissionSet to vector of "action:resource" strings
+                    let permissions_strings: Vec<String> = role
+                        .permissions()
+                        .permissions()
+                        .iter()
+                        .map(|p| format!("{}:{}", p.action(), p.resource_type()))
+                        .collect();
 
                     // Test additional hierarchy methods from role-system v1.1.1
                     let hierarchy_depth = role.hierarchy_depth();
@@ -288,8 +292,12 @@ pub async fn get_role(
 
     match state.authorization_service.get_role(&role_id).await {
         Ok(Some(role)) => {
-            let permissions_strings: Vec<String> =
-                vec!["read:resource".to_string(), "write:resource".to_string()];
+            let permissions_strings: Vec<String> = role
+                .permissions()
+                .permissions()
+                .iter()
+                .map(|p| format!("{}:{}", p.action(), p.resource_type()))
+                .collect();
 
             let response = RoleResponse {
                 id: role.id().to_string(),
@@ -319,7 +327,7 @@ pub async fn get_role(
 /// List roles with pagination
 /// GET /api/v1/rbac/roles
 pub async fn list_roles(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
     Extension(auth_token): Extension<AuthToken>,
     Query(_query): Query<RoleListQuery>,
 ) -> Result<Json<ApiResponse<Vec<RoleResponse>>>, StatusCode> {
@@ -332,20 +340,48 @@ pub async fn list_roles(
         ));
     }
 
-    // For now, return empty list since we don't have a list_roles method
-    // In a real implementation, this would query the storage layer directly
-    let response: Vec<RoleResponse> = Vec::new();
-
-    Ok(Json(ApiResponse::success(response)))
+    match state.authorization_service.list_roles().await {
+        Ok(roles) => {
+            let now = chrono::Utc::now();
+            let response: Vec<RoleResponse> = roles
+                .into_iter()
+                .map(|role| {
+                    let permissions_strings: Vec<String> = role
+                        .permissions()
+                        .permissions()
+                        .iter()
+                        .map(|p| format!("{}:{}", p.action(), p.resource_type()))
+                        .collect();
+                    RoleResponse {
+                        id: role.id().to_string(),
+                        name: role.name().to_string(),
+                        description: role.description().map(|s| s.to_string()),
+                        parent_id: role.parent_role_id().map(|s| s.to_string()),
+                        permissions: permissions_strings,
+                        created_at: now,
+                        updated_at: now,
+                    }
+                })
+                .collect();
+            Ok(Json(ApiResponse::success(response)))
+        }
+        Err(e) => {
+            warn!("Failed to list roles: {}", e);
+            Ok(Json(ApiResponse::<Vec<RoleResponse>>::error_with_message_typed(
+                "ROLE_LIST_FAILED",
+                "Failed to retrieve role list",
+            )))
+        }
+    }
 }
 
 /// Update role
 /// PUT /api/v1/rbac/roles/{role_id}
 pub async fn update_role(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
     Extension(auth_token): Extension<AuthToken>,
-    Path(_role_id): Path<String>,
-    Json(_request): Json<UpdateRoleRequest>,
+    Path(role_id): Path<String>,
+    Json(request): Json<UpdateRoleRequest>,
 ) -> Result<Json<ApiResponse<RoleResponse>>, StatusCode> {
     // Check authorization
     if !auth_token.has_permission("manage:roles") {
@@ -356,12 +392,54 @@ pub async fn update_role(
         ));
     }
 
-    // Role updates are not supported in current role-system implementation
-    // In a real implementation, this would require deleting and recreating the role
-    Ok(Json(ApiResponse::<RoleResponse>::error_with_message_typed(
-        "OPERATION_NOT_SUPPORTED",
-        "Role updates are not currently supported",
-    )))
+    // The parent_id field in UpdateRoleRequest is Option<String>, so:
+    //  - None  => don't change the parent
+    //  - Some(id) => set parent to id
+    // There is currently no way to clear a parent via this endpoint; a dedicated
+    // delete-parent path would be needed for that use case.
+    let new_parent: Option<Option<&str>> = request.parent_id.as_deref().map(Some);
+
+    match state
+        .authorization_service
+        .update_role(&role_id, request.description.as_deref(), new_parent)
+        .await
+    {
+        Ok(()) => {
+            info!("Role {} updated by {}", role_id, auth_token.user_id);
+            // Return the updated role details
+            match state.authorization_service.get_role(&role_id).await {
+                Ok(Some(role)) => {
+                    let now = chrono::Utc::now();
+                    let permissions_strings: Vec<String> = role
+                        .permissions()
+                        .permissions()
+                        .iter()
+                        .map(|p| format!("{}:{}", p.action(), p.resource_type()))
+                        .collect();
+                    Ok(Json(ApiResponse::success(RoleResponse {
+                        id: role.id().to_string(),
+                        name: role.name().to_string(),
+                        description: role.description().map(|s| s.to_string()),
+                        parent_id: role.parent_role_id().map(|s| s.to_string()),
+                        permissions: permissions_strings,
+                        created_at: now,
+                        updated_at: now,
+                    })))
+                }
+                _ => Ok(Json(ApiResponse::<RoleResponse>::error_with_message_typed(
+                    "ROLE_FETCH_FAILED",
+                    "Role updated but failed to fetch details",
+                ))),
+            }
+        }
+        Err(e) => {
+            warn!("Failed to update role {}: {}", role_id, e);
+            Ok(Json(ApiResponse::<RoleResponse>::error_with_message_typed(
+                "ROLE_UPDATE_FAILED",
+                "Failed to update role",
+            )))
+        }
+    }
 }
 
 /// Delete role
@@ -471,7 +549,7 @@ pub async fn revoke_user_role(
 /// Get user roles
 /// GET /api/v1/rbac/users/{user_id}/roles
 pub async fn get_user_roles(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
     Extension(auth_token): Extension<AuthToken>,
     Path(user_id): Path<String>,
 ) -> Result<Json<ApiResponse<UserRolesResponse>>, StatusCode> {
@@ -484,15 +562,45 @@ pub async fn get_user_roles(
         ));
     }
 
-    // For now, return empty roles as the service doesn't expose user role listing
-    // In a real implementation, this would query the role system storage directly
-    let response = UserRolesResponse {
-        user_id,
-        roles: Vec::new(),
-        effective_permissions: Vec::new(),
-    };
+    match state.authorization_service.get_user_roles(&user_id).await {
+        Ok(role_names) => {
+            let roles: Vec<UserRole> = role_names
+                .into_iter()
+                .map(|name| UserRole {
+                    role_id: name.clone(),
+                    role_name: name,
+                    // The in-memory role store does not persist assignment timestamps.
+                    // Use Unix epoch (zero) as a sentinel value meaning "unknown".
+                    assigned_at: chrono::DateTime::from_timestamp(0, 0)
+                        .unwrap_or_else(chrono::Utc::now),
+                    assigned_by: None,
+                    expires_at: None,
+                })
+                .collect();
 
-    Ok(Json(ApiResponse::success(response)))
+            // If this is the calling user, include their effective permissions
+            let effective_permissions: Vec<String> = if user_id == auth_token.user_id {
+                auth_token.permissions.clone()
+            } else {
+                vec![]
+            };
+
+            let response = UserRolesResponse {
+                user_id,
+                roles,
+                effective_permissions,
+            };
+
+            Ok(Json(ApiResponse::success(response)))
+        }
+        Err(e) => {
+            warn!("Failed to get roles for user {}: {}", user_id, e);
+            Ok(Json(ApiResponse::<UserRolesResponse>::error_with_message_typed(
+                "ROLE_FETCH_FAILED",
+                "Failed to retrieve user roles",
+            )))
+        }
+    }
 }
 
 /// Bulk assign roles
@@ -640,7 +748,7 @@ pub async fn elevate_role(
 /// Get audit logs
 /// GET /api/v1/rbac/audit
 pub async fn get_audit_logs(
-    State(_state): State<ApiState>,
+    State(state): State<ApiState>,
     Extension(auth_token): Extension<AuthToken>,
     Query(query): Query<AuditQuery>,
 ) -> Result<Json<ApiResponse<AuditLogResponse>>, StatusCode> {
@@ -653,13 +761,80 @@ pub async fn get_audit_logs(
         ));
     }
 
-    // For now, return a mock response
-    // In a real implementation, this would query the audit log storage
+    let per_page = query.per_page.unwrap_or(20) as usize;
+    let page = query.page.unwrap_or(1) as usize;
+    let offset = (page.saturating_sub(1)) * per_page;
+    let limit = Some(offset + per_page);
+
+    let logs = match state
+        .auth_framework
+        .get_permission_audit_logs(
+            query.user_id.as_deref(),
+            query.action.as_deref(),
+            query.resource.as_deref(),
+            limit,
+        )
+        .await
+    {
+        Ok(l) => l,
+        Err(e) => {
+            warn!("Failed to retrieve audit logs: {}", e);
+            return Ok(Json(ApiResponse::<AuditLogResponse>::error_with_message_typed(
+                "AUDIT_QUERY_ERROR",
+                "Failed to retrieve audit logs",
+            )));
+        }
+    };
+
+    // Skip the earlier pages and take only the requested slice.
+    let page_entries: Vec<AuditEntryResponse> = logs
+        .iter()
+        .skip(offset)
+        .take(per_page)
+        .enumerate()
+        .map(|(i, log_line)| {
+            // Format: "[timestamp] EventType user=xxx outcome=xxx - description"
+            // Parse loosely so any future format changes degrade gracefully.
+            let action = log_line
+                .split_whitespace()
+                .nth(1)
+                .unwrap_or("unknown")
+                .to_string();
+            let user_id = log_line
+                .split("user=")
+                .nth(1)
+                .and_then(|s| s.split_whitespace().next())
+                .map(|s| s.to_string());
+            let result = if log_line.contains("Failure") || log_line.contains("Denied") {
+                "denied"
+            } else {
+                "granted"
+            }
+            .to_string();
+            let description = log_line.split_once(" - ").map(|x| x.1)
+                .unwrap_or(log_line.as_str())
+                .to_string();
+
+            AuditEntryResponse {
+                id: format!("log-{}", offset + i),
+                user_id,
+                action,
+                resource: query.resource.clone(),
+                result,
+                context: HashMap::new(),
+                timestamp: chrono::Utc::now(), // Exact timestamp not preserved in string form
+                description,
+            }
+        })
+        .collect();
+
+    let total_count = logs.len() as u64;
+
     let response = AuditLogResponse {
-        entries: Vec::new(),
-        total_count: 0,
-        page: query.page.unwrap_or(1),
-        per_page: query.per_page.unwrap_or(20),
+        entries: page_entries,
+        total_count,
+        page: page as u32,
+        per_page: per_page as u32,
     };
 
     Ok(Json(ApiResponse::success(response)))

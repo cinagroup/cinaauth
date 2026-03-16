@@ -23,7 +23,7 @@
 //! # Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oidc_advanced_jarm::{
+//! use auth_framework::server::oidc::oidc_advanced_jarm::{
 //!     AdvancedJarmManager, AdvancedJarmConfig, JarmDeliveryMode, AuthorizationResponse
 //! };
 //!
@@ -60,11 +60,14 @@ use crate::security::secure_jwt::{SecureJwtConfig, SecureJwtValidator};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header};
-use log::{debug, error, info, warn};
+use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
+use rsa::{Oaep, RsaPrivateKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use sha2::Sha256;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 /// Advanced JARM configuration
@@ -92,6 +95,30 @@ pub struct AdvancedJarmConfig {
     pub jwe_algorithm: Option<String>,
     /// Content encryption algorithm
     pub jwe_content_encryption: Option<String>,
+    /// PEM-encoded RSA private key used to sign JARM tokens.
+    ///
+    /// If `None`, the lookup falls back to the `JARM_RSA_PRIVATE_KEY_PEM`
+    /// environment variable before resorting to a development-only symmetric
+    /// key (which triggers a visible `SECURITY WARNING` log entry).
+    pub rsa_private_key_pem: Option<String>,
+    /// PEM-encoded RSA public key (or certificate) used to verify incoming
+    /// JARM tokens.
+    ///
+    /// If `None`, falls back to `JARM_RSA_PUBLIC_KEY_PEM` env var then the
+    /// same symmetric dev fallback as `rsa_private_key_pem`.
+    pub rsa_public_key_pem: Option<String>,
+    /// PEM-encoded RSA public key of the JWE recipient (the client).
+    ///
+    /// When `enable_jwe_encryption` is `true` the server wraps the CEK with
+    /// this key using RSA-OAEP-SHA-256.  If `None`, falls back to the
+    /// `JARM_JWE_RECIPIENT_PUBLIC_KEY_PEM` environment variable.
+    pub jwe_recipient_public_key_pem: Option<String>,
+    /// PEM-encoded RSA private key for JWE CEK unwrapping.
+    ///
+    /// Used when the server acts as a JWE recipient (rare, but required for
+    /// full round-trip tests).  If `None`, falls back to
+    /// `JARM_JWE_RECIPIENT_PRIVATE_KEY_PEM`.
+    pub jwe_recipient_private_key_pem: Option<String>,
 }
 
 impl Default for AdvancedJarmConfig {
@@ -113,6 +140,10 @@ impl Default for AdvancedJarmConfig {
             enable_audit_logging: true,
             jwe_algorithm: Some("RSA-OAEP-256".to_string()),
             jwe_content_encryption: Some("A256GCM".to_string()),
+            rsa_private_key_pem: None,
+            rsa_public_key_pem: None,
+            jwe_recipient_public_key_pem: None,
+            jwe_recipient_private_key_pem: None,
         }
     }
 }
@@ -142,24 +173,128 @@ pub struct AdvancedJarmManager {
     decoding_key: DecodingKey,
     /// HTTP client for push notifications
     http_client: crate::server::core::common_http::HttpClient,
+    /// RSA public key for JWE CEK wrapping (encrypt to recipient)
+    jwe_public_key: Option<RsaPublicKey>,
+    /// RSA private key for JWE CEK unwrapping (decrypt when we are recipient)
+    jwe_private_key: Option<RsaPrivateKey>,
 }
 
 impl AdvancedJarmManager {
     /// Create new Advanced JARM manager
     pub fn new(config: AdvancedJarmConfig) -> Self {
-        // In a real implementation, these would come from configuration
-        let encoding_key = EncodingKey::from_rsa_pem(
-            b"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKB..."
-        ).unwrap_or_else(|_| {
-            // Fallback to a test key for development
-            EncodingKey::from_secret(b"test_key_for_development_only")
-        });
+        // Key resolution order:
+        //   1. `config.rsa_private_key_pem` / `config.rsa_public_key_pem` (explicit)
+        //   2. `JARM_RSA_PRIVATE_KEY_PEM` / `JARM_RSA_PUBLIC_KEY_PEM` env vars
+        //   3. Symmetric dev-only fallback (logs a SECURITY WARNING)
+        let private_pem = config
+            .rsa_private_key_pem
+            .clone()
+            .or_else(|| std::env::var("JARM_RSA_PRIVATE_KEY_PEM").ok());
+        let public_pem = config
+            .rsa_public_key_pem
+            .clone()
+            .or_else(|| std::env::var("JARM_RSA_PUBLIC_KEY_PEM").ok());
 
-        let decoding_key = DecodingKey::from_rsa_pem(
-            b"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1L7VLPHCgQf7..."
-        ).unwrap_or_else(|_| {
-            // Fallback to a test key for development
-            DecodingKey::from_secret(b"test_key_for_development_only")
+        /// Generate a per-instance random secret for the internal SecureJwtValidator.
+        /// The `jwt_secret` field is not used for JARM JWT signing/verification
+        /// (those use the explicit `encoding_key`/`decoding_key`), but it must not be
+        /// a well-known hardcoded value in case it leaks via `get_decoding_key()`.
+        fn make_validator_secret() -> String {
+            use ring::rand::{SecureRandom, SystemRandom};
+            let rng = SystemRandom::new();
+            let mut bytes = [0u8; 32];
+            rng.fill(&mut bytes)
+                .expect("System CSPRNG unavailable; cannot initialize JARM JWT validator secret");
+            bytes.iter().fold(String::with_capacity(64), |mut s, b| {
+                s.push_str(&format!("{b:02x}"));
+                s
+            })
+        }
+
+        // Each arm returns (encoding_key, decoding_key, validator_jwt_secret).
+        let (encoding_key, decoding_key, validator_jwt_secret) =
+            match (private_pem, public_pem) {
+                (Some(priv_pem), Some(pub_pem)) => {
+                    match (
+                        EncodingKey::from_rsa_pem(priv_pem.as_bytes()),
+                        DecodingKey::from_rsa_pem(pub_pem.as_bytes()),
+                    ) {
+                        (Ok(enc), Ok(dec)) => {
+                            info!("JARM: loaded RSA signing/verification keys from configuration");
+                            // For the internal validator, prefer an explicit env-var secret;
+                            // otherwise generate a fresh random value per instance.
+                            let secret = std::env::var("JARM_JWT_SECRET")
+                                .unwrap_or_else(|_| make_validator_secret());
+                            (enc, dec, secret)
+                        }
+                        (Err(e), _) | (_, Err(e)) => {
+                            warn!(
+                                "JARM: failed to parse provided RSA keys ({}). \
+                                 Falling back to development-only symmetric key — \
+                                 DO NOT use in production.",
+                                e
+                            );
+                            (
+                                EncodingKey::from_secret(b"test_key_for_development_only"),
+                                DecodingKey::from_secret(b"test_key_for_development_only"),
+                                "test_key_for_development_only".to_string(),
+                            )
+                        }
+                    }
+                }
+                _ => {
+                    // SECURITY: No RSA key is bundled. Production deployments MUST supply real
+                    // RSA keys via AdvancedJarmConfig or environment configuration.
+                    // The symmetric fallback below is intentionally weak — it triggers visible
+                    // warnings so an operator knows the service is not production-ready.
+                    warn!(
+                        "SECURITY WARNING: AdvancedJarmManager is using a development-only \
+                         symmetric fallback key for JARM signing. This is NOT secure. Supply \
+                         an RSA private key via AdvancedJarmConfig::rsa_private_key_pem or \
+                         the JARM_RSA_PRIVATE_KEY_PEM environment variable before deploying \
+                         to production."
+                    );
+                    (
+                        EncodingKey::from_secret(b"test_key_for_development_only"),
+                        DecodingKey::from_secret(b"test_key_for_development_only"),
+                        "test_key_for_development_only".to_string(),
+                    )
+                }
+            };
+
+        // Resolve JWE key pair: config field → environment variable → None.
+        let jwe_pub_pem = config
+            .jwe_recipient_public_key_pem
+            .clone()
+            .or_else(|| std::env::var("JARM_JWE_RECIPIENT_PUBLIC_KEY_PEM").ok());
+        let jwe_priv_pem = config
+            .jwe_recipient_private_key_pem
+            .clone()
+            .or_else(|| std::env::var("JARM_JWE_RECIPIENT_PRIVATE_KEY_PEM").ok());
+
+        let jwe_public_key = jwe_pub_pem.as_deref().and_then(|pem| {
+            match RsaPublicKey::from_public_key_pem(pem) {
+                Ok(k) => {
+                    info!("JARM JWE: loaded RSA recipient public key");
+                    Some(k)
+                }
+                Err(e) => {
+                    warn!("JARM JWE: could not parse recipient public key: {e}");
+                    None
+                }
+            }
+        });
+        let jwe_private_key = jwe_priv_pem.as_deref().and_then(|pem| {
+            match RsaPrivateKey::from_pkcs8_pem(pem) {
+                Ok(k) => {
+                    info!("JARM JWE: loaded RSA recipient private key");
+                    Some(k)
+                }
+                Err(e) => {
+                    warn!("JARM JWE: could not parse recipient private key: {e}");
+                    None
+                }
+            }
         });
 
         let mut required_issuers = std::collections::HashSet::new();
@@ -181,7 +316,7 @@ impl AdvancedJarmManager {
                 types
             },
             require_secure_transport: true,
-            jwt_secret: "CHANGE_THIS_JARM_SECRET_IN_PRODUCTION".to_string(),
+            jwt_secret: validator_jwt_secret,
         };
 
         Self {
@@ -194,6 +329,8 @@ impl AdvancedJarmManager {
                 let endpoint_config = EndpointConfig::new("https://localhost");
                 crate::server::core::common_http::HttpClient::new(endpoint_config).unwrap()
             },
+            jwe_public_key,
+            jwe_private_key,
         }
     }
 
@@ -307,7 +444,7 @@ impl AdvancedJarmManager {
         if self.config.enable_response_validation {
             let _validated_claims = self
                 .jwt_validator
-                .validate_token(&token, &self.decoding_key, true)
+                .validate_token(&token, &self.decoding_key)
                 .map_err(|e| {
                     AuthError::token(format!(
                         "Created JARM token failed security validation: {}",
@@ -380,77 +517,71 @@ impl AdvancedJarmManager {
         Ok(jwe_token)
     }
 
-    /// Generate content encryption key
+    /// Generate a cryptographically secure 256-bit content encryption key (CEK).
     fn generate_content_encryption_key(&self) -> Vec<u8> {
-        // In production, use cryptographically secure random key generation
-        // For now, generate a deterministic but secure-looking key
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        std::time::SystemTime::now().hash(&mut hasher);
-        let timestamp_hash = hasher.finish();
-
-        // Generate 32-byte key (256-bit for AES-256-GCM)
-        let mut key = Vec::with_capacity(32);
-        for i in 0..32 {
-            key.push(((timestamp_hash >> (i % 8)) ^ (i as u64)) as u8);
-        }
+        use rand::Rng;
+        let mut key = vec![0u8; 32];
+        rand::rng().fill_bytes(&mut key);
         key
     }
 
-    /// Encrypt payload with CEK
+    /// Encrypt payload with CEK using AES-256-GCM.
+    ///
+    /// Returns `iv_b64.ciphertext_b64.tag_b64` (three Base64url-no-pad parts) matching
+    /// the IV / Ciphertext / Authentication-Tag positions of JWE compact serialisation.
     fn encrypt_payload(&self, payload: &str, cek: &[u8]) -> Result<String> {
-        // Simulate AES-256-GCM encryption
-        use base64::Engine;
+        use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce, aead::Aead};
+        use rand::Rng;
 
-        // Generate IV (12 bytes for GCM)
-        let mut iv = Vec::with_capacity(12);
-        for i in 0..12 {
-            iv.push(cek[i % cek.len()] ^ (i as u8 + 1));
+        if cek.len() != 32 {
+            return Err(AuthError::crypto("CEK must be 32 bytes for AES-256-GCM"));
         }
 
-        // Simulate encryption - in production use actual AES-GCM
-        let mut encrypted = Vec::new();
-        for (i, byte) in payload.bytes().enumerate() {
-            encrypted.push(byte ^ cek[i % cek.len()]);
-        }
+        // Generate a random 96-bit IV
+        let mut nonce_bytes = [0u8; 12];
+        rand::rng().fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
 
-        // Generate authentication tag
-        let mut tag = Vec::with_capacity(16);
-        for i in 0..16 {
-            let tag_byte = encrypted
-                .iter()
-                .enumerate()
-                .fold(0u8, |acc, (j, &b)| acc ^ b ^ cek[i % cek.len()] ^ (j as u8));
-            tag.push(tag_byte);
-        }
+        let key = Key::<Aes256Gcm>::from_slice(cek);
+        let cipher = Aes256Gcm::new(key);
+
+        // aes-gcm appends the 16-byte authentication tag to the ciphertext
+        let ciphertext_with_tag = cipher
+            .encrypt(nonce, payload.as_bytes())
+            .map_err(|e| AuthError::crypto(format!("AES-256-GCM encryption failed: {}", e)))?;
+
+        let tag_pos = ciphertext_with_tag.len().saturating_sub(16);
+        let ciphertext = &ciphertext_with_tag[..tag_pos];
+        let tag = &ciphertext_with_tag[tag_pos..];
 
         Ok(format!(
             "{}.{}.{}",
-            URL_SAFE_NO_PAD.encode(&iv),
-            URL_SAFE_NO_PAD.encode(&encrypted),
-            URL_SAFE_NO_PAD.encode(&tag)
+            URL_SAFE_NO_PAD.encode(nonce_bytes),
+            URL_SAFE_NO_PAD.encode(ciphertext),
+            URL_SAFE_NO_PAD.encode(tag)
         ))
     }
 
-    /// Encrypt CEK with client public key
+    /// Wrap the CEK using RSA-OAEP-SHA-256.
+    ///
+    /// Requires a recipient RSA public key supplied via
+    /// `AdvancedJarmConfig::jwe_recipient_public_key_pem` or the
+    /// `JARM_JWE_RECIPIENT_PUBLIC_KEY_PEM` environment variable.
     fn encrypt_key(&self, cek: &[u8]) -> Result<Vec<u8>> {
-        // Simulate RSA-OAEP key encryption
-        // In production, use actual RSA public key encryption
-        let mut encrypted_key = Vec::with_capacity(256); // RSA-2048 output size
+        let pub_key = self.jwe_public_key.as_ref().ok_or_else(|| {
+            AuthError::crypto(
+                "JARM JWE requires an RSA recipient public key for CEK wrapping. \
+                 Set AdvancedJarmConfig::jwe_recipient_public_key_pem or the \
+                 JARM_JWE_RECIPIENT_PUBLIC_KEY_PEM environment variable.",
+            )
+        })?;
 
-        // Simple key encryption simulation
-        for (i, &byte) in cek.iter().enumerate() {
-            encrypted_key.push(byte ^ ((i + 1) as u8));
-        }
-
-        // Pad to RSA key size
-        while encrypted_key.len() < 256 {
-            encrypted_key.push(0x42); // Padding bytes
-        }
-
-        Ok(encrypted_key)
+        // RSA-OAEP-SHA-256 key wrapping.
+        let mut rng = rand_core::OsRng;
+        let padding = Oaep::new::<Sha256>();
+        pub_key
+            .encrypt(&mut rng, padding, cek)
+            .map_err(|e| AuthError::crypto(format!("RSA-OAEP CEK wrap failed: {e}")))
     }
 
     /// Create JWE header
@@ -474,7 +605,7 @@ impl AdvancedJarmManager {
     pub async fn validate_jarm_response_with_transport(
         &self,
         token: &str,
-        transport_secure: bool,
+        _transport_secure: bool,
     ) -> Result<JarmValidationResult> {
         if !self.config.enable_response_validation {
             return Ok(JarmValidationResult {
@@ -507,7 +638,7 @@ impl AdvancedJarmManager {
         // Use SecureJwtValidator for enhanced security validation
         match self
             .jwt_validator
-            .validate_token(&jwt_token, &self.decoding_key, transport_secure)
+            .validate_token(&jwt_token, &self.decoding_key)
         {
             Ok(secure_claims) => {
                 // Convert SecureJwtClaims to HashMap for compatibility
@@ -577,7 +708,7 @@ impl AdvancedJarmManager {
 
         // Validate supported algorithms and encryption methods
         match (algorithm, encryption) {
-            ("RSA-OAEP", "A256GCM") | ("RSA-OAEP-256", "A256GCM") | ("A256KW", "A256GCM") => {
+            ("RSA-OAEP", "A256GCM") | ("RSA-OAEP-256", "A256GCM") => {
                 // Supported combinations - proceed with decryption
                 debug!(
                     "Using supported JWE algorithm combination: {} + {}",
@@ -627,7 +758,7 @@ impl AdvancedJarmManager {
             return Err(AuthError::token("Invalid JWE format - must have 5 parts"));
         }
 
-        // Extract JWE components
+        // Extract JWE components for debug logging.
         let encrypted_key = parts[1];
         let initialization_vector = parts[2];
         let ciphertext = parts[3];
@@ -641,24 +772,15 @@ impl AdvancedJarmManager {
             &authentication_tag[..8.min(authentication_tag.len())]
         );
 
-        // In production, this would use proper cryptographic libraries for JWE decryption
-        // Use both algorithm and encryption parameters for proper decryption method selection
+        // Dispatch to algorithm-specific implementation.
         match (algorithm, encryption) {
             ("RSA-OAEP", "A256GCM") | ("RSA-OAEP-256", "A256GCM") => {
-                warn!(
-                    "RSA-OAEP + {} JWE decryption requires additional cryptographic libraries",
-                    encryption
-                );
-                self.development_jwe_fallback_with_encryption(ciphertext, encryption)
-                    .await
-            }
-            ("A256KW", "A256GCM") => {
-                warn!(
-                    "A256KW + {} JWE decryption requires additional cryptographic libraries",
-                    encryption
-                );
-                self.development_jwe_fallback_with_encryption(ciphertext, encryption)
-                    .await
+                self.decrypt_rsa_oaep_a256gcm(
+                    encrypted_key,
+                    initialization_vector,
+                    ciphertext,
+                    authentication_tag,
+                )
             }
             (alg, enc) => {
                 error!(
@@ -673,50 +795,66 @@ impl AdvancedJarmManager {
         }
     }
 
-    /// Development fallback for JWE decryption with encryption method awareness
-    async fn development_jwe_fallback_with_encryption(
+    /// Perform RSA-OAEP-SHA-256 + A256GCM JWE decryption.
+    fn decrypt_rsa_oaep_a256gcm(
         &self,
-        ciphertext: &str,
-        encryption: &str,
+        encrypted_key_b64: &str,
+        iv_b64: &str,
+        ciphertext_b64: &str,
+        tag_b64: &str,
     ) -> Result<String, AuthError> {
-        warn!(
-            "🔧 Using development JWE fallback for encryption method '{}' - implement proper cryptography for production",
-            encryption
-        );
+        use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce, aead::Aead};
 
-        // Log the encryption method for future implementation
-        match encryption {
-            "A256GCM" => {
-                info!("JWE encryption method A256GCM - requires AES-256-GCM implementation");
-            }
-            "A192GCM" => {
-                info!("JWE encryption method A192GCM - requires AES-192-GCM implementation");
-            }
-            "A128GCM" => {
-                info!("JWE encryption method A128GCM - requires AES-128-GCM implementation");
-            }
-            _ => {
-                warn!(
-                    "Unknown JWE encryption method '{}' - add support for proper decryption",
-                    encryption
-                );
-            }
-        }
-
-        // Simple base64 decode as fallback (NOT secure for production)
-        let decoded = URL_SAFE_NO_PAD.decode(ciphertext).map_err(|e| {
-            AuthError::token(format!(
-                "Failed to decode JWE ciphertext with {}: {}",
-                encryption, e
-            ))
+        let priv_key = self.jwe_private_key.as_ref().ok_or_else(|| {
+            AuthError::crypto(
+                "JARM JWE decryption requires an RSA private key. \
+                 Set AdvancedJarmConfig::jwe_recipient_private_key_pem or the \
+                 JARM_JWE_RECIPIENT_PRIVATE_KEY_PEM environment variable.",
+            )
         })?;
 
-        String::from_utf8(decoded).map_err(|e| {
-            AuthError::token(format!(
-                "Invalid UTF-8 in JWE ciphertext with {}: {}",
-                encryption, e
-            ))
-        })
+        // 1. Unwrap the CEK with RSA-OAEP-SHA-256.
+        let encrypted_cek = URL_SAFE_NO_PAD
+            .decode(encrypted_key_b64)
+            .map_err(|e| AuthError::token(format!("Bad encrypted_key encoding: {e}")))?;
+        let padding = Oaep::new::<Sha256>();
+        let cek = priv_key
+            .decrypt(padding, &encrypted_cek)
+            .map_err(|e| AuthError::crypto(format!("RSA-OAEP CEK unwrap failed: {e}")))?;
+
+        if cek.len() != 32 {
+            return Err(AuthError::crypto(format!(
+                "Unwrapped CEK has unexpected length {} (expected 32)",
+                cek.len()
+            )));
+        }
+
+        // 2. Decode IV, ciphertext, and authentication tag.
+        let nonce_bytes = URL_SAFE_NO_PAD
+            .decode(iv_b64)
+            .map_err(|e| AuthError::token(format!("Bad IV encoding: {e}")))?;
+        let mut ciphertext = URL_SAFE_NO_PAD
+            .decode(ciphertext_b64)
+            .map_err(|e| AuthError::token(format!("Bad ciphertext encoding: {e}")))?;
+        let tag = URL_SAFE_NO_PAD
+            .decode(tag_b64)
+            .map_err(|e| AuthError::token(format!("Bad tag encoding: {e}")))?;
+
+        if nonce_bytes.len() != 12 {
+            return Err(AuthError::crypto("JWE IV must be 12 bytes for AES-256-GCM"));
+        }
+
+        // aes-gcm expects ciphertext + tag concatenated.
+        ciphertext.extend_from_slice(&tag);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+        let key = Key::<Aes256Gcm>::from_slice(&cek);
+        let cipher = Aes256Gcm::new(key);
+        let plaintext = cipher
+            .decrypt(nonce, ciphertext.as_slice())
+            .map_err(|e| AuthError::crypto(format!("AES-256-GCM decryption failed: {e}")))?;
+
+        String::from_utf8(plaintext)
+            .map_err(|e| AuthError::token(format!("Decrypted payload is not valid UTF-8: {e}")))
     }
 
     /// Perform additional validation checks
@@ -855,10 +993,10 @@ impl AdvancedJarmManager {
 
     /// Log JARM creation for audit purposes
     async fn log_jarm_creation(&self, client_id: &str, delivery_mode: &JarmDeliveryMode) {
-        // This would integrate with your audit logging system
-        eprintln!(
-            "AUDIT: JARM response created for client {} with delivery mode {:?}",
-            client_id, delivery_mode
+        tracing::info!(
+            client_id = %client_id,
+            delivery_mode = ?delivery_mode,
+            "AUDIT: JARM response created"
         );
     }
 
@@ -1023,6 +1161,85 @@ mod tests {
             .await;
 
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_jwe_encrypt_decrypt_roundtrip() {
+        use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
+        use rsa::RsaPrivateKey;
+
+        // Generate a 2048-bit RSA key pair for the test.
+        let mut rng = rand_core::OsRng;
+        let private_key = RsaPrivateKey::new(&mut rng, 2048)
+            .expect("RSA key generation failed");
+        let public_key = private_key.to_public_key();
+
+        let priv_pem = private_key
+            .to_pkcs8_pem(LineEnding::LF)
+            .expect("private key PEM serialisation failed")
+            .to_string();
+        let pub_pem = public_key
+            .to_public_key_pem(LineEnding::LF)
+            .expect("public key PEM serialisation failed");
+
+        let config = AdvancedJarmConfig {
+            supported_algorithms: vec![Algorithm::HS256],
+            enable_jwe_encryption: true,
+            enable_response_validation: false,
+            jwe_recipient_public_key_pem: Some(pub_pem),
+            jwe_recipient_private_key_pem: Some(priv_pem),
+            ..Default::default()
+        };
+        let manager = AdvancedJarmManager::new(config);
+
+        assert!(
+            manager.jwe_public_key.is_some(),
+            "JWE public key should have been loaded"
+        );
+        assert!(
+            manager.jwe_private_key.is_some(),
+            "JWE private key should have been loaded"
+        );
+
+        // Create a regular JARM response (JWE wrapping happens inside).
+        let auth_response = AuthorizationResponse {
+            code: Some("enc_test_code".to_string()),
+            state: Some("enc_state".to_string()),
+            access_token: None,
+            id_token: None,
+            token_type: None,
+            expires_in: None,
+            scope: None,
+            error: None,
+            error_description: None,
+        };
+
+        let jarm = manager
+            .create_jarm_response("enc_client", &auth_response, JarmDeliveryMode::Query, None)
+            .await
+            .expect("create_jarm_response with JWE failed");
+
+        // JWE compact serialisation has exactly 5 dot-separated parts.
+        let parts: Vec<&str> = jarm.response_token.split('.').collect();
+        assert_eq!(
+            parts.len(),
+            5,
+            "JWE token should have 5 parts, got: {}",
+            parts.len()
+        );
+
+        // Decrypt and verify we can recover the original JWT.
+        let recovered = manager
+            .decrypt_jwe_with_algorithm(&parts, "RSA-OAEP-256", "A256GCM")
+            .await
+            .expect("JWE decryption failed");
+
+        // The recovered payload must be a valid JWT (3 parts).
+        assert_eq!(
+            recovered.split('.').count(),
+            3,
+            "Recovered payload should be a 3-part JWT"
+        );
     }
 
     #[test]

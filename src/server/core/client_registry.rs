@@ -6,61 +6,11 @@
 use crate::errors::{AuthError, Result};
 use crate::storage::core::AuthStorage;
 use crate::storage::memory::InMemoryStorage;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Arc;
-use uuid::Uuid;
 
-/// OAuth 2.0 Client Types as defined in RFC 6749
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ClientType {
-    /// Confidential clients capable of securely storing credentials
-    Confidential,
-    /// Public clients unable to securely store credentials
-    Public,
-}
-
-/// OAuth 2.0 Client Configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClientConfig {
-    /// Unique client identifier
-    pub client_id: String,
-    /// Client secret (only for confidential clients)
-    pub client_secret: Option<String>,
-    /// Client type
-    pub client_type: ClientType,
-    /// Authorized redirect URIs
-    pub redirect_uris: Vec<String>,
-    /// Authorized scopes
-    pub authorized_scopes: Vec<String>,
-    /// Grant types the client is authorized to use
-    pub authorized_grant_types: Vec<String>,
-    /// Response types the client is authorized to use
-    pub authorized_response_types: Vec<String>,
-    /// Client name for display purposes
-    pub client_name: Option<String>,
-    /// Client description
-    pub client_description: Option<String>,
-    /// Client metadata
-    pub metadata: HashMap<String, serde_json::Value>,
-}
-
-impl Default for ClientConfig {
-    fn default() -> Self {
-        Self {
-            client_id: Uuid::new_v4().to_string(),
-            client_secret: None,
-            client_type: ClientType::Public,
-            redirect_uris: Vec::new(),
-            authorized_scopes: vec!["read".to_string()],
-            authorized_grant_types: vec!["authorization_code".to_string()],
-            authorized_response_types: vec!["code".to_string()],
-            client_name: None,
-            client_description: None,
-            metadata: HashMap::new(),
-        }
-    }
-}
+// Re-export canonical types so existing imports like
+// `server::core::client_registry::{ClientType, ClientConfig}` keep working.
+pub use crate::client::{ClientConfig, ClientType};
 
 /// Client Registry for managing OAuth 2.0 clients
 #[derive(Clone)]

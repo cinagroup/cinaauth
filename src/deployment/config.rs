@@ -460,9 +460,21 @@ impl ConfigManager {
 
 impl Default for AppConfig {
     fn default() -> Self {
+        use ring::rand::{SecureRandom, SystemRandom};
+        let rng = SystemRandom::new();
+        let mut bytes = [0u8; 32];
+        rng.fill(&mut bytes)
+            .expect("System CSPRNG unavailable; cannot initialise AppConfig JWT secret");
+        let jwt_secret = bytes
+            .iter()
+            .fold(String::with_capacity(64), |mut s, b| {
+                s.push_str(&format!("{b:02x}"));
+                s
+            });
+
         Self {
             environment: "development".to_string(),
-            debug: true,
+            debug: false,
             server: ServerConfig {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
@@ -477,8 +489,8 @@ impl Default for AppConfig {
                 port: 5432,
                 database: "authframework".to_string(),
                 username: "postgres".to_string(),
-                password: "password".to_string(),
-                ssl_mode: "prefer".to_string(),
+                password: "".to_string(),
+                ssl_mode: "require".to_string(),
                 pool_size: 10,
                 timeout: 30,
             },
@@ -494,7 +506,10 @@ impl Default for AppConfig {
                 structured: true,
             },
             security: SecurityConfig {
-                jwt_secret: "your-super-secret-jwt-key-change-this-in-production".to_string(),
+                // Randomly generated at startup. Override with the JWT_SECRET env var (or an
+                // explicit config value) in production to ensure tokens remain verifiable
+                // across process restarts.
+                jwt_secret,
                 session_timeout: 3600,
                 bcrypt_cost: 12,
                 rate_limiting: RateLimitConfig {
@@ -505,7 +520,7 @@ impl Default for AppConfig {
                 },
                 cors: CorsConfig {
                     enabled: true,
-                    allowed_origins: vec!["*".to_string()],
+                    allowed_origins: vec![], // Must be configured explicitly; wildcard CORS is rejected by default.
                     allowed_methods: vec![
                         "GET".to_string(),
                         "POST".to_string(),
@@ -535,7 +550,7 @@ impl SimpleConfigWatcher {
 
 impl ConfigWatcher for SimpleConfigWatcher {
     fn on_config_changed(&self, _config: &AppConfig) -> Result<(), ConfigError> {
-        println!("Configuration changed for watcher: {}", self.name);
+        tracing::info!(watcher = %self.name, "Configuration changed");
         Ok(())
     }
 }
@@ -557,6 +572,8 @@ mod tests {
         unsafe {
             std::env::set_var("SERVER_HOST", "0.0.0.0");
             std::env::set_var("SERVER_PORT", "9090");
+            // JWT_SECRET is required by validate_config; must be at least 32 chars.
+            std::env::set_var("JWT_SECRET", "test-jwt-secret-key-minimum-32-chars-ok");
         }
 
         let mut manager = ConfigManager::new();
@@ -569,6 +586,7 @@ mod tests {
         unsafe {
             std::env::remove_var("SERVER_HOST");
             std::env::remove_var("SERVER_PORT");
+            std::env::remove_var("JWT_SECRET");
         }
     }
 
@@ -673,6 +691,9 @@ app_version = "1.0.0"
     #[test]
     fn test_set_value() {
         let mut manager = ConfigManager::new();
+        // set_value calls validate_config; provide a valid JWT secret first.
+        manager.config.security.jwt_secret =
+            "test-jwt-secret-minimum-32-characters-long".to_string();
 
         let result = manager.set_value(
             "server.port",
@@ -685,6 +706,9 @@ app_version = "1.0.0"
     #[test]
     fn test_config_watcher() {
         let mut manager = ConfigManager::new();
+        // set_value calls validate_config; provide a valid JWT secret first.
+        manager.config.security.jwt_secret =
+            "test-jwt-secret-minimum-32-characters-long".to_string();
         let watcher = Box::new(SimpleConfigWatcher::new("test".to_string()));
         manager.add_watcher(watcher);
 

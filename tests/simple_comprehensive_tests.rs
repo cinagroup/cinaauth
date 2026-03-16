@@ -623,7 +623,7 @@ mod csrf_tests {
 
         // Generate a simple CSRF token (basic implementation)
         use base64::engine::{Engine as _, general_purpose};
-        use rand::RngCore;
+        use rand::Rng;
 
         let mut rng = rand::rng();
         let mut token_bytes = [0u8; 32];
@@ -763,7 +763,7 @@ async fn test_comprehensive_integration() {
 
     // CSRF operations - basic implementation test
     use base64::engine::{Engine as _, general_purpose};
-    use rand::RngCore;
+    use rand::Rng;
 
     let mut rng = rand::rng();
     let mut token_bytes = [0u8; 32];

@@ -243,7 +243,11 @@ impl WsSecurityClient {
             let pwd_value = match password_type {
                 PasswordType::PasswordText => pwd.to_string(),
                 PasswordType::PasswordDigest => {
-                    self.compute_password_digest(pwd, nonce.as_ref().unwrap(), &created.unwrap())?
+                    self.compute_password_digest(
+                        pwd,
+                        nonce.as_ref().expect("nonce is Some for PasswordDigest variant"),
+                        &created.expect("created is Some for PasswordDigest variant"),
+                    )?
                 }
             };
 
@@ -356,7 +360,7 @@ impl WsSecurityClient {
 
     /// Generate a random nonce
     fn generate_nonce(&self) -> String {
-        use rand::RngCore;
+        use rand::Rng;
         let mut rng = rand::rng();
         let mut nonce = [0u8; 16];
         rng.fill_bytes(&mut nonce);

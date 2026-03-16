@@ -32,7 +32,7 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,no_run
 //! use auth_framework::auth_modular::AuthFramework;
 //! use auth_framework::config::AuthConfig;
 //!
@@ -119,12 +119,36 @@ pub struct AuthFramework {
 }
 
 impl AuthFramework {
-    /// Create a new authentication framework
+    /// Create a new authentication framework.
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - The configuration is invalid (e.g., weak JWT secret in a non-test environment).
+    /// - No JWT secret is configured via `config.security.secret_key`, `config.secret`,
+    ///   or the `JWT_SECRET` environment variable.
+    /// - The Redis storage backend fails to connect (when the `redis-storage` feature is enabled).
+    ///
+    /// Prefer [`AuthFramework::try_new`] for library code where recoverable error handling
+    /// is desired.
     pub fn new(config: AuthConfig) -> Self {
+        Self::try_new(config).unwrap_or_else(|e| {
+            panic!(
+                "AuthFramework::new() failed: {e}\n\
+                 Use AuthFramework::try_new() to handle this as a recoverable error."
+            )
+        })
+    }
+
+    /// Create a new authentication framework, returning an error instead of panicking.
+    ///
+    /// This is the preferred constructor for library callers and server startup code where
+    /// configuration errors should be handled gracefully rather than aborting the process.
+    pub fn try_new(config: AuthConfig) -> crate::errors::Result<Self> {
         // Validate configuration
-        if let Err(e) = config.validate() {
-            panic!("Invalid configuration: {}", e);
-        }
+        config.validate().map_err(|e| {
+            crate::errors::AuthError::configuration(format!("Invalid configuration: {e}"))
+        })?;
 
         // Create token manager
         let token_manager = if let Some(secret) = &config.security.secret_key {
@@ -149,21 +173,23 @@ impl AuthFramework {
             }
             TokenManager::new_hmac(jwt_secret.as_bytes(), "auth-framework", "auth-framework")
         } else {
-            panic!(
+            return Err(crate::errors::AuthError::configuration(
                 "JWT secret not set! Please set JWT_SECRET env variable or provide in config.\n\
                    For security reasons, no default secret is provided.\n\
-                   Generate a secure secret with: openssl rand -base64 32"
-            );
+                   Generate a secure secret with: openssl rand -base64 32",
+            ));
         };
 
         // Create storage backend
         let storage: Arc<dyn AuthStorage> = match &config.storage {
             #[cfg(feature = "redis-storage")]
-            crate::config::StorageConfig::Redis { url, key_prefix } => Arc::new(
-                crate::storage::RedisStorage::new(url, key_prefix).unwrap_or_else(|e| {
-                    panic!("Failed to create Redis storage: {}", e);
-                }),
-            ),
+            crate::config::StorageConfig::Redis { url, key_prefix } => {
+                Arc::new(crate::storage::RedisStorage::new(url, key_prefix).map_err(|e| {
+                    crate::errors::AuthError::configuration(format!(
+                        "Failed to create Redis storage: {e}"
+                    ))
+                })?)
+            }
             _ => Arc::new(MemoryStorage::new()),
         };
 
@@ -182,7 +208,7 @@ impl AuthFramework {
         let session_manager = SessionManager::new(storage.clone());
         let user_manager = UserManager::new(storage.clone());
 
-        Self {
+        Ok(Self {
             config,
             methods: HashMap::new(),
             token_manager,
@@ -193,7 +219,7 @@ impl AuthFramework {
             session_manager,
             user_manager,
             initialized: false,
-        }
+        })
     }
 
     /// Replace the storage backend with a custom implementation.
@@ -584,7 +610,7 @@ impl AuthFramework {
 
         // Clean up rate limiter
         if let Some(ref rate_limiter) = self.rate_limiter {
-            rate_limiter.cleanup();
+            let _ = rate_limiter.cleanup().ok();
         }
 
         Ok(())

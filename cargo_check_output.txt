@@ -1,0 +1,481 @@
+    Checking auth-framework v0.5.0-rc1 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
+error[E0432]: unresolved import `rand::RngCore`
+ --> src\storage\encryption.rs:6:5
+  |
+6 | use rand::RngCore;
+  |     ^^^^^^^^^^^^^ no `RngCore` in the root
+
+warning: unused import: `rand::Rng`
+   --> src\api\oauth_simple.rs:145:9
+    |
+145 |     use rand::Rng;
+    |         ^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `rand::Rng`
+   --> src\api\oauth_simple.rs:157:9
+    |
+157 |     use rand::Rng;
+    |         ^^^^^^^^^
+
+warning: unused import: `Rng`
+ --> src\auth_modular\mfa\sms_kit.rs:5:12
+  |
+5 | use rand::{Rng, RngExt};
+  |            ^^^
+
+warning: unused import: `rand::Rng`
+ --> src\authentication\mfa.rs:9:5
+  |
+9 | use rand::Rng;
+  |     ^^^^^^^^^
+
+warning: unused import: `rand::Rng`
+   --> src\server\oauth\device.rs:457:13
+    |
+457 |         use rand::Rng;
+    |             ^^^^^^^^^
+
+warning: unused import: `Rng`
+ --> src\utils\crypto.rs:4:12
+  |
+4 | use rand::{Rng, rng};
+  |            ^^^
+
+warning: unused import: `Rng`
+ --> src\utils\string.rs:3:12
+  |
+3 | use rand::{Rng, rng};
+  |            ^^^
+
+warning: unused import: `Rng`
+   --> src\distributed_rate_limiting.rs:615:20
+    |
+615 |         use rand::{Rng, RngExt};
+    |                    ^^^
+
+warning: unused import: `Rng`
+ --> src\security\timing_protection.rs:8:12
+  |
+8 | use rand::{Rng, RngExt};
+  |            ^^^
+
+error[E0599]: no method named `form` found for struct `RequestBuilder` in the current scope
+   --> src\providers.rs:608:55
+    |
+608 |         let response = client.post(&config.token_url).form(&params).send().await?;
+    |                                                       ^^^^
+    |
+help: there is a method `or` with a similar name
+    |
+608 -         let response = client.post(&config.token_url).form(&params).send().await?;
+608 +         let response = client.post(&config.token_url).or(&params).send().await?;
+    |
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:608:13
+    |
+608 |         let response = client.post(&config.token_url).form(&params).send().await?;
+    |             ^^^^^^^^
+609 |
+610 |         if !response.status().is_success() {
+    |             -------- type must be known at this point
+    |
+help: consider giving `response` an explicit type
+    |
+608 |         let response: /* Type */ = client.post(&config.token_url).form(&params).send().await?;
+    |                     ++++++++++++
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:611:30
+    |
+611 |             let error_text = response.text().await.unwrap_or_default();
+    |                              ^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `form` found for struct `RequestBuilder` in the current scope
+   --> src\providers.rs:648:14
+    |
+646 |           let response = client
+    |  ________________________-
+647 | |             .post(&config.token_url)
+648 | |             .form(&params)
+    | |_____________-^^^^
+    |
+help: there is a method `or` with a similar name
+    |
+648 -             .form(&params)
+648 +             .or(&params)
+    |
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:646:13
+    |
+646 |         let response = client
+    |             ^^^^^^^^
+...
+652 |         if !response.status().is_success() {
+    |             -------- type must be known at this point
+    |
+help: consider giving `response` an explicit type
+    |
+646 |         let response: /* Type */ = client
+    |                     ++++++++++++
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:653:30
+    |
+653 |             let error_text = response.text().await.unwrap_or_default();
+    |                              ^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `form` found for struct `RequestBuilder` in the current scope
+   --> src\providers.rs:806:14
+    |
+804 |           let response = client
+    |  ________________________-
+805 | |             .post(&revocation_url)
+806 | |             .form(&params)
+    | |_____________-^^^^
+    |
+help: there is a method `or` with a similar name
+    |
+806 -             .form(&params)
+806 +             .or(&params)
+    |
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:804:13
+    |
+804 |         let response = client
+    |             ^^^^^^^^
+...
+810 |         if !response.status().is_success() {
+    |             -------- type must be known at this point
+    |
+help: consider giving `response` an explicit type
+    |
+804 |         let response: /* Type */ = client
+    |                     ++++++++++++
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:811:30
+    |
+811 |             let error_text = response.text().await.unwrap_or_default();
+    |                              ^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `form` found for struct `RequestBuilder` in the current scope
+   --> src\providers.rs:845:14
+    |
+843 |           let response = client
+    |  ________________________-
+844 | |             .post(config.device_authorization_url.as_deref().unwrap())
+845 | |             .form(&params)
+    | |_____________-^^^^
+    |
+help: there is a method `or` with a similar name
+    |
+845 -             .form(&params)
+845 +             .or(&params)
+    |
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:843:13
+    |
+843 |         let response = client
+    |             ^^^^^^^^
+...
+849 |         if !response.status().is_success() {
+    |             -------- type must be known at this point
+    |
+help: consider giving `response` an explicit type
+    |
+843 |         let response: /* Type */ = client
+    |                     ++++++++++++
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:850:30
+    |
+850 |             let error_text = response.text().await.unwrap_or_default();
+    |                              ^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `form` found for struct `RequestBuilder` in the current scope
+   --> src\providers.rs:887:55
+    |
+887 |         let response = client.post(&config.token_url).form(&params).send().await?;
+    |                                                       ^^^^
+    |
+help: there is a method `or` with a similar name
+    |
+887 -         let response = client.post(&config.token_url).form(&params).send().await?;
+887 +         let response = client.post(&config.token_url).or(&params).send().await?;
+    |
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:887:13
+    |
+887 |         let response = client.post(&config.token_url).form(&params).send().await?;
+    |             ^^^^^^^^
+888 |
+889 |         if !response.status().is_success() {
+    |             -------- type must be known at this point
+    |
+help: consider giving `response` an explicit type
+    |
+887 |         let response: /* Type */ = client.post(&config.token_url).form(&params).send().await?;
+    |                     ++++++++++++
+
+error[E0282]: type annotations needed
+   --> src\providers.rs:890:30
+    |
+890 |             let error_text = response.text().await.unwrap_or_default();
+    |                              ^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `form` found for struct `RequestBuilder` in the current scope
+   --> src\server\core\common_http.rs:118:27
+    |
+118 |         request = request.form(form_data);
+    |                           ^^^^
+    |
+help: there is a method `or` with a similar name
+    |
+118 -         request = request.form(form_data);
+118 +         request = request.or(form_data);
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\api\oauth_simple.rs:150:27
+    |
+150 |             let idx = rng.random_range(0..CHARS.len());
+    |                           ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  7 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\api\oauth_simple.rs:162:27
+    |
+162 |             let idx = rng.random_range(0..CHARS.len());
+    |                           ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  7 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\authentication\mfa.rs:321:25
+    |
+321 |                     rng.random_range(1000..9999),
+    |                         ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  6 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\authentication\mfa.rs:322:25
+    |
+322 |                     rng.random_range(1000..9999)
+    |                         ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  6 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\authentication\mfa.rs:668:22
+    |
+668 |         .map(|_| rng.random_range(0..10).to_string())
+    |                      ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  6 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\server\oauth\device.rs:467:35
+    |
+467 |                     let idx = rng.random_range(0..CHARS.len());
+    |                                   ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  7 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\utils\crypto.rs:13:29
+    |
+ 13 |             let idx = rng().random_range(0..CHARSET.len());
+    |                             ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  3 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\utils\crypto.rs:26:29
+    |
+ 26 |             let idx = rng().random_range(0..CHARSET.len());
+    |                             ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  3 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `fill` found for struct `ThreadRng` in the current scope
+   --> src\utils\crypto.rs:36:11
+    |
+ 36 |     rng().fill(&mut bytes[..]);
+    |           ^^^^ method not found in `ThreadRng`
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:312:8
+    |
+312 |     fn fill<T: Fill>(&mut self, dest: &mut [T]) {
+    |        ---- the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `RngExt` which provides `fill` is implemented but not in scope; perhaps you want to import it
+    |
+  3 + use rand::RngExt;
+    |
+
+error[E0599]: no method named `random_range` found for struct `ThreadRng` in the current scope
+   --> src\utils\string.rs:12:29
+    |
+ 12 |             let idx = rng().random_range(0..CHARSET.len());
+    |                             ^^^^^^^^^^^^
+    |
+   ::: C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:159:8
+    |
+159 |     fn random_range<T, R>(&mut self, range: R) -> T
+    |        ------------ the method is available for `ThreadRng` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `random` with a similar name, but with different arguments
+   --> C:\Users\cires\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rand-0.10.0\src\rng.rs:93:5
+    |
+ 93 | /     fn random<T>(&mut self) -> T
+ 94 | |     where
+ 95 | |         StandardUniform: Distribution<T>,
+    | |_________________________________________^
+help: trait `RngExt` which provides `random_range` is implemented but not in scope; perhaps you want to import it
+    |
+  3 + use rand::RngExt;
+    |
+
+Some errors have detailed explanations: E0282, E0432, E0599.
+For more information about an error, try `rustc --explain E0282`.
+warning: `auth-framework` (lib) generated 9 warnings
+error: could not compile `auth-framework` (lib) due to 27 previous errors; 9 warnings emitted

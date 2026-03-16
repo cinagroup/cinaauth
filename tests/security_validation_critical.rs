@@ -2,6 +2,7 @@
 
 use auth_framework::{
     AuthConfig, AuthFramework,
+    testing::test_infrastructure::TestEnvironmentGuard,
 };
 use chrono::{Duration, Utc};
 use jsonwebtoken::{EncodingKey, Header, encode};
@@ -23,12 +24,17 @@ struct TestClaims {
 async fn test_jwt_signature_validation() {
     println!("🔒 Testing JWT signature validation...");
 
+    // TestEnvironmentGuard sets RUST_TEST=1 so config validation uses relaxed mode.
+    let _env = TestEnvironmentGuard::new();
+
     let config = AuthConfig::new()
         .secret("test-secret-for-security-validation-32chars".to_string())
         .issuer("auth-framework".to_string())
         .audience("auth-framework".to_string());
 
-    let auth_framework = AuthFramework::new(config);
+    // initialize() replaces the temporary default secret with the configured one.
+    let mut auth_framework = AuthFramework::new(config);
+    auth_framework.initialize().await.unwrap();
 
     let now = Utc::now().timestamp();
     let claims = TestClaims {

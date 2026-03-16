@@ -11,7 +11,7 @@ use auth_framework::server::{
 #[tokio::test]
 async fn test_basic_manager_trait_implementation() {
     // Test basic manager creation and trait usage
-    let manager = TokenExchangeManagerFactory::create_basic_manager("test-secret").unwrap();
+    let manager = TokenExchangeManagerFactory::create_basic_manager("test-secret-key-that-is-32-chars!!").unwrap();
 
     // Test trait methods
     let supported_types = manager.supported_subject_token_types();

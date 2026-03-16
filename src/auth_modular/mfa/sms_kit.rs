@@ -2,7 +2,7 @@
 
 use crate::errors::{AuthError, Result};
 use crate::storage::AuthStorage;
-use rand::Rng;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;

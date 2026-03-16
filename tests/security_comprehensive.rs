@@ -1,4 +1,5 @@
 use auth_framework::auth::AuthFramework;
+use auth_framework::auth::AuthResult;
 use auth_framework::authentication::credentials::Credential;
 use auth_framework::config::AuthConfig;
 use auth_framework::testing::test_infrastructure::TestEnvironmentGuard;
@@ -344,12 +345,17 @@ async fn test_input_injection_attacks() {
     ];
 
     for pattern in injection_patterns {
-        // Test in usernames
+        // Test in usernames.
+        // Correct security property: injection patterns must NOT produce a *successful*
+        // authentication.  An `Ok(AuthResult::Failure)` or `Err(_)` are both acceptable;
+        // only `Ok(AuthResult::Success(_))` would be a vulnerability.
         let credential = Credential::password(pattern, "password");
-        if framework.authenticate("password", credential).await.is_ok() {
-            panic!("Injection pattern should not succeed: {}", pattern);
+        match framework.authenticate("password", credential).await {
+            Ok(AuthResult::Success(_)) => {
+                panic!("Injection pattern should not produce a successful auth: {}", pattern);
+            }
+            Ok(_) | Err(_) => {} // Failure or error is fine
         }
-        // Should be rejected
 
         // Test in session creation
         let _ = framework
@@ -587,7 +593,7 @@ async fn test_session_validation_strictness() {
     println!("Session 2: {}", session_id2);
 
     // Test various invalid but plausible session IDs
-    let invalid_sessions = vec![
+    let mut invalid_sessions = vec![
         "sess_00000000-0000-0000-0000-000000000000".to_string(), // Known UUID pattern
         "sess_11111111-1111-1111-1111-111111111111".to_string(),
         "sess_aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa".to_string(),
@@ -598,8 +604,15 @@ async fn test_session_validation_strictness() {
         format!("{}extra", session_id1),                  // Append to valid ID
         session_id1[..session_id1.len() - 1].to_string(), // Truncate valid ID
         session_id1.replace("sess_", "hack_"),            // Replace prefix
-        session_id1.replace('-', "_"),                    // Replace dashes
+        // Upper-casing is always a distinct ID regardless of session format
+        session_id1.to_uppercase(),
     ];
+
+    // If the session ID contains hyphens, also test hyphen→underscore replacement.
+    // (If it contains no hyphens the replacement would yield the unchanged valid ID.)
+    if session_id1.contains('-') {
+        invalid_sessions.push(session_id1.replace('-', "_"));
+    }
 
     for invalid_id in invalid_sessions {
         // These should ALL return None since they're not exact matches
@@ -635,7 +648,7 @@ async fn test_jwt_signature_validation_security() {
         "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhdHRhY2tlciJ9.FORGED_SIGNATURE";
     let decoding_key = DecodingKey::from_secret("test-secret".as_ref());
 
-    let result = validator.validate_token(forged_jwt, &decoding_key, true);
+    let result = validator.validate_token(forged_jwt, &decoding_key);
     assert!(
         result.is_err(),
         "🚨 CRITICAL SECURITY FAILURE: Forged JWT was accepted!"
@@ -671,7 +684,7 @@ async fn test_jwt_signature_validation_security() {
     let encoding_key = EncodingKey::from_secret(secret.as_ref());
     let valid_jwt = encode(&Header::default(), &claims, &encoding_key).unwrap();
 
-    let result = validator.validate_token(&valid_jwt, &decoding_key, true);
+    let result = validator.validate_token(&valid_jwt, &decoding_key);
     if let Err(ref e) = result {
         println!("JWT validation error: {}", e);
     }
@@ -683,7 +696,7 @@ async fn test_jwt_signature_validation_security() {
 
     // Test 3: Algorithm confusion attack prevention
     let none_jwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJzdWIiOiJhdHRhY2tlciJ9.";
-    let result = validator.validate_token(none_jwt, &decoding_key, true);
+    let result = validator.validate_token(none_jwt, &decoding_key);
     assert!(
         result.is_err(),
         "🚨 CRITICAL: 'none' algorithm should be rejected!"
@@ -691,7 +704,7 @@ async fn test_jwt_signature_validation_security() {
 
     // Test 4: Wrong key should fail
     let wrong_key = DecodingKey::from_secret("wrong-secret".as_ref());
-    let result = validator.validate_token(&valid_jwt, &wrong_key, true);
+    let result = validator.validate_token(&valid_jwt, &wrong_key);
     assert!(
         result.is_err(),
         "🚨 CRITICAL: JWT should fail with wrong key!"

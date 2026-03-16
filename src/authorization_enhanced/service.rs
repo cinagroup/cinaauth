@@ -9,20 +9,28 @@ use role_system::{
     async_support::{AsyncRoleSystem, AsyncRoleSystemBuilder},
     storage::{MemoryStorage, Storage},
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex as TokioMutex;
 use tracing::{debug, info, warn};
 
 /// Enhanced authorization service providing enterprise-grade RBAC
 pub struct AuthorizationService<S = MemoryStorage>
 where
-    S: Storage + Send + Sync,
+    S: Storage + Send + Sync + Clone,
 {
     /// The async role system from role-system v1.0
     pub role_system: AsyncRoleSystem<S>,
 
     /// Configuration for the service
-    /// PRODUCTION FIX: Now used for configuration-driven behavior
     config: AuthorizationConfig,
+
+    /// Cloned handle to the underlying storage, held behind a Mutex so that
+    /// mutation operations not exposed by AsyncRoleSystem (e.g. delete_role)
+    /// can be performed without requiring mutable access to the whole service.
+    ///
+    /// For MemoryStorage (the default) the clone shares the same Arc<DashMap>
+    /// as the storage inside role_system, so mutations are immediately visible.
+    storage_handle: Arc<TokioMutex<S>>,
 }
 
 /// Configuration for the authorization service
@@ -61,13 +69,16 @@ impl AuthorizationService<MemoryStorage> {
     /// Create a new authorization service with custom configuration
     pub async fn with_config(config: AuthorizationConfig) -> Result<Self> {
         let storage = MemoryStorage::new();
+        // The clone shares the same Arc<DashMap> so mutations via storage_handle
+        // are immediately reflected in the role_system's internal storage.
+        let storage_handle = Arc::new(TokioMutex::new(storage.clone()));
 
-        // Build role system without RoleSystemConfig for now
         let role_system = AsyncRoleSystemBuilder::new().build_with_storage(storage);
 
         let service = Self {
             role_system,
             config,
+            storage_handle,
         };
 
         // Initialize with standard AuthFramework roles
@@ -80,16 +91,18 @@ impl AuthorizationService<MemoryStorage> {
 
 impl<S> AuthorizationService<S>
 where
-    S: Storage + Send + Sync + Default,
+    S: Storage + Send + Sync + Clone + Default,
 {
     /// Create authorization service with custom storage
     pub async fn with_storage(storage: S, config: AuthorizationConfig) -> Result<Self> {
+        let storage_handle = Arc::new(TokioMutex::new(storage.clone()));
         // Build role system without RoleSystemConfig for now
         let role_system = AsyncRoleSystemBuilder::new().build_with_storage(storage);
 
         let service = Self {
             role_system,
             config,
+            storage_handle,
         };
 
         service.initialize_authframework_roles().await?;
@@ -410,13 +423,39 @@ where
     }
 
     /// Delete a role
-    pub async fn delete_role(&self, _name: &str) -> Result<()> {
-        // Note: role-system v1.0 doesn't expose delete_role in AsyncRoleSystem
-        // This would need to be implemented by accessing the underlying storage
-        warn!("Role deletion not yet implemented in role-system v1.0");
-        Err(AuthError::authorization(
-            "Role deletion not supported yet".to_string(),
-        ))
+    pub async fn delete_role(&self, name: &str) -> Result<()> {
+        // Verify the role actually exists before attempting deletion.
+        let exists = self.role_system
+            .get_role(name)
+            .await
+            .map_err(|e| AuthError::authorization(format!("Failed to look up role: {}", e)))?;
+
+        if exists.is_none() {
+            return Err(AuthError::authorization(format!(
+                "Role '{}' not found",
+                name
+            )));
+        }
+
+        // Acquire the storage handle and call delete_role.
+        // For MemoryStorage the underlying Arc<DashMap> is shared between this
+        // handle and the role_system, so the deletion is immediately visible.
+        let mut storage = self.storage_handle.lock().await;
+        match storage.delete_role(name) {
+            Ok(true) => {
+                info!("Role deleted: {}", name);
+                Ok(())
+            }
+            Ok(false) => {
+                // Row already gone – treat as success (idempotent delete).
+                warn!("delete_role: role '{}' was not found in storage", name);
+                Ok(())
+            }
+            Err(e) => Err(AuthError::authorization(format!(
+                "Failed to delete role '{}': {}",
+                name, e
+            ))),
+        }
     }
 
     /// Get role by name
@@ -425,6 +464,89 @@ where
             .get_role(name)
             .await
             .map_err(|e| AuthError::authorization(format!("Failed to get role: {}", e)))
+    }
+
+    /// Update an existing role's description and/or parent relationship.
+    ///
+    /// Permissions are not changed by this method; use create_role to start fresh
+    /// or extend the API with a dedicated permission-update path if needed.
+    pub async fn update_role(
+        &self,
+        name: &str,
+        new_description: Option<&str>,
+        new_parent_id: Option<Option<&str>>,
+    ) -> Result<()> {
+        let role = self
+            .role_system
+            .get_role(name)
+            .await
+            .map_err(|e| AuthError::authorization(format!("Failed to look up role: {}", e)))?
+            .ok_or_else(|| AuthError::authorization(format!("Role '{}' not found", name)))?;
+
+        // Rebuild the role with the updated fields, preserving id and permissions
+        let mut updated = Role::with_id(role.id(), role.name());
+
+        let description = new_description
+            .map(|s| s.to_string())
+            .or_else(|| role.description().map(|s| s.to_string()));
+        if let Some(desc) = description {
+            updated = updated.with_description(desc);
+        }
+
+        // Carry over existing permissions
+        for perm in role.permissions().permissions() {
+            updated = updated.add_permission(perm.clone());
+        }
+
+        // Apply the update to underlying storage
+        let mut storage = self.storage_handle.lock().await;
+        storage
+            .update_role(updated)
+            .map_err(|e| AuthError::authorization(format!("Failed to update role: {}", e)))?;
+        drop(storage);
+
+        // Handle parent-role change if requested
+        if let Some(new_parent) = new_parent_id {
+            // Remove old inheritance if any parent was set
+            if let Some(old_parent) = role.parent_role_id() {
+                let _ = self
+                    .role_system
+                    .remove_role_inheritance(name, old_parent)
+                    .await;
+            }
+            if let Some(parent) = new_parent {
+                self.role_system
+                    .add_role_inheritance(name, parent)
+                    .await
+                    .map_err(|e| {
+                        AuthError::authorization(format!(
+                            "Failed to update role inheritance: {}",
+                            e
+                        ))
+                    })?;
+            }
+        }
+
+        info!("Role '{}' updated", name);
+        Ok(())
+    }
+
+    /// List all registered role names.
+    pub async fn list_roles(&self) -> Result<Vec<Role>> {
+        let storage = self.storage_handle.lock().await;
+        let names = storage
+            .list_roles()
+            .map_err(|e| AuthError::authorization(format!("Failed to list roles: {}", e)))?;
+        drop(storage);
+
+        // Fetch the full Role object for each name
+        let mut roles = Vec::with_capacity(names.len());
+        for name in names {
+            if let Ok(Some(role)) = self.role_system.get_role(&name).await {
+                roles.push(role);
+            }
+        }
+        Ok(roles)
     }
 
     /// Batch check multiple permissions

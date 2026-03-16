@@ -427,19 +427,21 @@ pub mod webhooks {
         Ok(())
     }
 
-    /// Calculate HMAC signature for webhook
+    /// Calculate HMAC-SHA256 signature for webhook payload.
+    ///
+    /// Returns a signature in the form `sha256=<hex>` suitable for the
+    /// `X-Webhook-Signature` header, compatible with GitHub-style webhook
+    /// verification.
     fn calculate_webhook_signature(payload: &str, key: &str) -> Result<String> {
-        // Simplified signature calculation without external HMAC dependency
-        // In a real implementation, you'd use the `hmac` crate
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
 
-        let mut hasher = DefaultHasher::new();
-        key.hash(&mut hasher);
-        payload.hash(&mut hasher);
-        let hash_result = hasher.finish();
+        let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes())
+            .map_err(|e| AuthError::crypto(format!("Invalid HMAC key: {}", e)))?;
+        mac.update(payload.as_bytes());
+        let result = mac.finalize().into_bytes();
 
-        Ok(format!("sha256={:x}", hash_result))
+        Ok(format!("sha256={}", hex::encode(result)))
     }
 }
 

@@ -11,7 +11,7 @@
 use auth_framework::{
     AuthConfig, AuthFramework, AuthToken,
     methods::{AuthMethodEnum, JwtMethod},
-    providers::UserProfile,
+    providers::ProviderProfile,
     storage::{AuthStorage, MemoryStorage, SessionData},
     tokens::TokenMetadata,
 };
@@ -24,8 +24,8 @@ use uuid::Uuid;
 mod test_helpers {
     use super::*;
 
-    pub fn create_test_user() -> UserProfile {
-        UserProfile {
+    pub fn create_test_user() -> ProviderProfile {
+        ProviderProfile {
             id: Some("test_user_123".to_string()),
             provider: Some("test_provider".to_string()),
             username: Some("test_user".to_string()),
@@ -480,7 +480,7 @@ mod edge_case_tests {
 
     #[test]
     fn test_user_profile_with_minimal_data() {
-        let user = UserProfile {
+        let user = ProviderProfile {
             id: Some("minimal_user".to_string()),
             provider: None,
             username: None,

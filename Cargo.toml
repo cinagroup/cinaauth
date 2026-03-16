@@ -9,7 +9,8 @@
   name          = "auth-framework"
   readme        = "README.md"
   repository    = "https://github.com/ciresnave/auth-framework"
-  version       = "0.5.0-rc1"
+  rust-version  = "1.85"
+  version       = "0.5.0-rc18"
 
 [[bin]]
   name              = "auth-framework"
@@ -26,10 +27,10 @@
   tokio = { version = "1.47.1", features = ["full"] }
 
   # JWT handling
-  jsonwebtoken = "9.2"
+  jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
 
   # HTTP client for OAuth flows
-  reqwest = { version = "0.12.23", features = ["json"] }
+  reqwest = { version = "0.13.2", features = ["json", "form"] }
 
   # Serialization
   serde      = { version = "1.0.228", features = ["derive"] }
@@ -45,8 +46,9 @@
   email_address = "0.2"
 
   # Additional format support for migration
-  serde_yaml = "0.9.34-deprecated"
-  toml       = "0.9.7"
+  # Note: serde_yaml 0.9.x uses unsafe-libyaml (safe) rather than libyml (RUSTSEC-2025-0067/0068)
+  serde_yaml = "0.9"
+  toml       = "0.9"
 
   # Configuration management
   config = { version = "0.15.18", default-features = false, features = [
@@ -65,8 +67,11 @@
   async-trait = "0.1.89"
 
   # Cryptography
-  rand = { version = "0.9.2", features = ["std_rng"] }
+  rand = { version = "0.10.0", features = ["std_rng"] }
+  rand_core = "0.6"  # Compatible version for rsa crate's OsRng
   ring = "0.17.14"
+  rsa = { version = "0.9", features = ["sha2"] }  # RSA-OAEP for JWE key wrapping
+  cryptoki = "0.7"  # PKCS#11 interface for HSM integration
 
   # Time handling
   time = { version = "0.3.44", features = ["formatting", "parsing", "serde"] }
@@ -83,7 +88,7 @@
   base64 = "0.22.1"
 
   # MaxMind GeoIP2 for IP geolocation
-  maxminddb = "0.26.0"
+  maxminddb = "0.27.3"
 
   # Threat intelligence integration
   csv                  = "1.3.1"  # For parsing threat feeds
@@ -105,7 +110,7 @@
 
   # Password hashing
   argon2 = "0.5.3"
-  bcrypt = "0.17.1"
+  bcrypt = "0.19.0"
 
   # Enterprise RBAC system
   role-system = { version = "1.1.1", optional = true, features = [
@@ -115,7 +120,7 @@
   ] }
 
   # Optional Redis support
-  redis = { version = "0.32.7", optional = true, features = [
+  redis = { version = "1.0.4", optional = true, features = [
     "aio",
     "tokio-comp",
   ] }
@@ -157,13 +162,17 @@
   # Secret management
   secrecy = { version = "0.10.3", features = ["serde"] }
 
+  # System information (disk, memory, CPU) for health metrics
+  sysinfo = "0.32"
+
   # Performance and Observability enhancements
   metrics = { version = "0.24.2", optional = true }
   metrics-prometheus = { version = "0.11", optional = true }
   opentelemetry = { version = "0.31.0", features = ["trace"], optional = true }
-  opentelemetry-jaeger = { version = "0.22.0", optional = true }
+  # opentelemetry-jaeger removed: unmaintained (RUSTSEC-2025-0123).
+  # Use opentelemetry-otlp instead — Jaeger 1.35+ accepts OTLP natively.
   opentelemetry-otlp = { version = "0.31.0", optional = true }
-  opentelemetry-prometheus = { version = "0.29", optional = true }
+  opentelemetry-prometheus = { version = "0.31.0", optional = true }
   opentelemetry_sdk = { version = "0.31.0", features = [
     "trace",
   ], optional = true }
@@ -188,6 +197,14 @@
   # OpenID Connect support (optional) - Updated to fix RSA dependency
   openidconnect = { version = "4.0.1", optional = true }
 
+  # Archive extraction for threat intelligence feeds (tar.gz, zip)
+  flate2 = "1"
+  tar    = "0.4"
+  zip    = "2"
+
+  # Email delivery for alert notifications
+  lettre = { version = "0.11", features = ["tokio1-native-tls"] }
+
   # Missing dependencies for 100% completion
   ldap3                 = { version = "0.12.1", optional = true }
   otpauth               = { version = "0.5.1", optional = true }  # Updated to latest available
@@ -199,8 +216,8 @@
 
   # TUI dependencies
   crossterm = { version = "0.29.0", optional = true } # Updated to maintain compatibility
-  ratatui   = { version = "0.29.0", optional = true } # Updated to latest version
-  tui-input = { version = "0.14", optional = true }
+  ratatui   = { version = "0.30.0", optional = true } # Updated to latest version
+  tui-input = { version = "0.15.0", optional = true }
 
   # Additional utility dependencies
   colored   = { version = "3.0", optional = true }
@@ -212,16 +229,21 @@
   futures-util = { version = "0.3.31", optional = true }
 
   # Template engine for web GUI
-  askama = { version = "0.14.0", optional = true }
+  askama = { version = "0.15.4", optional = true }
   # Note: askama_axum was removed in askama 0.13+ - axum integration is now built into askama
 
   # XML processing for SAML
-  quick-xml = { version = "0.38.3", features = ["serialize"], optional = true }
+  quick-xml = { version = "0.39.2", features = ["serialize"], optional = true }
+
+  # XML-DSig signature validation for SAML
+  bergshamra = { version = "0.3", optional = true }
+  p256 = { version = "0.13", features = ["ecdsa", "pkcs8"], optional = true }
+  p384 = { version = "0.13", features = ["ecdsa", "pkcs8"], optional = true }
 
   # Passkey/WebAuthn dependencies
-  coset          = { version = "0.3.8", optional = true } # Downgraded to match passkey dependencies
-  passkey        = { version = "0.4", optional = true } # Updated to fix idna dependency
-  passkey-client = { version = "0.4", optional = true } # Updated to fix idna dependency
+  coset          = { version = "0.3.8", optional = true } # Pinned to match passkey's coset dep
+  passkey        = { version = "0.5.0", optional = true } # Updated to latest version
+  passkey-client = { version = "0.5.0", optional = true } # Updated to latest version
 
   # Web framework integrations (optional)
   actix-web = { version = "4.11.0", optional = true }
@@ -247,7 +269,7 @@
 
   # Testing infrastructure (optional)
   html-escape    = "0.2.13"
-  testcontainers = { version = "0.25.0", optional = true }
+  testcontainers = { version = "0.27.1", optional = true }
 
   # SMSKit dependencies for next-gen SMS support
   regex           = "1.11.3"
@@ -259,8 +281,8 @@
   sms-web-generic = { version = "0.2.0", optional = true }
 
 [dev-dependencies]
-  axum-test  = "18.0"
-  criterion  = { version = "0.7.0", features = ["async_tokio", "html_reports"] }
+  axum-test  = "19.1.1"
+  criterion  = { version = "0.8.2", features = ["async_tokio", "html_reports"] }
   fastrand   = "2.0"
   mockito    = "1.2"
   tempfile   = "3.23.0"
@@ -304,7 +326,7 @@
   ldap-auth = ["ldap3"]
   otp-auth = ["otpauth"]
   passkeys = ["coset", "passkey", "passkey-client"]
-  saml = ["quick-xml"]
+  saml = ["bergshamra", "p256", "p384", "quick-xml"]
   tui = ["colored", "console", "crossterm", "indicatif", "ratatui", "tui-input"]
   unicode-support = ["unicode-normalization"]
   warp-integration = ["warp"]
@@ -315,7 +337,6 @@
   enhanced-observability = [
     "futures",
     "opentelemetry",
-    "opentelemetry-jaeger",
     "opentelemetry-otlp",
     "opentelemetry-prometheus",
     "tokio-stream",
@@ -369,7 +390,7 @@
 
   [dependencies.getrandom]
     features = ["std"]
-    version  = "0.3.3"
+    version  = "0.4.2"
 
 [[bench]]
   harness = false

@@ -3,7 +3,11 @@
 //! Main server that hosts all API endpoints
 
 use crate::AuthFramework;
-use crate::api::{ApiState, admin, auth, health, mfa, middleware, oauth, users};
+use crate::api::{
+    ApiState, admin, auth, health, mfa, middleware, oauth2, oauth_advanced, users, webauthn,
+};
+#[cfg(feature = "saml")]
+use crate::api::saml;
 use axum::{
     Router,
     extract::DefaultBodyLimit,
@@ -15,7 +19,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::{
-    cors::{Any, CorsLayer},
+    cors::CorsLayer,
     trace::TraceLayer,
 };
 use tracing::info;
@@ -26,6 +30,11 @@ pub struct ApiServerConfig {
     pub host: String,
     pub port: u16,
     pub enable_cors: bool,
+    /// Explicit list of allowed CORS origins, e.g. `["https://app.example.com"]`.
+    /// An empty list means CORS is enabled but no origin is whitelisted — effectively
+    /// blocking all cross-origin requests while still serving preflight 200s.
+    /// Never use `["*"]`; configure the exact origins that need cross-origin access.
+    pub allowed_origins: Vec<String>,
     pub max_body_size: usize,
     pub enable_tracing: bool,
 }
@@ -35,7 +44,8 @@ impl Default for ApiServerConfig {
         Self {
             host: "127.0.0.1".to_string(),
             port: 8080,
-            enable_cors: true,
+            enable_cors: false, // Disabled by default; set to true and populate allowed_origins
+            allowed_origins: vec![],
             max_body_size: 1024 * 1024, // 1MB
             enable_tracing: true,
         }
@@ -69,8 +79,8 @@ impl ApiServer {
     pub async fn build_router(&self) -> crate::errors::Result<Router> {
         let state = ApiState::new(self.auth_framework.clone()).await?;
 
-        // Create the main router with all routes
-        let router = Router::new()
+        // Create nested router for API v1
+        let api_v1 = Router::new()
             // Health and monitoring endpoints (public)
             .route("/health", get(health::health_check))
             .route("/health/detailed", get(health::detailed_health_check))
@@ -79,23 +89,28 @@ impl ApiServer {
             .route("/liveness", get(health::liveness_check))
             // Authentication endpoints (public)
             .route("/auth/login", post(auth::login))
+            .route("/auth/register", post(auth::register))
             .route("/auth/refresh", post(auth::refresh_token))
             .route("/auth/logout", post(auth::logout))
             .route("/auth/validate", get(auth::validate_token))
             .route("/auth/providers", get(auth::list_providers))
-            // OAuth 2.0 endpoints (mostly public)
-            .route("/oauth/authorize", get(oauth::authorize))
-            .route("/oauth/token", post(oauth::token))
-            .route("/oauth/revoke", post(oauth::revoke_token))
-            .route("/oauth/introspect", post(oauth::introspect_token))
-            .route("/oauth/clients/:client_id", get(oauth::get_client_info))
+            .route("/api-keys", post(auth::create_api_key))
+            // OAuth 2.0 endpoints
+            .route("/oauth/authorize", get(oauth2::authorize))
+            .route("/oauth/token", post(oauth2::token))
+            .route("/oauth/revoke", post(oauth2::revoke))
+            // RFC 7662: Token Introspection (form-encoded, client auth required)
+            .route("/oauth/introspect", post(oauth_advanced::introspect_token))
+            // RFC 9126: Pushed Authorization Requests
+            .route("/oauth/par", post(oauth_advanced::pushed_authorization_request))
+            .route("/oauth/clients/{client_id}", get(oauth2::get_client_info))
             // User management endpoints (authenticated)
             .route("/users/profile", get(users::get_profile))
             .route("/users/profile", put(users::update_profile))
             .route("/users/change-password", post(users::change_password))
             .route("/users/sessions", get(users::get_sessions))
-            .route("/users/sessions/:session_id", delete(users::revoke_session))
-            .route("/users/:user_id/profile", get(users::get_user_profile))
+            .route("/users/sessions/{session_id}", delete(users::revoke_session))
+            .route("/users/{user_id}/profile", get(users::get_user_profile))
             // Multi-factor authentication endpoints (authenticated)
             .route("/mfa/setup", post(mfa::setup_mfa))
             .route("/mfa/verify", post(mfa::verify_mfa))
@@ -109,12 +124,44 @@ impl ApiServer {
             // Administrative endpoints (admin only)
             .route("/admin/users", get(admin::list_users))
             .route("/admin/users", post(admin::create_user))
-            .route("/admin/users/:user_id/roles", put(admin::update_user_roles))
-            .route("/admin/users/:user_id", delete(admin::delete_user))
-            .route("/admin/users/:user_id/activate", put(admin::activate_user))
+            .route("/admin/users/{user_id}/roles", put(admin::update_user_roles))
+            .route("/admin/users/{user_id}", delete(admin::delete_user))
+            .route("/admin/users/{user_id}/activate", put(admin::activate_user))
             .route("/admin/stats", get(admin::get_system_stats))
             .route("/admin/audit-logs", get(admin::get_audit_logs))
-            // Set shared state
+            // WebAuthn endpoints
+            .route("/webauthn/registration/init", post(webauthn::webauthn_registration_init))
+            .route("/webauthn/registration/complete", post(webauthn::webauthn_registration_complete))
+            .route("/webauthn/authentication/init", post(webauthn::webauthn_authentication_init))
+            .route("/webauthn/authentication/complete", post(webauthn::webauthn_authentication_complete))
+            .route("/webauthn/credentials/{username}", get(webauthn::list_webauthn_credentials))
+            .route("/webauthn/credentials/{username}/{credential_id}", delete(webauthn::delete_webauthn_credential));
+
+        // Build the router with conditional SAML routes
+        let api_v1 = {
+            let router = api_v1;
+
+            #[cfg(feature = "saml")]
+            {
+                router
+                    .route("/saml/metadata", get(saml::get_saml_metadata))
+                    .route("/saml/sso", post(saml::initiate_saml_sso))
+                    .route("/saml/acs", post(saml::handle_saml_acs))
+                    .route("/saml/slo", post(saml::initiate_saml_slo))
+                    .route("/saml/slo/response", get(saml::handle_saml_slo_response))
+                    .route("/saml/assertion", post(saml::create_saml_assertion))
+                    .route("/saml/idps", get(saml::list_saml_idps))
+            }
+
+            #[cfg(not(feature = "saml"))]
+            {
+                router
+            }
+        };
+
+        // Create the main router with all routes
+        let router = Router::new()
+            .nest("/api/v1", api_v1)
             .with_state(state.clone());
 
         // Add middleware layers
@@ -123,13 +170,43 @@ impl ApiServer {
             .layer(axum_middleware::from_fn(
                 middleware::security_headers_middleware,
             ))
-            .layer(axum_middleware::from_fn(middleware::rate_limit_middleware))
+            .layer(axum_middleware::from_fn({
+                let state = state.clone();
+                move |request, next| {
+                    let state = state.clone();
+                    async move {
+                        middleware::rate_limit_middleware_with_state(state, request, next).await
+                    }
+                }
+            }))
             .layer(axum_middleware::from_fn(middleware::logging_middleware));
 
         let router = if self.config.enable_cors {
+            if self.config.allowed_origins.is_empty() {
+                tracing::warn!(
+                    "SECURITY/CORS: CORS is enabled but allowed_origins is empty. All cross-origin requests will be rejected! Disable CORS or add allowed origins."
+                );
+            }
+
+            let header_origins: Vec<axum::http::HeaderValue> = self
+                .config
+                .allowed_origins
+                .iter()
+                .filter_map(|o| o.parse::<axum::http::HeaderValue>().ok())
+                .collect();
+
+            if header_origins.is_empty() && !self.config.allowed_origins.is_empty() {
+                tracing::warn!(
+                    "CORS: none of the configured allowed_origins could be parsed as valid HTTP \
+                     header values; cross-origin requests will be rejected"
+                );
+            }
+
+            let allow_origin = tower_http::cors::AllowOrigin::list(header_origins);
+
             router.layer(
                 CorsLayer::new()
-                    .allow_origin(Any)
+                    .allow_origin(allow_origin)
                     .allow_methods([
                         Method::GET,
                         Method::POST,
@@ -137,7 +214,15 @@ impl ApiServer {
                         Method::DELETE,
                         Method::OPTIONS,
                     ])
-                    .allow_headers(Any)
+                    // SECURITY (M-11): Restrict allowed CORS headers to only those the API
+                    // actually needs.  Allowing any header lets clients send arbitrary custom
+                    // headers, which can be exploited in certain CORS-based attacks.
+                    .allow_headers([
+                        axum::http::header::AUTHORIZATION,
+                        axum::http::header::CONTENT_TYPE,
+                        axum::http::header::ACCEPT,
+                        axum::http::header::ORIGIN,
+                    ])
                     .max_age(std::time::Duration::from_secs(3600)),
             )
         } else {
@@ -207,53 +292,71 @@ mod tests {
     use super::*;
     use crate::storage::memory::InMemoryStorage;
     use crate::{AuthConfig, AuthFramework};
-    use axum_test::TestServer;
+    use axum::http::{Request, StatusCode};
+    use axum::body::Body;
+    use tower::ServiceExt;
 
-    #[ignore = "TestServer compatibility issue - axum-test version mismatch"]
-    async fn create_test_server() -> TestServer {
+    async fn create_test_api_server() -> ApiServer {
         let _storage = Arc::new(InMemoryStorage::new());
         let config = AuthConfig::default();
         let auth_framework = Arc::new(AuthFramework::new(config));
-
-        let api_server = ApiServer::new(auth_framework);
-        let _app = api_server.build_router().await.unwrap();
-
-        // Note: TestServer compatibility issue with current axum-test version
-        // The Router type doesn't properly implement IntoTransportLayer
-        todo!("TestServer::new needs axum-test compatibility fix")
+        ApiServer::new(auth_framework)
     }
 
     #[tokio::test]
-    #[ignore = "TestServer compatibility issue"]
     async fn test_health_endpoint() {
-        let server = create_test_server().await;
+        let api_server = create_test_api_server().await;
+        let router = api_server.build_router().await.unwrap();
 
-        let response = server.get("/health").await;
-        response.assert_status_ok();
+        let request = Request::builder()
+            .uri("/api/v1/health")
+            .method("GET")
+            .body(Body::empty())
+            .unwrap();
 
-        let body: serde_json::Value = response.json();
-        assert_eq!(body["status"], "healthy");
+        let response = router.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]
-    #[ignore = "TestServer compatibility issue"]
     async fn test_auth_required_endpoints() {
-        let server = create_test_server().await;
+        let api_server = create_test_api_server().await;
+        let router = api_server.build_router().await.unwrap();
 
-        // Try to access protected endpoint without token
-        let response = server.get("/users/profile").await;
-        response.assert_status_unauthorized();
+        let request = Request::builder()
+            .uri("/api/v1/users/profile")
+            .method("GET")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = router.oneshot(request).await.unwrap();
+        // Protected endpoint should reject request without auth
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
-    #[ignore = "TestServer compatibility issue"]
     async fn test_cors_headers() {
-        let server = create_test_server().await;
+        let config = AuthConfig::default();
+        let auth_framework = Arc::new(AuthFramework::new(config));
+        let api_config = ApiServerConfig {
+            enable_cors: true,
+            allowed_origins: vec!["http://localhost:3000".to_string()],
+            ..ApiServerConfig::default()
+        };
+        let api_server = ApiServer::with_config(auth_framework, api_config);
+        let router = api_server.build_router().await.unwrap();
 
-        let response = server.get("/health").await;
-        response.assert_status_ok();
+        let request = Request::builder()
+            .uri("/api/v1/health")
+            .method("GET")
+            .header("Origin", "http://localhost:3000")
+            .body(Body::empty())
+            .unwrap();
 
-        // Check CORS headers are present
+        let response = router.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // Check CORS headers are present when a matching Origin is sent
         assert!(
             response
                 .headers()

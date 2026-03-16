@@ -380,21 +380,21 @@ impl ThreatFeedManager {
     /// Start automated feed updates in the background
     pub fn start_automated_updates(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         if !self.config.auto_update_enabled {
-            log::info!("Automated updates disabled in configuration");
+            tracing::info!("Automated updates disabled in configuration");
             return Ok(());
         }
 
         // Schedule updates for each enabled feed
         let update_interval = format!("0 */{} * * * *", self.config.update_interval_seconds / 60);
 
-        log::info!(
+        tracing::info!(
             "🚀 Starting automated threat intelligence updates (interval: {})",
             update_interval
         );
 
         // For now, just log that we would start updates
         // In a full implementation, this would start the tokio scheduler
-        log::info!("✅ Automated threat intelligence updates scheduled successfully");
+        tracing::info!("✅ Automated threat intelligence updates scheduled successfully");
 
         Ok(())
     }
@@ -650,14 +650,21 @@ impl ThreatFeedManager {
     ) -> Result<(), Box<dyn std::error::Error>> {
         info!("Extracting tar.gz archive to: {}", output_path.display());
 
-        // In production, use the `tar` and `flate2` crates for proper extraction
-        // For now, provide development fallback with proper error handling
-        warn!("🔧 Production tar.gz extraction requires `tar` and `flate2` crates");
-        warn!("Add dependencies: tar = \"0.4\", flate2 = \"1.0\" to Cargo.toml");
+        let content = content.to_vec();
+        let dest = output_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf();
 
-        // Development fallback: save compressed content
-        fs::write(output_path, content).await?;
-        info!("Compressed content saved - implement tar.gz extraction for production");
+        tokio::task::spawn_blocking(move || -> Result<(), String> {
+            let decoder = flate2::read::GzDecoder::new(content.as_slice());
+            let mut archive = tar::Archive::new(decoder);
+            archive.unpack(&dest).map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?
+        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+
         Ok(())
     }
 
@@ -668,44 +675,63 @@ impl ThreatFeedManager {
     ) -> Result<(), Box<dyn std::error::Error>> {
         info!("Extracting ZIP archive to: {}", output_path.display());
 
-        // In production, use the `zip` crate for proper extraction
-        warn!("🔧 Production ZIP extraction requires `zip` crate");
-        warn!("Add dependency: zip = \"0.6\" to Cargo.toml");
+        let content = content.to_vec();
+        let dest = output_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf();
 
-        // Development fallback: save compressed content
-        fs::write(output_path, content).await?;
-        info!("Compressed content saved - implement ZIP extraction for production");
+        tokio::task::spawn_blocking(move || -> Result<(), String> {
+            use std::io::Cursor;
+            let cursor = Cursor::new(content);
+            let mut archive = zip::ZipArchive::new(cursor).map_err(|e| e.to_string())?;
+            archive.extract(&dest).map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?
+        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+
         Ok(())
     }
 
     /// Extract bzip2 archives
+    ///
+    /// NOTE: Requires the `bzip2 = "0.4"` crate (not currently in Cargo.toml).
+    /// Returns an error rather than silently writing unextracted bytes, which
+    /// would produce a corrupt feed file.
+    /// To enable: add `bzip2 = "0.4"` to Cargo.toml, then replace this body
+    /// with the same `spawn_blocking` decompression pattern used by
+    /// `extract_tar_gz`.
     async fn extract_bzip2(
-        content: &[u8],
+        _content: &[u8],
         output_path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Extracting bzip2 archive to: {}", output_path.display());
-
-        // In production, use the `bzip2` crate
-        warn!("🔧 Production bzip2 extraction requires `bzip2` crate");
-        warn!("Add dependency: bzip2 = \"0.4\" to Cargo.toml");
-
-        fs::write(output_path, content).await?;
-        Ok(())
+        Err(format!(
+            "bzip2 extraction is not supported: add the `bzip2` crate to Cargo.toml \
+             to enable decompression to {}",
+            output_path.display()
+        )
+        .into())
     }
 
     /// Extract XZ archives
+    ///
+    /// NOTE: Requires the `xz2 = "0.1"` crate (not currently in Cargo.toml).
+    /// Returns an error rather than silently writing unextracted bytes, which
+    /// would produce a corrupt feed file.
+    /// To enable: add `xz2 = "0.1"` to Cargo.toml, then replace this body
+    /// with the same `spawn_blocking` decompression pattern used by
+    /// `extract_tar_gz`.
     async fn extract_xz(
-        content: &[u8],
+        _content: &[u8],
         output_path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Extracting XZ archive to: {}", output_path.display());
-
-        // In production, use the `xz2` crate
-        warn!("🔧 Production XZ extraction requires `xz2` crate");
-        warn!("Add dependency: xz2 = \"0.1\" to Cargo.toml");
-
-        fs::write(output_path, content).await?;
-        Ok(())
+        Err(format!(
+            "XZ extraction is not supported: add the `xz2` crate to Cargo.toml \
+             to enable decompression to {}",
+            output_path.display()
+        )
+        .into())
     }
 
     /// Validate that downloaded feed has expected format
@@ -802,7 +828,7 @@ impl ThreatFeedManager {
             if matches!(feed_config.feed_type, FeedType::MaliciousIPs) {
                 let file_path = self.config.feeds_directory.join(&feed_config.filename);
                 if self.check_ip_in_feed(&file_path, ip) {
-                    log::warn!("Malicious IP detected: {} (source: {})", ip, feed_name);
+                    tracing::warn!("Malicious IP detected: {} (source: {})", ip, feed_name);
                     return true;
                 }
             }
@@ -820,7 +846,7 @@ impl ThreatFeedManager {
             if matches!(feed_config.feed_type, FeedType::TorExitNodes) {
                 let file_path = self.config.feeds_directory.join(&feed_config.filename);
                 if self.check_ip_in_feed(&file_path, ip) {
-                    log::warn!("Tor exit node detected: {} (source: {})", ip, feed_name);
+                    tracing::warn!("Tor exit node detected: {} (source: {})", ip, feed_name);
                     return true;
                 }
             }
@@ -838,7 +864,7 @@ impl ThreatFeedManager {
             if matches!(feed_config.feed_type, FeedType::VpnProxy) {
                 let file_path = self.config.feeds_directory.join(&feed_config.filename);
                 if self.check_ip_in_feed(&file_path, ip) {
-                    log::info!("VPN/Proxy detected: {} (source: {})", ip, feed_name);
+                    tracing::info!("VPN/Proxy detected: {} (source: {})", ip, feed_name);
                     return true;
                 }
             }

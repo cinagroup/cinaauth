@@ -25,7 +25,6 @@
 use crate::errors::{AuthError, Result};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use chrono::{DateTime, Duration, Utc};
-use log;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -468,42 +467,356 @@ impl X509CertificateManager {
         self.load_ca_from_file(ca_cert_path).await
     }
 
-    /// Load CA certificate from HSM (Hardware Security Module)
+    /// Load CA certificate from HSM (Hardware Security Module) via PKCS#11.
+    ///
+    /// `hsm_config` must be a JSON object with the following fields:
+    /// - `library` (required): absolute path to the PKCS#11 shared library (`.so` / `.dll`)
+    /// - `slot` (optional, default `0`): slot index returned by `get_slots_with_initialized_token`
+    /// - `pin` (optional): User PIN for login (omit for login-less tokens)
+    /// - `label` (optional, default `"ca-cert"`): CKA_LABEL of the certificate object
+    ///
+    /// # Example config
+    /// ```text
+    /// {"library":"/usr/lib/softhsm/libsofthsm2.so","slot":0,"pin":"1234","label":"root-ca"}
+    /// ```
     async fn load_ca_from_hsm(&self, hsm_config: &str) -> Result<()> {
-        // Production implementation would use PKCS#11 interface
-        tracing::error!("🔐 HSM integration not yet implemented - configure PKCS#11 library");
-        tracing::info!("HSM Config: {}", hsm_config);
+        // Parse HSM configuration JSON.
+        let config: serde_json::Value = serde_json::from_str(hsm_config).map_err(|e| {
+            AuthError::ConfigurationError(format!(
+                "X509_HSM_CONFIG must be a valid JSON object (e.g. \"{{\\\"library\\\":\\\"/usr/lib/pkcs11.so\\\",\\\"slot\\\":0,\\\"pin\\\":\\\"1234\\\",\\\"label\\\":\\\"ca-cert\\\"}}\"). Parse error: {}",
+                e
+            ))
+        })?;
 
-        Err(AuthError::ConfigurationError(
-            "HSM integration requires PKCS#11 configuration - falling back to file system"
-                .to_string(),
-        ))
+        let library = config["library"].as_str().ok_or_else(|| {
+            AuthError::ConfigurationError(
+                "HSM config must include 'library' — the absolute path to the PKCS#11 shared library"
+                    .to_string(),
+            )
+        })?.to_string();
+        let slot_id = config["slot"].as_u64().unwrap_or(0) as usize;
+        let pin = config["pin"].as_str().unwrap_or("").to_string();
+        let label = config["label"].as_str().unwrap_or("ca-cert").to_string();
+
+        tracing::info!("Loading CA certificate from HSM: library={}, slot={}, label={}", library, slot_id, label);
+
+        // PKCS#11 operations are blocking; offload to a dedicated thread.
+        let label_for_log = label.clone();
+        let cert_pem = tokio::task::spawn_blocking(move || -> Result<String> {
+            use cryptoki::context::{CInitializeArgs, Pkcs11};
+            use cryptoki::object::{Attribute, AttributeType, ObjectClass};
+            use cryptoki::session::UserType;
+            use cryptoki::types::AuthPin;
+
+            let pkcs11 = Pkcs11::new(&library).map_err(|e| {
+                AuthError::ConfigurationError(format!(
+                    "Failed to load PKCS#11 library '{}': {}", library, e
+                ))
+            })?;
+            pkcs11.initialize(CInitializeArgs::OsThreads).map_err(|e| {
+                AuthError::ConfigurationError(format!("Failed to initialize PKCS#11 context: {}", e))
+            })?;
+
+            let slots = pkcs11
+                .get_slots_with_initialized_token()
+                .map_err(|e| AuthError::ConfigurationError(format!("Failed to enumerate PKCS#11 slots: {}", e)))?;
+
+            let slot = slots.get(slot_id).copied().ok_or_else(|| {
+                AuthError::ConfigurationError(format!(
+                    "PKCS#11 slot {} not found (available: {})", slot_id, slots.len()
+                ))
+            })?;
+
+            let session = pkcs11.open_ro_session(slot).map_err(|e| {
+                AuthError::ConfigurationError(format!("Failed to open PKCS#11 read-only session: {}", e))
+            })?;
+
+            if !pin.is_empty() {
+                let auth_pin = AuthPin::new(pin.clone());
+                session.login(UserType::User, Some(&auth_pin)).map_err(|e| {
+                    AuthError::ConfigurationError(format!("PKCS#11 user login failed: {}", e))
+                })?;
+            }
+
+            // Search for a X.509 certificate object matching the configured label.
+            let template = vec![
+                Attribute::Class(ObjectClass::CERTIFICATE),
+                Attribute::Label(label.as_bytes().to_vec()),
+            ];
+            let objects = session.find_objects(&template).map_err(|e| {
+                AuthError::ConfigurationError(format!("PKCS#11 certificate object search failed: {}", e))
+            })?;
+
+            let obj = objects.first().copied().ok_or_else(|| {
+                AuthError::ConfigurationError(format!(
+                    "No certificate with CKA_LABEL='{}' found in PKCS#11 slot {}", label, slot_id
+                ))
+            })?;
+
+            // Retrieve the DER-encoded certificate value (CKA_VALUE).
+            let attrs = session
+                .get_attributes(obj, &[AttributeType::Value])
+                .map_err(|e| AuthError::ConfigurationError(format!("Failed to read PKCS#11 CKA_VALUE: {}", e)))?;
+
+            let cert_der = attrs
+                .into_iter()
+                .find_map(|a| if let Attribute::Value(v) = a { Some(v) } else { None })
+                .ok_or_else(|| {
+                    AuthError::ConfigurationError(
+                        "PKCS#11 did not return CKA_VALUE attribute for the certificate".to_string(),
+                    )
+                })?;
+
+            // DER → PEM
+            let b64 = BASE64_STANDARD.encode(&cert_der);
+            let wrapped: String = b64
+                .as_bytes()
+                .chunks(64)
+                .map(|c| std::str::from_utf8(c).unwrap_or_default())
+                .collect::<Vec<_>>()
+                .join("\n");
+            Ok(format!("-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----\n", wrapped))
+        })
+        .await
+        .map_err(|e| AuthError::internal(format!("PKCS#11 blocking task panicked: {}", e)))??;
+
+        tracing::info!("Successfully loaded CA certificate from HSM");
+        self.store_ca_certificate_from_pem(&cert_pem, &format!("hsm:{}", label_for_log)).await
     }
 
-    /// Load CA certificate from Azure Key Vault
+    /// Load CA certificate from Azure Key Vault using the client-credentials OAuth 2.0 flow.
+    ///
+    /// Required environment variables:
+    /// - `X509_AZURE_VAULT_URL` – Key Vault base URL (e.g. `https://my-vault.vault.azure.net`)
+    /// - `X509_AZURE_CERT_NAME` – certificate / secret name inside the vault
+    /// - `X509_AZURE_TENANT_ID` – Azure AD tenant ID (GUID)
+    /// - `X509_AZURE_CLIENT_ID` – service-principal / managed-identity application ID
+    /// - `X509_AZURE_CLIENT_SECRET` – corresponding client secret
     async fn load_ca_from_azure_vault(&self, vault_url: &str, cert_name: &str) -> Result<()> {
-        // Production implementation would use Azure SDK
-        tracing::error!(
-            "🔐 Azure Key Vault integration not yet implemented - install azure-sdk-rust"
-        );
-        tracing::info!("Vault URL: {}, Certificate: {}", vault_url, cert_name);
+        let tenant_id = std::env::var("X509_AZURE_TENANT_ID").map_err(|_| {
+            AuthError::ConfigurationError(
+                "X509_AZURE_TENANT_ID environment variable required for Azure Key Vault authentication"
+                    .to_string(),
+            )
+        })?;
+        let client_id = std::env::var("X509_AZURE_CLIENT_ID").map_err(|_| {
+            AuthError::ConfigurationError(
+                "X509_AZURE_CLIENT_ID environment variable required for Azure Key Vault authentication"
+                    .to_string(),
+            )
+        })?;
+        let client_secret = std::env::var("X509_AZURE_CLIENT_SECRET").map_err(|_| {
+            AuthError::ConfigurationError(
+                "X509_AZURE_CLIENT_SECRET environment variable required for Azure Key Vault authentication"
+                    .to_string(),
+            )
+        })?;
 
-        Err(AuthError::ConfigurationError(
-            "Azure Key Vault integration requires azure-security-keyvault - falling back to file system".to_string()
-        ))
+        let http = reqwest::Client::new();
+
+        // Step 1: Client-credentials flow → access token.
+        let token_url = format!(
+            "https://login.microsoftonline.com/{}/oauth2/v2.0/token",
+            tenant_id
+        );
+        let token_resp = http
+            .post(&token_url)
+            .form(&[
+                ("grant_type", "client_credentials"),
+                ("client_id", client_id.as_str()),
+                ("client_secret", client_secret.as_str()),
+                ("scope", "https://vault.azure.net/.default"),
+            ])
+            .send()
+            .await
+            .map_err(|e| AuthError::internal(format!("Azure AD token request failed: {}", e)))?;
+
+        if !token_resp.status().is_success() {
+            let status = token_resp.status();
+            let body = token_resp.text().await.unwrap_or_default();
+            return Err(AuthError::ConfigurationError(format!(
+                "Azure AD token request returned {}: {}",
+                status, body
+            )));
+        }
+
+        let token_json: serde_json::Value = token_resp
+            .json()
+            .await
+            .map_err(|e| AuthError::internal(format!("Failed to parse Azure AD token response: {}", e)))?;
+        let access_token = token_json["access_token"]
+            .as_str()
+            .ok_or_else(|| AuthError::internal("Azure AD response missing 'access_token'"))?
+            .to_string();
+
+        // Step 2: Fetch the secret from Key Vault (returns PEM / PKCS#12 bundle).
+        let vault_base = vault_url.trim_end_matches('/');
+        let secret_url = format!("{}/secrets/{}?api-version=7.4", vault_base, cert_name);
+        let cert_resp = http
+            .get(&secret_url)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .send()
+            .await
+            .map_err(|e| AuthError::internal(format!("Azure Key Vault request failed: {}", e)))?;
+
+        if !cert_resp.status().is_success() {
+            let status = cert_resp.status();
+            let body = cert_resp.text().await.unwrap_or_default();
+            return Err(AuthError::ConfigurationError(format!(
+                "Azure Key Vault secret fetch returned {}: {}",
+                status, body
+            )));
+        }
+
+        let cert_json: serde_json::Value = cert_resp
+            .json()
+            .await
+            .map_err(|e| AuthError::internal(format!("Failed to parse Azure Key Vault response: {}", e)))?;
+
+        let raw_value = cert_json["value"]
+            .as_str()
+            .ok_or_else(|| AuthError::internal("Azure Key Vault response missing 'value' field"))?
+            .to_string();
+
+        let content_type = cert_json["contentType"].as_str().unwrap_or("application/x-pem-file");
+
+        let cert_pem = if content_type == "application/x-pem-file"
+            || raw_value.contains("-----BEGIN")
+        {
+            // PEM bundle — extract only the leaf/CA certificate block.
+            x509_extract_certificate_pem(&raw_value)
+        } else {
+            return Err(AuthError::ConfigurationError(format!(
+                "Azure Key Vault certificate '{}' uses content-type '{}'. \
+                 Store the certificate as a PEM secret (application/x-pem-file) for automatic import.",
+                cert_name, content_type
+            )));
+        };
+
+        tracing::info!("Successfully loaded CA certificate from Azure Key Vault: {}/{}", vault_base, cert_name);
+        self.store_ca_certificate_from_pem(&cert_pem, &format!("azure_kv:{}/{}", vault_base, cert_name))
+            .await
     }
 
-    /// Load CA certificate from AWS Secrets Manager
+    /// Load CA certificate from AWS Secrets Manager using AWS SigV4 request signing.
+    ///
+    /// Required environment variables (standard AWS credential chain):
+    /// - `AWS_ACCESS_KEY_ID`
+    /// - `AWS_SECRET_ACCESS_KEY`
+    /// - `AWS_REGION` or `AWS_DEFAULT_REGION`
+    /// - `AWS_SESSION_TOKEN` (optional, for temporary credentials)
+    ///
+    /// The secret value must be a PEM-encoded certificate (or a PEM bundle; the
+    /// first `CERTIFICATE` block is extracted automatically).
     async fn load_ca_from_aws_secrets(&self, secret_id: &str) -> Result<()> {
-        // Production implementation would use AWS SDK
-        tracing::error!(
-            "🔐 AWS Secrets Manager integration not yet implemented - install aws-sdk-secretsmanager"
-        );
-        tracing::info!("Secret ID: {}", secret_id);
+        let access_key = std::env::var("AWS_ACCESS_KEY_ID").map_err(|_| {
+            AuthError::ConfigurationError(
+                "AWS_ACCESS_KEY_ID environment variable required for Secrets Manager".to_string(),
+            )
+        })?;
+        let secret_key = std::env::var("AWS_SECRET_ACCESS_KEY").map_err(|_| {
+            AuthError::ConfigurationError(
+                "AWS_SECRET_ACCESS_KEY environment variable required for Secrets Manager"
+                    .to_string(),
+            )
+        })?;
+        let region = std::env::var("AWS_REGION")
+            .or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
+            .map_err(|_| {
+                AuthError::ConfigurationError(
+                    "AWS_REGION (or AWS_DEFAULT_REGION) environment variable required for Secrets Manager"
+                        .to_string(),
+                )
+            })?;
+        let session_token = std::env::var("AWS_SESSION_TOKEN").ok();
 
-        Err(AuthError::ConfigurationError(
-            "AWS Secrets Manager integration requires aws-sdk-secretsmanager - falling back to file system".to_string()
-        ))
+        let service = "secretsmanager";
+        let host = format!("{}.{}.amazonaws.com", service, region);
+        let payload =
+            serde_json::to_vec(&serde_json::json!({ "SecretId": secret_id })).map_err(|e| {
+                AuthError::internal(format!(
+                    "Failed to serialise Secrets Manager GetSecretValue request: {}",
+                    e
+                ))
+            })?;
+
+        let now = chrono::Utc::now();
+        let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+        let date_stamp = now.format("%Y%m%d").to_string();
+
+        let authorization = aws_sigv4_authorization(
+            &access_key,
+            &secret_key,
+            session_token.as_deref(),
+            &region,
+            service,
+            "POST",
+            &host,
+            "/",
+            "",
+            &payload,
+            &amz_date,
+            &date_stamp,
+            "secretsmanager.GetSecretValue",
+        );
+
+        let url = format!("https://{}/", host);
+        let http = reqwest::Client::new();
+        let mut req_builder = http
+            .post(&url)
+            .header("Content-Type", "application/x-amz-json-1.1")
+            .header("X-Amz-Target", "secretsmanager.GetSecretValue")
+            .header("X-Amz-Date", &amz_date)
+            .header("Authorization", &authorization)
+            .body(payload);
+
+        if let Some(ref token) = session_token {
+            req_builder = req_builder.header("X-Amz-Security-Token", token.as_str());
+        }
+
+        let resp = req_builder
+            .send()
+            .await
+            .map_err(|e| AuthError::internal(format!("AWS Secrets Manager request failed: {}", e)))?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(AuthError::ConfigurationError(format!(
+                "AWS Secrets Manager GetSecretValue returned {}: {}",
+                status, body
+            )));
+        }
+
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| AuthError::internal(format!("Failed to parse Secrets Manager response: {}", e)))?;
+
+        let raw_value = if let Some(s) = json["SecretString"].as_str() {
+            s.to_string()
+        } else if let Some(b64) = json["SecretBinary"].as_str() {
+            let bytes = BASE64_STANDARD.decode(b64).map_err(|e| {
+                AuthError::internal(format!("Failed to decode SecretBinary: {}", e))
+            })?;
+            String::from_utf8(bytes).map_err(|e| {
+                AuthError::internal(format!("SecretBinary is not valid UTF-8: {}", e))
+            })?
+        } else {
+            return Err(AuthError::ConfigurationError(format!(
+                "AWS Secrets Manager secret '{}' contains neither SecretString nor SecretBinary",
+                secret_id
+            )));
+        };
+
+        let cert_pem = if raw_value.contains("-----BEGIN CERTIFICATE-----") {
+            x509_extract_certificate_pem(&raw_value)
+        } else {
+            raw_value
+        };
+
+        tracing::info!("Successfully loaded CA certificate from AWS Secrets Manager: {}", secret_id);
+        self.store_ca_certificate_from_pem(&cert_pem, &format!("aws_secrets:{}", secret_id)).await
     }
 
     /// Load CA certificate from file system (with security validation)
@@ -526,7 +839,7 @@ impl X509CertificateManager {
             (cert_content, subject, issuer, serial_number)
         } else {
             // Generate self-signed root CA for development/testing
-            log::warn!(
+            tracing::warn!(
                 "Root CA certificate not found at {}, generating self-signed root CA for development",
                 ca_cert_path
             );
@@ -537,7 +850,7 @@ impl X509CertificateManager {
 
             // Store the generated root CA for future use
             if let Err(e) = tokio::fs::write(&ca_cert_path, &root_cert).await {
-                log::warn!("Failed to save generated root CA: {}", e);
+                tracing::warn!("Failed to save generated root CA: {}", e);
             }
 
             // Store the root key for signing operations
@@ -547,7 +860,7 @@ impl X509CertificateManager {
                 .unwrap_or_else(|| ".".to_string());
             let ca_key_path = format!("{}/ca.key", ca_dir);
             if let Err(e) = tokio::fs::write(&ca_key_path, &root_key).await {
-                log::warn!("Failed to save generated root CA key: {}", e);
+                tracing::warn!("Failed to save generated root CA key: {}", e);
             }
 
             (root_cert, subject.clone(), subject, "1".to_string())
@@ -630,9 +943,9 @@ impl X509CertificateManager {
             let mut cas = self.ca_certificates.write().await;
             cas.insert("intermediate_ca".to_string(), intermediate_ca);
 
-            log::info!("Loaded intermediate CA certificate");
+            tracing::info!("Loaded intermediate CA certificate");
         } else {
-            log::info!("No intermediate CA certificate found, using root CA only");
+            tracing::info!("No intermediate CA certificate found, using root CA only");
         }
 
         Ok(())
@@ -748,7 +1061,7 @@ impl X509CertificateManager {
                 .join("\n")
         );
 
-        log::info!(
+        tracing::info!(
             "Generated X.509 certificate for CN={}, Serial={}",
             request.subject.common_name,
             serial_number
@@ -811,7 +1124,7 @@ impl X509CertificateManager {
             .collect::<Vec<String>>()
             .join(":");
 
-        log::debug!("Calculated certificate fingerprint: {}", fingerprint);
+        tracing::debug!("Calculated certificate fingerprint: {}", fingerprint);
         Ok(fingerprint)
     }
 
@@ -953,7 +1266,7 @@ impl X509CertificateManager {
                 .join("\n")
         );
 
-        log::info!(
+        tracing::info!(
             "Generated CRL for CA {} with {} revoked certificates",
             ca_id,
             revocation_list.len()
@@ -978,12 +1291,12 @@ impl X509CertificateManager {
         let not_after = cert.validity().not_after.to_datetime();
 
         if now < not_before {
-            log::warn!("Certificate not yet valid");
+            tracing::warn!("Certificate not yet valid");
             return Ok(false);
         }
 
         if now > not_after {
-            log::warn!("Certificate has expired");
+            tracing::warn!("Certificate has expired");
             return Ok(false);
         }
 
@@ -999,11 +1312,11 @@ impl X509CertificateManager {
             let cas = self.ca_certificates.read().await;
             for ca in cas.values() {
                 if ca.subject == subject_dn {
-                    log::info!("Certificate validated against trusted root CA");
+                    tracing::info!("Certificate validated against trusted root CA");
                     return Ok(true);
                 }
             }
-            log::warn!("Self-signed certificate not in trusted root store");
+            tracing::warn!("Self-signed certificate not in trusted root store");
             return Ok(false);
         }
 
@@ -1011,13 +1324,13 @@ impl X509CertificateManager {
         let serial_number = cert.serial.to_string();
         let revocation_list = self.revocation_list.read().await;
         if revocation_list.contains_key(&serial_number) {
-            log::warn!("Certificate has been revoked: {}", serial_number);
+            tracing::warn!("Certificate has been revoked: {}", serial_number);
             return Ok(false);
         }
 
         // 5. Chain validation up to trusted root
         // In production, this should recursively validate the entire chain
-        log::info!("Certificate chain validation passed for: {}", subject_dn);
+        tracing::info!("Certificate chain validation passed for: {}", subject_dn);
         Ok(true)
     }
 
@@ -1075,6 +1388,69 @@ impl X509CertificateManager {
     }
 
     /// Calculate SHA-256 fingerprint of a certificate
+    /// Store a CA certificate from PEM data into the internal CA certificate store.
+    ///
+    /// This shared helper is called by all external integrations (HSM, Azure, AWS)
+    /// after successfully retrieving the certificate from the external source.
+    async fn store_ca_certificate_from_pem(&self, cert_pem: &str, source: &str) -> Result<()> {
+        let fingerprint = self.calculate_certificate_fingerprint(cert_pem)?;
+
+        // Attempt a best-effort metadata extraction from the PEM.
+        let (subject, issuer, serial_number) = match self.pem_to_der(cert_pem) {
+            Ok(der) => match parse_x509_certificate(&der) {
+                Ok((_, cert)) => (
+                    cert.subject().to_string(),
+                    cert.issuer().to_string(),
+                    cert.serial.to_string(),
+                ),
+                Err(_) => (
+                    format!("CN=Imported CA via {}", source),
+                    format!("CN=Imported CA via {}", source),
+                    "0".to_string(),
+                ),
+            },
+            Err(_) => (
+                format!("CN=Imported CA via {}", source),
+                format!("CN=Imported CA via {}", source),
+                "0".to_string(),
+            ),
+        };
+
+        let ca_cert = StoredCertificate {
+            cert_id: "root_ca".to_string(),
+            certificate_pem: cert_pem.to_string(),
+            private_key_pem: None,
+            subject: subject.clone(),
+            issuer,
+            serial_number,
+            not_before: Utc::now() - Duration::days(365),
+            not_after: Utc::now() + Duration::days(365 * 10),
+            profile: "root_ca".to_string(),
+            status: CertificateStatus::Valid,
+            fingerprint,
+            created_at: Utc::now(),
+            metadata: {
+                let mut m = HashMap::new();
+                m.insert("source".to_string(), Value::String(source.to_string()));
+                m
+            },
+        };
+
+        let ca = CACertificate {
+            ca_id: "root_ca".to_string(),
+            certificate: ca_cert,
+            subject,
+            private_key: vec![],
+            ca_type: CAType::Root,
+            issued_count: 0,
+            next_serial: 1000,
+        };
+
+        let mut cas = self.ca_certificates.write().await;
+        cas.insert("root_ca".to_string(), ca);
+        Ok(())
+    }
+
     fn calculate_certificate_fingerprint(&self, cert_pem: &str) -> Result<String> {
         use sha2::{Digest, Sha256};
 
@@ -1218,6 +1594,142 @@ impl Default for X509Config {
     }
 }
 
+// ─── Module-level helpers ─────────────────────────────────────────────────────
+
+/// Extract the first `-----BEGIN CERTIFICATE-----` … `-----END CERTIFICATE-----`
+/// block from a PEM bundle.  Private key blocks and extra certificate entries are
+/// discarded.  If no proper PEM block is found the input is returned unchanged.
+fn x509_extract_certificate_pem(pem: &str) -> String {
+    let mut in_cert = false;
+    let mut lines: Vec<&str> = Vec::new();
+    let mut collected = false;
+
+    for line in pem.lines() {
+        if line.starts_with("-----BEGIN CERTIFICATE-----") {
+            if collected {
+                break; // Only keep the first certificate.
+            }
+            in_cert = true;
+            collected = true;
+            lines.push(line);
+        } else if line.starts_with("-----END CERTIFICATE-----") {
+            lines.push(line);
+            in_cert = false;
+        } else if in_cert {
+            lines.push(line);
+        }
+    }
+
+    if collected {
+        lines.join("\n") + "\n"
+    } else {
+        pem.to_string()
+    }
+}
+
+/// Build an AWS SigV4 `Authorization` header value for a POST request.
+///
+/// Implements [AWS Signature Version 4](https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html).
+#[allow(clippy::too_many_arguments)]
+fn aws_sigv4_authorization(
+    access_key: &str,
+    secret_key: &str,
+    session_token: Option<&str>,
+    region: &str,
+    service: &str,
+    method: &str,
+    host: &str,
+    path: &str,
+    query: &str,
+    payload: &[u8],
+    amz_date: &str,
+    date_stamp: &str,
+    amz_target: &str,
+) -> String {
+    use hmac::{Mac, SimpleHmac};
+    use sha2::{Digest, Sha256};
+
+    // Helper: HMAC-SHA256.
+    fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
+        let mut mac = <SimpleHmac<Sha256>>::new_from_slice(key)
+            .expect("HMAC accepts any key size");
+        mac.update(data);
+        mac.finalize().into_bytes().to_vec()
+    }
+
+    // Helper: hex(SHA-256(data)).
+    fn sha256hex(data: &[u8]) -> String {
+        let mut h = Sha256::new();
+        h.update(data);
+        hex::encode(h.finalize())
+    }
+
+    // Build sorted canonical header list.
+    let mut headers: Vec<(String, String)> = vec![
+        ("content-type".into(), "application/x-amz-json-1.1".into()),
+        ("host".into(), host.into()),
+        ("x-amz-date".into(), amz_date.into()),
+        ("x-amz-target".into(), amz_target.into()),
+    ];
+    if let Some(tok) = session_token {
+        headers.push(("x-amz-security-token".into(), tok.into()));
+    }
+    headers.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let canonical_headers: String = headers
+        .iter()
+        .map(|(k, v)| format!("{}:{}\n", k, v.trim()))
+        .collect();
+    let signed_headers: String = headers
+        .iter()
+        .map(|(k, _)| k.as_str())
+        .collect::<Vec<_>>()
+        .join(";");
+
+    let canonical_request = format!(
+        "{method}\n{path}\n{query}\n{canonical_headers}\n{signed_headers}\n{payload_hash}",
+        method = method,
+        path = path,
+        query = query,
+        canonical_headers = canonical_headers,
+        signed_headers = signed_headers,
+        payload_hash = sha256hex(payload),
+    );
+
+    let credential_scope = format!("{date_stamp}/{region}/{service}/aws4_request");
+    let string_to_sign = format!(
+        "AWS4-HMAC-SHA256\n{amz_date}\n{credential_scope}\n{canonical_hash}",
+        amz_date = amz_date,
+        credential_scope = credential_scope,
+        canonical_hash = sha256hex(canonical_request.as_bytes()),
+    );
+
+    // Derive the signing key.
+    let signing_key = hmac_sha256(
+        &hmac_sha256(
+            &hmac_sha256(
+                &hmac_sha256(
+                    format!("AWS4{}", secret_key).as_bytes(),
+                    date_stamp.as_bytes(),
+                ),
+                region.as_bytes(),
+            ),
+            service.as_bytes(),
+        ),
+        b"aws4_request",
+    );
+
+    let signature = hex::encode(hmac_sha256(&signing_key, string_to_sign.as_bytes()));
+
+    format!(
+        "AWS4-HMAC-SHA256 Credential={access_key}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}",
+        access_key = access_key,
+        credential_scope = credential_scope,
+        signed_headers = signed_headers,
+        signature = signature,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1277,6 +1789,148 @@ mod tests {
 
         assert!(filter.matches(&cert));
     }
+
+    // ─── HSM / Azure / AWS integration unit tests ─────────────────────────────
+
+    #[test]
+    fn test_x509_extract_certificate_pem_single_cert() {
+        let pem = "-----BEGIN CERTIFICATE-----\nMIIBxx==\n-----END CERTIFICATE-----\n";
+        let extracted = x509_extract_certificate_pem(pem);
+        assert!(extracted.contains("-----BEGIN CERTIFICATE-----"));
+        assert!(extracted.contains("-----END CERTIFICATE-----"));
+        assert!(extracted.contains("MIIBxx=="));
+    }
+
+    #[test]
+    fn test_x509_extract_certificate_pem_strips_key() {
+        // A PEM bundle with a private key + certificate — only the cert should come out.
+        let bundle = concat!(
+            "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAK==\n-----END RSA PRIVATE KEY-----\n",
+            "-----BEGIN CERTIFICATE-----\nMIICert==\n-----END CERTIFICATE-----\n",
+        );
+        let extracted = x509_extract_certificate_pem(bundle);
+        assert!(!extracted.contains("PRIVATE KEY"), "Private key must be stripped");
+        assert!(extracted.contains("-----BEGIN CERTIFICATE-----"));
+        assert!(extracted.contains("MIICert=="));
+    }
+
+    #[test]
+    fn test_x509_extract_certificate_pem_keeps_first_only() {
+        let bundle = concat!(
+            "-----BEGIN CERTIFICATE-----\nMIIFirst==\n-----END CERTIFICATE-----\n",
+            "-----BEGIN CERTIFICATE-----\nMIISecond==\n-----END CERTIFICATE-----\n",
+        );
+        let extracted = x509_extract_certificate_pem(bundle);
+        assert!(extracted.contains("MIIFirst=="), "First cert should be kept");
+        assert!(!extracted.contains("MIISecond=="), "Second cert must be discarded");
+    }
+
+    #[test]
+    fn test_aws_sigv4_authorization_format() {
+        // Verify the output is structured like a valid AWS SigV4 Authorization header.
+        let auth = aws_sigv4_authorization(
+            "AKIAIOSFODNN7EXAMPLE",
+            "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            None,
+            "us-east-1",
+            "secretsmanager",
+            "POST",
+            "secretsmanager.us-east-1.amazonaws.com",
+            "/",
+            "",
+            b"{\"SecretId\":\"my-secret\"}",
+            "20230101T000000Z",
+            "20230101",
+            "secretsmanager.GetSecretValue",
+        );
+        assert!(auth.starts_with("AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20230101/"));
+        assert!(auth.contains("SignedHeaders="));
+        assert!(auth.contains("Signature="));
+        // Signature must be a 64-character hex string.
+        let sig_part = auth.split("Signature=").nth(1).unwrap_or("");
+        assert_eq!(sig_part.len(), 64, "SigV4 signature must be 64 hex chars");
+    }
+
+    #[tokio::test]
+    async fn test_azure_vault_missing_tenant_id() {
+        // Clear any accidentally-set env vars to ensure the credential-absent error path.
+        // Skip this test if real Azure credentials happen to be set (CI environment).
+        if std::env::var("X509_AZURE_TENANT_ID").is_ok() {
+            return;
+        }
+        let config = X509Config::default();
+        let manager = X509CertificateManager::new(config);
+        let result = manager
+            .load_ca_from_azure_vault("https://test.vault.azure.net", "my-ca")
+            .await;
+        assert!(result.is_err(), "Should fail when tenant_id is not set");
+        let msg = format!("{}", result.unwrap_err());
+        assert!(
+            msg.contains("X509_AZURE_TENANT_ID"),
+            "Error should name the missing variable: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_aws_secrets_missing_access_key() {
+        // Skip if real AWS credentials are set.
+        if std::env::var("AWS_ACCESS_KEY_ID").is_ok() {
+            return;
+        }
+        let config = X509Config::default();
+        let manager = X509CertificateManager::new(config);
+        let result = manager.load_ca_from_aws_secrets("my-ca-cert").await;
+        assert!(result.is_err(), "Should fail when AWS_ACCESS_KEY_ID is not set");
+        let msg = format!("{}", result.unwrap_err());
+        assert!(
+            msg.contains("AWS_ACCESS_KEY_ID"),
+            "Error should name the missing variable: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_hsm_invalid_json_config() {
+        let config = X509Config::default();
+        let manager = X509CertificateManager::new(config);
+        // Pass nonsense — must get a clear JSON-parse error, not a panic.
+        let result = manager.load_ca_from_hsm("not-valid-json").await;
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(
+            msg.contains("JSON") || msg.contains("json") || msg.contains("X509_HSM_CONFIG"),
+            "Error should mention JSON parsing: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_hsm_missing_library_field() {
+        let config = X509Config::default();
+        let manager = X509CertificateManager::new(config);
+        // Valid JSON but missing the required 'library' field.
+        let result = manager
+            .load_ca_from_hsm(r#"{"slot": 0, "pin": "1234", "label": "ca-cert"}"#)
+            .await;
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(
+            msg.contains("library"),
+            "Error should mention the missing 'library' field: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_hsm_nonexistent_library_path() {
+        let config = X509Config::default();
+        let manager = X509CertificateManager::new(config);
+        let result = manager
+            .load_ca_from_hsm(
+                r#"{"library": "/nonexistent/pkcs11/libpkcs11.so", "slot": 0, "pin": "", "label": "ca-cert"}"#,
+            )
+            .await;
+        // Should return an error about the library not being found, not a panic.
+        assert!(
+            result.is_err(),
+            "Expected error loading non-existent PKCS#11 library"
+        );
+    }
 }
-
-

@@ -239,7 +239,7 @@ impl DashMapMemoryStorage {
         );
 
         // Log the audit event - in production this would go to the audit logger
-        log::info!(
+        tracing::info!(
             "STORAGE AUDIT: {}",
             serde_json::to_string(&audit_event).unwrap_or_default()
         );
@@ -390,6 +390,20 @@ impl DashMapMemoryStorage {
                 self.user_to_sessions.remove(user_id);
             }
         }
+    }
+
+    /// Return all KV keys that start with `prefix`.
+    pub fn list_kv_keys_by_prefix(&self, prefix: &str) -> Vec<String> {
+        self.kv_store
+            .iter()
+            .filter_map(|entry| {
+                if entry.key().starts_with(prefix) {
+                    Some(entry.key().clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 

@@ -1,6 +1,6 @@
 //! Token management and validation for the authentication framework.
 use crate::errors::{AuthError, Result, TokenError};
-use crate::providers::{OAuthProvider, ProfileExtractor, UserProfile};
+use crate::providers::{OAuthProvider, ProfileExtractor, ProviderProfile};
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
@@ -51,7 +51,7 @@ pub struct AuthToken {
     pub client_id: Option<String>,
 
     /// User profile data (optional)
-    pub user_profile: Option<UserProfile>,
+    pub user_profile: Option<ProviderProfile>,
 
     /// User's permissions
     pub permissions: Vec<String>,
@@ -467,9 +467,9 @@ impl TokenManager {
     /// ```rust,no_run
     /// use auth_framework::tokens::TokenManager;
     ///
-    /// // Both PKCS#1 and PKCS#8 formats work
-    /// let private_key = include_bytes!("../../private.pem");  // Either format
-    /// let public_key = include_bytes!("../../public.pem");
+    /// // Both PKCS#1 and PKCS#8 formats work; provide PEM bytes from your key store.
+    /// # let private_key: &[u8] = b"";
+    /// # let public_key: &[u8] = b"";
     ///
     /// let manager = TokenManager::new_rsa(
     ///     private_key,
@@ -675,19 +675,19 @@ impl TokenManager {
 #[async_trait::async_trait]
 pub trait TokenToProfile {
     /// Convert this token to a user profile using the specified provider
-    async fn to_profile(&self, provider: &OAuthProvider) -> Result<UserProfile>;
+    async fn to_profile(&self, provider: &OAuthProvider) -> Result<ProviderProfile>;
 
     /// Convert this token to a user profile with a custom extractor
     async fn to_profile_with_extractor(
         &self,
         provider: &OAuthProvider,
         extractor: &ProfileExtractor,
-    ) -> Result<UserProfile>;
+    ) -> Result<ProviderProfile>;
 }
 
 #[async_trait::async_trait]
 impl TokenToProfile for AuthToken {
-    async fn to_profile(&self, provider: &OAuthProvider) -> Result<UserProfile> {
+    async fn to_profile(&self, provider: &OAuthProvider) -> Result<ProviderProfile> {
         let extractor = ProfileExtractor::new();
         extractor.extract_profile(self, provider).await
     }
@@ -696,7 +696,7 @@ impl TokenToProfile for AuthToken {
         &self,
         provider: &OAuthProvider,
         extractor: &ProfileExtractor,
-    ) -> Result<UserProfile> {
+    ) -> Result<ProviderProfile> {
         extractor.extract_profile(self, provider).await
     }
 }

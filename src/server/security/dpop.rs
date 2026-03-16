@@ -8,7 +8,7 @@
 use crate::errors::{AuthError, Result};
 use crate::security::secure_jwt::SecureJwtValidator;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, TimeZone as _, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -255,7 +255,7 @@ impl DpopManager {
 
     /// Generate a nonce for DPoP proof
     pub fn generate_nonce(&self) -> String {
-        use rand::RngCore;
+        use rand::Rng;
         let mut rng = rand::rng();
         let mut nonce = [0u8; 16];
         rng.fill_bytes(&mut nonce);
@@ -336,8 +336,9 @@ impl DpopManager {
         errors: &mut Vec<String>,
     ) -> Result<()> {
         let now = Utc::now();
-        let iat =
-            DateTime::from_timestamp(claims.iat, 0).unwrap_or_else(|| now - Duration::hours(1));
+        let iat = Utc.timestamp_opt(claims.iat, 0)
+            .single()
+            .unwrap_or_else(|| now - Duration::hours(1));
 
         // Validate timestamp
         let min_time = now - self.proof_expiration - self.clock_skew;

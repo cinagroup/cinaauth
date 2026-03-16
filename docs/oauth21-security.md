@@ -131,8 +131,13 @@ DPoP provides application-layer proof-of-possession for OAuth 2.0 access tokens,
 ### Example Usage
 
 ```rust
-// Create DPoP manager
-let jwt_validator = SecureJwtValidator::new(SecureJwtConfig::default());
+// Create DPoP manager — supply your own JWT secret, or let Default generate
+// a per-instance random secret (suitable for single-node deployments).
+let jwt_validator = SecureJwtValidator::new(SecureJwtConfig {
+    jwt_secret: std::env::var("DPOP_JWT_SECRET")
+        .expect("DPOP_JWT_SECRET must be set"),
+    ..SecureJwtConfig::default()
+});
 let dpop_manager = DpopManager::new(jwt_validator);
 
 // Validate a DPoP proof

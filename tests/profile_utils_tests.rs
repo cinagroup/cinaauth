@@ -1,13 +1,13 @@
 //! Unit tests for profile utility functions and token-to-profile conversion
 
 use auth_framework::profile_utils::ExtractProfile;
-use auth_framework::providers::{OAuthProvider, UserProfile};
+use auth_framework::providers::{OAuthProvider, ProviderProfile};
 use base64::Engine;
 use serde_json::json;
 
 #[test]
 fn test_user_profile_builder() {
-    let profile = UserProfile::new()
+    let profile = ProviderProfile::new()
         .with_id("123456")
         .with_provider("github")
         .with_username(Some("testuser"))
@@ -125,7 +125,7 @@ async fn test_from_id_token() {
         URL_SAFE_NO_PAD.encode(r#"{"sub":"12345","name":"John Doe","email":"john@example.com"}"#);
     let id_token = format!("{}.{}.{}", header, payload, "dummy_signature");
 
-    let profile = UserProfile::from_id_token(&id_token).unwrap();
+    let profile = ProviderProfile::from_id_token(&id_token).unwrap();
     assert_eq!(profile.id, Some("12345".to_string()));
     assert_eq!(profile.name, Some("John Doe".to_string()));
     assert_eq!(profile.email, Some("john@example.com".to_string()));
@@ -134,23 +134,23 @@ async fn test_from_id_token() {
 #[test]
 fn test_user_profile_display_name() {
     // Test with name present
-    let profile1 = UserProfile::new()
+    let profile1 = ProviderProfile::new()
         .with_name(Some("Display Name"))
         .with_username(Some("username"));
     assert_eq!(profile1.display_name(), Some("Display Name"));
 
     // Test fallback to username
-    let profile2 = UserProfile::new().with_username(Some("username"));
+    let profile2 = ProviderProfile::new().with_username(Some("username"));
     assert_eq!(profile2.display_name(), Some("username"));
 
     // Test with neither present
-    let profile3 = UserProfile::new();
+    let profile3 = ProviderProfile::new();
     assert_eq!(profile3.display_name(), None);
 }
 
 #[test]
 fn test_to_auth_token() {
-    let profile = UserProfile::new()
+    let profile = ProviderProfile::new()
         .with_id("12345")
         .with_provider("github")
         .with_name(Some("Test User"))

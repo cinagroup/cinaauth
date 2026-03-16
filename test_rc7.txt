@@ -1,0 +1,113 @@
+   Compiling ring v0.17.14
+   Compiling aws-lc-sys v0.38.0
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling psm v0.1.30
+   Compiling bzip2-sys v0.1.13+1.0.8
+   Compiling stacker v0.1.23
+   Compiling lzma-sys v0.1.20
+   Compiling alloca v0.4.0
+   Compiling criterion v0.8.2
+   Compiling chumsky v0.9.3
+   Compiling rustls v0.23.37
+   Compiling bzip2 v0.5.2
+   Compiling rustls-webpki v0.103.9
+   Compiling lettre v0.11.19
+   Compiling xz2 v0.1.7
+   Compiling zstd-safe v7.2.4
+   Compiling zstd v0.13.3
+   Compiling zip v2.4.2
+   Compiling sqlx-core v0.8.6
+   Compiling sqlx-postgres v0.8.6
+   Compiling sqlx-mysql v0.8.6
+   Compiling sqlx-macros-core v0.8.6
+   Compiling aws-lc-rs v1.16.1
+   Compiling sqlx-macros v0.8.6
+   Compiling tokio-rustls v0.26.4
+   Compiling rustls-platform-verifier v0.6.2
+   Compiling hyper-rustls v0.27.7
+   Compiling reqwest v0.13.2
+   Compiling sqlx v0.8.6
+   Compiling auth-framework v0.5.0-rc7 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> tests\oauth2_integration_test.rs:63:24
+   |
+63 |         let response = oauth2::authorize(State(state.clone()), Query(auth_request))
+   |                        ^^^^^^^^^^^^^^^^^                       ------------------- argument #2 of type `HeaderMap` is missing
+   |
+note: function defined here
+  --> src\api\oauth2.rs:72:14
+   |
+72 | pub async fn authorize(
+   |              ^^^^^^^^^
+help: provide the argument
+   |
+63 |         let response = oauth2::authorize(State(state.clone()), /* HeaderMap */, Query(auth_request))
+   |                                                                ++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> tests\oauth2_integration_test.rs:94:24
+   |
+94 |         let response = oauth2::authorize(State(state), Query(auth_request))
+   |                        ^^^^^^^^^^^^^^^^^               ------------------- argument #2 of type `HeaderMap` is missing
+   |
+note: function defined here
+  --> src\api\oauth2.rs:72:14
+   |
+72 | pub async fn authorize(
+   |              ^^^^^^^^^
+help: provide the argument
+   |
+94 |         let response = oauth2::authorize(State(state), /* HeaderMap */, Query(auth_request))
+   |                                                        ++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> tests\oauth2_integration_test.rs:118:29
+    |
+118 |         let auth_response = oauth2::authorize(State(state.clone()), Query(auth_request))
+    |                             ^^^^^^^^^^^^^^^^^                       ------------------- argument #2 of type `HeaderMap` is missing
+    |
+note: function defined here
+   --> src\api\oauth2.rs:72:14
+    |
+ 72 | pub async fn authorize(
+    |              ^^^^^^^^^
+help: provide the argument
+    |
+118 |         let auth_response = oauth2::authorize(State(state.clone()), /* HeaderMap */, Query(auth_request))
+    |                                                                     ++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> tests\oauth2_integration_test.rs:258:29
+    |
+258 |         let auth_response = oauth2::authorize(State(state.clone()), Query(auth_request))
+    |                             ^^^^^^^^^^^^^^^^^                       ------------------- argument #2 of type `HeaderMap` is missing
+    |
+note: function defined here
+   --> src\api\oauth2.rs:72:14
+    |
+ 72 | pub async fn authorize(
+    |              ^^^^^^^^^
+help: provide the argument
+    |
+258 |         let auth_response = oauth2::authorize(State(state.clone()), /* HeaderMap */, Query(auth_request))
+    |                                                                     ++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> tests\oauth2_integration_test.rs:311:29
+    |
+311 |         let auth_response = oauth2::authorize(State(state.clone()), Query(auth_request))
+    |                             ^^^^^^^^^^^^^^^^^                       ------------------- argument #2 of type `HeaderMap` is missing
+    |
+note: function defined here
+   --> src\api\oauth2.rs:72:14
+    |
+ 72 | pub async fn authorize(
+    |              ^^^^^^^^^
+help: provide the argument
+    |
+311 |         let auth_response = oauth2::authorize(State(state.clone()), /* HeaderMap */, Query(auth_request))
+    |                                                                     ++++++++++++++++
+
+For more information about this error, try `rustc --explain E0061`.
+error: could not compile `auth-framework` (test "oauth2_integration_test") due to 5 previous errors
+warning: build failed, waiting for other jobs to finish...

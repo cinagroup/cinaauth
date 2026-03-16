@@ -762,7 +762,7 @@ class RbacManager:
         except Exception:
             return []
 "#,
-            "", // Type hints placeholder - both branches were identical
+            "", // No additional imports needed between typing and .types import groups
             self.config.version,
             self.config.version,
             self.config.version,
@@ -784,23 +784,218 @@ class RbacManager:
 
     /// Generate other modules (conditional, audit, utils)
     fn generate_conditional_module(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok("# Conditional permissions module - placeholder".to_string())
+        Ok(format!(
+            r#""""Conditional permission helpers for auth-framework Python SDK v{version}."""
+
+from __future__ import annotations
+from typing import Any, Callable, List, Optional
+
+
+class ConditionalPermission:
+    """A permission that is only granted when a runtime condition is satisfied."""
+
+    def __init__(self, permission: str, condition: Callable[..., bool]) -> None:
+        self.permission = permission
+        self._condition = condition
+
+    def is_granted(self, **context: Any) -> bool:
+        """Return True only when the attached condition evaluates to True."""
+        return self._condition(**context)
+
+
+class PermissionGate:
+    """Evaluates a list of :class:`ConditionalPermission` items against a context."""
+
+    def __init__(self, permissions: Optional[List[ConditionalPermission]] = None) -> None:
+        self._permissions: List[ConditionalPermission] = permissions or []
+
+    def add(self, cp: ConditionalPermission) -> None:
+        self._permissions.append(cp)
+
+    def evaluate(self, **context: Any) -> List[str]:
+        """Return the names of all permissions granted in the given context."""
+        return [
+            cp.permission for cp in self._permissions if cp.is_granted(**context)
+        ]
+
+    def has(self, permission: str, **context: Any) -> bool:
+        """Return True if *permission* is granted in *context*."""
+        return permission in self.evaluate(**context)
+"#,
+            version = self.config.version
+        ))
     }
 
     fn generate_audit_module(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok("# Audit module - placeholder".to_string())
+        Ok(format!(
+            r#"""Audit log client for auth-framework Python SDK v{version}."""
+
+from __future__ import annotations
+import time
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+
+@dataclass
+class AuditEvent:
+    """Represents a single audit log entry."""
+
+    event_type: str
+    user_id: str
+    resource: str
+    outcome: str
+    timestamp: float = field(default_factory=time.time)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+class AuditLog:
+    """Lightweight in-process audit log buffer."""
+
+    def __init__(self, max_size: int = 10_000) -> None:
+        self._events: List[AuditEvent] = []
+        self._max_size = max_size
+
+    def record(self, event: AuditEvent) -> None:
+        if len(self._events) >= self._max_size:
+            self._events.pop(0)
+        self._events.append(event)
+
+    def query(
+        self,
+        *,
+        user_id: Optional[str] = None,
+        event_type: Optional[str] = None,
+        outcome: Optional[str] = None,
+    ) -> List[AuditEvent]:
+        results = self._events
+        if user_id is not None:
+            results = [e for e in results if e.user_id == user_id]
+        if event_type is not None:
+            results = [e for e in results if e.event_type == event_type]
+        if outcome is not None:
+            results = [e for e in results if e.outcome == outcome]
+        return results
+
+    def clear(self) -> None:
+        self._events.clear()
+"#,
+            version = self.config.version
+        ))
     }
 
     fn generate_utils(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok("# Utils module - placeholder".to_string())
+        Ok(format!(
+            r#"""Utility helpers for auth-framework Python SDK v{version}."""
+
+from __future__ import annotations
+import base64
+import time
+from typing import Any, Dict, Optional
+
+
+def decode_jwt_payload(token: str) -> Dict[str, Any]:
+    """Decode JWT payload without verifying the signature.
+
+    .. warning::
+        This does **not** verify the token. Use the server-side validation
+        endpoints for security-sensitive operations.
+    """
+    try:
+        parts = token.split(".")
+        if len(parts) < 2:
+            raise ValueError("Not a valid JWT")
+        padding = "=" * (4 - len(parts[1]) % 4)
+        import json
+        return json.loads(base64.urlsafe_b64decode(parts[1] + padding))
+    except Exception as exc:
+        raise ValueError(f"Failed to decode JWT payload: {{exc}}") from exc
+
+
+def is_token_expired(token: str, leeway: int = 0) -> bool:
+    """Return True if the JWT *exp* claim is in the past."""
+    try:
+        payload = decode_jwt_payload(token)
+        exp: Optional[int] = payload.get("exp")
+        if exp is None:
+            return False
+        return time.time() > (exp + leeway)
+    except ValueError:
+        return True
+
+
+def constant_time_compare(a: str, b: str) -> bool:
+    """Compare two strings in constant time to prevent timing attacks."""
+    if len(a) != len(b):
+        return False
+    result = 0
+    for x, y in zip(a, b):
+        result |= ord(x) ^ ord(y)
+    return result == 0
+"#,
+            version = self.config.version
+        ))
     }
 
     fn generate_init(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok("# Package init - placeholder".to_string())
+        Ok(format!(
+            r#"""auth-framework Python SDK v{version}.
+
+Usage::
+
+    from auth_framework import AuthClient
+
+    client = AuthClient(base_url="https://auth.example.com", api_key="...")
+    token = client.authenticate(username="alice", password="secret")
+"""
+
+from .client import AuthClient
+from .models import AuthToken, UserInfo
+from .exceptions import AuthError, TokenExpiredError, PermissionDeniedError
+
+__all__ = [
+    "AuthClient",
+    "AuthToken",
+    "UserInfo",
+    "AuthError",
+    "TokenExpiredError",
+    "PermissionDeniedError",
+]
+
+__version__ = "{version}"
+"#,
+            version = self.config.version
+        ))
     }
 
     fn generate_setup(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok("# Setup.py - placeholder".to_string())
+        Ok(format!(
+            r#""""Setup configuration for auth-framework Python SDK."""
+from setuptools import setup, find_packages
+
+setup(
+    name="auth-framework-sdk",
+    version="{version}",
+    description="Python SDK for auth-framework authentication and authorization",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    python_requires=">=3.9",
+    packages=find_packages(),
+    install_requires=[
+        "aiohttp>=3.8.0",
+        "requests>=2.28.0",
+    ],
+    extras_require={{
+        "async": ["aiohttp>=3.8.0"],
+    }},
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Topic :: Security",
+    ],
+)
+"#,
+            version = self.config.version,
+        ))
     }
 
     fn generate_requirements(&self) -> Result<String, Box<dyn std::error::Error>> {
@@ -808,7 +1003,52 @@ class RbacManager:
     }
 
     fn generate_readme(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok("# AuthFramework Python SDK - placeholder".to_string())
+        Ok(format!(
+            r#"# auth-framework-sdk — AuthFramework Python SDK v{version}
+
+A Python SDK for integrating with the AuthFramework authentication and authorization server.
+
+## Installation
+
+```bash
+pip install auth-framework-sdk
+```
+
+## Quick Start
+
+```python
+from auth_framework import {client_name}
+
+client = {client_name}(
+    base_url="{base_url}",
+    api_key="your-api-key",
+)
+
+# Authenticate a user
+token = client.authenticate(username="alice", password="secret")
+print(token.access_token)
+
+# Validate a token
+user = client.validate_token(token.access_token)
+print(user.user_id)
+```
+
+## Features
+
+- **Token Authentication**: Username/password, API keys, OAuth 2.0
+- **RBAC**: Role-based access control with permission checks
+- **MFA**: Multi-factor authentication (TOTP, Email, WebAuthn)
+- **Audit Logging**: Built-in audit log client
+- **Async Support**: Full async/await support via `aiohttp`
+
+## License
+
+MIT
+"#,
+            version = self.config.version,
+            client_name = self.config.client_name,
+            base_url = self.config.base_url,
+        ))
     }
 }
 

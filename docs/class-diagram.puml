@@ -1,0 +1,2023 @@
+@startuml AuthFramework
+' =============================================================================
+' AuthFramework - UML 2.0 Class Diagram
+' Generated: 2026-03-11
+' =============================================================================
+'
+' LEGEND
+'   ◆──  composition (owns, lifetime-linked)
+'   o──  aggregation (references, independent lifetime)
+'   ──>  dependency / use
+'   --|>  realization (implements trait)
+'   ──▷  generalization (extends)
+'
+' ANNOTATIONS
+'   «trait»     Rust trait (maps to UML interface)
+'   «enum»      Rust enum
+'   «feature»   only compiled under a cargo feature flag
+'   «⚠ dup»     type is duplicated elsewhere — candidate for consolidation
+'
+' =============================================================================
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam classFontSize 11
+skinparam ArrowFontSize 10
+skinparam shadowing false
+skinparam linetype ortho
+
+hide empty members
+
+' =============================================================================
+' PACKAGE: errors
+' =============================================================================
+package "errors" #EEEEEE {
+
+  enum AuthError <<enum>> {
+    Configuration
+    AuthMethod
+    Token(TokenError)
+    Permission(PermissionError)
+    Storage(StorageError)
+    RateLimit
+    Mfa(MfaError)
+    DeviceFlow(DeviceFlowError)
+    OAuthProvider(OAuthProviderError)
+    UserNotFound
+    InvalidCredential
+    Timeout
+    Crypto
+    Validation
+    Internal
+    StepUpRequired
+    Unauthorized(String)
+    InvalidToken(String)
+    SessionError(String)
+  }
+
+  enum TokenError <<enum>> {
+    Expired
+    Invalid
+    NotFound
+    Missing
+    CreationFailed
+    RefreshFailed
+    RevocationFailed
+  }
+
+  enum StorageError <<enum>> {
+    ConnectionFailed
+    OperationFailed
+    Serialization
+    BackendUnavailable
+  }
+
+  enum MfaError <<enum>> {
+    ChallengeExpired
+    InvalidCode
+    MethodNotSupported
+    SetupRequired
+    VerificationFailed
+  }
+
+  AuthError ..> TokenError
+  AuthError ..> StorageError
+  AuthError ..> MfaError
+}
+
+' =============================================================================
+' PACKAGE: config
+' =============================================================================
+package "config" #E8F4FD {
+
+  class AuthConfig {
+    + token_lifetime: Duration
+    + refresh_token_lifetime: Duration
+    + enable_multi_factor: bool
+    + issuer: String
+    + audience: String
+    + secret: Option<String>
+    + storage: StorageConfig
+    + rate_limiting: RateLimitConfig
+    + security: SecurityConfig
+    + audit: AuditConfig
+    + force_production_mode: bool
+  }
+
+  enum StorageConfig <<enum>> {
+    Memory
+    Redis { url, key_prefix }
+    Postgres { connection_string }
+    MySQL { .. }
+    Custom(String)
+  }
+
+  enum JwtAlgorithm <<enum>> {
+    HS256 | HS384 | HS512
+    RS256 | RS384 | RS512
+    ES256 | ES384
+  }
+
+  enum PasswordHashAlgorithm <<enum>> {
+    Argon2
+    Bcrypt
+    Scrypt
+  }
+
+  class SecurityConfig {
+    + min_password_length: usize
+    + require_password_complexity: bool
+    + password_hash_algorithm: PasswordHashAlgorithm
+    + jwt_algorithm: JwtAlgorithm
+    + secret_key: Option<String>
+    + secure_cookies: bool
+    + csrf_protection: bool
+    + session_timeout: Duration
+  }
+
+  class RateLimitConfig {
+    + enabled: bool
+    + max_requests: u32
+    + window: Duration
+    + burst: u32
+  }
+
+  class AuditConfig {
+    + enabled: bool
+    + log_success: bool
+    + log_failures: bool
+    + log_permissions: bool
+    + log_tokens: bool
+    + storage: AuditStorage
+  }
+
+  class ConfigManager {
+    + sources: Vec<String>
+    + env_prefix: String
+    --
+    + load() : Result<AuthFrameworkSettings>
+    + reload() : Result<()>
+    + get<T>(key) : Result<T>
+  }
+
+  class AuthFrameworkSettings {
+    + auth: AuthConfig
+    + session: Option<SessionSettings>
+    + custom: HashMap<String, Value>
+  }
+
+  class SessionSettings {
+    + max_concurrent_sessions: Option<u32>
+    + cleanup_interval: Option<u64>
+    + enable_device_tracking: Option<bool>
+  }
+
+  AuthConfig *-- SecurityConfig
+  AuthConfig *-- RateLimitConfig
+  AuthConfig *-- AuditConfig
+  AuthConfig *-- StorageConfig
+  SecurityConfig ..> JwtAlgorithm
+  SecurityConfig ..> PasswordHashAlgorithm
+  AuthFrameworkSettings *-- AuthConfig
+  AuthFrameworkSettings *-- SessionSettings
+}
+
+' =============================================================================
+' PACKAGE: tokens
+' =============================================================================
+package "tokens" #FFF3CD {
+
+  class TokenManager {
+    - encoding_key: EncodingKey
+    - decoding_key: DecodingKey
+    - algorithm: Algorithm
+    - issuer: String
+    - audience: String
+    - default_lifetime: Duration
+    --
+    + new_hmac(secret, issuer, audience): Self
+    + new_rsa(priv, pub, issuer, audience): Self
+    + create_jwt_token(user_id, scopes, lifetime): Result<String>
+    + validate_jwt_token(token): Result<JwtClaims>
+    + create_auth_token(user_id, scopes, method, lifetime): Result<AuthToken>
+    + validate_auth_token(token): Result<()>
+    + refresh_token(token): Result<AuthToken>
+    + extract_token_info(token): Result<TokenInfo>
+  }
+
+  class AuthToken {
+    + token_id: String
+    + user_id: String
+    + access_token: String
+    + token_type: Option<String>
+    + refresh_token: Option<String>
+    + issued_at: DateTime<Utc>
+    + expires_at: DateTime<Utc>
+    + scopes: Vec<String>
+    + auth_method: String
+    + client_id: Option<String>
+    + permissions: Vec<String>
+    + roles: Vec<String>
+    --
+    + is_expired(): bool
+    + is_valid(): bool
+    + has_scope(scope): bool
+    + has_permission(perm): bool
+    + has_role(role): bool
+    + revoke(reason)
+    + mark_used()
+  }
+
+  class TokenMetadata {
+    + issued_ip: Option<String>
+    + user_agent: Option<String>
+    + device_id: Option<String>
+    + session_id: Option<String>
+    + revoked: bool
+    + revoked_at: Option<DateTime<Utc>>
+    + revoked_reason: Option<String>
+    + last_used: Option<DateTime<Utc>>
+    + use_count: u64
+    + custom: HashMap<String, Value>
+  }
+
+  class JwtClaims {
+    + sub: String
+    + iss: String
+    + aud: String
+    + exp: i64
+    + iat: i64
+    + nbf: i64
+    + jti: String
+    + scope: String
+    + permissions: Option<Vec<String>>
+    + roles: Option<Vec<String>>
+    + client_id: Option<String>
+    + custom: HashMap<String, Value>
+  }
+
+  class TokenInfo {
+    + user_id: String
+    + username: Option<String>
+    + email: Option<String>
+    + name: Option<String>
+    + roles: Vec<String>
+    + permissions: Vec<String>
+    + attributes: HashMap<String, Value>
+  }
+
+  AuthToken *-- TokenMetadata
+  TokenManager ..> AuthToken : creates
+  TokenManager ..> JwtClaims : validates/returns
+  TokenManager ..> TokenInfo : extracts
+}
+
+' =============================================================================
+' PACKAGE: storage
+' =============================================================================
+package "storage" #E8F5E9 {
+
+  interface AuthStorage <<trait>> {
+    + store_token(token: &AuthToken): Result<()>
+    + get_token(id): Result<Option<AuthToken>>
+    + get_token_by_access_token(token): Result<Option<AuthToken>>
+    + update_token(token): Result<()>
+    + delete_token(id): Result<()>
+    + list_user_tokens(user_id): Result<Vec<AuthToken>>
+    --
+    + store_session(id, data): Result<()>
+    + get_session(id): Result<Option<SessionData>>
+    + delete_session(id): Result<()>
+    + list_user_sessions(user_id): Result<Vec<SessionData>>
+    + count_active_sessions(): Result<u64>
+    --
+    + store_kv(key, value, ttl): Result<()>
+    + get_kv(key): Result<Option<Vec<u8>>>
+    + delete_kv(key): Result<()>
+    --
+    + cleanup_expired(): Result<()>
+  }
+
+  interface AuthorizationStorage <<trait>> {
+    + store_role(role): Result<()>
+    + get_role(id): Result<Option<Role>>
+    + update_role(role): Result<()>
+    + delete_role(id): Result<()>
+    + list_roles(): Result<Vec<Role>>
+    + assign_role(user_id, role_id): Result<()>
+    + remove_role(user_id, role_id): Result<()>
+    + get_user_roles(user_id): Result<Vec<Role>>
+    + get_role_users(role_id): Result<Vec<String>>
+  }
+
+  class SessionData {
+    + session_id: String
+    + user_id: String
+    + created_at: DateTime<Utc>
+    + expires_at: DateTime<Utc>
+    + last_activity: DateTime<Utc>
+    + ip_address: Option<String>
+    + user_agent: Option<String>
+    + data: HashMap<String, Value>
+  }
+
+  class MemoryStorage {
+    - tokens: DashMap<String, AuthToken>
+    - sessions: DashMap<String, SessionData>
+    - kv: DashMap<String, (Vec<u8>, Option<Instant>)>
+    - roles: DashMap<String, Role>
+  }
+
+  class RedisStorage <<feature: redis>> {
+    - client: redis::Client
+    - key_prefix: String
+    --
+    + new(url, prefix): Result<Self>
+  }
+
+  class PostgresStorage <<feature: postgres>> {
+    - pool: PgPool
+    --
+    + new(connection_string): Result<Self>
+  }
+
+  MemoryStorage ..|> AuthStorage
+  MemoryStorage ..|> AuthorizationStorage
+  RedisStorage ..|> AuthStorage
+  PostgresStorage ..|> AuthStorage
+}
+
+' =============================================================================
+' PACKAGE: user_context
+' =============================================================================
+package "user_context" #FDF6E3 {
+
+  class UserContext {
+    + user_id: String
+    + username: String
+    + email: Option<String>
+    + scopes: Vec<String>
+    + authenticated_at: SystemTime
+    + session_id: String
+    + attributes: HashMap<String, String>
+    --
+    + has_scope(scope): bool
+    + add_attribute(key, value)
+  }
+
+  class SessionStore {
+    - sessions: HashMap<String, UserContext>
+    --
+    + new(): Self
+    + create_session(ctx): String
+    + get_session(id): Option<&UserContext>
+    + invalidate_session(id): bool
+    + validate_session(id): bool
+  }
+
+  SessionStore o-- UserContext
+}
+
+' =============================================================================
+' PACKAGE: providers
+' =============================================================================
+package "providers" #FCE4EC {
+
+  enum OAuthProvider <<enum>> {
+    GitHub
+    Google
+    Microsoft
+    Discord
+    Twitter
+    Facebook
+    LinkedIn
+    GitLab
+    Custom { name, config: Box<OAuthProviderConfig> }
+  }
+
+  class OAuthProviderConfig {
+    + authorization_url: String
+    + token_url: String
+    + device_authorization_url: Option<String>
+    + userinfo_url: Option<String>
+    + revocation_url: Option<String>
+    + default_scopes: Vec<String>
+    + supports_pkce: bool
+    + supports_refresh: bool
+    + supports_device_flow: bool
+    + additional_params: HashMap<String, String>
+  }
+
+  class UserProfile <<⚠ dup: 4 variants>> {
+    + id: Option<String>
+    + provider: Option<String>
+    + username: Option<String>
+    + name: Option<String>
+    + email: Option<String>
+    + email_verified: Option<bool>
+    + picture: Option<String>
+    + locale: Option<String>
+    + additional_data: HashMap<String, Value>
+    --
+    + new(): Self
+    + from_token_response(resp): Self
+    + from_id_token(token): Result<Self>
+    + to_auth_token(access_token): AuthToken
+  }
+
+  note top of UserProfile
+    <b>⚠ DUPLICATION:</b>
+    UserProfile also defined in:
+    - src/api/users.rs (api::users::UserProfile)
+    - src/server/oidc/core.rs (OidcProvider::UserInfo)
+    - src/auth.rs (UserInfo)
+    - src/methods/mod.rs (methods::UserInfo)
+    - src/api/auth.rs (api::auth::UserInfo)
+    Consider creating one canonical UserProfile in providers.rs
+  end note
+
+  OAuthProvider o-- OAuthProviderConfig
+}
+
+' =============================================================================
+' PACKAGE: methods
+' =============================================================================
+package "methods" #EDE7F6 {
+
+  interface AuthMethod <<trait>> {
+    + name(): &str
+    + authenticate(credential, metadata): Future<Result<MethodResult>>
+    + validate_config(): Result<()>
+    + supports_refresh(): bool
+    + refresh_token(token): Future<Result<AuthToken>>
+  }
+
+  enum MethodResult <<enum>> {
+    Success(Box<AuthToken>)
+    MfaRequired(Box<MfaChallenge>)
+    Failure { reason: String }
+  }
+
+  enum MfaType <<enum>> {
+    Totp
+    Sms { phone_number: String }
+    Email { email_address: String }
+    Push { device_id: String }
+    SecurityKey
+    BackupCode
+    MultiMethod
+  }
+
+  class MfaChallenge <<⚠ dup: 2 variants>> {
+    + id: String
+    + mfa_type: MfaType
+    + user_id: String
+    + expires_at: DateTime<Utc>
+    + message: Option<String>
+    + data: HashMap<String, Value>
+  }
+
+  note right of MfaChallenge
+    <b>⚠ DUPLICATION:</b>
+    Also defined as security::secure_mfa::MfaChallenge
+    with different fields (code_hash, attempts, max_attempts)
+    These serve different purposes but share a name
+  end note
+
+  enum AuthMethodEnum <<enum>> {
+    Password(PasswordMethod)
+    Jwt(JwtMethod)
+    ApiKey(ApiKeyMethod)
+    OAuth2(OAuth2Method)
+    Saml(SamlAuthMethod) «feature»
+    Ldap(LdapAuthMethod) «feature»
+    ClientCert(ClientCertAuthMethod)
+    OpenIdConnect(OpenIdConnectAuthMethod)
+    AdvancedMfa(AdvancedMfaAuthMethod)
+    Passkey(PasskeyAuthMethod) «feature»
+  }
+
+  MfaChallenge ..> MfaType
+  MethodResult ..> MfaChallenge
+  AuthMethodEnum ..> AuthMethod
+}
+
+' =============================================================================
+' PACKAGE: permissions
+' =============================================================================
+package "permissions" #E8EAF6 {
+
+  class Permission <<⚠ dup: 2 variants>> {
+    + action: String
+    + resource: String
+    + instance: Option<String>
+  }
+
+  note top of Permission
+    <b>⚠ DUPLICATION:</b>
+    authorization.rs also defines Permission
+    with fields: resource, action, conditions, attributes
+    These serve the same purpose with different feature sets
+  end note
+
+  class Role <<⚠ dup: 2 variants>> {
+    + name: String
+    + description: Option<String>
+    + permissions: HashSet<Permission>
+    + parent_roles: HashSet<String>
+    + active: bool
+  }
+
+  note top of Role
+    <b>⚠ DUPLICATION:</b>
+    authorization.rs defines Role with:
+    id, name, description, permissions: HashSet~Permission~,
+    parent_roles, metadata, created_at, updated_at
+    Consider merging into one canonical Role
+  end note
+
+  class UserPermissions {
+    + user_id: String
+    + direct_permissions: HashSet<Permission>
+    + roles: HashSet<String>
+    + computed_permissions: Option<HashSet<Permission>>
+    + last_updated: DateTime<Utc>
+  }
+
+  class PermissionChecker {
+    - roles: HashMap<String, Role>
+    - user_permissions: HashMap<String, UserPermissions>
+    - resource_hierarchy: HashMap<String, Vec<String>>
+    --
+    + check_advanced_permission(user_id, action, resource): bool
+    + check_abac(ctx, policy): bool
+    + check_delegation(user_id, delegatee, perm): bool
+  }
+
+  class AbacPolicy {
+    + attributes: HashMap<String, Value>
+    + rules: Vec<AbacRule>
+  }
+
+  class AbacRule {
+    + attribute: String
+    + expected_value: Value
+    + permission: Permission
+  }
+
+  class Delegation {
+    + delegator: String
+    + delegatee: String
+    + permissions: HashSet<Permission>
+    + expires_at: Option<DateTime<Utc>>
+  }
+
+  Role *-- Permission
+  UserPermissions o-- Role
+  PermissionChecker o-- Role
+  PermissionChecker o-- UserPermissions
+  AbacPolicy *-- AbacRule
+  AbacRule o-- Permission
+  Delegation o-- Permission
+}
+
+' =============================================================================
+' PACKAGE: authorization (legacy RBAC)
+' =============================================================================
+package "authorization (legacy)" #F3E5F5 {
+
+  class AccessContext {
+    + user_id: String
+    + user_attributes: HashMap<String, String>
+    + resource_id: Option<String>
+    + resource_attributes: HashMap<String, String>
+    + ip_address: Option<String>
+    + timestamp: SystemTime
+  }
+
+  class UserRole {
+    + user_id: String
+    + role_id: String
+    + assigned_at: SystemTime
+    + assigned_by: Option<String>
+    + expires_at: Option<SystemTime>
+  }
+
+  note as NLegacyRbac
+    This package (authorization.rs) is a "legacy" RBAC layer.
+    The newer RBAC is in authorization_enhanced/.
+    Both define Role and Permission independently.
+    The legacy Role/Permission are used by MemoryStorage
+    via AuthorizationStorage trait.
+  end note
+}
+
+' =============================================================================
+' PACKAGE: authorization_enhanced
+' =============================================================================
+package "authorization_enhanced" #E1F5FE {
+
+  class AuthorizationService {
+    - config: AuthorizationConfig
+    --
+    + new(): Result<Self>
+    + check_permission(user_id, action, resource, ctx): Result<bool>
+    + assign_role(user_id, role_id): Result<()>
+    + revoke_role(user_id, role_id): Result<()>
+    + create_role(id, desc, permissions): Result<()>
+    + update_role(id, desc, parent): Result<()>
+    + delete_role(id): Result<()>
+    + get_user_roles(user_id): Result<Vec<Role>>
+    + get_all_roles(): Result<Vec<Role>>
+    + list_roles(): Result<Vec<Role>>
+  }
+
+  class AuthorizationConfig {
+    + enable_audit: bool
+    + enable_caching: bool
+    + cache_ttl_seconds: u64
+    + max_hierarchy_depth: usize
+  }
+
+  class AuthorizationContext {
+    + user_id: String
+    + roles: Vec<String>
+    + session_id: Option<String>
+    + method: String
+    + path: String
+    + ip_address: Option<IpAddr>
+    + request_time: DateTime<Utc>
+    + time_of_day: TimeOfDay
+    + day_type: DayType
+    + device_type: DeviceType
+    + connection_type: ConnectionType
+    + security_level: SecurityLevel
+    + risk_score: u8
+    + custom_attributes: HashMap<String, String>
+  }
+
+  class ContextBuilder {
+    + business_start: u8
+    + business_end: u8
+    + corporate_networks: Vec<IpNetwork>
+    --
+    + build_context(request, token): AuthorizationContext
+    + to_hashmap(ctx): HashMap<String, String>
+  }
+
+  enum TimeOfDay <<enum>> {
+    BusinessHours
+    AfterHours
+    Weekend
+    Holiday
+  }
+  enum DayType <<enum>> {
+    Weekday
+    Weekend
+    Holiday
+  }
+  enum DeviceType <<enum>> {
+    Desktop
+    Mobile
+    Tablet
+    Unknown
+  }
+  enum ConnectionType <<enum>> {
+    Direct
+    VPN
+    Proxy
+    Tor
+    Corporate
+    Unknown
+  }
+  enum SecurityLevel <<enum>> {
+    Low
+    Medium
+    High
+    Critical
+  }
+
+  AuthorizationService *-- AuthorizationConfig
+  ContextBuilder ..> AuthorizationContext : creates
+  AuthorizationContext ..> TimeOfDay
+  AuthorizationContext ..> DayType
+  AuthorizationContext ..> DeviceType
+  AuthorizationContext ..> ConnectionType
+  AuthorizationContext ..> SecurityLevel
+}
+
+' =============================================================================
+' PACKAGE: session
+' =============================================================================
+package "session" #FFF8E1 {
+
+  interface SessionStorage <<trait>> {
+    + create_session(user_id, device, metadata): Result<Session>
+    + get_session(id): Result<Option<Session>>
+    + update_session(session): Result<()>
+    + delete_session(id): Result<()>
+    + get_user_sessions(user_id): Result<Vec<Session>>
+    + count_active_sessions(): Result<u64>
+    + cleanup_expired_sessions(): Result<u64>
+    + find_sessions_by_device(fingerprint): Result<Vec<Session>>
+    + find_sessions_by_ip(ip): Result<Vec<Session>>
+  }
+
+  enum SessionState <<enum>> <<⚠ dup: 2 variants>> {
+    Active
+    Expired
+    Revoked
+    Suspended
+    RequiresMfa
+    RequiresReauth
+  }
+
+  note top of SessionState
+    <b>⚠ DUPLICATION:</b>
+    Also defined as security::secure_session::SessionState
+    with a different variant: RequiresRotation + HighRisk
+    vs RequiresReauth here. Consider merging.
+  end note
+
+  class Session {
+    + id: String
+    + user_id: String
+    + created_at: SystemTime
+    + last_accessed: SystemTime
+    + expires_at: SystemTime
+    + state: SessionState
+    + mfa_verified: bool
+    + cached_permissions: Option<Vec<String>>
+  }
+
+  class DeviceInfo <<⚠ dup: 3 variants>> {
+    + fingerprint: String
+    + device_type: String
+    + operating_system: Option<String>
+    + browser: Option<String>
+    + screen_resolution: Option<String>
+    + timezone: Option<String>
+    + language: Option<String>
+    + is_trusted: bool
+    + device_name: Option<String>
+  }
+
+  note top of DeviceInfo
+    <b>⚠ DUPLICATION:</b>
+    Also defined in audit.rs (audit::DeviceInfo) and
+    indirectly in security::secure_session::DeviceFingerprint.
+    Different field sets. Consider one canonical DeviceInfo.
+  end note
+
+  class SecurityMetadata {
+    + creation_ip: String
+    + current_ip: String
+    + creation_location: Option<GeolocationInfo>
+    + current_location: Option<GeolocationInfo>
+    + security_flags: Vec<SecurityFlag>
+    + risk_score: u8
+    + location_changed: bool
+    + ip_changed: bool
+    + failed_auth_attempts: u32
+  }
+
+  class ActivityInfo {
+    + endpoint: Option<String>
+    + action: Option<String>
+    + timestamp: SystemTime
+  }
+
+  class GeolocationInfo {
+    + country: Option<String>
+    + region: Option<String>
+    + city: Option<String>
+    + latitude: Option<f64>
+    + longitude: Option<f64>
+  }
+
+  class SessionConfig {
+    + default_duration: Duration
+    + max_duration: Duration
+    + idle_timeout: Duration
+    + rotate_on_privilege_escalation: bool
+    + max_concurrent_sessions: Option<u32>
+    + track_device_fingerprints: bool
+    + security_policy: SessionSecurityPolicy
+  }
+
+  class SessionSecurityPolicy {
+    + require_mfa_for_new_devices: bool
+    + require_reauth_for_sensitive_ops: bool
+    + reauth_timeout: Duration
+    + max_risk_score: u8
+    + auto_suspend_suspicious: bool
+    + limit_concurrent_sessions: bool
+  }
+
+  class SessionManager {
+    - config: SessionConfig
+    --
+    + create_session(user_id, device, metadata): Result<Session>
+    + get_session(id): Result<Option<Session>>
+    + validate_session(id, ip): Result<bool>
+    + update_session_activity(id, endpoint)
+    + revoke_session(id, reason)
+    + revoke_all_user_sessions(user_id)
+    + cleanup_expired(): Result<u32>
+  }
+
+  enum SecurityFlag <<enum>> {
+    SuspiciousActivity
+    LocationAnomaly
+    DeviceAnomaly
+    TimeAnomaly
+    ConcurrentSessionLimit
+    BruteForceAttempt
+    RequiresVerification
+    ElevatedPrivileges
+  }
+
+  Session *-- DeviceInfo
+  Session *-- SecurityMetadata
+  Session *-- ActivityInfo
+  Session ..> SessionState
+  SecurityMetadata *-- GeolocationInfo
+  SecurityMetadata ..> SecurityFlag
+  SessionManager *-- SessionConfig
+  SessionConfig *-- SessionSecurityPolicy
+  SessionManager ..> SessionStorage : uses
+  SessionManager ..> Session : manages
+}
+
+' =============================================================================
+' PACKAGE: security
+' =============================================================================
+package "security" #FFEBEE {
+
+  class PasswordValidator {
+    + min_length: usize
+    + require_uppercase: bool
+    + require_lowercase: bool
+    + require_digits: bool
+    + require_special_chars: bool
+    + forbidden_patterns: Vec<String>
+    --
+    + validate(password): PasswordValidation
+    + assess_strength(password): PasswordStrength
+  }
+
+  class PasswordValidation {
+    + is_valid: bool
+    + strength: PasswordStrength
+    + issues: Vec<String>
+    + suggestions: Vec<String>
+  }
+
+  enum PasswordStrength <<enum>> {
+    VeryWeak | Weak | Fair | Good | Strong | VeryStrong
+  }
+
+  class SecureJwtClaims {
+    + sub: String
+    + iss: String
+    + aud: String
+    + exp: i64
+    + nbf: i64
+    + iat: i64
+    + jti: String
+    + scope: String
+    + typ: String
+    + sid: Option<String>
+    + client_id: Option<String>
+    + auth_ctx_hash: Option<String>
+  }
+
+  class SecureJwtConfig {
+    + allowed_algorithms: Vec<Algorithm>
+    + required_issuers: HashSet<String>
+    + required_audiences: HashSet<String>
+    + max_token_lifetime: Duration
+    + clock_skew: Duration
+    + require_jti: bool
+    + jwt_secret: String
+  }
+
+  class SecureJwtValidator {
+    - config: SecureJwtConfig
+    - revoked_tokens: Mutex<HashSet<String>>
+    --
+    + validate_token(token, key, verify_sig): Result<SecureJwtClaims>
+    + is_token_revoked(jti): Result<bool>
+    + revoke_token(jti): Result<()>
+    + cleanup_revoked_tokens(cutoff)
+  }
+
+  class SecureSession {
+    + id: String
+    + user_id: String
+    + created_at: SystemTime
+    + expires_at: SystemTime
+    + state: SecureSessionState
+    + creation_ip: String
+    + current_ip: String
+    + mfa_verified: bool
+    + risk_score: u8
+    + rotation_count: u32
+  }
+
+  enum SecureSessionState <<enum>> {
+    Active | Expired | Revoked
+    Suspended | RequiresMfa
+    RequiresRotation | HighRisk
+  }
+
+  class DeviceFingerprint {
+    + browser_hash: String
+    + screen_resolution: Option<String>
+    + timezone_offset: Option<i32>
+    + platform: Option<String>
+    + canvas_hash: Option<String>
+    + webgl_hash: Option<String>
+  }
+
+  class SecurityFlags {
+    + secure_transport: bool
+    + suspicious_location: bool
+    + multiple_failures: bool
+    + new_device: bool
+    + unusual_hours: bool
+    + high_privilege_ops: bool
+  }
+
+  class SecureSessionManager {
+    - config: SecureSessionConfig
+    - active_sessions: Arc<DashMap<String, SecureSession>>
+    - user_sessions: Arc<DashMap<String, Vec<String>>>
+    --
+    + create_session(user_id, ip, user_agent): Result<SecureSession>
+    + validate_session(id, ip): Result<bool>
+    + rotate_session_id(id): Result<String>
+    + revoke_session(id): Result<()>
+    + revoke_all_user_sessions(user_id): Result<()>
+    + cleanup_expired()
+  }
+
+  class SecureSessionConfig {
+    + max_lifetime: Duration
+    + idle_timeout: Duration
+    + max_concurrent_sessions: u32
+    + rotation_interval: Duration
+    + require_secure_transport: bool
+    + max_risk_score: u8
+    + validate_ip_address: bool
+    + max_ip_changes: u32
+  }
+
+  class SecurityManager {
+    - rate_limit_config: RateLimitConfig
+    - dos_config: DosProtectionConfig
+    --
+    + check_ip_security(ip): Result<bool>
+    + record_failure(ip)
+    + blacklist_ip(ip)
+    + whitelist_ip(ip)
+    + get_stats(): SecurityStats
+  }
+
+  class MfaConfig {
+    + totp_config: TotpConfig
+    + sms_config: Option<SmsConfig>
+    + email_config: Option<EmailConfig>
+    + backup_codes_config: BackupCodesConfig
+    + challenge_timeout_seconds: u64
+    + max_verification_attempts: u32
+  }
+
+  class TotpConfig {
+    + issuer: String
+    + digits: u8
+    + period: u64
+    + skew: u8
+  }
+
+  class SecureMfaService {
+    + generate_secure_code(length): Result<SecureMfaCode>
+    + create_challenge(user_id, type, length): Result<(String, SecureMfaCode)>
+  }
+
+  enum SecurityPreset <<enum>> {
+    Development
+    Balanced
+    HighSecurity
+    Paranoid
+  }
+
+  SecureJwtValidator *-- SecureJwtConfig
+  SecureSession *-- DeviceFingerprint
+  SecureSession *-- SecurityFlags
+  SecureSession ..> SecureSessionState
+  SecureSessionManager *-- SecureSessionConfig
+  SecureSessionManager o-- SecureSession
+  PasswordValidator ..> PasswordValidation
+  PasswordValidation ..> PasswordStrength
+  MfaConfig *-- TotpConfig
+  SecurityPreset ..> SecurityConfig : generates
+}
+
+' =============================================================================
+' PACKAGE: audit
+' =============================================================================
+package "audit" #E8F5E9 {
+
+  interface AuditStorageInterface <<trait>> {
+    + store_event(event): Result<()>
+    + query_events(query): Result<Vec<AuditEvent>>
+    + get_event(id): Result<Option<AuditEvent>>
+    + count_events(query): Result<u64>
+    + delete_old_events(before): Result<u64>
+    + get_statistics(query): Result<AuditStatistics>
+  }
+
+  enum AuditEventType <<enum>> {
+    LoginSuccess | LoginFailure | Logout
+    TokenRefresh | TokenExpired | TokenRevoked
+    MfaSetup | MfaChallengeCreated | MfaVerified | MfaFailed
+    PermissionGranted | PermissionDenied
+    RoleAssigned | RoleRevoked | RoleCreated
+    UserCreated | UserUpdated | UserDeleted | AccountLocked
+    SuspiciousActivity | BruteForceDetected | RateLimitExceeded
+    AdminAction | ConfigurationChanged | SystemStartup
+    ' ... 30+ variants total
+  }
+
+  enum RiskLevel <<enum>> {
+    Low
+    Medium
+    High
+    Critical
+  }
+  enum EventOutcome <<enum>> {
+    Success
+    Failure
+    Partial
+    Unknown
+  }
+
+  class AuditEvent {
+    + id: String
+    + event_type: AuditEventType
+    + timestamp: SystemTime
+    + user_id: Option<String>
+    + session_id: Option<String>
+    + outcome: EventOutcome
+    + risk_level: RiskLevel
+    + description: String
+    + details: HashMap<String, String>
+    + correlation_id: Option<String>
+  }
+
+  class RequestMetadata {
+    + ip_address: Option<String>
+    + user_agent: Option<String>
+    + request_id: Option<String>
+    + endpoint: Option<String>
+    + http_method: Option<String>
+  }
+
+  class ActorInfo {
+    + actor_type: String
+    + actor_id: String
+    + actor_name: Option<String>
+    + roles: Vec<String>
+  }
+
+  class ResourceInfo {
+    + resource_type: String
+    + resource_id: String
+    + resource_name: Option<String>
+    + attributes: HashMap<String, String>
+  }
+
+  class AuditQuery {
+    + event_types: Option<Vec<AuditEventType>>
+    + user_id: Option<String>
+    + risk_level: Option<RiskLevel>
+    + outcome: Option<EventOutcome>
+    + limit: Option<u64>
+    + offset: Option<u64>
+  }
+
+  class AuditLogger {
+    --
+    + log(event_type, user_id, outcome, description)
+    + log_with_context(event)
+    + query(query): Result<Vec<AuditEvent>>
+  }
+
+  AuditEvent *-- RequestMetadata
+  AuditEvent *-- ActorInfo
+  AuditEvent *-- ResourceInfo
+  AuditEvent ..> AuditEventType
+  AuditEvent ..> RiskLevel
+  AuditEvent ..> EventOutcome
+  AuditLogger ..> AuditStorageInterface : uses
+  AuditLogger ..> AuditEvent : creates
+  AuditQuery ..> AuditEventType
+}
+
+' =============================================================================
+' PACKAGE: oauth2_domain (src/oauth2_server.rs + src/oauth2_enhanced_storage.rs)
+' =============================================================================
+package "oauth2_domain\n(standalone server layer)" #FFF3E0 {
+
+  note as NOAuth2Domain
+    <b>⚠ ARCHITECTURAL NOTE:</b>
+    This is one of THREE parallel OAuth2 implementations.
+    The API handlers (api/oauth2.rs) do NOT use OAuth2Server —
+    they reach directly into AuthFramework::storage() and
+    AuthFramework::token_manager(). So this struct is only
+    useful when consumed directly by library users, not via
+    the HTTP API.
+  end note
+
+  enum GrantType <<enum>> {
+    AuthorizationCode
+    RefreshToken
+    ClientCredentials
+    DeviceCode
+    TokenExchange
+  }
+
+  enum ResponseType <<enum>> {
+    Code | Token | IdToken
+  }
+
+  enum ClientType <<enum>> <<⚠ dup: 2 variants>> {
+    Confidential
+    Public
+  }
+
+  note top of ClientType
+    <b>⚠ DUPLICATION:</b>
+    Also defined in server/core/client_registry.rs
+    (adds Device variant) and implicitly in API layer
+  end note
+
+  class OAuth2Config {
+    + issuer: String
+    + authorization_code_lifetime: Duration
+    + access_token_lifetime: Duration
+    + refresh_token_lifetime: Duration
+    + require_pkce: bool
+    + enable_introspection: bool
+    + enable_revocation: bool
+  }
+
+  class TokenRequest <<⚠ dup: 2 variants>> {
+    + grant_type: String
+    + client_id: String
+    + client_secret: Option<String>
+    + code: Option<String>
+    + redirect_uri: Option<String>
+    + refresh_token: Option<String>
+    + scope: Option<String>
+    + code_verifier: Option<String>
+    + username: Option<String>
+    + device_code: Option<String>
+  }
+
+  note top of TokenRequest
+    <b>⚠ DUPLICATION:</b>
+    Also defined as api::oauth2::TokenRequest
+    (no username / device_code fields)
+  end note
+
+  class TokenResponse <<⚠ dup: 2 variants>> {
+    + access_token: String
+    + token_type: String
+    + expires_in: u64
+    + refresh_token: Option<String>
+    + scope: Option<String>
+    + id_token: Option<String>
+  }
+
+  class AuthorizationRequest <<⚠ dup: 2 variants>> {
+    + client_id: String
+    + response_type: String
+    + redirect_uri: String
+    + scope: Option<String>
+    + state: Option<String>
+    + code_challenge: Option<String>
+    + code_challenge_method: Option<String>
+    + nonce: Option<String>
+  }
+
+  class OAuth2Server {
+    - config: OAuth2Config
+    - token_manager: Arc<TokenManager>
+    --
+    + new(config, token_manager): Self
+    + register_confidential_client(..): Result<()>
+    + register_public_client(..): Result<()>
+    + create_authorization_code(request, user): Result<String>
+    + handle_token_exchange(request, headers): Result<TokenResponse>
+    + revoke_token(client_id, token): Result<()>
+    + authenticate_user(username, password): Result<Option<UserContext>>
+    + get_user_email(username): Result<Option<String>>
+  }
+
+  class EnhancedTokenStorage {
+    - refresh_tokens: HashMap<String, RefreshToken>
+    - authorization_codes: HashMap<String, EnhancedAuthorizationCode>
+    - client_credentials: HashMap<String, EnhancedClientCredentials>
+    - users: HashMap<String, UserCredentials>
+    --
+    + store_refresh_token(token): Result<()>
+    + get_refresh_token(id): Result<Option<RefreshToken>>
+    + validate_refresh_token(id): Result<bool>
+    + revoke_refresh_token(id): Result<()>
+    + store_authorization_code(code): Result<()>
+    + consume_authorization_code(code): Result<Option<EnhancedAuthorizationCode>>
+    + store_client_credentials(client): Result<()>
+    + validate_client_credentials(id, secret): Result<bool>
+    + store_user_credentials(creds): Result<()>
+    + get_user_credentials(username): Result<Option<UserCredentials>>
+    + cleanup_expired_tokens(): Result<()>
+  }
+
+  class RefreshToken {
+    + token_id: String
+    + client_id: String
+    + user_id: String
+    + scopes: Vec<String>
+    + issued_at: SystemTime
+    + expires_at: SystemTime
+    + is_revoked: bool
+    --
+    + is_valid(): bool
+    + revoke()
+  }
+
+  class EnhancedAuthorizationCode {
+    + code: String
+    + client_id: String
+    + user_id: String
+    + redirect_uri: String
+    + scopes: Vec<String>
+    + code_challenge: Option<String>
+    + code_challenge_method: Option<String>
+    + issued_at: SystemTime
+    + expires_at: SystemTime
+    + is_used: bool
+    --
+    + mark_used()
+    + is_valid(): bool
+  }
+
+  class EnhancedClientCredentials {
+    + client_id: String
+    + client_secret_hash: String
+    + client_type: ClientType
+    + redirect_uris: Vec<String>
+    + allowed_scopes: Vec<String>
+    + grant_types: Vec<String>
+    + is_active: bool
+    --
+    + new_confidential(..): Self
+    + new_public(..): Self
+    + validate_secret(secret): Result<bool>
+    + requires_secret(): bool
+    + has_scope(scope): bool
+  }
+
+  class UserCredentials {
+    + username: String
+    + password_hash: String
+    + scopes: Vec<String>
+    + is_active: bool
+    + email: Option<String>
+  }
+
+  OAuth2Server *-- OAuth2Config
+  OAuth2Server o-- EnhancedTokenStorage
+  OAuth2Server o-- TokenManager
+  EnhancedTokenStorage o-- RefreshToken
+  EnhancedTokenStorage o-- EnhancedAuthorizationCode
+  EnhancedTokenStorage o-- EnhancedClientCredentials
+  EnhancedTokenStorage o-- UserCredentials
+  EnhancedClientCredentials ..> ClientType
+  OAuth2Server ..> GrantType
+}
+
+' =============================================================================
+' PACKAGE: server_layer (src/server/)
+' =============================================================================
+package "server_layer\n(RFC-compliant server objects)" #E3F2FD {
+
+  note as NServerLayer
+    <b>⚠ ARCHITECTURAL NOTE:</b>
+    This is a SECOND parallel OAuth2 server implementation.
+    server::oauth::OAuth2Server manages client registration only.
+    server::oauth::OAuth21Server enforces OAuth 2.1 compliance
+    on top of it. Neither is called by any HTTP route handler.
+  end note
+
+  class OAuth2ServerConfig {
+    + issuer: String
+    + supported_scopes: Vec<String>
+    + supported_response_types: Vec<String>
+    + supported_grant_types: Vec<String>
+  }
+
+  class ServerOAuth2Server {
+    ' (re-exported as ServerOAuth2Server to avoid name collision)
+    - config: OAuth2ServerConfig
+    - client_registry: Arc<ClientRegistry>
+    --
+    + new(storage): Result<Self>
+    + register_client(request): Result<ClientConfig>
+    + get_client(id): Result<Option<ClientConfig>>
+    + update_client(config): Result<()>
+    + delete_client(id): Result<()>
+    + get_server_configuration(): Value
+  }
+
+  class OAuth21SecurityConfig {
+    + require_pkce: bool
+    + require_dpop: bool
+    + require_par: bool
+    + prohibit_implicit_grant: bool
+    + require_mtls: bool
+  }
+
+  class OAuth21Server {
+    - config: OAuth21SecurityConfig
+    - base_server: ServerOAuth2Server
+    --
+    + register_client(request): Result<ClientConfig>
+    + get_server_configuration(): Value
+    + get_security_config(): OAuth21SecurityConfig
+    + update_security_config(config)
+  }
+
+  class ClientRegistry {
+    - storage: Arc<dyn AuthStorage>
+    --
+    + register_confidential_client(..): Result<ClientConfig>
+    + register_public_client(..): Result<ClientConfig>
+    + get_client(id): Result<Option<ClientConfig>>
+    + validate_client_credentials(id, secret): Result<bool>
+    + update_client(config): Result<()>
+    + delete_client(id): Result<()>
+    + list_clients(): Result<Vec<ClientConfig>>
+  }
+
+  class ClientConfig <<⚠ dup: 2 variants>> {
+    + client_id: String
+    + client_secret_hash: Option<String>
+    + client_type: ClientType
+    + redirect_uris: Vec<String>
+    + allowed_scopes: Vec<String>
+    + grant_types: Vec<String>
+    + created_at: SystemTime
+    + is_active: bool
+  }
+
+  note top of ClientConfig
+    <b>⚠ DUPLICATION:</b>
+    oauth2_domain also has EnhancedClientCredentials
+    with the same fields plus validation methods.
+    These represent the same concept: a registered OAuth client.
+  end note
+
+  class ClientRegistrationManager {
+    - config: ClientRegistrationConfig
+    - registry: Arc<ClientRegistry>
+    --
+    + register(request, auth_token): Result<ClientRegistrationResponse>
+    + update(client_id, request, token): Result<ClientRegistrationResponse>
+    + delete(client_id, token): Result<()>
+    + get(client_id, token): Result<ClientRegistrationResponse>
+  }
+
+  class PARManager {
+    --
+    + store_request(request): Result<PushedAuthorizationResponse>
+    + get_request(request_uri): Result<Option<StoredPushedRequest>>
+    + cleanup_expired(): Result<()>
+  }
+
+  class DeviceAuthManager {
+    --
+    + initiate_device_flow(client_id, scope): Result<DeviceAuthorizationResponse>
+    + check_device_status(device_code): Result<DeviceAuthorizationStatus>
+    + approve_device(user_code, user_id): Result<()>
+    + poll_token(request): Result<TokenExchangeResponse>
+  }
+
+  class DpopManager {
+    --
+    + validate_proof(proof, method, url, token_hash): Result<DpopValidationResult>
+    + bind_token(token_hash): DpopConfirmation
+  }
+
+  class JwtIntrospectionManager {
+    - config: JwtIntrospectionConfig
+    --
+    + introspect(token, client_credentials): Result<BasicIntrospectionResponse>
+  }
+
+  OAuth21Server *-- OAuth21SecurityConfig
+  OAuth21Server *-- ServerOAuth2Server
+  ServerOAuth2Server *-- OAuth2ServerConfig
+  ServerOAuth2Server o-- ClientRegistry
+  ClientRegistry ..> AuthStorage
+  ClientRegistry o-- ClientConfig
+  ClientRegistrationManager o-- ClientRegistry
+}
+
+' =============================================================================
+' PACKAGE: server_oidc
+' =============================================================================
+package "server_oidc" #E8EAF6 {
+
+  class OidcConfig {
+    + issuer: String
+    + supported_scopes: Vec<String>
+    + supported_response_types: Vec<String>
+    + id_token_lifetime: Duration
+    + access_token_lifetime: Duration
+    + require_pkce: bool
+    + enable_userinfo: bool
+    + enable_discovery: bool
+  }
+
+  class OidcProvider {
+    - config: OidcConfig
+    - storage: Arc<dyn AuthStorage>
+    --
+    + authorize(request, user_context): Result<String>
+    + exchange_code(code, verifier): Result<OidcTokenResponse>
+    + get_userinfo(token): Result<OidcUserInfo>
+    + get_discovery_document(): OidcDiscoveryDocument
+    + get_jwks(): JwkSet
+  }
+
+  class IdTokenClaims {
+    + iss: String
+    + sub: String
+    + aud: String
+    + exp: i64
+    + iat: i64
+    + auth_time: Option<i64>
+    + nonce: Option<String>
+    + acr: Option<String>
+    + amr: Option<Vec<String>>
+    + at_hash: Option<String>
+    + name: Option<String>
+    + email: Option<String>
+    + email_verified: Option<bool>
+    + picture: Option<String>
+  }
+
+  class OidcDiscoveryDocument {
+    + issuer: String
+    + authorization_endpoint: String
+    + token_endpoint: String
+    + userinfo_endpoint: Option<String>
+    + jwks_uri: String
+    + response_types_supported: Vec<String>
+    + subject_types_supported: Vec<String>
+    + id_token_signing_alg_values_supported: Vec<String>
+    ' ... 25+ fields per RFC 8414
+  }
+
+  class JwkSet {
+    + keys: Vec<Jwk>
+  }
+
+  class OidcBackchannelLogout {
+    --
+    + logout(logout_token): Result<()>
+    + register_back_channel(client_id, uri)
+  }
+
+  OidcProvider *-- OidcConfig
+  OidcProvider ..> AuthStorage
+  OidcProvider ..> IdTokenClaims : creates
+  OidcDiscoveryDocument ..> JwkSet
+}
+
+' =============================================================================
+' PACKAGE: server_security
+' =============================================================================
+package "server_security" #FCE4EC {
+
+  class CaepConfig {
+    + enable_continuous_access: bool
+    + event_window_seconds: u64
+    + risk_threshold: u8
+  }
+
+  class CaepSessionState {
+    + session_id: String
+    + user_id: String
+    + risk_score: u8
+    + access_decision: CaepAccessDecision
+  }
+
+  enum CaepAccessDecision <<enum>> {
+    Allow
+    Deny
+    RequireStepUp(String)
+    ReduceScope(Vec<String>)
+  }
+
+  class MtlsManager {
+    + validate_client_certificate(cert): Result<ClientConfig>
+    + bind_token_to_cert(token, cert_thumbprint): Result<()>
+    + verify_token_binding(token, cert): Result<bool>
+  }
+
+  class FapiProfile {
+    + require_signed_request: bool
+    + require_mtls: bool
+    + require_jarm: bool
+    + require_par: bool
+  }
+}
+
+' =============================================================================
+' PACKAGE: token_exchange
+' =============================================================================
+package "token_exchange" #EDE7F6 {
+
+  interface TokenExchangeService <<trait>> {
+    + exchange_token(request, client_id): Result<TokenExchangeResponse>
+    + validate_subject_token(token, token_type): Result<TokenValidationResult>
+    + get_capabilities(): TokenExchangeCapabilities
+    + complexity_level(): ServiceComplexityLevel
+  }
+
+  class TokenExchangeRequest {
+    + grant_type: String
+    + subject_token: String
+    + subject_token_type: String
+    + actor_token: Option<String>
+    + actor_token_type: Option<String>
+    + requested_token_type: Option<String>
+    + audience: Option<String>
+    + scope: Option<String>
+  }
+
+  class TokenExchangeManager {
+    - jwt_validator: SecureJwtValidator
+    - policies: HashMap<String, TokenExchangePolicy>
+    --
+    + set_policy(client_id, policy)
+    + get_policy(client_id): Option<&TokenExchangePolicy>
+  }
+
+  class TokenExchangePolicy {
+    + allow_on_behalf_of: bool
+    + allow_acting_as: bool
+    + max_delegation_depth: usize
+    + allowed_audiences: Vec<String>
+    + require_actor_validation: bool
+  }
+
+  class TokenExchangeFactory {
+    + create_manager(requirements): TokenExchangeManager
+    + determine_manager_type(req): ServiceComplexityLevel
+    + get_recommended_config(use_case): ExchangeRequirements
+  }
+
+  enum ExchangeScenario <<enum>> {
+    OnBehalfOf | ActingAs | Delegation | Impersonation | WorkloadIdentity
+  }
+
+  TokenExchangeManager ..|> TokenExchangeService
+  TokenExchangeManager *-- SecureJwtValidator
+  TokenExchangeManager o-- TokenExchangePolicy
+  TokenExchangeFactory ..> TokenExchangeManager : creates
+}
+
+' =============================================================================
+' PACKAGE: distributed
+' =============================================================================
+package "distributed" #F1F8E9 {
+
+  interface DistributedSessionStore <<trait>> {
+    + total_session_count(): Result<u64>
+  }
+
+  class LocalOnlySessionStore {
+    + total_session_count(): Result<u64>
+  }
+
+  class DistributedRateLimiter {
+    - config: DistributedRateLimitConfig
+    --
+    + new(config): Result<Self>
+    + check_rate_limit(key): Result<RateLimitResult>
+    + strict_auth(): Self
+    + lenient_api(): Self
+    + balanced(): Self
+  }
+
+  enum RateLimitStrategy <<enum>> {
+    TokenBucket | FixedWindow | SlidingWindow | Adaptive
+  }
+
+  enum RateLimitResult <<enum>> {
+    Allowed { remaining, reset_at }
+    Denied { retry_after, total_hits }
+    Blocked { unblock_at, reason }
+  }
+
+  LocalOnlySessionStore ..|> DistributedSessionStore
+  DistributedRateLimiter ..> RateLimitStrategy
+  DistributedRateLimiter ..> RateLimitResult
+}
+
+' =============================================================================
+' PACKAGE: api_layer
+' =============================================================================
+package "api_layer" #E0F7FA {
+
+  note as NApiLayer
+    <b>⚠ ARCHITECTURAL NOTE:</b>
+    The API handlers reach directly into AuthFramework's
+    storage() and token_manager() without going through
+    OAuth2Server or ServerOAuth2Server. This means the
+    three OAuth2 server implementations are disconnected
+    from the actual HTTP endpoints.
+  end note
+
+  class ApiServer {
+    - config: ApiServerConfig
+    - auth_framework: Arc<AuthFramework>
+    --
+    + new(framework): Self
+    + with_config(framework, config): Self
+    + build_router(): Result<Router>
+    + start(): Result<()>
+    + address(): String
+  }
+
+  class ApiServerConfig {
+    + host: String
+    + port: u16
+    + enable_cors: bool
+    + allowed_origins: Vec<String>
+    + max_body_size: usize
+    + enable_tracing: bool
+  }
+
+  class ApiState {
+    + auth_framework: Arc<AuthFramework>
+    + rate_limiter: Arc<DistributedRateLimiter>
+    + authorization_service: Arc<AuthorizationService> «feature»
+    --
+    + new(framework): Result<Self>
+  }
+
+  class ApiResponse {
+    + success: bool
+    + data: Option<T>
+    + error: Option<ApiError>
+    + message: Option<String>
+    --
+    + success(data): Self
+    + error_typed(code, msg): Self
+    + unauthorized_typed(): Self
+    + forbidden_typed(): Self
+    + not_found(resource): Self
+  }
+
+  class ApiError {
+    + code: String
+    + message: String
+    + details: Option<Value>
+  }
+
+  ' ---- OAuth2 API request/response types ----
+  class OAuthError {
+    + error: String
+    + error_description: Option<String>
+    + state: Option<String>
+  }
+
+  class AuthorizeRequest {
+    + response_type: String
+    + client_id: String
+    + redirect_uri: String
+    + scope: Option<String>
+    + state: Option<String>
+    + code_challenge: Option<String>
+    + code_challenge_method: Option<String>
+  }
+
+  class ClientInfo {
+    + client_id: String
+    + name: String
+    + description: String
+    + redirect_uris: Vec<String>
+    + scopes: Vec<String>
+  }
+
+  class ApiTokenRequest {
+    + grant_type: String
+    + code: Option<String>
+    + redirect_uri: Option<String>
+    + client_id: Option<String>
+    + client_secret: Option<String>
+    + code_verifier: Option<String>
+    + refresh_token: Option<String>
+  }
+
+  class ApiTokenResponse {
+    + access_token: String
+    + token_type: String
+    + expires_in: u64
+    + refresh_token: Option<String>
+    + scope: Option<String>
+  }
+
+  ' ---- Auth API types ----
+  class LoginRequest {
+    + username: String
+    + password: String
+    + mfa_code: Option<String>
+    + remember_me: bool
+  }
+
+  class LoginResponse {
+    + access_token: String
+    + refresh_token: String
+    + token_type: String
+    + expires_in: u64
+  }
+
+  ' ---- Introspection / PAR (api/oauth_advanced.rs) ----
+  class IntrospectRequest {
+    + token: String
+    + token_type_hint: Option<String>
+  }
+
+  class IntrospectResponse {
+    + active: bool
+    + sub: Option<String>
+    + client_id: Option<String>
+    + scope: Option<String>
+    + exp: Option<i64>
+    + jti: Option<String>
+    + token_type: Option<String>
+    + username: Option<String>
+  }
+
+  class PARRequest {
+    + response_type: String
+    + client_id: String
+    + redirect_uri: String
+    + scope: Option<String>
+    + state: Option<String>
+    + code_challenge: Option<String>
+    + code_challenge_method: Option<String>
+    + nonce: Option<String>
+  }
+
+  class PARResponse {
+    + request_uri: String
+    + expires_in: u64
+  }
+
+  ' ---- Health ----
+  class HealthResponse {
+    + status: String
+    + timestamp: String
+    + services: HashMap<String, String>
+    + version: String
+    + uptime: String
+  }
+
+  class ServiceHealth {
+    + status: String
+    + response_time_ms: u64
+    + error: Option<String>
+  }
+
+  ApiServer *-- ApiServerConfig
+  ApiServer o-- AuthFramework : Arc
+  ApiState o-- AuthFramework : Arc
+  ApiState o-- DistributedRateLimiter : Arc
+  ApiState o-- AuthorizationService : Arc «feature»
+  ApiResponse *-- ApiError
+  ApiServer ..> ApiState : creates
+}
+
+' =============================================================================
+' PACKAGE: admin
+' =============================================================================
+package "admin" #F9FBE7 {
+
+  class AppState {
+    + config: Arc<RwLock<AuthFrameworkSettings>>
+    + config_manager: ConfigManager
+    + health_status: HealthStatus
+    + server_status: Arc<RwLock<ServerStatus>>
+    + admin_sessions: Arc<Mutex<HashSet<String>>>
+    + auth_framework: Option<Arc<AuthFramework>>
+    --
+    + new(settings): Result<Self>
+    + with_auth_framework(af): Self
+    + get_health_status(): HealthStatus
+    + reload_config(): Result<()>
+  }
+
+  class ServerStatus {
+    + web_server_running: bool
+    + web_server_port: Option<u16>
+    + last_config_update: Option<DateTime<Utc>>
+    + active_sessions: u32
+    + health_status: HealthStatus
+  }
+
+  enum HealthStatus <<enum>> {
+    Healthy
+    Warning(String)
+    Critical(String)
+  }
+
+  AppState *-- ServerStatus
+  AppState o-- AuthFramework : Option<Arc>
+}
+
+' =============================================================================
+' PACKAGE: core (AuthFramework — the root type)
+' =============================================================================
+package "core (AuthFramework)" #FAFAFA {
+
+  enum AuthResult <<enum>> {
+    Success(Box<AuthToken>)
+    MfaRequired(Box<MfaChallenge>)
+    Failure(String)
+  }
+
+  class AuthFramework {
+    - config: AuthConfig
+    - methods: HashMap<String, AuthMethodEnum>
+    - token_manager: TokenManager
+    - storage: Arc<dyn AuthStorage>
+    - permission_checker: Arc<RwLock<PermissionChecker>>
+    - rate_limiter: Option<RateLimiter>
+    - mfa_challenges: Arc<RwLock<HashMap<String, MfaChallenge>>>
+    - sessions: Arc<RwLock<HashMap<String, SessionData>>>
+    - monitoring_manager: Arc<MonitoringManager>
+    - audit_manager: Arc<AuditLogger>
+    - security_manager: Arc<SecurityManager>
+    - distributed_store: Arc<dyn DistributedSessionStore>
+    --
+    + new(config): Result<Self>
+    + new_validated(config): Result<Self>
+    + initialize(): Result<()>
+    + authenticate(method, credential): Result<AuthResult>
+    + validate_token(token): Result<bool>
+    + check_permission(token, action, resource): Result<bool>
+    + create_auth_token(user_id, scopes, method, client_id): Result<AuthToken>
+    + revoke_token(token_id): Result<()>
+    + refresh_token(refresh_token): Result<AuthToken>
+    + get_user_profile(user_id): Result<UserProfile>
+    + register_user(username, password, email): Result<String>
+    + delete_user(user_id): Result<()>
+    + storage() -> &dyn AuthStorage
+    + token_manager() -> &TokenManager
+    + set_distributed_store(store)
+    + register_method(name, method)
+  }
+
+  AuthFramework *-- AuthConfig
+  AuthFramework *-- TokenManager
+  AuthFramework o--> AuthStorage : Arc<dyn>
+  AuthFramework *-- PermissionChecker
+  AuthFramework *-- SecurityManager
+  AuthFramework *-- AuditLogger
+  AuthFramework o--> DistributedSessionStore : Arc<dyn>
+  AuthFramework ..> AuthResult : returns
+  AuthFramework ..> AuthMethodEnum : dispatches
+  AuthResult ..> AuthToken
+  AuthResult ..> MfaChallenge
+}
+
+' =============================================================================
+' CROSS-PACKAGE RELATIONSHIPS
+' =============================================================================
+
+' TokenManager used widely
+TokenManager ..> JwtClaims
+AuthFramework *-- TokenManager
+
+' Storage trait is the central integration point
+AuthStorage <|.. MemoryStorage
+AuthStorage <|.. RedisStorage
+AuthStorage <|.. PostgresStorage
+AuthFramework o--> AuthStorage
+
+' AuthorizationService uses AuthStorage indirectly (through role_system)
+AuthorizationService ..> AuthStorage : via role_system<S>
+
+' ApiState bridges config to handlers
+ApiState o--> AuthFramework
+ApiState o--> AuthorizationService
+
+' OAuth2Server (domain) uses storage + token_manager from AuthFramework-adjacent types
+OAuth2Server o--> TokenManager
+OAuth2Server o--> EnhancedTokenStorage
+OAuth2Server ..> UserContext : authenticates
+
+' Server layer uses AuthStorage via ClientRegistry
+ClientRegistry o--> AuthStorage
+OAuth21Server *-- ServerOAuth2Server
+ServerOAuth2Server o--> ClientRegistry
+
+' SessionManager uses SessionStorage
+SessionManager ..> SessionStorage : uses
+
+' Security components
+SecureMfaService ..> AuthStorage : uses
+SecureJwtValidator ..> SecureJwtConfig
+TokenExchangeManager o--> SecureJwtValidator
+
+' AuditLogger used by core and session manager
+AuditLogger ..> AuditStorageInterface
+
+' DistributedRateLimiter used by ApiState
+ApiState o--> DistributedRateLimiter
+
+' ConfigManager produces AuthFrameworkSettings
+ConfigManager ..> AuthFrameworkSettings : produces
+
+' AppState (admin) holds framework
+AppState o--> AuthFramework
+
+' =============================================================================
+' DUPLICATION SUMMARY NOTE
+' =============================================================================
+
+note as NDupSummary
+  <b>DUPLICATION HOTSPOTS (candidates for consolidation)</b>
+  
+  1. <b>UserProfile / UserInfo</b> — defined 5+ times:
+     providers::UserProfile, api::auth::UserInfo,
+     api::users::UserProfile, methods::UserInfo,
+     server::oidc::OidcUserInfo
+     → Consolidate into one canonical type in providers.rs
+  
+  2. <b>Permission + Role</b> — defined twice:
+     permissions.rs (Role without id/timestamps)
+     authorization.rs (Role with id, metadata, timestamps)
+     → Merge into authorization.rs version (richer)
+  
+  3. <b>TokenRequest + TokenResponse</b> — defined twice:
+     oauth2_server::TokenRequest (11 fields, username/device_code)
+     api::oauth2::ApiTokenRequest (7 fields, API-only)
+     → Keep separate but document the split intentionally
+  
+  4. <b>MfaChallenge</b> — defined twice:
+     methods::MfaChallenge (id, type, user_id, expires_at, data)
+     security::secure_mfa::MfaChallenge (adds code_hash, attempts)
+     → Consider extending one or using composition
+  
+  5. <b>DeviceInfo</b> — defined 3 times:
+     session::DeviceInfo (browser, os, fingerprint, trust)
+     audit::DeviceInfo (type, os, browser, is_mobile, resolution)
+     security::DeviceFingerprint (hashes: browser, canvas, webgl)
+     → Different purposes, but could share a common base
+  
+  6. <b>SessionState enum</b> — defined twice:
+     session::SessionState (Active/Expired/Revoked/Suspended/RequiresMfa/RequiresReauth)
+     security::SecureSessionState (same but RequiresRotation + HighRisk)
+     → Merge into one place
+  
+  7. <b>ClientType enum</b> — defined twice:
+     oauth2_domain::ClientType (Confidential/Public)
+     server_layer::ClientType (Confidential/Public/Device)
+     → Use server_layer version everywhere
+  
+  8. <b>OAuth2 three-layer split</b>:
+     - Layer 1: api/oauth2.rs handlers (live, reach into AuthFramework directly)
+     - Layer 2: oauth2_server::OAuth2Server (library API, unused by HTTP layer)
+     - Layer 3: server::oauth::* (RFC objects, unused by HTTP layer)
+     → Either wire layers 2/3 into the API handlers, or remove them
+  
+  9. <b>ClientConfig vs EnhancedClientCredentials</b>:
+     Both represent a registered OAuth client with the same fields.
+     ClientConfig is in server_layer, EnhancedClientCredentials in oauth2_domain.
+     → Merge into one canonical registered-client type
+  
+  10. <b>AuthorizationRequest / PushedAuthorizationRequest</b>:
+      Defined in oauth2_server, api/oauth_advanced (PARRequest), server/oauth/par
+      → Unify into one type; PAR is just AuthorizationRequest + client credentials
+end note
+
+@enduml

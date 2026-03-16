@@ -99,7 +99,7 @@ impl IpRateLimiter {
     }
 
     pub fn check_rate_limit(&self, ip: &str) -> Result<(), StatusCode> {
-        let mut requests = self.requests.lock().unwrap();
+        let mut requests = self.requests.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         let now = std::time::Instant::now();
 
         // Clean expired entries

@@ -498,7 +498,7 @@ impl ClientRegistrationManager {
 
     /// Generate client secret
     fn generate_client_secret(&self) -> String {
-        use rand::RngCore;
+        use rand::Rng;
         let mut rng = rand::rng();
         let mut bytes = [0u8; 32];
         rng.fill_bytes(&mut bytes);
@@ -507,7 +507,7 @@ impl ClientRegistrationManager {
 
     /// Generate registration access token
     fn generate_registration_access_token(&self) -> String {
-        use rand::RngCore;
+        use rand::Rng;
         let mut rng = rand::rng();
         let mut bytes = [0u8; 32];
         rng.fill_bytes(&mut bytes);

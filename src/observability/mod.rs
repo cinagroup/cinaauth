@@ -218,6 +218,16 @@ impl ObservabilityManager {
         Ok(manager)
     }
 
+    /// Get observability configuration
+    pub fn get_config(&self) -> &ObservabilityConfig {
+        &self.config
+    }
+
+    /// Get security monitor
+    pub fn get_security_monitor(&self) -> &SecurityMonitor {
+        &self.security_monitor
+    }
+
     /// Record authentication attempt
     pub async fn record_auth_attempt(&self, success: bool, duration: Duration, _method: &str) {
         #[cfg(feature = "prometheus")]
@@ -526,6 +536,50 @@ impl SecurityMonitor {
         }
     }
 
+    /// Record a failed authentication attempt
+    pub fn record_failed_attempt(&self) {
+        self.failed_attempts.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Record a rate limit violation
+    pub fn record_rate_limit_violation(&self) {
+        self.rate_limit_violations.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Get failed attempt count
+    pub fn get_failed_attempts(&self) -> u64 {
+        self.failed_attempts.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Get rate limit violation count
+    pub fn get_rate_limit_violations(&self) -> u64 {
+        self.rate_limit_violations.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Record a suspicious activity pattern
+    pub async fn record_suspicious_activity(&self, user_id: String, activity: SuspiciousActivity) {
+        let mut patterns = self.suspicious_patterns.write().await;
+        patterns.insert(user_id, activity);
+    }
+
+    /// Get suspicious activity pattern for a user
+    pub async fn get_suspicious_activity(&self, user_id: &str) -> Option<SuspiciousActivity> {
+        let patterns = self.suspicious_patterns.read().await;
+        patterns.get(user_id).cloned()
+    }
+
+    /// Get all suspicious activity patterns
+    pub async fn get_all_suspicious_activities(&self) -> Vec<(String, SuspiciousActivity)> {
+        let patterns = self.suspicious_patterns.read().await;
+        patterns.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    }
+
+    /// Clear suspicious activity pattern for a user
+    pub async fn clear_suspicious_activity(&self, user_id: &str) {
+        let mut patterns = self.suspicious_patterns.write().await;
+        patterns.remove(user_id);
+    }
+
     async fn record_event(&self, event: SecurityEvent) {
         let mut events = self.security_events.write().await;
         events.push(event.clone());
@@ -620,4 +674,183 @@ impl ObservabilityMiddleware {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::SystemTime;
 
+    #[tokio::test]
+    async fn test_suspicious_activity_recording() {
+        let security_monitor = SecurityMonitor::new();
+
+        let activity = SuspiciousActivity {
+            user_id: "user123".to_string(),
+            ip_address: "192.168.1.100".to_string(),
+            activity_type: "brute_force".to_string(),
+            count: 5,
+            first_seen: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            risk_score: 85.0,
+        };
+
+        // Record activity
+        security_monitor
+            .record_suspicious_activity("user123".to_string(), activity.clone())
+            .await;
+
+        // Retrieve and verify
+        let retrieved = security_monitor.get_suspicious_activity("user123").await;
+        assert!(retrieved.is_some());
+        let activity = retrieved.unwrap();
+        assert_eq!(activity.user_id, "user123");
+        assert_eq!(activity.activity_type, "brute_force");
+        assert_eq!(activity.count, 5);
+    }
+
+    #[tokio::test]
+    async fn test_multiple_suspicious_activities() {
+        let security_monitor = SecurityMonitor::new();
+
+        let activity1 = SuspiciousActivity {
+            user_id: "user1".to_string(),
+            ip_address: "192.168.1.1".to_string(),
+            activity_type: "brute_force".to_string(),
+            count: 3,
+            first_seen: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            risk_score: 70.0,
+        };
+
+        let activity2 = SuspiciousActivity {
+            user_id: "user2".to_string(),
+            ip_address: "192.168.1.2".to_string(),
+            activity_type: "token_abuse".to_string(),
+            count: 10,
+            first_seen: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            risk_score: 95.0,
+        };
+
+        // Record both activities
+        security_monitor
+            .record_suspicious_activity("user1".to_string(), activity1)
+            .await;
+        security_monitor
+            .record_suspicious_activity("user2".to_string(), activity2)
+            .await;
+
+        // Get all activities
+        let all_activities = security_monitor.get_all_suspicious_activities().await;
+        assert_eq!(all_activities.len(), 2);
+
+        // Verify both users are present
+        let user_ids: Vec<&str> = all_activities.iter().map(|(id, _)| id.as_str()).collect();
+        assert!(user_ids.contains(&"user1"));
+        assert!(user_ids.contains(&"user2"));
+    }
+
+    #[tokio::test]
+    async fn test_clear_suspicious_activity() {
+        let security_monitor = SecurityMonitor::new();
+
+        let activity = SuspiciousActivity {
+            user_id: "user123".to_string(),
+            ip_address: "192.168.1.100".to_string(),
+            activity_type: "brute_force".to_string(),
+            count: 5,
+            first_seen: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            risk_score: 85.0,
+        };
+
+        // Record activity
+        security_monitor
+            .record_suspicious_activity("user123".to_string(), activity)
+            .await;
+        assert!(security_monitor.get_suspicious_activity("user123").await.is_some());
+
+        // Clear it
+        security_monitor.clear_suspicious_activity("user123").await;
+        assert!(security_monitor.get_suspicious_activity("user123").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_failed_attempt_tracking() {
+        let security_monitor = SecurityMonitor::new();
+
+        assert_eq!(security_monitor.get_failed_attempts(), 0);
+
+        // Record a failed attempt
+        security_monitor.record_failed_attempt();
+        assert_eq!(security_monitor.get_failed_attempts(), 1);
+
+        // Record multiple failed attempts
+        for _ in 0..9 {
+            security_monitor.record_failed_attempt();
+        }
+        assert_eq!(security_monitor.get_failed_attempts(), 10);
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_violation_tracking() {
+        let security_monitor = SecurityMonitor::new();
+
+        assert_eq!(security_monitor.get_rate_limit_violations(), 0);
+
+        // Record violations
+        security_monitor.record_rate_limit_violation();
+        assert_eq!(security_monitor.get_rate_limit_violations(), 1);
+
+        for _ in 0..4 {
+            security_monitor.record_rate_limit_violation();
+        }
+        assert_eq!(security_monitor.get_rate_limit_violations(), 5);
+    }
+
+    #[tokio::test]
+    async fn test_observability_manager_creation() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        let config = manager.get_config();
+        
+        assert!(config.enable_security_monitoring);
+        assert!(config.enable_prometheus);
+        assert_eq!(config.security_event_max_count, 10000);
+    }
+
+    #[tokio::test]
+    async fn test_security_monitor_via_observability_manager() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        let security_monitor = manager.get_security_monitor();
+
+        // Test metrics collection
+        security_monitor.record_failed_attempt();
+        security_monitor.record_rate_limit_violation();
+
+        assert_eq!(security_monitor.get_failed_attempts(), 1);
+        assert_eq!(security_monitor.get_rate_limit_violations(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_suspicious_activity_integration_with_manager() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        let security_monitor = manager.get_security_monitor();
+
+        let activity = SuspiciousActivity {
+            user_id: "test_user".to_string(),
+            ip_address: "10.0.0.1".to_string(),
+            activity_type: "suspicious_login".to_string(),
+            count: 2,
+            first_seen: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            risk_score: 60.0,
+        };
+
+        security_monitor
+            .record_suspicious_activity("test_user".to_string(), activity)
+            .await;
+
+        let all_activities = security_monitor.get_all_suspicious_activities().await;
+        assert_eq!(all_activities.len(), 1);
+        assert_eq!(all_activities[0].0, "test_user");
+    }
+}

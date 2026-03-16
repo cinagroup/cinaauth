@@ -53,14 +53,14 @@ pub enum ComplianceRuleType {
 
 /// Compliance monitor
 pub struct ComplianceMonitor {
-    #[allow(dead_code)]
-    config: ComplianceConfig,
+    /// Configuration — retained for use in future compliance-check implementations.
+    _config: ComplianceConfig,
 }
 
 impl ComplianceMonitor {
     /// Create new compliance monitor
     pub fn new(config: ComplianceConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 
     /// Check compliance status

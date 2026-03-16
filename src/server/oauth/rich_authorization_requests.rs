@@ -30,7 +30,7 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::rich_authorization_requests::*;
+//! use auth_framework::server::oauth::rich_authorization_requests::*;
 //! use auth_framework::server::SessionManager;
 //! use std::sync::Arc;
 //!
@@ -520,7 +520,7 @@ pub struct RarSessionContext {
     pub is_new_session: bool,
 
     /// Current session state
-    pub session_state: crate::server::oidc::oidc_session_management::SessionState,
+    pub session_state: crate::server::oidc::oidc_session_management::OidcSessionState,
 
     /// Browser session identifier
     pub browser_session_id: String,
@@ -542,7 +542,7 @@ pub struct RarSessionAuthorizationContext {
     pub client_id: String,
 
     /// Session state
-    pub session_state: crate::server::oidc::oidc_session_management::SessionState,
+    pub session_state: crate::server::oidc::oidc_session_management::OidcSessionState,
 
     /// Active authorization request IDs
     pub active_authorizations: Vec<String>,
@@ -1163,7 +1163,7 @@ impl RarManager {
                 .unwrap()
                 .as_secs(),
             expires_at: expires_at as u64,
-            state: crate::server::oidc::oidc_session_management::SessionState::Authenticated,
+            state: crate::server::oidc::oidc_session_management::OidcSessionState::Authenticated,
             browser_session_id: format!("bs_{}", uuid::Uuid::new_v4()),
             logout_tokens: Vec::new(),
             metadata,

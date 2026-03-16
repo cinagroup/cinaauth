@@ -1,7 +1,7 @@
 //! Cryptographic utility functions for the AuthFramework.
 
 use crate::errors::Result;
-use rand::{Rng, rng};
+use rand::{RngExt, rng};
 
 /// Generate a random alphanumeric token of specified length
 pub fn generate_token(length: usize) -> String {

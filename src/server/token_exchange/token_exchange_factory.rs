@@ -21,8 +21,11 @@ pub struct TokenExchangeManagerFactory;
 
 impl TokenExchangeManagerFactory {
     /// Create a basic token exchange manager for simple scenarios
-    pub fn create_basic_manager(_jwt_secret: &str) -> Result<TokenExchangeManager> {
-        let config = SecureJwtConfig::default(); // Use default config
+    pub fn create_basic_manager(jwt_secret: &str) -> Result<TokenExchangeManager> {
+        let config = SecureJwtConfig {
+            jwt_secret: jwt_secret.to_string(),
+            ..SecureJwtConfig::default()
+        };
         let jwt_validator = SecureJwtValidator::new(config);
         Ok(TokenExchangeManager::new(jwt_validator))
     }

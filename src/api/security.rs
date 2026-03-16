@@ -202,9 +202,9 @@ impl SecurityManager {
             if let Some(blocked_until) = info.blocked_until {
                 now < blocked_until
             } else {
-                !info.request_times.is_empty()
-                    && now.duration_since(*info.request_times.first().unwrap())
-                        < self.dos_config.monitor_duration * 2
+                info.request_times.first().is_some_and(|first|
+                    now.duration_since(*first) < self.dos_config.monitor_duration * 2
+                )
             }
         });
 
@@ -262,10 +262,10 @@ impl SecurityManager {
             }
         });
 
-        if let Some(info) = failure_tracking.get(&ip) {
-            if let Some(blacklisted_until) = info.blacklisted_until {
-                return now >= blacklisted_until;
-            }
+        if let Some(info) = failure_tracking.get(&ip)
+            && let Some(blacklisted_until) = info.blacklisted_until
+        {
+            return now >= blacklisted_until;
         }
 
         true
@@ -323,17 +323,17 @@ impl SecurityManager {
             total_rate_limited_ips: rate_limits.len(),
             currently_penalized_ips: rate_limits
                 .values()
-                .filter(|info| info.penalty_until.map_or(false, |until| now < until))
+                .filter(|info| info.penalty_until.is_some_and(|until| now < until))
                 .count(),
             total_dos_tracked_ips: dos_tracking.len(),
             currently_blocked_ips: dos_tracking
                 .values()
-                .filter(|info| info.blocked_until.map_or(false, |until| now < until))
+                .filter(|info| info.blocked_until.is_some_and(|until| now < until))
                 .count(),
             total_failure_tracked_ips: failure_tracking.len(),
             currently_blacklisted_ips: failure_tracking
                 .values()
-                .filter(|info| info.blacklisted_until.map_or(false, |until| now < until))
+                .filter(|info| info.blacklisted_until.is_some_and(|until| now < until))
                 .count()
                 + manual_blacklist.len(),
             manual_blacklist_size: manual_blacklist.len(),

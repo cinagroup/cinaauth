@@ -2,10 +2,12 @@
 //!
 //! This example demonstrates the successfully implemented optimizations.
 
-use auth_framework::{Result, storage::AuthStorage};
+use auth_framework::Result;
 
 #[cfg(feature = "performance-optimization")]
 use auth_framework::storage::unified::UnifiedStorage;
+#[cfg(feature = "performance-optimization")]
+use auth_framework::storage::AuthStorage;
 
 #[cfg(feature = "enhanced-observability")]
 use auth_framework::observability::ObservabilityManager;

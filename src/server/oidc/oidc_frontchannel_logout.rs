@@ -526,8 +526,6 @@ mod tests {
 
         let html = manager.generate_frontchannel_logout_html(&iframe_urls);
 
-        println!("Generated HTML: {}", html);
-
         assert!(html.contains("https://client1.example.com/logout"));
         assert!(html.contains("https://client2.example.com/logout"));
         assert!(html.contains("fc_logout_0"));
@@ -548,7 +546,7 @@ mod tests {
             created_at: 1000000000,
             last_activity: 1000001000,
             expires_at: 1000002000,
-            state: crate::server::oidc::oidc_session_management::SessionState::Authenticated,
+            state: crate::server::oidc::oidc_session_management::OidcSessionState::Authenticated,
             browser_session_id: "browser_session_123".to_string(),
             logout_tokens: vec![],
             metadata: HashMap::new(),

@@ -6,6 +6,7 @@
 use auth_framework::{
     AuthConfig, AuthFramework,
     errors::{AuthError, TokenError},
+    testing::test_infrastructure::TestEnvironmentGuard,
 };
 use base64::engine::{Engine, general_purpose::URL_SAFE_NO_PAD};
 use chrono::{Duration, Utc};
@@ -28,13 +29,18 @@ struct MaliciousJwtClaims {
 async fn test_jwt_signature_bypass_prevention() {
     println!("🔒 Testing JWT signature bypass prevention...");
 
+    // TestEnvironmentGuard sets RUST_TEST=1 so config.validate() uses relaxed mode.
+    let _env = TestEnvironmentGuard::new();
+
     // Create a secure authentication framework
     let config = AuthConfig::new()
         .secret("test-secret-for-security-validation-32chars".to_string())
         .issuer("auth-framework".to_string())
         .audience("auth-framework".to_string());
 
-    let auth_framework = AuthFramework::new(config);
+    // initialize() replaces the temporary default secret with the configured one.
+    let mut auth_framework = AuthFramework::new(config);
+    auth_framework.initialize().await.unwrap();
     println!("✅ AuthFramework initialized with secure configuration");
 
     // Test 1: Attempt to create a malicious JWT without proper signing

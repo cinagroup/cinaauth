@@ -214,6 +214,27 @@ We regularly audit and update dependencies. Security-sensitive dependencies incl
 - `redis`: Storage backend
 - `tokio`: Async runtime
 
+## Known Cryptographic Limitations
+
+### SHA-1 Usage in WS-Security / SAML
+
+The framework includes a SAML integration layer (`src/api/saml.rs`) that implements portions of the **WS-Security** and **SAML 2.0** specifications. These legacy SOAP/XML-based protocols mandate SHA-1 as a required digest algorithm in their standards-defined signature and reference validation flows.
+
+**Status**: SHA-1 is used exclusively for WS-Security XML digital signature canonicalization, where it is required by the protocol specification itself. It is **not** used for:
+
+- Password storage (Argon2 / bcrypt)
+- JWT signing (HMAC-SHA256 or RS256)
+- Any application-controlled cryptographic operation
+
+**Risk assessment**: Low. The SHA-1 usage is confined to the SAML/WS-Security XML layer where:
+
+1. The attacker would need to forge a signed SAML assertion
+2. SHA-1 collision attacks require impractical computation on XML structures
+3. Modern IdPs increasingly support SHA-256 variants; configure your IdP to prefer `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256` where possible
+
+**Mitigation path**: When your SAML Identity Provider supports SHA-256 digests (`http://www.w3.org/2001/04/xmlenc#sha256`), configure it to use them. A future release will add configurable algorithm preference to the SAML handler.
+
+
 ## Changelog
 
 Security-related changes will be clearly marked in the changelog with the `[SECURITY]` tag.

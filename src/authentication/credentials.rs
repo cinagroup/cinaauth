@@ -212,6 +212,17 @@ impl Credential {
         }
     }
 
+    /// Create credentials representing a client certificate that was already
+    /// verified by the mTLS handshake.  The private key is **not** required —
+    /// key possession was proved by TLS; supplying one has no effect.
+    pub fn client_cert_from_tls(der_certificate: Vec<u8>) -> Self {
+        Self::Certificate {
+            certificate: der_certificate,
+            private_key: vec![],
+            passphrase: None,
+        }
+    }
+
     /// Create SAML assertion credentials - REMOVED for security
     ///
     /// Create OpenID Connect credentials

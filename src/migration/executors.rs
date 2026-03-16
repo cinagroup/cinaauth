@@ -11,11 +11,105 @@ use std::collections::HashMap;
 use tokio::fs;
 use uuid::Uuid;
 
-/// Execute migration plan
+#[cfg(feature = "enhanced-rbac")]
+use role_system::{AsyncRoleSystem, MemoryStorage as RoleMemoryStorage, Permission, Role, Subject};
+
+/// Internal execution context threaded through all migration executor functions.
+///
+/// Holds the migration configuration, a live permission registry (populated by
+/// `CreatePermission` operations and consumed by `CreateRole`), and — when the
+/// `enhanced-rbac` feature is active — an optional reference to a running
+/// [`AsyncRoleSystem`] that receives the output of each operation in addition to
+/// the manifest file.
+struct ExecutionContext<'a> {
+    /// Migration configuration.
+    config: &'a MigrationConfig,
+
+    /// Permissions created by `CreatePermission` operations; referenced when a
+    /// subsequent `CreateRole` builds its `Role` with real [`Permission`] values.
+    /// Key = `permission_id`; value = `(action, resource)`.
+    permission_registry: HashMap<String, (String, String)>,
+
+    /// Live role-system instance.  `None` means manifest-only mode.
+    /// Only present when the `enhanced-rbac` feature is enabled.
+    #[cfg(feature = "enhanced-rbac")]
+    role_system: Option<&'a AsyncRoleSystem<RoleMemoryStorage>>,
+}
+
+impl<'a> ExecutionContext<'a> {
+    /// Create a manifest-only context (no live role-system).
+    fn new(config: &'a MigrationConfig) -> Self {
+        Self {
+            config,
+            permission_registry: HashMap::new(),
+            #[cfg(feature = "enhanced-rbac")]
+            role_system: None,
+        }
+    }
+
+    /// Attach a live role-system to this context.
+    #[cfg(feature = "enhanced-rbac")]
+    fn with_role_system(mut self, rs: &'a AsyncRoleSystem<RoleMemoryStorage>) -> Self {
+        self.role_system = Some(rs);
+        self
+    }
+}
+
+/// Execute migration plan (manifest-only mode).
+///
+/// All operations are recorded in `<working_directory>/migration_manifest.jsonl`.
+/// For live role-system integration use [`execute_migration_plan_with_role_system`].
 pub async fn execute_migration_plan(
     plan: &MigrationPlan,
     config: &MigrationConfig,
 ) -> Result<MigrationResult, MigrationError> {
+    let mut ctx = ExecutionContext::new(config);
+    execute_migration_plan_inner(plan, &mut ctx).await
+}
+
+/// Execute migration plan with a live [`AsyncRoleSystem`] instance.
+///
+/// Every `CreateRole`, `CreatePermission`, and `AssignUserRole` operation is
+/// applied to `role_system` **and** recorded in the manifest file.  On
+/// completion the role system contains a fully-populated in-memory role store
+/// that mirrors the migration plan.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use role_system::{AsyncRoleSystem, MemoryStorage, RoleSystem, RoleSystemConfig};
+/// use auth_framework::migration::executors::execute_migration_plan_with_role_system;
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # let plan: auth_framework::migration::MigrationPlan = todo!();
+/// # let config: auth_framework::migration::MigrationConfig = todo!();
+/// let rs = AsyncRoleSystem::new(
+///     RoleSystem::with_storage(MemoryStorage::new(), RoleSystemConfig::default())
+/// );
+/// let result = execute_migration_plan_with_role_system(&plan, &config, &rs).await?;
+/// assert_eq!(result.metrics.roles_migrated, 0);
+/// # Ok(())
+/// # }
+/// ```
+#[cfg(feature = "enhanced-rbac")]
+pub async fn execute_migration_plan_with_role_system(
+    plan: &MigrationPlan,
+    config: &MigrationConfig,
+    role_system: &AsyncRoleSystem<RoleMemoryStorage>,
+) -> Result<MigrationResult, MigrationError> {
+    let mut ctx = ExecutionContext::new(config).with_role_system(role_system);
+    execute_migration_plan_inner(plan, &mut ctx).await
+}
+
+/// Shared implementation used by both public entry points.
+async fn execute_migration_plan_inner(
+    plan: &MigrationPlan,
+    ctx: &mut ExecutionContext<'_>,
+) -> Result<MigrationResult, MigrationError> {
+    // Alias for backwards-compatible use of `config` throughout the body.
+    let config = ctx.config;
+
     let _execution_id = Uuid::new_v4().to_string();
     let started_at = chrono::Utc::now();
 
@@ -65,7 +159,7 @@ pub async fn execute_migration_plan(
             &format!("Executing phase: {} - {}", phase.id, phase.name),
         );
 
-        match execute_phase(phase, config, &mut result).await {
+        match execute_phase(phase, ctx, &mut result).await {
             Ok(_) => {
                 result.phases_completed.push(phase.id.clone());
                 log_message(
@@ -308,11 +402,11 @@ async fn execute_validation_step(
 /// Execute migration phase
 async fn execute_phase(
     phase: &super::MigrationPhase,
-    config: &MigrationConfig,
+    ctx: &mut ExecutionContext<'_>,
     result: &mut MigrationResult,
 ) -> Result<(), MigrationError> {
     for operation in &phase.operations {
-        if let Err(e) = execute_operation(operation, config, result).await {
+        if let Err(e) = execute_operation(operation, ctx, result).await {
             return Err(MigrationError::ExecutionError(format!(
                 "Operation failed in phase '{}': {}",
                 phase.id, e
@@ -325,9 +419,10 @@ async fn execute_phase(
 /// Execute individual migration operation
 async fn execute_operation(
     operation: &MigrationOperation,
-    config: &MigrationConfig,
+    ctx: &mut ExecutionContext<'_>,
     result: &mut MigrationResult,
 ) -> Result<(), MigrationError> {
+    let config = ctx.config;
     match operation {
         MigrationOperation::CreateRole {
             role_id,
@@ -342,7 +437,7 @@ async fn execute_operation(
                 description.as_deref(),
                 permissions,
                 parent_role.as_deref(),
-                config,
+                ctx,
             )
             .await?;
             result.metrics.roles_migrated += 1;
@@ -353,7 +448,7 @@ async fn execute_operation(
             resource,
             conditions,
         } => {
-            execute_create_permission(permission_id, action, resource, conditions, config).await?;
+            execute_create_permission(permission_id, action, resource, conditions, ctx).await?;
             result.metrics.permissions_migrated += 1;
         }
         MigrationOperation::AssignUserRole {
@@ -361,7 +456,7 @@ async fn execute_operation(
             role_id,
             expiration,
         } => {
-            execute_assign_user_role(user_id, role_id, expiration.as_ref(), config).await?;
+            execute_assign_user_role(user_id, role_id, expiration.as_ref(), ctx).await?;
             result.metrics.users_migrated += 1;
         }
         MigrationOperation::Backup {
@@ -394,12 +489,10 @@ async fn execute_create_role(
     description: Option<&str>,
     permissions: &[String],
     parent_role: Option<&str>,
-    config: &MigrationConfig,
+    ctx: &mut ExecutionContext<'_>,
 ) -> Result<(), MigrationError> {
+    let config = ctx.config;
     log_message(config, &format!("Creating role: {} ({})", role_id, name));
-
-    // In a real implementation, this would integrate with the role-system v1.0 API
-    // For now, we'll simulate the operation
 
     if config.verbose {
         log_message(config, &format!("  Description: {:?}", description));
@@ -407,13 +500,55 @@ async fn execute_create_role(
         log_message(config, &format!("  Parent role: {:?}", parent_role));
     }
 
-    // Simulate API call delay
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Integrate with live role-system when the enhanced-rbac feature is active.
+    #[cfg(feature = "enhanced-rbac")]
+    if let Some(rs) = ctx.role_system {
+        // role-system keys roles by name; use role_id as the canonical name so
+        // that get_role(role_id) and assign_role(subject, role_id) work as expected.
+        // The human-readable `name` is kept in the manifest record below.
+        let mut role = Role::new(role_id);
+        if let Some(desc) = description {
+            role = role.with_description(desc);
+        }
+        for perm_id in permissions {
+            // First try the permission registry populated by CreatePermission ops;
+            // fall back to splitting "action:resource" or treating as bare action.
+            if let Some((action, resource)) = ctx.permission_registry.get(perm_id) {
+                role = role.add_permission(Permission::new(action, resource));
+            } else {
+                let parts: Vec<&str> = perm_id.splitn(2, ':').collect();
+                if parts.len() == 2 {
+                    role = role.add_permission(Permission::new(parts[0], parts[1]));
+                } else {
+                    role = role.add_permission(Permission::new(perm_id.as_str(), "*"));
+                }
+            }
+        }
+        rs.register_role(role).await.map_err(|e| {
+            MigrationError::ExecutionError(format!("role-system register_role '{}' failed: {}", role_id, e))
+        })?;
+        if let Some(parent) = parent_role {
+            rs.add_role_inheritance(role_id, parent).await.map_err(|e| {
+                MigrationError::ExecutionError(format!(
+                    "role-system add_role_inheritance '{}' -> '{}' failed: {}",
+                    role_id, parent, e
+                ))
+            })?;
+        }
+        tracing::info!(role_id, "Role registered in role-system");
+    }
 
-    // Here you would integrate with the actual role-system v1.0 AsyncRoleSystem
-    // Example:
-    // let role_system = get_role_system(config).await?;
-    // role_system.create_role(role_id, name, description, permissions, parent_role).await?;
+    // Always write an audit manifest record regardless of feature flag.
+    let record = serde_json::json!({
+        "op": "create_role",
+        "role_id": role_id,
+        "name": name,
+        "description": description,
+        "permissions": permissions,
+        "parent_role": parent_role,
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    });
+    append_manifest_record(config, &record).await?;
 
     Ok(())
 }
@@ -424,8 +559,9 @@ async fn execute_create_permission(
     action: &str,
     resource: &str,
     conditions: &HashMap<String, String>,
-    config: &MigrationConfig,
+    ctx: &mut ExecutionContext<'_>,
 ) -> Result<(), MigrationError> {
+    let config = ctx.config;
     log_message(
         config,
         &format!(
@@ -438,13 +574,22 @@ async fn execute_create_permission(
         log_message(config, &format!("  Conditions: {:?}", conditions));
     }
 
-    // Simulate API call delay
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    // Store in the permission registry so subsequent CreateRole operations can
+    // look up the (action, resource) pair by permission_id.
+    // role-system has no standalone permission registry; permissions live on roles.
+    ctx.permission_registry
+        .insert(permission_id.to_string(), (action.to_string(), resource.to_string()));
 
-    // Here you would integrate with the actual role-system v1.0 AsyncRoleSystem
-    // Example:
-    // let role_system = get_role_system(config).await?;
-    // role_system.create_permission(permission_id, action, resource, conditions).await?;
+    // Always write an audit manifest record.
+    let record = serde_json::json!({
+        "op": "create_permission",
+        "permission_id": permission_id,
+        "action": action,
+        "resource": resource,
+        "conditions": conditions,
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    });
+    append_manifest_record(config, &record).await?;
 
     Ok(())
 }
@@ -454,8 +599,9 @@ async fn execute_assign_user_role(
     user_id: &str,
     role_id: &str,
     expiration: Option<&chrono::DateTime<chrono::Utc>>,
-    config: &MigrationConfig,
+    ctx: &mut ExecutionContext<'_>,
 ) -> Result<(), MigrationError> {
+    let config = ctx.config;
     log_message(
         config,
         &format!("Assigning role {} to user {}", role_id, user_id),
@@ -465,13 +611,38 @@ async fn execute_assign_user_role(
         log_message(config, &format!("  Expiration: {:?}", expiration));
     }
 
-    // Simulate API call delay
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    // Integrate with live role-system when the enhanced-rbac feature is active.
+    #[cfg(feature = "enhanced-rbac")]
+    if let Some(rs) = ctx.role_system {
+        let subject = Subject::new(user_id);
+        if let Some(exp) = expiration {
+            let duration = (*exp - chrono::Utc::now()).to_std().ok();
+            rs.elevate_role(&subject, role_id, duration).await.map_err(|e| {
+                MigrationError::ExecutionError(format!(
+                    "role-system elevate_role '{}' for user '{}' failed: {}",
+                    role_id, user_id, e
+                ))
+            })?;
+        } else {
+            rs.assign_role(&subject, role_id).await.map_err(|e| {
+                MigrationError::ExecutionError(format!(
+                    "role-system assign_role '{}' for user '{}' failed: {}",
+                    role_id, user_id, e
+                ))
+            })?;
+        }
+        tracing::info!(user_id, role_id, "Role assigned in role-system");
+    }
 
-    // Here you would integrate with the actual role-system v1.0 AsyncRoleSystem
-    // Example:
-    // let role_system = get_role_system(config).await?;
-    // role_system.assign_user_role(user_id, role_id, expiration).await?;
+    // Always write an audit manifest record regardless of feature flag.
+    let record = serde_json::json!({
+        "op": "assign_user_role",
+        "user_id": user_id,
+        "role_id": role_id,
+        "expiration": expiration.map(|e| e.to_rfc3339()),
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    });
+    append_manifest_record(config, &record).await?;
 
     Ok(())
 }
@@ -525,9 +696,6 @@ async fn execute_integrity_validation(
         log_message(config, &format!("  Parameters: {:?}", parameters));
     }
 
-    // Simulate validation
-    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-
     match validation_type {
         "pre_migration_check" => validate_pre_migration_state(config).await,
         "post_migration_check" => validate_post_migration_state(config).await,
@@ -557,11 +725,15 @@ async fn execute_custom_attribute_migration(
         log_message(config, &format!("  Conversion logic: {}", conversion_logic));
     }
 
-    // Simulate custom attribute migration
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    // Here you would implement the actual custom attribute migration logic
-    // based on the conversion_logic parameter
+    // Write a manifest record for the custom attribute migration.
+    // Replace with actual conversion logic when the target schema is known.
+    let record = serde_json::json!({
+        "op": "migrate_custom_attribute",
+        "attribute_name": attribute_name,
+        "conversion_logic": conversion_logic,
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    });
+    append_manifest_record(config, &record).await?;
 
     Ok(())
 }
@@ -577,8 +749,10 @@ async fn execute_rollback_for_phase(
         &format!("Executing rollback for phase: {}", phase.id),
     );
 
+    // Rollback uses manifest-only mode (no live role-system calls).
+    let mut ctx = ExecutionContext::new(config);
     for operation in &phase.rollback_operations {
-        if let Err(e) = execute_operation(operation, config, result).await {
+        if let Err(e) = execute_operation(operation, &mut ctx, result).await {
             return Err(MigrationError::RollbackError(format!(
                 "Rollback operation failed: {}",
                 e
@@ -620,11 +794,13 @@ pub async fn rollback_migration(
     log_message(config, "Starting migration rollback");
 
     // Execute rollback phases in reverse order
+    // Rollback uses manifest-only mode (no live role-system calls).
+    let mut ctx = ExecutionContext::new(config);
     for phase in plan.rollback_plan.phases.iter().rev() {
         log_message(config, &format!("Executing rollback phase: {}", phase.id));
 
         for operation in &phase.operations {
-            if let Err(e) = execute_operation(operation, config, &mut result).await {
+            if let Err(e) = execute_operation(operation, &mut ctx, &mut result).await {
                 result.status = MigrationStatus::Failed;
                 result
                     .errors
@@ -648,27 +824,181 @@ pub async fn rollback_migration(
 }
 
 /// Validation implementations
-async fn validate_hierarchy_integrity(_config: &MigrationConfig) -> Result<(), MigrationError> {
-    // Simulate hierarchy validation
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+async fn validate_hierarchy_integrity(config: &MigrationConfig) -> Result<(), MigrationError> {
+    // Validate that the manifest contains no duplicate role IDs and no self-referencing
+    // parent_role entries (a minimal structural check that does not require the role-system
+    // crate at runtime).
+    let manifest_path = config.working_directory.join("migration_manifest.jsonl");
+    if !manifest_path.exists() {
+        // Nothing written yet — nothing to validate.
+        return Ok(());
+    }
+    let content = fs::read_to_string(&manifest_path).await?;
+    let mut role_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for line in content.lines() {
+        if let Ok(record) = serde_json::from_str::<serde_json::Value>(line) {
+            if record.get("op").and_then(|v| v.as_str()) == Some("create_role") {
+                if let Some(id) = record.get("role_id").and_then(|v| v.as_str()) {
+                    if !role_ids.insert(id.to_string()) {
+                        return Err(MigrationError::ValidationError(format!(
+                            "Duplicate role ID detected in manifest: {}",
+                            id
+                        )));
+                    }
+                    if record.get("parent_role").and_then(|v| v.as_str()) == Some(id) {
+                        return Err(MigrationError::ValidationError(format!(
+                            "Role '{}' references itself as parent",
+                            id
+                        )));
+                    }
+                }
+            }
+        }
+    }
     Ok(())
 }
 
-async fn validate_permission_consistency(_config: &MigrationConfig) -> Result<(), MigrationError> {
-    // Simulate permission validation
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+async fn validate_permission_consistency(config: &MigrationConfig) -> Result<(), MigrationError> {
+    // Check that every permission referenced in a create_role record exists as a
+    // create_permission record in the manifest (forward-reference check).
+    let manifest_path = config.working_directory.join("migration_manifest.jsonl");
+    if !manifest_path.exists() {
+        return Ok(());
+    }
+    let content = fs::read_to_string(&manifest_path).await?;
+    let mut defined_perms: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut role_perms: Vec<(String, String)> = Vec::new();
+    for line in content.lines() {
+        if let Ok(record) = serde_json::from_str::<serde_json::Value>(line) {
+            match record.get("op").and_then(|v| v.as_str()) {
+                Some("create_permission") => {
+                    if let Some(id) = record.get("permission_id").and_then(|v| v.as_str()) {
+                        defined_perms.insert(id.to_string());
+                    }
+                }
+                Some("create_role") => {
+                    if let (Some(role), Some(perms)) = (
+                        record.get("role_id").and_then(|v| v.as_str()),
+                        record.get("permissions").and_then(|v| v.as_array()),
+                    ) {
+                        for p in perms {
+                            if let Some(ps) = p.as_str() {
+                                role_perms.push((role.to_string(), ps.to_string()));
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    for (role, perm) in &role_perms {
+        if !defined_perms.contains(perm) {
+            return Err(MigrationError::ValidationError(format!(
+                "Role '{}' references undefined permission '{}'",
+                role, perm
+            )));
+        }
+    }
     Ok(())
 }
 
-async fn validate_user_assignments(_config: &MigrationConfig) -> Result<(), MigrationError> {
-    // Simulate user assignment validation
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+async fn validate_user_assignments(config: &MigrationConfig) -> Result<(), MigrationError> {
+    // Verify that every assign_user_role record references a role that was declared
+    // earlier in the same manifest run.
+    let manifest_path = config.working_directory.join("migration_manifest.jsonl");
+    if !manifest_path.exists() {
+        return Ok(());
+    }
+    let content = fs::read_to_string(&manifest_path).await?;
+    let mut defined_roles: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut assignments: Vec<(String, String)> = Vec::new();
+    for line in content.lines() {
+        if let Ok(record) = serde_json::from_str::<serde_json::Value>(line) {
+            match record.get("op").and_then(|v| v.as_str()) {
+                Some("create_role") => {
+                    if let Some(id) = record.get("role_id").and_then(|v| v.as_str()) {
+                        defined_roles.insert(id.to_string());
+                    }
+                }
+                Some("assign_user_role") => {
+                    if let (Some(uid), Some(rid)) = (
+                        record.get("user_id").and_then(|v| v.as_str()),
+                        record.get("role_id").and_then(|v| v.as_str()),
+                    ) {
+                        assignments.push((uid.to_string(), rid.to_string()));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    for (user, role) in &assignments {
+        if !defined_roles.contains(role) {
+            return Err(MigrationError::ValidationError(format!(
+                "User '{}' is assigned to undefined role '{}'",
+                user, role
+            )));
+        }
+    }
     Ok(())
 }
 
-async fn validate_no_privilege_escalation(_config: &MigrationConfig) -> Result<(), MigrationError> {
-    // Simulate privilege escalation check
-    tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+async fn validate_no_privilege_escalation(config: &MigrationConfig) -> Result<(), MigrationError> {
+    // Detect any user who is being simultaneously assigned a child role and its
+    // ancestor role, which would be redundant but is sometimes a sign of an
+    // over-privileged migration plan.
+    let manifest_path = config.working_directory.join("migration_manifest.jsonl");
+    if !manifest_path.exists() {
+        return Ok(());
+    }
+    let content = fs::read_to_string(&manifest_path).await?;
+    // Build parent_role map: role_id -> parent_id
+    let mut parent_map: HashMap<String, String> = HashMap::new();
+    let mut user_roles: HashMap<String, Vec<String>> = HashMap::new();
+    for line in content.lines() {
+        if let Ok(record) = serde_json::from_str::<serde_json::Value>(line) {
+            match record.get("op").and_then(|v| v.as_str()) {
+                Some("create_role") => {
+                    if let (Some(id), Some(parent)) = (
+                        record.get("role_id").and_then(|v| v.as_str()),
+                        record.get("parent_role").and_then(|v| v.as_str()),
+                    ) {
+                        parent_map.insert(id.to_string(), parent.to_string());
+                    }
+                }
+                Some("assign_user_role") => {
+                    if let (Some(uid), Some(rid)) = (
+                        record.get("user_id").and_then(|v| v.as_str()),
+                        record.get("role_id").and_then(|v| v.as_str()),
+                    ) {
+                        user_roles.entry(uid.to_string()).or_default().push(rid.to_string());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    for (user, roles) in &user_roles {
+        // Walk the ancestor chain for each role; flag if another assigned role appears.
+        for role in roles {
+            let mut ancestor = parent_map.get(role);
+            while let Some(a) = ancestor {
+                if roles.iter().any(|r| r == a) {
+                    log_message(
+                        config,
+                        &format!(
+                            "WARNING: user '{}' is assigned both '{}' and its ancestor '{}'. \
+                             Consider removing the redundant assignment.",
+                            user, role, a
+                        ),
+                    );
+                    break;
+                }
+                ancestor = parent_map.get(a);
+            }
+        }
+    }
     Ok(())
 }
 
@@ -681,19 +1011,42 @@ async fn execute_custom_validation(
         config,
         &format!("Executing custom validation: {}", validation_name),
     );
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Custom validations are user-defined.  This hook intentionally returns
+    // Ok(()) so the migration continues; implement specific checks here as
+    // the migration plan is finalised.
     Ok(())
 }
 
-async fn validate_pre_migration_state(_config: &MigrationConfig) -> Result<(), MigrationError> {
-    // Simulate pre-migration state validation
-    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+async fn validate_pre_migration_state(config: &MigrationConfig) -> Result<(), MigrationError> {
+    // Ensure the working and backup directories are accessible before the
+    // migration starts — a lightweight real check.
+    if !config.working_directory.exists() {
+        return Err(MigrationError::ValidationError(format!(
+            "Working directory does not exist: {:?}",
+            config.working_directory
+        )));
+    }
+    if !config.backup_directory.exists() {
+        return Err(MigrationError::ValidationError(format!(
+            "Backup directory does not exist: {:?}",
+            config.backup_directory
+        )));
+    }
     Ok(())
 }
 
-async fn validate_post_migration_state(_config: &MigrationConfig) -> Result<(), MigrationError> {
-    // Simulate post-migration state validation
-    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+async fn validate_post_migration_state(config: &MigrationConfig) -> Result<(), MigrationError> {
+    // Verify the manifest file was written and is non-empty, confirming that
+    // at least one operation was recorded during the migration run.
+    let manifest_path = config.working_directory.join("migration_manifest.jsonl");
+    if manifest_path.exists() {
+        let metadata = fs::metadata(&manifest_path).await?;
+        if metadata.len() == 0 {
+            return Err(MigrationError::ValidationError(
+                "Migration manifest is empty — no operations were recorded".to_string(),
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -733,6 +1086,33 @@ fn log_message(config: &MigrationConfig, message: &str) {
         let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S");
         println!("[{}] {}", timestamp, message);
     }
+}
+
+/// Append a JSON record to the migration manifest file (newline-delimited JSON).
+///
+/// The manifest at `<working_directory>/migration_manifest.jsonl` captures every
+/// executed operation during a migration run.  Downstream tooling (or the
+/// `role-system` integration layer) can replay or audit it independently of the
+/// in-memory migration state.
+async fn append_manifest_record(
+    config: &MigrationConfig,
+    record: &serde_json::Value,
+) -> Result<(), MigrationError> {
+    use tokio::io::AsyncWriteExt;
+    let manifest_path = config.working_directory.join("migration_manifest.jsonl");
+    // Open in append mode (create if absent).
+    let mut file = tokio::fs::OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(&manifest_path)
+        .await
+        .map_err(MigrationError::IoError)?;
+    let mut line = serde_json::to_string(record).map_err(MigrationError::SerializationError)?;
+    line.push('\n');
+    file.write_all(line.as_bytes())
+        .await
+        .map_err(MigrationError::IoError)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -824,6 +1204,136 @@ mod tests {
 
         assert_eq!(result.status, MigrationStatus::Completed);
         assert_eq!(result.phases_completed.len(), 1);
+        assert_eq!(result.metrics.roles_migrated, 1);
+    }
+
+    // ── role-system integration tests ────────────────────────────────────────
+
+    /// Helper: build an AsyncRoleSystem backed by in-memory storage.
+    #[cfg(feature = "enhanced-rbac")]
+    fn make_role_system() -> AsyncRoleSystem<RoleMemoryStorage> {
+        use role_system::{RoleSystem, RoleSystemConfig};
+        AsyncRoleSystem::new(RoleSystem::with_storage(
+            RoleMemoryStorage::new(),
+            RoleSystemConfig::default(),
+        ))
+    }
+
+    #[cfg(feature = "enhanced-rbac")]
+    #[tokio::test]
+    async fn test_execute_migration_plan_with_role_system_creates_role() {
+        let plan = create_test_plan();
+        let config = MigrationConfig {
+            dry_run: false,
+            verbose: false,
+            ..Default::default()
+        };
+        let rs = make_role_system();
+
+        let result = execute_migration_plan_with_role_system(&plan, &config, &rs)
+            .await
+            .unwrap();
+
+        assert_eq!(result.status, MigrationStatus::Completed);
+        assert_eq!(result.metrics.roles_migrated, 1);
+        // The role should now exist in the live role-system.
+        let role = rs.get_role("test_role").await.unwrap();
+        assert!(role.is_some(), "Expected 'test_role' to be registered");
+        // role.name() == role_id because we use Role::new(role_id) for lookup compatibility.
+        assert_eq!(role.unwrap().name(), "test_role");
+    }
+
+    #[cfg(feature = "enhanced-rbac")]
+    #[tokio::test]
+    async fn test_execute_migration_plan_with_role_system_assigns_user() {
+        use role_system::Subject;
+        let mut plan = create_test_plan();
+        // Add an AssignUserRole operation after CreateRole.
+        plan.phases[0].operations.push(MigrationOperation::AssignUserRole {
+            user_id: "user1".to_string(),
+            role_id: "test_role".to_string(),
+            expiration: None,
+        });
+        let config = MigrationConfig {
+            dry_run: false,
+            verbose: false,
+            ..Default::default()
+        };
+        let rs = make_role_system();
+
+        let result = execute_migration_plan_with_role_system(&plan, &config, &rs)
+            .await
+            .unwrap();
+
+        assert_eq!(result.status, MigrationStatus::Completed);
+        assert_eq!(result.metrics.users_migrated, 1);
+        // The subject should now have the role in the live role-system.
+        let subject = Subject::new("user1");
+        let roles = rs.get_subject_roles(&subject).await.unwrap();
+        assert!(
+            roles.iter().any(|r| r == "test_role"),
+            "Expected user1 to have test_role"
+        );
+    }
+
+    #[cfg(feature = "enhanced-rbac")]
+    #[tokio::test]
+    async fn test_execute_migration_plan_permission_registry_feeds_create_role() {
+        // CreatePermission populates the registry; CreateRole reads from it.
+        let config = MigrationConfig {
+            dry_run: false,
+            verbose: false,
+            ..Default::default()
+        };
+        let plan = {
+            let mut p = create_test_plan();
+            // Prepend a CreatePermission so its registry entry exists when the
+            // CreateRole (which references "read_users") runs.
+            p.phases[0].operations.insert(
+                0,
+                MigrationOperation::CreatePermission {
+                    permission_id: "read_users".to_string(),
+                    action: "read".to_string(),
+                    resource: "users".to_string(),
+                    conditions: Default::default(),
+                },
+            );
+            // CreateRole already references "read" perm_id — swap to "read_users".
+            if let MigrationOperation::CreateRole { permissions, .. } = &mut p.phases[0].operations[1] {
+                *permissions = vec!["read_users".to_string()];
+            }
+            p
+        };
+        let rs = make_role_system();
+
+        let result = execute_migration_plan_with_role_system(&plan, &config, &rs)
+            .await
+            .unwrap();
+
+        assert_eq!(result.status, MigrationStatus::Completed);
+        assert_eq!(result.metrics.permissions_migrated, 1);
+        assert_eq!(result.metrics.roles_migrated, 1);
+
+        // Verify the role contains the expected permission via the has_permission API.
+        let role = rs.get_role("test_role").await.unwrap().unwrap();
+        assert!(
+            role.has_permission("read", "users", &Default::default()),
+            "Expected role to have permission read:users"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_manifest_only_mode_completes_without_role_system() {
+        // Without the enhanced-rbac feature (or without passing a role-system),
+        // execute_migration_plan must still complete successfully using manifest only.
+        let plan = create_test_plan();
+        let config = MigrationConfig {
+            dry_run: false,
+            verbose: false,
+            ..Default::default()
+        };
+        let result = execute_migration_plan(&plan, &config).await.unwrap();
+        assert_eq!(result.status, MigrationStatus::Completed);
         assert_eq!(result.metrics.roles_migrated, 1);
     }
 }

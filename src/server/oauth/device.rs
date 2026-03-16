@@ -454,7 +454,7 @@ impl DeviceAuthManager {
 
     /// Generate a user-friendly code (uppercase, no ambiguous characters)
     fn generate_user_code(&self) -> String {
-        use rand::Rng;
+        use rand::RngExt;
         const CHARS: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No ambiguous: 0,O,I,1
         let mut rng = rand::rng();
 

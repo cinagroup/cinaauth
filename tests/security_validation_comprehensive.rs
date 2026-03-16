@@ -32,6 +32,7 @@ async fn create_test_server() -> ApiServer {
         host: "127.0.0.1".to_string(),
         port: 0, // Random port for testing
         enable_cors: true,
+        allowed_origins: vec!["http://localhost:3000".to_string()],
         max_body_size: 1024 * 1024,
         enable_tracing: false,
     };
@@ -48,7 +49,7 @@ async fn test_login_requires_username() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/login")
@@ -74,7 +75,7 @@ async fn test_login_requires_password() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/login")
@@ -92,7 +93,7 @@ async fn test_login_with_invalid_credentials() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/login")
@@ -123,7 +124,7 @@ async fn test_successful_login_flow() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     // First register a user
     let username = format!("testuser_{}", uuid::Uuid::new_v4());
@@ -167,7 +168,7 @@ async fn test_refresh_token_requires_token() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/refresh")
@@ -184,7 +185,7 @@ async fn test_refresh_token_rejects_invalid_token() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/refresh")
@@ -201,7 +202,7 @@ async fn test_refresh_token_rejects_access_token() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     // Register and login to get tokens
     let username = format!("testuser_{}", uuid::Uuid::new_v4());
@@ -250,7 +251,7 @@ async fn test_refresh_token_success() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     // Register and login
     let username = format!("testuser_{}", uuid::Uuid::new_v4());
@@ -300,7 +301,7 @@ async fn test_registration_requires_username() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/register")
@@ -319,7 +320,7 @@ async fn test_registration_requires_password() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/register")
@@ -338,7 +339,7 @@ async fn test_registration_requires_email() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/register")
@@ -357,7 +358,7 @@ async fn test_registration_rejects_weak_password() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/register")
@@ -382,7 +383,7 @@ async fn test_registration_rejects_weak_password() {
 async fn test_registration_rejects_duplicate_username() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     // First registration should succeed
     let first_response = client
@@ -411,7 +412,7 @@ async fn test_registration_rejects_duplicate_username() {
 async fn test_registration_rejects_duplicate_email() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     // First registration should succeed
     let first_response = client
@@ -441,7 +442,7 @@ async fn test_registration_rejects_invalid_email() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/auth/register")
@@ -468,7 +469,7 @@ async fn test_registration_success() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let username = format!("testuser_{}", uuid::Uuid::new_v4());
 
@@ -488,9 +489,6 @@ async fn test_registration_success() {
     assert!(body["data"]["user_id"].is_string());
 }
 
-// TODO: Add test for duplicate username rejection once implemented
-// TODO: Add test for duplicate email rejection once implemented
-
 // =============================================================================
 // API KEY SECURITY TESTS
 // =============================================================================
@@ -500,7 +498,7 @@ async fn test_api_key_creation_requires_auth() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
         .post("/api/v1/api-keys")
@@ -518,10 +516,10 @@ async fn test_oauth2_authorize_invalid_response_type() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
-        .get("/api/v1/oauth2/authorize?response_type=token&client_id=test&redirect_uri=http://localhost")
+        .get("/api/v1/oauth/authorize?response_type=token&client_id=test&redirect_uri=http://localhost")
         .await;
 
     assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
@@ -532,10 +530,10 @@ async fn test_oauth2_authorize_requires_client_id() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
-        .get("/api/v1/oauth2/authorize?response_type=code&redirect_uri=http://localhost")
+        .get("/api/v1/oauth/authorize?response_type=code&redirect_uri=http://localhost")
         .await;
 
     assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
@@ -546,10 +544,10 @@ async fn test_oauth2_authorize_requires_redirect_uri() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
-        .get("/api/v1/oauth2/authorize?response_type=code&client_id=test")
+        .get("/api/v1/oauth/authorize?response_type=code&client_id=test")
         .await;
 
     assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
@@ -560,10 +558,10 @@ async fn test_oauth2_token_exchange_invalid_grant_type() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
 
-    let client = axum_test::TestServer::new(app).unwrap();
+    let client = axum_test::TestServer::new(app);
 
     let response = client
-        .post("/api/v1/oauth2/token")
+        .post("/api/v1/oauth/token")
         .json(&json!({
             "grant_type": "password",
             "username": "test",
@@ -573,3 +571,4 @@ async fn test_oauth2_token_exchange_invalid_grant_type() {
 
     assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 }
+

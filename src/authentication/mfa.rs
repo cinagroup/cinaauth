@@ -6,7 +6,7 @@
 use crate::errors::{AuthError, Result};
 use crate::security::MfaConfig;
 use async_trait::async_trait;
-use rand::Rng;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{Sha1, totp};

@@ -18,6 +18,122 @@ impl MySqlStorage {
     pub fn new(pool: MySqlPool) -> Self {
         Self { pool }
     }
+
+    /// Initialize database tables.
+    ///
+    /// Creates the `auth_tokens`, `sessions`, and `kv_store` tables together
+    /// with their secondary indexes if they do not already exist.  Safe to call
+    /// on every application startup (`IF NOT EXISTS` guards are idempotent).
+    ///
+    /// MySQL-specific notes:
+    /// - `DATETIME(6)` stores UTC timestamps with microsecond precision;
+    ///   callers must ensure values are in UTC before binding.
+    /// - `JSON` columns require MySQL 5.7.8+ / MariaDB 10.2+.
+    /// - `LONGTEXT` is used for the access_token column to handle large JWTs.
+    ///
+    /// # Errors
+    /// Returns an error if any DDL statement fails (e.g. insufficient privileges).
+    pub async fn migrate(&self) -> Result<()> {
+        // Each statement is executed separately because sqlx::query() accepts
+        // exactly one SQL statement per call.
+
+        // --- auth_tokens table ---
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS auth_tokens (
+                token_id     VARCHAR(255)  NOT NULL PRIMARY KEY,
+                user_id      VARCHAR(255)  NOT NULL,
+                access_token LONGTEXT      NOT NULL,
+                refresh_token TEXT,
+                token_type   VARCHAR(50),
+                expires_at   DATETIME(6)   NOT NULL,
+                scopes       TEXT,
+                issued_at    DATETIME(6)   NOT NULL,
+                auth_method  VARCHAR(100)  NOT NULL,
+                subject      VARCHAR(255),
+                issuer       VARCHAR(255),
+                client_id    VARCHAR(255),
+                metadata     JSON,
+                created_at   DATETIME(6)   DEFAULT CURRENT_TIMESTAMP(6),
+                INDEX idx_auth_tokens_user_id (user_id),
+                INDEX idx_auth_tokens_expires_at (expires_at),
+                INDEX idx_auth_tokens_access_token (access_token(255))
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                format!("Migration failed (auth_tokens): {e}"),
+            ))
+        })?;
+
+        // --- sessions table ---
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS sessions (
+                session_id VARCHAR(255) NOT NULL PRIMARY KEY,
+                user_id    VARCHAR(255) NOT NULL,
+                data       JSON         NOT NULL,
+                expires_at DATETIME(6),
+                created_at DATETIME(6)  DEFAULT CURRENT_TIMESTAMP(6),
+                INDEX idx_sessions_user_id (user_id),
+                INDEX idx_sessions_expires_at (expires_at)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                format!("Migration failed (sessions): {e}"),
+            ))
+        })?;
+
+        // --- kv_store table ---
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS kv_store (
+                `key`      VARCHAR(512) NOT NULL PRIMARY KEY,
+                value      LONGBLOB     NOT NULL,
+                expires_at DATETIME(6),
+                created_at DATETIME(6)  DEFAULT CURRENT_TIMESTAMP(6),
+                INDEX idx_kv_store_expires_at (expires_at)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                format!("Migration failed (kv_store): {e}"),
+            ))
+        })?;
+
+        Ok(())
+    }
+
+    /// Fetch the roles and permissions for a user from the KV store.
+    ///
+    /// Returns `(roles, permissions)` — both default to empty vecs if the keys are absent
+    /// or if deserialization fails (e.g. new user that has not yet been assigned any).
+    async fn fetch_user_roles_and_permissions(
+        &self,
+        user_id: &str,
+    ) -> (Vec<String>, Vec<String>) {
+        let roles: Vec<String> =
+            match self.get_kv(&format!("user_roles:{}", user_id)).await {
+                Ok(Some(data)) => serde_json::from_slice(&data).unwrap_or_default(),
+                _ => vec![],
+            };
+        let permissions: Vec<String> =
+            match self.get_kv(&format!("user_permissions:{}", user_id)).await {
+                Ok(Some(data)) => serde_json::from_slice(&data).unwrap_or_default(),
+                _ => vec![],
+            };
+        (roles, permissions)
+    }
 }
 
 #[cfg(feature = "mysql-storage")]
@@ -90,22 +206,41 @@ impl AuthStorage for MySqlStorage {
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default();
+            let expires_at = row.try_get("expires_at").map_err(|e| {
+                crate::errors::AuthError::Storage(
+                    crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode column expires_at: {}",
+                        e
+                    )),
+                )
+            })?;
+            let issued_at = row.try_get("issued_at").map_err(|e| {
+                crate::errors::AuthError::Storage(
+                    crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode column issued_at: {}",
+                        e
+                    )),
+                )
+            })?;
+            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let (roles, permissions) =
+                self.fetch_user_roles_and_permissions(&user_id).await;
             Ok(Some(AuthToken {
                 token_id: row.try_get("token_id").unwrap_or_default(),
-                user_id: row.try_get("user_id").unwrap_or_default(),
+                user_id,
                 access_token: row.try_get("access_token").unwrap_or_default(),
                 refresh_token: row.try_get("refresh_token").ok(),
                 token_type: row.try_get("token_type").ok(),
-                expires_at: row.try_get("expires_at").unwrap(),
+                expires_at,
                 scopes,
-                issued_at: row.try_get("issued_at").unwrap(),
+                issued_at,
                 auth_method: row.try_get("auth_method").unwrap_or_default(),
                 subject: row.try_get("subject").ok(),
                 issuer: row.try_get("issuer").ok(),
                 client_id: row.try_get("client_id").ok(),
                 user_profile: None,
-                permissions: Vec::new(), // Note: Requires user_permissions table and additional query
-                roles: Vec::new(),       // Note: Requires user_roles table and additional query
+                permissions,
+                roles,
                 metadata,
             }))
         } else {
@@ -143,22 +278,41 @@ impl AuthStorage for MySqlStorage {
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default();
+            let expires_at = row.try_get("expires_at").map_err(|e| {
+                crate::errors::AuthError::Storage(
+                    crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode column expires_at: {}",
+                        e
+                    )),
+                )
+            })?;
+            let issued_at = row.try_get("issued_at").map_err(|e| {
+                crate::errors::AuthError::Storage(
+                    crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode column issued_at: {}",
+                        e
+                    )),
+                )
+            })?;
+            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let (roles, permissions) =
+                self.fetch_user_roles_and_permissions(&user_id).await;
             Ok(Some(AuthToken {
                 token_id: row.try_get("token_id").unwrap_or_default(),
-                user_id: row.try_get("user_id").unwrap_or_default(),
+                user_id,
                 access_token: row.try_get("access_token").unwrap_or_default(),
                 refresh_token: row.try_get("refresh_token").ok(),
                 token_type: row.try_get("token_type").ok(),
-                expires_at: row.try_get("expires_at").unwrap(),
+                expires_at,
                 scopes,
-                issued_at: row.try_get("issued_at").unwrap(),
+                issued_at,
                 auth_method: row.try_get("auth_method").unwrap_or_default(),
                 subject: row.try_get("subject").ok(),
                 issuer: row.try_get("issuer").ok(),
                 client_id: row.try_get("client_id").ok(),
                 user_profile: None,
-                permissions: Vec::new(), // Note: Requires user_permissions table and additional query
-                roles: Vec::new(),       // Note: Requires user_roles table and additional query
+                permissions,
+                roles,
                 metadata,
             }))
         } else {
@@ -248,22 +402,41 @@ impl AuthStorage for MySqlStorage {
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default();
+            let expires_at = row.try_get("expires_at").map_err(|e| {
+                crate::errors::AuthError::Storage(
+                    crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode column expires_at: {}",
+                        e
+                    )),
+                )
+            })?;
+            let issued_at = row.try_get("issued_at").map_err(|e| {
+                crate::errors::AuthError::Storage(
+                    crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode column issued_at: {}",
+                        e
+                    )),
+                )
+            })?;
+            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let (roles, permissions) =
+                self.fetch_user_roles_and_permissions(&user_id).await;
             tokens.push(AuthToken {
                 token_id: row.try_get("token_id").unwrap_or_default(),
-                user_id: row.try_get("user_id").unwrap_or_default(),
+                user_id,
                 access_token: row.try_get("access_token").unwrap_or_default(),
                 refresh_token: row.try_get("refresh_token").ok(),
                 token_type: row.try_get("token_type").ok(),
-                expires_at: row.try_get("expires_at").unwrap(),
+                expires_at,
                 scopes,
-                issued_at: row.try_get("issued_at").unwrap(),
+                issued_at,
                 auth_method: row.try_get("auth_method").unwrap_or_default(),
                 subject: row.try_get("subject").ok(),
                 issuer: row.try_get("issuer").ok(),
                 client_id: row.try_get("client_id").ok(),
                 user_profile: None,
-                permissions: Vec::new(), // Note: Requires user_permissions table and additional query
-                roles: Vec::new(),       // Note: Requires user_roles table and additional query
+                permissions,
+                roles,
                 metadata,
             });
         }
@@ -318,14 +491,28 @@ impl AuthStorage for MySqlStorage {
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default();
+            let created_at = row.try_get("created_at").map_err(|e| {
+                crate::errors::AuthError::Storage(
+                    crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode column created_at: {}",
+                        e
+                    )),
+                )
+            })?;
+            let expires_at = row.try_get("expires_at").map_err(|e| {
+                crate::errors::AuthError::Storage(
+                    crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode column expires_at: {}",
+                        e
+                    )),
+                )
+            })?;
             Ok(Some(crate::storage::SessionData {
                 session_id: row.try_get("session_id").unwrap_or_default(),
                 user_id: row.try_get("user_id").unwrap_or_default(),
-                created_at: row.try_get("created_at").unwrap(),
-                expires_at: row.try_get("expires_at").unwrap(),
-                last_activity: row
-                    .try_get("last_activity")
-                    .unwrap_or_else(|_| row.try_get("created_at").unwrap()),
+                created_at,
+                expires_at,
+                last_activity: row.try_get("last_activity").unwrap_or(created_at),
                 ip_address: row.try_get("ip_address").ok(),
                 user_agent: row.try_get("user_agent").ok(),
                 data,

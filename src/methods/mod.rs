@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // Import the specific auth method modules
+pub mod client_cert;
 pub mod enhanced_device;
 pub mod hardware_token;
 pub mod passkey;
@@ -16,9 +17,10 @@ pub mod passkey;
 pub mod saml;
 
 // Re-export types from submodules
+pub use client_cert::ClientCertAuthMethod;
 #[cfg(feature = "enhanced-device-flow")]
 pub use enhanced_device::EnhancedDeviceFlowMethod;
-pub use hardware_token::HardwareToken;
+pub use hardware_token::HardwareOtpToken;
 #[cfg(feature = "passkeys")]
 pub use passkey::PasskeyAuthMethod;
 #[cfg(feature = "saml")]
@@ -49,13 +51,26 @@ pub struct MfaChallenge {
     /// User ID this challenge is for
     pub user_id: String,
 
+    /// When the challenge was created
+    pub created_at: chrono::DateTime<chrono::Utc>,
+
     /// When the challenge expires
     pub expires_at: chrono::DateTime<chrono::Utc>,
 
-    /// Optional message or instructions
+    /// Number of verification attempts made
+    pub attempts: u32,
+
+    /// Maximum allowed attempts before the challenge is invalidated
+    pub max_attempts: u32,
+
+    /// Hash of the expected OTP code (for Sms/Email/Totp methods).
+    /// `None` for methods that verify externally (Push, SecurityKey).
+    pub code_hash: Option<String>,
+
+    /// Optional message or instructions to show the user
     pub message: Option<String>,
 
-    /// Additional challenge data
+    /// Additional challenge data (e.g. masked phone, masked email, session token)
     pub data: HashMap<String, serde_json::Value>,
 }
 
@@ -79,6 +94,9 @@ pub enum MfaType {
 
     /// Backup codes
     BackupCode,
+
+    /// Cross-method challenge that requires satisfying multiple MFA methods simultaneously
+    MultiMethod,
 }
 
 /// Trait for authentication methods.
@@ -150,10 +168,11 @@ pub enum AuthMethodEnum {
     ApiKey(ApiKeyMethod),
     OAuth2(OAuth2Method),
     #[cfg(feature = "saml")]
-    Saml(SamlAuthMethod),
+    Saml(Box<SamlAuthMethod>),
     #[cfg(feature = "ldap-auth")]
     Ldap(LdapAuthMethod),
-    HardwareToken(HardwareToken),
+    HardwareOtpToken(HardwareOtpToken),
+    ClientCert(ClientCertAuthMethod),
     OpenIdConnect(OpenIdConnectAuthMethod),
     AdvancedMfa(AdvancedMfaAuthMethod),
     #[cfg(feature = "enhanced-device-flow")]
@@ -260,7 +279,8 @@ impl AuthMethod for AuthMethodEnum {
             AuthMethodEnum::Saml(_) => "saml",
             #[cfg(feature = "ldap-auth")]
             AuthMethodEnum::Ldap(_) => "ldap",
-            AuthMethodEnum::HardwareToken(_) => "hardware_token",
+            AuthMethodEnum::HardwareOtpToken(_) => "hardware_token",
+            AuthMethodEnum::ClientCert(_) => "client_cert",
             AuthMethodEnum::OpenIdConnect(_) => "openid_connect",
             AuthMethodEnum::AdvancedMfa(_) => "advanced_mfa",
             #[cfg(feature = "enhanced-device-flow")]
@@ -275,6 +295,17 @@ impl AuthMethod for AuthMethodEnum {
         credential: Credential,
         metadata: CredentialMetadata,
     ) -> Result<Self::MethodResult> {
+        // Dispatch to real implementations if available
+        match self {
+            #[cfg(feature = "saml")]
+            AuthMethodEnum::Saml(m) => return m.authenticate(credential, metadata).await,
+            #[cfg(feature = "passkeys")]
+            AuthMethodEnum::Passkey(m) => return m.authenticate(credential, metadata).await,
+            #[cfg(feature = "enhanced-device-flow")]
+            AuthMethodEnum::EnhancedDeviceFlow(m) => return m.authenticate(credential, metadata).await,
+            _ => {} // Fall through to basic validation for stubbed methods
+        }
+
         // Enhanced stub implementation with basic credential validation
 
         // Validate credential based on type
@@ -355,6 +386,10 @@ impl MfaChallenge {
             mfa_type,
             user_id: user_id.into(),
             expires_at: chrono::Utc::now() + chrono::Duration::from_std(expires_in).unwrap(),
+            created_at: chrono::Utc::now(),
+            attempts: 0,
+            max_attempts: 3,
+            code_hash: None,
             message: None,
             data: HashMap::new(),
         }

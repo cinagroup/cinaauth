@@ -227,6 +227,28 @@ where
                 Some("NOT_FOUND") => StatusCode::NOT_FOUND,
                 Some("VALIDATION_ERROR") => StatusCode::BAD_REQUEST,
                 Some("RATE_LIMITED") => StatusCode::TOO_MANY_REQUESTS,
+                // Authentication failures should be 401, not 500
+                Some(
+                    "AUTHENTICATION_FAILED"
+                    | "INVALID_CREDENTIALS"
+                    | "AUTH_ERROR"
+                    | "MFA_REQUIRED"
+                    | "TOKEN_EXPIRED"
+                    | "INVALID_TOKEN",
+                ) => StatusCode::UNAUTHORIZED,
+                // Client-side errors (bad input / missing resource)
+                Some("CONFLICT" | "DUPLICATE_USER") => StatusCode::CONFLICT,
+                Some("NOT_IMPLEMENTED") => StatusCode::NOT_IMPLEMENTED,
+                // RFC 6749 OAuth error codes (lowercase) and internal codes (uppercase)
+                Some(
+                    "UNSUPPORTED_GRANT_TYPE"
+                    | "UNSUPPORTED_RESPONSE_TYPE"
+                    | "unsupported_grant_type"
+                    | "unsupported_response_type"
+                    | "invalid_grant"
+                    | "invalid_request"
+                    | "invalid_scope",
+                ) => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }
         };

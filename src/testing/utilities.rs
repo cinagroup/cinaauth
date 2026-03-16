@@ -3,7 +3,7 @@ pub struct MockAuthMethod {
     /// Whether authentication should succeed
     pub should_succeed: bool,
     /// Simulated user profiles to return
-    pub user_profiles: HashMap<String, UserProfile>,
+    pub user_profiles: HashMap<String, ProviderProfile>,
     /// Simulated delay for authentication
     pub delay: Option<Duration>,
 }
@@ -19,7 +19,7 @@ impl MockAuthMethod {
     }
 
     /// Add a user profile for a specific user ID
-    pub fn with_user(mut self, user_id: impl Into<String>, profile: UserProfile) -> Self {
+    pub fn with_user(mut self, user_id: impl Into<String>, profile: ProviderProfile) -> Self {
         self.user_profiles.insert(user_id.into(), profile);
         self
     }
@@ -33,7 +33,7 @@ impl MockAuthMethod {
 use crate::authentication::credentials::{Credential, CredentialMetadata};
 use crate::errors::{AuthError, Result};
 use crate::methods::{AuthMethod, MethodResult};
-use crate::providers::UserProfile;
+use crate::providers::ProviderProfile;
 use crate::storage::AuthStorage;
 use crate::storage::core::SessionData;
 use crate::tokens::AuthToken;
@@ -106,27 +106,23 @@ fn test_secret_loading_from_config() {
 fn test_secret_missing_returns_error() {
     use crate::auth::AuthFramework;
     use crate::config::AuthConfig;
+    use crate::testing::test_infrastructure::TestEnvironmentGuard;
 
-    // Ensure JWT_SECRET is not set for this test
-    unsafe {
-        std::env::remove_var("JWT_SECRET");
-    }
+    // Guard clears JWT_SECRET and sets RUST_TEST=1 for proper isolation.
+    // force_production_mode() on the config drives production validation without
+    // touching the global ENVIRONMENT variable, eliminating the parallel-test race.
+    let _env = TestEnvironmentGuard::new();
 
-    // In production mode, should return error instead of panic
-    unsafe {
-        std::env::set_var("ENVIRONMENT", "production");
-
-        let config = AuthConfig::default();
-        match AuthFramework::new_validated(config) {
-            Err(e) => {
-                // Should fail with proper error message about JWT secret
-                assert!(e.to_string().contains("JWT secret"));
-            }
-            Ok(_) => panic!("Expected error when JWT_SECRET is missing in production"),
+    let config = AuthConfig::default().force_production_mode();
+    match AuthFramework::new_validated(config) {
+        Err(e) => {
+            // Should fail with proper error message about JWT secret
+            assert!(
+                e.to_string().contains("JWT secret"),
+                "Expected JWT secret error, got: {e}"
+            );
         }
-
-        // Clean up
-        std::env::remove_var("ENVIRONMENT");
+        Ok(_) => panic!("Expected error when JWT_SECRET is missing in production"),
     }
 }
 
@@ -454,8 +450,8 @@ pub mod helpers {
     // use std::sync::Arc;  // Temporarily unused
 
     /// Create a test user profile
-    pub fn create_test_user_profile(user_id: &str) -> UserProfile {
-        UserProfile::new()
+    pub fn create_test_user_profile(user_id: &str) -> ProviderProfile {
+        ProviderProfile::new()
             .with_id(user_id)
             .with_provider("test")
             .with_name(Some(format!("Test User {}", user_id)))

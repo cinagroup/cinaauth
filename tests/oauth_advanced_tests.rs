@@ -27,12 +27,30 @@ async fn create_test_server() -> (Arc<AuthFramework>, ApiServer) {
         host: "127.0.0.1".to_string(),
         port: 8080,
         enable_cors: true,
+        allowed_origins: vec!["http://localhost:3000".to_string()],
         max_body_size: 1024 * 1024,
         enable_tracing: false,
-    };
-
+    }; 
     let server = ApiServer::with_config(auth.clone(), api_config);
     (auth, server)
+}
+
+/// Register an OAuth2 client in storage so that `verify_client_credentials`
+/// can validate introspection requests in tests.
+async fn register_oauth_client(auth: &Arc<AuthFramework>, client_id: &str, client_secret: &str) {
+    let client_data = serde_json::json!({
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uris": ["http://localhost:3000/callback"],
+    });
+    auth.storage()
+        .store_kv(
+            &format!("oauth2_client:{}", client_id),
+            client_data.to_string().as_bytes(),
+            None,
+        )
+        .await
+        .expect("test client registration should succeed");
 }
 
 fn basic_auth_header(client_id: &str, client_secret: &str) -> String {
@@ -47,7 +65,8 @@ fn basic_auth_header(client_id: &str, client_secret: &str) -> String {
 
 #[tokio::test]
 async fn test_introspect_token_valid_basic_auth() {
-    let (_auth, server) = create_test_server().await;
+    let (auth, server) = create_test_server().await;
+    register_oauth_client(&auth, "test_client", "test_secret").await;
     let router = server.build_router().await.unwrap();
 
     // Create request with Basic Auth
@@ -95,7 +114,8 @@ async fn test_introspect_token_missing_auth() {
 
 #[tokio::test]
 async fn test_introspect_token_post_body_auth() {
-    let (_auth, server) = create_test_server().await;
+    let (auth, server) = create_test_server().await;
+    register_oauth_client(&auth, "test_client", "test_secret").await;
     let router = server.build_router().await.unwrap();
 
     // Create request with POST body authentication
@@ -156,7 +176,8 @@ async fn test_introspect_token_bearer_auth_rejected() {
 
 #[tokio::test]
 async fn test_introspect_token_with_hint() {
-    let (_auth, server) = create_test_server().await;
+    let (auth, server) = create_test_server().await;
+    register_oauth_client(&auth, "test_client", "test_secret").await;
     let router = server.build_router().await.unwrap();
 
     // Create request with token_type_hint
@@ -178,7 +199,8 @@ async fn test_introspect_token_with_hint() {
 
 #[tokio::test]
 async fn test_introspect_token_empty_token() {
-    let (_auth, server) = create_test_server().await;
+    let (auth, server) = create_test_server().await;
+    register_oauth_client(&auth, "test_client", "test_secret").await;
     let router = server.build_router().await.unwrap();
 
     // Create request with empty token
@@ -428,4 +450,136 @@ async fn test_par_empty_scope() {
 
     // Should still succeed (scope is optional)
     assert_eq!(response.status(), StatusCode::CREATED);
+}
+
+// ============================================================================
+// Revocation + Introspection correlation (Security)
+// ============================================================================
+
+/// Verify that a token stored in the revocation list (`revoked_token:{jti}`)
+/// is reported as `active: false` by the introspection endpoint.
+#[tokio::test]
+async fn test_introspect_reports_revoked_token_as_inactive() {
+    let (auth, server) = create_test_server().await;
+    register_oauth_client(&auth, "client", "secret").await;
+
+    // Create a valid JWT.
+    let token = auth
+        .token_manager()
+        .create_jwt_token("test_user_revoke", vec!["read".to_string()], None)
+        .unwrap();
+    let claims = auth.token_manager().validate_jwt_token(&token).unwrap();
+
+    // Confirm the token is initially active.
+    let router1 = server.build_router().await.unwrap();
+    let req1 = Request::builder()
+        .uri("/api/v1/oauth/introspect")
+        .method("POST")
+        .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header(header::AUTHORIZATION, basic_auth_header("client", "secret"))
+        .body(Body::from(format!("token={}", token)))
+        .unwrap();
+    let resp1 = router1.oneshot(req1).await.unwrap();
+    let body1 = to_bytes(resp1.into_body(), 1024 * 1024).await.unwrap();
+    let json1: Value = serde_json::from_slice(&body1).unwrap();
+    assert_eq!(json1["active"], true, "token should be active before revocation");
+
+    // Revoke the token by writing into the revocation list.
+    auth.storage()
+        .store_kv(&format!("revoked_token:{}", claims.jti), b"1", None)
+        .await
+        .unwrap();
+
+    // Introspect again — must now report active: false.
+    let router2 = server.build_router().await.unwrap();
+    let req2 = Request::builder()
+        .uri("/api/v1/oauth/introspect")
+        .method("POST")
+        .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header(header::AUTHORIZATION, basic_auth_header("client", "secret"))
+        .body(Body::from(format!("token={}", token)))
+        .unwrap();
+    let resp2 = router2.oneshot(req2).await.unwrap();
+    let body2 = to_bytes(resp2.into_body(), 1024 * 1024).await.unwrap();
+    let json2: Value = serde_json::from_slice(&body2).unwrap();
+    assert_eq!(
+        json2["active"], false,
+        "revoked token must be reported as inactive by introspection endpoint"
+    );
+}
+
+/// Verify that POST /oauth/revoke writes `revoked_token:{jti}` into storage
+/// so the authentication middleware will block subsequent requests with that token.
+#[tokio::test]
+async fn test_revoke_endpoint_persists_jti_revocation_key() {
+    let (auth, server) = create_test_server().await;
+
+    // Create a JWT whose JTI we can look up after revocation.
+    let token = auth
+        .token_manager()
+        .create_jwt_token("test_user_revoke_jti", vec!["read".to_string()], None)
+        .unwrap();
+    let claims = auth.token_manager().validate_jwt_token(&token).unwrap();
+
+    let router = server.build_router().await.unwrap();
+    let revoke_body = serde_json::json!({ "token": token }).to_string();
+    let request = Request::builder()
+        .uri("/api/v1/oauth/revoke")
+        .method("POST")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(revoke_body))
+        .unwrap();
+
+    let response = router.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // The JTI-keyed revocation entry must exist in storage.
+    let jti_key = format!("revoked_token:{}", claims.jti);
+    let stored = auth.storage().get_kv(&jti_key).await.unwrap();
+    assert!(
+        stored.is_some(),
+        "POST /oauth/revoke must write revoked_token:{{jti}} so the auth middleware blocks the token"
+    );
+}
+
+/// Verify that the PAR endpoint persists the authorization request parameters
+/// under `par_request:{id}` so the /authorize endpoint can retrieve them.
+#[tokio::test]
+async fn test_par_persists_request_params_in_storage() {
+    let (auth, server) = create_test_server().await;
+    let router = server.build_router().await.unwrap();
+
+    let request = Request::builder()
+        .uri("/api/v1/oauth/par")
+        .method("POST")
+        .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(
+            "response_type=code&client_id=par_client&redirect_uri=https://example.com/cb&scope=openid+profile",
+        ))
+        .unwrap();
+
+    let response = router.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+    let json: Value = serde_json::from_slice(&body).unwrap();
+    let request_uri = json["request_uri"].as_str().unwrap();
+    assert!(request_uri.starts_with("urn:ietf:params:oauth:request_uri:"));
+
+    // Derive the storage key and confirm the params were persisted.
+    let request_id = request_uri
+        .strip_prefix("urn:ietf:params:oauth:request_uri:")
+        .unwrap();
+    let storage_key = format!("par_request:{}", request_id);
+    let stored = auth.storage().get_kv(&storage_key).await.unwrap();
+    assert!(
+        stored.is_some(),
+        "PAR endpoint must store request params under par_request:{{id}}"
+    );
+
+    let stored_json: Value =
+        serde_json::from_slice(&stored.unwrap()).expect("stored PAR data must be valid JSON");
+    assert_eq!(stored_json["client_id"], "par_client");
+    assert_eq!(stored_json["response_type"], "code");
+    assert_eq!(stored_json["redirect_uri"], "https://example.com/cb");
 }

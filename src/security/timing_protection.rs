@@ -5,7 +5,7 @@
 //! could exploit timing differences to extract sensitive information.
 
 use crate::errors::Result;
-use rand::Rng;
+use rand::RngExt;
 use std::time::Duration;
 use subtle::ConstantTimeEq;
 
@@ -100,16 +100,35 @@ where
     result
 }
 
-/// RSA operation wrapper with blinding protection
+/// RSA operation wrapper with timing-attack protection
 ///
-/// This is a placeholder for RSA operations that need timing protection.
-/// In a real implementation, this would use RSA blinding techniques
-/// to prevent timing attacks on RSA operations.
+/// Wraps an RSA (or any asymmetric-key) operation with two layers of
+/// execution-time normalisation:
 ///
-/// # Security Note
-/// This is a placeholder implementation. For production use with RSA
-/// operations, consider using the `ring` crate or other cryptographic
-/// libraries that implement proper RSA blinding.
+/// 1. **Pre-operation random jitter** – a random 1–5 ms delay is injected
+///    before the operation begins. This breaks any fixed-phase relationship
+///    an attacker might exploit to align power/EM traces or cache-timing
+///    samples across repeated calls.
+///
+/// 2. **Minimum execution time** – the total wall-clock time is padded to
+///    at least 10 ms. This ensures that fast-path completions (e.g. early
+///    rejection of a malformed ciphertext) do not leak information through
+///    shorter run times.
+///
+/// # RSA Blinding
+/// The underlying `ring` crate already applies Montgomery-form RSA blinding
+/// internally for all private-key operations (`RsaKeyPair::sign`,
+/// `RsaPrivateDecryptingKey::decrypt`, etc.). This wrapper is therefore
+/// complementary: it guards the *external* timing envelope rather than
+/// the per-bit operations inside the modular exponentiation.
+///
+/// For pure software RSA implementations that do NOT provide built-in
+/// blinding, callers should additionally randomise the exponent or base
+/// before entering this wrapper.
+///
+/// # Usage
+/// Prefer this wrapper around operations that touch long-term RSA private
+/// keys—signing tokens, unwrapping key-encryption keys, and similar tasks.
 pub async fn rsa_operation_protected<T, F, Fut>(operation: F) -> Result<T>
 where
     F: FnOnce() -> Fut,

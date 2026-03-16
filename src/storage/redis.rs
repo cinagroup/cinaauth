@@ -67,6 +67,24 @@ impl RedisStorage {
         format!("{}kv:{}", self.key_prefix, key)
     }
 
+    /// Verify connectivity to the Redis server by sending a PING command.
+    ///
+    /// Returns `Ok(())` on success or an `AuthError::Storage` on failure.
+    pub async fn health_check(&self) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        let pong: String = redis::cmd("PING")
+            .query_async(&mut conn)
+            .await
+            .map_err(|e| AuthError::Storage(StorageError::connection_failed(e.to_string())))?;
+        if pong == "PONG" {
+            Ok(())
+        } else {
+            Err(AuthError::Storage(StorageError::connection_failed(
+                format!("unexpected PING response: {pong}"),
+            )))
+        }
+    }
+
     async fn get_connection(&self) -> Result<MultiplexedConnection> {
         self.client
             .get_multiplexed_async_connection()

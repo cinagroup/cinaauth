@@ -38,13 +38,13 @@ impl ApiMetrics {
     }
 
     pub fn record_request(&self, path: &str) {
-        let mut inner = self.inner.lock().unwrap();
+        let Ok(mut inner) = self.inner.lock() else { return };
         *inner.request_counts.entry(path.to_string()).or_insert(0) += 1;
         inner.active_requests += 1;
     }
 
     pub fn record_response(&self, path: &str, duration: Duration, status: StatusCode) {
-        let mut inner = self.inner.lock().unwrap();
+        let Ok(mut inner) = self.inner.lock() else { return };
         inner
             .response_times
             .entry(path.to_string())
@@ -59,7 +59,14 @@ impl ApiMetrics {
     }
 
     pub fn get_metrics(&self) -> MetricsSnapshot {
-        let inner = self.inner.lock().unwrap();
+        let Ok(inner) = self.inner.lock() else {
+            return MetricsSnapshot {
+                uptime: Duration::ZERO,
+                total_requests: 0,
+                active_requests: 0,
+                endpoint_metrics: HashMap::new(),
+            };
+        };
         let mut endpoint_metrics = HashMap::new();
 
         for (path, &count) in &inner.request_counts {
@@ -101,7 +108,7 @@ impl ApiMetrics {
     }
 
     pub fn reset(&self) {
-        let mut inner = self.inner.lock().unwrap();
+        let Ok(mut inner) = self.inner.lock() else { return };
         inner.request_counts.clear();
         inner.response_times.clear();
         inner.error_counts.clear();

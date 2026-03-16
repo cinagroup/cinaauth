@@ -6,12 +6,13 @@
 #[cfg(feature = "actix-integration")]
 use crate::{
     AuthError, AuthFramework, Result,
-    authorization::{AuthorizationEngine, AuthorizationStorage, Permission},
+    authorization::{AuthorizationEngine, AuthorizationStorage, AbacPermission},
     tokens::AuthToken,
 };
 #[cfg(feature = "actix-integration")]
 use actix_web::{
     Error as ActixError, FromRequest, HttpMessage, HttpRequest,
+    body::EitherBody,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     http::header::AUTHORIZATION,
     web,
@@ -59,7 +60,7 @@ where
     S::Future: 'static,
     B: 'static,
 {
-    type Response = ServiceResponse<B>;
+    type Response = ServiceResponse<EitherBody<B>>;
     type Error = ActixError;
     type InitError = ();
     type Transform = AuthMiddlewareService<S>;
@@ -86,7 +87,7 @@ where
     S::Future: 'static,
     B: 'static,
 {
-    type Response = ServiceResponse<B>;
+    type Response = ServiceResponse<EitherBody<B>>;
     type Error = ActixError;
     type Future = LocalBoxFuture<'static, std::result::Result<Self::Response, Self::Error>>;
 
@@ -111,7 +112,17 @@ where
                 .iter()
                 .any(|skip_path| path.starts_with(skip_path))
             {
-                return service.call(req).await;
+                return service.call(req).await.map(ServiceResponse::map_into_left_body);
+            }
+
+            // Helper: convert an AuthError to an early-exit HTTP response
+            macro_rules! auth_error_response {
+                ($req:expr, $err:expr) => {{
+                    use actix_web::ResponseError;
+                    let http_resp = $err.error_response().map_into_right_body();
+                    let (parts, _) = $req.into_parts();
+                    return Ok(ServiceResponse::new(parts, http_resp));
+                }};
             }
 
             // Extract and validate token
@@ -124,6 +135,12 @@ where
                     {
                         Ok(claims) => {
                             // Convert claims to AuthToken and insert into extensions
+                            // `validate_jwt_token` already verified exp/iat are in range for the
+                            // jsonwebtoken crate, but timestamp_opt can still return None for
+                            // values outside chrono's range (before ~1678 or after ~2262).
+                            // Fall back to UNIX_EPOCH: issued_at looks ancient, expires_at
+                            // looks long-expired — both are the safe direction.
+                            let fallback = chrono::DateTime::<chrono::Utc>::UNIX_EPOCH;
                             let token = AuthToken {
                                 token_id: claims.jti.clone(),
                                 user_id: claims.sub.clone(),
@@ -135,11 +152,11 @@ where
                                 issued_at: chrono::Utc
                                     .timestamp_opt(claims.iat, 0)
                                     .single()
-                                    .unwrap(),
+                                    .unwrap_or(fallback),
                                 expires_at: chrono::Utc
                                     .timestamp_opt(claims.exp, 0)
                                     .single()
-                                    .unwrap(),
+                                    .unwrap_or(fallback),
                                 scopes: claims
                                     .scope
                                     .split_whitespace()
@@ -154,14 +171,16 @@ where
                             };
                             tracing::debug!("AuthToken stored in request extensions");
                             req.extensions_mut().insert(token);
-                            service.call(req).await
+                            service.call(req).await.map(ServiceResponse::map_into_left_body)
                         }
-                        Err(e) => Err(ActixError::from(e)),
+                        Err(e) => {
+                            auth_error_response!(req, e);
+                        }
                     }
                 }
-                Err(_) => Err(ActixError::from(AuthError::Token(
-                    crate::errors::TokenError::Missing,
-                ))),
+                Err(e) => {
+                    auth_error_response!(req, e);
+                }
             }
         })
     }
@@ -192,14 +211,14 @@ impl FromRequest for AuthenticatedUser {
 
 /// Extractor for checking permissions
 pub struct RequirePermission<S: AuthorizationStorage> {
-    permission: Permission,
+    permission: AbacPermission,
     authorization: Arc<AuthorizationEngine<S>>,
-    expected_user_id: Option<String>, // PRODUCTION FIX: Renamed for clarity - optional user ID validation
+    expected_user_id: Option<String>, // Optional user ID validation
 }
 
 impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
     pub fn new(
-        permission: Permission,
+        permission: AbacPermission,
         authorization: Arc<AuthorizationEngine<S>>,
         expected_user_id: Option<String>, // Optional - if provided, validates JWT user matches
     ) -> Self {
@@ -211,13 +230,13 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
     }
 
     /// Create without specific user ID requirement (validates any authenticated user)
-    pub fn any_user(permission: Permission, authorization: Arc<AuthorizationEngine<S>>) -> Self {
+    pub fn any_user(permission: AbacPermission, authorization: Arc<AuthorizationEngine<S>>) -> Self {
         Self::new(permission, authorization, None)
     }
 
     /// Create with specific user ID requirement (validates specific user)
     pub fn specific_user(
-        permission: Permission,
+        permission: AbacPermission,
         authorization: Arc<AuthorizationEngine<S>>,
         user_id: String,
     ) -> Self {
@@ -274,7 +293,6 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
         };
         let user_id = claims.sub;
 
-        // PRODUCTION FIX: Validate specific user ID if required
         if let Some(expected_id) = &self.expected_user_id {
             if user_id != *expected_id {
                 return Err(AuthError::access_denied(format!(
@@ -344,7 +362,7 @@ impl<S: AuthorizationStorage + 'static> FromRequest for RequirePermission<S> {
 
                 // Create an instance with a default permission - this will be replaced
                 // by the actual permission check in the usage pattern
-                let temp_permission = crate::authorization::Permission {
+                let temp_permission = crate::authorization::AbacPermission {
                     resource: "temp".to_string(),
                     action: "temp".to_string(),
                     conditions: None,
@@ -457,9 +475,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_auth_middleware() {
-        unsafe {
-            std::env::set_var("JWT_SECRET", "auth-framework");
-        }
+        // Use TestEnvironmentGuard for proper env isolation (restored on drop)
+        let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
+            .with_jwt_secret("auth-framework");
         let config = AuthConfig::new()
             .secret("auth-framework".to_string())
             .issuer("auth-framework".to_string())
@@ -473,13 +491,9 @@ mod tests {
         )
         .await;
 
-        // Test request without authorization should fail
+        // Test request without authorization should fail with a 4xx HTTP response
         let req = test::TestRequest::get().uri("/protected").to_request();
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_client_error());
-
-        unsafe {
-            std::env::remove_var("JWT_SECRET");
-        }
     }
 }

@@ -612,7 +612,7 @@ impl RateLimitUtils {
 
     /// Apply jitter to retry duration to prevent thundering herd
     pub fn add_jitter(duration: Duration, jitter_factor: f64) -> Duration {
-        use rand::Rng;
+        use rand::RngExt;
         let jitter = rand::rng().random_range(0.0..jitter_factor);
         let jitter_ms = (duration.as_millis() as f64 * jitter) as u64;
         duration + Duration::from_millis(jitter_ms)

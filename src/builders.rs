@@ -8,6 +8,8 @@
 //! For the most common setups, use the quick start builders:
 //!
 //! ```rust,no_run
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use auth_framework::prelude::*;
 //!
 //! // Simple JWT auth with environment variables
@@ -21,6 +23,8 @@
 //!     .with_postgres("postgresql://...")
 //!     .with_axum()
 //!     .build().await?;
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # Preset Configurations
@@ -28,12 +32,16 @@
 //! Use presets for common security and performance configurations:
 //!
 //! ```rust,no_run
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use auth_framework::prelude::*;
 //!
-//! let auth = AuthFramework::new()
+//! let auth = AuthFramework::builder()
 //!     .security_preset(SecurityPreset::HighSecurity)
 //!     .performance_preset(PerformancePreset::LowLatency)
 //!     .build().await?;
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # Use Case Templates
@@ -41,15 +49,19 @@
 //! Get started quickly with templates for common use cases:
 //!
 //! ```rust,no_run
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use auth_framework::prelude::*;
 //!
 //! // Configure for web application
 //! let auth = AuthFramework::for_use_case(UseCasePreset::WebApp)
 //!     .customize(|config| {
-//!         config.token_lifetime(hours(24))
-//!               .enable_sessions(true)
+//!         config.token_lifetime = hours(24);
+//!         config
 //!     })
 //!     .build().await?;
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::{
@@ -59,6 +71,8 @@ use crate::{
     security::SecurityPreset,
 };
 use std::time::Duration;
+#[cfg(not(feature = "redis-storage"))]
+use tracing::warn;
 
 /// Main builder for AuthFramework with fluent API
 pub struct AuthBuilder {
@@ -468,12 +482,32 @@ impl QuickStartBuilder {
                 builder = builder.with_storage().postgres(conn_str).done();
             }
             Some(QuickStartStorage::Redis(_conn_str)) => {
-                // Redis storage not yet implemented, fallback to memory
-                builder = builder.with_storage().memory().done();
+                #[cfg(feature = "redis-storage")]
+                {
+                    builder = builder.with_storage().redis(_conn_str).done();
+                }
+                #[cfg(not(feature = "redis-storage"))]
+                {
+                    warn!(
+                        "Redis storage requested but the `redis-storage` feature is not enabled; \
+                         falling back to in-memory storage"
+                    );
+                    builder = builder.with_storage().memory().done();
+                }
             }
             Some(QuickStartStorage::RedisFromEnv) => {
-                // Redis storage not yet implemented, fallback to memory
-                builder = builder.with_storage().memory().done();
+                #[cfg(feature = "redis-storage")]
+                {
+                    builder = builder.with_storage().redis_from_env().done();
+                }
+                #[cfg(not(feature = "redis-storage"))]
+                {
+                    warn!(
+                        "Redis storage requested but the `redis-storage` feature is not enabled; \
+                         falling back to in-memory storage"
+                    );
+                    builder = builder.with_storage().memory().done();
+                }
             }
             None => {
                 // Default to memory storage for quick start

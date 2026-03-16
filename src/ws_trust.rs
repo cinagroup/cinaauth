@@ -7,8 +7,8 @@ use crate::errors::{AuthError, Result};
 use crate::saml_assertions::SamlAssertionBuilder;
 // SamlAssertion removed from import - not currently used but may be needed later
 use crate::ws_security::{PasswordType, WsSecurityClient, WsSecurityConfig};
-use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, Duration, Utc};
+use jsonwebtoken::{Algorithm, EncodingKey, Header, encode as jwt_encode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -47,6 +47,15 @@ pub struct StsConfig {
 
     /// Trust relationships
     pub trust_relationships: Vec<TrustRelationship>,
+
+    /// HMAC-HS256 signing secret used when issuing JWT tokens.
+    ///
+    /// **Must be set to a strong, randomly-generated value in production.**
+    /// `StsConfig::default()` generates a cryptographically random secret
+    /// automatically; override this field when you need a stable / shared
+    /// signing key (e.g. for multi-node deployments that share the same
+    /// validator).
+    pub jwt_signing_secret: String,
 }
 
 /// Trust relationship with relying parties
@@ -326,35 +335,45 @@ impl SecurityTokenService {
         assertion.to_xml()
     }
 
-    /// Issue a JWT token
+    /// Issue a JWT token signed with HMAC-HS256 using `StsConfig::jwt_signing_secret`.
     fn issue_jwt_token(
         &self,
         auth_context: &AuthenticationContext,
         request: &RequestSecurityToken,
         lifetime: &TokenLifetime,
     ) -> Result<String> {
-        // Simplified JWT creation - would use proper JWT library in production
-        let header = r#"{"alg":"HS256","typ":"JWT"}"#;
-        let payload = format!(
-            r#"{{"iss":"{}","sub":"{}","aud":"{}","iat":{},"exp":{},"auth_method":"{}"}}"#,
-            self.config.issuer,
-            auth_context.username,
-            request.applies_to.as_deref().unwrap_or(""),
-            lifetime.created.timestamp(),
-            lifetime.expires.timestamp(),
-            auth_context.auth_method
-        );
+        #[derive(Serialize)]
+        struct WsTrustClaims<'a> {
+            iss: &'a str,
+            sub: &'a str,
+            aud: &'a str,
+            iat: i64,
+            exp: i64,
+            auth_method: &'a str,
+            #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
+            claims: &'a HashMap<String, String>,
+        }
 
-        let header_b64 = STANDARD.encode(header);
-        let payload_b64 = STANDARD.encode(payload);
-        let signature_b64 = STANDARD.encode("dummy_signature"); // Would be real signature
+        let jwt_claims = WsTrustClaims {
+            iss: &self.config.issuer,
+            sub: &auth_context.username,
+            aud: request.applies_to.as_deref().unwrap_or(""),
+            iat: lifetime.created.timestamp(),
+            exp: lifetime.expires.timestamp(),
+            auth_method: &auth_context.auth_method,
+            claims: &auth_context.claims,
+        };
 
-        Ok(format!("{}.{}.{}", header_b64, payload_b64, signature_b64))
+        let encoding_key =
+            EncodingKey::from_secret(self.config.jwt_signing_secret.as_bytes());
+
+        jwt_encode(&Header::new(Algorithm::HS256), &jwt_claims, &encoding_key)
+            .map_err(|e| AuthError::internal(format!("WS-Trust JWT signing failed: {e}")))
     }
 
     /// Generate a proof token for holder-of-key scenarios
     fn generate_proof_token(&self) -> Result<ProofToken> {
-        use rand::RngCore;
+        use rand::Rng;
         let mut rng = rand::rng();
         let mut key_material = vec![0u8; 32]; // 256-bit symmetric key
         rng.fill_bytes(&mut key_material);
@@ -522,6 +541,18 @@ impl SecurityTokenService {
 
 impl Default for StsConfig {
     fn default() -> Self {
+        use ring::rand::{SecureRandom, SystemRandom};
+        let rng = SystemRandom::new();
+        let mut bytes = [0u8; 32];
+        rng.fill(&mut bytes)
+            .expect("System CSPRNG unavailable; cannot initialise StsConfig JWT signing secret");
+        let jwt_signing_secret = bytes
+            .iter()
+            .fold(String::with_capacity(64), |mut s, b| {
+                s.push_str(&format!("{b:02x}"));
+                s
+            });
+
         Self {
             issuer: "https://sts.example.com".to_string(),
             default_token_lifetime: Duration::hours(1),
@@ -533,6 +564,7 @@ impl Default for StsConfig {
             endpoint_url: "https://sts.example.com/trust".to_string(),
             include_proof_tokens: false,
             trust_relationships: Vec::new(),
+            jwt_signing_secret,
         }
     }
 }
@@ -580,7 +612,10 @@ mod tests {
 
     #[test]
     fn test_sts_issue_jwt_token() {
+        use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode as jwt_decode};
+
         let config = StsConfig::default();
+        let signing_secret = config.jwt_signing_secret.clone();
         let mut sts = SecurityTokenService::new(config);
 
         let auth_context = AuthenticationContext {
@@ -603,11 +638,23 @@ mod tests {
         let response = sts.process_request(request).unwrap();
 
         assert_eq!(response.token_type, "urn:ietf:params:oauth:token-type:jwt");
-        assert!(response.requested_security_token.contains("."));
 
-        // Decode JWT payload to verify content
+        // Verify the issued JWT has exactly 3 Base64URL parts.
         let parts: Vec<&str> = response.requested_security_token.split('.').collect();
-        assert_eq!(parts.len(), 3);
+        assert_eq!(parts.len(), 3, "JWT must have header.payload.signature");
+
+        // Verify the signature is valid by decoding with the same secret.
+        let decoding_key = DecodingKey::from_secret(signing_secret.as_bytes());
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.set_audience(&["https://api.example.com"]);
+        let token_data = jwt_decode::<serde_json::Value>(
+            &response.requested_security_token,
+            &decoding_key,
+            &validation,
+        )
+        .expect("Issued WS-Trust JWT must be verifiable with the config signing secret");
+        assert_eq!(token_data.claims["sub"], "testuser");
+        assert_eq!(token_data.claims["auth_method"], "certificate");
     }
 
     #[test]

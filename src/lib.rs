@@ -44,7 +44,7 @@ use std::time::Duration;
 
     // Register a JWT authentication method
     let jwt_method = JwtMethod::new()
-        .secret_key("your-secret-key")
+        .secret_key("replace-this-with-a-32+-char-random-secret")
         .issuer("your-service");
 
     auth.register_method("jwt", auth_framework::methods::AuthMethodEnum::Jwt(jwt_method));
@@ -155,6 +155,7 @@ pub mod api;
 pub mod admin;
 
 pub mod auth;
+pub mod distributed; // Distributed session store abstraction
 pub mod tenant; // Multi-tenant support for native multi-tenant deployments
 pub mod auth_modular; // Modular authentication components
 pub mod authentication; // Reorganized authentication modules
@@ -189,6 +190,9 @@ pub mod user_context;
 
 // Enhanced OAuth2 storage with proper validation
 pub mod oauth2_enhanced_storage;
+
+// Canonical OAuth 2.0 client type definitions (RFC 6749 §2.1)
+pub mod client;
 
 // OAuth2 server implementation
 // Secure OAuth2 server implementation
@@ -270,7 +274,7 @@ pub use providers::generate_pkce;
 // WS-Security and WS-Trust support
 pub use permissions::{Permission, PermissionChecker, Role};
 pub use profile_utils::{ExtractProfile, TokenToProfile};
-pub use providers::{DeviceAuthorizationResponse, OAuthProvider, OAuthProviderConfig, UserProfile};
+pub use providers::{DeviceAuthorizationResponse, OAuthProvider, OAuthProviderConfig, ProviderProfile};
 pub use tokens::AuthToken;
 pub use ws_security::{UsernameToken, WsSecurityClient, WsSecurityConfig, WsSecurityHeader};
 pub use ws_trust::RequestSecurityToken;
@@ -301,13 +305,11 @@ pub use oauth2_server::{
     TokenResponse,
 };
 
-// Server configuration types
+// Server configuration types — ClientType and ClientConfig come from the canonical `client` module.
+pub use client::{ClientConfig, ClientType};
 pub use server::{
-    ClientRegistrationRequest, ClientType, WorkingServerConfig,
-    core::{
-        client_registration::ClientRegistrationRequest as ServerClientRegistrationRequest,
-        client_registry::ClientType as ServerClientType,
-    },
+    ClientRegistrationRequest, WorkingServerConfig,
+    core::client_registration::ClientRegistrationRequest as ServerClientRegistrationRequest,
 };
 
 // Advanced server modules and RFC implementations
@@ -320,13 +322,12 @@ pub use server::{
 pub use audit::{AuditEvent, AuditEventType, AuditLogger, EventOutcome, RiskLevel};
 pub use authentication::mfa::{MfaManager as LegacyMfaManager, MfaMethodType, TotpProvider};
 pub use authorization::{
-    AccessCondition, AuthorizationEngine, Permission as AuthzPermission, Role as AuthzRole,
+    AbacPermission as AuthzPermission, AbacRole as AuthzRole, AccessCondition, AuthorizationEngine,
 };
 pub use security::secure_jwt::{SecureJwtClaims, SecureJwtConfig, SecureJwtValidator};
 pub use security::secure_mfa::SecureMfaService;
 pub use security::secure_session::{
     DeviceFingerprint, SecureSession, SecureSessionConfig, SecureSessionManager, SecurityFlags,
-    SessionState as SecureSessionState,
 };
 pub use security::secure_utils::{SecureComparison, SecureRandomGen};
 pub use session::manager::{

@@ -5,6 +5,7 @@
 
 use auth_framework::{
     errors::AuthError,
+    oauth2_enhanced_storage::UserCredentials,
     oauth2_server::{OAuth2Config, OAuth2Server},
     tokens::TokenManager,
 };
@@ -19,6 +20,43 @@ fn create_test_token_manager() -> Arc<TokenManager> {
     ))
 }
 
+/// Seed well-known test users into an OAuth2Server.
+///
+/// The password hashes below are pre-computed bcrypt hashes (cost=12) of the
+/// corresponding test passwords and are used exclusively in tests to exercise
+/// authentication logic without hardcoded credentials in the library itself.
+async fn seed_test_users(server: &OAuth2Server) {
+    let test_users = [
+        (
+            "admin",
+            "$2b$12$UfM9FwL8dbLOFTOmL8kAVOUe8.mFYGsqtaEjpMrS6yOGhN6SHL6me", // admin_password_123456789
+            vec!["read", "write", "admin", "delete"],
+        ),
+        (
+            "user",
+            "$2b$12$3Jb05MyZ7QDS81DJkt3QLeyR9z.S9yQqULr42kZ5F5crUYbwJaXdW", // user_password_123456789
+            vec!["read", "write"],
+        ),
+        (
+            "test",
+            "$2b$12$bM6NV4EQdo8kJHUhhZGpIuIsalt4eD9J8co0KyO6pzEPX0ClONwTy", // test_password_123456789
+            vec!["read"],
+        ),
+    ];
+    for (username, password_hash, scopes) in &test_users {
+        server
+            .add_user_credentials(UserCredentials {
+                username: username.to_string(),
+                password_hash: password_hash.to_string(),
+                scopes: scopes.iter().map(|s| s.to_string()).collect(),
+                is_active: true,
+                email: None,
+            })
+            .await
+            .expect("seeding test user should not fail");
+    }
+}
+
 /// Test that authentication properly validates passwords
 #[tokio::test]
 async fn test_authentication_requires_valid_password() {
@@ -29,6 +67,7 @@ async fn test_authentication_requires_valid_password() {
         "test_audience",
     ));
     let server = OAuth2Server::new(config, token_manager).await.unwrap();
+    seed_test_users(&server).await;
 
     // Test 1: Valid credentials should succeed
     let result = server
@@ -83,6 +122,7 @@ async fn test_user_scope_authorization() {
     let config = OAuth2Config::default();
     let token_manager = create_test_token_manager();
     let server = OAuth2Server::new(config, token_manager).await.unwrap();
+    seed_test_users(&server).await;
 
     // Test admin user can access admin scopes
     let result = server
@@ -148,6 +188,7 @@ async fn test_user_id_generation_security() {
     let config = OAuth2Config::default();
     let token_manager = create_test_token_manager();
     let server = OAuth2Server::new(config, token_manager).await.unwrap();
+    seed_test_users(&server).await;
 
     // Test that the same user gets the same ID consistently
     let result1 = server
@@ -206,6 +247,7 @@ async fn test_session_management_security() {
     let config = OAuth2Config::default();
     let token_manager = create_test_token_manager();
     let server = OAuth2Server::new(config, token_manager).await.unwrap();
+    seed_test_users(&server).await;
 
     // Authenticate user and get user context
     let user_context = server
@@ -263,6 +305,7 @@ async fn test_password_timing_attack_resistance() {
     let config = OAuth2Config::default();
     let token_manager = create_test_token_manager();
     let server = OAuth2Server::new(config, token_manager).await.unwrap();
+    seed_test_users(&server).await;
 
     // Test multiple wrong passwords to ensure timing is consistent
     let passwords = vec![

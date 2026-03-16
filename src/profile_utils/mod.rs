@@ -1,7 +1,7 @@
 //! Utilities for token-to-profile conversion and user profile management.
 
 use crate::errors::{AuthError, OAuthProviderError, Result};
-use crate::providers::{OAuthProvider, OAuthTokenResponse, UserProfile};
+use crate::providers::{OAuthProvider, OAuthTokenResponse, ProviderProfile};
 use crate::tokens::AuthToken;
 use reqwest::Client;
 use serde_json::Value;
@@ -11,7 +11,7 @@ use serde_json::Value;
 #[allow(async_fn_in_trait)]
 pub trait TokenToProfile {
     /// Convert a token to a user profile
-    async fn to_profile(&self, provider: &OAuthProvider) -> Result<UserProfile>;
+    async fn to_profile(&self, provider: &OAuthProvider) -> Result<ProviderProfile>;
 }
 
 /// Trait for automatic extraction of user profiles from responses
@@ -21,11 +21,11 @@ pub trait ExtractProfile {
         &self,
         provider: &OAuthProvider,
         json_response: Value,
-    ) -> Result<UserProfile>;
+    ) -> Result<ProviderProfile>;
 }
 
 impl TokenToProfile for OAuthTokenResponse {
-    async fn to_profile(&self, provider: &OAuthProvider) -> Result<UserProfile> {
+    async fn to_profile(&self, provider: &OAuthProvider) -> Result<ProviderProfile> {
         let config = provider.config();
         let userinfo_url = config.userinfo_url.clone().ok_or_else(|| {
             AuthError::OAuthProvider(OAuthProviderError::UnsupportedFeature {
@@ -63,9 +63,9 @@ impl ExtractProfile for OAuthProvider {
         &self,
         _provider: &OAuthProvider,
         json_response: Value,
-    ) -> Result<UserProfile> {
+    ) -> Result<ProviderProfile> {
         // Default extractor attempts to map standard fields based on provider
-        let mut profile = UserProfile::new();
+        let mut profile = ProviderProfile::new();
 
         // Get ID field based on provider
         match self {
@@ -211,9 +211,9 @@ impl ExtractProfile for OAuthProvider {
 }
 
 impl TokenToProfile for AuthToken {
-    async fn to_profile(&self, _provider: &OAuthProvider) -> Result<UserProfile> {
+    async fn to_profile(&self, _provider: &OAuthProvider) -> Result<ProviderProfile> {
         // Create a basic profile from the token data
-        let mut profile = UserProfile::new();
+        let mut profile = ProviderProfile::new();
 
         // Use the user ID as the profile ID
         profile = profile.with_id(self.user_id.clone());

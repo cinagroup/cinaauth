@@ -28,8 +28,8 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::caep_continuous_access::*;
-//! use auth_framework::server::{SessionManager, oidc_backchannel_logout::BackChannelLogoutManager};
+//! use auth_framework::server::security::caep_continuous_access::*;
+//! use auth_framework::server::{SessionManager, BackChannelLogoutManager};
 //! use chrono::Duration;
 //! use std::sync::Arc;
 //! use async_trait::async_trait;
@@ -123,10 +123,26 @@ pub struct CaepConfig {
 
     /// Custom evaluation rules
     pub evaluation_rules: Vec<CaepEvaluationRule>,
+
+    /// HMAC secret used to sign CAEP logout tokens (HS256).
+    /// **Must be set to a strong, randomly-generated secret in production.**
+    pub signing_secret: String,
 }
 
 impl Default for CaepConfig {
     fn default() -> Self {
+        use ring::rand::{SecureRandom, SystemRandom};
+        let rng = SystemRandom::new();
+        let mut bytes = [0u8; 32];
+        rng.fill(&mut bytes)
+            .expect("System CSPRNG unavailable; cannot initialise CaepConfig signing secret");
+        let signing_secret = bytes
+            .iter()
+            .fold(String::with_capacity(64), |mut s, b| {
+                s.push_str(&format!("{b:02x}"));
+                s
+            });
+
         Self {
             event_stream_url: "wss://localhost:8080/caep/events".to_string(),
             evaluation_interval: Duration::try_seconds(30).unwrap_or(Duration::zero()),
@@ -136,6 +152,9 @@ impl Default for CaepConfig {
             event_retention_period: Duration::try_hours(24).unwrap_or(Duration::zero()),
             propagation_endpoints: Vec::new(),
             evaluation_rules: Vec::new(),
+            // Randomly generated at startup. Override with a persisted secret in production
+            // so that tokens remain verifiable across restarts.
+            signing_secret,
         }
     }
 }
@@ -555,7 +574,7 @@ impl CaepManager {
 
         // Broadcast event
         if let Err(e) = self.event_broadcaster.send(event.clone()) {
-            log::warn!("Failed to broadcast CAEP event: {}", e);
+            tracing::warn!("Failed to broadcast CAEP event: {}", e);
         }
 
         // Update session state
@@ -659,16 +678,16 @@ impl CaepManager {
             // Check if session still exists and is valid in SessionManager
             if let Some(oidc_session) = self.session_manager.get_session(session_id) {
                 if !self.session_manager.is_session_valid(session_id) {
-                    log::info!("CAEP removing expired session: {}", session_id);
+                    tracing::info!("CAEP removing expired session: {}", session_id);
                     sessions_to_remove.push(session_id.clone());
                 }
                 // Verify subject consistency
                 else if oidc_session.sub != caep_session.subject {
-                    log::warn!("CAEP session subject mismatch, removing: {}", session_id);
+                    tracing::warn!("CAEP session subject mismatch, removing: {}", session_id);
                     sessions_to_remove.push(session_id.clone());
                 }
             } else {
-                log::info!("CAEP removing orphaned session: {}", session_id);
+                tracing::info!("CAEP removing orphaned session: {}", session_id);
                 sessions_to_remove.push(session_id.clone());
             }
         }
@@ -683,7 +702,7 @@ impl CaepManager {
 
     /// Revoke access for a subject
     pub async fn revoke_subject_access(&self, subject: &str) -> Result<()> {
-        log::info!("CAEP revoking access for subject: {}", subject);
+        tracing::info!("CAEP revoking access for subject: {}", subject);
 
         // Find all sessions for this subject and initiate back-channel logout
         let sessions_to_logout = {
@@ -723,14 +742,14 @@ impl CaepManager {
             // Use async approach to handle logout manager integration
             match self.process_backchannel_logout(&logout_request).await {
                 Ok(_) => {
-                    log::info!(
+                    tracing::info!(
                         "Successfully initiated back-channel logout for session {} (subject: {})",
                         session_id,
                         subject
                     );
                 }
                 Err(e) => {
-                    log::error!(
+                    tracing::error!(
                         "Failed to initiate back-channel logout for session {} (subject: {}): {}",
                         session_id,
                         subject,
@@ -757,7 +776,7 @@ impl CaepManager {
 
         // Use the logout manager to get metadata and validate capabilities
         let logout_metadata = self.logout_manager.get_discovery_metadata();
-        log::info!("Logout manager capabilities: {:?}", logout_metadata);
+        tracing::info!("Logout manager capabilities: {:?}", logout_metadata);
 
         // Create CAEP-specific logout token based on the result
         let logout_token = self
@@ -768,7 +787,7 @@ impl CaepManager {
         self.handle_caep_logout(logout_request, &logout_token)
             .await?;
 
-        log::info!("CAEP backchannel logout processed successfully");
+        tracing::info!("CAEP backchannel logout processed successfully");
         Ok(())
     }
 
@@ -798,8 +817,8 @@ impl CaepManager {
                 .unwrap_or(&serde_json::json!("automatic_revocation"))
         });
 
-        // In production, use proper signing key
-        let key = EncodingKey::from_secret("caep-secret".as_ref());
+        // Use the configured signing secret; override CaepConfig::signing_secret in production.
+        let key = EncodingKey::from_secret(self.config.signing_secret.as_bytes());
         let header = Header::new(Algorithm::HS256);
 
         let token = encode(&header, &claims, &key).map_err(|e| {
@@ -822,7 +841,7 @@ impl CaepManager {
         // 3. Update session state in persistent storage
         // 4. Trigger any cleanup procedures
 
-        log::info!(
+        tracing::info!(
             "Processing CAEP logout for session: {}",
             logout_request.session_id
         );
@@ -867,10 +886,10 @@ impl CaepManager {
 
         // Broadcast the event
         if let Err(e) = self.event_broadcaster.send(caep_event) {
-            log::warn!("Failed to broadcast CAEP logout event: {}", e);
+            tracing::warn!("Failed to broadcast CAEP logout event: {}", e);
         }
 
-        log::info!(
+        tracing::info!(
             "CAEP logout completed for session: {}",
             logout_request.session_id
         );
@@ -920,7 +939,7 @@ impl CaepManager {
         if let Some(oidc_session) = self.session_manager.get_session(session_id) {
             // Verify the session is still valid
             if !self.session_manager.is_session_valid(session_id) {
-                log::warn!(
+                tracing::warn!(
                     "CAEP received event for expired OIDC session: {}",
                     session_id
                 );
@@ -937,7 +956,7 @@ impl CaepManager {
                 ));
             }
         } else {
-            log::warn!(
+            tracing::warn!(
                 "CAEP received event for unknown OIDC session: {}",
                 session_id
             );
@@ -1095,7 +1114,7 @@ impl CaepManager {
                 CaepRuleAction::RequireStepUp { level } => {
                     if let Some(_step_up_manager) = &self.step_up_manager {
                         // Trigger step-up authentication
-                        log::info!(
+                        tracing::info!(
                             "CAEP requiring step-up to level {} for subject {}",
                             level,
                             evaluation.subject
@@ -1103,21 +1122,21 @@ impl CaepManager {
                     }
                 }
                 CaepRuleAction::SendNotification { channels } => {
-                    log::info!(
+                    tracing::info!(
                         "CAEP sending notification via channels {:?} for subject {}",
                         channels,
                         evaluation.subject
                     );
                 }
                 CaepRuleAction::LogEvent { level } => {
-                    log::info!(
+                    tracing::info!(
                         "CAEP logging event at level {} for subject {}",
                         level,
                         evaluation.subject
                     );
                 }
                 CaepRuleAction::TriggerWebhook { url } => {
-                    log::info!(
+                    tracing::info!(
                         "CAEP triggering webhook {} for subject {}",
                         url,
                         evaluation.subject
@@ -1149,7 +1168,7 @@ impl CaepManager {
             }
         }
 
-        log::info!(
+        tracing::info!(
             "CAEP quarantined {} sessions for subject {} until {}. Session IDs: {:?}",
             quarantined_session_ids.len(),
             subject,
@@ -1170,7 +1189,7 @@ impl CaepManager {
         if let Some(event_handlers) = handlers.get(&event.event_type) {
             for handler in event_handlers {
                 if let Err(e) = handler.handle_event(event).await {
-                    log::error!("CAEP event handler failed: {}", e);
+                    tracing::error!("CAEP event handler failed: {}", e);
                 }
             }
         }
@@ -1195,7 +1214,7 @@ impl CaepManager {
                 if caep_session.subject == oidc_session.sub {
                     return Ok(Some(caep_session.clone()));
                 } else {
-                    log::warn!(
+                    tracing::warn!(
                         "Subject mismatch between CAEP and OIDC sessions for {}",
                         session_id
                     );

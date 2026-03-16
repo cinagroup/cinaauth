@@ -1347,17 +1347,35 @@ export class AuthFrameworkSdk {{
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {{
-    // This would check if we have a valid token
-    // Implementation depends on your token storage strategy
-    return false; // Placeholder
+    const token = this.client.getAccessToken?.() ?? null;
+    if (!token) {{
+      return false;
+    }}
+    // Decode the JWT payload to check expiry without a full verify round-trip.
+    try {{
+      const [, payloadB64] = token.split('.');
+      const json = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+      const payload: {{ exp?: number }} = JSON.parse(json);
+      if (payload.exp != null && Date.now() / 1000 > payload.exp) {{
+        return false;
+      }}
+    }} catch {{
+      return false;
+    }}
+    return true;
   }}
 
   /**
    * Refresh authentication token
    */
   async refreshToken(refreshToken: string): Promise<{{ accessToken: string; refreshToken: string }}> {{
-    // Implementation would depend on your refresh token flow
-    throw new Error('Not implemented');
+    const response = await this.client.post<{{ access_token: string; refresh_token: string }}>(
+      '/auth/oauth/token/refresh',
+      {{ refresh_token: refreshToken }},
+    );
+    const accessToken = response.access_token;
+    this.client.setAccessToken(accessToken);
+    return {{ accessToken, refreshToken: response.refresh_token }};
   }}
 }}
 

@@ -47,7 +47,7 @@
 //!
 //! # Example Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use auth_framework::admin::{AdminInterface, AppState};
 //!
 //! // Create administrative interface
@@ -82,12 +82,30 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Shared application state
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AppState {
     pub config: Arc<RwLock<AuthFrameworkSettings>>,
     pub config_manager: crate::config::ConfigManager,
     pub health_status: HealthStatus,
     pub server_status: Arc<RwLock<ServerStatus>>,
+    /// Active admin GUI session tokens (each set on login, cleared on logout).
+    ///
+    /// Using a `Mutex`-guarded `HashSet` so the same `AppState` clone shared
+    /// across all Axum handlers can atomically add/remove tokens without a
+    /// full async runtime requirement at the lock site.
+    pub admin_sessions: Arc<std::sync::Mutex<std::collections::HashSet<String>>>,
+    /// Optional reference to the running AuthFramework instance.
+    /// When present, web/API handlers can query live storage data (users, events, etc.).
+    pub auth_framework: Option<Arc<crate::AuthFramework>>,
+}
+
+impl std::fmt::Debug for AppState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppState")
+            .field("health_status", &self.health_status)
+            .field("auth_framework_present", &self.auth_framework.is_some())
+            .finish_non_exhaustive()
+    }
 }
 
 /// Server status information
@@ -155,7 +173,16 @@ impl AppState {
             config_manager,
             health_status: HealthStatus::Healthy,
             server_status: Arc::new(RwLock::new(server_status)),
+            admin_sessions: Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
+            auth_framework: None,
         })
+    }
+
+    /// Attach a running [`crate::AuthFramework`] instance so that admin GUI
+    /// handlers can query live storage data (users, audit events, etc.).
+    pub fn with_auth_framework(mut self, af: Arc<crate::AuthFramework>) -> Self {
+        self.auth_framework = Some(af);
+        self
     }
 
     pub async fn get_health_status(&self) -> HealthStatus {
@@ -180,10 +207,30 @@ impl AppState {
 
     /// Get server information for display in TUI
     pub async fn get_server_info(&self) -> Result<ServerInfo> {
+        use std::sync::OnceLock;
+        use std::time::SystemTime;
+        static START_TIME: OnceLock<SystemTime> = OnceLock::new();
+        let start = START_TIME.get_or_init(SystemTime::now);
+
+        let uptime = match start.elapsed() {
+            Ok(d) => {
+                let s = d.as_secs();
+                let (days, hours, mins) = (s / 86400, (s % 86400) / 3600, (s % 3600) / 60);
+                if days > 0 {
+                    format!("{days}d {hours}h {mins}m")
+                } else if hours > 0 {
+                    format!("{hours}h {mins}m")
+                } else {
+                    format!("{mins}m")
+                }
+            }
+            Err(_) => "Unknown".to_string(),
+        };
+
         let status = self.server_status.read().await;
         Ok(ServerInfo {
             version: env!("CARGO_PKG_VERSION").to_string(),
-            uptime: "N/A".to_string(), // Would be calculated from start time
+            uptime,
             status: if status.web_server_running {
                 "Running"
             } else {
@@ -197,18 +244,41 @@ impl AppState {
 
     /// Get user statistics for display in TUI
     pub async fn get_user_statistics(&self) -> Result<UserStatistics> {
-        // Mock data - in real implementation would query the database
-        Ok(UserStatistics {
-            total_users: 0,
-            active_sessions: 0,
-            failed_logins_today: 0,
-            new_registrations_today: 0,
-        })
+        if let Some(ref af) = self.auth_framework {
+            let storage = af.storage();
+
+            // Count total users from the users:index list.
+            let total_users = match storage.get_kv("users:index").await {
+                Ok(Some(bytes)) => {
+                    serde_json::from_slice::<Vec<String>>(&bytes)
+                        .map(|v| v.len() as u32)
+                        .unwrap_or(0)
+                }
+                _ => 0,
+            };
+
+            let status = self.server_status.read().await;
+            Ok(UserStatistics {
+                total_users,
+                active_sessions: status.active_sessions,
+                failed_logins_today: 0,      // Requires an audit-log query (not yet stored).
+                new_registrations_today: 0,   // Requires an audit-log query (not yet stored).
+            })
+        } else {
+            let status = self.server_status.read().await;
+            Ok(UserStatistics {
+                total_users: 0,
+                active_sessions: status.active_sessions,
+                failed_logins_today: 0,
+                new_registrations_today: 0,
+            })
+        }
     }
 
     /// Get recent security events for display in TUI
     pub async fn get_recent_security_events(&self) -> Result<Vec<SecurityEvent>> {
-        // Mock data - in real implementation would query the audit log
+        // A proper audit-log storage backend is not yet implemented.
+        // Return an empty list until structured event logging is added.
         Ok(vec![])
     }
 } // Command line interface types and functions

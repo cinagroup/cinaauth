@@ -13,15 +13,15 @@
 //! - Multi-tab session coordination
 
 use crate::errors::{AuthError, Result};
-use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 /// Session state enumeration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum SessionState {
+pub enum OidcSessionState {
     /// User is authenticated
     Authenticated,
     /// User is not authenticated
@@ -48,7 +48,7 @@ pub struct OidcSession {
     /// Session expiration timestamp
     pub expires_at: u64,
     /// Session state
-    pub state: SessionState,
+    pub state: OidcSessionState,
     /// Browser session identifier (session_state parameter)
     pub browser_session_id: String,
     /// Associated logout tokens for backchannel logout
@@ -111,7 +111,7 @@ pub struct SessionCheckRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionCheckResponse {
     /// Session state
-    pub state: SessionState,
+    pub state: OidcSessionState,
     /// New session state value if changed
     pub session_state: Option<String>,
 }
@@ -144,7 +144,7 @@ impl SessionManager {
             created_at: now,
             last_activity: now,
             expires_at: now + 3600, // Default 1 hour expiration
-            state: SessionState::Authenticated,
+            state: OidcSessionState::Authenticated,
             browser_session_id: self.generate_browser_session_id(&sub, &client_id)?,
             logout_tokens: Vec::new(),
             metadata,
@@ -188,14 +188,20 @@ impl SessionManager {
         }
     }
 
-    /// Generate browser session ID for session_state parameter
+    /// Generate an opaque browser session ID for the OIDC `session_state` parameter.
+    ///
+    /// Uses SHA-256(sub || client_id || random UUID) so the result is a fixed-length
+    /// opaque token that does not leak user identity or client information in the URL.
     fn generate_browser_session_id(&self, sub: &str, client_id: &str) -> Result<String> {
-        // In a real implementation, this would be a cryptographically secure
-        // hash of session data + client salt
-        let data = format!("{}:{}:{}", sub, client_id, Uuid::new_v4());
-
-        // Simple base64 encoding for demo - use proper crypto in production
-        Ok(STANDARD.encode(data))
+        let nonce = Uuid::new_v4().to_string();
+        let mut hasher = Sha256::new();
+        hasher.update(sub.as_bytes());
+        hasher.update(b":");
+        hasher.update(client_id.as_bytes());
+        hasher.update(b":");
+        hasher.update(nonce.as_bytes());
+        let hash = hasher.finalize();
+        Ok(hex::encode(hash))
     }
 
     /// Check session state for iframe polling
@@ -211,18 +217,18 @@ impl SessionManager {
         if let Some(session) = session {
             if self.is_session_valid(&session.session_id) {
                 Ok(SessionCheckResponse {
-                    state: SessionState::Authenticated,
+                    state: OidcSessionState::Authenticated,
                     session_state: None, // No change
                 })
             } else {
                 Ok(SessionCheckResponse {
-                    state: SessionState::Unauthenticated,
+                    state: OidcSessionState::Unauthenticated,
                     session_state: None,
                 })
             }
         } else {
             Ok(SessionCheckResponse {
-                state: SessionState::Unauthenticated,
+                state: OidcSessionState::Unauthenticated,
                 session_state: None,
             })
         }
@@ -231,7 +237,7 @@ impl SessionManager {
     /// End session (logout)
     pub fn end_session(&mut self, session_id: &str) -> Result<OidcSession> {
         if let Some(mut session) = self.sessions.remove(session_id) {
-            session.state = SessionState::Unauthenticated;
+            session.state = OidcSessionState::Unauthenticated;
             Ok(session)
         } else {
             Err(AuthError::validation("Session not found"))
@@ -262,13 +268,13 @@ impl SessionManager {
             }}
 
             function checkSession() {{
-                var sessionState = getCookie('session_state');
-                if (sessionState) {{
+                var OidcSessionState = getCookie('session_state');
+                if (OidcSessionState) {{
                     // Notify parent window of session check
                     window.parent.postMessage({{
                         type: 'session_check',
                         client_id: client_id,
-                        session_state: sessionState,
+                        session_state: OidcSessionState,
                         state: 'unchanged'
                     }}, '*');
                 }} else {{
@@ -388,7 +394,7 @@ mod tests {
 
         assert_eq!(session.sub, "user123");
         assert_eq!(session.client_id, "client456");
-        assert_eq!(session.state, SessionState::Authenticated);
+        assert_eq!(session.state, OidcSessionState::Authenticated);
         assert!(!session.browser_session_id.is_empty());
     }
 

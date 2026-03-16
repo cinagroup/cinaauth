@@ -1,0 +1,66 @@
+   Compiling auth-framework v0.5.0-rc1 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
+warning: variable does not need to be mutable
+  --> examples\test_register.rs:13:9
+   |
+13 |     let mut framework = AuthFramework::new(config);
+   |         ----^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+error[E0599]: no method named `store_kv` found for struct `UnifiedStorage` in the current scope
+  --> examples\working_demo.rs:67:13
+   |
+67 |     storage.store_kv("test-key", test_data, None).await?;
+   |             ^^^^^^^^ method not found in `UnifiedStorage`
+   |
+  ::: src\storage\core.rs:82:14
+   |
+82 |     async fn store_kv(&self, key: &str, value: &[u8], ttl: Option<Duration>) -> Result<()>;
+   |              -------- the method is available for `UnifiedStorage` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `AuthStorage` which provides `store_kv` is implemented but not in scope; perhaps you want to import it
+   |
+ 5 + use auth_framework::storage::AuthStorage;
+   |
+
+error[E0599]: no method named `get_kv` found for struct `UnifiedStorage` in the current scope
+  --> examples\working_demo.rs:69:29
+   |
+69 |     let retrieved = storage.get_kv("test-key").await?;
+   |                             ^^^^^^ method not found in `UnifiedStorage`
+   |
+  ::: src\storage\core.rs:85:14
+   |
+85 |     async fn get_kv(&self, key: &str) -> Result<Option<Vec<u8>>>;
+   |              ------ the method is available for `UnifiedStorage` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `AuthStorage` which provides `get_kv` is implemented but not in scope; perhaps you want to import it
+   |
+ 5 + use auth_framework::storage::AuthStorage;
+   |
+
+error[E0599]: no method named `cleanup_expired` found for struct `UnifiedStorage` in the current scope
+  --> examples\working_demo.rs:79:13
+   |
+79 |     storage.cleanup_expired().await?;
+   |             ^^^^^^^^^^^^^^^ method not found in `UnifiedStorage`
+   |
+  ::: src\storage\core.rs:91:14
+   |
+91 |     async fn cleanup_expired(&self) -> Result<()>;
+   |              --------------- the method is available for `UnifiedStorage` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `AuthStorage` which provides `cleanup_expired` is implemented but not in scope; perhaps you want to import it
+   |
+ 5 + use auth_framework::storage::AuthStorage;
+   |
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `auth-framework` (example "working_demo") due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+warning: `auth-framework` (example "test_register") generated 1 warning (run `cargo fix --example "test_register" -p auth-framework` to apply 1 suggestion)

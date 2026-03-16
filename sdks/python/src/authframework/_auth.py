@@ -119,19 +119,17 @@ class AuthService:
         return await self._client.make_request("POST", "/auth/register", config=config)
 
     async def verify_email(self, token: str) -> dict[str, Any]:
-        """Verify user's email address.
+        """Email verification is not implemented by the current server.
 
         Args:
             token: Email verification token
 
         Returns:
-            Verification response.
+            This method always raises ``NotImplementedError``.
 
         """
-        data = {"token": token}
-        config = RequestConfig(json_data=data)
-        return await self._client.make_request(
-            "POST", "/auth/verify-email", config=config
+        raise NotImplementedError(
+            "Email verification endpoints are not implemented by the current AuthFramework server"
         )
 
     async def reset_password_request(self, email: str) -> dict[str, Any]:

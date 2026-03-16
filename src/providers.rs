@@ -1,5 +1,5 @@
 //! OAuth provider configurations and implementations.
-impl Default for UserProfile {
+impl Default for ProviderProfile {
     fn default() -> Self {
         Self::new()
     }
@@ -104,9 +104,13 @@ pub struct DeviceAuthorizationResponse {
     pub expires_in: u64,
 }
 
-/// Standardized user profile across all providers.
+/// Standardized user profile returned by an OAuth provider (all fields optional because
+/// different providers expose different sets of attributes).
+///
+/// For the *application-level* user model (structured, mandatory fields) see
+/// [`crate::api::users::ProviderProfile`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserProfile {
+pub struct ProviderProfile {
     /// Unique identifier from the provider
     pub id: Option<String>,
 
@@ -139,7 +143,7 @@ pub struct UserProfile {
 use sqlx::{Decode, Postgres, Type, postgres::PgValueRef};
 
 #[cfg(feature = "postgres-storage")]
-impl<'r> Decode<'r, Postgres> for UserProfile {
+impl<'r> Decode<'r, Postgres> for ProviderProfile {
     fn decode(value: PgValueRef<'r>) -> std::result::Result<Self, sqlx::error::BoxDynError> {
         let json: serde_json::Value = <serde_json::Value as Decode<Postgres>>::decode(value)?;
         serde_json::from_value(json).map_err(|e| Box::new(e) as sqlx::error::BoxDynError)
@@ -147,7 +151,7 @@ impl<'r> Decode<'r, Postgres> for UserProfile {
 }
 
 #[cfg(feature = "postgres-storage")]
-impl Type<Postgres> for UserProfile {
+impl Type<Postgres> for ProviderProfile {
     fn type_info() -> sqlx::postgres::PgTypeInfo {
         <serde_json::Value as Type<Postgres>>::type_info()
     }
@@ -156,7 +160,7 @@ impl Type<Postgres> for UserProfile {
     }
 }
 
-impl UserProfile {
+impl ProviderProfile {
     /// Create a new empty user profile
     pub fn new() -> Self {
         Self {
@@ -840,8 +844,18 @@ impl OAuthProvider {
         params.insert("client_id".to_string(), client_id.to_string());
         params.insert("scope".to_string(), scope_string);
 
+        let device_auth_url = config
+            .device_authorization_url
+            .as_deref()
+            .ok_or_else(|| {
+                AuthError::auth_method(
+                    self.name(),
+                    "Device authorization URL is not configured for this provider".to_string(),
+                )
+            })?;
+
         let response = client
-            .post(config.device_authorization_url.as_deref().unwrap())
+            .post(device_auth_url)
             .form(&params)
             .send()
             .await?;
@@ -902,14 +916,14 @@ impl OAuthProvider {
 /// Generate a random state parameter for OAuth flows.
 pub fn generate_state() -> String {
     let mut bytes = [0u8; 32];
-    use rand::RngCore;
+    use rand::Rng;
     rand::rng().fill_bytes(&mut bytes);
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }
 
 /// Generate PKCE code verifier and challenge.
 pub fn generate_pkce() -> (String, String) {
-    use rand::RngCore;
+    use rand::Rng;
     use ring::digest;
 
     // Generate code verifier (43-128 characters)
@@ -943,7 +957,7 @@ impl ProfileExtractor {
         &self,
         token: &AuthToken,
         provider: &OAuthProvider,
-    ) -> Result<UserProfile> {
+    ) -> Result<ProviderProfile> {
         match provider {
             OAuthProvider::GitHub => self.extract_github_profile(token).await,
             OAuthProvider::Google => self.extract_google_profile(token).await,
@@ -961,7 +975,7 @@ impl ProfileExtractor {
     }
 
     /// Extract GitHub user profile
-    async fn extract_github_profile(&self, token: &AuthToken) -> Result<UserProfile> {
+    async fn extract_github_profile(&self, token: &AuthToken) -> Result<ProviderProfile> {
         let response = self
             .client
             .get("https://api.github.com/user")
@@ -975,7 +989,7 @@ impl ProfileExtractor {
             .await
             .map_err(|e| AuthError::ParseError(e.to_string()))?;
 
-        let mut profile = UserProfile::new();
+        let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_u64().unwrap_or(0).to_string());
         profile = profile.with_provider("github".to_string());
 
@@ -1018,7 +1032,7 @@ impl ProfileExtractor {
     }
 
     /// Extract Google user profile
-    async fn extract_google_profile(&self, token: &AuthToken) -> Result<UserProfile> {
+    async fn extract_google_profile(&self, token: &AuthToken) -> Result<ProviderProfile> {
         let response = self
             .client
             .get("https://www.googleapis.com/oauth2/v2/userinfo")
@@ -1032,7 +1046,7 @@ impl ProfileExtractor {
             .await
             .map_err(|e| AuthError::ParseError(e.to_string()))?;
 
-        let mut profile = UserProfile::new();
+        let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_str().unwrap_or("").to_string());
         profile = profile.with_provider("google".to_string());
 
@@ -1060,7 +1074,7 @@ impl ProfileExtractor {
     }
 
     /// Extract Microsoft user profile
-    async fn extract_microsoft_profile(&self, token: &AuthToken) -> Result<UserProfile> {
+    async fn extract_microsoft_profile(&self, token: &AuthToken) -> Result<ProviderProfile> {
         let response = self
             .client
             .get("https://graph.microsoft.com/v1.0/me")
@@ -1074,7 +1088,7 @@ impl ProfileExtractor {
             .await
             .map_err(|e| AuthError::ParseError(e.to_string()))?;
 
-        let mut profile = UserProfile::new();
+        let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_str().unwrap_or("").to_string());
         profile = profile.with_provider("microsoft".to_string());
 
@@ -1112,7 +1126,7 @@ impl ProfileExtractor {
     }
 
     /// Extract Discord user profile
-    async fn extract_discord_profile(&self, token: &AuthToken) -> Result<UserProfile> {
+    async fn extract_discord_profile(&self, token: &AuthToken) -> Result<ProviderProfile> {
         let response = self
             .client
             .get("https://discord.com/api/users/@me")
@@ -1126,7 +1140,7 @@ impl ProfileExtractor {
             .await
             .map_err(|e| AuthError::ParseError(e.to_string()))?;
 
-        let mut profile = UserProfile::new();
+        let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_str().unwrap_or("").to_string());
         profile = profile.with_provider("discord".to_string());
 
@@ -1166,7 +1180,7 @@ impl ProfileExtractor {
     }
 
     /// Extract GitLab user profile
-    async fn extract_gitlab_profile(&self, token: &AuthToken) -> Result<UserProfile> {
+    async fn extract_gitlab_profile(&self, token: &AuthToken) -> Result<ProviderProfile> {
         let response = self
             .client
             .get("https://gitlab.com/api/v4/user")
@@ -1180,7 +1194,7 @@ impl ProfileExtractor {
             .await
             .map_err(|e| AuthError::ParseError(e.to_string()))?;
 
-        let mut profile = UserProfile::new();
+        let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_u64().unwrap_or(0).to_string());
         profile = profile.with_provider("gitlab".to_string());
 
@@ -1222,7 +1236,7 @@ impl ProfileExtractor {
         token: &AuthToken,
         provider_name: &str,
         config: &OAuthProviderConfig,
-    ) -> Result<UserProfile> {
+    ) -> Result<ProviderProfile> {
         if let Some(user_info_url) = &config.userinfo_url {
             let response = self
                 .client
@@ -1237,7 +1251,7 @@ impl ProfileExtractor {
                 .await
                 .map_err(|e| AuthError::ParseError(e.to_string()))?;
 
-            let mut profile = UserProfile::new();
+            let mut profile = ProviderProfile::new();
             profile = profile.with_id(
                 json["id"]
                     .as_str()

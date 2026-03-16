@@ -9,20 +9,27 @@ use askama::Template;
 #[cfg(feature = "web-gui")]
 use axum::{
     Form, Router,
-    extract::{Query, State},
-    response::{Html, IntoResponse, Redirect},
+    extract::{Query, Request, State},
+    middleware::{self, Next},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-#[cfg(feature = "web-gui")]
-use chrono; // For timestamp generation in user creation
 #[cfg(feature = "web-gui")]
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "web-gui")]
 use std::collections::HashMap;
 #[cfg(feature = "web-gui")]
-use tower::ServiceBuilder;
-#[cfg(feature = "web-gui")]
 use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
+
+/// Minimal HTML entity escaping to prevent XSS in dynamic HTML responses.
+#[cfg(feature = "web-gui")]
+fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+}
 
 #[cfg(feature = "web-gui")]
 pub async fn run_web_gui(
@@ -32,22 +39,21 @@ pub async fn run_web_gui(
     daemon: bool,
     enable_auth: bool,
 ) -> Result<()> {
-    println!("🌐 Starting Web GUI on {}:{}", host, port);
+    tracing::info!("Starting Web GUI on {}:{}", host, port);
 
     let app = create_web_app(state, enable_auth).await?;
 
     let listener = tokio::net::TcpListener::bind(format!("{}:{}", host, port)).await?;
 
     if daemon {
-        println!("Running as daemon...");
-        // In a real implementation, we would properly daemonize here
+        tracing::info!("Admin GUI running as daemon (OS-level daemonization not yet implemented).");
     }
 
-    println!("✅ Web GUI available at: http://{}:{}", host, port);
-    println!("📊 Dashboard: http://{}:{}/", host, port);
-    println!("⚙️ Configuration: http://{}:{}/config", host, port);
-    println!("👥 Users: http://{}:{}/users", host, port);
-    println!("🔒 Security: http://{}:{}/security", host, port);
+    tracing::info!(
+        host = %host,
+        port = port,
+        "Admin Web GUI started (dashboard: /, config: /config, users: /users, security: /security)"
+    );
 
     axum::serve(listener, app).await?;
 
@@ -59,11 +65,15 @@ async fn create_web_app(
     state: AppState,
     enable_auth: bool,
 ) -> Result<Router, Box<dyn std::error::Error>> {
-    let middleware = ServiceBuilder::new()
-        .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive());
+    // Public routes — no session required.
+    let public_routes = Router::new()
+        .route("/login", get(login_handler))
+        .route("/login", post(login_post_handler))
+        .route("/logout", get(logout_handler))
+        .nest_service("/static", ServeDir::new("static"));
 
-    let app = Router::new()
+    // Protected routes — session cookie validated by `require_admin_session`.
+    let protected_routes = Router::new()
         .route("/", get(dashboard_handler))
         .route("/dashboard", get(dashboard_handler))
         .route("/config", get(config_handler))
@@ -78,21 +88,76 @@ async fn create_web_app(
         .route("/api/config", post(api_config_update_handler))
         .route("/api/users", get(api_users_handler))
         .route("/api/security", get(api_security_handler))
-        .route("/login", get(login_handler))
-        .route("/login", post(login_post_handler))
-        .route("/logout", get(logout_handler))
-        .nest_service("/static", ServeDir::new("static"))
-        .layer(middleware)
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            require_admin_session,
+        ));
+
+    let app = public_routes
+        .merge(protected_routes)
+        .layer(TraceLayer::new_for_http())
+        .layer(CorsLayer::permissive())
         .with_state(state);
 
-    if enable_auth {
-        // In a real implementation, add authentication middleware
-        println!("🔐 Authentication enabled for Web GUI");
-    } else {
-        println!("⚠️ Authentication disabled for Web GUI");
+    if !enable_auth {
+        tracing::warn!(
+            "enable_auth=false is set but has no effect; \
+             the admin GUI always enforces session authentication."
+        );
     }
 
     Ok(app)
+}
+
+/// Generate a cryptographically random admin GUI session token (64 hex chars = 32 bytes entropy).
+#[cfg(feature = "web-gui")]
+fn generate_session_token() -> String {
+    use ring::rand::{SecureRandom, SystemRandom};
+    let rng = SystemRandom::new();
+    let mut bytes = [0u8; 32];
+    rng.fill(&mut bytes)
+        .expect("System CSPRNG unavailable; cannot generate admin session token");
+    bytes.iter().fold(String::with_capacity(64), |mut s, b| {
+        s.push_str(&format!("{b:02x}"));
+        s
+    })
+}
+
+/// Axum middleware that enforces admin GUI session authentication.
+///
+/// Reads the `auth_session` cookie and verifies it against the in-memory
+/// `AppState::admin_sessions` set.  Requests without a valid session token
+/// are redirected to `/login`.
+#[cfg(feature = "web-gui")]
+async fn require_admin_session(
+    State(state): State<AppState>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let session_valid = request
+        .headers()
+        .get("cookie")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|cookies| {
+            cookies
+                .split(';')
+                .find(|c| c.trim().starts_with("auth_session="))
+                .map(|c| c.trim()["auth_session=".len()..].to_string())
+        })
+        .map(|token| {
+            state
+                .admin_sessions
+                .lock()
+                .map(|sessions| sessions.contains(&token))
+                .unwrap_or(false)
+        })
+        .unwrap_or(false);
+
+    if session_valid {
+        next.run(request).await
+    } else {
+        Redirect::to("/login").into_response()
+    }
 }
 
 // Templates
@@ -218,8 +283,8 @@ struct ConfigEditForm {
 #[derive(Deserialize)]
 struct CreateUserForm {
     email: String,
-    password: String,    // Now properly used for user creation
-    admin: Option<bool>, // Now properly used for admin privilege assignment
+    password: String,
+    admin: Option<bool>,
 }
 
 // Handlers
@@ -227,14 +292,17 @@ struct CreateUserForm {
 async fn dashboard_handler(State(state): State<AppState>) -> impl IntoResponse {
     let server_status = state.server_status.read().await;
     let template = create_dashboard_template(&server_status);
-    Html(template.render().unwrap())
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("dashboard template rendering failed: {e}");
+        "<html><body><h1>Internal Server Error</h1></body></html>".to_string()
+    }))
 }
 
 #[cfg(feature = "web-gui")]
 fn create_dashboard_template(server_status: &crate::admin::ServerStatus) -> DashboardTemplate {
     DashboardTemplate {
         server_running: server_status.web_server_running,
-        user_count: 3, // Would come from user service in real implementation
+        user_count: server_status.active_sessions as usize,
         recent_events: vec![
             "User logged in".to_string(),
             "Configuration updated".to_string(),
@@ -246,7 +314,10 @@ fn create_dashboard_template(server_status: &crate::admin::ServerStatus) -> Dash
 async fn config_handler(State(_state): State<AppState>) -> impl IntoResponse {
     let _config_items = create_config_items();
     let template = ConfigTemplate {};
-    Html(template.render().unwrap())
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("config template rendering failed: {e}");
+        "<html><body><h1>Internal Server Error</h1></body></html>".to_string()
+    }))
 }
 
 #[cfg(feature = "web-gui")]
@@ -293,198 +364,150 @@ fn create_config_items() -> Vec<ConfigItem> {
 
 #[cfg(feature = "web-gui")]
 async fn config_edit_handler(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Form(form): Form<ConfigEditForm>,
 ) -> impl IntoResponse {
-    println!("Updating config: {} = {}", form.key, form.value);
+    // SECURITY: Do not log the value — it may contain secrets (e.g. JWT signing key,
+    // database DSN, API credentials).  Log only the key name so the audit trail
+    // shows that a change was attempted without capturing the sensitive value.
+    tracing::warn!(
+        key = %form.key,
+        "Config edit received but set_by_path() is not yet implemented on the config layer; \
+         edit the config file directly and restart the service."
+    );
 
-    // In a real implementation, we would:
-    // 1. Validate the key and value
-    // 2. Update the configuration
-    // 3. Optionally hot-reload if supported
-
-    // For now, just log and redirect
-    state.reload_config().await.ok();
-
-    Redirect::to("/config")
+    // Return a 501 with an explicit explanation so the caller knows the edit
+    // was NOT applied — rather than a silent success redirect that hides data loss.
+    use axum::http::StatusCode;
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Html(
+            "<html><body>\
+             <h2>Configuration Edit Not Yet Supported</h2>\
+             <p>Live configuration updates via the admin GUI are not yet available. \
+             Please edit the configuration file directly and restart the service.</p>\
+             <a href='/config'>&#8592; Back to Config</a>\
+             </body></html>"
+                .to_string(),
+        ),
+    )
 }
 
 #[cfg(feature = "web-gui")]
-async fn users_handler(State(_state): State<AppState>) -> impl IntoResponse {
-    let _users = vec![
-        User {
-            id: "1".to_string(),
-            email: "admin@example.com".to_string(),
-            active: true,
-            created: "2024-01-01".to_string(),
-            last_login: Some("2024-08-10 14:30:15".to_string()),
-            roles: vec!["admin".to_string()],
-        },
-        User {
-            id: "2".to_string(),
-            email: "user@example.com".to_string(),
-            active: true,
-            created: "2024-01-02".to_string(),
-            last_login: Some("2024-08-10 13:45:32".to_string()),
-            roles: vec!["user".to_string()],
-        },
-        User {
-            id: "3".to_string(),
-            email: "inactive@example.com".to_string(),
-            active: false,
-            created: "2024-01-03".to_string(),
-            last_login: None,
-            roles: vec!["user".to_string()],
-        },
-    ];
-
-    let template = UsersTemplate {
-        user_count: 3, // Simplified for now
+async fn users_handler(State(state): State<AppState>) -> impl IntoResponse {
+    // Derive user count from active sessions in the server status.
+    // A real storage query (e.g. storage.list_users()) requires AppState to hold
+    // an AuthStorage reference, which is not yet wired up.
+    let user_count = {
+        let status = state.server_status.read().await;
+        status.active_sessions as usize
     };
 
-    Html(template.render().unwrap())
+    let template = UsersTemplate { user_count };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("users template rendering failed: {e}");
+        "<html><body><h1>Internal Server Error</h1></body></html>".to_string()
+    }))
 }
 
 #[cfg(feature = "web-gui")]
 async fn create_user_handler(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Form(form): Form<CreateUserForm>,
 ) -> impl IntoResponse {
-    println!("Creating user: {} with admin: {:?}", form.email, form.admin);
+    use axum::http::StatusCode;
 
-    // PRODUCTION FIX: Implement actual user creation with password and admin privileges
-    // 1. Validate the email and password
-    if form.email.is_empty() {
-        return Redirect::to("/users?error=invalid_email").into_response();
-    }
-
-    if form.password.is_empty() {
-        return Redirect::to("/users?error=missing_password").into_response();
-    }
-
-    // 2. Hash the password securely
-    use argon2::password_hash::rand_core::OsRng;
-    use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
-
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let password_hash = match argon2.hash_password(form.password.as_bytes(), &salt) {
-        Ok(hash) => hash.to_string(),
-        Err(_) => {
-            return Redirect::to("/users?error=password_hash_failed").into_response();
-        }
+    let Some(ref af) = state.auth_framework else {
+        tracing::warn!(
+            email = %form.email,
+            "User creation attempted but no AuthFramework instance is wired into AppState."
+        );
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Html(
+                "<html><body>\
+                 <h2>User Creation Unavailable</h2>\
+                 <p>The admin GUI does not have access to the auth storage backend. \
+                 Please use the CLI (<code>auth-framework users add</code>) \
+                 or the REST API to manage users.</p>\
+                 <a href='/users'>&#8592; Back to Users</a>\
+                 </body></html>"
+                    .to_string(),
+            ),
+        );
     };
 
-    // 3. Create the user with proper data structure
-    let user_data = serde_json::json!({
-        "email": form.email,
-        "password_hash": password_hash,
-        "is_admin": form.admin.unwrap_or(false),
-        "is_active": true,
-        "email_verified": false,
-        "created_at": chrono::Utc::now().to_rfc3339(),
-        "updated_at": chrono::Utc::now().to_rfc3339()
-    });
+    // Generate a username from the email local part.
+    let username = form.email.split('@').next().unwrap_or("user");
 
-    // 4. Store user in the system (using the state's storage if available)
-    // For now, log the successful creation
-    println!("User created successfully: {}", user_data);
-
-    // 5. Redirect with success message
-    Redirect::to("/users?success=user_created").into_response()
+    match af.register_user(username, &form.email, &form.password).await {
+        Ok(user_id) => {
+            tracing::info!(user_id = %user_id, email = %form.email, "User created via admin GUI");
+            // Escape dynamic values to prevent XSS in the HTML response.
+            let safe_email = escape_html(&form.email);
+            let safe_id = escape_html(&user_id);
+            (
+                StatusCode::OK,
+                Html(format!(
+                    "<html><body>\
+                     <h2>User Created</h2>\
+                     <p>User <strong>{safe_email}</strong> has been created successfully (ID: {safe_id}).</p>\
+                     <a href='/users'>&#8592; Back to Users</a>\
+                     </body></html>",
+                )),
+            )
+        }
+        Err(e) => {
+            tracing::error!(email = %form.email, error = %e, "Failed to create user via admin GUI");
+            let safe_err = escape_html(&e.to_string());
+            (
+                StatusCode::BAD_REQUEST,
+                Html(format!(
+                    "<html><body>\
+                     <h2>User Creation Failed</h2>\
+                     <p>Error: {safe_err}</p>\
+                     <a href='/users'>&#8592; Back to Users</a>\
+                     </body></html>",
+                )),
+            )
+        }
+    }
 }
 
 #[cfg(feature = "web-gui")]
 async fn security_handler(State(_state): State<AppState>) -> impl IntoResponse {
-    let _security_events = vec![
-        SecurityEvent {
-            id: "1".to_string(),
-            timestamp: "2024-08-10 14:30:15".to_string(),
-            event_type: "login_success".to_string(),
-            user: Some("admin@example.com".to_string()),
-            ip_address: Some("192.168.1.100".to_string()),
-            details: "Successful login from trusted IP".to_string(),
-            severity: "info".to_string(),
-        },
-        SecurityEvent {
-            id: "2".to_string(),
-            timestamp: "2024-08-10 14:25:42".to_string(),
-            event_type: "login_failure".to_string(),
-            user: Some("invalid@example.com".to_string()),
-            ip_address: Some("203.0.113.1".to_string()),
-            details: "Failed login attempt - invalid credentials".to_string(),
-            severity: "warning".to_string(),
-        },
-        SecurityEvent {
-            id: "3".to_string(),
-            timestamp: "2024-08-10 14:20:33".to_string(),
-            event_type: "password_reset".to_string(),
-            user: Some("user@example.com".to_string()),
-            ip_address: Some("192.168.1.50".to_string()),
-            details: "Password reset requested and processed".to_string(),
-            severity: "info".to_string(),
-        },
-    ];
-
     let template = SecurityTemplate {};
 
-    Html(template.render().unwrap())
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("security template rendering failed: {e}");
+        "<html><body><h1>Internal Server Error</h1></body></html>".to_string()
+    }))
 }
 
 #[cfg(feature = "web-gui")]
 async fn servers_handler(State(state): State<AppState>) -> impl IntoResponse {
     let server_status = state.server_status.read().await;
 
-    let _status = ServerStatus {
-        web_server_running: server_status.web_server_running,
-        web_server_port: server_status.web_server_port,
-        database_connected: true,
-        redis_connected: true,
-        uptime: "2h 15m".to_string(),
-    };
-
-    let _metrics = PerformanceMetrics {
-        cpu_usage: 15.0,
-        memory_usage: 25.0,
-        disk_usage: 42.0,
-        network_in: "1.2MB/s".to_string(),
-        network_out: "800KB/s".to_string(),
-    };
+    let _web_running = server_status.web_server_running;
+    drop(server_status);
 
     let template = ServersTemplate {};
 
-    Html(template.render().unwrap())
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("servers template rendering failed: {e}");
+        "<html><body><h1>Internal Server Error</h1></body></html>".to_string()
+    }))
 }
 
 #[cfg(feature = "web-gui")]
 async fn logs_handler(State(_state): State<AppState>) -> impl IntoResponse {
-    let _log_entries = vec![
-        LogEntry {
-            id: "1".to_string(),
-            timestamp: "2024-08-10 14:35:12".to_string(),
-            level: "INFO".to_string(),
-            component: "web_server".to_string(),
-            message: "Server started on port 8080".to_string(),
-        },
-        LogEntry {
-            id: "2".to_string(),
-            timestamp: "2024-08-10 14:34:58".to_string(),
-            level: "INFO".to_string(),
-            component: "config".to_string(),
-            message: "Configuration loaded successfully".to_string(),
-        },
-        LogEntry {
-            id: "3".to_string(),
-            timestamp: "2024-08-10 14:34:55".to_string(),
-            level: "DEBUG".to_string(),
-            component: "auth".to_string(),
-            message: "JWT validation service initialized".to_string(),
-        },
-    ];
-
     let template = LogsTemplate {};
 
-    Html(template.render().unwrap())
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("logs template rendering failed: {e}");
+        "<html><body><h1>Internal Server Error</h1></body></html>".to_string()
+    }))
 }
 
 #[cfg(feature = "web-gui")]
@@ -493,24 +516,64 @@ async fn login_handler(Query(params): Query<HashMap<String, String>>) -> impl In
 
     let template = LoginTemplate {};
 
-    Html(template.render().unwrap())
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("login template rendering failed: {e}");
+        "<html><body><h1>Internal Server Error</h1></body></html>".to_string()
+    }))
 }
 
 #[cfg(feature = "web-gui")]
-async fn login_post_handler(Form(form): Form<LoginForm>) -> impl IntoResponse {
-    // Simple authentication check (in production, use proper password hashing)
-    if form.username == "admin" && form.password == "password" {
-        // Set session cookie and redirect
-        let mut response = Redirect::to("/dashboard").into_response();
-
-        // In a real implementation, create a proper session
-        response.headers_mut().insert(
-            "Set-Cookie",
-            "auth_session=valid_session_token; HttpOnly; Secure; Path=/"
-                .parse()
-                .unwrap(),
+async fn login_post_handler(
+    State(state): State<AppState>,
+    Form(form): Form<LoginForm>,
+) -> impl IntoResponse {
+    // Credentials are read from environment variables — no secret is hardcoded.
+    // ADMIN_GUI_USERNAME defaults to "admin".
+    // ADMIN_GUI_PASSWORD has no default and must be set explicitly.
+    let expected_username =
+        std::env::var("ADMIN_GUI_USERNAME").unwrap_or_else(|_| "admin".to_string());
+    if expected_username == "admin" {
+        tracing::warn!(
+            "ADMIN_GUI_USERNAME is using the default value 'admin'. \
+             Set ADMIN_GUI_USERNAME to a unique value to reduce brute-force risk."
         );
-
+    }
+    let expected_password = match std::env::var("ADMIN_GUI_PASSWORD") {
+        Ok(pw) => pw,
+        Err(_) => {
+            tracing::error!(
+                "ADMIN_GUI_PASSWORD environment variable is not set; \
+                 admin GUI login is disabled until it is configured."
+            );
+            return Redirect::to("/login?error=not_configured").into_response();
+        }
+    };
+    // SECURITY: Use constant-time comparison to prevent timing oracle attacks.
+    // Plain `==` on strings short-circuits on the first differing byte, allowing
+    // statistical timing analysis to recover credentials byte-by-byte.
+    let username_ok = crate::security::timing_protection::constant_time_string_compare(
+        &form.username,
+        &expected_username,
+    );
+    let password_ok = crate::security::timing_protection::constant_time_string_compare(
+        &form.password,
+        &expected_password,
+    );
+    if username_ok && password_ok {
+        // Generate a fresh cryptographically random session token and store it
+        // in the shared session set so `require_admin_session` can validate it.
+        let token = generate_session_token();
+        if let Ok(mut sessions) = state.admin_sessions.lock() {
+            sessions.insert(token.clone());
+        }
+        let cookie_value = format!(
+            "auth_session={}; HttpOnly; Secure; SameSite=Strict; Path=/",
+            token
+        );
+        let mut response = Redirect::to("/dashboard").into_response();
+        if let Ok(v) = cookie_value.parse() {
+            response.headers_mut().insert("Set-Cookie", v);
+        }
         response
     } else {
         Redirect::to("/login?error=invalid_credentials").into_response()
@@ -518,16 +581,33 @@ async fn login_post_handler(Form(form): Form<LoginForm>) -> impl IntoResponse {
 }
 
 #[cfg(feature = "web-gui")]
-async fn logout_handler() -> impl IntoResponse {
+async fn logout_handler(
+    State(state): State<AppState>,
+    request: Request,
+) -> impl IntoResponse {
+    // Remove the session token from the server-side set so it cannot be reused.
+    if let Some(token) = request
+        .headers()
+        .get("cookie")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|cookies| {
+            cookies
+                .split(';')
+                .find(|c| c.trim().starts_with("auth_session="))
+                .map(|c| c.trim()["auth_session=".len()..].to_string())
+        })
+    {
+        if let Ok(mut sessions) = state.admin_sessions.lock() {
+            sessions.remove(&token);
+        }
+    }
     let mut response = Redirect::to("/login").into_response();
-
     response.headers_mut().insert(
         "Set-Cookie",
-        "auth_session=; HttpOnly; Secure; Path=/; Max-Age=0"
-            .parse()
-            .unwrap(),
+        axum::http::HeaderValue::from_static(
+            "auth_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
+        ),
     );
-
     response
 }
 
@@ -563,7 +643,7 @@ async fn api_config_update_handler(
     State(state): State<AppState>,
     axum::Json(payload): axum::Json<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("API config update: {:?}", payload);
+    tracing::info!(payload = ?payload, "API config update via admin GUI");
 
     // In a real implementation:
     // 1. Validate the configuration
@@ -580,40 +660,49 @@ async fn api_config_update_handler(
 }
 
 #[cfg(feature = "web-gui")]
-async fn api_users_handler(State(_state): State<AppState>) -> impl IntoResponse {
-    let users = vec![
-        User {
-            id: "1".to_string(),
-            email: "admin@example.com".to_string(),
-            active: true,
-            created: "2024-01-01".to_string(),
-            last_login: Some("2024-08-10 14:30:15".to_string()),
-            roles: vec!["admin".to_string()],
-        },
-        User {
-            id: "2".to_string(),
-            email: "user@example.com".to_string(),
-            active: true,
-            created: "2024-01-02".to_string(),
-            last_login: Some("2024-08-10 13:45:32".to_string()),
-            roles: vec!["user".to_string()],
-        },
-    ];
+async fn api_users_handler(State(state): State<AppState>) -> impl IntoResponse {
+    // Load real users from storage via the wired-in AuthFramework, if available.
+    let users: Vec<User> = if let Some(ref af) = state.auth_framework {
+        let storage = af.storage();
+        // Load the user ID index maintained by register_user()
+        let user_ids: Vec<String> = match storage.get_kv("users:index").await {
+            Ok(Some(bytes)) => serde_json::from_slice(&bytes).unwrap_or_default(),
+            _ => vec![],
+        };
+        let mut result = Vec::with_capacity(user_ids.len());
+        for user_id in &user_ids {
+            let key = format!("user:{}", user_id);
+            if let Ok(Some(bytes)) = storage.get_kv(&key).await {
+                if let Ok(data) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+                    let email = data["email"].as_str().unwrap_or("").to_string();
+                    let active = data["active"].as_bool().unwrap_or(true);
+                    let created = data["created_at"].as_str().unwrap_or("").to_string();
+                    let last_login = data["last_login"].as_str().map(|s| s.to_string());
+                    let roles: Vec<String> = data["roles"]
+                        .as_array()
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect()
+                        })
+                        .unwrap_or_else(|| vec!["user".to_string()]);
+                    result.push(User { id: user_id.clone(), email, active, created, last_login, roles });
+                }
+            }
+        }
+        result
+    } else {
+        vec![]
+    };
 
     axum::Json(users)
 }
 
 #[cfg(feature = "web-gui")]
 async fn api_security_handler(State(_state): State<AppState>) -> impl IntoResponse {
-    let events = vec![SecurityEvent {
-        id: "1".to_string(),
-        timestamp: "2024-08-10 14:30:15".to_string(),
-        event_type: "login_success".to_string(),
-        user: Some("admin@example.com".to_string()),
-        ip_address: Some("192.168.1.100".to_string()),
-        details: "Successful login".to_string(),
-        severity: "info".to_string(),
-    }];
-
+    // Security events are not yet exposed via a queryable storage API.
+    // Return an empty list rather than returning hardcoded fictitious events
+    // that could mislead operators reviewing the admin GUI.
+    let events: Vec<SecurityEvent> = vec![];
     axum::Json(events)
 }

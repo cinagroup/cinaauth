@@ -491,8 +491,7 @@ impl ContextBuilder {
     }
 }
 
-/// Conditional permission evaluator
-/// PRODUCTION FIX: Implemented conditional evaluation for enterprise security requirements
+/// Conditional permission evaluator for enterprise security requirements
 pub struct ConditionalEvaluator {
     context_builder: ContextBuilder,
 }
@@ -604,7 +603,7 @@ impl ConditionalEvaluator {
         context: &AuthorizationContext,
         permission_conditions: &HashMap<String, String>,
     ) -> bool {
-        // PRODUCTION FIX: Implement proper conditional evaluation
+        // Evaluates time, location, device, and risk conditions — all must pass.
         tracing::debug!(
             "Evaluating conditional permission with conditions: {:?}",
             permission_conditions

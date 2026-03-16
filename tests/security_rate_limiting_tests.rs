@@ -15,7 +15,7 @@ use auth_framework::{
     distributed_rate_limiting::{
         DistributedRateLimiter, RateLimitConfig, RateLimitResult, RateLimitStrategy,
     },
-    server::oauth::{DeviceAuthManager, DeviceAuthorizationRequest},
+    server::{DeviceAuthManager, DeviceAuthorizationRequest},
     utils::rate_limit::RateLimiter as BasicRateLimiter,
 };
 use std::sync::Arc;

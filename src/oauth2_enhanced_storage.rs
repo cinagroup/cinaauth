@@ -1,5 +1,6 @@
 //! Enhanced OAuth2 token and code storage with proper validation
 
+use crate::client::ClientType;
 use crate::errors::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -116,12 +117,6 @@ pub struct EnhancedClientCredentials {
     pub is_active: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ClientType {
-    Confidential,
-    Public,
-}
-
 impl EnhancedClientCredentials {
     pub fn new_confidential(
         client_id: String,
@@ -191,6 +186,7 @@ pub struct EnhancedTokenStorage {
     refresh_tokens: HashMap<String, RefreshToken>,
     authorization_codes: HashMap<String, EnhancedAuthorizationCode>,
     client_credentials: HashMap<String, EnhancedClientCredentials>,
+    users: HashMap<String, UserCredentials>,
 }
 
 impl EnhancedTokenStorage {
@@ -199,6 +195,7 @@ impl EnhancedTokenStorage {
             refresh_tokens: HashMap::new(),
             authorization_codes: HashMap::new(),
             client_credentials: HashMap::new(),
+            users: HashMap::new(),
         }
     }
 
@@ -313,40 +310,15 @@ impl EnhancedTokenStorage {
 
     // User credential management methods
 
+    /// Store user credentials
+    pub async fn store_user_credentials(&mut self, creds: UserCredentials) -> Result<()> {
+        self.users.insert(creds.username.clone(), creds);
+        Ok(())
+    }
+
     /// Get user credentials for authentication
     pub async fn get_user_credentials(&self, username: &str) -> Result<Option<UserCredentials>> {
-        // For demo purposes, use pre-computed bcrypt hashes for known users
-        // In production, this would query a database with pre-hashed passwords
-        let demo_users = [
-            (
-                "admin",
-                "$2b$12$UfM9FwL8dbLOFTOmL8kAVOUe8.mFYGsqtaEjpMrS6yOGhN6SHL6me", // hash of "admin_password_123456789"
-                vec!["read", "write", "admin", "delete"],
-            ),
-            (
-                "user",
-                "$2b$12$3Jb05MyZ7QDS81DJkt3QLeyR9z.S9yQqULr42kZ5F5crUYbwJaXdW", // hash of "user_password_123456789"
-                vec!["read", "write"],
-            ),
-            (
-                "test",
-                "$2b$12$bM6NV4EQdo8kJHUhhZGpIuIsalt4eD9J8co0KyO6pzEPX0ClONwTy", // hash of "test_password_123456789"
-                vec!["read"],
-            ),
-        ];
-
-        for (demo_user, password_hash, demo_scopes) in &demo_users {
-            if username == *demo_user {
-                return Ok(Some(UserCredentials {
-                    username: username.to_string(),
-                    password_hash: password_hash.to_string(),
-                    scopes: demo_scopes.iter().map(|s| s.to_string()).collect(),
-                    is_active: true,
-                }));
-            }
-        }
-
-        Ok(None)
+        Ok(self.users.get(username).cloned())
     }
 
     /// Get user permissions/scopes
@@ -371,6 +343,10 @@ pub struct UserCredentials {
     pub password_hash: String, // In production: bcrypt/argon2 hash
     pub scopes: Vec<String>,
     pub is_active: bool,
+    /// The user's email address. Optional for backwards compatibility with stored
+    /// credentials that pre-date this field; `None` means the email is not on record.
+    #[serde(default)]
+    pub email: Option<String>,
 }
 
 /// User permissions/scopes

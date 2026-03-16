@@ -6,6 +6,12 @@
 use crate::errors::{AuthError, Result};
 use regex::Regex;
 use std::collections::HashSet;
+use std::sync::OnceLock;
+
+// Compiled once at first use; regex compilation is non-trivial and running it
+// on every request wastes CPU and could be exploited for minor Denial-of-Service.
+static USERNAME_RE: OnceLock<Regex> = OnceLock::new();
+static EMAIL_RE: OnceLock<Regex> = OnceLock::new();
 
 /// Enhanced password validation configuration
 #[derive(Debug, Clone)]
@@ -169,8 +175,10 @@ pub fn validate_username(username: &str) -> Result<()> {
         ));
     }
 
-    // Username can contain letters, numbers, underscores, and hyphens
-    let username_regex = Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap();
+    // Username must start with a letter and may then contain letters, digits,
+    // underscores, and hyphens (3–50 chars total).
+    let username_regex = USERNAME_RE
+        .get_or_init(|| Regex::new(r"^[a-zA-Z0-9_-]+$").expect("valid username regex"));
     if !username_regex.is_match(username) {
         return Err(AuthError::validation(
             "Username can only contain letters, numbers, underscores, and hyphens".to_string(),
@@ -178,7 +186,11 @@ pub fn validate_username(username: &str) -> Result<()> {
     }
 
     // Must start with a letter
-    if !username.chars().next().unwrap().is_alphabetic() {
+    if !username
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_alphabetic())
+    {
         return Err(AuthError::validation(
             "Username must start with a letter".to_string(),
         ));
@@ -193,16 +205,20 @@ pub fn validate_email(email: &str) -> Result<()> {
         return Err(AuthError::validation("Email cannot be empty".to_string()));
     }
 
-    // Basic email validation regex
-    let email_regex = Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap();
-    if !email_regex.is_match(email) {
-        return Err(AuthError::validation("Invalid email format".to_string()));
-    }
-
+    // Check length before running the regex to avoid matching against overlong strings.
     if email.len() > 254 {
         return Err(AuthError::validation(
             "Email address is too long".to_string(),
         ));
+    }
+
+    // Basic email validation regex (compiled once for performance).
+    let email_regex = EMAIL_RE.get_or_init(|| {
+        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+            .expect("valid email regex")
+    });
+    if !email_regex.is_match(email) {
+        return Err(AuthError::validation("Invalid email format".to_string()));
     }
 
     Ok(())

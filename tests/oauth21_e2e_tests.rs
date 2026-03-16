@@ -10,10 +10,8 @@
 
 use auth_framework::{
     AuthConfig, AuthFramework,
-    server::oauth::{
-        DeviceAuthManager, DeviceAuthorizationRequest, DeviceAuthorizationStatus, PARManager,
-        PushedAuthorizationRequest,
-    },
+    server::{DeviceAuthManager, DeviceAuthorizationRequest, DeviceAuthorizationStatus},
+    server::oauth::par::{PARManager, PushedAuthorizationRequest},
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -99,7 +97,7 @@ async fn test_e2e_device_authorization_complete_flow() {
         scope: Some("openid profile".to_string()),
     };
 
-    let device_result = device_manager
+    let device_result: Result<_, _> = device_manager
         .create_authorization(device_request.clone())
         .await;
 

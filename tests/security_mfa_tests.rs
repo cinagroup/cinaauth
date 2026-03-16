@@ -23,7 +23,8 @@
 
 use auth_framework::authentication::mfa::{MfaMethodType, TotpProvider};
 use auth_framework::security::TotpConfig;
-use auth_framework::security::secure_mfa::{MfaChallengeType, SecureMfaService};
+use auth_framework::methods::MfaType;
+use auth_framework::security::secure_mfa::SecureMfaService;
 use auth_framework::storage::MemoryStorage;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -412,7 +413,7 @@ async fn test_mfa_challenge_creation_and_verification() {
 
     // Create SMS challenge
     let (challenge_id, secure_code) = service
-        .create_challenge("user123", MfaChallengeType::Sms, 6)
+        .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
         .await
         .expect("Failed to create challenge");
 
@@ -433,7 +434,7 @@ async fn test_mfa_challenge_creation_and_verification() {
 
     // Create new challenge for invalid code test
     let (challenge_id2, _) = service
-        .create_challenge("user456", MfaChallengeType::Email, 6)
+        .create_challenge("user456", MfaType::Email { email_address: String::new() }, 6)
         .await
         .expect("Failed to create challenge");
 
@@ -460,7 +461,7 @@ async fn test_mfa_challenge_expiration() {
 
     // Create challenge (expires in 5 minutes by default)
     let (challenge_id, secure_code) = service
-        .create_challenge("user789", MfaChallengeType::Sms, 6)
+        .create_challenge("user789", MfaType::Sms { phone_number: String::new() }, 6)
         .await
         .expect("Failed to create challenge");
 
@@ -500,7 +501,7 @@ async fn test_mfa_rate_limiting() {
 
     for i in 0..10 {
         match service
-            .create_challenge(user_id, MfaChallengeType::Sms, 6)
+            .create_challenge(user_id, MfaType::Sms { phone_number: String::new() }, 6)
             .await
         {
             Ok(_) => {
@@ -545,7 +546,7 @@ async fn test_mfa_attempt_limiting() {
 
     // Create challenge (max 3 attempts)
     let (challenge_id, _correct_code) = service
-        .create_challenge("attempt_user", MfaChallengeType::Sms, 6)
+        .create_challenge("attempt_user", MfaType::Sms { phone_number: String::new() }, 6)
         .await
         .expect("Failed to create challenge");
 
@@ -591,7 +592,7 @@ async fn test_concurrent_mfa_operations() {
         let handle = tokio::spawn(async move {
             let user_id = format!("concurrent_user_{}", i);
             service_clone
-                .create_challenge(&user_id, MfaChallengeType::Sms, 6)
+                .create_challenge(&user_id, MfaType::Sms { phone_number: String::new() }, 6)
                 .await
         });
         handles.push(handle);

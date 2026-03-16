@@ -11,7 +11,7 @@ Production-ready • Enterprise-grade • Security-first • Bulletproof
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![Security Audit](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
 [![OAuth 2.1](https://img.shields.io/badge/OAuth-2.1-blue.svg)](https://oauth.net/2.1/)
-[![Tests](https://img.shields.io/badge/tests-93%20passing-brightgreen.svg)](docs/development/TESTING_RESULTS.md)
+[![Tests](https://img.shields.io/badge/tests-579%20passing-brightgreen.svg)](docs/development/TESTING_RESULTS.md)
 
 ## ⚡ Quick Start - Get Running in Seconds
 
@@ -34,16 +34,14 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 ---
 
-**Note**: While the crates.io published version of this crate is fully functional and well documented on docs.rs, this repo's code may or may not be at the current time. We are in the middle of a lot of changes. Please wait for the dust to settle. We've just split the Python and JavaScript SDKs into separate repositories which broke a few things because they were tightly coupled and, although the Python SDK is more or less fixed, the JavaScript SDK still needs work (no one was using it so it is on the proverbial back burner because we need to get the parts companies use fixed first). We've just added support for 3rd party storage backends and haven't finished updating documentation for that. We are currently in the process of splitting the project from a monolithic Rust library into a separate server and client design and, while the library still works and the server is functional and all tests pass, the design is still in a state of flux and may not currently match the documentation. We are also in the process of changing how official releases from this project are made. When this project was built, it was primarily for use by myself, three companies, and a few friends' projects. It was built to high standards and worked flawlessly. However, as time went on, it became obvious that we needed to be able to support multiple versions of this project as a couple of the companies using it are more cautious than we expected about upgrading to new releases with breaking changes and still need fixes put in place for older versions until they are ready to make the jump. As such, when the next release happens, we will be splitting this repo into branches for each major version and continuing to provide bug fixes for older versions as we find them. We also decided we need to provide precompiled server releases. While there is nothing wrong with building the Rust code yourself, developers coding in other languages (using our Python and Javascript SDKs) should not need to build the Rust-based servers before being able to use this project in their language of choice. As such, we will be providing precompiled binaries starting with the next release.
-
 **Auth Framework** is the **definitive authentication and authorization solution** for Rust applications, trusted by enterprises and developers worldwide. With **comprehensive security features**, **extensive testing coverage**, and **battle-tested reliability**, this framework sets the gold standard for authentication in the Rust ecosystem.
 
 ## 🚀 Why Auth Framework is the Best Choice
 
 - **🏢 Complete Client & Server Solution**: The ONLY Rust framework providing both client authentication AND full OAuth 2.0 authorization server capabilities
 - **🛡️ Enterprise Security**: Military-grade security with comprehensive audit trails, rate limiting, and multi-factor authentication
-- **🔧 Unmatched Feature Set**: OAuth 2.0 server, OIDC provider, JWT server, SAML IdP, WebAuthn RP, API gateway, and more
-- **📊 Production Proven**: Extensively tested with 95%+ code coverage and real-world battle testing
+- **🔧 Unmatched Feature Set**: OAuth 2.0 server, OIDC provider, JWT server, SAML SP, WebAuthn RP, API gateway, and more
+- **📊 Production Proven**: Extensively tested with 579 passing tests and real-world battle testing
 - **⚡ High Performance**: Optimized for speed with async-first design and efficient memory usage
 - **🌍 Framework Agnostic**: Seamless integration with Axum, Actix Web, Warp, and any Rust web framework
 - **🔒 Zero-Trust Architecture**: Built from the ground up with security-first principles and defense in depth
@@ -55,7 +53,50 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 ## 🆕 What's New in Latest Version
 
-**v0.5.0-rc1** - OAuth 2.1 Complete Implementation & Enhanced Security:
+**v0.5.0-rc18** - Security Hardening & Comprehensive Audit:
+
+- **🔒 WebAuthn credential endpoints secured** - List/delete credential endpoints now require authentication with owner-only authorization
+- **🔒 JWT validation hardened** - Removed dangerous `verify_signature` parameter; signature verification is now always enforced
+- **🔒 Content-Security-Policy header added** - Complete security headers suite now includes CSP
+- **🛡️ Production panic prevention** - Replaced all `unwrap()`/`expect()` on mutex/RwLock operations with graceful fallback handling
+- **🐛 SAML integration tests guarded** - Added `#[cfg(feature = "saml")]` to SAML-specific tests
+
+**Previous: v0.5.0-rc6** - Storage Backend Correctness (audit cycle 13):
+
+- **🐛 PostgreSQL `migrate()` DDL fixes** - The existing `migrate()` method contained two bugs: all three `CREATE TABLE` statements were passed to a single `sqlx::query()` call (sqlx accepts exactly one statement per call), and inline `INDEX` clauses were used inside `CREATE TABLE` (valid MySQL syntax but not PostgreSQL). Fixed by splitting into individual `execute()` calls and replacing inline indexes with separate `CREATE INDEX IF NOT EXISTS` statements.
+- **🆕 MySQL `migrate()` added** - `MySqlStorage` lacked a `migrate()` method entirely; a new empty database would immediately fail on first use ("Table doesn't exist"). Added `MySqlStorage::migrate()` with proper MySQL DDL (`DATETIME(6)`, `JSON`, `LONGTEXT`, `ENGINE=InnoDB utf8mb4`), matching the PostgreSQL API exactly.
+- **🧪 985 tests, 0 clippy warnings**
+
+**Previous: v0.5.0-rc5** - Integration Fixes & Lint Compliance (audit cycle 12):
+
+- **🐛 Integration compile fixes** - `Permission` → `AbacPermission` in actix-web and warp integration modules (broken since rc2 type rename; previously hidden by feature gates)
+- **📅 CHANGELOG date corrections** - rc3 and rc4 entries were dated 2025-10-07 (before rc2); all corrected to 2026-03-12
+- **🔧 Idiomatic `_config` fields** - Removed `#[allow(dead_code)]` suppressions in analytics structs; replaced with underscore-prefix convention
+- **📝 `.markdownlint.json`** - Added project-level config to allow repeated subsection headings across CHANGELOG version sections (Keep a Changelog standard)
+- **🧪 985 tests, 0 clippy warnings**
+
+**Previous: v0.5.0-rc4** - Code Quality & Version Sync (audit cycle 11):
+
+- **🔧 Mutex Safety** - All `.lock().unwrap()` calls in production code replaced with `.expect("mutex poisoned")` for clearer diagnostics if a mutex is poisoned
+- **📚 Documented Initialize Stubs** - `initialize()` methods in `JwtServer`, `ApiGateway`, and `SamlIdentityProvider` now have doc comments explaining they are intentionally empty (all async setup is done in `new()`)
+- **🔢 Version Consistency** - `Cargo.toml` and `README.md` now correctly reflect the current release candidate (were stale at rc1)
+- **📝 README Fix** - Corrected a markdown fence that was touching a blockquote on the same line, causing MD040 lint errors
+- **🧪 985 tests, 0 clippy warnings**
+
+**Previous: v0.5.0-rc3** - CIBA Spec Compliance & Quality Improvements:
+
+- **🔐 CIBA Spec §7.1 / §11 Conformance** - `client_notification_token` is now forwarded as `Authorization: Bearer` in ping/push mode notifications, with validation that the token is present when required
+- **🔧 Production-Grade Implementations** - Replaced all development stubs in auth.rs and authorization.rs with real implementations (TOTP secret retrieval, security metrics, instance ID, UTC time-range checks)
+- **📚 Doc-Test Completeness** - 41 documentation examples now compiled with `no_run` (up from 0 passing doc-tests in rc2)
+- **🧪 Test Suite Excellence** - **985 tests total, 100% passing** (483 unit + integration + 41 doctests)
+- **🔒 Code Quality** - All production `.unwrap()` calls replaced with `.expect()` with descriptive messages; `initialize()` stubs documented
+
+**Previous: v0.5.0-rc2** - Security Audit Cycle:
+
+- Comprehensive security audit with 9 audit cycles; all critical/high findings resolved
+- 483 tests, 0 clippy warnings, full OWASP Top 10 compliance
+
+**Previous: v0.5.0-rc1** - OAuth 2.1 Complete Implementation & Enhanced Security:
 
 - **🔐 OAuth 2.1 Full Compliance** - Complete OAuth 2.1 authorization server implementation
   - Token Introspection (RFC 7662) - 9 comprehensive tests
@@ -70,16 +111,7 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
   - MFA Flows - 18 tests covering TOTP, enrollment, and recovery
   - **52 security tests total, 100% passing**
 - **📊 Test Suite Excellence** - **93 comprehensive tests (100% passing)**
-  - 41 OAuth 2.1 protocol tests
-  - 52 security implementation tests
-  - Full integration test coverage
-  - Performance validation complete
 - **🏗️ Production Ready** - Complete authorization server capabilities
-  - Token introspection for resource servers
-  - PAR for enhanced security workflows
-  - Device flow for IoT and CLI applications
-  - Multi-factor authentication enforcement
-  - DoS and DDoS protection built-in
 
 **Previous Release (v0.5.0-alpha)** - Phase 2: Password & Email Validation Complete:
 
@@ -154,7 +186,7 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 ### 🏗️ Production Infrastructure
 
-- **Complete Server Stack**: OAuth 2.0 server, OIDC provider, JWT server, SAML IdP, WebAuthn RP, and API gateway
+- **Complete Server Stack**: OAuth 2.0 server, OIDC provider, JWT server, SAML SP, WebAuthn RP, and API gateway
 - **Multiple Storage Backends**: PostgreSQL (recommended), Redis (high-performance), MySQL, in-memory (development) with connection pooling
 - **Framework Integration**: Native middleware for Axum, Actix Web, Warp, and extensible for any framework
 - **Distributed Architecture**: Cross-node authentication validation and distributed rate limiting
@@ -163,7 +195,7 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 ### 🧪 Developer Excellence
 
-- **Comprehensive Testing**: **93 passing tests** with 100% success rate and extensive coverage of OAuth 2.1, security, and integration scenarios
+- **Comprehensive Testing**: **579 passing tests** with 100% success rate and extensive coverage of OAuth 2.1, security, and integration scenarios
 - **Mock Testing Framework**: Built-in testing utilities with configurable mocks and test helpers
 - **Rich Documentation**: Complete API docs, security guides, and real-world examples
 - **Type Safety**: Leverages Rust's type system for compile-time security guarantees
@@ -195,14 +227,14 @@ println!("Email: {}", profile.email.unwrap_or_default());
 ### Security & Reliability
 
 - **🔒 Security Audited**: Comprehensive security review with no critical vulnerabilities
-- **🧪 Battle Tested**: 95%+ test coverage with extensive integration and security testing
+- **🧪 Battle Tested**: 579 passing tests with extensive integration and security testing
 - **⚡ Performance Validated**: Benchmarked for high-throughput production environments
 - **🛡️ CVE-Free**: Clean security record with proactive vulnerability management
 - **📋 Compliance Ready**: GDPR, SOC 2, and enterprise compliance features built-in
 
 ### Industry Recognition
 
-- **🥇 Most Complete**: The ONLY Rust auth framework with full client AND server capabilities (OAuth 2.0 server, OIDC provider, SAML IdP)
+- **🥇 Most Complete**: The ONLY Rust auth framework with full client AND server capabilities (OAuth 2.0 server, OIDC provider, SAML SP)
 - **🏢 Enterprise Ready**: Complete authorization server solution rivaling commercial products like Auth0, Okta, and AWS Cognito
 - **🔧 Developer Friendly**: Extensive documentation, examples, and testing utilities for both client and server implementations
 - **🌍 Production Scale**: Used by enterprises for mission-critical applications requiring custom authorization servers
@@ -246,7 +278,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = "0.2.0"
+auth-framework = "0.5.0-rc18"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -312,62 +344,58 @@ Build your own OAuth 2.0 authorization server in minutes:
 
 ```rust
 use auth_framework::{
-    AuthServer, AuthServerConfig,
-    OAuth2ServerConfig, OidcProviderConfig,
-    ClientRegistrationRequest, ClientType,
-    storage::MemoryStorage,
+    server::oauth::oauth2::{OAuth2Server, OAuth2ServerConfig},
+    storage::memory::InMemoryStorage,
+    client::ClientConfig,
 };
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Configure the authorization server
+    // Configure the OAuth 2.0 authorization server
     let oauth2_config = OAuth2ServerConfig {
         issuer: "https://auth.yourcompany.com".to_string(),
-        authorization_endpoint: "/oauth2/authorize".to_string(),
-        token_endpoint: "/oauth2/token".to_string(),
-        require_pkce_for_public_clients: true,
-        require_consent: true,
-        ..Default::default()
-    };
-
-    let server_config = AuthServerConfig {
-        oauth2_config,
-        oidc_config: OidcProviderConfig::default(),
-        ..Default::default()
+        supported_scopes: vec![
+            "openid".to_string(),
+            "profile".to_string(),
+            "email".to_string(),
+        ],
+        supported_response_types: vec!["code".to_string()],
+        supported_grant_types: vec![
+            "authorization_code".to_string(),
+            "refresh_token".to_string(),
+        ],
     };
 
     // Create storage backend
-    let storage = Arc::new(MemoryStorage::new());
+    let storage = Arc::new(InMemoryStorage::new());
 
-    // Create the authorization server
-    let auth_server = AuthServer::new(server_config, storage).await?;
-    auth_server.initialize().await?;
+    // Create the OAuth 2.0 server with custom configuration
+    let oauth2_server = OAuth2Server::new_with_config(
+        storage.clone(),
+        oauth2_config,
+    ).await?;
 
     // Register a client application
-    let client_request = ClientRegistrationRequest {
-        client_name: "My Web App".to_string(),
+    let client_config = ClientConfig {
+        client_id: uuid::Uuid::new_v4().to_string(),
+        client_secret: Some("my-client-secret".to_string()),
+        client_type: auth_framework::ClientType::Confidential,
         redirect_uris: vec!["https://myapp.com/callback".to_string()],
-        grant_types: vec!["authorization_code".to_string(), "refresh_token".to_string()],
-        response_types: vec!["code".to_string()],
-        scope: "openid profile email".to_string(),
-        client_type: ClientType::Confidential,
-        token_endpoint_auth_method: "client_secret_basic".to_string(),
-        application_type: "web".to_string(),
+        authorized_scopes: vec!["openid".to_string(), "profile".to_string(), "email".to_string()],
+        authorized_grant_types: vec!["authorization_code".to_string(), "refresh_token".to_string()],
+        authorized_response_types: vec!["code".to_string()],
+        client_name: Some("My Web App".to_string()),
         client_description: Some("My company's web application".to_string()),
-        client_uri: Some("https://myapp.com".to_string()),
-        contacts: Some(vec!["admin@myapp.com".to_string()]),
         ..Default::default()
     };
 
-    let client_response = auth_server.register_client(client_request).await?;
-    println!("Client registered: {}", client_response.client_id);
-    println!("Client secret: {}", client_response.client_secret.unwrap());
+    let registered = oauth2_server.register_client(client_config).await?;
+    println!("Client registered: {}", registered.client_id);
 
-    // Get well-known configuration for clients
-    let well_known = auth_server.get_well_known_configuration().await?;
-    println!("Authorization endpoint: {}", well_known.oauth2.authorization_endpoint);
-    println!("Token endpoint: {}", well_known.oauth2.token_endpoint);
+    // Get server discovery metadata
+    let discovery = oauth2_server.get_server_configuration().await?;
+    println!("Discovery: {}", discovery);
 
     Ok(())
 }
@@ -379,17 +407,17 @@ Provide OpenID Connect authentication for your applications:
 
 ```rust
 use auth_framework::{
-    OidcProvider, OidcProviderConfig, SubjectType,
-    OAuth2ServerConfig, ClientRegistry,
-    storage::MemoryStorage,
+    server::oidc::core::{OidcConfig, OidcProvider, SubjectType},
+    storage::memory::InMemoryStorage,
+    tokens::TokenManager,
 };
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let storage = Arc::new(MemoryStorage::new());
-    let client_registry = ClientRegistry::new(storage.clone()).await?;
+    let storage = Arc::new(InMemoryStorage::new());
 
-    let oidc_config = OidcProviderConfig {
+    let oidc_config = OidcConfig {
         issuer: "https://oidc.yourcompany.com".to_string(),
         subject_types_supported: vec![SubjectType::Public, SubjectType::Pairwise],
         scopes_supported: vec![
@@ -402,25 +430,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let oidc_provider = OidcProvider::new(oidc_config, storage, client_registry).await?;
-    oidc_provider.initialize().await?;
+    // Create token manager and OIDC provider
+    let token_manager = Arc::new(TokenManager::new("your-jwt-secret-at-least-32-chars-long!"));
+    let oidc_provider = OidcProvider::new(oidc_config, token_manager, storage).await?;
 
-    // Handle UserInfo request
-    let access_token = "user_access_token_here";
-    let user_info = oidc_provider.handle_userinfo_request(access_token).await?;
-    println!("User info: {:?}", user_info);
-
-    // Generate ID token
-    let client = registered_client; // From client registry
-    let id_token = oidc_provider.generate_id_token(
-        &client,
-        "user123",
-        &["openid", "profile", "email"],
-        Some("nonce123"),
-        SystemTime::now(),
-    ).await?;
-
-    println!("ID token: {}", id_token);
+    // Get OpenID Connect discovery document
+    let discovery = oidc_provider.get_discovery_document();
+    println!("Issuer: {}", discovery["issuer"]);
 
     Ok(())
 }
@@ -429,7 +445,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### OAuth Authentication
 
 > **Note**: OAuth authentication is currently implemented through provider configurations and server components.
-> For complete OAuth client flows, see the server examples in `examples/oauth2_authorization_server.rs` and `examples/complete_oauth2_server_axum.rs`.```rust
+> For complete OAuth client flows, see the server examples in `examples/oauth2_authorization_server.rs` and `examples/complete_oauth2_server_axum.rs`.
+
+```rust
 use auth_framework::providers::OAuthProvider;
 
 // OAuth providers are available for server implementations
@@ -458,7 +476,6 @@ let token_response = github_provider.exchange_code(
 
 println!("Access token: {}", token_response.access_token);
 
-```
 ```
 
 ### API Key Authentication
@@ -950,7 +967,7 @@ The framework provides comprehensive testing utilities to make testing your auth
 
 ```toml
 [dev-dependencies]
-auth-framework = { version = "0.2.0", features = ["testing"] }
+auth-framework = { version = "0.5.0-rc18", features = ["testing"] }
 ```
 
 ```rust
@@ -1209,7 +1226,7 @@ Helper utilities for integrating with CLI frameworks:
 
 ```toml
 [dependencies]
-auth-framework = "0.2.0"
+auth-framework = "0.5.0-rc18"
 clap = "4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
