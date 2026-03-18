@@ -341,3 +341,4 @@ pub use testing::{
     test_infrastructure::{TestEnvironmentGuard, test_data},
     utilities::*,
 };
+#![deny(clippy::unwrap_used)]
