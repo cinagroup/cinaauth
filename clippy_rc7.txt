@@ -1,3 +1,0 @@
-    Blocking waiting for file lock on build directory
-    Checking auth-framework v0.5.0-rc7 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2m 04s
