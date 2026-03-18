@@ -133,8 +133,7 @@ impl SessionManager {
         metadata: HashMap<String, String>,
     ) -> Result<OidcSession> {
         let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs();
 
         let session = OidcSession {
@@ -164,8 +163,7 @@ impl SessionManager {
     pub fn update_session_activity(&mut self, session_id: &str) -> Result<()> {
         if let Some(session) = self.sessions.get_mut(session_id) {
             let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .duration_since(UNIX_EPOCH).unwrap_or_default()
                 .as_secs();
             session.last_activity = now;
             Ok(())
@@ -178,8 +176,7 @@ impl SessionManager {
     pub fn is_session_valid(&self, session_id: &str) -> bool {
         if let Some(session) = self.get_session(session_id) {
             let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .duration_since(UNIX_EPOCH).unwrap_or_default()
                 .as_secs();
 
             now - session.last_activity < self.config.session_timeout
@@ -312,8 +309,7 @@ impl SessionManager {
     /// Clean up expired sessions
     pub fn cleanup_expired_sessions(&mut self) -> usize {
         let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs();
 
         let initial_count = self.sessions.len();

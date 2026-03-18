@@ -349,8 +349,7 @@ impl RegistrationManager {
         // Create new registration session
         let registration_id = Uuid::new_v4().to_string();
         let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
             .as_secs();
 
         let mut registration_data = RegistrationData {
@@ -425,8 +424,7 @@ impl RegistrationManager {
 
         // Check session timeout
         let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
             .as_secs();
 
         if now - registration.created_at > self.config.session_timeout {
@@ -766,8 +764,7 @@ impl RegistrationManager {
     /// Clean up expired registration sessions
     pub fn cleanup_expired_sessions(&mut self) -> usize {
         let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
             .as_secs();
 
         let initial_count = self.registration_sessions.len();
