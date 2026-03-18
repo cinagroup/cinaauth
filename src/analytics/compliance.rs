@@ -114,3 +114,4 @@ mod tests {
         assert_eq!(metrics.security_incidents, 1);
     }
 }
+

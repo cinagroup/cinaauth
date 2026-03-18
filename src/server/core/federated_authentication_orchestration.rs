@@ -1379,8 +1379,7 @@ impl FederationOrchestratorImpl {
             && let Some(expires_timestamp) = expires_at.as_u64()
         {
             let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
                 .as_secs();
 
             return Ok(expires_timestamp > now);
@@ -1549,8 +1548,7 @@ impl FederationOrchestratorImpl {
             && let Some(expires_timestamp) = expires_at.as_u64()
         {
             let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
                 .as_secs();
 
             return Ok(expires_timestamp > now);

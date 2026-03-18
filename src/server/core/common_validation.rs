@@ -68,8 +68,7 @@ pub mod jwt {
     /// Validate JWT timestamp claims (exp, iat, nbf)
     pub fn validate_time_claims(claims: &serde_json::Value) -> Result<()> {
         let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs() as i64;
 
         // Check expiration

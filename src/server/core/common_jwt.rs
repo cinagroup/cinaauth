@@ -97,8 +97,7 @@ impl CommonJwtClaims {
     /// Create new claims with required fields
     pub fn new(issuer: String, subject: String, audiences: Vec<String>, expiration: i64) -> Self {
         let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs() as i64;
 
         Self {
@@ -315,8 +314,7 @@ impl JwtManager {
         client_id: Option<String>,
     ) -> Result<String> {
         let exp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs() as i64
             + self.config.default_expiration as i64;
 
@@ -350,8 +348,7 @@ impl JwtManager {
     pub fn create_refresh_token(&self, subject: String, client_id: String) -> Result<String> {
         // Refresh tokens typically have longer expiration
         let exp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs() as i64
             + (self.config.default_expiration * 24) as i64; // 24x longer
 
@@ -383,8 +380,7 @@ impl JwtManager {
         user_info: HashMap<String, serde_json::Value>,
     ) -> Result<String> {
         let exp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs() as i64
             + 300; // 5 minutes for ID token
 
@@ -449,8 +445,7 @@ pub mod utils {
         let claims = extract_claims_unsafe(token)?;
 
         let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs() as i64;
 
         if let Some(exp) = claims.get("exp").and_then(|v| v.as_i64()) {

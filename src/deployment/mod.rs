@@ -211,7 +211,7 @@ impl DeploymentManager {
                 error_rate: 0.0,
                 response_time: Duration::from_millis(0),
                 active_connections: 0,
-                timestamp: now.duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                timestamp: now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
             },
             started_at: now,
         }
@@ -445,7 +445,7 @@ impl DeploymentManager {
     fn update_metrics(&mut self) {
         let now = SystemTime::now();
         self.metrics.uptime = now.duration_since(self.started_at).unwrap_or_default();
-        self.metrics.timestamp = now.duration_since(UNIX_EPOCH).unwrap().as_secs();
+        self.metrics.timestamp = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
         self.metrics.status = self.status.clone();
     }
 
@@ -531,8 +531,7 @@ impl DeploymentManager {
 impl Default for DeploymentConfig {
     fn default() -> Self {
         let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .duration_since(UNIX_EPOCH).unwrap_or_default()
             .as_secs();
 
         Self {

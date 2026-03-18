@@ -71,7 +71,6 @@
   rand_core = "0.6"  # Compatible version for rsa crate's OsRng
   ring = "0.17.14"
   rsa = { version = "0.9", features = ["sha2"] }  # RSA-OAEP for JWE key wrapping
-  cryptoki = "0.7"  # PKCS#11 interface for HSM integration
 
   # Time handling
   time = { version = "0.3.44", features = ["formatting", "parsing", "serde"] }
@@ -279,6 +278,7 @@
   sms-twilio      = { version = "0.2.0", optional = true }
   sms-web-axum    = { version = "0.2.0", optional = true }
   sms-web-generic = { version = "0.2.0", optional = true }
+pkcs11 = "0.5.0"
 
 [dev-dependencies]
   axum-test  = "19.1.1"

@@ -67,8 +67,7 @@ impl TotpManager {
 
         let window = time_window.unwrap_or_else(|| {
             std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
                 .as_secs()
                 / 30
         });
@@ -121,8 +120,7 @@ impl TotpManager {
 
         // Generate expected TOTP codes for current and adjacent time windows
         let current_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
             .as_secs();
 
         // TOTP uses 30-second time steps
