@@ -30,7 +30,7 @@ async fn create_test_server() -> (Arc<AuthFramework>, ApiServer) {
         allowed_origins: vec!["http://localhost:3000".to_string()],
         max_body_size: 1024 * 1024,
         enable_tracing: false,
-    }; 
+    };
     let server = ApiServer::with_config(auth.clone(), api_config);
     (auth, server)
 }
@@ -482,7 +482,10 @@ async fn test_introspect_reports_revoked_token_as_inactive() {
     let resp1 = router1.oneshot(req1).await.unwrap();
     let body1 = to_bytes(resp1.into_body(), 1024 * 1024).await.unwrap();
     let json1: Value = serde_json::from_slice(&body1).unwrap();
-    assert_eq!(json1["active"], true, "token should be active before revocation");
+    assert_eq!(
+        json1["active"], true,
+        "token should be active before revocation"
+    );
 
     // Revoke the token by writing into the revocation list.
     auth.storage()

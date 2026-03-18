@@ -6,7 +6,9 @@
 use crate::api::{ApiResponse, ApiState, extract_bearer_token, validate_api_token};
 use crate::oauth2_server::AuthorizationRequest;
 // Re-export canonical types for consumers that imported them from api::oauth2
-pub use crate::oauth2_server::{AuthorizationRequest as AuthorizeRequest, TokenRequest, TokenResponse};
+pub use crate::oauth2_server::{
+    AuthorizationRequest as AuthorizeRequest, TokenRequest, TokenResponse,
+};
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -403,7 +405,10 @@ async fn handle_authorization_code_grant(
         Ok(s) => s,
         Err(e) => {
             tracing::error!("Failed to serialize updated code data: {:?}", e);
-            return ApiResponse::error_typed("server_error", "Failed to process authorization code");
+            return ApiResponse::error_typed(
+                "server_error",
+                "Failed to process authorization code",
+            );
         }
     };
 
@@ -467,7 +472,9 @@ async fn handle_authorization_code_grant(
         .storage()
         .store_kv(
             &refresh_key,
-            serde_json::to_string(&refresh_data).unwrap_or_default().as_bytes(),
+            serde_json::to_string(&refresh_data)
+                .unwrap_or_default()
+                .as_bytes(),
             Some(std::time::Duration::from_secs(30 * 24 * 3600)),
         )
         .await
@@ -505,10 +512,7 @@ async fn handle_refresh_token_grant(
             Err(_) => return ApiResponse::error_typed("invalid_grant", "Invalid refresh token"),
         },
         Ok(None) => {
-            return ApiResponse::error_typed(
-                "invalid_grant",
-                "Refresh token not found or expired",
-            );
+            return ApiResponse::error_typed("invalid_grant", "Refresh token not found or expired");
         }
         Err(e) => {
             tracing::error!("Failed to retrieve refresh token: {:?}", e);
@@ -528,7 +532,10 @@ async fn handle_refresh_token_grant(
 
     // Rotate: delete the old refresh token (single-use enforcement).
     if let Err(e) = state.auth_framework.storage().delete_kv(&refresh_key).await {
-        tracing::warn!("Failed to delete old refresh token during rotation: {:?}", e);
+        tracing::warn!(
+            "Failed to delete old refresh token during rotation: {:?}",
+            e
+        );
     }
 
     let token = match state

@@ -2,6 +2,43 @@
 
 This guide covers the various storage backends available in auth-framework and how to configure them for different use cases.
 
+## Quick Decision Guide
+
+Choose the right backend for your deployment scenario:
+
+| Scenario                                     | Recommended backend |           Feature flag           |
+| -------------------------------------------- | ------------------: | :------------------------------: |
+| Local development or automated tests         |           In-memory |   *(none — always available)*    |
+| Single-node production deployment            |          PostgreSQL | `postgres-storage` (**default**) |
+| Multi-node or horizontally scaled deployment |  PostgreSQL + Redis |         `tiered-storage`         |
+| Session caching / distributed rate limiting  |               Redis |         `redis-storage`          |
+| Existing MySQL/MariaDB infrastructure        |               MySQL |         `mysql-storage`          |
+| Lightweight embedded / mobile                |  SQLite *(planned)* |                —                 |
+
+**Default build:** The `postgres-storage` feature is enabled by default. New projects connect
+to PostgreSQL without any feature selection. If you do not have a PostgreSQL instance, the
+in-memory backend is always available as a fallback for development.
+
+### Which backends are default vs. optional?
+
+| Backend           |       Default        | Rationale                                              |
+| ----------------- | :------------------: | ------------------------------------------------------ |
+| In-memory         |     ✅ (no flag)      | Zero-dependency fallback; always present               |
+| **PostgreSQL**    | ✅ `postgres-storage` | Production-grade ACID store; most users need it        |
+| Redis             |  ⬜ `redis-storage`   | Requires a Redis cluster; opt-in for performance/scale |
+| MySQL             |  ⬜ `mysql-storage`   | Alternative to Postgres; bring your own infra          |
+| Tiered (Redis+PG) |  ⬜ `tiered-storage`  | Optimization feature; higher operational complexity    |
+| SQLite            |    ⬜ *(planned)*     | Separate crate; niche use case                         |
+
+To opt out of PostgreSQL (e.g. for a read-only CLI tool), use `default-features = false`:
+
+```toml
+[dependencies]
+auth-framework = { version = "0.5", default-features = false, features = ["redis-storage"] }
+```
+
+---
+
 ## Overview
 
 Auth-framework supports multiple storage backends to meet different application requirements:
@@ -163,7 +200,7 @@ let storage = RedisStorage::with_config(config).await?;
 
 Redis storage uses the following key patterns:
 
-```
+```text
 auth:token:{token_id} -> AuthToken (JSON)
 auth:access:{access_token} -> token_id (String)
 auth:user:{user_id}:tokens -> [token_ids] (List)
@@ -432,19 +469,22 @@ PostgreSQL storage provides robust performance for production applications:
 
 ## Choosing the Right Backend
 
-### Use In-Memory When:
+### Use In-Memory When
+
 - Developing or testing applications
 - Building single-instance applications
 - Performance is critical and persistence isn't needed
 - You want zero external dependencies
 
-### Use Redis When:
+### Use Redis When
+
 - Building distributed applications
 - You need high performance with some persistence
 - Implementing caching strategies
 - Scaling horizontally across multiple instances
 
-### Use PostgreSQL When:
+### Use PostgreSQL When
+
 - Building production applications
 - Data integrity is critical
 - You need complex queries and analytics

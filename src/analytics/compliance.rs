@@ -2,6 +2,9 @@
 //!
 //! This module provides compliance monitoring and reporting
 //! for RBAC systems according to various security standards.
+//!
+//! > **Status: Stub** — `check_compliance` currently returns hardcoded
+//! > placeholder metrics. A real implementation should query the role store.
 
 use super::{AnalyticsError, ComplianceMetrics, TimeRange};
 use serde::{Deserialize, Serialize};
@@ -82,4 +85,32 @@ impl ComplianceMonitor {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn test_compliance_config_default() {
+        let config = ComplianceConfig::default();
+        assert!(!config.sox_compliance);
+        assert!(!config.gdpr_compliance);
+        assert!(!config.hipaa_compliance);
+        assert!(config.custom_rules.is_empty());
+    }
+
+    #[test]
+    fn test_compliance_monitor_creation() {
+        let config = ComplianceConfig::default();
+        let _monitor = ComplianceMonitor::new(config);
+    }
+
+    #[tokio::test]
+    async fn test_check_compliance_returns_metrics() {
+        let monitor = ComplianceMonitor::new(ComplianceConfig::default());
+        let range = TimeRange::last_days(7);
+        let metrics = monitor.check_compliance(range).await.unwrap();
+        assert!(metrics.role_assignment_compliance > 0.0);
+        assert!(metrics.permission_scoping_compliance > 0.0);
+        assert_eq!(metrics.security_incidents, 1);
+    }
+}

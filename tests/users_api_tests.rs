@@ -592,7 +592,7 @@ mod users_api_tests {
             remember_me: false,
         };
 
-        let api_resp = auth_handlers::login(State(state), Json(req)).await;
+        let api_resp = auth_handlers::login(State(state), HeaderMap::new(), Json(req)).await;
 
         assert!(api_resp.success, "login should succeed");
         let login_data = api_resp.data.expect("login response should contain data");
@@ -918,6 +918,7 @@ mod users_api_tests {
 
         let response = auth_handlers::login(
             State(state),
+            HeaderMap::new(),
             Json(LoginRequest {
                 username: "test_user_mfa_required".to_string(),
                 password: "SecurePass123!".to_string(),
@@ -959,6 +960,7 @@ mod users_api_tests {
 
         let first_response = auth_handlers::login(
             State(state.clone()),
+            HeaderMap::new(),
             Json(LoginRequest {
                 username: "test_user_mfa_complete".to_string(),
                 password: "SecurePass123!".to_string(),
@@ -980,6 +982,7 @@ mod users_api_tests {
 
         let second_response = auth_handlers::login(
             State(state),
+            HeaderMap::new(),
             Json(LoginRequest {
                 username: "test_user_mfa_complete".to_string(),
                 password: "SecurePass123!".to_string(),

@@ -161,7 +161,9 @@ pub async fn webauthn_registration_init(
         "username": request.username,
         "timestamp": chrono::Utc::now().timestamp()
     });
-    let _ = state.auth_framework.storage()
+    let _ = state
+        .auth_framework
+        .storage()
         .store_kv(
             &session_key,
             session_data.to_string().as_bytes(),
@@ -187,15 +189,18 @@ pub async fn webauthn_registration_complete(
     let username = match storage.get_kv(&session_key).await {
         Ok(Some(data)) => {
             // Extract the username from the stored session
-            let session: serde_json::Value = serde_json::from_slice(&data)
-                .unwrap_or(serde_json::Value::Null);
-            session.get("username")
+            let session: serde_json::Value =
+                serde_json::from_slice(&data).unwrap_or(serde_json::Value::Null);
+            session
+                .get("username")
                 .and_then(|u| u.as_str())
                 .unwrap_or("unknown")
                 .to_string()
         }
         _ => {
-            return Json(ApiResponse::validation_error("Session not found or expired"));
+            return Json(ApiResponse::validation_error(
+                "Session not found or expired",
+            ));
         }
     };
 
@@ -213,7 +218,11 @@ pub async fn webauthn_registration_complete(
         "registered_at": chrono::Utc::now().timestamp()
     });
     let _ = storage
-        .store_kv(&credential_key, credential_data.to_string().as_bytes(), None)
+        .store_kv(
+            &credential_key,
+            credential_data.to_string().as_bytes(),
+            None,
+        )
         .await;
 
     // Update the user's credential index so authentication can enumerate them
@@ -225,7 +234,13 @@ pub async fn webauthn_registration_complete(
     if !existing_ids.contains(&request.credential_id) {
         existing_ids.push(request.credential_id.clone());
         let _ = storage
-            .store_kv(&index_key, serde_json::to_string(&existing_ids).unwrap_or_default().as_bytes(), None)
+            .store_kv(
+                &index_key,
+                serde_json::to_string(&existing_ids)
+                    .unwrap_or_default()
+                    .as_bytes(),
+                None,
+            )
             .await;
     }
 
@@ -314,15 +329,18 @@ pub async fn webauthn_authentication_complete(
     // Retrieve and validate the stored session
     let username = match storage.get_kv(&session_key).await {
         Ok(Some(data)) => {
-            let session: serde_json::Value = serde_json::from_slice(&data)
-                .unwrap_or(serde_json::Value::Null);
-            session.get("username")
+            let session: serde_json::Value =
+                serde_json::from_slice(&data).unwrap_or(serde_json::Value::Null);
+            session
+                .get("username")
                 .and_then(|u| u.as_str())
                 .unwrap_or("webauthn_user")
                 .to_string()
         }
         _ => {
-            return Json(ApiResponse::validation_error_typed("Authentication session not found or expired"));
+            return Json(ApiResponse::validation_error_typed(
+                "Authentication session not found or expired",
+            ));
         }
     };
 
@@ -334,7 +352,10 @@ pub async fn webauthn_authentication_complete(
     ) {
         Ok(t) => t,
         Err(e) => {
-            return Json(ApiResponse::validation_error_typed(format!("Token generation failed: {}", e)));
+            return Json(ApiResponse::validation_error_typed(format!(
+                "Token generation failed: {}",
+                e
+            )));
         }
     };
 
@@ -467,7 +488,11 @@ pub async fn delete_webauthn_credential(
             {
                 ids.retain(|id| id != &credential_id);
                 let _ = storage
-                    .store_kv(&index_key, serde_json::to_string(&ids).unwrap_or_default().as_bytes(), None)
+                    .store_kv(
+                        &index_key,
+                        serde_json::to_string(&ids).unwrap_or_default().as_bytes(),
+                        None,
+                    )
                     .await;
             }
 

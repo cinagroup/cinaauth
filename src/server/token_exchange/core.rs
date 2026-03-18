@@ -770,10 +770,7 @@ impl TokenExchangeService for TokenExchangeManager {
                 // Load proper JWT validation key from configuration
                 let decoding_key = self.get_jwt_decoding_key(token)?;
 
-                match self
-                    .jwt_validator
-                    .validate_token(token, &decoding_key)
-                {
+                match self.jwt_validator.validate_token(token, &decoding_key) {
                     Ok(claims) => {
                         // Convert timestamp to DateTime
                         use chrono::{TimeZone, Utc};
@@ -1012,5 +1009,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-
-

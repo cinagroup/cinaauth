@@ -844,5 +844,3 @@ impl OAuth2Server {
         Ok(session_store.invalidate_session(session_id))
     }
 }
-
-

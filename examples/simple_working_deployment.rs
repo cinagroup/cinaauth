@@ -39,7 +39,8 @@ pub async fn simple_working_deployment() -> Result<(), Box<dyn std::error::Error
 
     // Create a sample token
     let token = auth_framework
-        .create_auth_token(
+        .tokens()
+        .create(
             "demo_user",
             vec!["read".to_string(), "write".to_string()],
             "jwt",
@@ -50,12 +51,13 @@ pub async fn simple_working_deployment() -> Result<(), Box<dyn std::error::Error
     println!("🔑 Created token: {}", token.access_token);
 
     // Validate the token
-    if auth_framework.validate_token(&token).await? {
+    if auth_framework.tokens().validate(&token).await? {
         println!("✅ Token validation successful!");
 
         // Check permission
         if auth_framework
-            .check_permission(&token, "read", "documents")
+            .authorization()
+            .check(&token, "read", "documents")
             .await?
         {
             println!("✅ Permission check passed!");

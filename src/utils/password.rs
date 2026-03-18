@@ -92,6 +92,15 @@ pub fn check_password_strength(password: &str) -> PasswordStrength {
 
     PasswordStrength { level, feedback }
 }
+
+/// Returns `true` when `level` satisfies the production minimum (Strong or VeryStrong).
+pub fn meets_production_strength(level: PasswordStrengthLevel) -> bool {
+    matches!(
+        level,
+        PasswordStrengthLevel::Strong | PasswordStrengthLevel::VeryStrong
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

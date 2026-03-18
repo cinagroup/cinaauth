@@ -134,7 +134,9 @@ pub struct HealthMonitor {
 impl HealthMonitor {
     /// Create new health monitor
     pub fn new(config: HealthMonitorConfig) -> Self {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
 
         Self {
             config,
@@ -415,7 +417,9 @@ impl HealthMonitor {
 
     /// Update system metrics
     async fn update_system_metrics(&mut self) -> Result<(), HealthError> {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
 
         self.system_metrics = SystemMetrics {
             cpu_usage: self.get_cpu_usage().await?,
@@ -571,9 +575,9 @@ impl HealthMonitor {
                     let fields: Vec<&str> = line.split_ascii_whitespace().collect();
                     if fields.len() >= 10 {
                         bytes_recv += fields[1].parse::<u64>().unwrap_or(0);
-                        pkts_recv  += fields[2].parse::<u64>().unwrap_or(0);
+                        pkts_recv += fields[2].parse::<u64>().unwrap_or(0);
                         bytes_sent += fields[9].parse::<u64>().unwrap_or(0);
-                        pkts_sent  += fields[10].parse::<u64>().unwrap_or(0);
+                        pkts_sent += fields[10].parse::<u64>().unwrap_or(0);
                     }
                 }
                 return Ok(NetworkIoMetrics {
@@ -689,7 +693,9 @@ impl HealthMonitor {
             HealthStatus::Unknown
         };
 
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
 
         self.service_health = ServiceHealth {
             service_name: self.service_health.service_name.clone(),
@@ -815,10 +821,7 @@ fn extract_host_port(endpoint: &str) -> String {
             rest
         };
         // Keep only the host:port portion (drop /path?query etc.)
-        let host_port = after_auth
-            .split('/')
-            .next()
-            .unwrap_or(after_auth);
+        let host_port = after_auth.split('/').next().unwrap_or(after_auth);
         return host_port.to_string();
     }
     endpoint.to_string()
@@ -830,12 +833,7 @@ fn extract_host_port(endpoint: &str) -> String {
 /// on connection refused / timeout, and a [`HealthError::Network`] only for
 /// unexpected I/O errors.
 async fn tcp_connect_check(addr: &str) -> Result<HealthStatus, HealthError> {
-    match tokio::time::timeout(
-        Duration::from_secs(5),
-        tokio::net::TcpStream::connect(addr),
-    )
-    .await
-    {
+    match tokio::time::timeout(Duration::from_secs(5), tokio::net::TcpStream::connect(addr)).await {
         Ok(Ok(_stream)) => Ok(HealthStatus::Healthy),
         Ok(Err(e)) => {
             tracing::debug!("TCP health check to {} failed: {}", addr, e);
@@ -910,7 +908,10 @@ mod tests {
         // the real client returns HealthStatus::Unhealthy (connection refused),
         // not an error.
         let result = monitor.check_http("http://localhost:19999/health").await;
-        assert!(result.is_ok(), "connection-refused should yield Ok(Unhealthy), not Err");
+        assert!(
+            result.is_ok(),
+            "connection-refused should yield Ok(Unhealthy), not Err"
+        );
         assert_eq!(
             result.unwrap(),
             HealthStatus::Unhealthy,
@@ -940,7 +941,11 @@ mod tests {
         let path = "C:\\";
 
         let usage = monitor.get_disk_usage(path).await;
-        assert!(usage.is_ok(), "get_disk_usage returned Err: {:?}", usage.err());
+        assert!(
+            usage.is_ok(),
+            "get_disk_usage returned Err: {:?}",
+            usage.err()
+        );
         let value = usage.unwrap();
         assert!(
             (0.0..=1.0).contains(&value),
@@ -975,10 +980,16 @@ mod tests {
         );
 
         // Redis URI without credentials.
-        assert_eq!(extract_host_port("redis://cache.host:6379"), "cache.host:6379");
+        assert_eq!(
+            extract_host_port("redis://cache.host:6379"),
+            "cache.host:6379"
+        );
 
         // Redis URI with path.
-        assert_eq!(extract_host_port("redis://cache.host:6379/0"), "cache.host:6379");
+        assert_eq!(
+            extract_host_port("redis://cache.host:6379/0"),
+            "cache.host:6379"
+        );
 
         // MySQL URI.
         assert_eq!(

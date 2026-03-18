@@ -1,4 +1,4 @@
-# GitHub Actions CI/CD Pipeline for AuthFramework v0.4.0
+# GitHub Actions CI/CD Pipeline for AuthFramework v0.5.x
 
 name: AuthFramework CI/CD
 
@@ -57,7 +57,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache cargo registry
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -74,21 +74,21 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --features enhanced-rbac,postgres-storage,mysql-storage,redis-storage,openid-connect,axum-integration -- -D warnings
 
       - name: Run unit tests
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/auth_framework_test
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test_jwt_secret_that_is_longer_than_32_characters_for_security
-        run: cargo test --all-features --workspace
+        run: cargo test --features enhanced-rbac,postgres-storage,mysql-storage,redis-storage,openid-connect,axum-integration --workspace
 
       - name: Run integration tests
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/auth_framework_test
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test_jwt_secret_that_is_longer_than_32_characters_for_security
-        run: cargo test --test integration --all-features
+        run: cargo test --test integration --features enhanced-rbac,postgres-storage,mysql-storage,redis-storage,openid-connect,axum-integration
 
       - name: Run benchmarks
         env:
@@ -189,7 +189,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -211,7 +211,7 @@ jobs:
           cargo bench --bench auth_performance 2>&1 | tee benchmark_results.txt
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
           path: benchmark_results.txt

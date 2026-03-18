@@ -151,7 +151,8 @@ impl SecurityPreset {
                 require_password_complexity: false,
                 password_hash_algorithm: PasswordHashAlgorithm::Bcrypt, // Faster for development
                 jwt_algorithm: JwtAlgorithm::HS256,
-                secret_key: None,      // Must be set externally
+                secret_key: None, // Must be set externally
+                previous_secret_key: None,
                 secure_cookies: false, // Allow HTTP for local development
                 cookie_same_site: CookieSameSite::Lax,
                 csrf_protection: false,     // Easier API testing
@@ -163,6 +164,7 @@ impl SecurityPreset {
                 password_hash_algorithm: PasswordHashAlgorithm::Argon2,
                 jwt_algorithm: JwtAlgorithm::HS256,
                 secret_key: None,
+                previous_secret_key: None,
                 secure_cookies: true,
                 cookie_same_site: CookieSameSite::Lax,
                 csrf_protection: true,
@@ -174,6 +176,7 @@ impl SecurityPreset {
                 password_hash_algorithm: PasswordHashAlgorithm::Argon2,
                 jwt_algorithm: JwtAlgorithm::RS256, // RSA for better security
                 secret_key: None,
+                previous_secret_key: None,
                 secure_cookies: true,
                 cookie_same_site: CookieSameSite::Strict,
                 csrf_protection: true,
@@ -185,6 +188,7 @@ impl SecurityPreset {
                 password_hash_algorithm: PasswordHashAlgorithm::Argon2,
                 jwt_algorithm: JwtAlgorithm::RS512, // Strongest RSA
                 secret_key: None,
+                previous_secret_key: None,
                 secure_cookies: true,
                 cookie_same_site: CookieSameSite::Strict,
                 csrf_protection: true,

@@ -6,7 +6,7 @@
 #[cfg(feature = "actix-integration")]
 use crate::{
     AuthError, AuthFramework, Result,
-    authorization::{AuthorizationEngine, AuthorizationStorage, AbacPermission},
+    authorization::{AbacPermission, AuthorizationEngine, AuthorizationStorage},
     tokens::AuthToken,
 };
 #[cfg(feature = "actix-integration")]
@@ -112,7 +112,10 @@ where
                 .iter()
                 .any(|skip_path| path.starts_with(skip_path))
             {
-                return service.call(req).await.map(ServiceResponse::map_into_left_body);
+                return service
+                    .call(req)
+                    .await
+                    .map(ServiceResponse::map_into_left_body);
             }
 
             // Helper: convert an AuthError to an early-exit HTTP response
@@ -171,7 +174,10 @@ where
                             };
                             tracing::debug!("AuthToken stored in request extensions");
                             req.extensions_mut().insert(token);
-                            service.call(req).await.map(ServiceResponse::map_into_left_body)
+                            service
+                                .call(req)
+                                .await
+                                .map(ServiceResponse::map_into_left_body)
                         }
                         Err(e) => {
                             auth_error_response!(req, e);
@@ -230,7 +236,10 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
     }
 
     /// Create without specific user ID requirement (validates any authenticated user)
-    pub fn any_user(permission: AbacPermission, authorization: Arc<AuthorizationEngine<S>>) -> Self {
+    pub fn any_user(
+        permission: AbacPermission,
+        authorization: Arc<AuthorizationEngine<S>>,
+    ) -> Self {
         Self::new(permission, authorization, None)
     }
 
@@ -293,14 +302,13 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
         };
         let user_id = claims.sub;
 
-        if let Some(expected_id) = &self.expected_user_id {
-            if user_id != *expected_id {
+        if let Some(expected_id) = &self.expected_user_id
+            && user_id != *expected_id {
                 return Err(AuthError::access_denied(format!(
                     "Token user ID '{}' does not match expected user ID '{}'",
                     user_id, expected_id
                 )));
             }
-        }
 
         // Check if user has the required permission
         let has_permission = self.check_access(&user_id, request).await?;

@@ -180,8 +180,7 @@ impl SecureJwtValidator {
         // interval or very long token lifetime), evict the oldest 25 % of remaining entries.
         if revoked_tokens.len() > MAX_REVOKED_TOKENS {
             let target_len = MAX_REVOKED_TOKENS * 3 / 4;
-            let mut by_age: Vec<(String, std::time::SystemTime)> =
-                revoked_tokens.drain().collect();
+            let mut by_age: Vec<(String, std::time::SystemTime)> = revoked_tokens.drain().collect();
             by_age.sort_unstable_by_key(|(_, t)| *t);
             // Re-insert only the newest entries.
             for (jti, inserted_at) in by_age.into_iter().rev().take(target_len) {
@@ -196,5 +195,3 @@ impl SecureJwtValidator {
         Ok(())
     }
 }
-
-

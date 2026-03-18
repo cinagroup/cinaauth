@@ -320,17 +320,17 @@ async fn demo_integrated_performance() -> Result<()> {
         let scopes = vec!["read".to_string(), "write".to_string()];
 
         // Create token
-        match auth.create_auth_token(&user_id, scopes, "jwt", None).await {
+        match auth.tokens().create(&user_id, scopes, "jwt", None).await {
             Ok(token) => {
                 successful_auths += 1;
 
                 // Validate token
-                if auth.validate_token(&token).await.unwrap_or(false) {
+                if auth.tokens().validate(&token).await.unwrap_or(false) {
                     successful_validations += 1;
                 }
 
                 // Check permission
-                let _ = auth.check_permission(&token, "read", "data").await;
+                let _ = auth.authorization().check(&token, "read", "data").await;
             }
             Err(_) => {
                 // Continue with benchmark even if some operations fail

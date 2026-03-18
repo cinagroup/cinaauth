@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-framework-config
+  namespace: auth-framework
+  labels:
+    app.kubernetes.io/name: auth-framework
+data:
+  # Server
+  RUST_LOG: "auth_framework=info,warn"
+  PORT: "8080"
+  HEALTH_PORT: "8080"
+
+  # Token lifetimes (seconds)
+  TOKEN_LIFETIME_SECS: "3600"
+  REFRESH_TOKEN_LIFETIME_SECS: "604800"
+
+  # Storage backend — set DATABASE_URL in the Secret
+  STORAGE_BACKEND: "postgres"
+
+  # Environment tag shown in health responses
+  ENVIRONMENT: "production"

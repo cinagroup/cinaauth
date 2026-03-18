@@ -35,6 +35,7 @@ mod authentication_edge_cases {
                 cookie_same_site: CookieSameSite::Strict,
                 csrf_protection: true,
                 session_timeout: Duration::from_secs(1800),
+                previous_secret_key: None,
             })
             .rate_limiting(RateLimitConfig {
                 enabled: true,
@@ -247,8 +248,8 @@ mod resource_management_tests {
                 )
                 .await;
 
-            if result.is_ok() {
-                tokens.push(result.unwrap());
+            if let Ok(token) = result {
+                tokens.push(token);
             }
         }
 
@@ -935,6 +936,7 @@ async fn test_comprehensive_edge_case_integration() {
             cookie_same_site: CookieSameSite::Strict,
             csrf_protection: true,
             session_timeout: Duration::from_secs(1800),
+            previous_secret_key: None,
         })
         .rate_limiting(RateLimitConfig {
             enabled: true,
@@ -1009,8 +1011,8 @@ async fn test_comprehensive_edge_case_integration() {
             )
             .await;
 
-        if token_result.is_ok() {
-            tokens.push(token_result.unwrap());
+        if let Ok(token) = token_result {
+            tokens.push(token);
         }
     }
 

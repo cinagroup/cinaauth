@@ -2,8 +2,8 @@
 //!
 //! Comprehensive tests for the PAR endpoint
 
-use auth_framework::{AuthConfig, AuthFramework};
 use auth_framework::server::oauth::par::{PARManager, PushedAuthorizationRequest};
+use auth_framework::{AuthConfig, AuthFramework};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -13,7 +13,7 @@ async fn create_test_framework() -> Arc<AuthFramework> {
     unsafe {
         std::env::set_var("JWT_SECRET", "test_secret_key_for_par_tests_1234567890");
     }
-    
+
     let config = AuthConfig::default();
     let mut auth = AuthFramework::new(config);
     auth.initialize().await.unwrap();
@@ -38,12 +38,19 @@ async fn test_par_store_and_consume() {
 
     // Store request
     let response = par_manager.store_request(request.clone()).await.unwrap();
-    
-    assert!(response.request_uri.starts_with("urn:ietf:params:oauth:request_uri:"));
+
+    assert!(
+        response
+            .request_uri
+            .starts_with("urn:ietf:params:oauth:request_uri:")
+    );
     assert_eq!(response.expires_in, 90); // Default expiration
 
     // Consume request
-    let consumed = par_manager.consume_request(&response.request_uri).await.unwrap();
+    let consumed = par_manager
+        .consume_request(&response.request_uri)
+        .await
+        .unwrap();
     assert_eq!(consumed.client_id, "test_client");
     assert_eq!(consumed.response_type, "code");
     assert_eq!(consumed.redirect_uri, "https://example.com/callback");
@@ -67,10 +74,13 @@ async fn test_par_single_use() {
     };
 
     let response = par_manager.store_request(request).await.unwrap();
-    
+
     // First consumption should succeed
-    let _ = par_manager.consume_request(&response.request_uri).await.unwrap();
-    
+    let _ = par_manager
+        .consume_request(&response.request_uri)
+        .await
+        .unwrap();
+
     // Second consumption should fail (single use)
     let result = par_manager.consume_request(&response.request_uri).await;
     assert!(result.is_err());
@@ -81,7 +91,9 @@ async fn test_par_invalid_request_uri() {
     let auth = create_test_framework().await;
     let par_manager = PARManager::new(auth.storage().clone());
 
-    let result = par_manager.consume_request("urn:ietf:params:oauth:request_uri:invalid").await;
+    let result = par_manager
+        .consume_request("urn:ietf:params:oauth:request_uri:invalid")
+        .await;
     assert!(result.is_err());
 }
 
@@ -142,16 +154,22 @@ async fn test_par_with_pkce() {
     };
 
     let response = par_manager.store_request(request.clone()).await.unwrap();
-    let consumed = par_manager.consume_request(&response.request_uri).await.unwrap();
-    
-    assert_eq!(consumed.code_challenge, Some("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".to_string()));
+    let consumed = par_manager
+        .consume_request(&response.request_uri)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        consumed.code_challenge,
+        Some("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".to_string())
+    );
     assert_eq!(consumed.code_challenge_method, Some("S256".to_string()));
 }
 
 #[tokio::test]
 async fn test_par_expiration() {
     let auth = create_test_framework().await;
-    
+
     // Create PAR manager with very short expiration
     let par_manager = PARManager::with_expiration(
         auth.storage().clone(),
@@ -170,10 +188,10 @@ async fn test_par_expiration() {
     };
 
     let response = par_manager.store_request(request).await.unwrap();
-    
+
     // Wait for expiration
     tokio::time::sleep(std::time::Duration::from_millis(150)).await;
-    
+
     // Consumption should fail due to expiration
     let result = par_manager.consume_request(&response.request_uri).await;
     assert!(result.is_err());
@@ -196,9 +214,15 @@ async fn test_par_multiple_scopes() {
     };
 
     let response = par_manager.store_request(request).await.unwrap();
-    let consumed = par_manager.consume_request(&response.request_uri).await.unwrap();
-    
-    assert_eq!(consumed.scope, Some("openid profile email phone address".to_string()));
+    let consumed = par_manager
+        .consume_request(&response.request_uri)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        consumed.scope,
+        Some("openid profile email phone address".to_string())
+    );
 }
 
 #[tokio::test]
@@ -222,9 +246,17 @@ async fn test_par_additional_params() {
     };
 
     let response = par_manager.store_request(request).await.unwrap();
-    let consumed = par_manager.consume_request(&response.request_uri).await.unwrap();
-    
-    assert_eq!(consumed.additional_params.get("nonce"), Some(&"nonce_value".to_string()));
-    assert_eq!(consumed.additional_params.get("display"), Some(&"page".to_string()));
-}
+    let consumed = par_manager
+        .consume_request(&response.request_uri)
+        .await
+        .unwrap();
 
+    assert_eq!(
+        consumed.additional_params.get("nonce"),
+        Some(&"nonce_value".to_string())
+    );
+    assert_eq!(
+        consumed.additional_params.get("display"),
+        Some(&"page".to_string())
+    );
+}

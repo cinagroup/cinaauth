@@ -129,8 +129,7 @@ pub async fn setup_mfa(
                     // Store both as pending with a 10-minute TTL so they are
                     // discarded if the user never completes verification.
                     let storage = state.auth_framework.storage();
-                    let pending_secret_key =
-                        format!("mfa_pending_secret:{}", auth_token.user_id);
+                    let pending_secret_key = format!("mfa_pending_secret:{}", auth_token.user_id);
                     let pending_backup_key =
                         format!("mfa_pending_backup_codes:{}", auth_token.user_id);
                     let ttl = std::time::Duration::from_secs(600);
@@ -140,11 +139,14 @@ pub async fn setup_mfa(
                         .await
                     {
                         tracing::error!("Failed to store pending MFA secret: {}", e);
-                        return ApiResponse::error_typed("MFA_ERROR", "Failed to initiate MFA setup");
+                        return ApiResponse::error_typed(
+                            "MFA_ERROR",
+                            "Failed to initiate MFA setup",
+                        );
                     }
 
-                    let hashed_json = serde_json::to_string(&hashed_codes)
-                        .unwrap_or_else(|_| "[]".to_string());
+                    let hashed_json =
+                        serde_json::to_string(&hashed_codes).unwrap_or_else(|_| "[]".to_string());
                     let _ = storage
                         .store_kv(&pending_backup_key, hashed_json.as_bytes(), Some(ttl))
                         .await;
@@ -212,7 +214,10 @@ pub async fn verify_mfa(
                         match base32::decode(Alphabet::Rfc4648 { padding: false }, &secret_b32) {
                             Some(b) => b,
                             None => {
-                                return ApiResponse::error_typed("MFA_ERROR", "Invalid stored secret");
+                                return ApiResponse::error_typed(
+                                    "MFA_ERROR",
+                                    "Invalid stored secret",
+                                );
                             }
                         };
 
@@ -228,7 +233,11 @@ pub async fn verify_mfa(
                         .store_kv(&active_key, secret_b32.as_bytes(), None)
                         .await
                     {
-                        tracing::error!("Failed to persist MFA secret for user {}: {}", auth_token.user_id, e);
+                        tracing::error!(
+                            "Failed to persist MFA secret for user {}: {}",
+                            auth_token.user_id,
+                            e
+                        );
                         return ApiResponse::error_typed("MFA_ERROR", "Failed to activate MFA");
                     }
 
@@ -236,8 +245,7 @@ pub async fn verify_mfa(
                     let pending_backup_key =
                         format!("mfa_pending_backup_codes:{}", auth_token.user_id);
                     if let Ok(Some(data)) = storage.get_kv(&pending_backup_key).await {
-                        let active_backup_key =
-                            format!("mfa_backup_codes:{}", auth_token.user_id);
+                        let active_backup_key = format!("mfa_backup_codes:{}", auth_token.user_id);
                         let _ = storage.store_kv(&active_backup_key, &data, None).await;
                         let _ = storage.delete_kv(&pending_backup_key).await;
                     }
@@ -316,7 +324,10 @@ pub async fn disable_mfa(
                         match base32::decode(Alphabet::Rfc4648 { padding: false }, &secret_b32) {
                             Some(b) => b,
                             None => {
-                                return ApiResponse::error_typed("MFA_ERROR", "Invalid stored secret");
+                                return ApiResponse::error_typed(
+                                    "MFA_ERROR",
+                                    "Invalid stored secret",
+                                );
                             }
                         };
 
@@ -350,30 +361,27 @@ pub async fn get_mfa_status(
     headers: HeaderMap,
 ) -> ApiResponse<MfaStatusResponse> {
     match extract_bearer_token(&headers) {
-        Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
-                Ok(auth_token) => {
-                    let storage = state.auth_framework.storage();
-                    let mfa_enabled =
-                        check_mfa_enabled(storage.as_ref(), &auth_token.user_id).await;
-                    let backup_codes_remaining =
-                        count_backup_codes(storage.as_ref(), &auth_token.user_id).await;
+        Some(token) => match validate_api_token(&state.auth_framework, &token).await {
+            Ok(auth_token) => {
+                let storage = state.auth_framework.storage();
+                let mfa_enabled = check_mfa_enabled(storage.as_ref(), &auth_token.user_id).await;
+                let backup_codes_remaining =
+                    count_backup_codes(storage.as_ref(), &auth_token.user_id).await;
 
-                    let status = MfaStatusResponse {
-                        enabled: mfa_enabled,
-                        methods: if mfa_enabled {
-                            vec!["totp".to_string()]
-                        } else {
-                            vec![]
-                        },
-                        backup_codes_remaining,
-                    };
+                let status = MfaStatusResponse {
+                    enabled: mfa_enabled,
+                    methods: if mfa_enabled {
+                        vec!["totp".to_string()]
+                    } else {
+                        vec![]
+                    },
+                    backup_codes_remaining,
+                };
 
-                    ApiResponse::success(status)
-                }
-                Err(_e) => ApiResponse::error_typed("MFA_ERROR", "MFA status check failed"),
+                ApiResponse::success(status)
             }
-        }
+            Err(_e) => ApiResponse::error_typed("MFA_ERROR", "MFA status check failed"),
+        },
         None => ApiResponse::<MfaStatusResponse>::unauthorized_typed(),
     }
 }
@@ -420,10 +428,7 @@ pub async fn regenerate_backup_codes(
                         );
                     }
 
-                    tracing::info!(
-                        "Backup codes regenerated for user: {}",
-                        auth_token.user_id
-                    );
+                    tracing::info!("Backup codes regenerated for user: {}", auth_token.user_id);
                     ApiResponse::success(plaintext)
                 }
                 Err(_e) => {
@@ -463,9 +468,7 @@ pub async fn verify_backup_code(
 
                     // Load stored hashes.
                     let codes: Vec<String> = match storage.get_kv(&backup_key).await {
-                        Ok(Some(data)) => {
-                            serde_json::from_slice(&data).unwrap_or_default()
-                        }
+                        Ok(Some(data)) => serde_json::from_slice(&data).unwrap_or_default(),
                         _ => {
                             return ApiResponse::error_typed(
                                 "MFA_ERROR",
@@ -498,8 +501,8 @@ pub async fn verify_backup_code(
                             // Consume the code (one-time use).
                             let mut remaining = codes;
                             remaining.remove(idx);
-                            let updated =
-                                serde_json::to_string(&remaining).unwrap_or_else(|_| "[]".to_string());
+                            let updated = serde_json::to_string(&remaining)
+                                .unwrap_or_else(|_| "[]".to_string());
                             let _ = storage
                                 .store_kv(&backup_key, updated.as_bytes(), None)
                                 .await;
@@ -539,26 +542,18 @@ pub async fn check_user_mfa_status(
 }
 
 /// Low-level helper that works directly with an `AuthStorage` reference.
-async fn check_mfa_enabled(
-    storage: &dyn crate::storage::AuthStorage,
-    user_id: &str,
-) -> bool {
+async fn check_mfa_enabled(storage: &dyn crate::storage::AuthStorage, user_id: &str) -> bool {
     let flag_key = format!("mfa_enabled:{}", user_id);
     matches!(storage.get_kv(&flag_key).await, Ok(Some(_)))
 }
 
 /// Returns the number of remaining backup codes for `user_id`.
-async fn count_backup_codes(
-    storage: &dyn crate::storage::AuthStorage,
-    user_id: &str,
-) -> u32 {
+async fn count_backup_codes(storage: &dyn crate::storage::AuthStorage, user_id: &str) -> u32 {
     let backup_key = format!("mfa_backup_codes:{}", user_id);
     match storage.get_kv(&backup_key).await {
-        Ok(Some(data)) => {
-            serde_json::from_slice::<Vec<String>>(&data)
-                .map(|v| v.len() as u32)
-                .unwrap_or(0)
-        }
+        Ok(Some(data)) => serde_json::from_slice::<Vec<String>>(&data)
+            .map(|v| v.len() as u32)
+            .unwrap_or(0),
         _ => 0,
     }
 }

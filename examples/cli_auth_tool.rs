@@ -155,7 +155,8 @@ impl AuthCli {
             // Create a basic auth token using the framework
             let mut token = self
                 .auth
-                .create_auth_token(&user_id, scopes, "jwt", None)
+                .tokens()
+                .create(&user_id, scopes, "jwt", None)
                 .await?;
 
             // Add the user profile to the token
@@ -199,7 +200,8 @@ impl AuthCli {
         // Create authentication token using the framework
         let mut token = self
             .auth
-            .create_auth_token(&user_id, scopes, "jwt", None)
+            .tokens()
+            .create(&user_id, scopes, "jwt", None)
             .await?;
 
         // Add user profile information

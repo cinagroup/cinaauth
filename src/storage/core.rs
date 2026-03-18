@@ -171,7 +171,10 @@ impl crate::authorization::AuthorizationStorage for MemoryStorage {
         Ok(roles.get(role_id).cloned())
     }
 
-    async fn update_role(&self, role: &crate::authorization::AbacRole) -> crate::errors::Result<()> {
+    async fn update_role(
+        &self,
+        role: &crate::authorization::AbacRole,
+    ) -> crate::errors::Result<()> {
         let mut roles = self.roles.write().unwrap();
         roles.insert(role.id.clone(), role.clone());
         Ok(())
@@ -885,7 +888,7 @@ impl MemoryStorage {
     }
 }
 
-/// Implementation of AuditStorage for Arc<MemoryStorage>
+/// Implementation of AuditStorage for `Arc<MemoryStorage>`
 #[async_trait]
 impl crate::audit::AuditStorage for Arc<MemoryStorage> {
     async fn store_event(&self, event: &crate::audit::AuditEvent) -> Result<()> {

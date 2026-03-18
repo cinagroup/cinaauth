@@ -375,6 +375,6 @@ async fn test_device_auth_authorize_expired_code() {
     assert!(
         err_str.contains("expired") || err_str.contains("invalid"),
         "Expected error to contain 'expired' or 'invalid' but got: {}",
-        err.to_string()
+        err
     );
 }

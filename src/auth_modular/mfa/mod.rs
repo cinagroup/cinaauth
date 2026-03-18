@@ -152,6 +152,21 @@ impl MfaManager {
         Ok(())
     }
 
+    /// Guard the global challenge budget and store the challenge.
+    ///
+    /// Returns an error if more than 10 000 challenges are pending; otherwise
+    /// delegates to [`Self::store_challenge`].
+    pub async fn guard_and_store(&self, challenge: MfaChallenge) -> Result<()> {
+        const MAX_TOTAL_CHALLENGES: usize = 10_000;
+        if self.get_active_challenge_count().await >= MAX_TOTAL_CHALLENGES {
+            tracing::warn!("Maximum MFA challenges ({}) exceeded", MAX_TOTAL_CHALLENGES);
+            return Err(crate::errors::AuthError::rate_limit(
+                "Too many pending MFA challenges. Please try again later.",
+            ));
+        }
+        self.store_challenge(challenge).await
+    }
+
     /// Get an MFA challenge
     pub async fn get_challenge(&self, challenge_id: &str) -> Result<Option<MfaChallenge>> {
         let challenges = self.challenges.read().await;
@@ -182,6 +197,69 @@ impl MfaManager {
     /// Get count of active challenges
     pub async fn get_active_challenge_count(&self) -> usize {
         self.challenges.read().await.len()
+    }
+
+    /// Verify a code against the given MFA challenge, dispatching to the appropriate sub-manager.
+    pub async fn verify_challenge_code(
+        &self,
+        challenge: &crate::methods::MfaChallenge,
+        code: &str,
+    ) -> Result<bool> {
+        use crate::security::secure_utils::constant_time_compare;
+
+        if challenge.is_expired() {
+            return Ok(false);
+        }
+
+        match &challenge.mfa_type {
+            crate::methods::MfaType::Totp => {
+                self.totp.verify_login_code(&challenge.user_id, code).await
+            }
+            crate::methods::MfaType::Sms { .. } => {
+                if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
+                    return Ok(false);
+                }
+                let sms_key = format!("sms_challenge:{}:code", challenge.id);
+                match self.storage.get_kv(&sms_key).await? {
+                    Some(stored) => {
+                        let stored_code = std::str::from_utf8(&stored).unwrap_or("");
+                        Ok(constant_time_compare(stored_code.as_bytes(), code.as_bytes()))
+                    }
+                    None => Ok(false),
+                }
+            }
+            crate::methods::MfaType::Email { .. } => {
+                if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
+                    return Ok(false);
+                }
+                let email_key = format!("email_challenge:{}:code", challenge.id);
+                match self.storage.get_kv(&email_key).await? {
+                    Some(stored) => {
+                        let stored_code = std::str::from_utf8(&stored).unwrap_or("");
+                        Ok(constant_time_compare(stored_code.as_bytes(), code.as_bytes()))
+                    }
+                    None => Ok(false),
+                }
+            }
+            crate::methods::MfaType::BackupCode => {
+                self.backup_codes
+                    .verify_login_code(&challenge.user_id, code)
+                    .await
+            }
+            crate::methods::MfaType::MultiMethod => {
+                if self
+                    .totp
+                    .verify_login_code(&challenge.user_id, code)
+                    .await?
+                {
+                    return Ok(true);
+                }
+                self.backup_codes
+                    .verify_login_code(&challenge.user_id, code)
+                    .await
+            }
+            _ => Ok(false),
+        }
     }
 
     /// MFA CROSS-METHOD OPERATIONS: Step-up authentication with multiple factors

@@ -525,15 +525,20 @@ async fn execute_create_role(
             }
         }
         rs.register_role(role).await.map_err(|e| {
-            MigrationError::ExecutionError(format!("role-system register_role '{}' failed: {}", role_id, e))
+            MigrationError::ExecutionError(format!(
+                "role-system register_role '{}' failed: {}",
+                role_id, e
+            ))
         })?;
         if let Some(parent) = parent_role {
-            rs.add_role_inheritance(role_id, parent).await.map_err(|e| {
-                MigrationError::ExecutionError(format!(
-                    "role-system add_role_inheritance '{}' -> '{}' failed: {}",
-                    role_id, parent, e
-                ))
-            })?;
+            rs.add_role_inheritance(role_id, parent)
+                .await
+                .map_err(|e| {
+                    MigrationError::ExecutionError(format!(
+                        "role-system add_role_inheritance '{}' -> '{}' failed: {}",
+                        role_id, parent, e
+                    ))
+                })?;
         }
         tracing::info!(role_id, "Role registered in role-system");
     }
@@ -577,8 +582,10 @@ async fn execute_create_permission(
     // Store in the permission registry so subsequent CreateRole operations can
     // look up the (action, resource) pair by permission_id.
     // role-system has no standalone permission registry; permissions live on roles.
-    ctx.permission_registry
-        .insert(permission_id.to_string(), (action.to_string(), resource.to_string()));
+    ctx.permission_registry.insert(
+        permission_id.to_string(),
+        (action.to_string(), resource.to_string()),
+    );
 
     // Always write an audit manifest record.
     let record = serde_json::json!({
@@ -617,12 +624,14 @@ async fn execute_assign_user_role(
         let subject = Subject::new(user_id);
         if let Some(exp) = expiration {
             let duration = (*exp - chrono::Utc::now()).to_std().ok();
-            rs.elevate_role(&subject, role_id, duration).await.map_err(|e| {
-                MigrationError::ExecutionError(format!(
-                    "role-system elevate_role '{}' for user '{}' failed: {}",
-                    role_id, user_id, e
-                ))
-            })?;
+            rs.elevate_role(&subject, role_id, duration)
+                .await
+                .map_err(|e| {
+                    MigrationError::ExecutionError(format!(
+                        "role-system elevate_role '{}' for user '{}' failed: {}",
+                        role_id, user_id, e
+                    ))
+                })?;
         } else {
             rs.assign_role(&subject, role_id).await.map_err(|e| {
                 MigrationError::ExecutionError(format!(
@@ -836,9 +845,9 @@ async fn validate_hierarchy_integrity(config: &MigrationConfig) -> Result<(), Mi
     let content = fs::read_to_string(&manifest_path).await?;
     let mut role_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
     for line in content.lines() {
-        if let Ok(record) = serde_json::from_str::<serde_json::Value>(line) {
-            if record.get("op").and_then(|v| v.as_str()) == Some("create_role") {
-                if let Some(id) = record.get("role_id").and_then(|v| v.as_str()) {
+        if let Ok(record) = serde_json::from_str::<serde_json::Value>(line)
+            && record.get("op").and_then(|v| v.as_str()) == Some("create_role")
+                && let Some(id) = record.get("role_id").and_then(|v| v.as_str()) {
                     if !role_ids.insert(id.to_string()) {
                         return Err(MigrationError::ValidationError(format!(
                             "Duplicate role ID detected in manifest: {}",
@@ -852,8 +861,6 @@ async fn validate_hierarchy_integrity(config: &MigrationConfig) -> Result<(), Mi
                         )));
                     }
                 }
-            }
-        }
     }
     Ok(())
 }
@@ -972,7 +979,10 @@ async fn validate_no_privilege_escalation(config: &MigrationConfig) -> Result<()
                         record.get("user_id").and_then(|v| v.as_str()),
                         record.get("role_id").and_then(|v| v.as_str()),
                     ) {
-                        user_roles.entry(uid.to_string()).or_default().push(rid.to_string());
+                        user_roles
+                            .entry(uid.to_string())
+                            .or_default()
+                            .push(rid.to_string());
                     }
                 }
                 _ => {}
@@ -1249,11 +1259,13 @@ mod tests {
         use role_system::Subject;
         let mut plan = create_test_plan();
         // Add an AssignUserRole operation after CreateRole.
-        plan.phases[0].operations.push(MigrationOperation::AssignUserRole {
-            user_id: "user1".to_string(),
-            role_id: "test_role".to_string(),
-            expiration: None,
-        });
+        plan.phases[0]
+            .operations
+            .push(MigrationOperation::AssignUserRole {
+                user_id: "user1".to_string(),
+                role_id: "test_role".to_string(),
+                expiration: None,
+            });
         let config = MigrationConfig {
             dry_run: false,
             verbose: false,
@@ -1299,7 +1311,9 @@ mod tests {
                 },
             );
             // CreateRole already references "read" perm_id — swap to "read_users".
-            if let MigrationOperation::CreateRole { permissions, .. } = &mut p.phases[0].operations[1] {
+            if let MigrationOperation::CreateRole { permissions, .. } =
+                &mut p.phases[0].operations[1]
+            {
                 *permissions = vec!["read_users".to_string()];
             }
             p
@@ -1337,5 +1351,3 @@ mod tests {
         assert_eq!(result.metrics.roles_migrated, 1);
     }
 }
-
-

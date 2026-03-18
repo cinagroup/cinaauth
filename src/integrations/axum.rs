@@ -337,26 +337,38 @@ async fn refresh_handler(
     headers: axum::http::HeaderMap,
 ) -> Result<impl IntoResponse, AuthError> {
     // Extract and validate the existing bearer token
-    let token_str = extract_bearer_token(&axum::extract::Request::builder()
-        .header(AUTHORIZATION, headers.get(AUTHORIZATION)
-            .and_then(|h| h.to_str().ok())
-            .unwrap_or(""))
-        .body(axum::body::Body::empty())
-        .unwrap())?;
+    let token_str = extract_bearer_token(
+        &axum::extract::Request::builder()
+            .header(
+                AUTHORIZATION,
+                headers
+                    .get(AUTHORIZATION)
+                    .and_then(|h| h.to_str().ok())
+                    .unwrap_or(""),
+            )
+            .body(axum::body::Body::empty())
+            .unwrap(),
+    )?;
 
     // Validate current token to extract claims
     let claims = auth
         .token_manager()
         .validate_jwt_token(&token_str)
-        .map_err(|_| AuthError::Token(crate::errors::TokenError::Invalid {
-            message: "Cannot refresh: current token is invalid or expired".to_string(),
-        }))?;
+        .map_err(|_| {
+            AuthError::Token(crate::errors::TokenError::Invalid {
+                message: "Cannot refresh: current token is invalid or expired".to_string(),
+            })
+        })?;
 
     // Issue a fresh token for the same user with the same scopes
     let scopes: Vec<String> = if claims.scope.is_empty() {
         vec![]
     } else {
-        claims.scope.split_whitespace().map(str::to_string).collect()
+        claims
+            .scope
+            .split_whitespace()
+            .map(str::to_string)
+            .collect()
     };
     let new_token_str = auth
         .token_manager()
@@ -380,8 +392,14 @@ pub async fn profile_handler(
     let (username, email) = if let Ok(Some(data)) = storage.get_kv(&key).await {
         if let Ok(profile) = serde_json::from_slice::<serde_json::Value>(&data) {
             (
-                profile.get("username").and_then(|v| v.as_str()).map(String::from),
-                profile.get("email").and_then(|v| v.as_str()).map(String::from),
+                profile
+                    .get("username")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                profile
+                    .get("email")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
             )
         } else {
             (None, None)
@@ -449,9 +467,7 @@ where
         let token_str = extract_bearer_token_from_parts(parts)?;
 
         // Validate JWT and extract real claims
-        let claims = auth
-            .token_manager()
-            .validate_jwt_token(&token_str)?;
+        let claims = auth.token_manager().validate_jwt_token(&token_str)?;
 
         let user_id = claims.sub.clone();
         let permissions = claims.permissions.unwrap_or_default();
@@ -462,8 +478,8 @@ where
             .map(|s| s.to_string())
             .collect();
 
-        let issued_at = chrono::DateTime::from_timestamp(claims.iat, 0)
-            .unwrap_or_else(chrono::Utc::now);
+        let issued_at =
+            chrono::DateTime::from_timestamp(claims.iat, 0).unwrap_or_else(chrono::Utc::now);
         let expires_at = chrono::DateTime::from_timestamp(claims.exp, 0)
             .unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::hours(1));
 
@@ -566,7 +582,9 @@ where
                     axum::response::Response::builder()
                         .status(axum::http::StatusCode::UNAUTHORIZED)
                         .header("content-type", "application/json")
-                        .body(axum::body::Body::from(r#"{"error":"Authentication required"}"#))
+                        .body(axum::body::Body::from(
+                            r#"{"error":"Authentication required"}"#,
+                        ))
                         .unwrap_or_default()
                 }
             },

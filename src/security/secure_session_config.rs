@@ -326,7 +326,7 @@ impl IPSecurityUtils {
                         tracing::debug!("MaxMind lookup failed for {}: {}", ip, e);
                         None
                     }
-                }
+                },
                 Err(e) => {
                     tracing::debug!("MaxMind lookup failed for {}: {}", ip, e);
                     None

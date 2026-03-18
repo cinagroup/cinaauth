@@ -285,10 +285,7 @@ impl PrivateKeyJwtManager {
 
         let header = Header::new(algorithm);
         encode(&header, &claims, &encoding_key).map_err(|e| {
-            AuthError::auth_method(
-                "private_key_jwt",
-                format!("Failed to encode JWT: {}", e),
-            )
+            AuthError::auth_method("private_key_jwt", format!("Failed to encode JWT: {}", e))
         })
     }
 
@@ -308,10 +305,7 @@ impl PrivateKeyJwtManager {
         // Use SecureJwtValidator for enhanced security validation
         // We assume transport is secure for client authentication
 
-        match self
-            .jwt_validator
-            .validate_token(jwt, &decoding_key)
-        {
+        match self.jwt_validator.validate_token(jwt, &decoding_key) {
             Ok(_secure_claims) => {
                 // Additional private key JWT specific validations passed through SecureJwtValidator
                 Ok(())
@@ -881,5 +875,3 @@ mod tests {
         assert!(!jtis.contains_key("old_jti"), "Old JTI should be removed");
     }
 }
-
-

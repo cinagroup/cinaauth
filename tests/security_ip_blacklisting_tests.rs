@@ -261,7 +261,7 @@ async fn test_blacklist_reason_tracking() {
     println!("🔍 Testing: Blacklist Reason Tracking");
 
     // Test different reasons for blacklisting
-    let reasons = vec![
+    let reasons = [
         "Brute force attack detected",
         "DoS attack detected",
         "Suspicious activity",

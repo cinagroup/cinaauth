@@ -268,11 +268,9 @@ impl AppState {
 
             // Count total users from the users:index list.
             let total_users = match storage.get_kv("users:index").await {
-                Ok(Some(bytes)) => {
-                    serde_json::from_slice::<Vec<String>>(&bytes)
-                        .map(|v| v.len() as u32)
-                        .unwrap_or(0)
-                }
+                Ok(Some(bytes)) => serde_json::from_slice::<Vec<String>>(&bytes)
+                    .map(|v| v.len() as u32)
+                    .unwrap_or(0),
                 _ => 0,
             };
 
@@ -280,8 +278,8 @@ impl AppState {
             Ok(UserStatistics {
                 total_users,
                 active_sessions: status.active_sessions,
-                failed_logins_today: 0,      // Requires an audit-log query (not yet stored).
-                new_registrations_today: 0,   // Requires an audit-log query (not yet stored).
+                failed_logins_today: 0, // Requires an audit-log query (not yet stored).
+                new_registrations_today: 0, // Requires an audit-log query (not yet stored).
             })
         } else {
             let status = self.server_status.read().await;
@@ -534,4 +532,75 @@ pub enum SecurityAction {
         #[arg(long)]
         check_ip: Option<String>,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_server_status_default_fields() {
+        let status = ServerStatus {
+            web_server_running: false,
+            web_server_port: None,
+            last_config_update: None,
+            active_sessions: 0,
+            health_status: HealthStatus::Healthy,
+        };
+        assert!(!status.web_server_running);
+        assert_eq!(status.active_sessions, 0);
+        assert!(status.web_server_port.is_none());
+    }
+
+    #[test]
+    fn test_health_status_variants() {
+        let h = HealthStatus::Healthy;
+        assert!(matches!(h, HealthStatus::Healthy));
+
+        let w = HealthStatus::Warning("low memory".to_string());
+        assert!(matches!(w, HealthStatus::Warning(_)));
+
+        let c = HealthStatus::Critical("storage down".to_string());
+        assert!(matches!(c, HealthStatus::Critical(_)));
+    }
+
+    #[test]
+    fn test_server_info_creation() {
+        let info = ServerInfo {
+            version: "0.5.0".to_string(),
+            uptime: "1h 30m".to_string(),
+            status: "running".to_string(),
+            port: Some(8080),
+            active_sessions: 5,
+        };
+        assert_eq!(info.version, "0.5.0");
+        assert_eq!(info.active_sessions, 5);
+        assert_eq!(info.port, Some(8080));
+    }
+
+    #[test]
+    fn test_user_statistics_creation() {
+        let stats = UserStatistics {
+            total_users: 100,
+            active_sessions: 20,
+            failed_logins_today: 3,
+            new_registrations_today: 5,
+        };
+        assert_eq!(stats.total_users, 100);
+        assert_eq!(stats.failed_logins_today, 3);
+    }
+
+    #[test]
+    fn test_security_event_creation() {
+        let event = SecurityEvent {
+            timestamp: chrono::Utc::now(),
+            event_type: "LoginFailure".to_string(),
+            description: "Failed login attempt".to_string(),
+            ip_address: Some("192.168.1.1".to_string()),
+            user_id: Some("user123".to_string()),
+        };
+        assert_eq!(event.event_type, "LoginFailure");
+        assert!(event.ip_address.is_some());
+        assert!(event.user_id.is_some());
+    }
 }

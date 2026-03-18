@@ -202,37 +202,38 @@ impl AlertManager {
         // Check error rate
         if let (Some(&auth_requests), Some(&auth_failures)) =
             (metrics.get("auth_requests"), metrics.get("auth_failures"))
-            && auth_requests > 0 {
-                let error_rate = auth_failures as f64 / auth_requests as f64;
+            && auth_requests > 0
+        {
+            let error_rate = auth_failures as f64 / auth_requests as f64;
 
-                if error_rate > self.config.thresholds.error_rate_threshold {
-                    let alert = Alert {
-                        id: format!("high_error_rate_{}", crate::monitoring::current_timestamp()),
-                        title: "High authentication error rate".to_string(),
-                        message: format!(
-                            "Authentication error rate is {:.1}%, which exceeds the threshold of {:.1}%",
-                            error_rate * 100.0,
-                            self.config.thresholds.error_rate_threshold * 100.0
-                        ),
-                        severity: AlertSeverity::Critical,
-                        source: "authentication".to_string(),
-                        metrics: {
-                            let mut m = HashMap::new();
-                            m.insert("error_rate".to_string(), error_rate);
-                            m.insert(
-                                "threshold".to_string(),
-                                self.config.thresholds.error_rate_threshold,
-                            );
-                            m.insert("total_requests".to_string(), auth_requests as f64);
-                            m.insert("failed_requests".to_string(), auth_failures as f64);
-                            m
-                        },
-                        timestamp: crate::monitoring::current_timestamp(),
-                    };
+            if error_rate > self.config.thresholds.error_rate_threshold {
+                let alert = Alert {
+                    id: format!("high_error_rate_{}", crate::monitoring::current_timestamp()),
+                    title: "High authentication error rate".to_string(),
+                    message: format!(
+                        "Authentication error rate is {:.1}%, which exceeds the threshold of {:.1}%",
+                        error_rate * 100.0,
+                        self.config.thresholds.error_rate_threshold * 100.0
+                    ),
+                    severity: AlertSeverity::Critical,
+                    source: "authentication".to_string(),
+                    metrics: {
+                        let mut m = HashMap::new();
+                        m.insert("error_rate".to_string(), error_rate);
+                        m.insert(
+                            "threshold".to_string(),
+                            self.config.thresholds.error_rate_threshold,
+                        );
+                        m.insert("total_requests".to_string(), auth_requests as f64);
+                        m.insert("failed_requests".to_string(), auth_failures as f64);
+                        m
+                    },
+                    timestamp: crate::monitoring::current_timestamp(),
+                };
 
-                    self.send_alert(alert).await?;
-                }
+                self.send_alert(alert).await?;
             }
+        }
 
         Ok(())
     }
@@ -271,8 +272,7 @@ impl AlertManager {
         match channel {
             NotificationChannel::Email { recipients } => {
                 use lettre::{
-                    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
-                    message::Mailbox,
+                    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::Mailbox,
                     transport::smtp::authentication::Credentials,
                 };
 
@@ -299,8 +299,8 @@ impl AlertManager {
                     .ok()
                     .and_then(|p| p.parse().ok())
                     .unwrap_or(587);
-                let from_addr =
-                    std::env::var("AUTH_SMTP_FROM").unwrap_or_else(|_| format!("alerts@{}", smtp_host));
+                let from_addr = std::env::var("AUTH_SMTP_FROM")
+                    .unwrap_or_else(|_| format!("alerts@{}", smtp_host));
 
                 let from_mailbox: Mailbox = match from_addr.parse() {
                     Ok(m) => m,
@@ -310,14 +310,15 @@ impl AlertManager {
                     }
                 };
 
-                let mut builder =
-                    match AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&smtp_host) {
-                        Ok(b) => b.port(smtp_port),
-                        Err(e) => {
-                            tracing::error!(host = %smtp_host, error = %e, "Failed to create SMTP transport");
-                            return Ok(());
-                        }
-                    };
+                let mut builder = match AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(
+                    &smtp_host,
+                ) {
+                    Ok(b) => b.port(smtp_port),
+                    Err(e) => {
+                        tracing::error!(host = %smtp_host, error = %e, "Failed to create SMTP transport");
+                        return Ok(());
+                    }
+                };
                 if let (Ok(user), Ok(pass)) = (
                     std::env::var("AUTH_SMTP_USERNAME"),
                     std::env::var("AUTH_SMTP_PASSWORD"),
@@ -379,12 +380,7 @@ impl AlertManager {
                     )
                 });
                 let client = reqwest::Client::new();
-                if let Err(e) = client
-                    .post(webhook_url)
-                    .json(&payload)
-                    .send()
-                    .await
-                {
+                if let Err(e) = client.post(webhook_url).json(&payload).send().await {
                     tracing::error!(
                         webhook_url = %webhook_url,
                         error = %e,
@@ -415,12 +411,7 @@ impl AlertManager {
                     }]
                 });
                 let client = reqwest::Client::new();
-                if let Err(e) = client
-                    .post(webhook_url)
-                    .json(&payload)
-                    .send()
-                    .await
-                {
+                if let Err(e) = client.post(webhook_url).json(&payload).send().await {
                     tracing::error!(
                         webhook_url = %webhook_url,
                         error = %e,
@@ -480,5 +471,3 @@ impl Default for AlertConfig {
         }
     }
 }
-
-

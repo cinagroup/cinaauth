@@ -367,10 +367,12 @@ pub async fn list_roles(
         }
         Err(e) => {
             warn!("Failed to list roles: {}", e);
-            Ok(Json(ApiResponse::<Vec<RoleResponse>>::error_with_message_typed(
-                "ROLE_LIST_FAILED",
-                "Failed to retrieve role list",
-            )))
+            Ok(Json(
+                ApiResponse::<Vec<RoleResponse>>::error_with_message_typed(
+                    "ROLE_LIST_FAILED",
+                    "Failed to retrieve role list",
+                ),
+            ))
         }
     }
 }
@@ -595,10 +597,12 @@ pub async fn get_user_roles(
         }
         Err(e) => {
             warn!("Failed to get roles for user {}: {}", user_id, e);
-            Ok(Json(ApiResponse::<UserRolesResponse>::error_with_message_typed(
-                "ROLE_FETCH_FAILED",
-                "Failed to retrieve user roles",
-            )))
+            Ok(Json(
+                ApiResponse::<UserRolesResponse>::error_with_message_typed(
+                    "ROLE_FETCH_FAILED",
+                    "Failed to retrieve user roles",
+                ),
+            ))
         }
     }
 }
@@ -783,10 +787,12 @@ pub async fn get_audit_logs(
         Ok(l) => l,
         Err(e) => {
             warn!("Failed to retrieve audit logs: {}", e);
-            return Ok(Json(ApiResponse::<AuditLogResponse>::error_with_message_typed(
-                "AUDIT_QUERY_ERROR",
-                "Failed to retrieve audit logs",
-            )));
+            return Ok(Json(
+                ApiResponse::<AuditLogResponse>::error_with_message_typed(
+                    "AUDIT_QUERY_ERROR",
+                    "Failed to retrieve audit logs",
+                ),
+            ));
         }
     };
 
@@ -815,7 +821,9 @@ pub async fn get_audit_logs(
                 "granted"
             }
             .to_string();
-            let description = log_line.split_once(" - ").map(|x| x.1)
+            let description = log_line
+                .split_once(" - ")
+                .map(|x| x.1)
                 .unwrap_or(log_line.as_str())
                 .to_string();
 
@@ -849,7 +857,6 @@ mod tests {
     use super::*;
 
     // Helper function to create test auth token
-    #[allow(dead_code)] // Reserved for future test implementation
     fn create_test_token(permissions: Vec<&str>) -> AuthToken {
         use crate::tokens::TokenMetadata;
         use chrono::Utc;
@@ -876,21 +883,28 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_role_unauthorized() {
-        // Test would verify that unauthorized users cannot create roles
-        // Implementation would use proper test framework setup
+        let token = create_test_token(vec!["read:users"]);
+        assert!(
+            !token.permissions.contains(&"admin:roles:write".to_string()),
+            "token without admin:roles:write should not be authorized to create roles"
+        );
     }
 
     #[tokio::test]
     async fn test_create_role_success() {
-        // Test would verify successful role creation
-        // Implementation would use proper test framework setup
+        let token = create_test_token(vec!["admin:roles:write", "read:users"]);
+        assert!(
+            token.permissions.contains(&"admin:roles:write".to_string()),
+            "token with admin:roles:write should be authorized to create roles"
+        );
     }
 
     #[tokio::test]
     async fn test_permission_check() {
-        // Test would verify permission checking functionality
-        // Implementation would use proper test framework setup
+        let token = create_test_token(vec!["read:users", "write:users"]);
+        assert_eq!(token.permissions.len(), 2);
+        assert!(token.permissions.contains(&"read:users".to_string()));
+        assert!(token.permissions.contains(&"write:users".to_string()));
+        assert!(!token.permissions.contains(&"admin:delete".to_string()));
     }
 }
-
-

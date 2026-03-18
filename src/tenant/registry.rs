@@ -265,10 +265,11 @@ mod tests {
 
     /// Helper function to create a valid test configuration
     fn create_test_config() -> AuthConfig {
-        let mut config = AuthConfig::default();
-        // Set a strong JWT key: 36 chars, no dictionary words, mixed ASCII printable
-        config.secret = Some("Xk9#mP3$vQ7!nR2@wL8&jT5*cY1%fB4^z6".to_string());
-        config
+        AuthConfig {
+            // Set a strong JWT key: 36 chars, no dictionary words, mixed ASCII printable
+            secret: Some("Xk9#mP3$vQ7!nR2@wL8&jT5*cY1%fB4^z6".to_string()),
+            ..AuthConfig::default()
+        }
     }
 
     #[tokio::test]
@@ -277,11 +278,19 @@ mod tests {
         let context = TenantContext::with_name("test-tenant", "Test Tenant").unwrap();
 
         let result = registry.register_tenant(context, None).await;
-        assert!(result.is_ok(), "Failed to register tenant: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to register tenant: {:?}",
+            result.err()
+        );
 
         let tenant_id = TenantId::new("test-tenant");
         let framework = registry.get_tenant_framework(&tenant_id);
-        assert!(framework.is_ok(), "Failed to get tenant framework: {:?}", framework.err());
+        assert!(
+            framework.is_ok(),
+            "Failed to get tenant framework: {:?}",
+            framework.err()
+        );
     }
 
     #[tokio::test]
@@ -302,23 +311,42 @@ mod tests {
         let tenant_id = context.id.clone();
 
         let result = registry.register_tenant(context, None).await;
-        assert!(result.is_ok(), "Failed to register tenant: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to register tenant: {:?}",
+            result.err()
+        );
 
         // Deactivate
         let deactivate_result = registry.deactivate_tenant(&tenant_id).await;
-        assert!(deactivate_result.is_ok(), "Failed to deactivate tenant: {:?}", deactivate_result.err());
+        assert!(
+            deactivate_result.is_ok(),
+            "Failed to deactivate tenant: {:?}",
+            deactivate_result.err()
+        );
 
         // Should not be able to get deactivated tenant
         let result = registry.get_tenant_framework(&tenant_id);
-        assert!(result.is_err(), "Should not be able to access deactivated tenant");
+        assert!(
+            result.is_err(),
+            "Should not be able to access deactivated tenant"
+        );
 
         // Reactivate
         let activate_result = registry.activate_tenant(&tenant_id).await;
-        assert!(activate_result.is_ok(), "Failed to activate tenant: {:?}", activate_result.err());
+        assert!(
+            activate_result.is_ok(),
+            "Failed to activate tenant: {:?}",
+            activate_result.err()
+        );
 
         // Should be able to access again
         let result = registry.get_tenant_framework(&tenant_id);
-        assert!(result.is_ok(), "Should be able to access reactivated tenant: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Should be able to access reactivated tenant: {:?}",
+            result.err()
+        );
     }
 
     #[tokio::test]
@@ -330,7 +358,7 @@ mod tests {
 
         let r1 = registry.register_tenant(c1, None).await;
         let r2 = registry.register_tenant(c2, None).await;
-        
+
         assert!(r1.is_ok(), "Failed to register tenant1: {:?}", r1.err());
         assert!(r2.is_ok(), "Failed to register tenant2: {:?}", r2.err());
 
@@ -370,7 +398,7 @@ mod tests {
             let reg = registry.clone();
             let handle = tokio::spawn(async move {
                 let id = format!("tenant-{}", i);
-                let context = TenantContext::with_name(&id, &format!("Tenant {}", i)).unwrap();
+                let context = TenantContext::with_name(id, format!("Tenant {}", i)).unwrap();
                 reg.register_tenant(context, None).await
             });
             handles.push(handle);
@@ -378,18 +406,26 @@ mod tests {
 
         for handle in handles {
             let result = handle.await.unwrap();
-            assert!(result.is_ok(), "Concurrent registration failed: {:?}", result.err());
+            assert!(
+                result.is_ok(),
+                "Concurrent registration failed: {:?}",
+                result.err()
+            );
         }
 
         let count = registry.tenant_count().await;
-        assert_eq!(count, 5, "Expected 5 tenants after concurrent registration, got {}", count);
+        assert_eq!(
+            count, 5,
+            "Expected 5 tenants after concurrent registration, got {}",
+            count
+        );
     }
 
     /// Test tenant isolation - different tenants cannot access each other's data
     #[tokio::test]
     async fn test_tenant_data_isolation() {
         let registry = TenantRegistry::new(create_test_config());
-        
+
         let c1 = TenantContext::with_name("tenant-a", "Tenant A").unwrap();
         let c2 = TenantContext::with_name("tenant-b", "Tenant B").unwrap();
 
@@ -409,8 +445,9 @@ mod tests {
 
         // tenant-a should not be accessible
         let result = registry.get_tenant_framework(&TenantId::new("tenant-a"));
-        assert!(result.is_err(), "Tenant A should not be accessible when deactivated");
+        assert!(
+            result.is_err(),
+            "Tenant A should not be accessible when deactivated"
+        );
     }
 }
-
-

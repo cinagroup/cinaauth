@@ -12,7 +12,7 @@ use crate::authorization::{AccessContext, AuthorizationStorage};
 
 use crate::{
     AuthError, AuthFramework, Result,
-    authorization::{AuthorizationEngine, AbacPermission},
+    authorization::{AbacPermission, AuthorizationEngine},
     tokens::AuthToken,
 };
 use chrono::TimeZone as _;
@@ -45,10 +45,12 @@ pub fn with_auth(
                 .map_err(|e| warp::reject::custom(AuthRejection { error: e }))?;
 
             // Convert the validated JwtClaims into an AuthToken
-            let exp_ts = chrono::Utc.timestamp_opt(claims.exp, 0)
+            let exp_ts = chrono::Utc
+                .timestamp_opt(claims.exp, 0)
                 .single()
                 .unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::seconds(3600));
-            let iat_ts = chrono::Utc.timestamp_opt(claims.iat, 0)
+            let iat_ts = chrono::Utc
+                .timestamp_opt(claims.iat, 0)
                 .single()
                 .unwrap_or_else(chrono::Utc::now);
             let scopes = claims
@@ -245,7 +247,6 @@ fn extract_token_from_header(auth_header: &str) -> Result<String> {
 /// For full signature verification, use [`with_auth`] which delegates to the
 /// framework's [`TokenManager::validate_jwt_token`].
 fn validate_token_secure(token_str: &str) -> Result<AuthToken> {
-
     // Basic format validation
     if token_str.len() < 10 {
         return Err(AuthError::auth_method(
@@ -326,11 +327,13 @@ fn validate_token_secure(token_str: &str) -> Result<AuthToken> {
         access_token: token_str.to_string(),
         refresh_token: None,
         token_type: Some("Bearer".to_string()),
-        expires_at: chrono::Utc.timestamp_opt(exp, 0)
+        expires_at: chrono::Utc
+            .timestamp_opt(exp, 0)
             .single()
             .unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::seconds(3600)),
         scopes,
-        issued_at: chrono::Utc.timestamp_opt(iat, 0)
+        issued_at: chrono::Utc
+            .timestamp_opt(iat, 0)
             .single()
             .unwrap_or_else(chrono::Utc::now),
         auth_method: "jwt".to_string(),

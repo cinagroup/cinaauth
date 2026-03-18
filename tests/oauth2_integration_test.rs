@@ -14,7 +14,6 @@ mod oauth2_integration_tests {
     use axum::http::{HeaderMap, HeaderValue, StatusCode};
     use axum::response::IntoResponse;
     use std::sync::Arc;
-    use tokio;
 
     async fn setup_auth_framework() -> Arc<AuthFramework> {
         let config = AuthConfig::new()
@@ -31,7 +30,11 @@ mod oauth2_integration_tests {
 
         // Register test clients so the authorize endpoint can validate them
         let callback = "http://localhost:3000/callback";
-        for client_id in &["test_client", "test_client_pkce", "test_client_invalid_pkce"] {
+        for client_id in &[
+            "test_client",
+            "test_client_pkce",
+            "test_client_invalid_pkce",
+        ] {
             let client_data = serde_json::json!({ "redirect_uris": [callback] });
             let key = format!("oauth2_client:{}", client_id);
             state
@@ -110,7 +113,12 @@ mod oauth2_integration_tests {
             "Expected redirect, got {:?}",
             response.status()
         );
-        let location = response.headers().get("location").unwrap().to_str().unwrap();
+        let location = response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert!(location.contains("code="));
         // state=xyz123 — all alphanum so URL-encoding leaves it unchanged
         assert!(location.contains("state=xyz123"));
@@ -134,17 +142,21 @@ mod oauth2_integration_tests {
         };
 
         let auth_headers = make_auth_headers(&state).await;
-        let response =
-            oauth2::authorize(State(state.clone()), auth_headers, Query(auth_request))
-                .await
-                .into_response();
+        let response = oauth2::authorize(State(state.clone()), auth_headers, Query(auth_request))
+            .await
+            .into_response();
 
         assert!(
             response.status().is_redirection(),
             "Expected redirect, got {:?}",
             response.status()
         );
-        let location = response.headers().get("location").unwrap().to_str().unwrap();
+        let location = response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap();
 
         // The raw injection characters must NOT appear unencoded in the Location header.
         assert!(
@@ -199,9 +211,10 @@ mod oauth2_integration_tests {
         };
 
         let auth_headers = make_auth_headers(&state).await;
-        let auth_response = oauth2::authorize(State(state.clone()), auth_headers, Query(auth_request))
-            .await
-            .into_response();
+        let auth_response =
+            oauth2::authorize(State(state.clone()), auth_headers, Query(auth_request))
+                .await
+                .into_response();
 
         assert!(
             auth_response.status().is_redirection(),
@@ -209,7 +222,13 @@ mod oauth2_integration_tests {
         );
 
         // Extract authorization code from the Location header
-        let auth_url = auth_response.headers().get("location").unwrap().to_str().unwrap().to_string();
+        let auth_url = auth_response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
         let code = auth_url
             .split("code=")
             .nth(1)
@@ -340,9 +359,10 @@ mod oauth2_integration_tests {
         };
 
         let auth_headers = make_auth_headers(&state).await;
-        let auth_response = oauth2::authorize(State(state.clone()), auth_headers, Query(auth_request))
-            .await
-            .into_response();
+        let auth_response =
+            oauth2::authorize(State(state.clone()), auth_headers, Query(auth_request))
+                .await
+                .into_response();
 
         assert!(
             auth_response.status().is_redirection(),
@@ -350,7 +370,13 @@ mod oauth2_integration_tests {
         );
 
         // Extract authorization code
-        let auth_url = auth_response.headers().get("location").unwrap().to_str().unwrap().to_string();
+        let auth_url = auth_response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
         let code = auth_url
             .split("code=")
             .nth(1)
@@ -394,9 +420,10 @@ mod oauth2_integration_tests {
         };
 
         let auth_headers = make_auth_headers(&state).await;
-        let auth_response = oauth2::authorize(State(state.clone()), auth_headers, Query(auth_request))
-            .await
-            .into_response();
+        let auth_response =
+            oauth2::authorize(State(state.clone()), auth_headers, Query(auth_request))
+                .await
+                .into_response();
 
         assert!(
             auth_response.status().is_redirection(),
@@ -404,7 +431,13 @@ mod oauth2_integration_tests {
         );
 
         // Extract authorization code
-        let auth_url = auth_response.headers().get("location").unwrap().to_str().unwrap().to_string();
+        let auth_url = auth_response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
         let code = auth_url
             .split("code=")
             .nth(1)

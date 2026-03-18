@@ -178,7 +178,7 @@ async fn test_core_performance() -> Result<()> {
 
         if let Ok(auth_framework::auth::AuthResult::Success(token)) = auth_result {
             // Test token validation
-            let _is_valid = framework.validate_token(&token).await.unwrap_or(false);
+            let _is_valid = framework.tokens().validate(&token).await.unwrap_or(false);
         }
     }
 

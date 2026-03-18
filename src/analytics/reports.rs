@@ -2,6 +2,9 @@
 //!
 //! This module provides comprehensive reporting capabilities
 //! for RBAC analytics data.
+//!
+//! > **Status: Stub** — `generate_report` currently returns a placeholder
+//! > string. A real implementation should aggregate analytics events.
 
 use super::{AnalyticsError, ReportType, TimeRange};
 use serde::{Deserialize, Serialize};
@@ -61,4 +64,29 @@ impl ReportGenerator {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn test_report_config_default() {
+        let config = ReportConfig::default();
+        assert!(config.include_charts);
+        assert!(config.template.is_none());
+        assert!(matches!(config.format, ReportFormat::Json));
+    }
+
+    #[test]
+    fn test_report_generator_creation() {
+        let config = ReportConfig::default();
+        let _gen = ReportGenerator::new(config);
+    }
+
+    #[tokio::test]
+    async fn test_generate_report_returns_content() {
+        let generator = ReportGenerator::new(ReportConfig::default());
+        let range = TimeRange::last_days(7);
+        let report = generator.generate_report(ReportType::Daily, range).await.unwrap();
+        assert!(!report.is_empty());
+    }
+}

@@ -13,12 +13,13 @@ pub fn generate_id(prefix: Option<&str>) -> String {
             CHARSET[idx] as char
         })
         .collect();
-    
+
     match prefix {
         Some(p) => format!("{}_{}", p, random_part),
         None => random_part,
     }
-}/// Generate a UUID-like string
+}
+/// Generate a UUID-like string
 pub fn generate_uuid() -> String {
     uuid::Uuid::new_v4().to_string()
 }

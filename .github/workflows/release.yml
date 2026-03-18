@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., v0.4.3)'
+        description: 'Release version (e.g., v0.5.0)'
         required: true
         type: string
 
@@ -16,64 +16,43 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - name: Get version
-        id: get_version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          release_name: AuthFramework ${{ steps.get_version.outputs.version }}
-          draft: true
-          prerelease: false
-
   build-binaries:
-    needs: create-release
     strategy:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             name: auth-framework-linux-x86_64
+            ext: tar.gz
             cross: false
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             name: auth-framework-linux-x86_64-musl
+            ext: tar.gz
             cross: true
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             name: auth-framework-linux-aarch64
+            ext: tar.gz
             cross: true
           - target: x86_64-apple-darwin
             os: macos-latest
             name: auth-framework-macos-x86_64
+            ext: tar.gz
             cross: false
           - target: aarch64-apple-darwin
             os: macos-latest
             name: auth-framework-macos-aarch64
+            ext: tar.gz
             cross: false
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            name: auth-framework-windows-x86_64.exe
+            name: auth-framework-windows-x86_64
+            ext: zip
             cross: false
 
     runs-on: ${{ matrix.os }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -87,84 +66,47 @@ jobs:
         if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross
 
-      - name: Cache cargo registry
-        uses: actions/cache@v3
+      - name: Cache cargo
+        uses: actions/cache@v4
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build binary
+        shell: bash
         run: |
           if [ "${{ matrix.cross }}" = "true" ]; then
             cross build --release --target ${{ matrix.target }} --features admin-binary,api-server,postgres-storage --bin auth-framework
           else
             cargo build --release --target ${{ matrix.target }} --features admin-binary,api-server,postgres-storage --bin auth-framework
           fi
-        shell: bash
 
-      - name: Prepare binary
-        shell: bash
-        run: |
-          cd target/${{ matrix.target }}/release
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp auth-framework.exe ../../../${{ matrix.name }}
-          else
-            cp auth-framework ../../../${{ matrix.name }}
-          fi
-          cd -
-          
-      - name: Create archive
+      - name: Archive binary
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            7z a ${{ matrix.name }}.zip ${{ matrix.name }} README.md LICENSE-MIT LICENSE-APACHE
+            cp target/${{ matrix.target }}/release/auth-framework.exe ${{ matrix.name }}.exe
+            7z a ${{ matrix.name }}.${{ matrix.ext }} ${{ matrix.name }}.exe README.md LICENSE-MIT LICENSE-APACHE
+            certutil -hashfile ${{ matrix.name }}.${{ matrix.ext }} SHA256 > ${{ matrix.name }}.${{ matrix.ext }}.sha256
           else
-            tar czf ${{ matrix.name }}.tar.gz ${{ matrix.name }} README.md LICENSE-MIT LICENSE-APACHE
+            cp target/${{ matrix.target }}/release/auth-framework ${{ matrix.name }}
+            tar czf ${{ matrix.name }}.${{ matrix.ext }} ${{ matrix.name }} README.md LICENSE-MIT LICENSE-APACHE
+            shasum -a 256 ${{ matrix.name }}.${{ matrix.ext }} > ${{ matrix.name }}.${{ matrix.ext }}.sha256
           fi
 
-      - name: Generate checksums
-        shell: bash
-        run: |
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            certutil -hashfile ${{ matrix.name }}.zip SHA256 > ${{ matrix.name }}.zip.sha256
-          else
-            shasum -a 256 ${{ matrix.name }}.tar.gz > ${{ matrix.name }}.tar.gz.sha256
-          fi
-
-      - name: Upload binary archive
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ matrix.name }}.${{ matrix.os == 'windows-latest' && 'zip' || 'tar.gz' }}
-          asset_name: ${{ matrix.name }}.${{ matrix.os == 'windows-latest' && 'zip' || 'tar.gz' }}
-          asset_content_type: application/octet-stream
-
-      - name: Upload checksum
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ matrix.name }}.${{ matrix.os == 'windows-latest' && 'zip' || 'tar.gz' }}.sha256
-          asset_name: ${{ matrix.name }}.${{ matrix.os == 'windows-latest' && 'zip' || 'tar.gz' }}.sha256
-          asset_content_type: text/plain
+          name: binary-${{ matrix.name }}
+          path: |
+            ${{ matrix.name }}.${{ matrix.ext }}
+            ${{ matrix.name }}.${{ matrix.ext }}.sha256
+          retention-days: 1
 
   build-docker:
-    needs: create-release
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -184,15 +126,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}},value=${{ needs.create-release.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.create-release.outputs.version }}
-            type=semver,pattern={{major}},value=${{ needs.create-release.outputs.version }}
+            type=semver,pattern={{version}},value=${{ steps.get_version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.get_version.outputs.version }}
+            type=semver,pattern={{major}},value=${{ steps.get_version.outputs.version }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -208,16 +159,28 @@ jobs:
           build-args: |
             FEATURES=api-server,postgres-storage
 
-  generate-changelog:
-    needs: [create-release, build-binaries, build-docker]
+  publish-release:
+    needs: [build-binaries, build-docker]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Generate Changelog
-        uses: orhun/git-cliff-action@v2
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v3
         id: git-cliff
         with:
           config: cliff.toml
@@ -225,9 +188,21 @@ jobs:
         env:
           OUTPUT: CHANGELOG.md
 
-      - name: Update Release
-        uses: softprops/action-gh-release@v1
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ needs.create-release.outputs.version }}
+          pattern: binary-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: AuthFramework ${{ steps.get_version.outputs.version }}
           body_path: CHANGELOG.md
           draft: false
+          fail_on_unmatched_files: false
+          files: release-assets/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

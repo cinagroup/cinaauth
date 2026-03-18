@@ -5,9 +5,9 @@
 use auth_framework::Result;
 
 #[cfg(feature = "performance-optimization")]
-use auth_framework::storage::unified::UnifiedStorage;
-#[cfg(feature = "performance-optimization")]
 use auth_framework::storage::AuthStorage;
+#[cfg(feature = "performance-optimization")]
+use auth_framework::storage::unified::UnifiedStorage;
 
 #[cfg(feature = "enhanced-observability")]
 use auth_framework::observability::ObservabilityManager;

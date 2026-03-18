@@ -1,7 +1,12 @@
-//! Analytics and monitoring for RBAC systems
+//! Analytics and monitoring for RBAC systems.
 //!
 //! This module provides comprehensive analytics capabilities for monitoring
 //! and analyzing RBAC usage patterns, security compliance, and system performance.
+//!
+//! > **Status: Experimental** — Several sub-modules (`compliance`, `reports`,
+//! > `metrics`, `dashboard`) currently return placeholder data. They define the
+//! > public configuration / API surface but do not yet perform real analytics.
+//! > Contributions and production implementations are welcome.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -323,8 +328,12 @@ impl AnalyticsManager {
 
         if self.config.real_time_enabled {
             // Process event immediately for real-time analytics
-            self.process_real_time_event(self.event_buffer.last().expect("buffer non-empty after push"))
-                .await?;
+            self.process_real_time_event(
+                self.event_buffer
+                    .last()
+                    .expect("buffer non-empty after push"),
+            )
+            .await?;
         }
 
         Ok(())
@@ -494,7 +503,11 @@ impl TimeRange {
     /// Create time range for today
     pub fn today() -> Self {
         let now = chrono::Utc::now();
-        let start = now.date_naive().and_hms_opt(0, 0, 0).expect("0,0,0 are valid h/m/s values").and_utc();
+        let start = now
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .expect("0,0,0 are valid h/m/s values")
+            .and_utc();
         let end = now;
         Self { start, end }
     }
@@ -605,5 +618,3 @@ mod tests {
         assert_eq!(manager.event_buffer.len(), 1);
     }
 }
-
-

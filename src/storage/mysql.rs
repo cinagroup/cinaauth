@@ -118,15 +118,11 @@ impl MySqlStorage {
     ///
     /// Returns `(roles, permissions)` — both default to empty vecs if the keys are absent
     /// or if deserialization fails (e.g. new user that has not yet been assigned any).
-    async fn fetch_user_roles_and_permissions(
-        &self,
-        user_id: &str,
-    ) -> (Vec<String>, Vec<String>) {
-        let roles: Vec<String> =
-            match self.get_kv(&format!("user_roles:{}", user_id)).await {
-                Ok(Some(data)) => serde_json::from_slice(&data).unwrap_or_default(),
-                _ => vec![],
-            };
+    async fn fetch_user_roles_and_permissions(&self, user_id: &str) -> (Vec<String>, Vec<String>) {
+        let roles: Vec<String> = match self.get_kv(&format!("user_roles:{}", user_id)).await {
+            Ok(Some(data)) => serde_json::from_slice(&data).unwrap_or_default(),
+            _ => vec![],
+        };
         let permissions: Vec<String> =
             match self.get_kv(&format!("user_permissions:{}", user_id)).await {
                 Ok(Some(data)) => serde_json::from_slice(&data).unwrap_or_default(),
@@ -207,24 +203,17 @@ impl AuthStorage for MySqlStorage {
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default();
             let expires_at = row.try_get("expires_at").map_err(|e| {
-                crate::errors::AuthError::Storage(
-                    crate::errors::StorageError::operation_failed(format!(
-                        "Failed to decode column expires_at: {}",
-                        e
-                    )),
-                )
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column expires_at: {}", e),
+                ))
             })?;
             let issued_at = row.try_get("issued_at").map_err(|e| {
-                crate::errors::AuthError::Storage(
-                    crate::errors::StorageError::operation_failed(format!(
-                        "Failed to decode column issued_at: {}",
-                        e
-                    )),
-                )
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column issued_at: {}", e),
+                ))
             })?;
             let user_id: String = row.try_get("user_id").unwrap_or_default();
-            let (roles, permissions) =
-                self.fetch_user_roles_and_permissions(&user_id).await;
+            let (roles, permissions) = self.fetch_user_roles_and_permissions(&user_id).await;
             Ok(Some(AuthToken {
                 token_id: row.try_get("token_id").unwrap_or_default(),
                 user_id,
@@ -279,24 +268,17 @@ impl AuthStorage for MySqlStorage {
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default();
             let expires_at = row.try_get("expires_at").map_err(|e| {
-                crate::errors::AuthError::Storage(
-                    crate::errors::StorageError::operation_failed(format!(
-                        "Failed to decode column expires_at: {}",
-                        e
-                    )),
-                )
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column expires_at: {}", e),
+                ))
             })?;
             let issued_at = row.try_get("issued_at").map_err(|e| {
-                crate::errors::AuthError::Storage(
-                    crate::errors::StorageError::operation_failed(format!(
-                        "Failed to decode column issued_at: {}",
-                        e
-                    )),
-                )
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column issued_at: {}", e),
+                ))
             })?;
             let user_id: String = row.try_get("user_id").unwrap_or_default();
-            let (roles, permissions) =
-                self.fetch_user_roles_and_permissions(&user_id).await;
+            let (roles, permissions) = self.fetch_user_roles_and_permissions(&user_id).await;
             Ok(Some(AuthToken {
                 token_id: row.try_get("token_id").unwrap_or_default(),
                 user_id,
@@ -403,24 +385,17 @@ impl AuthStorage for MySqlStorage {
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default();
             let expires_at = row.try_get("expires_at").map_err(|e| {
-                crate::errors::AuthError::Storage(
-                    crate::errors::StorageError::operation_failed(format!(
-                        "Failed to decode column expires_at: {}",
-                        e
-                    )),
-                )
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column expires_at: {}", e),
+                ))
             })?;
             let issued_at = row.try_get("issued_at").map_err(|e| {
-                crate::errors::AuthError::Storage(
-                    crate::errors::StorageError::operation_failed(format!(
-                        "Failed to decode column issued_at: {}",
-                        e
-                    )),
-                )
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column issued_at: {}", e),
+                ))
             })?;
             let user_id: String = row.try_get("user_id").unwrap_or_default();
-            let (roles, permissions) =
-                self.fetch_user_roles_and_permissions(&user_id).await;
+            let (roles, permissions) = self.fetch_user_roles_and_permissions(&user_id).await;
             tokens.push(AuthToken {
                 token_id: row.try_get("token_id").unwrap_or_default(),
                 user_id,
@@ -492,20 +467,14 @@ impl AuthStorage for MySqlStorage {
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default();
             let created_at = row.try_get("created_at").map_err(|e| {
-                crate::errors::AuthError::Storage(
-                    crate::errors::StorageError::operation_failed(format!(
-                        "Failed to decode column created_at: {}",
-                        e
-                    )),
-                )
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column created_at: {}", e),
+                ))
             })?;
             let expires_at = row.try_get("expires_at").map_err(|e| {
-                crate::errors::AuthError::Storage(
-                    crate::errors::StorageError::operation_failed(format!(
-                        "Failed to decode column expires_at: {}",
-                        e
-                    )),
-                )
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column expires_at: {}", e),
+                ))
             })?;
             Ok(Some(crate::storage::SessionData {
                 session_id: row.try_get("session_id").unwrap_or_default(),
@@ -673,5 +642,3 @@ impl AuthStorage for MySqlStorage {
         Ok(count as u64)
     }
 }
-
-

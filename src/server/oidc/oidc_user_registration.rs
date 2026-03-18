@@ -53,12 +53,14 @@
 //! ```
 
 use crate::errors::{AuthError, Result};
-use crate::server::oidc::oidc_error_extensions::{OidcErrorCode, OidcErrorManager, OidcErrorResponse};
+use crate::server::oidc::oidc_error_extensions::{
+    OidcErrorCode, OidcErrorManager, OidcErrorResponse,
+};
 use crate::storage::AuthStorage;
-use tracing::warn;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tracing::warn;
 use uuid::Uuid;
 
 /// User registration request parameters
@@ -582,7 +584,10 @@ impl RegistrationManager {
 
             let password_hash =
                 bcrypt::hash(&plain_password, bcrypt::DEFAULT_COST).map_err(|e| {
-                    AuthError::crypto(format!("Failed to hash password during registration: {}", e))
+                    AuthError::crypto(format!(
+                        "Failed to hash password during registration: {}",
+                        e
+                    ))
                 })?;
 
             let user_data = serde_json::json!({
@@ -609,18 +614,10 @@ impl RegistrationManager {
                 )
                 .await?;
             storage
-                .store_kv(
-                    &format!("user:username:{}", username),
-                    sub.as_bytes(),
-                    None,
-                )
+                .store_kv(&format!("user:username:{}", username), sub.as_bytes(), None)
                 .await?;
             storage
-                .store_kv(
-                    &format!("user:email:{}", email),
-                    sub.as_bytes(),
-                    None,
-                )
+                .store_kv(&format!("user:email:{}", email), sub.as_bytes(), None)
                 .await?;
 
             tracing::info!(
@@ -997,5 +994,3 @@ mod tests {
         assert_eq!(missing_fields, vec!["given_name"]);
     }
 }
-
-

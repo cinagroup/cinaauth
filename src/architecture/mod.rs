@@ -522,7 +522,7 @@ impl EventSourcingManager {
         }
 
         // Check if snapshot is needed
-        if event.event_version % self.config.snapshot_interval == 0 {
+        if event.event_version.is_multiple_of(self.config.snapshot_interval) {
             self.create_snapshot(&event.aggregate_id).await?;
         }
 
@@ -840,7 +840,7 @@ mod tests {
 
         let stats = manager.get_stats();
         assert_eq!(stats.total_requests, 3);
-        
+
         // Use approximate equality for floating point comparisons
         let expected_rate = 100.0 / 3.0;
         let tolerance = 1e-10;

@@ -293,12 +293,12 @@ async fn test_concurrent_rate_limiting() {
 
     // Should have ~10 allowed and ~5 blocked (may vary due to concurrency)
     assert!(
-        allowed_count >= 8 && allowed_count <= 12,
+        (8..=12).contains(&allowed_count),
         "Expected ~10 allowed, got {}",
         allowed_count
     );
     assert!(
-        blocked_count >= 3 && blocked_count <= 7,
+        (3..=7).contains(&blocked_count),
         "Expected ~5 blocked, got {}",
         blocked_count
     );

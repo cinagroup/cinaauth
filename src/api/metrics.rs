@@ -38,13 +38,17 @@ impl ApiMetrics {
     }
 
     pub fn record_request(&self, path: &str) {
-        let Ok(mut inner) = self.inner.lock() else { return };
+        let Ok(mut inner) = self.inner.lock() else {
+            return;
+        };
         *inner.request_counts.entry(path.to_string()).or_insert(0) += 1;
         inner.active_requests += 1;
     }
 
     pub fn record_response(&self, path: &str, duration: Duration, status: StatusCode) {
-        let Ok(mut inner) = self.inner.lock() else { return };
+        let Ok(mut inner) = self.inner.lock() else {
+            return;
+        };
         inner
             .response_times
             .entry(path.to_string())
@@ -108,7 +112,9 @@ impl ApiMetrics {
     }
 
     pub fn reset(&self) {
-        let Ok(mut inner) = self.inner.lock() else { return };
+        let Ok(mut inner) = self.inner.lock() else {
+            return;
+        };
         inner.request_counts.clear();
         inner.response_times.clear();
         inner.error_counts.clear();
@@ -294,5 +300,3 @@ mod tests {
         assert!(prometheus.contains("endpoint=\"/api/test\""));
     }
 }
-
-

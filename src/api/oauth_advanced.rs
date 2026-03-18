@@ -151,7 +151,10 @@ async fn verify_client_credentials(
         Ok(Some(bytes)) => match serde_json::from_slice::<serde_json::Value>(&bytes) {
             Ok(v) => v,
             Err(_) => {
-                error!("Introspect: failed to deserialize client record for {}", client_id);
+                error!(
+                    "Introspect: failed to deserialize client record for {}",
+                    client_id
+                );
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(json!({
@@ -166,7 +169,10 @@ async fn verify_client_credentials(
             return Ok(false);
         }
         Err(e) => {
-            error!("Introspect: storage error looking up client {}: {}", client_id, e);
+            error!(
+                "Introspect: storage error looking up client {}: {}",
+                client_id, e
+            );
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({
@@ -179,10 +185,12 @@ async fn verify_client_credentials(
 
     let stored_secret = client_data["client_secret"].as_str().unwrap_or("");
     // Constant-time comparison prevents timing oracle on the secret
-    Ok(crate::security::timing_protection::constant_time_string_compare(
-        client_secret,
-        stored_secret,
-    ))
+    Ok(
+        crate::security::timing_protection::constant_time_string_compare(
+            client_secret,
+            stored_secret,
+        ),
+    )
 }
 
 /// Token introspection endpoint (RFC 7662)
@@ -226,12 +234,8 @@ pub async fn introspect_token(
                         let mut parts = decoded.splitn(2, ':');
                         let basic_client_id = parts.next().unwrap_or("").to_string();
                         let basic_client_secret = parts.next().unwrap_or("").to_string();
-                        verify_client_credentials(
-                            &state,
-                            &basic_client_id,
-                            &basic_client_secret,
-                        )
-                        .await?
+                        verify_client_credentials(&state, &basic_client_id, &basic_client_secret)
+                            .await?
                     }
                     Err(_) => {
                         debug!("Introspect rejected: invalid Basic auth encoding");
@@ -259,9 +263,7 @@ pub async fn introspect_token(
         None => {
             // No Authorization header — verify using POST body client_id + client_secret.
             match (&form.client_id, &form.client_secret) {
-                (Some(id), Some(secret)) => {
-                    verify_client_credentials(&state, id, secret).await?
-                }
+                (Some(id), Some(secret)) => verify_client_credentials(&state, id, secret).await?,
                 _ => {
                     debug!("Introspect rejected: missing client credentials");
                     return Err((
@@ -296,13 +298,11 @@ pub async fn introspect_token(
             // Tokens revoked via POST /oauth/revoke or POST /auth/logout are stored
             // under revoked_token:{jti}; return active=false without revealing why.
             let revocation_key = format!("revoked_token:{}", claims.jti);
-            if let Ok(Some(_)) = state
-                .auth_framework
-                .storage()
-                .get_kv(&revocation_key)
-                .await
-            {
-                debug!("Token introspection: token has been revoked (jti: {})", claims.jti);
+            if let Ok(Some(_)) = state.auth_framework.storage().get_kv(&revocation_key).await {
+                debug!(
+                    "Token introspection: token has been revoked (jti: {})",
+                    claims.jti
+                );
                 return Ok(Json(IntrospectResponse {
                     active: false,
                     sub: None,
@@ -368,10 +368,7 @@ pub async fn pushed_authorization_request(
     State(state): State<ApiState>,
     Form(req): Form<PARRequest>,
 ) -> (StatusCode, Json<PARResponse>) {
-    debug!(
-        "Processing PAR request for client_id={}",
-        req.client_id
-    );
+    debug!("Processing PAR request for client_id={}", req.client_id);
 
     // Generate a unique request URI per RFC 9126 §2.2
     let request_id = Uuid::new_v4().to_string();
@@ -476,7 +473,9 @@ pub async fn device_authorization(
 
     debug!(
         "Device authorization initiated for client_id={}",
-        form.get("client_id").map(String::as_str).unwrap_or_default()
+        form.get("client_id")
+            .map(String::as_str)
+            .unwrap_or_default()
     );
 
     Ok(Json(json!({

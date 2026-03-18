@@ -1191,7 +1191,9 @@ impl SharedSignalsManager {
                 for endpoint in &tx.endpoints {
                     tracing::debug!(
                         "Notifying transmitter {} endpoint {} about account disabled: {}",
-                        id, endpoint, user_id
+                        id,
+                        endpoint,
+                        user_id
                     );
                     // In production: reqwest POST to endpoint with signed JWT payload
                 }
@@ -1272,7 +1274,10 @@ impl SharedSignalsManager {
         // In production: interact with the session store (Redis, database, etc.)
         // to delete the session record.  This is a no-op until the backing store
         // is wired into SharedSignalsManager.
-        tracing::info!("Session {} removed from active store (no-op: no backing store configured)", session_id);
+        tracing::info!(
+            "Session {} removed from active store (no-op: no backing store configured)",
+            session_id
+        );
         Ok(())
     }
 
@@ -1324,7 +1329,9 @@ impl SharedSignalsManager {
                 for endpoint in &tx.endpoints {
                     tracing::info!(
                         "Notifying transmitter {} endpoint {} of session revocation: {}",
-                        id, endpoint, notification
+                        id,
+                        endpoint,
+                        notification
                     );
                     // In production: reqwest POST to endpoint with signed JWT payload
                 }
@@ -1815,5 +1822,3 @@ mod tests {
         assert!(!relationship_id.is_empty());
     }
 }
-
-

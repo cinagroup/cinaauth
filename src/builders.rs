@@ -80,7 +80,7 @@ pub struct AuthBuilder {
     security_preset: Option<SecurityPreset>,
     performance_preset: Option<PerformancePreset>,
     use_case_preset: Option<UseCasePreset>,
-    /// Optional custom storage instance supplied by caller (Arc<dyn AuthStorage>)
+    /// Optional custom storage instance supplied by caller (`Arc<dyn AuthStorage>`)
     custom_storage: Option<std::sync::Arc<dyn crate::storage::AuthStorage>>,
 }
 
@@ -639,7 +639,10 @@ impl OAuth2Builder {
     pub fn done(mut self) -> AuthBuilder {
         let mut oauth2_config = serde_json::Map::new();
         if let Some(client_id) = self.client_id {
-            oauth2_config.insert("client_id".to_string(), serde_json::Value::String(client_id));
+            oauth2_config.insert(
+                "client_id".to_string(),
+                serde_json::Value::String(client_id),
+            );
         }
         if let Some(client_secret) = self.client_secret {
             oauth2_config.insert(

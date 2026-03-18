@@ -1,276 +1,269 @@
 # AuthFramework Development Roadmap
 
-*Last updated: September 30, 2025*
+Last updated: March 17, 2026 (Phase 3 API Maturity complete)
 
 ## Strategic Vision
 
-AuthFramework aims to become **THE** premier authentication and authorization solution in the Rust ecosystem and beyond. Our approach is **open source first** - building a thriving community and ecosystem before any commercial offerings.
+AuthFramework aims to become the premier authentication and authorization solution in the Rust ecosystem and a strong foundation for a broader multi-language SDK ecosystem.
+
+The project remains guided by the same core principles:
+
+- Open source first
+- Security by default
+- Full featured by default
+- Performance-driven implementation
+- Strong developer experience
+- Production-ready operations
+
+## Product Direction: Batteries-Included Defaults
+
+AuthFramework should trend toward a default experience where the product largely
+"just works" out of the box with minimal configuration and minimal feature
+selection burden on end users.
+
+This means the roadmap should optimize for:
+
+- A default crate build that includes the major library capabilities most users expect
+- Secure and sensible built-in defaults so the first integration path requires as little setup as possible
+- The ability to disable subsystems and integrations for optimization, footprint reduction, or specialized deployments
+- Documentation and examples that assume the default build path first, with optimization paths documented second
+- Feature gating used primarily for optional optimization or exceptional platform concerns, not as a routine barrier to basic usability
+
+## Current State Snapshot
+
+### Product Status
+
+- Current crate version: `0.5.0-rc18`
+- The crate already includes substantial functionality across authentication, authorization, API server, admin UI, monitoring, deployment, storage, and web integrations.
+- The project direction is now explicitly shifting toward a batteries-included default build with opt-out feature reduction for optimization-focused users.
+- `cargo check --all-features` currently passes.
+- `cargo test --all-features` is fully green (all tests passing, 0 failures).
+- `cargo doc --no-deps` is now warning-free.
+- Clippy is clean at zero warnings across all targets.
+- Phase 3 API Maturity is complete: `UserInfo` deduplicated, `#[deprecated]` legacy aliases in place, `docs/STABLE_API_MAP.md` published, advanced RFC types hidden from root autodiscovery.
+
+### Major Capabilities Already Present
+
+- Core `AuthFramework` library with multiple authentication methods
+- OAuth 2.0 / OAuth 2.1 server functionality
+- OpenID Connect provider support
+- JWT issuance and validation
+- API key, password, MFA, passkey, client certificate, hardware token, and SAML support
+- REST API server and admin web UI
+- Monitoring, observability, audit logging, and threat intelligence modules
+- Multi-tenant support
+- Storage backends and storage abstraction layers
+- Axum, Actix Web, and Warp integration modules
+- Python and JavaScript/TypeScript SDK repositories already established
+
+### Delivery and Operations Assets Already Present
+
+- GitHub Actions CI/CD workflow in `.github/workflows/ci-cd.yml`
+- GitHub Actions release workflow in `.github/workflows/release.yml`
+- Docker assets including `docker/Dockerfile`, `docker-compose.yml`, and `docker-compose.production.yml`
+- Cross-platform installation scripts in `scripts/install.sh` and `scripts/install.ps1`
+- Deployment, troubleshooting, integration, and configuration documentation in `docs/`
+- Working examples for Axum, REST API server, CLI, OAuth2 server flows, performance demos, and deployments in `examples/`
+
+## What Changed Since The Original 2025 Roadmap
+
+The original roadmap was heavily weighted toward foundational work that is now already present in the repository. The roadmap is now updated to focus on stabilization, release quality, API clarity, and developer experience consolidation rather than initial project setup.
+
+### Completed or Substantially Landed
+
+- [x] Axum integration module exists
+- [x] Actix Web integration module exists
+- [x] Warp integration module exists
+- [x] Example applications and integration examples exist
+- [x] Storage abstraction layer exists
+- [x] PostgreSQL support exists
+- [x] Redis support exists
+- [x] MySQL support exists
+- [x] Migration tooling exists
+- [x] Docker Compose assets exist
+- [x] Cross-platform release workflow exists
+- [x] Binary distribution workflow exists
+- [x] Checksum generation exists in the release pipeline
+- [x] Installation scripts exist
+- [x] Configuration and deployment guides exist
+- [x] Troubleshooting guide exists
+- [x] Contributing guide exists
+- [x] Python SDK repository exists
+- [x] JavaScript/TypeScript SDK repository exists
+
+### Still Missing or Not Yet Release-Ready
+
+- [x] Kubernetes manifests are not yet present
+- [x] Community issue templates are not yet present
+- [x] A code of conduct file is not yet present
+- [x] The default feature story is now clearly defined and documented as a batteries-included baseline
+- [x] All-features test suite is now fully green
+- [x] Rustdoc output is now warning-free
+- [x] Clippy output is now warning-free across all targets and tests
+- [x] The public Rust API still has overlapping entry points and duplicate type names that hurt discoverability — substantially improved by Phase 1 DX work (grouped accessors, canonical aliases, deprecation plan); remaining polish tracked in Phase 3
+
+## Phase 1: Stabilization and Developer Experience (Current)
+
+This is the active phase for the project.
+
+### Release Readiness
+
+- [x] Fix the 3 failing SAML tests in `src/api/saml.rs`
+- [x] Restore a fully green `cargo test --all-features`
+- [x] Reduce all current rustdoc warnings to zero
+- [x] Reduce all current clippy warnings to zero across library and tests
+- [x] Reconcile stale status/version references in CI and documentation
+- [x] Review generated and temporary artifacts so release quality is not diluted by audit debris in the repository root
+
+### Default Feature Experience
+
+- [x] Define the canonical default feature set as the batteries-included product baseline
+- [x] Review `Cargo.toml` feature flags and invert any gates that unnecessarily block common out-of-the-box functionality
+- [x] Ensure the default crate build enables the common authentication, authorization, storage, and integration capabilities users expect first (`enhanced-rbac`, `postgres-storage`, `openid-connect`, `axum-integration`)
+- [x] Preserve opt-out paths for deployment footprint, compile-time, and dependency optimization
+- [x] Document which capabilities remain intentionally non-default and why
+- [x] Make the minimal-configuration path explicit in docs, examples, and quick starts
+
+### Developer Experience and API Consolidation
+
+This is now a first-class workstream, not a secondary polish task.
+
+#### Landed Today
+
+- [x] Add API orientation guidance to `README.md`, `src/lib.rs`, and `src/prelude.rs`
+- [x] Add canonical root aliases to reduce naming ambiguity:
+  - `ModularAuthFramework`
+  - `AppConfigBuilder`
+  - `LayeredConfigBuilder`
+  - `CoreUserInfo`
+- [x] Expose a canonical `SessionManager` export alongside the legacy alias
+- [x] Begin splitting the oversized `AuthFramework` surface into grouped accessors:
+  - `auth.users()`
+  - `auth.sessions()`
+  - `auth.tokens()`
+  - `auth.authorization()`
 
-### Core Principles
+#### Next DX Tasks
 
-- **Open Source First**: Always remain open source with enterprise-grade quality
-- **Performance-Driven**: Ultra-low latency and maximum throughput
-- **Developer Experience**: Simple APIs with powerful capabilities
-- **Community-Focused**: Build developer community before commercial considerations
-- **Production-Ready**: Enterprise-grade security and reliability
+- [x] Add grouped accessors for MFA, monitoring, audit, and administrative operations
+  - `auth.mfa()`
+  - `auth.monitoring()`
+  - `auth.audit()`
+  - `auth.admin()`
+- [x] Document the canonical entry path for new users: `AuthFramework` + `prelude`
+- [x] Create a deprecation plan for duplicate builder names and legacy aliases
+- [x] Consolidate or clearly namespace duplicate `UserInfo`-style types across core, API, integration, and OIDC layers
+- [x] Reduce module overlap between `auth`, `auth_modular`, and `authentication`
+- [x] Audit function naming for consistency inside grouped accessors so common tasks use shorter, context-appropriate names
+- [x] Ensure examples use the preferred public API rather than older or noisier entry points
+- [x] Align the preferred public API with the default enabled feature set so the documented path works without manual feature hunting
 
-## Phase 1: Foundation & Community (Q4 2025 - Q2 2026)
+### Documentation and Onboarding
 
-### Web Framework Priorities
+- [x] Deployment guide exists
+- [x] Troubleshooting guide exists
+- [x] Developer integration guides exist
+- [x] Administrator setup guide exists
+- [x] API reference assets exist
+- [x] Consolidate overlapping docs so the primary onboarding path is obvious
+- [x] Add a true "start here" path for Rust library consumers distinct from binary/server deployment docs
+- [x] Update examples and top-level docs to consistently use the new grouped accessors where appropriate
+- [x] Make the default install and default crate-consumption path the primary documented path everywhere
+- [x] Document optimization and feature-pruning as a secondary advanced path
 
-**Primary Focus: Axum & Actix-web**
+### Web Framework and Integration Hardening
 
-- **Axum**: Best aligned with Rust's future, excellent ergonomics, growing ecosystem
-- **Actix-web**: Maximum performance, battle-tested, high-throughput applications
+- [x] Axum integration exists
+- [x] Actix Web integration exists
+- [x] Warp integration exists
+- [x] Make Axum integration the best-documented and most ergonomic default path
+- [x] Add stronger framework-specific examples backed by real storage where possible
+- [x] Verify feature-gated integrations compile and test cleanly in CI on every release path
+- [x] Decide which framework integrations are part of the default batteries-included experience versus optimization-only opt-ins
 
-**Integration Strategy:**
+## Phase 2: Platform Hardening and Ecosystem Expansion
 
-- [ ] **Evaluate web-server-abstraction integration** - Leverage existing work for multi-framework support
-- [ ] **Enhanced Axum integration** - Rich middleware, extractors, and builder patterns
-- [ ] **Comprehensive Actix-web support** - Performance-optimized middleware and extractors
-- [ ] **Integration examples** - Working code for top use cases in both frameworks
+This phase begins once the release-readiness and DX stabilization work above is complete.
 
-### Storage Backend Strategy
+### Security and Operations
 
-**Primary Database: PostgreSQL**
+- [x] Adaptive MFA and risk-based authentication improvements
+- [x] HSM and signing-key integration hardening
+- [x] Expanded audit-log querying and operator workflows
+- [x] Production-grade admin dashboard configuration editing and safer live-reload flows
 
-- Fastest, most reliable, feature-rich general-purpose SQL database
-- Default choice for new deployments
-- Built-in support with optimized queries
+### Storage and Scaling
 
-**Additional Storage Support:**
+- [ ] SQLite support in a separate crate for lightweight deployments
+- [ ] Optional third-party or community-maintained SurrealDB integration
+- [x] More explicit performance benchmarking and regression gates for auth hot paths
+- [x] Improved distributed coordination and large-scale deployment guidance
+- [x] Define which storage backends should be enabled by default versus left optional for footprint or platform reasons
 
-- [ ] **SQLite support** (separate crate) - Minimal single-system deployments
-- [ ] **SurrealDB support** (separate crate, external contributor) - Modern NoSQL option
-- [ ] **Storage abstraction layer** - Clean interfaces for custom backends
-- [ ] **Migration tooling** - Easy database setup and version management
+### Community and Project Hygiene
 
-### Deployment Options
+- [x] Add issue templates
+- [x] Add a code of conduct
+- [x] Tighten contributor workflows around release quality gates
+- [x] Publish clearer compatibility and support expectations for features and integrations
 
-**Docker-First Approach:**
+## Phase 3: API and Product Leadership
 
-- [ ] **Official Docker images** - Multi-architecture (x86_64, ARM64)
-- [ ] **Docker Compose examples** - Complete stacks with databases
-- [ ] **Kubernetes manifests** - Production-ready deployments
-- [ ] **Health checks and monitoring** - Built-in observability
+This phase is focused on making the project not just feature-rich, but the easiest serious auth framework to adopt and extend.
 
-**GitHub Releases:**
+### API Maturity Goals
 
-- [ ] **Cross-platform binaries** - Linux, macOS, Windows
-- [ ] **Automated release pipeline** - CI/CD with comprehensive testing
-- [ ] **Installation scripts** - One-command setup for common platforms
-- [ ] **Configuration templates** - Production-ready config examples
+- [x] Replace duplicated public concepts with canonical types or explicit namespaces — `UserInfo` deduplicated across `methods`, `api`, and `auth_modular`; `api::auth::LoginUserInfo` renamed; `#[deprecated]` aliases added for legacy names
+- [x] Narrow the default public surface so auto-complete and docs steer users toward the right abstractions — advanced RFC types (`DpopManager`, `PARManager`, `PrivateKeyJwtManager`, `TokenIntrospectionService`, `ServerOAuth2Server`, WS-Security/WS-Trust, OIDC backchannel/frontchannel logout) now carry `#[doc(hidden)]` at root; fully accessible via sub-module paths
+- [x] Establish a stable public API map with migration guidance for legacy entry points — `docs/STABLE_API_MAP.md` created with canonical names, grouped accessors, deprecated aliases, and type disambiguation tables
+- [x] Keep advanced internals available without letting them dominate the onboarding path — `#[doc(hidden)]` on root re-exports keeps advanced types programmatically accessible while removing them from the default docs/autocomplete surface
+- [x] Ensure the canonical public API is fully usable on the default build without requiring users to discover extra feature flags first — `AuthFramework`, `prelude::*`, grouped accessors, and all core types work on default features
 
-### Release Engineering (Immediate Priority)
+### Ecosystem Expansion
 
-- [ ] **Automated cross-platform builds** - GitHub Actions for all targets
-- [ ] **Release automation** - Version bumping, changelog generation
-- [ ] **Binary distribution** - Optimized builds with minimal dependencies
-- [ ] **Verification tooling** - Signature verification and checksums
+- [ ] Go SDK
+- [ ] Java SDK
+- [ ] C# SDK
+- [ ] Ruby SDK
+- [ ] Additional deployment templates and operator tooling
 
-### Developer Onboarding
+## Immediate Priorities (Next 30 Days)
 
-- [ ] **Complete getting started guide** - Zero to production in 15 minutes
-- [ ] **Integration tutorials** - Step-by-step for major frameworks
-- [ ] **Configuration reference** - Comprehensive settings documentation
-- [ ] **Troubleshooting guide** - Common issues and solutions
+1. ✅ Release stabilization — all tests green, rustdoc clean, clippy clean
 
-## Phase 2: Market Position (Q3 2026 - Q2 2027)
+2. ✅ Default feature policy — batteries-included defaults documented, opt-out paths documented
 
-### Advanced Features
+3. ✅ API consolidation — grouped accessors, canonical types, deprecation plan, stable API map
 
-**Scalability & Performance:**
+4. ✅ Documentation consolidation — Rust library onboarding path clear, default paths primary
 
-- [ ] **Horizontal scaling** - Multi-instance coordination
-- [ ] **Connection pooling** - Optimized database connections
-- [ ] **Caching layer** - Redis integration for session/token caching
-- [ ] **Load testing suite** - Performance benchmarks and regression testing
+5. ✅ Release hygiene — version/workflow labeling aligned
 
-**Enhanced Security:**
+**Next priorities:**
 
-- [ ] **HSM integration** - Hardware security module support
-- [ ] **Adaptive MFA** - Risk-based authentication decisions
-- [ ] **Advanced audit logging** - Comprehensive security event tracking
-- [ ] **Threat intelligence** - Real-time security feed integration
+1. Release `0.5.0` from the current `rc18` candidate
+   - Confirm changelog is accurate and complete
+   - Tag release and trigger release workflow
 
-**Federation Standards:**
+2. Phase 2 storage expansion
+   - Evaluate SQLite support crate feasibility and scope
+   - Decide timeline for community-maintained SurrealDB integration
 
-- [ ] **SAML Identity Provider** - Full IdP functionality
-- [ ] **OAuth 2.1 compliance** - Latest security standards
-- [ ] **OpenID Connect enhancements** - Advanced claim handling
-- [ ] **Enterprise SSO** - LDAP/AD integration improvements
+3. Phase 3 ecosystem
+   - Begin Go SDK scaffolding
+   - Define SDK generation strategy and shared test suite
 
-### Admin Dashboard
+## Success Criteria For The Current Phase
 
-- [ ] **Complete web interface** - User management, configuration, monitoring
-- [ ] **Role-based admin access** - Granular admin permissions
-- [ ] **Real-time monitoring** - Live metrics and alerts
-- [ ] **Configuration management** - Hot-reload capabilities
-
-### Multi-Language SDK Ecosystem
-
-**Existing SDKs (Independent Repositories):**
-
-- [x] **Python SDK** - [`authframework-python`](https://github.com/ciresnave/authframework-python)
-- [x] **JavaScript/TypeScript SDK** - [`authframework-js`](https://github.com/ciresnave/authframework-js)
-
-**Planned SDKs:**
-
-- [ ] **Go SDK** - High-performance client library
-- [ ] **Java SDK** - Enterprise ecosystem integration
-- [ ] **C# SDK** - .NET ecosystem support
-- [ ] **Ruby SDK** - Rails ecosystem integration
-
-## Phase 3: Market Dominance (Q3 2027 - Q2 2028)
-
-### Enterprise Features
-
-**Multi-Tenancy:**
-
-- [ ] **Tenant isolation** - Complete data separation
-- [ ] **Per-tenant configuration** - Flexible policy management
-- [ ] **Tenant analytics** - Usage metrics and insights
-- [ ] **Billing integration** - Usage-based metering
-
-**Advanced Analytics:**
-
-- [ ] **Business intelligence** - User behavior analytics
-- [ ] **Security analytics** - Threat detection and response
-- [ ] **Performance analytics** - System optimization insights
-- [ ] **Custom reporting** - Flexible report generation
-
-**API Economy Features:**
-
-- [ ] **API marketplace** - Third-party integration ecosystem
-- [ ] **Webhook management** - Event-driven integrations
-- [ ] **Rate limiting tiers** - Flexible usage controls
-- [ ] **Developer portal** - Self-service API management
-
-## Implementation Priorities
-
-### Immediate Actions (Next 30 Days)
-
-1. **Release Automation**
-   - Set up GitHub Actions for cross-platform binaries
-   - Create release workflow with automated changelog
-   - Test binary distribution on all target platforms
-
-2. **Documentation Polish**
-   - Complete the getting started experience
-   - Add comprehensive configuration reference
-   - Create troubleshooting guide
-
-3. **Web Framework Integration**
-   - Evaluate web-server-abstraction crate integration
-   - Enhance Axum middleware with builder patterns
-   - Improve Actix-web performance optimizations
-
-4. **Storage Backend Preparation**
-   - Finalize PostgreSQL as default with optimized queries
-   - Design storage abstraction layer for future backends
-   - Create migration tooling for database setup
-
-### Short Term (60-90 Days)
-
-1. **Integration Examples**
-   - Working examples for Axum + PostgreSQL
-   - Working examples for Actix-web + PostgreSQL
-   - Docker Compose stacks for development
-
-2. **Performance Baseline**
-   - Establish benchmarks for authentication operations
-   - Create performance regression testing
-   - Optimize critical paths for lowest latency
-
-3. **Community Foundation**
-   - Contributing guide and development setup
-   - Issue templates and PR workflows
-   - Community guidelines and code of conduct
-
-### Medium Term (3-6 Months)
-
-1. **Production Readiness**
-   - Comprehensive security audit
-   - Load testing and performance validation
-   - Production deployment guides
-
-2. **Ecosystem Growth**
-   - Plugin system for custom authentication methods
-   - Integration with popular Rust web frameworks
-   - Community-contributed storage backends
-
-## Technical Architecture Decisions
-
-### Web Framework Abstraction
-
-**Decision**: Integrate with `web-server-abstraction` crate
-
-- **Rationale**: Leverages existing work, provides unified interface
-- **Benefits**: Consistent API across frameworks, easier maintenance
-- **Implementation**: Create AuthFramework-specific layer over WSA
-
-### Storage Strategy
-
-**Decision**: PostgreSQL default, pluggable backends
-
-- **Rationale**: Performance, reliability, feature richness
-- **Benefits**: Optimal developer experience, enterprise-ready
-- **Implementation**: Abstract storage traits, separate crates for alternatives
-
-### Performance Philosophy
-
-**Decision**: Zero-allocation hot paths where possible
-
-- **Rationale**: Maximum performance for authentication operations
-- **Benefits**: Lower latency, higher throughput
-- **Implementation**: Careful async design, minimal copying
-
-## Community & Ecosystem
-
-### Open Source Strategy
-
-- **Public development** - All development happens in the open
-- **Community-driven** - Feature requests and contributions from users
-- **Documentation-first** - Every feature fully documented
-- **Stability commitment** - Semantic versioning and migration guides
-
-### Success Metrics
-
-**Technical Metrics:**
-
-- Authentication latency < 1ms (local verification)
-- Database operation latency < 10ms (95th percentile)
-- Memory usage < 50MB for typical deployments
-- Zero security vulnerabilities in quarterly audits
-
-**Community Metrics:**
-
-- GitHub stars and forks growth
-- Crate download statistics
-- Community contributions (PRs, issues, discussions)
-- Integration examples and tutorials
-
-**Adoption Metrics:**
-
-- Production deployments
-- Framework integrations
-- Third-party plugins and extensions
-- Developer testimonials and case studies
-
-## Competitive Advantages
-
-1. **Performance**: Rust's zero-cost abstractions for maximum speed
-2. **Security**: Memory safety and comprehensive security features
-3. **Ergonomics**: Simple APIs with powerful capabilities
-4. **Flexibility**: Pluggable architecture for customization
-5. **Community**: Open-source first approach builds trust and adoption
-
-## Future Considerations
-
-This roadmap focuses exclusively on the open source development. Additional business considerations will be planned separately, ensuring the open source project remains the primary focus and maintains community trust.
-
-The goal is to establish AuthFramework as the de facto authentication solution in Rust, with broad multi-language adoption through our SDK ecosystem, before considering any commercial offerings.
+- `cargo check --all-features` passes
+- `cargo test --all-features` passes
+- `cargo doc --no-deps` is warning-free
+- Clippy is warning-free on the enforced targets
+- New users can add the crate and access the primary documented capabilities without manual feature hunting
+- New users can identify the default API entry point within the first minute of reading the README or docs
+- The most common operations are discoverable under intuitive grouped surfaces rather than only on a monolithic root type
+- Advanced users can still disable unneeded subsystems with a clearly documented optimization path
 
 ---
 
-*This roadmap is a living document that will be updated based on community feedback, technical discoveries, and market conditions.*
+This roadmap is now intended to be status-driven. It should be updated whenever a release-readiness blocker is discovered, a DX milestone lands, or a previously planned item materially changes state.

@@ -239,7 +239,10 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
                         Ok(manager) => {
                             // Start automated feed management in background
                             if let Err(e) = manager.start_automated_updates() {
-                                tracing::error!("Failed to start automated threat feed updates: {}", e);
+                                tracing::error!(
+                                    "Failed to start automated threat feed updates: {}",
+                                    e
+                                );
                                 None
                             } else {
                                 tracing::info!(
@@ -249,7 +252,10 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
                             }
                         }
                         Err(e) => {
-                            tracing::error!("Failed to initialize threat intelligence manager: {}", e);
+                            tracing::error!(
+                                "Failed to initialize threat intelligence manager: {}",
+                                e
+                            );
                             None
                         }
                     }
@@ -260,7 +266,9 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
                 }
             }
         } else {
-            tracing::info!("🔴 Automated threat intelligence disabled (THREAT_INTEL_ENABLED=false)");
+            tracing::info!(
+                "🔴 Automated threat intelligence disabled (THREAT_INTEL_ENABLED=false)"
+            );
             None
         };
 
@@ -857,7 +865,8 @@ impl DeviceFingerprintGenerator {
 
                             // Extract location coordinates from MaxMind data
                             let location = &city.location;
-                            if let (Some(lat), Some(lon)) = (location.latitude, location.longitude) {
+                            if let (Some(lat), Some(lon)) = (location.latitude, location.longitude)
+                            {
                                 location_parts.push(format!("coords:{:.4},{:.4}", lat, lon));
                             }
 
@@ -1128,7 +1137,11 @@ impl RiskCalculator {
                         if let Ok(risk_score) = record[1].parse::<u32>()
                             && country.contains(&threat_country)
                         {
-                            tracing::debug!("Country threat match: {} -> risk {}", country, risk_score);
+                            tracing::debug!(
+                                "Country threat match: {} -> risk {}",
+                                country,
+                                risk_score
+                            );
                             return risk_score;
                         }
                     }

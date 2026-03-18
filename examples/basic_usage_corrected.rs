@@ -114,7 +114,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Create a test authentication token
-fn create_test_token(user_profile: &ProviderProfile) -> Result<AuthToken, Box<dyn std::error::Error>> {
+fn create_test_token(
+    user_profile: &ProviderProfile,
+) -> Result<AuthToken, Box<dyn std::error::Error>> {
     let now = Utc::now();
     let user_id = user_profile.id.as_ref().unwrap().clone();
 

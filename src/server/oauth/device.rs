@@ -529,7 +529,7 @@ mod tests {
         let result = manager.poll_authorization(&response.device_code).await;
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.to_string().contains("authorization_pending"), true);
+        assert!(err.to_string().contains("authorization_pending"));
     }
 
     #[tokio::test]
@@ -576,7 +576,7 @@ mod tests {
         let result = manager.poll_authorization(&response.device_code).await;
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.to_string().contains("access_denied"), true);
+        assert!(err.to_string().contains("access_denied"));
     }
 
     #[tokio::test]
@@ -597,7 +597,7 @@ mod tests {
         let result = manager.poll_authorization(&response.device_code).await;
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.to_string().contains("slow_down"), true);
+        assert!(err.to_string().contains("slow_down"));
     }
 
     #[tokio::test]
@@ -625,6 +625,6 @@ mod tests {
         let result = manager.poll_authorization(&response.device_code).await;
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.to_string().contains("expired"), true);
+        assert!(err.to_string().contains("expired"));
     }
 }

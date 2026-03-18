@@ -576,5 +576,3 @@ mod tests {
         assert!(url.contains("sid=sid123"));
     }
 }
-
-

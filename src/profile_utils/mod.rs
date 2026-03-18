@@ -266,8 +266,4 @@ fn extract_string_optional_from_value(json: &Value, field: &str) -> Option<Strin
     json.get(field).and_then(|v| v.as_str()).map(String::from)
 }
 
-// Include tests
-// #[cfg(test)]
-// mod tests;
-
 

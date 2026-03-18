@@ -3,11 +3,11 @@
 //! Main server that hosts all API endpoints
 
 use crate::AuthFramework;
-use crate::api::{
-    ApiState, admin, auth, health, mfa, middleware, oauth2, oauth_advanced, users, webauthn,
-};
 #[cfg(feature = "saml")]
 use crate::api::saml;
+use crate::api::{
+    ApiState, admin, auth, health, mfa, middleware, oauth_advanced, oauth2, users, webauthn,
+};
 use axum::{
     Router,
     extract::DefaultBodyLimit,
@@ -18,10 +18,7 @@ use axum::{
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower::ServiceBuilder;
-use tower_http::{
-    cors::CorsLayer,
-    trace::TraceLayer,
-};
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::info;
 
 /// API Server configuration
@@ -102,14 +99,20 @@ impl ApiServer {
             // RFC 7662: Token Introspection (form-encoded, client auth required)
             .route("/oauth/introspect", post(oauth_advanced::introspect_token))
             // RFC 9126: Pushed Authorization Requests
-            .route("/oauth/par", post(oauth_advanced::pushed_authorization_request))
+            .route(
+                "/oauth/par",
+                post(oauth_advanced::pushed_authorization_request),
+            )
             .route("/oauth/clients/{client_id}", get(oauth2::get_client_info))
             // User management endpoints (authenticated)
             .route("/users/profile", get(users::get_profile))
             .route("/users/profile", put(users::update_profile))
             .route("/users/change-password", post(users::change_password))
             .route("/users/sessions", get(users::get_sessions))
-            .route("/users/sessions/{session_id}", delete(users::revoke_session))
+            .route(
+                "/users/sessions/{session_id}",
+                delete(users::revoke_session),
+            )
             .route("/users/{user_id}/profile", get(users::get_user_profile))
             // Multi-factor authentication endpoints (authenticated)
             .route("/mfa/setup", post(mfa::setup_mfa))
@@ -124,18 +127,44 @@ impl ApiServer {
             // Administrative endpoints (admin only)
             .route("/admin/users", get(admin::list_users))
             .route("/admin/users", post(admin::create_user))
-            .route("/admin/users/{user_id}/roles", put(admin::update_user_roles))
+            .route(
+                "/admin/users/{user_id}/roles",
+                put(admin::update_user_roles),
+            )
             .route("/admin/users/{user_id}", delete(admin::delete_user))
             .route("/admin/users/{user_id}/activate", put(admin::activate_user))
             .route("/admin/stats", get(admin::get_system_stats))
             .route("/admin/audit-logs", get(admin::get_audit_logs))
+            .route("/admin/audit-logs/stats", get(admin::get_audit_log_stats))
+            .route(
+                "/admin/config",
+                get(admin::get_config).put(admin::update_config),
+            )
             // WebAuthn endpoints
-            .route("/webauthn/registration/init", post(webauthn::webauthn_registration_init))
-            .route("/webauthn/registration/complete", post(webauthn::webauthn_registration_complete))
-            .route("/webauthn/authentication/init", post(webauthn::webauthn_authentication_init))
-            .route("/webauthn/authentication/complete", post(webauthn::webauthn_authentication_complete))
-            .route("/webauthn/credentials/{username}", get(webauthn::list_webauthn_credentials))
-            .route("/webauthn/credentials/{username}/{credential_id}", delete(webauthn::delete_webauthn_credential));
+            .route(
+                "/webauthn/registration/init",
+                post(webauthn::webauthn_registration_init),
+            )
+            .route(
+                "/webauthn/registration/complete",
+                post(webauthn::webauthn_registration_complete),
+            )
+            .route(
+                "/webauthn/authentication/init",
+                post(webauthn::webauthn_authentication_init),
+            )
+            .route(
+                "/webauthn/authentication/complete",
+                post(webauthn::webauthn_authentication_complete),
+            )
+            .route(
+                "/webauthn/credentials/{username}",
+                get(webauthn::list_webauthn_credentials),
+            )
+            .route(
+                "/webauthn/credentials/{username}/{credential_id}",
+                delete(webauthn::delete_webauthn_credential),
+            );
 
         // Build the router with conditional SAML routes
         let api_v1 = {
@@ -292,8 +321,8 @@ mod tests {
     use super::*;
     use crate::storage::memory::InMemoryStorage;
     use crate::{AuthConfig, AuthFramework};
-    use axum::http::{Request, StatusCode};
     use axum::body::Body;
+    use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
 
     async fn create_test_api_server() -> ApiServer {
@@ -364,5 +393,3 @@ mod tests {
         );
     }
 }
-
-

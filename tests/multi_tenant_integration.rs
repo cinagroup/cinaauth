@@ -194,7 +194,7 @@ mod multi_tenant_tests {
             let reg = Arc::clone(&registry);
             let handle = tokio::spawn(async move {
                 for i in 0..5 {
-                    let tenant_id = TenantId::new(&format!("read-tenant-{}", i));
+                    let tenant_id = TenantId::new(format!("read-tenant-{}", i));
                     let _ = reg.get_tenant_framework(&tenant_id);
                 }
             });
@@ -238,7 +238,7 @@ mod multi_tenant_tests {
         for i in 0..3 {
             let reg = Arc::clone(&registry);
             let handle = tokio::spawn(async move {
-                let tenant_id = TenantId::new(&format!("mixed-{}", i));
+                let tenant_id = TenantId::new(format!("mixed-{}", i));
                 reg.get_tenant_framework(&tenant_id)
             });
             read_handles.push(handle);
@@ -248,7 +248,7 @@ mod multi_tenant_tests {
         for i in 2..4 {
             let reg = Arc::clone(&registry);
             let handle = tokio::spawn(async move {
-                let tenant_id = TenantId::new(&format!("mixed-{}", i));
+                let tenant_id = TenantId::new(format!("mixed-{}", i));
                 reg.deactivate_tenant(&tenant_id).await
             });
             deactivate_handles.push(handle);
@@ -366,7 +366,7 @@ mod multi_tenant_tests {
 
         // Deactivate 2
         for i in 0..2 {
-            let tenant_id = TenantId::new(&format!("active-{}", i));
+            let tenant_id = TenantId::new(format!("active-{}", i));
             let _ = registry.deactivate_tenant(&tenant_id).await;
         }
 
@@ -426,7 +426,7 @@ mod multi_tenant_tests {
             "spaces not allowed"
         );
         assert!(
-            TenantId::new(&"a".repeat(65)).validate().is_err(),
+            TenantId::new("a".repeat(65)).validate().is_err(),
             "too long"
         );
     }
@@ -515,7 +515,7 @@ mod multi_tenant_tests {
 
         // Verify all can be accessed
         for i in 0..tenant_count {
-            let tenant_id = TenantId::new(&format!("stress-{}", i));
+            let tenant_id = TenantId::new(format!("stress-{}", i));
             assert!(registry.get_tenant_framework(&tenant_id).is_ok());
         }
     }

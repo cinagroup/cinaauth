@@ -7,6 +7,16 @@ This crate provides a unified interface for various authentication methods,
 token management, permission checking, and secure credential handling with
 a focus on distributed systems.
 
+## API Orientation
+
+- Use [`AuthFramework`] as the default entry point for most applications.
+- Use [`ModularAuthFramework`] only when you explicitly want manager-level
+  composition and lifecycle control.
+- Use [`prelude`] when you want ergonomic imports for application code.
+- Use [`AppConfigBuilder`] for simple application-owned configuration values.
+- Use [`LayeredConfigBuilder`] and [`ConfigManager`] when you need layered
+  configuration from files and environment variables.
+
 ## Features
 
 - Multiple authentication methods (OAuth, API keys, JWT, etc.)
@@ -27,51 +37,42 @@ a focus on distributed systems.
 
 ## Quick Start
 
-
 ```rust,no_run
-use auth_framework::{AuthFramework, AuthConfig, methods::JwtMethod};
-use std::time::Duration;
+use auth_framework::prelude::*;
 
-# #[tokio::main]
-# async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Configure the auth framework
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Build configuration.  JWT secret must be at least 32 characters.
     let config = AuthConfig::new()
-        .token_lifetime(Duration::from_secs(3600))
-        .refresh_token_lifetime(Duration::from_secs(86400 * 7));
+        .token_lifetime(std::time::Duration::from_secs(3600))
+        .secret(std::env::var("JWT_SECRET")
+            .unwrap_or_else(|_| "replace-with-a-32-char-random-secret!!".to_string()));
 
-    // Create the auth framework
     let mut auth = AuthFramework::new(config);
-
-    // Register a JWT authentication method
-    let jwt_method = JwtMethod::new()
-        .secret_key("replace-this-with-a-32+-char-random-secret")
-        .issuer("your-service");
-
-    auth.register_method("jwt", auth_framework::methods::AuthMethodEnum::Jwt(jwt_method));
-
-    // Initialize the framework
     auth.initialize().await?;
 
-    // Create a token
-    let token = auth.create_auth_token(
-        "user123",
-        vec!["read".to_string(), "write".to_string()],
-        "jwt",
-        None,
-    ).await?;
+    // Register a user.
+    let user_id = auth.users().register("alice", "alice@example.com", "s3cr3t!").await?;
 
-    // Validate the token
-    if auth.validate_token(&token).await? {
-        println!("Token is valid!");
+    // Issue a token via the grouped token accessor.
+    let token = auth.tokens().create(&user_id, vec!["read".into()], "jwt", None).await?;
 
-        // Check permissions
-        if auth.check_permission(&token, "read", "documents").await? {
-            println!("User has permission to read documents");
+    // Validate and authorize.
+    if auth.tokens().validate(&token).await? {
+        if auth.authorization().check(&token, "read", "documents").await? {
+            println!("Alice may read documents.");
         }
     }
-# Ok(())
-# }
+
+    Ok(())
+}
 ```
+
+See [`prelude`] for the full set of re-exported types, and the accessor groups
+[`AuthFramework::users`], [`AuthFramework::sessions`], [`AuthFramework::tokens`],
+[`AuthFramework::authorization`], [`AuthFramework::mfa`], [`AuthFramework::monitoring`],
+[`AuthFramework::audit`], and [`AuthFramework::admin`] for organized entry points
+into each capability area.
 
 ## Security Considerations
 
@@ -86,84 +87,25 @@ See the [Security Policy](https://github.com/yourusername/auth-framework/blob/ma
 for comprehensive security guidelines.
 */
 
-// REST API Server - NEW!
+// REST API Server
 #[cfg(feature = "api-server")]
 pub mod api;
-
-// ## Quick Start
-//
-// ```rust,no_run
-// use auth_framework::{AuthFramework, AuthConfig};
-// use auth_framework::methods::JwtMethod;
-// use std::time::Duration;
-//
-// # #[tokio::main]
-// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-// // Configure the auth framework
-// let config = AuthConfig::new()
-//     .token_lifetime(Duration::from_secs(3600))
-//     .refresh_token_lifetime(Duration::from_secs(86400 * 7));
-//
-// // Create the auth framework
-// let mut auth = AuthFramework::new(config);
-//
-// // Register a JWT authentication method
-// let jwt_method = JwtMethod::new()
-//     .secret_key("your-secret-key")
-//     .issuer("your-service");
-//
-// auth.register_method("jwt", Box::new(jwt_method));
-//
-// // Initialize the framework
-// auth.initialize().await?;
-//
-// // Create a token
-// let token = auth.create_auth_token(
-//     "user123",
-//     vec!["read".to_string(), "write".to_string()],
-//     "jwt",
-//     None,
-// ).await?;
-//
-// // Validate the token
-// if auth.validate_token(&token).await? {
-//     println!("Token is valid!");
-//
-//     // Check permissions
-//     if auth.check_permission(&token, "read", "documents").await? {
-//         println!("User has permission to read documents");
-//     }
-// }
-// # Ok(())
-// # }
-// ```
-//
-// ## Security Considerations
-//
-// - Always use HTTPS in production
-// - Use strong, unique secrets for token signing
-// - Enable rate limiting to prevent brute force attacks
-// - Regularly rotate secrets and keys
-// - Monitor authentication events for suspicious activity
-// - Follow the principle of least privilege for permissions
-//
-// See the [Security Policy](https://github.com/yourusername/auth-framework/blob/main/SECURITY.md)
-// for comprehensive security guidelines.
 
 // Admin interface (conditional on admin-binary feature)
 #[cfg(feature = "admin-binary")]
 pub mod admin;
 
 pub mod auth;
+pub mod auth_modular; // Advanced component-oriented authentication framework
+pub mod auth_operations; // Grouped operation facades over AuthFramework
+pub mod authentication; // Supporting auth data types and submodules
 pub mod distributed; // Distributed session store abstraction
-pub mod tenant; // Multi-tenant support for native multi-tenant deployments
-pub mod auth_modular; // Modular authentication components
-pub mod authentication; // Reorganized authentication modules
 pub mod errors;
 pub mod methods;
 pub mod permissions;
 pub mod profile_utils;
 pub mod providers;
+pub mod tenant; // Multi-tenant support for native multi-tenant deployments
 
 // SDK generation for multiple languages
 #[cfg(feature = "enhanced-rbac")]
@@ -249,12 +191,18 @@ pub mod ws_security;
 pub mod ws_trust;
 
 // Re-exports - Main modular auth framework components
-pub use crate::auth::{AuthFramework, AuthResult, AuthStats, UserInfo};
-pub use authentication::credentials::Credential;
-pub use config::{
-    AuthConfig,
-    app_config::{AppConfig, ConfigBuilder},
+pub use crate::auth::{
+    AdminOperations, AuditOperations, AuthFramework, AuthResult, AuthStats,
+    AuthorizationOperations, MfaOperations, MonitoringOperations, SessionOperations,
+    TokenOperations, UserInfo, UserInfo as CoreUserInfo, UserOperations,
 };
+pub use crate::auth_modular::AuthFramework as ModularAuthFramework;
+pub use authentication::credentials::Credential;
+pub use config::app_config::ConfigBuilder as AppConfigBuilder;
+pub use config::config_manager::{
+    AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder, ConfigManager,
+};
+pub use config::{AuthConfig, app_config::AppConfig};
 pub use errors::{AuthError, Result};
 pub use methods::{
     ApiKeyMethod, AuthMethod, JwtMethod, MethodResult, OAuth2Method, PasswordMethod,
@@ -271,12 +219,18 @@ pub use methods::saml;
 // PKCE support functions
 pub use providers::generate_pkce;
 
-// WS-Security and WS-Trust support
 pub use permissions::{Permission, PermissionChecker, Role};
 pub use profile_utils::{ExtractProfile, TokenToProfile};
-pub use providers::{DeviceAuthorizationResponse, OAuthProvider, OAuthProviderConfig, ProviderProfile};
+pub use providers::{
+    DeviceAuthorizationResponse, OAuthProvider, OAuthProviderConfig, ProviderProfile,
+};
 pub use tokens::AuthToken;
+
+// WS-Security 1.1 and WS-Trust — advanced SOAP-era protocol support.
+// Hidden from root docs; access via `auth_framework::ws_security` / `ws_trust`.
+#[doc(hidden)]
 pub use ws_security::{UsernameToken, WsSecurityClient, WsSecurityConfig, WsSecurityHeader};
+#[doc(hidden)]
 pub use ws_trust::RequestSecurityToken;
 
 // Server-side authentication and authorization - Now working!
@@ -286,17 +240,19 @@ pub use server::oidc::{
     UserInfo as OidcUserInfo,
 };
 
-// Phase 2: Logout & Security Ecosystem specifications
-pub use server::oidc::{
-    oidc_backchannel_logout::{
-        BackChannelLogoutConfig, BackChannelLogoutManager, BackChannelLogoutRequest,
-        BackChannelLogoutResponse, LogoutEvents, LogoutTokenClaims, NotificationResult,
-        RpBackChannelConfig,
-    },
-    oidc_frontchannel_logout::{
-        FailedNotification, FrontChannelLogoutConfig, FrontChannelLogoutManager,
-        FrontChannelLogoutRequest, FrontChannelLogoutResponse, RpFrontChannelConfig,
-    },
+// Phase 2: Logout & Security Ecosystem specifications (advanced OIDC logout protocols).
+// Hidden from root docs; access via `auth_framework::server::oidc::oidc_backchannel_logout`
+// and `auth_framework::server::oidc::oidc_frontchannel_logout`.
+#[doc(hidden)]
+pub use server::oidc::oidc_backchannel_logout::{
+    BackChannelLogoutConfig, BackChannelLogoutManager, BackChannelLogoutRequest,
+    BackChannelLogoutResponse, LogoutEvents, LogoutTokenClaims, NotificationResult,
+    RpBackChannelConfig,
+};
+#[doc(hidden)]
+pub use server::oidc::oidc_frontchannel_logout::{
+    FailedNotification, FrontChannelLogoutConfig, FrontChannelLogoutManager,
+    FrontChannelLogoutRequest, FrontChannelLogoutResponse, RpFrontChannelConfig,
 };
 
 // OAuth2 server types and configurations
@@ -309,18 +265,40 @@ pub use oauth2_server::{
 pub use client::{ClientConfig, ClientType};
 pub use server::{
     ClientRegistrationRequest, WorkingServerConfig,
-    core::client_registration::ClientRegistrationRequest as ServerClientRegistrationRequest,
 };
 
-// Advanced server modules and RFC implementations
-pub use server::{
-    DpopManager, MetadataProvider, OAuth2Server as ServerOAuth2Server, PARManager,
-    PrivateKeyJwtManager, TokenIntrospectionService,
-};
+/// Deprecated alias for [`ClientRegistrationRequest`].
+#[deprecated(
+    since = "0.5.0",
+    note = "Use `ClientRegistrationRequest` instead"
+)]
+pub type ServerClientRegistrationRequest = server::core::client_registration::ClientRegistrationRequest;
+
+// Advanced server modules and RFC implementations.
+// Hidden from top-level docs/autocomplete to avoid cluttering the onboarding path;
+// access via `auth_framework::server::*` for advanced use.
+#[doc(hidden)]
+pub use server::DpopManager;
+#[doc(hidden)]
+pub use server::MetadataProvider;
+#[doc(hidden)]
+pub use server::OAuth2Server as ServerOAuth2Server;
+#[doc(hidden)]
+pub use server::PARManager;
+#[doc(hidden)]
+pub use server::PrivateKeyJwtManager;
+#[doc(hidden)]
+pub use server::TokenIntrospectionService;
 
 // Security and authentication module re-exports
 pub use audit::{AuditEvent, AuditEventType, AuditLogger, EventOutcome, RiskLevel};
-pub use authentication::mfa::{MfaManager as LegacyMfaManager, MfaMethodType, TotpProvider};
+pub use authentication::mfa::{MfaMethodType, TotpProvider};
+/// Deprecated alias for `authentication::mfa::MfaManager`. Use `auth_modular` MFA operations instead.
+#[deprecated(
+    since = "0.5.0",
+    note = "Use `AuthFramework::mfa()` accessor or `auth_modular::MfaManager` instead"
+)]
+pub use authentication::mfa::MfaManager as LegacyMfaManager;
 pub use authorization::{
     AbacPermission as AuthzPermission, AbacRole as AuthzRole, AccessCondition, AuthorizationEngine,
 };
@@ -331,14 +309,18 @@ pub use security::secure_session::{
 };
 pub use security::secure_utils::{SecureComparison, SecureRandomGen};
 pub use session::manager::{
-    DeviceInfo, Session, SessionConfig, SessionManager as LegacySessionManager, SessionState,
+    DeviceInfo, Session, SessionConfig, SessionManager, SessionState,
 };
+/// Deprecated alias for [`SessionManager`]. Use `SessionManager` directly.
+#[deprecated(
+    since = "0.5.0",
+    note = "Use `SessionManager` instead"
+)]
+pub use session::manager::SessionManager as LegacySessionManager;
 pub use utils::rate_limit::RateLimiter;
 
 // Multi-tenant support
-pub use tenant::{
-    TenantContext, TenantId, TenantMetadata, TenantRegistry, TenantRegistryBuilder,
-};
+pub use tenant::{TenantContext, TenantId, TenantMetadata, TenantRegistry, TenantRegistryBuilder};
 
 // Monitoring and metrics
 pub use monitoring::{

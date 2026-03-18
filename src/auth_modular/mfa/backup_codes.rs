@@ -96,6 +96,45 @@ impl BackupCodesManager {
         // This will overwrite existing codes
         self.generate_codes(user_id, count).await
     }
+
+    /// Verify a backup code during the login MFA flow.
+    /// Reads from `mfa_backup_codes:{user_id}` — the key written by the MFA setup flow.
+    /// Codes are stored as SHA-256 hex strings; comparison is constant-time.
+    pub async fn verify_login_code(&self, user_id: &str, code: &str) -> Result<bool> {
+        use crate::security::secure_utils::constant_time_compare;
+        use sha2::Digest as _;
+
+        if code.trim().is_empty() {
+            return Ok(false);
+        }
+
+        let backup_key = format!("mfa_backup_codes:{}", user_id);
+        let codes: Vec<String> = match self.storage.get_kv(&backup_key).await? {
+            Some(data) => serde_json::from_slice(&data).unwrap_or_default(),
+            None => return Ok(false),
+        };
+
+        let provided_bytes = sha2::Sha256::digest(code.trim().as_bytes()).to_vec();
+
+        let mut found_idx: Option<usize> = None;
+        for (index, stored_hex) in codes.iter().enumerate() {
+            let stored_bytes = hex::decode(stored_hex).unwrap_or_default();
+            if stored_bytes.len() == provided_bytes.len()
+                && constant_time_compare(&stored_bytes, &provided_bytes)
+            {
+                found_idx = Some(index);
+            }
+        }
+
+        match found_idx {
+            Some(index) => {
+                let mut remaining = codes;
+                remaining.remove(index);
+                let updated = serde_json::to_vec(&remaining).unwrap_or_default();
+                self.storage.store_kv(&backup_key, &updated, None).await?;
+                Ok(true)
+            }
+            None => Ok(false),
+        }
+    }
 }
-
-

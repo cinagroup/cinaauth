@@ -40,6 +40,7 @@ fn create_working_config() -> AuthConfig {
             cookie_same_site: auth_framework::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(1800),
+            previous_secret_key: None,
         },
         audit: AuditConfig {
             enabled: true,

@@ -395,7 +395,11 @@ impl EnhancedDevice {
 
         // Minimum length requirement — too-short challenges cannot provide replay protection
         if challenge.len() < 16 {
-            tracing::warn!("Device challenge too short ({} chars) for: {}", challenge.len(), self.device_id);
+            tracing::warn!(
+                "Device challenge too short ({} chars) for: {}",
+                challenge.len(),
+                self.device_id
+            );
             return Ok(false);
         }
 
@@ -406,7 +410,10 @@ impl EnhancedDevice {
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '-' | '_' | '='));
 
         if !valid_chars {
-            tracing::warn!("Device challenge contains invalid characters for: {}", self.device_id);
+            tracing::warn!(
+                "Device challenge contains invalid characters for: {}",
+                self.device_id
+            );
             return Ok(false);
         }
 
@@ -516,7 +523,7 @@ mod tests {
         ] {
             let score = device(id).calculate_trust_score().await;
             assert!(
-                score >= 0.0 && score <= 1.0,
+                (0.0f64..=1.0).contains(&score),
                 "Trust score {score} out of range [0,1] for '{id}'"
             );
         }
@@ -600,9 +607,9 @@ mod tests {
         // check_device_trust_signals fails only when score < 0.7, so this passes.
         let d = device("new-test-device-abcde"); // score exactly 0.7
         let challenge = "SGVsbG8gV29ybGQh";
-        assert!(d.authenticate(challenge).await.unwrap(),
-            "Device at minimum trust score (0.7) should still authenticate");
+        assert!(
+            d.authenticate(challenge).await.unwrap(),
+            "Device at minimum trust score (0.7) should still authenticate"
+        );
     }
 }
-
-

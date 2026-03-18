@@ -277,5 +277,3 @@ impl From<crate::errors::AuthError> for ApiResponse<()> {
         }
     }
 }
-
-

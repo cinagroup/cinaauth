@@ -136,12 +136,10 @@ impl Default for CaepConfig {
         let mut bytes = [0u8; 32];
         rng.fill(&mut bytes)
             .expect("System CSPRNG unavailable; cannot initialise CaepConfig signing secret");
-        let signing_secret = bytes
-            .iter()
-            .fold(String::with_capacity(64), |mut s, b| {
-                s.push_str(&format!("{b:02x}"));
-                s
-            });
+        let signing_secret = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
+            s.push_str(&format!("{b:02x}"));
+            s
+        });
 
         Self {
             event_stream_url: "wss://localhost:8080/caep/events".to_string(),

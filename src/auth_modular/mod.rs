@@ -50,13 +50,20 @@
 //!
 //! The modular framework maintains API compatibility with the main framework,
 //! making migration straightforward while providing additional flexibility.
+//!
+//! # When To Use This Module
+//!
+//! Prefer [`crate::AuthFramework`] for most applications.
+//! Reach for [`crate::ModularAuthFramework`] only when you need direct access
+//! to manager-level composition such as `session_manager()` or `user_manager()`.
 
+pub mod authorization_manager;
 pub mod mfa;
 pub mod session_manager;
 pub mod user_manager;
 
-use crate::config::AuthConfig;
 use crate::authentication::credentials::{Credential, CredentialMetadata};
+use crate::config::AuthConfig;
 use crate::errors::{AuthError, MfaError, Result};
 use crate::methods::{AuthMethod, AuthMethodEnum, MethodResult, MfaChallenge};
 use crate::permissions::{Permission, PermissionChecker};
@@ -68,22 +75,13 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
+pub use authorization_manager::AuthorizationManager;
 pub use mfa::MfaManager;
 pub use session_manager::SessionManager;
 pub use user_manager::{UserInfo, UserManager};
 
-/// Result of an authentication attempt
-#[derive(Debug, Clone)]
-pub enum AuthResult {
-    /// Authentication was successful
-    Success(Box<AuthToken>),
-
-    /// Multi-factor authentication is required
-    MfaRequired(Box<MfaChallenge>),
-
-    /// Authentication failed
-    Failure(String),
-}
+/// Result of an authentication attempt — alias for the canonical [`crate::auth::AuthResult`].
+pub use crate::auth::AuthResult;
 
 /// Main authentication framework - now focused and modular
 pub struct AuthFramework {
@@ -183,13 +181,13 @@ impl AuthFramework {
         // Create storage backend
         let storage: Arc<dyn AuthStorage> = match &config.storage {
             #[cfg(feature = "redis-storage")]
-            crate::config::StorageConfig::Redis { url, key_prefix } => {
-                Arc::new(crate::storage::RedisStorage::new(url, key_prefix).map_err(|e| {
+            crate::config::StorageConfig::Redis { url, key_prefix } => Arc::new(
+                crate::storage::RedisStorage::new(url, key_prefix).map_err(|e| {
                     crate::errors::AuthError::configuration(format!(
                         "Failed to create Redis storage: {e}"
                     ))
-                })?)
-            }
+                })?,
+            ),
             _ => Arc::new(MemoryStorage::new()),
         };
 
@@ -501,12 +499,9 @@ impl AuthFramework {
         };
 
         // Create authentication token
-        let token = self.token_manager.create_auth_token(
-            &challenge.user_id,
-            scopes,
-            "mfa",
-            None,
-        )?;
+        let token =
+            self.token_manager
+                .create_auth_token(&challenge.user_id, scopes, "mfa", None)?;
 
         // Store the token
         self.storage.store_token(&token).await?;
@@ -714,6 +709,7 @@ mod tests {
             cookie_same_site: crate::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(3600),
+            previous_secret_key: None,
         });
         let mut framework = AuthFramework::new(config);
 
@@ -733,6 +729,7 @@ mod tests {
             cookie_same_site: crate::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(3600),
+            previous_secret_key: None,
         });
         let framework = AuthFramework::new(config);
 
@@ -742,6 +739,3 @@ mod tests {
         let _user_manager = framework.user_manager();
     }
 }
-
-
-

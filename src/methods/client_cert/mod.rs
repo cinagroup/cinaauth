@@ -214,14 +214,13 @@ impl ClientCertAuthMethod {
             });
         }
 
-        let (_, cert) = X509Certificate::from_der(cert_der).map_err(|_| {
-            AuthError::InvalidCredential {
+        let (_, cert) =
+            X509Certificate::from_der(cert_der).map_err(|_| AuthError::InvalidCredential {
                 credential_type: "certificate".to_string(),
                 message: "Failed to parse X.509 DER certificate — verify that the bytes \
                           are DER-encoded (not PEM) and are not truncated."
                     .to_string(),
-            }
-        })?;
+            })?;
 
         self.check_validity(&cert)?;
         self.check_subject_allowlist(&cert)?;
@@ -231,10 +230,7 @@ impl ClientCertAuthMethod {
         self.extract_identity(&cert)
     }
 
-    fn check_validity(
-        &self,
-        cert: &x509_parser::certificate::X509Certificate<'_>,
-    ) -> Result<()> {
+    fn check_validity(&self, cert: &x509_parser::certificate::X509Certificate<'_>) -> Result<()> {
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap_or_default()
@@ -277,10 +273,7 @@ impl ClientCertAuthMethod {
         {
             return Err(AuthError::InvalidCredential {
                 credential_type: "certificate".to_string(),
-                message: format!(
-                    "Subject DN '{}' is not in the subject allowlist",
-                    subject
-                ),
+                message: format!("Subject DN '{}' is not in the subject allowlist", subject),
             });
         }
         Ok(())
@@ -343,12 +336,11 @@ impl ClientCertAuthMethod {
 
         use x509_parser::prelude::*;
 
-        let (_, cert) = X509Certificate::from_der(cert_der).map_err(|_| {
-            AuthError::InvalidCredential {
+        let (_, cert) =
+            X509Certificate::from_der(cert_der).map_err(|_| AuthError::InvalidCredential {
                 credential_type: "certificate".to_string(),
                 message: "Failed to re-parse certificate for chain check".to_string(),
-            }
-        })?;
+            })?;
         let issuer_dn = cert.issuer().to_string();
 
         let found = self.config.trusted_ca_ders.iter().any(|ca_der| {
@@ -390,8 +382,8 @@ impl ClientCertAuthMethod {
         // Collect DNS, email, and IP SANs from the SAN extension (OID 2.5.29.17).
         let mut sans: Vec<String> = Vec::new();
         for ext in cert.extensions() {
-            if ext.oid.to_id_string() == "2.5.29.17" {
-                if let x509_parser::extensions::ParsedExtension::SubjectAlternativeName(san) =
+            if ext.oid.to_id_string() == "2.5.29.17"
+                && let x509_parser::extensions::ParsedExtension::SubjectAlternativeName(san) =
                     ext.parsed_extension()
                 {
                     for gn in &san.general_names {
@@ -410,7 +402,6 @@ impl ClientCertAuthMethod {
                         sans.push(entry);
                     }
                 }
-            }
         }
 
         Ok(CertIdentity {
@@ -491,10 +482,7 @@ mod tests {
             passphrase: None,
         };
         let err = method.authenticate(&cred).unwrap_err();
-        assert!(
-            format!("{err}").contains("empty"),
-            "unexpected: {err}"
-        );
+        assert!(format!("{err}").contains("empty"), "unexpected: {err}");
     }
 
     #[test]
@@ -584,10 +572,10 @@ mod tests {
         let tbs_body: Vec<u8> = [
             version.as_slice(),
             serial.as_slice(),
-            alg_id.as_slice(),      // signatureAlgorithm
-            name.as_slice(),        // issuer
+            alg_id.as_slice(), // signatureAlgorithm
+            name.as_slice(),   // issuer
             validity.as_slice(),
-            name.as_slice(),        // subject (same as issuer: self-signed)
+            name.as_slice(), // subject (same as issuer: self-signed)
             spki.as_slice(),
         ]
         .concat();
@@ -600,12 +588,8 @@ mod tests {
         let sig_bit_str = tlv(0x03, &sig_content);
 
         // Certificate: SEQUENCE { tbs, signatureAlgorithm, signatureValue }
-        let cert_body: Vec<u8> = [
-            tbs.as_slice(),
-            alg_id.as_slice(),
-            sig_bit_str.as_slice(),
-        ]
-        .concat();
+        let cert_body: Vec<u8> =
+            [tbs.as_slice(), alg_id.as_slice(), sig_bit_str.as_slice()].concat();
         long_tlv(0x30, &cert_body)
     }
 

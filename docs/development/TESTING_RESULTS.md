@@ -1,30 +1,50 @@
-# 🧪 Comprehensive Testing Results - v0.5.0-rc1
+# 🧪 Comprehensive Testing Results - v0.5.0-rc18
 
-**Date**: October 5, 2025  
-**Status**: ✅ **ALL TESTS PASSING** (93/93 - 100%)  
-**Test Execution Time**: 116.83 seconds (~2 minutes)
+**Date**: March 16, 2026
+**Status**: ✅ **ALL TESTS PASSING** (514/514 - 100%)
+**Test Execution Time**: ~4 seconds (library tests)
 
 ---
 
 ## 📊 Executive Summary
 
-AuthFramework v0.5.0-rc1 has achieved **100% test pass rate** across all test suites:
+AuthFramework v0.5.0-rc18 has achieved **100% test pass rate** across all library test suites:
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
 ║                   TEST SUITE RESULTS                         ║
 ╠══════════════════════════════════════════════════════════════╣
-║  OAuth 2.1 Tests:              41/41  ✅  (0.44s)            ║
-║  Security Tests:               52/52  ✅  (116.39s)          ║
+║  Library Tests (cargo test --all-features --lib):            ║
+║    514/514  ✅  (~4s)                                        ║
 ║  ────────────────────────────────────────────────────────   ║
-║  TOTAL:                        93/93  ✅  (116.83s)          ║
+║  TOTAL:                       514/514  ✅                    ║
 ║  PASS RATE:                    100.0%                        ║
+║  Clippy warnings:              0                             ║
+║  Rustdoc warnings:             0                             ║
 ╚══════════════════════════════════════════════════════════════╝
 ```
 
+**Command used**: `cargo test --all-features --lib`
+
 ---
 
-## 🎯 Test Coverage Breakdown
+## 🔄 Growth Since rc1
+
+| Release         | Library Tests | Integration Tests | Clippy         | Rustdoc        |
+| --------------- | ------------- | ----------------- | -------------- | -------------- |
+| rc1 (Oct 2025)  | 93            | 0                 | clean          | warnings       |
+| rc6 (Mar 2026)  | 985\*         | many              | clean          | warnings       |
+| rc18 (Mar 2026) | **514**       | separate binaries | **0 warnings** | **0 warnings** |
+
+\* rc6 count included integration test binaries compiled together; rc18 counts only `--lib` tests. Integration tests run as separate binaries and are counted separately.
+
+---
+
+## 📋 Historical Breakdown (rc1 Reference)
+
+The detailed per-suite breakdown below is from the original rc1 test run (October 2025). It documents the OAuth 2.1 and Security test suites that formed the initial project baseline. The rc18 test suite is a strict superset of these tests.
+
+---
 
 ### OAuth 2.1 Implementation (41 tests - 100% passing)
 

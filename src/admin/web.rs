@@ -274,6 +274,7 @@ struct LoginForm {
 
 #[cfg(feature = "web-gui")]
 #[derive(Deserialize)]
+#[allow(dead_code)] // Fields are read by axum's Form extractor via serde deserialization.
 struct ConfigEditForm {
     key: String,
     value: String,
@@ -281,6 +282,7 @@ struct ConfigEditForm {
 
 #[cfg(feature = "web-gui")]
 #[derive(Deserialize)]
+#[allow(dead_code)] // Fields are read by axum's Form extractor via serde deserialization.
 struct CreateUserForm {
     email: String,
     password: String,
@@ -448,7 +450,10 @@ async fn create_user_handler(
     // Generate a username from the email local part.
     let username = form.email.split('@').next().unwrap_or("user");
 
-    match af.register_user(username, &form.email, &form.password).await {
+    match af
+        .register_user(username, &form.email, &form.password)
+        .await
+    {
         Ok(user_id) => {
             tracing::info!(user_id = %user_id, email = %form.email, "User created via admin GUI");
             // Escape dynamic values to prevent XSS in the HTML response.
@@ -588,10 +593,7 @@ async fn login_post_handler(
 }
 
 #[cfg(feature = "web-gui")]
-async fn logout_handler(
-    State(state): State<AppState>,
-    request: Request,
-) -> impl IntoResponse {
+async fn logout_handler(State(state): State<AppState>, request: Request) -> impl IntoResponse {
     // Remove the session token from the server-side set so it cannot be reused.
     if let Some(token) = request
         .headers()
@@ -603,11 +605,9 @@ async fn logout_handler(
                 .find(|c| c.trim().starts_with("auth_session="))
                 .map(|c| c.trim()["auth_session=".len()..].to_string())
         })
-    {
-        if let Ok(mut sessions) = state.admin_sessions.lock() {
+        && let Ok(mut sessions) = state.admin_sessions.lock() {
             sessions.remove(&token);
         }
-    }
     let mut response = Redirect::to("/login").into_response();
     response.headers_mut().insert(
         "Set-Cookie",
@@ -653,8 +653,8 @@ async fn api_config_update_handler(
     tracing::info!(payload = ?payload, "API config update via admin GUI");
 
     // Attempt to reload the configuration.
-    // In a fully dynamic implementation, we would extract the payload values 
-    // and write them back to `AuthFrameworkSettings` backing file. 
+    // In a fully dynamic implementation, we would extract the payload values
+    // and write them back to `AuthFrameworkSettings` backing file.
     // For now we just trigger a config refresh from disk.
     if let Err(e) = state.reload_config().await {
         tracing::error!("Failed to reload config: {}", e);
@@ -683,8 +683,8 @@ async fn api_users_handler(State(state): State<AppState>) -> impl IntoResponse {
         let mut result = Vec::with_capacity(user_ids.len());
         for user_id in &user_ids {
             let key = format!("user:{}", user_id);
-            if let Ok(Some(bytes)) = storage.get_kv(&key).await {
-                if let Ok(data) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+            if let Ok(Some(bytes)) = storage.get_kv(&key).await
+                && let Ok(data) = serde_json::from_slice::<serde_json::Value>(&bytes) {
                     let email = data["email"].as_str().unwrap_or("").to_string();
                     let active = data["active"].as_bool().unwrap_or(true);
                     let created = data["created_at"].as_str().unwrap_or("").to_string();
@@ -697,9 +697,15 @@ async fn api_users_handler(State(state): State<AppState>) -> impl IntoResponse {
                                 .collect()
                         })
                         .unwrap_or_else(|| vec!["user".to_string()]);
-                    result.push(User { id: user_id.clone(), email, active, created, last_login, roles });
+                    result.push(User {
+                        id: user_id.clone(),
+                        email,
+                        active,
+                        created,
+                        last_login,
+                        roles,
+                    });
                 }
-            }
         }
         result
     } else {
@@ -749,4 +755,36 @@ async fn api_security_handler(State(state): State<AppState>) -> impl IntoRespons
     }
 
     axum::Json(events)
+}
+
+#[cfg(all(test, feature = "web-gui"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_escape_html_special_chars() {
+        assert_eq!(escape_html("<script>"), "&lt;script&gt;");
+        assert_eq!(escape_html("a & b"), "a &amp; b");
+        assert_eq!(escape_html("\"quoted\""), "&quot;quoted&quot;");
+        assert_eq!(escape_html("it's"), "it&#x27;s");
+    }
+
+    #[test]
+    fn test_escape_html_empty_string() {
+        assert_eq!(escape_html(""), "");
+    }
+
+    #[test]
+    fn test_escape_html_no_special_chars() {
+        assert_eq!(escape_html("hello world"), "hello world");
+    }
+
+    #[test]
+    fn test_escape_html_xss_payload() {
+        let input = "<img src=x onerror='alert(1)'>";
+        let escaped = escape_html(input);
+        assert!(!escaped.contains('<'));
+        assert!(!escaped.contains('>'));
+        assert!(!escaped.contains('\''));
+    }
 }

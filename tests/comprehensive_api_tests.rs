@@ -54,6 +54,7 @@ mod framework_lifecycle_tests {
                 cookie_same_site: CookieSameSite::Strict,
                 csrf_protection: true,
                 session_timeout: Duration::from_secs(1800),
+                previous_secret_key: None,
             })
             .rate_limiting(RateLimitConfig {
                 enabled: true,

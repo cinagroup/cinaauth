@@ -350,11 +350,11 @@ async fn test_input_injection_attacks() {
         // authentication.  An `Ok(AuthResult::Failure)` or `Err(_)` are both acceptable;
         // only `Ok(AuthResult::Success(_))` would be a vulnerability.
         let credential = Credential::password(pattern, "password");
-        match framework.authenticate("password", credential).await {
-            Ok(AuthResult::Success(_)) => {
-                panic!("Injection pattern should not produce a successful auth: {}", pattern);
-            }
-            Ok(_) | Err(_) => {} // Failure or error is fine
+        if let Ok(AuthResult::Success(_)) = framework.authenticate("password", credential).await {
+            panic!(
+                "Injection pattern should not produce a successful auth: {}",
+                pattern
+            );
         }
 
         // Test in session creation

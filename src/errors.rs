@@ -816,9 +816,7 @@ impl actix_web::ResponseError for AuthError {
             AuthError::RateLimit { .. } => actix_web::http::StatusCode::TOO_MANY_REQUESTS,
             AuthError::Internal { .. }
             | AuthError::Configuration { .. }
-            | AuthError::Storage(_) => {
-                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
-            }
+            | AuthError::Storage(_) => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
             _ => actix_web::http::StatusCode::BAD_REQUEST,
         }
     }

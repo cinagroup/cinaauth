@@ -28,6 +28,24 @@ build_errors.txt
 check_output.txt
 check_errors.txt
 check_results.txt
+cargo_check_*.txt
+clippy_*.txt
+rustdoc_output.txt
+metadata_err.txt
+tree_out.txt
+
+# Test output files
+test_*.txt
+test_results*.txt
+final_test_out.txt
+
+# Log files
+*.log
+doc_test.log
+full_check.log
+
+# Coverage output
+lcov.info
 
 # Rust panic/ICE trace files
 rustc-ice-*.txt
@@ -38,10 +56,17 @@ public.pem
 
 # Temporary development notes and analysis files
 facebook_post.md
-ERGONOMICS_ANALYSIS_COMPLETE.md
-test_results*.txt
 
-# Python cache
+# Backup files
+*.backup
+*.md.backup
+
+# Development scripts (root-level only, not scripts/)
+/*.ps1
+
+# Python bytecode / cache
+main.py
 __pycache__/
+**/__pycache__/
 *.pyc
 

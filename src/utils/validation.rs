@@ -177,8 +177,8 @@ pub fn validate_username(username: &str) -> Result<()> {
 
     // Username must start with a letter and may then contain letters, digits,
     // underscores, and hyphens (3–50 chars total).
-    let username_regex = USERNAME_RE
-        .get_or_init(|| Regex::new(r"^[a-zA-Z0-9_-]+$").expect("valid username regex"));
+    let username_regex =
+        USERNAME_RE.get_or_init(|| Regex::new(r"^[a-zA-Z0-9_-]+$").expect("valid username regex"));
     if !username_regex.is_match(username) {
         return Err(AuthError::validation(
             "Username can only contain letters, numbers, underscores, and hyphens".to_string(),
@@ -186,11 +186,7 @@ pub fn validate_username(username: &str) -> Result<()> {
     }
 
     // Must start with a letter
-    if !username
-        .chars()
-        .next()
-        .is_some_and(|c| c.is_alphabetic())
-    {
+    if !username.chars().next().is_some_and(|c| c.is_alphabetic()) {
         return Err(AuthError::validation(
             "Username must start with a letter".to_string(),
         ));
@@ -214,8 +210,7 @@ pub fn validate_email(email: &str) -> Result<()> {
 
     // Basic email validation regex (compiled once for performance).
     let email_regex = EMAIL_RE.get_or_init(|| {
-        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-            .expect("valid email regex")
+        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").expect("valid email regex")
     });
     if !email_regex.is_match(email) {
         return Err(AuthError::validation("Invalid email format".to_string()));
@@ -251,6 +246,56 @@ pub fn validate_api_key(api_key: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Validate user-supplied input against common injection patterns.
+///
+/// Returns `true` when the input is safe to process. Rejects HTML/XML angle brackets,
+/// URL-encoded angle brackets, null bytes, dangerous URI schemes (`javascript:`, `data:`,
+/// `file:`, `jndi:`), template injection markers, path traversal sequences, and trivial
+/// SQL injection patterns.
+pub fn validate_user_input(input: &str) -> bool {
+    if input.is_empty() || input.len() > 1000 {
+        return false;
+    }
+    if !input.chars().all(|c| {
+        if c.is_control() {
+            matches!(c, ' ' | '\t' | '\n' | '\r')
+        } else {
+            !matches!(c, '<' | '>')
+        }
+    }) {
+        return false;
+    }
+    let lower = input.to_ascii_lowercase();
+    if lower.contains("%3c") || lower.contains("%3e") || lower.contains("%00") {
+        return false;
+    }
+    if lower.contains("javascript:")
+        || lower.contains("data:")
+        || lower.contains("file:")
+        || lower.contains("jndi:")
+    {
+        return false;
+    }
+    if input.contains("${") || input.contains("{{") {
+        return false;
+    }
+    if input.contains("../") || input.contains("..\\") {
+        return false;
+    }
+    if input.contains('\0') {
+        return false;
+    }
+    if lower.contains("; drop")
+        || lower.contains(";drop")
+        || lower.contains("' drop")
+        || lower.contains("'; drop")
+        || lower.contains("--")
+    {
+        return false;
+    }
+    true
 }
 
 #[cfg(test)]

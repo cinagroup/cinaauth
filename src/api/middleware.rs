@@ -5,14 +5,14 @@
 use crate::api::{ApiResponse, ApiState};
 use crate::distributed_rate_limiting::RateLimitResult;
 use axum::{
-    extract::{Request},
+    extract::Request,
     http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
 };
 use std::time::{Duration, Instant};
 
-/// Rate limiting middleware backed by [`DistributedRateLimiter`].
+/// Rate limiting middleware backed by [`crate::distributed_rate_limiting::DistributedRateLimiter`].
 ///
 /// Uses the client IP address (from `X-Forwarded-For`, then `X-Real-IP`, falling back to
 /// `"unknown"`) as the rate-limiting key.  Returns **429 Too Many Requests** when the limit
@@ -52,7 +52,10 @@ pub async fn rate_limit_middleware_with_state(
         });
 
     match state.rate_limiter.check_rate_limit(&client_key).await {
-        Ok(RateLimitResult::Allowed { remaining, reset_at }) => {
+        Ok(RateLimitResult::Allowed {
+            remaining,
+            reset_at,
+        }) => {
             let mut response = next.run(request).await;
             let headers = response.headers_mut();
             let reset_secs = reset_at
@@ -219,5 +222,3 @@ pub fn check_role(auth_token: &crate::tokens::AuthToken, required_role: &str) ->
     auth_token.roles.contains(&required_role.to_string())
         || auth_token.roles.contains(&"admin".to_string()) // Admin has all roles
 }
-
-

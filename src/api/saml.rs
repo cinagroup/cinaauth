@@ -8,13 +8,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[cfg(feature = "saml")]
-use bergshamra::{verify, DsigContext, KeyData, Key, KeysManager, VerifyResult};
+use bergshamra::{DsigContext, Key, KeyData, KeysManager, VerifyResult, verify};
+#[cfg(feature = "saml")]
+use quick_xml::Reader;
 #[cfg(feature = "saml")]
 use quick_xml::events::Event;
 #[cfg(feature = "saml")]
 use quick_xml::name::QName;
-#[cfg(feature = "saml")]
-use quick_xml::Reader;
 
 /// Extract the local name (without namespace prefix) from a `QName`, taking
 /// ownership to avoid temporary-lifetime issues from method chaining.
@@ -87,30 +87,34 @@ pub struct SamlLogoutResponse {
 /// Store a JSON object with those fields to customise the metadata for your deployment.
 pub async fn get_saml_metadata(State(state): State<ApiState>) -> Html<String> {
     // Read SP config from storage; fall back to placeholder values.
-    let (entity_id, acs_url, slo_url) =
-        if let Ok(Some(data)) = state.auth_framework.storage().get_kv("saml_sp:config").await {
-            let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-            (
-                cfg["entity_id"]
-                    .as_str()
-                    .unwrap_or("https://auth.example.com")
-                    .to_string(),
-                cfg["acs_url"]
-                    .as_str()
-                    .unwrap_or("https://auth.example.com/api/saml/acs")
-                    .to_string(),
-                cfg["slo_url"]
-                    .as_str()
-                    .unwrap_or("https://auth.example.com/api/saml/slo")
-                    .to_string(),
-            )
-        } else {
-            (
-                "https://auth.example.com".to_string(),
-                "https://auth.example.com/api/saml/acs".to_string(),
-                "https://auth.example.com/api/saml/slo".to_string(),
-            )
-        };
+    let (entity_id, acs_url, slo_url) = if let Ok(Some(data)) = state
+        .auth_framework
+        .storage()
+        .get_kv("saml_sp:config")
+        .await
+    {
+        let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
+        (
+            cfg["entity_id"]
+                .as_str()
+                .unwrap_or("https://auth.example.com")
+                .to_string(),
+            cfg["acs_url"]
+                .as_str()
+                .unwrap_or("https://auth.example.com/api/saml/acs")
+                .to_string(),
+            cfg["slo_url"]
+                .as_str()
+                .unwrap_or("https://auth.example.com/api/saml/slo")
+                .to_string(),
+        )
+    } else {
+        (
+            "https://auth.example.com".to_string(),
+            "https://auth.example.com/api/saml/acs".to_string(),
+            "https://auth.example.com/api/saml/slo".to_string(),
+        )
+    };
 
     let metadata_xml = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -172,25 +176,29 @@ pub async fn initiate_saml_sso(
     };
 
     // Read SP config for Issuer/ACS URL; fall back to defaults.
-    let (sp_entity_id, sp_acs_url) =
-        if let Ok(Some(data)) = state.auth_framework.storage().get_kv("saml_sp:config").await {
-            let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-            (
-                cfg["entity_id"]
-                    .as_str()
-                    .unwrap_or("https://auth.example.com")
-                    .to_string(),
-                cfg["acs_url"]
-                    .as_str()
-                    .unwrap_or("https://auth.example.com/api/saml/acs")
-                    .to_string(),
-            )
-        } else {
-            (
-                "https://auth.example.com".to_string(),
-                "https://auth.example.com/api/saml/acs".to_string(),
-            )
-        };
+    let (sp_entity_id, sp_acs_url) = if let Ok(Some(data)) = state
+        .auth_framework
+        .storage()
+        .get_kv("saml_sp:config")
+        .await
+    {
+        let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
+        (
+            cfg["entity_id"]
+                .as_str()
+                .unwrap_or("https://auth.example.com")
+                .to_string(),
+            cfg["acs_url"]
+                .as_str()
+                .unwrap_or("https://auth.example.com/api/saml/acs")
+                .to_string(),
+        )
+    } else {
+        (
+            "https://auth.example.com".to_string(),
+            "https://auth.example.com/api/saml/acs".to_string(),
+        )
+    };
 
     // Generate SAML AuthnRequest
     let request_id = format!("saml_{}", uuid::Uuid::new_v4());
@@ -343,7 +351,9 @@ pub async fn handle_saml_acs(
         }
     } else {
         // Unsolicited SAML responses (no InResponseTo) are a common attack vector.
-        tracing::warn!("SAML ACS: response has no InResponseTo attribute — rejecting unsolicited response");
+        tracing::warn!(
+            "SAML ACS: response has no InResponseTo attribute — rejecting unsolicited response"
+        );
         return Json(ApiResponse::error_typed(
             "SAML_UNSOLICITED_RESPONSE",
             "Unsolicited SAML responses are not accepted; initiate SSO via /api/saml/sso first",
@@ -464,16 +474,20 @@ pub async fn initiate_saml_slo(
     };
 
     // Read SP entity ID for Issuer field.
-    let sp_entity_id =
-        if let Ok(Some(data)) = state.auth_framework.storage().get_kv("saml_sp:config").await {
-            let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-            cfg["entity_id"]
-                .as_str()
-                .unwrap_or("https://auth.example.com")
-                .to_string()
-        } else {
-            "https://auth.example.com".to_string()
-        };
+    let sp_entity_id = if let Ok(Some(data)) = state
+        .auth_framework
+        .storage()
+        .get_kv("saml_sp:config")
+        .await
+    {
+        let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
+        cfg["entity_id"]
+            .as_str()
+            .unwrap_or("https://auth.example.com")
+            .to_string()
+    } else {
+        "https://auth.example.com".to_string()
+    };
 
     let logout_id = format!("logout_{}", uuid::Uuid::new_v4());
     let issue_instant = chrono::Utc::now().to_rfc3339();
@@ -583,16 +597,20 @@ pub async fn create_saml_assertion(
     };
 
     // Read SP entity ID for Issuer field.
-    let sp_entity_id =
-        if let Ok(Some(data)) = state.auth_framework.storage().get_kv("saml_sp:config").await {
-            let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-            cfg["entity_id"]
-                .as_str()
-                .unwrap_or("https://auth.example.com")
-                .to_string()
-        } else {
-            "https://auth.example.com".to_string()
-        };
+    let sp_entity_id = if let Ok(Some(data)) = state
+        .auth_framework
+        .storage()
+        .get_kv("saml_sp:config")
+        .await
+    {
+        let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
+        cfg["entity_id"]
+            .as_str()
+            .unwrap_or("https://auth.example.com")
+            .to_string()
+    } else {
+        "https://auth.example.com".to_string()
+    };
 
     // Use the username as-is if it already looks like an email address (contains '@');
     // otherwise treat it as a local part and append a placeholder domain.
@@ -645,31 +663,37 @@ pub async fn list_saml_idps(
     State(state): State<ApiState>,
 ) -> Json<ApiResponse<Vec<serde_json::Value>>> {
     // Load the IdP index from storage.
-    let entity_ids: Vec<String> =
-        match state.auth_framework.storage().get_kv("saml_idps:index").await {
-            Ok(Some(data)) => serde_json::from_slice(&data).unwrap_or_default(),
-            Ok(None) => vec![],
-            Err(e) => {
-                tracing::error!(error = %e, "Failed to load SAML IdP index");
-                return Json(ApiResponse::error_typed(
-                    "server_error",
-                    "Failed to load IdP list",
-                ));
-            }
-        };
+    let entity_ids: Vec<String> = match state
+        .auth_framework
+        .storage()
+        .get_kv("saml_idps:index")
+        .await
+    {
+        Ok(Some(data)) => serde_json::from_slice(&data).unwrap_or_default(),
+        Ok(None) => vec![],
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to load SAML IdP index");
+            return Json(ApiResponse::error_typed(
+                "server_error",
+                "Failed to load IdP list",
+            ));
+        }
+    };
 
     // Fetch each IdP's config.
     let mut idps = Vec::with_capacity(entity_ids.len());
     for entity_id in &entity_ids {
         let key = format!("saml_idp:{}", entity_id);
-        if let Ok(Some(data)) = state.auth_framework.storage().get_kv(&key).await {
-            if let Ok(cfg) = serde_json::from_slice::<serde_json::Value>(&data) {
+        if let Ok(Some(data)) = state.auth_framework.storage().get_kv(&key).await
+            && let Ok(cfg) = serde_json::from_slice::<serde_json::Value>(&data) {
                 idps.push(cfg);
             }
-        }
     }
 
-    Json(ApiResponse::success_with_message(idps, "SAML IdPs retrieved"))
+    Json(ApiResponse::success_with_message(
+        idps,
+        "SAML IdPs retrieved",
+    ))
 }
 
 /// Validate the XML-DSig signature on a SAML response using the IdP's trusted signing key.
@@ -699,8 +723,8 @@ async fn validate_saml_signature(state: &ApiState, saml_xml: &str) -> Result<(),
         .map_err(|e| format!("Storage error loading IdP config: {}", e))?
         .ok_or_else(|| format!("IdP not configured: {}", issuer))?;
 
-    let idp_cfg: serde_json::Value =
-        serde_json::from_slice(&idp_cfg_data).map_err(|e| format!("Invalid IdP config JSON: {}", e))?;
+    let idp_cfg: serde_json::Value = serde_json::from_slice(&idp_cfg_data)
+        .map_err(|e| format!("Invalid IdP config JSON: {}", e))?;
 
     let signing_cert_pem = idp_cfg["signing_cert"]
         .as_str()
@@ -730,8 +754,8 @@ async fn validate_saml_signature(state: &ApiState, saml_xml: &str) -> Result<(),
         .with_verify_keys(true);
 
     // Verify the XML signature.
-    let result = verify(&ctx, saml_xml)
-        .map_err(|e| format!("XML-DSig verification error: {}", e))?;
+    let result =
+        verify(&ctx, saml_xml).map_err(|e| format!("XML-DSig verification error: {}", e))?;
 
     match result {
         VerifyResult::Valid { references, .. } => {
@@ -741,9 +765,7 @@ async fn validate_saml_signature(state: &ApiState, saml_xml: &str) -> Result<(),
             }
             Ok(())
         }
-        VerifyResult::Invalid { reason } => {
-            Err(format!("Signature invalid: {}", reason))
-        }
+        VerifyResult::Invalid { reason } => Err(format!("Signature invalid: {}", reason)),
     }
 }
 
@@ -986,8 +1008,7 @@ fn extract_attributes_from_saml(saml_xml: &str) -> Result<HashMap<String, Vec<St
                     current_attr_name = None;
                     for attr in e.attributes().flatten() {
                         if xml_local(attr.key) == b"Name" {
-                            current_attr_name =
-                                String::from_utf8(attr.value.to_vec()).ok();
+                            current_attr_name = String::from_utf8(attr.value.to_vec()).ok();
                         }
                     }
                 } else if in_attribute && local == b"AttributeValue" {
@@ -999,11 +1020,10 @@ fn extract_attributes_from_saml(saml_xml: &str) -> Result<HashMap<String, Vec<St
                 if local == b"AttributeValue" {
                     in_attr_value = false;
                 } else if local == b"Attribute" && in_attribute {
-                    if let Some(name) = current_attr_name.take() {
-                        if !current_values.is_empty() {
+                    if let Some(name) = current_attr_name.take()
+                        && !current_values.is_empty() {
                             attributes.insert(name, std::mem::take(&mut current_values));
                         }
-                    }
                     in_attribute = false;
                 } else if local == b"AttributeStatement" {
                     in_attr_statement = false;
@@ -1178,30 +1198,35 @@ mod tests {
 
     #[test]
     fn test_extract_issuer() {
-        let xml = r#"<saml:Assertion><saml:Issuer>https://idp.example.com</saml:Issuer></saml:Assertion>"#;
+        // extract_issuer looks for an <Issuer> that is a direct child of a <Response> element.
+        let xml = r#"<samlp:Response><saml:Issuer>https://idp.example.com</saml:Issuer></samlp:Response>"#;
         assert_eq!(extract_issuer(xml).unwrap(), "https://idp.example.com");
     }
 
     #[test]
     fn test_extract_username() {
-        let xml = r#"<saml:Subject><saml:NameID>user@example.com</saml:NameID></saml:Subject>"#;
+        // extract_username_from_saml looks for a <NameID> inside an <Assertion> element.
+        let xml = r#"<saml:Assertion><saml:Subject><saml:NameID>user@example.com</saml:NameID></saml:Subject></saml:Assertion>"#;
         assert_eq!(extract_username_from_saml(xml).unwrap(), "user@example.com");
     }
 
     #[test]
     fn test_validate_conditions_time() {
+        // validate_saml_conditions looks for <Conditions> inside an <Assertion> element.
         let now = Utc::now();
         let past = now - Duration::minutes(10);
         let future = now + Duration::minutes(10);
         let xml = format!(
-            r#"<saml:Conditions NotBefore="{}" NotOnOrAfter="{}"><saml:AudienceRestriction><saml:Audience>test-aud</saml:Audience></saml:AudienceRestriction></saml:Conditions>"#,
-            past.to_rfc3339(), future.to_rfc3339()
+            r#"<saml:Assertion><saml:Conditions NotBefore="{}" NotOnOrAfter="{}"><saml:AudienceRestriction><saml:Audience>test-aud</saml:Audience></saml:AudienceRestriction></saml:Conditions></saml:Assertion>"#,
+            past.to_rfc3339(),
+            future.to_rfc3339()
         );
         assert!(validate_saml_conditions(&xml, "test-aud").is_ok());
 
         let wrong_aud = format!(
-            r#"<saml:Conditions NotBefore="{}" NotOnOrAfter="{}"><saml:AudienceRestriction><saml:Audience>wrong-aud</saml:Audience></saml:AudienceRestriction></saml:Conditions>"#,
-            past.to_rfc3339(), future.to_rfc3339()
+            r#"<saml:Assertion><saml:Conditions NotBefore="{}" NotOnOrAfter="{}"><saml:AudienceRestriction><saml:Audience>wrong-aud</saml:Audience></saml:AudienceRestriction></saml:Conditions></saml:Assertion>"#,
+            past.to_rfc3339(),
+            future.to_rfc3339()
         );
         assert!(validate_saml_conditions(&wrong_aud, "test-aud").is_err());
     }
@@ -1209,7 +1234,9 @@ mod tests {
     #[test]
     fn test_extract_status() {
         let xml = r#"<samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>"#;
-        assert_eq!(xml_extract_status_code(xml).unwrap(), "urn:oasis:names:tc:SAML:2.0:status:Success");
+        assert_eq!(
+            xml_extract_status_code(xml).unwrap(),
+            "urn:oasis:names:tc:SAML:2.0:status:Success"
+        );
     }
 }
-

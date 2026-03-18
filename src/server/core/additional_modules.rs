@@ -38,7 +38,7 @@ pub mod jwt_server {
 
         /// Perform any async initialization after construction.
         ///
-        /// `JwtServer` requires no async startup work — all state is set up in [`new`].
+        /// `JwtServer` requires no async startup work — all state is set up in [`Self::new`].
         /// This method is provided for API symmetry with other server modules that
         /// do require an initialization step (e.g., connecting to external services).
         pub async fn initialize(&self) -> Result<()> {
@@ -131,7 +131,7 @@ pub mod api_gateway {
 
         /// Perform any async initialization after construction.
         ///
-        /// `ApiGateway` requires no async startup work — all state is set up in [`new`].
+        /// `ApiGateway` requires no async startup work — all state is set up in [`Self::new`].
         /// This method is provided for API symmetry with other server modules that
         /// do require an initialization step (e.g., connecting to external services).
         pub async fn initialize(&self) -> Result<()> {
@@ -221,7 +221,7 @@ pub mod saml_idp {
 
         /// Perform any async initialization after construction.
         ///
-        /// `SamlIdentityProvider` requires no async startup work — all state is set up in [`new`].
+        /// `SamlIdentityProvider` requires no async startup work — all state is set up in [`Self::new`].
         /// This method is provided for API symmetry with other server modules that
         /// do require an initialization step (e.g., connecting to external services).
         pub async fn initialize(&self) -> Result<()> {
@@ -431,22 +431,19 @@ pub mod consent {
             let key = format!("{}:{}", user_id, client_id);
 
             // Cache miss: try storage.
-            if !self.records.contains_key(&key) {
-                if let Some(storage) = &self.storage {
+            if !self.records.contains_key(&key)
+                && let Some(storage) = &self.storage {
                     let storage_key = Self::storage_key(user_id, client_id);
-                    if let Ok(Some(bytes)) = storage.get_kv(&storage_key).await {
-                        if let Ok(record) =
-                            serde_json::from_slice::<ConsentRecord>(&bytes)
-                        {
+                    if let Ok(Some(bytes)) = storage.get_kv(&storage_key).await
+                        && let Ok(record) = serde_json::from_slice::<ConsentRecord>(&bytes) {
                             self.records.insert(key.clone(), record);
                         }
-                    }
                 }
-            }
 
-            Ok(self.records.get(&key).is_some_and(|record| {
-                scopes.iter().all(|s| record.scopes.contains(s))
-            }))
+            Ok(self
+                .records
+                .get(&key)
+                .is_some_and(|record| scopes.iter().all(|s| record.scopes.contains(s))))
         }
 
         /// Return the configuration in use.
@@ -557,7 +554,7 @@ pub mod device_flow_server {
         fn default() -> Self {
             Self {
                 user_code_length: 8,
-                device_code_ttl_secs: 1800,  // 30 minutes
+                device_code_ttl_secs: 1800, // 30 minutes
                 polling_interval_secs: 5,
                 verification_uri: "https://example.com/device".to_string(),
             }
@@ -665,24 +662,17 @@ pub mod device_flow_server {
             }
             if let Some(storage) = &self.storage {
                 let key = Self::storage_key(device_code);
-                if let Some(bytes) = storage.get_kv(&key).await? {
-                    if let Ok(record) =
-                        serde_json::from_slice::<DeviceAuthRecord>(&bytes)
-                    {
+                if let Some(bytes) = storage.get_kv(&key).await?
+                    && let Ok(record) = serde_json::from_slice::<DeviceAuthRecord>(&bytes) {
                         self.records.insert(device_code.to_string(), record.clone());
                         return Ok(Some(record));
                     }
-                }
             }
             Ok(None)
         }
 
         /// Approve the authorization request for a given user code.
-        pub async fn approve(
-            &mut self,
-            user_code: &str,
-            access_token: String,
-        ) -> Result<bool> {
+        pub async fn approve(&mut self, user_code: &str, access_token: String) -> Result<bool> {
             // Find the matching record (by user_code, not device_code).
             let device_code = self
                 .records
@@ -718,5 +708,3 @@ pub mod device_flow_server {
         }
     }
 }
-
-

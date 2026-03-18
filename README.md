@@ -11,7 +11,7 @@ Production-ready • Enterprise-grade • Security-first • Bulletproof
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![Security Audit](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
 [![OAuth 2.1](https://img.shields.io/badge/OAuth-2.1-blue.svg)](https://oauth.net/2.1/)
-[![Tests](https://img.shields.io/badge/tests-579%20passing-brightgreen.svg)](docs/development/TESTING_RESULTS.md)
+[![Tests](https://img.shields.io/badge/tests-514%20passing-brightgreen.svg)](docs/development/TESTING_RESULTS.md)
 
 ## ⚡ Quick Start - Get Running in Seconds
 
@@ -36,12 +36,24 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 **Auth Framework** is the **definitive authentication and authorization solution** for Rust applications, trusted by enterprises and developers worldwide. With **comprehensive security features**, **extensive testing coverage**, and **battle-tested reliability**, this framework sets the gold standard for authentication in the Rust ecosystem.
 
+## API Orientation
+
+If you are integrating the Rust library directly, start with these entry points:
+
+- `auth_framework::AuthFramework`: recommended default entry point for most applications.
+- `auth_framework::ModularAuthFramework`: advanced entry point when you need direct access to individual managers.
+- `auth_framework::prelude::*`: ergonomic imports for application code.
+- `auth_framework::AppConfigBuilder`: simple in-process configuration builder.
+- `auth_framework::LayeredConfigBuilder` and `auth_framework::ConfigManager`: layered configuration from files and environment variables.
+
+This split exists to support both simple app integration and advanced composition, but new users should usually start with `AuthFramework` plus the prelude.
+
 ## 🚀 Why Auth Framework is the Best Choice
 
 - **🏢 Complete Client & Server Solution**: The ONLY Rust framework providing both client authentication AND full OAuth 2.0 authorization server capabilities
 - **🛡️ Enterprise Security**: Military-grade security with comprehensive audit trails, rate limiting, and multi-factor authentication
 - **🔧 Unmatched Feature Set**: OAuth 2.0 server, OIDC provider, JWT server, SAML SP, WebAuthn RP, API gateway, and more
-- **📊 Production Proven**: Extensively tested with 579 passing tests and real-world battle testing
+- **📊 Production Proven**: Extensively tested with 514 passing tests and real-world battle testing
 - **⚡ High Performance**: Optimized for speed with async-first design and efficient memory usage
 - **🌍 Framework Agnostic**: Seamless integration with Axum, Actix Web, Warp, and any Rust web framework
 - **🔒 Zero-Trust Architecture**: Built from the ground up with security-first principles and defense in depth
@@ -195,39 +207,66 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 ### 🧪 Developer Excellence
 
-- **Comprehensive Testing**: **579 passing tests** with 100% success rate and extensive coverage of OAuth 2.1, security, and integration scenarios
+- **Comprehensive Testing**: **514 passing tests** with 100% success rate and extensive coverage of OAuth 2.1, security, and integration scenarios
 - **Mock Testing Framework**: Built-in testing utilities with configurable mocks and test helpers
 - **Rich Documentation**: Complete API docs, security guides, and real-world examples
 - **Type Safety**: Leverages Rust's type system for compile-time security guarantees
 - **Error Handling**: Comprehensive error types with detailed context and recovery suggestions
 - **Enhanced Reliability**: OAuth 2.1 compliance, advanced security features, and comprehensive validation
 
-### 🆕 New in v0.3.0: Token-to-Profile Conversion
+### 🆕 Grouped Operation Accessors
 
-The new token-to-profile conversion utilities make it easier to work with OAuth providers and user profiles:
+`AuthFramework` exposes its surface through focused, discoverable accessor methods so common operations
+are easy to find and autocomplete works effectively:
 
 ```rust
-use auth_framework::{TokenToProfile, OAuthProvider, OAuthTokenResponse};
+use auth_framework::prelude::*;
 
-// Get a token from OAuth authentication
-let token_response: OAuthTokenResponse = /* from OAuth flow */;
-let provider = OAuthProvider::GitHub;
+# async fn example(auth: &AuthFramework) -> Result<(), Box<dyn std::error::Error>> {
+// User management
+let user_id = auth.users().register("alice", "alice@example.com", "hunter2").await?;
+let profile = auth.users().profile(&user_id).await?;
 
-// Automatically convert token to user profile
-let profile = token_response.to_profile(&provider).await?;
+// Token lifecycle
+let token = auth.tokens().create(&user_id, vec!["read".into()], "jwt", None).await?;
+let valid = auth.tokens().validate(&token).await?;
 
-// Now you have access to standardized user data
-println!("User ID: {}", profile.id.unwrap_or_default());
-println!("Username: {}", profile.username.unwrap_or_default());
-println!("Email: {}", profile.email.unwrap_or_default());
+// Authorization
+let allowed = auth.authorization().check(&token, "read", "documents").await?;
+
+// Multi-factor authentication
+let secret = auth.mfa().generate_totp_secret(&user_id).await?;
+
+// Monitoring and health
+let health = auth.monitoring().health_check().await?;
+
+// Audit log
+let logs = auth.audit().permission_logs(&user_id, "read", "documents", Some(20)).await?;
+# Ok(())
+# }
 ```
 
-## 🏅 Proven Excellence
+The full set of accessor groups is:
+
+| Accessor               | Purpose                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| `auth.users()`         | Register, look up, and manage user accounts              |
+| `auth.sessions()`      | Create, retrieve, and delete sessions                    |
+| `auth.tokens()`        | Issue, validate, refresh, and revoke tokens and API keys |
+| `auth.authorization()` | Permission checks, role and policy management            |
+| `auth.mfa()`           | TOTP, SMS, email, and backup-code MFA flows              |
+| `auth.monitoring()`    | Health, metrics, rate-limit status                       |
+| `auth.audit()`         | Permission logs and security statistics                  |
+| `auth.admin()`         | ABAC policies, role inheritance, resource delegation     |
+
+Import `auth_framework::prelude::*` to bring all types into scope at once.
+
+### Device Flow Credential Constructors
 
 ### Security & Reliability
 
 - **🔒 Security Audited**: Comprehensive security review with no critical vulnerabilities
-- **🧪 Battle Tested**: 579 passing tests with extensive integration and security testing
+- **🧪 Battle Tested**: 514 passing tests with extensive integration and security testing
 - **⚡ Performance Validated**: Benchmarked for high-throughput production environments
 - **🛡️ CVE-Free**: Clean security record with proactive vulnerability management
 - **📋 Compliance Ready**: GDPR, SOC 2, and enterprise compliance features built-in
@@ -243,7 +282,7 @@ println!("Email: {}", profile.email.unwrap_or_default());
 
 ### 🆕 Enhanced Device Flow (Now More Convenient)
 
-Version 0.3.0 adds more convenient constructors for device flow credentials:
+Convenience constructors for device flow credentials:
 
 ```rust
 use auth_framework::{Credential, OAuthProvider};

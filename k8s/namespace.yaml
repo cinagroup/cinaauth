@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: auth-framework
+  labels:
+    app.kubernetes.io/name: auth-framework
+    app.kubernetes.io/managed-by: kubectl

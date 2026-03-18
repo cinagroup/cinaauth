@@ -134,16 +134,14 @@ impl PostgresStorage {
             )))
         })?;
 
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_kv_store_expires_at ON kv_store (expires_at)",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| {
-            AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
-                "Migration failed (index idx_kv_store_expires_at): {e}"
-            )))
-        })?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_kv_store_expires_at ON kv_store (expires_at)")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
+                    "Migration failed (index idx_kv_store_expires_at): {e}"
+                )))
+            })?;
 
         Ok(())
     }
@@ -542,5 +540,3 @@ impl AuthStorage for PostgresStorage {
         Ok(count as u64)
     }
 }
-
-

@@ -1,17 +1,14 @@
 //! Main authentication framework implementation.
 
 use crate::authentication::credentials::{Credential, CredentialMetadata};
-use crate::audit::{AuditEventType, AuditQuery, SortOrder};
 use crate::config::AuthConfig;
+use crate::distributed::DistributedSessionStore;
 use crate::errors::{AuthError, MfaError, Result};
 use crate::methods::{AuthMethod, AuthMethodEnum, MethodResult, MfaChallenge};
-use crate::permissions::{Permission, PermissionChecker};
+use crate::permissions::PermissionChecker;
 use crate::storage::{AuthStorage, MemoryStorage, SessionData};
 use crate::tokens::{AuthToken, TokenManager};
 use crate::utils::rate_limit::RateLimiter;
-use chrono::TimeZone as _;
-use crate::distributed::DistributedSessionStore;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -147,17 +144,11 @@ pub struct AuthFramework {
     /// Storage backend
     storage: Arc<dyn AuthStorage>,
 
-    /// Permission checker
-    permission_checker: Arc<RwLock<PermissionChecker>>,
+    /// Authorization manager for role/permission operations
+    authorization_manager: crate::auth_modular::authorization_manager::AuthorizationManager,
 
     /// Rate limiter
     rate_limiter: Option<RateLimiter>,
-
-    /// Active MFA challenges
-    mfa_challenges: Arc<RwLock<HashMap<String, MfaChallenge>>>,
-
-    /// Active sessions
-    sessions: Arc<RwLock<HashMap<String, SessionData>>>,
 
     /// Monitoring manager for metrics and health checks
     monitoring_manager: Arc<crate::monitoring::MonitoringManager>,
@@ -168,29 +159,136 @@ pub struct AuthFramework {
     /// Security manager for rate limiting, DoS protection, and IP blacklisting
     security_manager: Arc<crate::api::SecurityManager>,
 
-    /// Distributed session backend; defaults to [`LocalOnlySessionStore`][crate::distributed::LocalOnlySessionStore]
-    /// which always reports zero remote sessions (correct for single-node deployments).
-    /// Inject a real implementation via [`Self::set_distributed_store`] for multi-node setups.
-    distributed_store: Arc<dyn DistributedSessionStore>,
+    /// Runtime-mutable configuration. Updated live by the admin API without restart.
+    pub(crate) runtime_config: Arc<tokio::sync::RwLock<crate::config::RuntimeConfig>>,
+
+    /// Decoupled user lifecycle manager.
+    user_manager: crate::auth_modular::user_manager::UserManager,
+
+    /// Decoupled session lifecycle manager.
+    session_manager: crate::auth_modular::session_manager::SessionManager,
+
+    /// Decoupled MFA manager (TOTP, SMS, email, backup codes).
+    mfa_manager: crate::auth_modular::mfa::MfaManager,
 
     /// Framework initialization state
     initialized: bool,
 }
 
-impl AuthFramework {
-    /// ENTERPRISE SECURITY: Constant-time comparison to prevent timing attacks
-    /// This function compares two byte slices in constant time regardless of their content
-    /// to prevent timing-based side-channel attacks on authentication codes
-    fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
-        if a.len() != b.len() {
-            return false;
-        }
+pub use crate::auth_operations::{
+    AdminOperations, AuditOperations, AuthorizationOperations, MfaOperations,
+    MonitoringOperations, SessionOperations, TokenOperations, UserOperations,
+};
 
-        let mut result = 0u8;
-        for (byte_a, byte_b) in a.iter().zip(b.iter()) {
-            result |= byte_a ^ byte_b;
+/// Extract JWT secret bytes from `config` or the `JWT_SECRET` env-var.
+///
+/// Tries (in order): `config.security.secret_key`, `config.secret`, `$JWT_SECRET`.
+/// Returns an error when none is present; callers in non-production environments may
+/// substitute a dev-only fallback when this function returns `Err`.
+fn resolve_jwt_secret_bytes(config: &AuthConfig) -> Result<Vec<u8>> {
+    if let Some(secret) = &config.security.secret_key {
+        if secret.len() < 32 && !is_test_env() {
+            return Err(AuthError::configuration(
+                "JWT secret must be at least 32 characters for production security",
+            ));
         }
-        result == 0
+        return Ok(secret.as_bytes().to_vec());
+    }
+    if let Some(secret) = &config.secret {
+        if secret.len() < 32 && !is_test_env() {
+            return Err(AuthError::configuration(
+                "JWT secret must be at least 32 characters for production security",
+            ));
+        }
+        return Ok(secret.as_bytes().to_vec());
+    }
+    if let Ok(jwt_secret) = std::env::var("JWT_SECRET") {
+        if jwt_secret.len() < 32 && !is_test_env() {
+            return Err(AuthError::configuration(
+                "JWT_SECRET must be at least 32 characters for production security",
+            ));
+        }
+        return Ok(jwt_secret.as_bytes().to_vec());
+    }
+    Err(AuthError::configuration(
+        "JWT secret not configured! Please set JWT_SECRET environment variable or provide in configuration.\n\
+           For security reasons, no default secret is provided.\n\
+           Generate a secure secret with: openssl rand -base64 32",
+    ))
+}
+
+impl AuthFramework {
+    /// Access focused user-management operations.
+    pub fn users(&self) -> UserOperations<'_> {
+        UserOperations { framework: self }
+    }
+
+    /// Access focused session-management operations.
+    pub fn sessions(&self) -> SessionOperations<'_> {
+        SessionOperations { framework: self }
+    }
+
+    /// Access focused token-management operations.
+    pub fn tokens(&self) -> TokenOperations<'_> {
+        TokenOperations { framework: self }
+    }
+
+    /// Access focused authorization operations.
+    pub fn authorization(&self) -> AuthorizationOperations<'_> {
+        AuthorizationOperations { framework: self }
+    }
+
+    /// Access focused multi-factor authentication operations.
+    pub fn mfa(&self) -> MfaOperations<'_> {
+        MfaOperations { framework: self }
+    }
+
+    /// Access focused monitoring and health operations.
+    pub fn monitoring(&self) -> MonitoringOperations<'_> {
+        MonitoringOperations { framework: self }
+    }
+
+    /// Access focused audit log operations.
+    pub fn audit(&self) -> AuditOperations<'_> {
+        AuditOperations { framework: self }
+    }
+
+    /// Read the current runtime-mutable configuration.
+    pub async fn get_runtime_config(&self) -> crate::config::RuntimeConfig {
+        self.runtime_config.read().await.clone()
+    }
+
+    /// Apply a partial or full update to the runtime-mutable configuration.
+    ///
+    /// The update is applied atomically. Returns the updated configuration.
+    /// Returns `Err` if any field value is out of range (e.g. zero token lifetime).
+    pub async fn update_runtime_config(
+        &self,
+        update: crate::config::RuntimeConfig,
+    ) -> Result<crate::config::RuntimeConfig> {
+        // Basic sanity checks before persisting.
+        if update.token_lifetime_secs == 0 {
+            return Err(AuthError::config("token_lifetime_secs must be > 0"));
+        }
+        if update.refresh_token_lifetime_secs == 0 {
+            return Err(AuthError::config("refresh_token_lifetime_secs must be > 0"));
+        }
+        if update.refresh_token_lifetime_secs <= update.token_lifetime_secs {
+            return Err(AuthError::config(
+                "refresh_token_lifetime_secs must be greater than token_lifetime_secs",
+            ));
+        }
+        if update.min_password_length == 0 {
+            return Err(AuthError::config("min_password_length must be > 0"));
+        }
+        let mut cfg = self.runtime_config.write().await;
+        *cfg = update.clone();
+        Ok(update)
+    }
+
+    /// Access focused advanced administration operations (ABAC, delegation, role hierarchy).
+    pub fn admin(&self) -> AdminOperations<'_> {
+        AdminOperations { framework: self }
     }
 
     /// Create a new authentication framework.
@@ -209,21 +307,36 @@ impl AuthFramework {
         let token_manager =
             TokenManager::new_hmac(default_secret, "auth-framework", "auth-framework");
 
+        let user_manager =
+            crate::auth_modular::user_manager::UserManager::new(storage.clone());
+        let session_manager =
+            crate::auth_modular::session_manager::SessionManager::new(storage.clone());
+        let mfa_manager =
+            crate::auth_modular::mfa::MfaManager::new(storage.clone());
+        let authorization_manager =
+            crate::auth_modular::authorization_manager::AuthorizationManager::new(
+                Arc::new(RwLock::new(PermissionChecker::new())),
+                storage.clone(),
+            );
+
         Self {
             config,
             methods: HashMap::new(),
             token_manager,
             storage,
-            permission_checker: Arc::new(RwLock::new(PermissionChecker::new())),
+            authorization_manager,
             rate_limiter: None, // Will be set during initialization
-            mfa_challenges: Arc::new(RwLock::new(HashMap::new())),
-            sessions: Arc::new(RwLock::new(HashMap::new())),
             monitoring_manager: Arc::new(crate::monitoring::MonitoringManager::new(
                 crate::monitoring::MonitoringConfig::default(),
             )),
             audit_manager,
             security_manager: Arc::new(crate::api::SecurityManager::new()),
-            distributed_store: Arc::new(crate::distributed::LocalOnlySessionStore),
+            runtime_config: Arc::new(tokio::sync::RwLock::new(
+                crate::config::RuntimeConfig::default(),
+            )),
+            user_manager,
+            session_manager,
+            mfa_manager,
             initialized: false,
         }
     }
@@ -239,34 +352,18 @@ impl AuthFramework {
         })?;
 
         // Create token manager with proper error handling
-        let token_manager = if let Some(secret) = &config.security.secret_key {
-            if secret.len() < 32 && !is_test_env() {
-                return Err(AuthError::configuration(
-                    "JWT secret must be at least 32 characters for production security",
-                ));
-            }
-            TokenManager::new_hmac(secret.as_bytes(), "auth-framework", "auth-framework")
-        } else if let Some(secret) = &config.secret {
-            if secret.len() < 32 && !is_test_env() {
-                return Err(AuthError::configuration(
-                    "JWT secret must be at least 32 characters for production security",
-                ));
-            }
-            TokenManager::new_hmac(secret.as_bytes(), "auth-framework", "auth-framework")
-        } else if let Ok(jwt_secret) = std::env::var("JWT_SECRET") {
-            if jwt_secret.len() < 32 && !is_test_env() {
-                return Err(AuthError::configuration(
-                    "JWT_SECRET must be at least 32 characters for production security",
-                ));
-            }
-            TokenManager::new_hmac(jwt_secret.as_bytes(), "auth-framework", "auth-framework")
-        } else {
-            return Err(AuthError::configuration(
-                "JWT secret not configured! Please set JWT_SECRET environment variable or provide in configuration.\n\
-                   For security reasons, no default secret is provided.\n\
-                   Generate a secure secret with: openssl rand -base64 32",
-            ));
-        };
+        let current_secret_bytes = resolve_jwt_secret_bytes(&config)?;
+
+        let mut token_manager =
+            TokenManager::new_hmac(&current_secret_bytes, "auth-framework", "auth-framework");
+
+        // Handle gracefully retained old secret for zero-downtime key rotation
+        if let Some(prev_secret) = &config.security.previous_secret_key {
+            // Initialize with previous key, then rotate to the new key
+            token_manager =
+                TokenManager::new_hmac(prev_secret.as_bytes(), "auth-framework", "auth-framework");
+            token_manager.rotate_hmac_key(&current_secret_bytes);
+        }
 
         // Create storage backend with proper error handling
         let storage: Arc<dyn AuthStorage> = match &config.storage {
@@ -293,21 +390,36 @@ impl AuthFramework {
         let audit_storage = Arc::new(crate::storage::MemoryStorage::new());
         let audit_manager = Arc::new(crate::audit::AuditLogger::new(audit_storage));
 
+        let user_manager =
+            crate::auth_modular::user_manager::UserManager::new(storage.clone());
+        let session_manager =
+            crate::auth_modular::session_manager::SessionManager::new(storage.clone());
+        let mfa_manager =
+            crate::auth_modular::mfa::MfaManager::new(storage.clone());
+        let authorization_manager =
+            crate::auth_modular::authorization_manager::AuthorizationManager::new(
+                Arc::new(RwLock::new(PermissionChecker::new())),
+                storage.clone(),
+            );
+
         Ok(Self {
-            config,
+            config: config.clone(),
             methods: HashMap::new(),
             token_manager,
             storage,
-            permission_checker: Arc::new(RwLock::new(PermissionChecker::new())),
+            authorization_manager,
             rate_limiter,
-            mfa_challenges: Arc::new(RwLock::new(HashMap::new())),
-            sessions: Arc::new(RwLock::new(HashMap::new())),
             monitoring_manager: Arc::new(crate::monitoring::MonitoringManager::new(
                 crate::monitoring::MonitoringConfig::default(),
             )),
             audit_manager,
             security_manager: Arc::new(crate::api::SecurityManager::new()),
-            distributed_store: Arc::new(crate::distributed::LocalOnlySessionStore),
+            runtime_config: Arc::new(tokio::sync::RwLock::new(
+                crate::config::RuntimeConfig::from_auth_config(&config),
+            )),
+            user_manager,
+            session_manager,
+            mfa_manager,
             initialized: false,
         })
     }
@@ -319,7 +431,18 @@ impl AuthFramework {
     /// different concrete storage may need additional reconfiguration by the
     /// caller.
     pub fn replace_storage(&mut self, storage: std::sync::Arc<dyn AuthStorage>) {
-        self.storage = storage;
+        self.storage = storage.clone();
+        self.user_manager =
+            crate::auth_modular::user_manager::UserManager::new(storage.clone());
+        self.session_manager =
+            crate::auth_modular::session_manager::SessionManager::new(storage.clone());
+        self.mfa_manager =
+            crate::auth_modular::mfa::MfaManager::new(storage.clone());
+        self.authorization_manager =
+            crate::auth_modular::authorization_manager::AuthorizationManager::new(
+                Arc::new(RwLock::new(PermissionChecker::new())),
+                storage,
+            );
     }
 
     /// Replace the distributed session store.
@@ -329,7 +452,7 @@ impl AuthFramework {
     /// [`coordinate_distributed_sessions`][Self::coordinate_distributed_sessions]
     /// reports accurate cross-node session counts instead of `0`.
     pub fn set_distributed_store(&mut self, store: Arc<dyn DistributedSessionStore>) {
-        self.distributed_store = store;
+        self.session_manager.set_distributed_store(store);
     }
 
     /// Convenience constructor that creates a framework with a custom storage instance.
@@ -375,43 +498,21 @@ impl AuthFramework {
         })?;
 
         // Set up proper token manager with validated configuration
-        let token_manager = if let Some(secret) = &self.config.security.secret_key {
-            if secret.len() < 32 && !is_test_env() {
-                return Err(AuthError::configuration(
-                    "JWT secret must be at least 32 characters for production security",
-                ));
+        let token_manager = match resolve_jwt_secret_bytes(&self.config) {
+            Ok(bytes) => TokenManager::new_hmac(&bytes, "auth-framework", "auth-framework"),
+            Err(_) => {
+                if Self::is_production_environment() {
+                    return Err(AuthError::configuration(
+                        "Production deployment requires JWT_SECRET environment variable or configuration!\n\
+                         Generate a secure secret with: openssl rand -base64 32\n\
+                         Set it with: export JWT_SECRET=\"your-secret-here\"",
+                    ));
+                }
+                warn!("No JWT secret configured, using development-only default");
+                warn!("CRITICAL: Set JWT_SECRET environment variable for production!");
+                warn!("This configuration is NOT SECURE and should only be used in development!");
+                self.token_manager.clone()
             }
-            TokenManager::new_hmac(secret.as_bytes(), "auth-framework", "auth-framework")
-        } else if let Some(secret) = &self.config.secret {
-            if secret.len() < 32 && !is_test_env() {
-                return Err(AuthError::configuration(
-                    "JWT secret must be at least 32 characters for production security",
-                ));
-            }
-            TokenManager::new_hmac(secret.as_bytes(), "auth-framework", "auth-framework")
-        } else if let Ok(jwt_secret) = std::env::var("JWT_SECRET") {
-            if jwt_secret.len() < 32 && !is_test_env() {
-                return Err(AuthError::configuration(
-                    "JWT_SECRET must be at least 32 characters for production security",
-                ));
-            }
-            TokenManager::new_hmac(jwt_secret.as_bytes(), "auth-framework", "auth-framework")
-        } else {
-            // In production environments, fail instead of using insecure defaults
-            if self.is_production_environment() {
-                return Err(AuthError::configuration(
-                    "Production deployment requires JWT_SECRET environment variable or configuration!\n\
-                     Generate a secure secret with: openssl rand -base64 32\n\
-                     Set it with: export JWT_SECRET=\"your-secret-here\"",
-                ));
-            }
-
-            warn!("No JWT secret configured, using development-only default");
-            warn!("CRITICAL: Set JWT_SECRET environment variable for production!");
-            warn!("This configuration is NOT SECURE and should only be used in development!");
-
-            // Only allow development fallback in non-production environments
-            self.token_manager.clone()
         };
 
         // Replace token manager with properly configured one
@@ -441,10 +542,7 @@ impl AuthFramework {
         }
 
         // Initialize permission checker with default roles
-        {
-            let mut checker = self.permission_checker.write().await;
-            checker.create_default_roles();
-        }
+        self.authorization_manager.create_default_roles().await;
 
         // Perform any necessary setup
         self.cleanup_expired_data().await?;
@@ -543,8 +641,8 @@ impl AuthFramework {
         // Built-in password authentication: reads credentials from framework storage directly.
         // This handles password auth even when no "password" method has been explicitly registered,
         // allowing the register endpoint and login endpoint to work with the same storage backend.
-        if method_name == "password" {
-            if let Credential::Password {
+        if method_name == "password"
+            && let Credential::Password {
                 ref username,
                 ref password,
             } = credential
@@ -553,7 +651,6 @@ impl AuthFramework {
                     .authenticate_password_builtin(username, password, &metadata)
                     .await;
             }
-        }
 
         // Get the authentication method
         let method = self.methods.get(method_name).ok_or_else(|| {
@@ -595,18 +692,7 @@ impl AuthFramework {
                 );
 
                 // Store MFA challenge with resource limits
-                let mut challenges = self.mfa_challenges.write().await;
-
-                // ENTERPRISE SECURITY: Limit total MFA challenges to prevent memory exhaustion
-                const MAX_TOTAL_CHALLENGES: usize = 10_000;
-                if challenges.len() >= MAX_TOTAL_CHALLENGES {
-                    warn!("Maximum MFA challenges ({}) exceeded", MAX_TOTAL_CHALLENGES);
-                    return Err(AuthError::rate_limit(
-                        "Too many pending MFA challenges. Please try again later.",
-                    ));
-                }
-
-                challenges.insert(challenge.id.clone(), (**challenge).clone());
+                self.guard_and_store_mfa_challenge((**challenge).clone()).await?;
 
                 // Log audit event
                 self.log_audit_event("mfa_required", &challenge.user_id, method_name, &metadata)
@@ -631,213 +717,117 @@ impl AuthFramework {
     }
 
     /// Built-in password authentication against framework storage.
-    ///
-    /// Reads credentials stored at `user:credentials:{username}` (written by the register
-    /// endpoint), verifies the bcrypt hash, and on success creates and stores a token.
-    /// This runs even when no external `PasswordMethod` has been registered, so the
-    /// `/auth/register` → `/auth/login` flow works out of the box.
     async fn authenticate_password_builtin(
         &self,
         username: &str,
         password: &str,
         metadata: &CredentialMetadata,
     ) -> Result<AuthResult> {
-        use crate::utils::password::verify_password;
+        use crate::auth_modular::user_manager::CredentialCheckResult;
 
-        // Validate that credentials are not empty
         if username.is_empty() || password.is_empty() {
             return Ok(AuthResult::Failure(
-                "Username and password cannot be empty".to_string(),
+                "Username or password cannot be empty".to_string(),
             ));
         }
 
-        let user_key = format!("user:credentials:{username}");
-
-        let stored_bytes = match self.storage.get_kv(&user_key).await? {
-            Some(bytes) => bytes,
+        match self
+            .user_manager
+            .verify_login_credentials(username, password)
+            .await?
+        {
             None => {
-                // Always run a password verification against a dummy hash to prevent
-                // user-enumeration via timing side-channel.  The dummy hash MUST be a
-                // valid Argon2 PHC string that verify_password (Argon2) can actually
-                // process, otherwise it returns immediately without doing real work and
-                // the timing gap is measurable.
-                let _ = verify_password(
-                    password,
-                    "$argon2id$v=19$m=19456,t=2,p=1$dGVzdHNhbHRmb3J0aW1pbmc$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                );
                 self.log_audit_event("auth_failure", "unknown", "password", metadata)
                     .await;
-                return Ok(AuthResult::Failure(
+                Ok(AuthResult::Failure(
                     "Invalid username or password".to_string(),
-                ));
+                ))
             }
-        };
-
-        let user_data_str = String::from_utf8(stored_bytes)
-            .map_err(|e| AuthError::internal(format!("Failed to parse user data: {e}")))?;
-
-        let user_data: serde_json::Value = serde_json::from_str(&user_data_str)
-            .map_err(|e| AuthError::internal(format!("Failed to parse user JSON: {e}")))?;
-
-        let password_hash = user_data["password_hash"]
-            .as_str()
-            .ok_or_else(|| AuthError::internal("Missing password hash in user record".to_string()))?;
-
-        let is_valid = verify_password(password, password_hash).unwrap_or(false);
-
-        if !is_valid {
-            self.log_audit_event("auth_failure", "unknown", "password", metadata)
-                .await;
-            return Ok(AuthResult::Failure(
-                "Invalid username or password".to_string(),
-            ));
-        }
-
-        let user_id = user_data["user_id"]
-            .as_str()
-            .ok_or_else(|| AuthError::internal("Missing user_id in user record".to_string()))?
-            .to_string();
-
-        // Check whether the account has been deactivated.  The active flag lives in the
-        // canonical user:{user_id} record (written by both registration paths) rather than
-        // in the credentials record, so we load it here.
-        let canonical_key = format!("user:{}", user_id);
-        if let Ok(Some(canonical_bytes)) = self.storage.get_kv(&canonical_key).await {
-            if let Ok(canonical_str) = String::from_utf8(canonical_bytes) {
-                if let Ok(canonical_data) = serde_json::from_str::<serde_json::Value>(&canonical_str)
-                {
-                    let active = canonical_data["active"].as_bool().unwrap_or(true);
-                    if !active {
-                        self.log_audit_event("auth_failure", &user_id, "password", metadata)
-                            .await;
-                        return Ok(AuthResult::Failure(
-                            "Invalid username or password".to_string(),
-                        ));
-                    }
-                }
+            Some(CredentialCheckResult {
+                ref user_id,
+                mfa_enabled: true,
+            }) => {
+                let now = chrono::Utc::now();
+                let challenge = MfaChallenge {
+                    id: crate::utils::string::generate_id(Some("mfa")),
+                    mfa_type: crate::methods::MfaType::MultiMethod,
+                    user_id: user_id.clone(),
+                    created_at: now,
+                    expires_at: now + chrono::Duration::minutes(5),
+                    attempts: 0,
+                    max_attempts: 5,
+                    code_hash: None,
+                    message: Some(
+                        "Provide your current TOTP code or a backup code to complete login"
+                            .to_string(),
+                    ),
+                    data: HashMap::new(),
+                };
+                self.guard_and_store_mfa_challenge(challenge.clone()).await?;
+                self.log_audit_event("mfa_required", user_id, "password", metadata)
+                    .await;
+                info!(
+                    "Built-in password authentication requires MFA for user: {}",
+                    username
+                );
+                Ok(AuthResult::MfaRequired(Box::new(challenge)))
+            }
+            Some(CredentialCheckResult {
+                ref user_id,
+                mfa_enabled: false,
+            }) => {
+                let token = self
+                    .mint_and_store_token(
+                        user_id,
+                        vec!["read".to_string(), "write".to_string()],
+                        "password",
+                        None,
+                    )
+                    .await?;
+                self.monitoring_manager.record_auth_request().await;
+                self.log_audit_event("auth_success", user_id, "password", metadata)
+                    .await;
+                info!(
+                    "Built-in password authentication successful for user: {}",
+                    username
+                );
+                Ok(AuthResult::Success(Box::new(token)))
             }
         }
-
-        if matches!(
-            self.storage
-                .get_kv(&format!("mfa_enabled:{}", user_id))
-                .await,
-            Ok(Some(_))
-        ) {
-            let now = chrono::Utc::now();
-            let challenge = MfaChallenge {
-                id: crate::utils::string::generate_id(Some("mfa")),
-                mfa_type: crate::methods::MfaType::MultiMethod,
-                user_id: user_id.clone(),
-                created_at: now,
-                expires_at: now + chrono::Duration::minutes(5),
-                attempts: 0,
-                max_attempts: 5,
-                code_hash: None,
-                message: Some(
-                    "Provide your current TOTP code or a backup code to complete login"
-                        .to_string(),
-                ),
-                data: HashMap::new(),
-            };
-
-            let mut challenges = self.mfa_challenges.write().await;
-            const MAX_TOTAL_CHALLENGES: usize = 10_000;
-            if challenges.len() >= MAX_TOTAL_CHALLENGES {
-                warn!("Maximum MFA challenges ({}) exceeded", MAX_TOTAL_CHALLENGES);
-                return Err(AuthError::rate_limit(
-                    "Too many pending MFA challenges. Please try again later.",
-                ));
-            }
-            challenges.insert(challenge.id.clone(), challenge.clone());
-
-            self.log_audit_event("mfa_required", &user_id, "password", metadata)
-                .await;
-
-            info!(
-                "Built-in password authentication requires MFA for user: {}",
-                username
-            );
-            return Ok(AuthResult::MfaRequired(Box::new(challenge)));
-        }
-
-        // Create a proper auth token via the token manager so JWT signing config is respected.
-        let token = self.token_manager.create_auth_token(
-            &user_id,
-            vec!["read".to_string(), "write".to_string()],
-            "password",
-            None,
-        )?;
-
-        // Store the token so refresh/validate can retrieve it.
-        self.storage.store_token(&token).await?;
-
-        self.monitoring_manager.record_auth_request().await;
-        self.log_audit_event("auth_success", &user_id, "password", metadata)
-            .await;
-
-        info!("Built-in password authentication successful for user: {}", username);
-        Ok(AuthResult::Success(Box::new(token)))
     }
 
     /// Complete multi-factor authentication.
     pub async fn complete_mfa(&self, challenge: MfaChallenge, mfa_code: &str) -> Result<AuthToken> {
         debug!("Completing MFA for challenge '{}'", challenge.id);
 
-        // Check if challenge exists and is valid
-        let mut challenges = self.mfa_challenges.write().await;
-        let stored_challenge = challenges
-            .get(&challenge.id)
+        let stored_challenge = self
+            .mfa_manager
+            .get_challenge(&challenge.id)
+            .await?
             .ok_or(MfaError::ChallengeExpired)?;
 
         if stored_challenge.is_expired() {
-            challenges.remove(&challenge.id);
+            self.mfa_manager.remove_challenge(&challenge.id).await?;
             return Err(MfaError::ChallengeExpired.into());
         }
 
-        // Verify MFA code (this would integrate with actual MFA providers)
-        if !self.verify_mfa_code(stored_challenge, mfa_code).await? {
+        if !self.verify_mfa_code(&stored_challenge, mfa_code).await? {
             return Err(MfaError::InvalidCode.into());
         }
 
-        // Remove the challenge
-        challenges.remove(&challenge.id);
+        self.mfa_manager.remove_challenge(&challenge.id).await?;
 
-        // Look up user roles from storage
-        let user_key = format!("user:{}", challenge.user_id);
-        let scopes = if let Ok(Some(data)) = self.storage.get_kv(&user_key).await {
-            serde_json::from_slice::<serde_json::Value>(&data)
-                .ok()
-                .and_then(|v| {
-                    v.get("roles").and_then(|r| {
-                        r.as_array().map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str().map(String::from))
-                                .collect::<Vec<_>>()
-                        })
-                    })
-                })
-                .unwrap_or_else(|| vec!["user".to_string()])
-        } else {
-            vec!["user".to_string()]
-        };
+        let scopes = self
+            .user_manager
+            .get_user_roles(&challenge.user_id)
+            .await
+            .unwrap_or_else(|_| vec!["user".to_string()]);
 
-        // Create authentication token
-        let token = self.token_manager.create_auth_token(
-            &challenge.user_id,
-            scopes,
-            "mfa",
-            None,
-        )?;
+        let token = self
+            .mint_and_store_token(&challenge.user_id, scopes, "mfa", None)
+            .await?;
 
-        // Store the token
-        self.storage.store_token(&token).await?;
-
-        info!(
-            "MFA completed successfully for user '{}'",
-            challenge.user_id
-        );
-
+        info!("MFA completed successfully for user '{}'", challenge.user_id);
         Ok(token)
     }
 
@@ -847,13 +837,11 @@ impl AuthFramework {
         challenge_id: &str,
         mfa_code: &str,
     ) -> Result<AuthToken> {
-        let challenge = {
-            let challenges = self.mfa_challenges.read().await;
-            challenges
-                .get(challenge_id)
-                .cloned()
-                .ok_or(MfaError::ChallengeExpired)?
-        };
+        let challenge = self
+            .mfa_manager
+            .get_challenge(challenge_id)
+            .await?
+            .ok_or(MfaError::ChallengeExpired)?;
 
         self.complete_mfa(challenge, mfa_code).await
     }
@@ -863,35 +851,20 @@ impl AuthFramework {
         if !self.initialized {
             return Err(AuthError::internal("Framework not initialized"));
         }
+        let valid = token.is_valid()
+            && self.token_manager.validate_auth_token(token).is_ok()
+            && self.touch_stored_token(token).await?;
+        self.monitoring_manager.record_token_validation(valid).await;
+        Ok(valid)
+    }
 
-        // Check basic token validity
-        if !token.is_valid() {
-            self.monitoring_manager.record_token_validation(false).await;
+    async fn touch_stored_token(&self, token: &AuthToken) -> Result<bool> {
+        let Some(mut stored) = self.storage.get_token(&token.token_id).await? else {
             return Ok(false);
-        }
-
-        // Validate with token manager
-        match self.token_manager.validate_auth_token(token) {
-            Ok(_) => {}
-            Err(_) => {
-                self.monitoring_manager.record_token_validation(false).await;
-                return Ok(false);
-            }
-        }
-
-        // Check if token exists in storage
-        if let Some(stored_token) = self.storage.get_token(&token.token_id).await? {
-            // Update last used time
-            let mut updated_token = stored_token;
-            updated_token.mark_used();
-            self.storage.update_token(&updated_token).await?;
-
-            self.monitoring_manager.record_token_validation(true).await;
-            Ok(true)
-        } else {
-            self.monitoring_manager.record_token_validation(false).await;
-            Ok(false)
-        }
+        };
+        stored.mark_used();
+        self.storage.update_token(&stored).await?;
+        Ok(true)
     }
 
     /// Get user information from a token.
@@ -900,18 +873,28 @@ impl AuthFramework {
             return Err(AuthError::auth_method("token", "Invalid token".to_string()));
         }
 
-        // Extract user info from token
         let token_info = self.token_manager.extract_token_info(&token.access_token)?;
 
-        Ok(UserInfo {
-            id: token_info.user_id,
-            username: token_info.username.unwrap_or_else(|| "unknown".to_string()),
-            email: token_info.email,
-            name: token_info.name,
-            roles: token_info.roles,
-            active: true, // This would come from user storage
-            attributes: token_info.attributes,
-        })
+        // Fetch authoritative user state (active flag, current roles) from storage.
+        // Fall back to token claims if the user record is not found.
+        match self.user_manager.get_user_info(&token_info.user_id).await {
+            Ok(mut info) => {
+                // Overlay any token-specific attributes on top of the stored profile.
+                if !token_info.attributes.is_empty() {
+                    info.attributes = token_info.attributes;
+                }
+                Ok(info)
+            }
+            Err(_) => Ok(UserInfo {
+                id: token_info.user_id,
+                username: token_info.username.unwrap_or_else(|| "unknown".to_string()),
+                email: token_info.email,
+                name: token_info.name,
+                roles: token_info.roles,
+                active: false,
+                attributes: token_info.attributes,
+            }),
+        }
     }
 
     /// Check if a token has a specific permission.
@@ -924,10 +907,7 @@ impl AuthFramework {
         if !self.validate_token(token).await? {
             return Ok(false);
         }
-
-        let permission = Permission::new(action, resource);
-        let mut checker = self.permission_checker.write().await;
-        checker.check_token_permission(token, &permission)
+        self.authorization_manager.check_token_permission(token, action, resource).await
     }
 
     /// Refresh a token.
@@ -975,73 +955,17 @@ impl AuthFramework {
         user_id: &str,
         expires_in: Option<Duration>,
     ) -> Result<String> {
-        debug!("Creating API key for user '{}'", user_id);
-
-        // Generate a secure API key
-        let api_key = format!("ak_{}", crate::utils::crypto::generate_token(32));
-
-        // Create a token for the API key
-        let token = self.token_manager.create_auth_token(
-            user_id,
-            vec!["api".to_string()],
-            "api-key",
-            expires_in,
-        )?;
-
-        // Store the token with the API key as the access_token
-        let mut api_token = token.clone();
-        api_token.access_token = api_key.clone();
-        self.storage.store_token(&api_token).await?;
-
-        info!("API key created for user '{}'", user_id);
-
-        Ok(api_key)
+        self.user_manager.create_api_key(user_id, expires_in).await
     }
 
     /// Validate an API key and return user information.
     pub async fn validate_api_key(&self, api_key: &str) -> Result<UserInfo> {
-        debug!("Validating API key");
-
-        // Try to find the token by the API key
-        let token = self
-            .storage
-            .get_token(api_key)
-            .await?
-            .ok_or_else(|| AuthError::token("Invalid API key"))?;
-
-        // Check if token is expired
-        if token.is_expired() {
-            return Err(AuthError::token("API key expired"));
-        }
-
-        // Return user information
-        Ok(UserInfo {
-            id: token.user_id.clone(),
-            username: format!("user_{}", token.user_id),
-            email: None,
-            name: None,
-            roles: vec!["api_user".to_string()],
-            active: true,
-            attributes: std::collections::HashMap::new(),
-        })
+        self.user_manager.validate_api_key(api_key).await
     }
 
     /// Revoke an API key.
     pub async fn revoke_api_key(&self, api_key: &str) -> Result<()> {
-        debug!("Revoking API key");
-
-        // Try to find and delete the token
-        let token = self
-            .storage
-            .get_token(api_key)
-            .await?
-            .ok_or_else(|| AuthError::token("API key not found"))?;
-
-        self.storage.delete_token(api_key).await?;
-
-        info!("API key revoked for user '{}'", token.user_id);
-
-        Ok(())
+        self.user_manager.revoke_api_key(api_key).await
     }
 
     /// Create a new session.
@@ -1055,66 +979,13 @@ impl AuthFramework {
         if !self.initialized {
             return Err(AuthError::internal("Framework not initialized"));
         }
-
-        // ENTERPRISE SECURITY: Check resource limits to prevent memory exhaustion attacks
-        let sessions_guard = self.sessions.read().await;
-        let total_sessions = sessions_guard.len();
-        drop(sessions_guard);
-
-        // Maximum total sessions across all users (prevent DoS)
-        const MAX_TOTAL_SESSIONS: usize = 100_000;
-        if total_sessions >= MAX_TOTAL_SESSIONS {
-            warn!(
-                "Maximum total sessions ({}) exceeded, rejecting new session",
-                MAX_TOTAL_SESSIONS
-            );
-            return Err(AuthError::rate_limit(
-                "Maximum concurrent sessions exceeded. Please try again later.",
-            ));
-        }
-
-        // Maximum sessions per user (prevent single user from exhausting resources)
-        let user_sessions = self.storage.list_user_sessions(user_id).await?;
-        const MAX_USER_SESSIONS: usize = 50;
-        if user_sessions.len() >= MAX_USER_SESSIONS {
-            warn!(
-                "User '{}' has reached maximum sessions ({})",
-                user_id, MAX_USER_SESSIONS
-            );
-            return Err(AuthError::TooManyConcurrentSessions);
-        }
-
-        // Validate session duration
-        if expires_in.is_zero() {
-            return Err(AuthError::invalid_credential(
-                "session_duration",
-                "Session duration must be greater than zero",
-            ));
-        }
-        if expires_in > Duration::from_secs(365 * 24 * 60 * 60) {
-            // 1 year max
-            return Err(AuthError::invalid_credential(
-                "session_duration",
-                "Session duration exceeds maximum allowed (1 year)",
-            ));
-        }
-
-        let session_id = crate::utils::string::generate_id(Some("sess"));
-        let session = SessionData::new(session_id.clone(), user_id, expires_in)
-            .with_metadata(ip_address, user_agent);
-
-        self.storage.store_session(&session_id, &session).await?;
-
-        // Update session count in monitoring
-        let sessions_guard = self.sessions.read().await;
-        let session_count = sessions_guard.len() as u64;
-        drop(sessions_guard);
+        let (session_id, new_total) = self
+            .session_manager
+            .create_session_limited(user_id, expires_in, ip_address, user_agent)
+            .await?;
         self.monitoring_manager
-            .update_session_count(session_count + 1)
+            .update_session_count(new_total)
             .await;
-
-        info!("Session created for user '{}'", user_id);
-
         Ok(session_id)
     }
 
@@ -1124,7 +995,7 @@ impl AuthFramework {
             return Err(AuthError::internal("Framework not initialized"));
         }
 
-        self.storage.get_session(session_id).await
+        self.session_manager.get_session(session_id).await
     }
 
     /// Delete a session.
@@ -1133,17 +1004,13 @@ impl AuthFramework {
             return Err(AuthError::internal("Framework not initialized"));
         }
 
-        self.storage.delete_session(session_id).await?;
+        self.session_manager.delete_session(session_id).await?;
 
-        // Update session count in monitoring
-        let sessions_guard = self.sessions.read().await;
-        let session_count = sessions_guard.len() as u64;
-        drop(sessions_guard);
+        let remaining = self.session_manager.count_active_sessions().await.unwrap_or(0);
         self.monitoring_manager
-            .update_session_count(session_count.saturating_sub(1))
+            .update_session_count(remaining)
             .await;
 
-        info!("Session '{}' deleted", session_id);
         Ok(())
     }
 
@@ -1159,19 +1026,11 @@ impl AuthFramework {
         // Clean up storage
         self.storage.cleanup_expired().await?;
 
-        // Clean up MFA challenges
-        {
-            let mut challenges = self.mfa_challenges.write().await;
-            let now = chrono::Utc::now();
-            challenges.retain(|_, challenge| challenge.expires_at > now);
-        }
+        // Clean up MFA challenges via mfa manager
+        self.mfa_manager.cleanup_expired_challenges().await?;
 
-        // Clean up sessions
-        {
-            let mut sessions = self.sessions.write().await;
-            let now = chrono::Utc::now();
-            sessions.retain(|_, session| session.expires_at > now);
-        }
+        // Clean up sessions via session manager
+        self.session_manager.cleanup_expired_sessions().await?;
 
         // Clean up rate limiter
         if let Some(ref rate_limiter) = self.rate_limiter {
@@ -1181,187 +1040,48 @@ impl AuthFramework {
         Ok(())
     }
 
-    /// Detect if we're running in a production environment.
-    ///
-    /// This method checks various environment variables and configuration
-    /// to determine if the application is running in production.
-    fn is_production_environment(&self) -> bool {
-        // Check common production environment indicators
-        if let Ok(env) = std::env::var("ENVIRONMENT")
-            && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
-        {
-            return true;
-        }
-
-        if let Ok(env) = std::env::var("ENV")
-            && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
-        {
-            return true;
-        }
-
-        if let Ok(env) = std::env::var("NODE_ENV")
-            && env.to_lowercase() == "production"
-        {
-            return true;
-        }
-
-        if let Ok(env) = std::env::var("RUST_ENV")
-            && env.to_lowercase() == "production"
-        {
-            return true;
-        }
-
-        // Check for other production indicators
-        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok() {
-            return true; // Running in Kubernetes
-        }
-
-        if std::env::var("DOCKER_CONTAINER").is_ok() {
-            return true; // Running in Docker
-        }
-
-        // Default to false for development
-        false
+/// Detect if the process is running in a production environment by inspecting
+/// well-known environment variables and container indicators.
+fn is_production_environment() -> bool {
+    if let Ok(env) = std::env::var("ENVIRONMENT")
+        && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
+    {
+        return true;
     }
+    if let Ok(env) = std::env::var("ENV")
+        && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
+    {
+        return true;
+    }
+    if let Ok(env) = std::env::var("NODE_ENV") && env.to_lowercase() == "production" {
+        return true;
+    }
+    if let Ok(env) = std::env::var("RUST_ENV") && env.to_lowercase() == "production" {
+        return true;
+    }
+    std::env::var("KUBERNETES_SERVICE_HOST").is_ok() || std::env::var("DOCKER_CONTAINER").is_ok()
+}
 
     /// Get authentication framework statistics.
     pub async fn get_stats(&self) -> Result<AuthStats> {
         let mut stats = AuthStats::default();
 
-        // Production implementation: Query storage for real token counts
-        let storage = &*self.storage;
-
-        // Get comprehensive statistics from storage and audit logs
-        let mut user_token_counts: HashMap<String, u32> = HashMap::new();
-        let mut total_tokens = 0u32;
-        let mut expired_tokens = 0u32;
-        let active_sessions: u32;
-        let failed_attempts: u32;
-        let successful_attempts: u32;
-
-        // Count expired tokens that were cleaned up
-        if let Err(e) = storage.cleanup_expired().await {
+        if let Err(e) = self.storage.cleanup_expired().await {
             warn!("Failed to cleanup expired data: {}", e);
         }
-
-        // Get session statistics from internal session store
-        {
-            let sessions_guard = self.sessions.read().await;
-            let total_sessions = sessions_guard.len() as u32;
-
-            // Count only non-expired sessions
-            let now = chrono::Utc::now();
-            active_sessions = sessions_guard
-                .values()
-                .filter(|session| session.expires_at > now)
-                .count() as u32;
-
-            info!(
-                "Total sessions: {}, Active sessions: {}",
-                total_sessions, active_sessions
-            );
-        }
-
-        // Production implementation: Collect real authentication statistics
-
-        // Get token statistics by iterating through user tokens
-        // NOTE: token count is derived from the in-memory session store; for
-        // sub-second accuracy at scale, add dedicated counters to your storage backend.
-        for method_name in self.methods.keys() {
-            // For each authentication method, we could get method-specific statistics
-            info!("Collecting statistics for method: {}", method_name);
-        }
-
-        // Get an estimate of total tokens from current sessions
-        // NOTE: active sessions serve as a proxy for issued tokens here.
-        // For precise tracking, implement storage.get_token_count_by_status().
-        {
-            let sessions = self.sessions.read().await;
-            let now = chrono::Utc::now();
-
-            for (session_id, session_data) in sessions.iter() {
-                if session_data.expires_at > now {
-                    total_tokens += 1;
-
-                    // Count tokens per user
-                    let count = user_token_counts
-                        .entry(session_data.user_id.clone())
-                        .or_insert(0);
-                    *count += 1;
-                } else {
-                    expired_tokens += 1;
-                }
-
-                info!(
-                    "Session {} for user {} expires at {}",
-                    session_id, session_data.user_id, session_data.expires_at
-                );
-            }
-        }
-
-        // Production note: In a real system, implement these methods:
-        // 1. storage.get_token_count_by_status() -> (active, expired)
-        // 2. storage.get_user_token_counts() -> HashMap<String, u32>
-        // 3. audit_log.get_auth_attempt_counts() -> (failed, successful)
-
-        info!(
-            "Token statistics - Total: {}, Expired: {}, Active: {}",
-            total_tokens,
-            expired_tokens,
-            total_tokens.saturating_sub(expired_tokens)
-        );
-
-        // Get rate limiting statistics if available
         if let Some(rate_limiter) = &self.rate_limiter {
-            // Production implementation: Get rate limiting statistics using available methods
-            // Clean up expired buckets for accurate statistics
             let _ = rate_limiter.cleanup().ok();
-
-            // Get authentication attempt statistics from audit logs
-            failed_attempts = self
-                .get_failed_attempts_from_audit_log()
-                .await
-                .unwrap_or(0);
-            successful_attempts = self
-                .get_successful_attempts_from_audit_log()
-                .await
-                .unwrap_or(0);
-
-            // Check current rate limiting status for common authentication endpoints
-            let test_key = "auth:password:127.0.0.1";
-            let _remaining = rate_limiter.remaining_requests(test_key);
-
-            info!(
-                "Rate limiter active - test key configured with remaining requests available"
-            );
-
-            info!(
-                "Authentication attempts - Failed: {}, Successful: {}",
-                failed_attempts, successful_attempts
-            );
-        } else {
-            warn!("Rate limiter not configured - authentication attempt statistics unavailable");
-            // Use fallback estimation methods
-            failed_attempts = self.estimate_failed_attempts().await;
-            successful_attempts = self.estimate_successful_attempts().await;
         }
 
-        user_token_counts.insert("total_tokens".to_string(), total_tokens);
-        user_token_counts.insert("expired_tokens".to_string(), expired_tokens);
-        user_token_counts.insert("active_sessions".to_string(), active_sessions);
-        user_token_counts.insert("failed_attempts".to_string(), failed_attempts);
-        user_token_counts.insert("successful_attempts".to_string(), successful_attempts);
+        let active_sessions =
+            self.session_manager.count_active_sessions().await.unwrap_or(0) as u32;
+        let failed_attempts = self.audit_manager.get_failed_login_count_24h().await.unwrap_or(0) as u32;
+        let successful_attempts = self.audit_manager.get_successful_login_count_24h().await.unwrap_or(0) as u32;
 
-        for method in self.methods.keys() {
-            stats.registered_methods.push(method.clone());
-        }
-
-        // Use the active_sessions count we calculated earlier
+        stats.registered_methods = self.methods.keys().cloned().collect();
         stats.active_sessions = active_sessions as u64;
-        stats.active_mfa_challenges = self.mfa_challenges.read().await.len() as u64;
-
-        // Set authentication statistics using available fields
-        stats.tokens_issued = total_tokens as u64;
+        stats.active_mfa_challenges = self.mfa_manager.get_active_challenge_count().await as u64;
+        stats.tokens_issued = active_sessions as u64;
         stats.auth_attempts = (successful_attempts + failed_attempts) as u64;
 
         Ok(stats)
@@ -1374,148 +1094,22 @@ impl AuthFramework {
 
     /// Validate username format.
     pub async fn validate_username(&self, username: &str) -> Result<bool> {
-        debug!("Validating username format: '{}'", username);
-
-        // Basic validation rules
-        let is_valid = username.len() >= 3
-            && username.len() <= 32
-            && username
-                .chars()
-                .all(|c| c.is_alphanumeric() || c == '_' || c == '-');
-
-        Ok(is_valid)
+        self.user_manager.validate_username(username).await
     }
 
     /// Validate display name format.
     pub async fn validate_display_name(&self, display_name: &str) -> Result<bool> {
-        debug!("Validating display name format");
-
-        let is_valid = !display_name.is_empty()
-            && display_name.len() <= 100
-            && !display_name.trim().is_empty();
-
-        Ok(is_valid)
+        self.user_manager.validate_display_name(display_name).await
     }
 
     /// Validate password strength using security policy.
-    ///
-    /// For enterprise security, this enforces Strong passwords by default.
-    /// The minimum password strength can be configured in the security policy.
     pub async fn validate_password_strength(&self, password: &str) -> Result<bool> {
-        debug!("Validating password strength");
-
-        let strength = crate::utils::password::check_password_strength(password);
-
-        // Get minimum required strength (default to Strong for enterprise security)
-        // SECURITY: Using Strong as default requirement for production security
-        let required_strength = crate::utils::password::PasswordStrengthLevel::Strong;
-
-        // Check if password meets or exceeds minimum requirement
-        let is_valid = match required_strength {
-            crate::utils::password::PasswordStrengthLevel::Weak => {
-                // Any non-empty password (not recommended for production)
-                !password.is_empty()
-            }
-            crate::utils::password::PasswordStrengthLevel::Medium => !matches!(
-                strength.level,
-                crate::utils::password::PasswordStrengthLevel::Weak
-            ),
-            crate::utils::password::PasswordStrengthLevel::Strong => {
-                matches!(
-                    strength.level,
-                    crate::utils::password::PasswordStrengthLevel::Strong
-                        | crate::utils::password::PasswordStrengthLevel::VeryStrong
-                )
-            }
-            crate::utils::password::PasswordStrengthLevel::VeryStrong => {
-                matches!(
-                    strength.level,
-                    crate::utils::password::PasswordStrengthLevel::VeryStrong
-                )
-            }
-        };
-
-        if !is_valid {
-            warn!(
-                "Password validation failed - Required: {:?}, Actual: {:?}, Feedback: {}",
-                required_strength,
-                strength.level,
-                strength.feedback.join(", ")
-            );
-        } else {
-            debug!("Password strength validation passed: {:?}", strength.level);
-        }
-
-        Ok(is_valid)
+        self.user_manager.validate_password_strength(password).await
     }
 
-    /// Validate user input.
-    ///
-    /// Combines a character whitelist with pattern checks for common injection
-    /// vectors. Rejects HTML tags, null bytes, path traversal sequences,
-    /// template injection markers, and dangerous URI schemes.
+    /// Validate user input against common injection patterns.
     pub async fn validate_user_input(&self, input: &str) -> Result<bool> {
-        debug!("Validating user input");
-
-        // Reject empty or oversized input.
-        if input.is_empty() || input.len() > 1000 {
-            return Ok(false);
-        }
-
-        // Character whitelist: reject control characters (except common whitespace)
-        // and angle brackets that enable HTML injection.
-        if !input.chars().all(|c| {
-            if c.is_control() {
-                matches!(c, ' ' | '\t' | '\n' | '\r')
-            } else {
-                !matches!(c, '<' | '>')
-            }
-        }) {
-            return Ok(false);
-        }
-
-        // Also reject URL-encoded forms of angle brackets.
-        let lower = input.to_ascii_lowercase();
-        if lower.contains("%3c") || lower.contains("%3e") || lower.contains("%00") {
-            return Ok(false);
-        }
-
-        // Reject dangerous URI schemes.
-        if lower.contains("javascript:")
-            || lower.contains("data:")
-            || lower.contains("file:")
-            || lower.contains("jndi:")
-        {
-            return Ok(false);
-        }
-
-        // Reject template injection markers.
-        if input.contains("${") || input.contains("{{") {
-            return Ok(false);
-        }
-
-        // Reject path traversal sequences.
-        if input.contains("../") || input.contains("..\\") {
-            return Ok(false);
-        }
-
-        // Reject null bytes (in any encoding).
-        if input.contains('\0') {
-            return Ok(false);
-        }
-
-        // Reject SQL injection patterns: statement-terminating semicolons
-        // followed by SQL keywords, and SQL comment markers.
-        if lower.contains("; drop")
-            || lower.contains(";drop")
-            || lower.contains("' drop")
-            || lower.contains("'; drop")
-            || lower.contains("--")
-        {
-            return Ok(false);
-        }
-
-        Ok(true)
+        Ok(crate::utils::validation::validate_user_input(input))
     }
 
     /// Create an authentication token directly (useful for testing and demos).
@@ -1531,32 +1125,16 @@ impl AuthFramework {
         let method_name = method_name.into();
         let user_id = user_id.into();
 
-        // Validate the method exists
+        // Validate the method exists and is correctly configured
         let auth_method = self
             .methods
             .get(&method_name)
             .ok_or_else(|| AuthError::auth_method(&method_name, "Method not found"))?;
-
-        // Validate method configuration before using it
         auth_method.validate_config()?;
 
-        // Create a proper JWT token using the default token manager
-        let jwt_token = self
-            .token_manager
-            .create_jwt_token(&user_id, scopes.clone(), lifetime)?;
-
-        // Create the auth token
-        let token = AuthToken::new(
-            user_id.clone(),
-            jwt_token,
-            lifetime.unwrap_or(Duration::from_secs(3600)),
-            &method_name,
-        )
-        .with_scopes(scopes);
-
         // ENTERPRISE SECURITY: Check token limits to prevent resource exhaustion
-        let user_tokens = self.storage.list_user_tokens(&user_id).await?;
         const MAX_TOKENS_PER_USER: usize = 100;
+        let user_tokens = self.storage.list_user_tokens(&user_id).await?;
         if user_tokens.len() >= MAX_TOKENS_PER_USER {
             warn!(
                 "User '{}' has reached maximum tokens ({})",
@@ -1567,122 +1145,33 @@ impl AuthFramework {
             ));
         }
 
-        // Store the token
-        self.storage.store_token(&token).await?;
-
-        // Record token creation
+        let token = self
+            .mint_and_store_token(&user_id, scopes, &method_name, lifetime)
+            .await?;
         self.monitoring_manager
             .record_token_creation(&method_name)
             .await;
-
         Ok(token)
     }
 
     /// Initiate SMS challenge for MFA.
     pub async fn initiate_sms_challenge(&self, user_id: &str) -> Result<String> {
-        debug!("Initiating SMS challenge for user: {}", user_id);
-
-        // Validate user_id is not empty
-        if user_id.is_empty() {
-            return Err(AuthError::InvalidInput(
-                "User ID cannot be empty".to_string(),
-            ));
-        }
-
-        let challenge_id = crate::utils::string::generate_id(Some("sms"));
-
-        info!("SMS challenge initiated for user '{}'", user_id);
-        Ok(challenge_id)
+        self.mfa_manager.sms.initiate_challenge(user_id).await
     }
 
     /// Verify SMS challenge code.
     pub async fn verify_sms_code(&self, challenge_id: &str, code: &str) -> Result<bool> {
-        debug!("Verifying SMS code for challenge: {}", challenge_id);
-
-        // Validate input parameters
-        if challenge_id.is_empty() {
-            return Err(AuthError::InvalidInput(
-                "Challenge ID cannot be empty".to_string(),
-            ));
-        }
-
-        if code.is_empty() {
-            return Err(AuthError::InvalidInput(
-                "SMS code cannot be empty".to_string(),
-            ));
-        }
-
-        // Check if challenge exists by looking for stored code
-        let sms_key = format!("sms_challenge:{}:code", challenge_id);
-        if let Some(stored_code_data) = self.storage.get_kv(&sms_key).await? {
-            let stored_code = std::str::from_utf8(&stored_code_data).unwrap_or("");
-
-            // Validate code format
-            let is_valid_format = code.len() == 6 && code.chars().all(|c| c.is_ascii_digit());
-
-            if !is_valid_format {
-                return Ok(false);
-            }
-
-            // ENTERPRISE SECURITY: Use constant-time comparison to prevent timing attacks
-            // Always compare against the stored code length to prevent length-based timing analysis
-            let result = Self::constant_time_compare(stored_code.as_bytes(), code.as_bytes());
-            Ok(result)
-        } else {
-            // Challenge not found or expired
-            Err(AuthError::InvalidInput(
-                "Invalid or expired challenge ID".to_string(),
-            ))
-        }
+        self.mfa_manager.sms.verify_code(challenge_id, code).await
     }
 
     /// Register email for a user.
     pub async fn register_email(&self, user_id: &str, email: &str) -> Result<()> {
-        debug!("Registering email for user: {}", user_id);
-
-        // Validate email format with proper email validation
-        if !Self::is_valid_email_format(email) {
-            return Err(AuthError::validation("Invalid email format"));
-        }
-
-        // Production implementation: Store the email in user profile via storage
-        let storage = &*self.storage;
-
-        // Create a user record or update existing one with the email
-        // This would typically be stored in a users table/collection
-        let user_key = format!("user:{}:email", user_id);
-
-        // Store email in key-value storage (production would use proper user management)
-        let email_bytes = email.as_bytes();
-        match storage.store_kv(&user_key, email_bytes, None).await {
-            Ok(()) => {
-                info!(
-                    "Successfully registered email {} for user {}",
-                    email, user_id
-                );
-                Ok(())
-            }
-            Err(e) => {
-                error!("Failed to store email for user {}: {}", user_id, e);
-                Err(e)
-            }
-        }
+        self.mfa_manager.email.register_email(user_id, email).await
     }
 
     /// Generate TOTP secret for a user.
     pub async fn generate_totp_secret(&self, user_id: &str) -> Result<String> {
-        debug!("Generating TOTP secret for user '{}'", user_id);
-
-        use ring::rand::{SecureRandom, SystemRandom};
-        let rng = SystemRandom::new();
-        let mut secret_bytes = [0u8; 20];
-        rng.fill(&mut secret_bytes)
-            .map_err(|_| AuthError::internal("Failed to generate random bytes for TOTP secret"))?;
-        let secret = base32::encode(base32::Alphabet::Rfc4648 { padding: true }, &secret_bytes);
-
-        info!("TOTP secret generated for user '{}'", user_id);
-
-        Ok(secret)
+        self.mfa_manager.totp.generate_secret(user_id).await
     }
 
     /// Generate TOTP QR code URL.
@@ -1692,17 +1181,12 @@ impl AuthFramework {
         app_name: &str,
         secret: &str,
     ) -> Result<String> {
-        let qr_url =
-            format!("otpauth://totp/{app_name}:{user_id}?secret={secret}&issuer={app_name}");
-
-        info!("TOTP QR code generated for user '{}'", user_id);
-
-        Ok(qr_url)
+        self.mfa_manager.totp.generate_qr_code(user_id, app_name, secret).await
     }
 
     /// Generate current TOTP code using provided secret.
     pub async fn generate_totp_code(&self, secret: &str) -> Result<String> {
-        self.generate_totp_code_for_window(secret, None).await
+        self.mfa_manager.totp.generate_code(secret).await
     }
 
     /// Generate TOTP code for given secret and optional specific time window
@@ -1711,272 +1195,49 @@ impl AuthFramework {
         secret: &str,
         time_window: Option<u64>,
     ) -> Result<String> {
-        // Validate secret format
-        if secret.is_empty() {
-            return Err(AuthError::InvalidInput(
-                "TOTP secret cannot be empty".to_string(),
-            ));
-        }
-
-        // Get time window - either provided or current
-        let window = time_window.unwrap_or_else(|| {
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_else(|e| {
-                    error!("System time error during TOTP generation: {}", e);
-                    Duration::from_secs(0)
-                })
-                .as_secs()
-                / 30
-        });
-
-        // Generate TOTP code using ring/sha2 for production cryptographic implementation
-        use ring::hmac;
-
-        // Decode base32 secret
-        let secret_bytes = base32::decode(base32::Alphabet::Rfc4648 { padding: true }, secret)
-            .ok_or_else(|| AuthError::InvalidInput("Invalid TOTP secret format".to_string()))?;
-
-        // Create HMAC key for TOTP (using SHA1 as per RFC)
-        let key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, &secret_bytes);
-
-        // Convert time window to 8-byte big-endian
-        let time_bytes = window.to_be_bytes();
-
-        // Compute HMAC
-        let signature = hmac::sign(&key, &time_bytes);
-        let hmac_result = signature.as_ref();
-
-        // Dynamic truncation (RFC 4226)
-        let offset = (hmac_result[19] & 0xf) as usize;
-        let code = ((hmac_result[offset] as u32 & 0x7f) << 24)
-            | ((hmac_result[offset + 1] as u32) << 16)
-            | ((hmac_result[offset + 2] as u32) << 8)
-            | (hmac_result[offset + 3] as u32);
-
-        // Generate 6-digit code
-        let totp_code = code % 1_000_000;
-        Ok(format!("{:06}", totp_code))
+        self.mfa_manager.totp.generate_code_for_window(secret, time_window).await
     }
 
     /// Verify TOTP code.
     pub async fn verify_totp_code(&self, user_id: &str, code: &str) -> Result<bool> {
-        debug!("Verifying TOTP code for user '{}'", user_id);
-
-        // Real TOTP verification implementation
-        if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
-            return Ok(false);
-        }
-
-        // Retrieve TOTP secret from storage (set during TOTP setup via setup_totp).
-        let user_secret = match self.get_user_totp_secret(user_id).await {
-            Ok(secret) => secret,
-            Err(_) => {
-                warn!("No TOTP secret found for user '{}'", user_id);
-                return Ok(false);
-            }
-        };
-
-        // Generate expected TOTP codes for current and adjacent time windows
-        let current_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_else(|e| {
-                error!("System time error during TOTP validation: {}", e);
-                Duration::from_secs(0)
-            })
-            .as_secs();
-
-        // TOTP uses 30-second time steps
-        let time_step = 30;
-        let current_window = current_time / time_step;
-
-        // Check current window and ±1 window for clock drift tolerance
-        // ENTERPRISE SECURITY: Use constant-time comparison to prevent timing attacks
-        let mut verification_success = false;
-
-        for window in (current_window.saturating_sub(1))..=(current_window + 1) {
-            if let Ok(expected_code) = self
-                .generate_totp_code_for_window(&user_secret, Some(window))
-                .await
-            {
-                // Constant-time comparison to prevent timing analysis
-                if Self::constant_time_compare(expected_code.as_bytes(), code.as_bytes()) {
-                    verification_success = true;
-                    // Continue checking all windows to maintain constant timing
-                }
-            }
-        }
-
-        if verification_success {
-            info!("TOTP code verification successful for user '{}'", user_id);
-            return Ok(true);
-        }
-
-        let is_valid = false;
-
-        info!(
-            "TOTP code verification for user '{}': {}",
-            user_id,
-            if is_valid { "valid" } else { "invalid" }
-        );
-
-        Ok(is_valid)
+        self.mfa_manager.totp.verify_code(user_id, code).await
     }
 
     /// Check IP rate limit.
     pub async fn check_ip_rate_limit(&self, ip: &str) -> Result<bool> {
         debug!("Checking IP rate limit for '{}'", ip);
-
-        if let Some(ref rate_limiter) = self.rate_limiter {
-            // Create a rate limiting key for the IP
-            let rate_key = format!("ip:{}", ip);
-
-            // Check if the IP is allowed to make more requests
-            if !rate_limiter.is_allowed(&rate_key) {
-                warn!("Rate limit exceeded for IP: {}", ip);
-                return Err(AuthError::rate_limit(format!(
-                    "Too many requests from IP {}. Please try again later.",
-                    ip
-                )));
-            }
-
-            debug!("IP rate limit check passed for: {}", ip);
-            Ok(true)
-        } else {
-            // If rate limiting is disabled, allow all requests
-            debug!(
-                "Rate limiting is disabled, allowing request from IP: {}",
+        let Some(ref rate_limiter) = self.rate_limiter else { return Ok(true); };
+        if !rate_limiter.is_allowed(&format!("ip:{}", ip)) {
+            warn!("Rate limit exceeded for IP: {}", ip);
+            return Err(AuthError::rate_limit(format!(
+                "Too many requests from IP {}. Please try again later.",
                 ip
-            );
-            Ok(true)
+            )));
         }
+        Ok(true)
     }
 
     /// Get security metrics.
     pub async fn get_security_metrics(&self) -> Result<std::collections::HashMap<String, u64>> {
         debug!("Getting security metrics");
-
         let mut metrics = std::collections::HashMap::new();
-
-        // IMPLEMENTATION COMPLETE: Aggregate statistics from audit logs and storage
-        let _audit_stats = self.aggregate_audit_log_statistics().await?;
-
-        let mut total_active_sessions = 0u64;
-        let mut total_user_tokens = 0u64;
-
-        // Count active sessions and tokens directly from in-memory session store.
-        {
-            let sessions_guard = self.sessions.read().await;
-            for session in sessions_guard.values() {
-                if !session.is_expired() {
-                    total_active_sessions += 1;
-                    total_user_tokens += 1; // each live session carries one issued token
-                }
-            }
-        }
-
-        // NOTE: failed/successful authentication attempts require an audit log
-        // subscription. Implement storage.get_auth_attempt_counts() to populate these.
+        let total_active_sessions = self.session_manager.count_active_sessions().await.unwrap_or(0);
         metrics.insert("active_sessions".to_string(), total_active_sessions);
-        metrics.insert("total_tokens".to_string(), total_user_tokens);
-        metrics.insert("failed_attempts".to_string(), 0u64);
-        metrics.insert("successful_attempts".to_string(), 0u64);
+        metrics.insert("total_tokens".to_string(), total_active_sessions);
+        metrics.insert("failed_attempts".to_string(), self.audit_manager.get_failed_login_count_24h().await.unwrap_or(0));
+        metrics.insert("successful_attempts".to_string(), self.audit_manager.get_successful_login_count_24h().await.unwrap_or(0));
         metrics.insert("expired_tokens".to_string(), 0u64);
-
         Ok(metrics)
     }
 
     /// Register phone number for SMS MFA.
     pub async fn register_phone_number(&self, user_id: &str, phone_number: &str) -> Result<()> {
-        debug!("Registering phone number for user '{}'", user_id);
-
-        // Validate phone number format
-        if phone_number.is_empty() {
-            return Err(AuthError::InvalidInput(
-                "Phone number cannot be empty".to_string(),
-            ));
-        }
-
-        // Basic phone number validation (international format)
-        if !phone_number.starts_with('+') || phone_number.len() < 10 {
-            return Err(AuthError::InvalidInput(
-                "Phone number must be in international format (+1234567890)".to_string(),
-            ));
-        }
-
-        // Validate only digits after the + sign
-        let digits = &phone_number[1..];
-        if !digits.chars().all(|c| c.is_ascii_digit()) {
-            return Err(AuthError::InvalidInput(
-                "Phone number must contain only digits after the + sign".to_string(),
-            ));
-        }
-
-        // Store phone number in user's profile/data
-        let key = format!("user:{}:phone", user_id);
-        self.storage
-            .store_kv(&key, phone_number.as_bytes(), None)
-            .await?;
-
-        info!(
-            "Phone number registered for user '{}': {}",
-            user_id, phone_number
-        );
-
-        Ok(())
+        self.mfa_manager.sms.register_phone_number(user_id, phone_number).await
     }
 
     /// Generate backup codes.
     pub async fn generate_backup_codes(&self, user_id: &str, count: usize) -> Result<Vec<String>> {
-        debug!("Generating {} backup codes for user '{}'", count, user_id);
-
-        // Generate cryptographically secure backup codes
-        use ring::rand::{SecureRandom, SystemRandom};
-        let rng = SystemRandom::new();
-        let mut codes = Vec::with_capacity(count);
-
-        for _ in 0..count {
-            // Generate 10 random bytes (80 bits of entropy)
-            let mut bytes = [0u8; 10];
-            rng.fill(&mut bytes)
-                .map_err(|_| AuthError::crypto("Failed to generate secure random bytes"))?;
-
-            // Convert to base32 for human readability
-            let code = base32::encode(base32::Alphabet::Rfc4648 { padding: false }, &bytes);
-
-            // Format as XXXX-XXXX-XXXX-XXXX for readability
-            let formatted_code = format!(
-                "{}-{}-{}-{}",
-                &code[0..4],
-                &code[4..8],
-                &code[8..12],
-                &code[12..16]
-            );
-
-            codes.push(formatted_code);
-        }
-
-        // Hash the codes before storage for security
-        let mut hashed_codes = Vec::with_capacity(codes.len());
-        for code in &codes {
-            // Use bcrypt for secure hashing
-            let hash = bcrypt::hash(code, bcrypt::DEFAULT_COST)
-                .map_err(|e| AuthError::crypto(format!("Failed to hash backup code: {}", e)))?;
-            hashed_codes.push(hash);
-        }
-
-        // Store hashed backup codes for the user
-        let backup_key = format!("user:{}:backup_codes", user_id);
-        let codes_json = serde_json::to_string(&hashed_codes).unwrap_or("[]".to_string());
-        self.storage
-            .store_kv(&backup_key, codes_json.as_bytes(), None)
-            .await?;
-
-        info!("Generated {} backup codes for user '{}'", count, user_id);
-
-        // Return the plaintext codes to the user (they should save them securely)
-        // The stored hashed versions will be used for verification
-        Ok(codes)
+        self.mfa_manager.backup_codes.generate_codes(user_id, count).await
     }
     /// Grant permission to a user.
     pub async fn grant_permission(
@@ -1985,33 +1246,12 @@ impl AuthFramework {
         action: &str,
         resource: &str,
     ) -> Result<()> {
-        debug!(
-            "Granting permission '{}:{}' to user '{}'",
-            action, resource, user_id
-        );
-
-        // Actually grant the permission
-        let mut checker = self.permission_checker.write().await;
-        let permission = Permission::new(action, resource);
-        checker.add_user_permission(user_id, permission);
-
-        info!(
-            "Permission '{}:{}' granted to user '{}'",
-            action, resource, user_id
-        );
-
-        Ok(())
+        self.authorization_manager.grant_permission(user_id, action, resource).await
     }
 
     /// Initiate email challenge.
     pub async fn initiate_email_challenge(&self, user_id: &str) -> Result<String> {
-        debug!("Initiating email challenge for user '{}'", user_id);
-
-        let challenge_id = crate::utils::string::generate_id(Some("email"));
-
-        info!("Email challenge initiated for user '{}'", user_id);
-
-        Ok(challenge_id)
+        self.mfa_manager.email.initiate_challenge(user_id).await
     }
 
     /// Get reference to the storage backend.
@@ -2026,196 +1266,37 @@ impl AuthFramework {
         email: &str,
         password: &str,
     ) -> Result<String> {
-        debug!("Registering new user: {}", username);
-
-        // Check if username already exists
-        let username_key = format!("user:username:{}", username);
-        if self.storage.get_kv(&username_key).await?.is_some() {
-            return Err(AuthError::validation(
-                "Username already exists".to_string(),
-            ));
-        }
-
-        // Check if email already exists
-        let email_key = format!("user:email:{}", email);
-        if self.storage.get_kv(&email_key).await?.is_some() {
-            return Err(AuthError::validation(
-                "Email already exists".to_string(),
-            ));
-        }
-
-        // Generate user ID
-        let user_id = crate::utils::string::generate_id(Some("user"));
-
-        // Hash password
-        let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
-            .map_err(|e| AuthError::crypto(format!("Failed to hash password: {}", e)))?;
-
-        // Store user data including roles and active status
-        let user_data = serde_json::json!({
-            "user_id": user_id,
-            "username": username,
-            "email": email,
-            "password_hash": password_hash,
-            "roles": ["user"],
-            "active": true,
-            "created_at": chrono::Utc::now().to_rfc3339(),
-        });
-
-        let user_key = format!("user:{}", user_id);
-        self.storage
-            .store_kv(&user_key, user_data.to_string().as_bytes(), None)
-            .await?;
-
-        // Store lookups for username and email
-        self.storage
-            .store_kv(&username_key, user_id.as_bytes(), None)
-            .await?;
-        self.storage
-            .store_kv(&email_key, user_id.as_bytes(), None)
-            .await?;
-
-        // Maintain a global users index for admin listing
-        let index_key = "users:index";
-        let mut ids: Vec<String> = match self.storage.get_kv(index_key).await? {
-            Some(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
-            None => vec![],
-        };
-        ids.push(user_id.clone());
-        if let Ok(idx_json) = serde_json::to_vec(&ids) {
-            let _ = self.storage.store_kv(index_key, &idx_json, None).await;
-        }
-
-        // Store the credentials record keyed by username so that
-        // authenticate_password_builtin (which reads user:credentials:{username}) works
-        // for admin-created users in addition to self-registered ones.
-        // IMPORTANT: authenticate_password_builtin uses verify_password() (Argon2 / PHC-string),
-        // so the credentials record must store an Argon2 hash regardless of what hash is stored
-        // in the canonical user:{user_id} record (which uses bcrypt for verify_user_password).
-        let creds_key = format!("user:credentials:{}", username);
-        let creds_hash = match crate::utils::password::hash_password(password) {
-            Ok(h) => h,
-            Err(e) => {
-                warn!("Failed to hash credentials for user '{}': {}", username, e);
-                // Registration still succeeds; login via API will fall back to the
-                // bcrypt path via verify_user_password if needed.
-                return Ok(user_id);
-            }
-        };
-        let creds_data = serde_json::json!({
-            "user_id": user_id,
-            "username": username,
-            "email": email,
-            "password_hash": creds_hash,
-            "created_at": chrono::Utc::now().to_rfc3339(),
-        });
-        let _ = self
-            .storage
-            .store_kv(&creds_key, creds_data.to_string().as_bytes(), None)
-            .await;
-
-        info!("User '{}' registered successfully", username);
-        Ok(user_id)
+        self.user_manager.register_user(username, email, password).await
     }
 
-    /// Update password (re-export with user_id for admin use).
-    /// Looks up by username or by user_id prefixed "user:".
+    /// Update the roles assigned to a user.
     pub async fn update_user_roles(&self, user_id: &str, roles: &[String]) -> Result<()> {
-        let user_key = format!("user:{}", user_id);
-        let user_data_bytes = self
-            .storage
-            .get_kv(&user_key)
-            .await?
-            .ok_or_else(|| AuthError::UserNotFound)?;
-
-        let user_json_str = String::from_utf8(user_data_bytes)
-            .map_err(|e| AuthError::crypto(format!("Invalid user data encoding: {}", e)))?;
-        let mut user_data: serde_json::Value = serde_json::from_str(&user_json_str)
-            .map_err(|e| AuthError::crypto(format!("Failed to parse user data: {}", e)))?;
-
-        user_data["roles"] = serde_json::json!(roles);
-        user_data["updated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
-
-        self.storage
-            .store_kv(&user_key, user_data.to_string().as_bytes(), None)
-            .await?;
-
-        info!("Roles updated for user '{}'" , user_id);
-        Ok(())
+        self.user_manager.update_user_roles(user_id, roles).await
     }
 
     /// Set a user's active / deactivated status.
     pub async fn set_user_active(&self, user_id: &str, active: bool) -> Result<()> {
-        let user_key = format!("user:{}", user_id);
-        let user_data_bytes = self
-            .storage
-            .get_kv(&user_key)
-            .await?
-            .ok_or_else(|| AuthError::UserNotFound)?;
-
-        let user_json_str = String::from_utf8(user_data_bytes)
-            .map_err(|e| AuthError::crypto(format!("Invalid user data encoding: {}", e)))?;
-        let mut user_data: serde_json::Value = serde_json::from_str(&user_json_str)
-            .map_err(|e| AuthError::crypto(format!("Failed to parse user data: {}", e)))?;
-
-        user_data["active"] = serde_json::json!(active);
-        user_data["updated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
-
-        self.storage
-            .store_kv(&user_key, user_data.to_string().as_bytes(), None)
-            .await?;
-
-        info!("User '{}' active status set to {}", user_id, active);
-        Ok(())
+        self.user_manager.set_user_active(user_id, active).await
     }
 
     /// Verify a user's password by user_id against the stored bcrypt hash.
     pub async fn verify_user_password(&self, user_id: &str, password: &str) -> Result<bool> {
-        let user_key = format!("user:{}", user_id);
-        let bytes = self
-            .storage
-            .get_kv(&user_key)
-            .await?
-            .ok_or_else(|| AuthError::UserNotFound)?;
-        let user_json_str = String::from_utf8(bytes)
-            .map_err(|e| AuthError::crypto(format!("Invalid user data encoding: {}", e)))?;
-        let user_data: serde_json::Value = serde_json::from_str(&user_json_str)
-            .map_err(|e| AuthError::crypto(format!("Failed to parse user data: {}", e)))?;
-        let hash = user_data["password_hash"]
-            .as_str()
-            .ok_or_else(|| AuthError::internal("User has no password hash".to_string()))?;
-        bcrypt::verify(password, hash)
-            .map_err(|e| AuthError::crypto(format!("Password verification failed: {}", e)))
+        self.user_manager.verify_user_password(user_id, password).await
     }
 
     /// Look up a user's username by their user_id.
     pub async fn get_username_by_id(&self, user_id: &str) -> Result<String> {
-        let user_key = format!("user:{}", user_id);
-        let bytes = self
-            .storage
-            .get_kv(&user_key)
-            .await?
-            .ok_or_else(|| AuthError::UserNotFound)?;
-        let user_json_str = String::from_utf8(bytes)
-            .map_err(|e| AuthError::crypto(format!("Invalid user data encoding: {}", e)))?;
-        let user_data: serde_json::Value = serde_json::from_str(&user_json_str)
-            .map_err(|e| AuthError::crypto(format!("Failed to parse user data: {}", e)))?;
-        user_data["username"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| AuthError::internal("User has no username field".to_string()))
+        self.user_manager.get_username_by_id(user_id).await
     }
 
     /// Check if a username exists.
     pub async fn username_exists(&self, username: &str) -> Result<bool> {
-        let username_key = format!("user:username:{}", username);
-        Ok(self.storage.get_kv(&username_key).await?.is_some())
+        self.user_manager.username_exists(username).await
     }
 
     /// Check if an email exists.
     pub async fn email_exists(&self, email: &str) -> Result<bool> {
-        let email_key = format!("user:email:{}", email);
-        Ok(self.storage.get_kv(&email_key).await?.is_some())
+        self.user_manager.email_exists(email).await
     }
 
     /// Get user data by username.
@@ -2223,333 +1304,25 @@ impl AuthFramework {
         &self,
         username: &str,
     ) -> Result<HashMap<String, serde_json::Value>> {
-        let username_key = format!("user:username:{}", username);
-
-        match self.storage.get_kv(&username_key).await? {
-            Some(user_id_data) => {
-                let user_id = String::from_utf8(user_id_data)
-                    .map_err(|e| AuthError::crypto(format!("Invalid user ID format: {}", e)))?;
-                let user_key = format!("user:{}", user_id);
-
-                match self.storage.get_kv(&user_key).await? {
-                    Some(user_data) => {
-                        let user_json = String::from_utf8(user_data)
-                            .map_err(|e| AuthError::crypto(format!("Invalid user data format: {}", e)))?;
-                        let user_obj: serde_json::Value =
-                            serde_json::from_str(&user_json).map_err(|e| {
-                                AuthError::crypto(format!("Failed to parse user data: {}", e))
-                            })?;
-
-                        if let Some(obj) = user_obj.as_object() {
-                            Ok(obj.into_iter().map(|(k, v)| (k.clone(), v.clone())).collect())
-                        } else {
-                            Err(AuthError::validation(
-                                "Invalid user data structure".to_string(),
-                            ))
-                        }
-                    }
-                    None => Err(AuthError::validation(
-                        "User not found".to_string(),
-                    )),
-                }
-            }
-            None => Err(AuthError::validation("User not found".to_string())),
-        }
+        self.user_manager.get_user_by_username(username).await
     }
 
     /// Update user password.
-    pub async fn update_user_password(
-        &self,
-        username: &str,
-        new_password: &str,
-    ) -> Result<()> {
-        debug!("Updating password for user: {}", username);
-
-        // Enforce password complexity at the library level so callers that bypass the
-        // API layer still receive validated passwords.
-        crate::utils::validation::validate_password(new_password)
-            .map_err(|e| AuthError::validation(format!("Password validation failed: {e}")))?;
-
-        // Get user ID from username
-        let username_key = format!("user:username:{}", username);
-        let user_id_data = self
-            .storage
-            .get_kv(&username_key)
-            .await?
-            .ok_or_else(|| AuthError::validation("User not found".to_string()))?;
-
-        let user_id = String::from_utf8(user_id_data)
-            .map_err(|e| AuthError::crypto(format!("Invalid user ID format: {}", e)))?;
-
-        // Get current user data
-        let user_key = format!("user:{}", user_id);
-        let user_data_bytes = self
-            .storage
-            .get_kv(&user_key)
-            .await?
-            .ok_or_else(|| AuthError::validation("User not found".to_string()))?;
-
-        let user_json_str = String::from_utf8(user_data_bytes)
-            .map_err(|e| AuthError::crypto(format!("Invalid user data format: {}", e)))?;
-
-        let mut user_data: serde_json::Value = serde_json::from_str(&user_json_str)
-            .map_err(|e| AuthError::crypto(format!("Failed to parse user data: {}", e)))?;
-
-        // Hash new password
-        let password_hash = bcrypt::hash(new_password, bcrypt::DEFAULT_COST)
-            .map_err(|e| AuthError::crypto(format!("Failed to hash password: {}", e)))?;
-
-        // Update password hash in user data
-        user_data["password_hash"] = serde_json::json!(password_hash);
-        user_data["updated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
-
-        // Store updated user data
-        self.storage
-            .store_kv(&user_key, user_data.to_string().as_bytes(), None)
-            .await?;
-
-        // Also update the credentials record (keyed by username) that
-        // authenticate_password_builtin reads from, so the new password takes effect
-        // for future logins immediately.
-        // IMPORTANT: authenticate_password_builtin uses verify_password() (Argon2), so the
-        // credentials record must store an Argon2 hash (not the bcrypt hash used for
-        // verify_user_password above).
-        // Every step is propagated as an error — a silent failure here would leave the
-        // old password valid at login while the API reports success (CRITICAL-1 fix).
-        let creds_key = format!("user:credentials:{}", username);
-        let creds_hash = crate::utils::password::hash_password(new_password)
-            .map_err(|e| AuthError::crypto(format!("Failed to hash login credentials: {e}")))?;
-        let creds_bytes = self
-            .storage
-            .get_kv(&creds_key)
-            .await?
-            .ok_or_else(|| AuthError::internal("Login credentials record not found".to_string()))?;
-        let mut creds: serde_json::Value = serde_json::from_slice(&creds_bytes)
-            .map_err(|e| AuthError::internal(format!("Failed to parse credentials record: {e}")))?;
-        creds["password_hash"] = serde_json::json!(creds_hash);
-        creds["updated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
-        self.storage
-            .store_kv(&creds_key, creds.to_string().as_bytes(), None)
-            .await?;
-
-        info!("Password updated for user: {}", username);
-        Ok(())
+    pub async fn update_user_password(&self, username: &str, new_password: &str) -> Result<()> {
+        self.user_manager.update_user_password(username, new_password).await
     }
 
     /// Delete a user by username.
     pub async fn delete_user(&self, username: &str) -> Result<()> {
-        debug!("Deleting user: {}", username);
-
-        // Get user ID from username
-        let username_key = format!("user:username:{}", username);
-        let user_id_data = self
-            .storage
-            .get_kv(&username_key)
-            .await?
-            .ok_or_else(|| AuthError::validation("User not found".to_string()))?;
-
-        let user_id = String::from_utf8(user_id_data)
-            .map_err(|e| AuthError::crypto(format!("Invalid user ID format: {}", e)))?;
-
-        // Get user email for cleanup
-        let user_key = format!("user:{}", user_id);
-        if let Some(user_data_bytes) = self.storage.get_kv(&user_key).await?
-            && let Ok(user_json_str) = String::from_utf8(user_data_bytes)
-            && let Ok(user_data) = serde_json::from_str::<serde_json::Value>(&user_json_str)
-            && let Some(email) = user_data.get("email").and_then(|v| v.as_str())
-        {
-            let email_key = format!("user:email:{}", email);
-            let _ = self.storage.delete_kv(&email_key).await;
-        }
-
-        // Remove user from the global index
-        let index_key = "users:index";
-        if let Ok(Some(bytes)) = self.storage.get_kv(index_key).await {
-            let mut ids: Vec<String> = serde_json::from_slice(&bytes).unwrap_or_default();
-            ids.retain(|id| id != &user_id);
-            if let Ok(idx_json) = serde_json::to_vec(&ids) {
-                let _ = self.storage.store_kv(index_key, &idx_json, None).await;
-            }
-        }
-
-        // Delete user data
-        let _ = self.storage.delete_kv(&user_key).await;
-        let _ = self.storage.delete_kv(&username_key).await;
-        // Remove the login credentials record so deleted users cannot authenticate.
-        let _ = self
-            .storage
-            .delete_kv(&format!("user:credentials:{}", username))
-            .await;
-        // Remove MFA secrets to avoid orphaned sensitive data.
-        let _ = self
-            .storage
-            .delete_kv(&format!("user:{}:totp_secret", user_id))
-            .await;
-        let _ = self
-            .storage
-            .delete_kv(&format!("user:{}:backup_codes", user_id))
-            .await;
-
-        info!("User '{}' deleted successfully", username);
-        Ok(())
-    }
-
-    /// Get user's TOTP secret from secure storage
-    async fn get_user_totp_secret(&self, user_id: &str) -> Result<String> {
-        // Try to retrieve the secret that was stored during TOTP setup.
-        let key = format!("user:{}:totp_secret", user_id);
-        if let Some(secret_bytes) = self.storage.get_kv(&key).await? {
-            if let Ok(secret) = std::str::from_utf8(&secret_bytes) {
-                if !secret.is_empty() {
-                    return Ok(secret.to_string());
-                }
-            }
-        }
-
-        // No TOTP secret registered — the user has not completed TOTP setup.
-        Err(AuthError::auth_method(
-            "totp",
-            "TOTP not configured for this user; call setup_totp first",
-        ))
-    }
-
-    async fn verify_login_totp_code(&self, user_id: &str, code: &str) -> Result<bool> {
-        if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
-            return Ok(false);
-        }
-
-        let secret_b32 = match self.storage.get_kv(&format!("mfa_secret:{}", user_id)).await? {
-            Some(data) => String::from_utf8_lossy(&data).to_string(),
-            None => return Ok(false),
-        };
-
-        let secret_bytes = match base32::decode(base32::Alphabet::Rfc4648 { padding: false }, &secret_b32) {
-            Some(bytes) => bytes,
-            None => return Ok(false),
-        };
-
-        let now = chrono::Utc::now().timestamp() as u64;
-        const STEP: u64 = 30;
-        const DIGITS: u32 = 6;
-        let mut matched = false;
-
-        for offset in [0u64, STEP, STEP.wrapping_neg()] {
-            let timestamp = now.wrapping_add(offset);
-            let expected = totp_lite::totp_custom::<totp_lite::Sha1>(
-                STEP,
-                DIGITS,
-                &secret_bytes,
-                timestamp,
-            );
-            if Self::constant_time_compare(expected.as_bytes(), code.as_bytes()) {
-                matched = true;
-            }
-        }
-
-        Ok(matched)
-    }
-
-    async fn verify_login_backup_code(&self, user_id: &str, code: &str) -> Result<bool> {
-        use sha2::Digest as _;
-
-        if code.trim().is_empty() {
-            return Ok(false);
-        }
-
-        let backup_key = format!("mfa_backup_codes:{}", user_id);
-        let codes: Vec<String> = match self.storage.get_kv(&backup_key).await? {
-            Some(data) => serde_json::from_slice(&data).unwrap_or_default(),
-            None => return Ok(false),
-        };
-
-        let provided_hash_hex = hex::encode(sha2::Sha256::digest(code.trim().as_bytes()));
-        let provided_bytes = hex::decode(&provided_hash_hex).unwrap_or_default();
-
-        let mut found_idx: Option<usize> = None;
-        for (index, stored_hex) in codes.iter().enumerate() {
-            let stored_bytes = hex::decode(stored_hex).unwrap_or_default();
-            if stored_bytes.len() == provided_bytes.len()
-                && Self::constant_time_compare(&stored_bytes, &provided_bytes)
-            {
-                found_idx = Some(index);
-            }
-        }
-
-        match found_idx {
-            Some(index) => {
-                let mut remaining = codes;
-                remaining.remove(index);
-                let updated = serde_json::to_vec(&remaining).unwrap_or_default();
-                self.storage.store_kv(&backup_key, &updated, None).await?;
-                Ok(true)
-            }
-            None => Ok(false),
-        }
+        self.user_manager.delete_user(username).await
     }
 
     /// Verify MFA code with proper challenge validation.
     async fn verify_mfa_code(&self, challenge: &MfaChallenge, code: &str) -> Result<bool> {
-        // Check if challenge has expired
-        if challenge.is_expired() {
-            return Ok(false);
-        }
-
-        // Validate code format based on challenge type
-        match &challenge.mfa_type {
-            crate::methods::MfaType::Totp => {
-                self.verify_login_totp_code(&challenge.user_id, code).await
-            }
-            crate::methods::MfaType::Sms { .. } => {
-                // SMS codes should be 6 digits
-                if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
-                    return Ok(false);
-                }
-                // Verify against stored SMS code for this challenge
-                let sms_key = format!("sms_challenge:{}:code", challenge.id);
-                if let Some(stored_code_data) = self.storage.get_kv(&sms_key).await? {
-                    let stored_code = std::str::from_utf8(&stored_code_data).unwrap_or("");
-                    // ENTERPRISE SECURITY: Use constant-time comparison to prevent timing attacks
-                    let result =
-                        Self::constant_time_compare(stored_code.as_bytes(), code.as_bytes());
-                    Ok(result)
-                } else {
-                    Ok(false)
-                }
-            }
-            crate::methods::MfaType::Email { .. } => {
-                // Email codes should be 6 digits
-                if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
-                    return Ok(false);
-                }
-                // Verify against stored email code for this challenge
-                let email_key = format!("email_challenge:{}:code", challenge.id);
-                if let Some(stored_code_data) = self.storage.get_kv(&email_key).await? {
-                    let stored_code = std::str::from_utf8(&stored_code_data).unwrap_or("");
-                    // ENTERPRISE SECURITY: Use constant-time comparison to prevent timing attacks
-                    let result =
-                        Self::constant_time_compare(stored_code.as_bytes(), code.as_bytes());
-                    Ok(result)
-                } else {
-                    Ok(false)
-                }
-            }
-            crate::methods::MfaType::BackupCode => {
-                self.verify_login_backup_code(&challenge.user_id, code).await
-            }
-            crate::methods::MfaType::MultiMethod => {
-                if self.verify_login_totp_code(&challenge.user_id, code).await? {
-                    return Ok(true);
-                }
-                self.verify_login_backup_code(&challenge.user_id, code).await
-            }
-            _ => {
-                // Unsupported MFA type
-                Ok(false)
-            }
-        }
+        self.mfa_manager.verify_challenge_code(challenge, code).await
     }
 
-    /// Log an audit event.
+    /// Log an audit event via tracing, subject to per-event-type config guards.
     async fn log_audit_event(
         &self,
         event_type: &str,
@@ -2557,478 +1330,59 @@ impl AuthFramework {
         method: &str,
         metadata: &CredentialMetadata,
     ) {
-        if self.config.audit.enabled {
-            let should_log = match event_type {
-                "auth_success" => self.config.audit.log_success,
-                "auth_failure" => self.config.audit.log_failures,
-                "mfa_required" => self.config.audit.log_success,
-                _ => true,
-            };
-
-            if should_log {
-                info!(
-                    target: "auth_audit",
-                    event_type = event_type,
-                    user_id = user_id,
-                    method = method,
-                    client_ip = metadata.client_ip.as_deref().unwrap_or("unknown"),
-                    user_agent = metadata.user_agent.as_deref().unwrap_or("unknown"),
-                    timestamp = chrono::Utc::now().to_rfc3339(),
-                    "Authentication event"
-                );
-            }
-        }
-    }
-
-    /// Get failed authentication attempts from audit logs
-    async fn get_failed_attempts_from_audit_log(&self) -> Result<u32> {
-        // Production implementation: Query audit log storage for failed attempts
-        // This would integrate with your logging infrastructure (ELK stack, Splunk, etc.)
-
-        // IMPLEMENTATION COMPLETE: Query audit logs for failed authentication attempts
-        match self.query_audit_logs_for_failed_attempts().await {
-            Ok(count) => {
-                tracing::info!(
-                    "Retrieved {} failed authentication attempts from audit logs",
-                    count
-                );
-                Ok(count)
-            }
-            Err(e) => {
-                warn!(
-                    "Failed to query audit logs, falling back to estimation: {}",
-                    e
-                );
-                // Use the dedicated fallback method
-                self.query_audit_events_fallback().await
-            }
-        }
-    }
-
-    /// Get successful authentication attempts from audit logs
-    async fn get_successful_attempts_from_audit_log(&self) -> Result<u32> {
-        // Production implementation: Query audit log storage for successful attempts
-        // This would integrate with your logging infrastructure
-
-        // For now, estimate based on active sessions and tokens
-        let sessions_guard = self.sessions.read().await;
-        let active_sessions = sessions_guard.len() as u32;
-
-        // Estimate successful attempts based on current active sessions
-        // Real implementation would aggregate audit log entries
-        warn!("Using estimated successful attempts - implement proper audit log integration");
-        Ok(active_sessions * 2) // Rough estimate based on session activity
-    }
-
-    /// Estimate failed authentication attempts based on system state
-    async fn estimate_failed_attempts(&self) -> u32 {
-        // This is a development helper - replace with real audit log queries
-        let sessions_guard = self.sessions.read().await;
-        let active_sessions = sessions_guard.len() as u32;
-
-        // Rough estimation: assume 1 failed attempt per 10 successful sessions
-        let estimated_failures = active_sessions / 10;
-
-        info!(
-            "Estimated failed attempts: {} (based on {} active sessions)",
-            estimated_failures, active_sessions
-        );
-
-        estimated_failures
-    }
-
-    /// Query audit logs for failed authentication attempts
-    async fn query_audit_logs_for_failed_attempts(&self) -> Result<u32, AuthError> {
-        tracing::debug!("Querying audit logs for failed authentication attempts");
-
-        // For now, return estimated count based on active sessions
-        // NOTE: Full audit storage integration available for enterprise deployments
-
-        let sessions_guard = self.sessions.read().await;
-        let active_sessions = sessions_guard.len() as u32;
-        drop(sessions_guard);
-
-        // Simple estimation based on current system state
-        let estimated_failed_attempts = match active_sessions {
-            0..=10 => active_sessions.saturating_mul(2), // Low activity: moderate failures
-            11..=100 => active_sessions.saturating_add(20), // Medium activity: some failures
-            _ => active_sessions.saturating_div(5).saturating_add(50), // High activity: proportional failures
+        if !self.config.audit.enabled { return; }
+        let should_log = match event_type {
+            "auth_success" | "mfa_required" => self.config.audit.log_success,
+            "auth_failure" => self.config.audit.log_failures,
+            _ => true,
         };
-
-        tracing::info!(
-            "Estimated {} failed authentication attempts in last 24h (based on {} active sessions)",
-            estimated_failed_attempts,
-            active_sessions
-        );
-
-        Ok(estimated_failed_attempts)
+        if should_log {
+            self.audit_manager
+                .log_auth_trace_event(
+                    event_type,
+                    user_id,
+                    method,
+                    metadata.client_ip.as_deref().unwrap_or("unknown"),
+                    metadata.user_agent.as_deref().unwrap_or("unknown"),
+                )
+                .await;
+        }
     }
 
-    /// Fallback method to query audit events when statistics query fails
-    async fn query_audit_events_fallback(&self) -> Result<u32, AuthError> {
-        let _time_window = chrono::Duration::hours(24);
-        let _cutoff_time = chrono::Utc::now() - _time_window;
-
-        // For now, return a reasonable estimate
-        // NOTE: Enhanced audit tracking available for enterprise deployments
-        tracing::info!("Using secure estimation for failed authentication attempts");
-
-        Ok(self.estimate_failed_attempts().await)
+    /// Guard the global MFA-challenge budget and store the challenge.
+    async fn guard_and_store_mfa_challenge(&self, challenge: MfaChallenge) -> Result<()> {
+        self.mfa_manager.guard_and_store(challenge).await
     }
 
-    /// Aggregate statistics from audit logs for security metrics
-    async fn aggregate_audit_log_statistics(&self) -> Result<SecurityAuditStats, AuthError> {
-        // IMPLEMENTATION COMPLETE: Aggregate comprehensive security statistics
-        tracing::debug!("Aggregating audit log statistics");
-
-        let sessions_guard = self.sessions.read().await;
-        let total_sessions = sessions_guard.len() as u64;
-        drop(sessions_guard);
-
-        // Note: without a persistent audit-log database, only counts derivable from
-        // live in-memory state are reliable.  All other counters are 0 until a
-        // backing store is wired in.
-        let failed_logins = self.query_audit_logs_for_failed_attempts().await? as u64;
-
-        let stats = SecurityAuditStats {
-            active_sessions: total_sessions,
-            failed_logins_24h: failed_logins,
-            successful_logins_24h: 0, // Requires persistent audit-log query
-            unique_users_24h: 0,      // Requires persistent audit-log query
-            token_issued_24h: 0,      // Requires persistent audit-log query
-            password_resets_24h: 0,   // Requires persistent audit-log query
-            admin_actions_24h: 0,     // Requires persistent audit-log query
-            security_alerts_24h: 0,   // Requires persistent audit-log query
-            collection_timestamp: chrono::Utc::now(),
-        };
-
-        tracing::info!(
-            "Audit log statistics - Active sessions: {}, Failed logins: {}, Successful logins: {}",
-            stats.active_sessions,
-            stats.failed_logins_24h,
-            stats.successful_logins_24h
-        );
-
-        Ok(stats)
+    /// Create and immediately store an auth token, returning it.
+    async fn mint_and_store_token(
+        &self,
+        user_id: &str,
+        scopes: Vec<String>,
+        method: &str,
+        lifetime: Option<Duration>,
+    ) -> Result<AuthToken> {
+        let token = self.token_manager.create_auth_token(user_id, scopes, method, lifetime)?;
+        self.storage.store_token(&token).await?;
+        Ok(token)
     }
 
-    /// Estimate successful authentication attempts based on system state
-    async fn estimate_successful_attempts(&self) -> u32 {
-        // This is a development helper - replace with real audit log queries
-        let sessions_guard = self.sessions.read().await;
-        let active_sessions = sessions_guard.len() as u32;
-
-        // Rough estimation: use active sessions as proxy for successful authentications
-        info!(
-            "Estimated successful attempts: {} (based on active sessions)",
-            active_sessions
-        );
-
-        active_sessions
-    }
-
-    /// Validate email format using basic regex
-    fn is_valid_email_format(email: &str) -> bool {
-        // Basic email validation - check for @ symbol and basic structure
-        if !(email.contains('@')
-            && email.len() > 5
-            && email.chars().filter(|&c| c == '@').count() == 1
-            && !email.starts_with('@')
-            && !email.ends_with('@'))
-        {
-            return false;
-        }
-
-        // Split into local and domain parts
-        let parts: Vec<&str> = email.split('@').collect();
-        if parts.len() != 2 {
-            return false;
-        }
-
-        let local_part = parts[0];
-        let domain_part = parts[1];
-
-        // Validate local part (before @)
-        if local_part.is_empty() || local_part.starts_with('.') || local_part.ends_with('.') {
-            return false;
-        }
-
-        // Validate domain part (after @)
-        if domain_part.is_empty()
-            || domain_part.starts_with('.')
-            || domain_part.ends_with('.')
-            || domain_part.starts_with('-')
-            || domain_part.ends_with('-')
-            || !domain_part.contains('.')
-        {
-            return false;
-        }
-
-        // Check that domain has at least one dot and valid structure
-        let domain_parts: Vec<&str> = domain_part.split('.').collect();
-        if domain_parts.len() < 2 {
-            return false;
-        }
-
-        // Each domain part should not be empty
-        for part in domain_parts {
-            if part.is_empty() {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Advanced session management coordination across distributed instances
+    /// Coordinate session state across distributed instances.
     pub async fn coordinate_distributed_sessions(&self) -> Result<SessionCoordinationStats> {
-        // IMPLEMENTATION COMPLETE: Distributed session coordination system
-        tracing::debug!("Coordinating distributed sessions across instances");
-
-        let sessions_guard = self.sessions.read().await;
-        let local_sessions = sessions_guard.len();
-        drop(sessions_guard);
-
-        // Coordinate with other instances through distributed session manager
-        let coordination_stats = SessionCoordinationStats {
-            local_active_sessions: local_sessions as u64,
-            remote_active_sessions: self.estimate_remote_sessions().await?,
-            synchronized_sessions: self.count_synchronized_sessions().await?,
-            coordination_conflicts: 0, // Single-instance deployment: concurrent write conflicts are handled by RwLock, no distributed conflict tracking needed
-            last_coordination_time: chrono::Utc::now(),
-        };
-
-        // Broadcast session state to other instances
-        self.broadcast_session_state().await?;
-
-        // Resolve any session conflicts
-        self.resolve_session_conflicts().await?;
-
-        tracing::info!(
-            "Session coordination complete - Local: {}, Remote: {}, Synchronized: {}",
-            coordination_stats.local_active_sessions,
-            coordination_stats.remote_active_sessions,
-            coordination_stats.synchronized_sessions
-        );
-
-        Ok(coordination_stats)
+        self.session_manager.coordinate_distributed_sessions().await
     }
 
-    /// Estimate active sessions on remote instances.
-    ///
-    /// Queries the configured [`DistributedSessionStore`] for the cluster-wide
-    /// total, then subtracts the local in-memory count to arrive at a remote
-    /// estimate.  When no store is configured (the default
-    /// `LocalOnlySessionStore`) this correctly returns `0` rather than an
-    /// arbitrary `local * 2` fabrication.
-    async fn estimate_remote_sessions(&self) -> Result<u64> {
-        let total = self.distributed_store.total_session_count().await?;
-        if total == 0 {
-            // LocalOnlySessionStore or empty cluster — no remote sessions.
-            tracing::debug!("No distributed session store configured; remote session count = 0");
-            return Ok(0);
-        }
-        let local = self.sessions.read().await.len() as u64;
-        let remote = total.saturating_sub(local);
-        tracing::debug!(
-            "Distributed session count: total={}, local={}, remote={}",
-            total, local, remote
-        );
-        Ok(remote)
-    }
-
-    /// Count sessions synchronized across instances
-    async fn count_synchronized_sessions(&self) -> Result<u64> {
-        let sessions_guard = self.sessions.read().await;
-
-        // Count sessions that have distributed coordination metadata
-        let synchronized = sessions_guard
-            .values()
-            .filter(|session| {
-                // Check for coordination metadata indicating distributed sync
-                session.data.contains_key("last_sync_time")
-                    && session.data.contains_key("instance_id")
-            })
-            .count() as u64;
-
-        tracing::debug!("Synchronized sessions count: {}", synchronized);
-        Ok(synchronized)
-    }
-
-    /// Broadcast local session state to other instances
-    async fn broadcast_session_state(&self) -> Result<()> {
-        // IMPLEMENTATION COMPLETE: Session state broadcasting
-        let sessions_guard = self.sessions.read().await;
-
-        for (session_id, session) in sessions_guard.iter() {
-            // Single-instance: trace-log session state.
-            // For multi-node deployments, integrate DistributedSessionStore to push
-            // session state to a shared cache (Redis, Hazelcast, etc.).
-            tracing::trace!(
-                "Broadcasting session state - ID: {}, User: {}, Last Activity: {}",
-                session_id,
-                session.user_id,
-                session.last_activity
-            );
-        }
-
-        tracing::debug!(
-            "Session state broadcast completed for {} sessions",
-            sessions_guard.len()
-        );
-        Ok(())
-    }
-
-    /// Resolve session conflicts between instances
-    async fn resolve_session_conflicts(&self) -> Result<()> {
-        // IMPLEMENTATION COMPLETE: Session conflict resolution
-        let mut sessions_guard = self.sessions.write().await;
-
-        // Check for conflicts and resolve using last-writer-wins with timestamps
-        for (session_id, session) in sessions_guard.iter_mut() {
-            if let Some(last_sync_value) = session.data.get("last_sync_time")
-                && let Some(last_sync_str) = last_sync_value.as_str()
-                && let Ok(sync_time) = last_sync_str.parse::<i64>()
-            {
-                let current_time = chrono::Utc::now().timestamp();
-
-                // If session hasn't been synced recently, mark for resolution
-                if current_time - sync_time > 300 {
-                    // 5 minutes
-                    session.data.insert(
-                        "conflict_resolution".to_string(),
-                        serde_json::Value::String("resolved_by_timestamp".to_string()),
-                    );
-
-                    tracing::warn!(
-                        "Resolved session conflict for session {} using timestamp priority",
-                        session_id
-                    );
-                }
-            }
-        }
-
-        tracing::debug!("Session conflict resolution completed");
-        Ok(())
-    }
-
-    /// Synchronize session with remote instances
+    /// Synchronize a specific session with remote instances.
     pub async fn synchronize_session(&self, session_id: &str) -> Result<()> {
-        // IMPLEMENTATION COMPLETE: Individual session synchronization
-        tracing::debug!("Synchronizing session: {}", session_id);
-
-        let mut sessions_guard = self.sessions.write().await;
-
-        if let Some(session) = sessions_guard.get_mut(session_id) {
-            // Add synchronization metadata
-            let current_time = chrono::Utc::now();
-            session.data.insert(
-                "last_sync_time".to_string(),
-                serde_json::Value::String(current_time.timestamp().to_string()),
-            );
-            session.data.insert(
-                "instance_id".to_string(),
-                serde_json::Value::String(self.get_instance_id()),
-            );
-            session.data.insert(
-                "sync_version".to_string(),
-                serde_json::Value::String("1".to_string()),
-            );
-
-            // Single-instance: record sync metadata in the session.
-            // For multi-node deployments, push the updated session to DistributedSessionStore.
-            tracing::info!(
-                "Session {} synchronized - User: {}, Instance: {}",
-                session_id,
-                session.user_id,
-                self.get_instance_id()
-            );
-        } else {
-            return Err(AuthError::validation(format!(
-                "Session {} not found",
-                session_id
-            )));
-        }
-
-        Ok(())
+        self.session_manager.synchronize_session(session_id).await
     }
 
-    /// Get unique instance identifier for coordination
-    fn get_instance_id(&self) -> String {
-        // Use standard hostname/container-ID environment variables when available,
-        // falling back to a per-process UUID fragment for local deployments.
-        std::env::var("HOSTNAME")
-            .or_else(|_| std::env::var("INSTANCE_ID"))
-            .unwrap_or_else(|_| format!("auth-instance-{}", &uuid::Uuid::new_v4().to_string()[..8]))
-    }
-
-    /// Retrieves the monitoring manager for accessing metrics and health check functionality.
-    ///
-    /// The monitoring manager provides access to comprehensive metrics collection,
-    /// health monitoring, and performance analytics for the authentication framework.
-    /// This is essential for production monitoring and observability.
-    ///
-    /// # Returns
-    ///
-    /// An `Arc<MonitoringManager>` that can be used to:
-    /// - Collect performance metrics
-    /// - Monitor system health
-    /// - Track authentication events
-    /// - Generate monitoring reports
-    ///
-    /// # Thread Safety
-    ///
-    /// The returned monitoring manager is thread-safe and can be shared across
-    /// multiple threads or async tasks safely.
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use auth_framework::{AuthFramework, AuthConfig};
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let auth_framework = AuthFramework::new(AuthConfig::default());
-    /// let monitoring = auth_framework.get_monitoring_manager();
-    ///
-    /// // Use for health checks
-    /// let health_status = monitoring.health_check().await;
-    ///
-    /// // Use for metrics collection
-    /// let metrics = monitoring.get_performance_metrics();
-    /// # Ok(())
-    /// # }
-    /// ```
+    /// Returns the monitoring manager for metrics collection and health checks.
     pub fn get_monitoring_manager(&self) -> Arc<crate::monitoring::MonitoringManager> {
         self.monitoring_manager.clone()
     }
 
-    /// Get the security manager for rate limiting, DoS protection, and IP blacklisting
-    ///
-    /// Returns Some(Arc<SecurityManager>) if the framework is properly initialized,
-    /// None otherwise.
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use auth_framework::{AuthFramework, AuthConfig};
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let auth_framework = AuthFramework::new(AuthConfig::default());
-    /// # let ip: std::net::IpAddr = "127.0.0.1".parse().unwrap();
-    /// let security_manager = auth_framework.get_security_manager();
-    ///
-    /// if let Some(manager) = security_manager {
-    ///     // Check blacklist
-    ///     let is_allowed = manager.check_blacklist(ip).await;
-    ///
-    ///     // Get statistics
-    ///     let stats = manager.get_stats().await;
-    /// }
-    /// # Ok(())
-    /// # }
-    /// ```
+    /// Returns the security manager for rate limiting, DoS protection, and IP blacklisting.
     pub fn get_security_manager(&self) -> Option<Arc<crate::api::SecurityManager>> {
         Some(self.security_manager.clone())
     }
@@ -3051,62 +1405,22 @@ impl AuthFramework {
     }
     /// Create a new role.
     pub async fn create_role(&self, role: crate::permissions::Role) -> Result<()> {
-        debug!("Creating role '{}'", role.name);
-
-        // Validate role name
-        if role.name.is_empty() {
-            return Err(AuthError::validation("Role name cannot be empty"));
-        }
-
-        // Store role in permission checker
-        let mut checker = self.permission_checker.write().await;
-        checker.add_role(role.clone());
-
-        info!("Role '{}' created", role.name);
-        Ok(())
+        self.authorization_manager.create_role(role).await
     }
 
     /// Assign a role to a user.
     pub async fn assign_role(&self, user_id: &str, role_name: &str) -> Result<()> {
-        debug!("Assigning role '{}' to user '{}'", role_name, user_id);
+        self.authorization_manager.assign_role(user_id, role_name).await
+    }
 
-        // Validate inputs
-        if user_id.is_empty() {
-            return Err(AuthError::validation("User ID cannot be empty"));
-        }
-        if role_name.is_empty() {
-            return Err(AuthError::validation("Role name cannot be empty"));
-        }
-
-        // Assign role through permission checker
-        let mut checker = self.permission_checker.write().await;
-        checker.assign_role_to_user(user_id, role_name)?;
-
-        info!("Role '{}' assigned to user '{}'", role_name, user_id);
-        Ok(())
+    /// Remove a role from a user.
+    pub async fn remove_role(&self, user_id: &str, role_name: &str) -> Result<()> {
+        self.authorization_manager.remove_role(user_id, role_name).await
     }
 
     /// Set role inheritance.
     pub async fn set_role_inheritance(&self, child_role: &str, parent_role: &str) -> Result<()> {
-        debug!(
-            "Setting inheritance: '{}' inherits from '{}'",
-            child_role, parent_role
-        );
-
-        // Validate inputs
-        if child_role.is_empty() || parent_role.is_empty() {
-            return Err(AuthError::validation("Role names cannot be empty"));
-        }
-
-        // Set inheritance through permission checker
-        let mut checker = self.permission_checker.write().await;
-        checker.set_role_inheritance(child_role, parent_role)?;
-
-        info!(
-            "Role inheritance set: '{}' inherits from '{}'",
-            child_role, parent_role
-        );
-        Ok(())
+        self.authorization_manager.set_role_inheritance(child_role, parent_role).await
     }
 
     /// Revoke permission from a user.
@@ -3116,102 +1430,22 @@ impl AuthFramework {
         action: &str,
         resource: &str,
     ) -> Result<()> {
-        debug!(
-            "Revoking permission '{}:{}' from user '{}'",
-            action, resource, user_id
-        );
-
-        // Validate inputs
-        if user_id.is_empty() || action.is_empty() || resource.is_empty() {
-            return Err(AuthError::validation(
-                "User ID, action, and resource cannot be empty",
-            ));
-        }
-
-        // Revoke permission through permission checker
-        let mut checker = self.permission_checker.write().await;
-        let permission = Permission::new(action, resource);
-        checker.remove_user_permission(user_id, &permission);
-
-        info!(
-            "Permission '{}:{}' revoked from user '{}'",
-            action, resource, user_id
-        );
-        Ok(())
+        self.authorization_manager.revoke_permission(user_id, action, resource).await
     }
 
     /// Check if user has a role.
     pub async fn user_has_role(&self, user_id: &str, role_name: &str) -> Result<bool> {
-        debug!("Checking if user '{}' has role '{}'", user_id, role_name);
-
-        // Validate inputs
-        if user_id.is_empty() || role_name.is_empty() {
-            return Err(AuthError::validation(
-                "User ID and role name cannot be empty",
-            ));
-        }
-
-        // Check through permission checker
-        let checker = self.permission_checker.read().await;
-        let has_role = checker.user_has_role(user_id, role_name);
-
-        debug!("User '{}' has role '{}': {}", user_id, role_name, has_role);
-        Ok(has_role)
+        self.authorization_manager.user_has_role(user_id, role_name).await
     }
 
     /// Get effective permissions for a user.
     pub async fn get_effective_permissions(&self, user_id: &str) -> Result<Vec<String>> {
-        debug!("Getting effective permissions for user '{}'", user_id);
-
-        // Validate input
-        if user_id.is_empty() {
-            return Err(AuthError::validation("User ID cannot be empty"));
-        }
-
-        // Get permissions through permission checker
-        let checker = self.permission_checker.read().await;
-        let permissions = checker.get_effective_permissions(user_id);
-
-        debug!(
-            "User '{}' has {} effective permissions",
-            user_id,
-            permissions.len()
-        );
-        Ok(permissions)
+        self.authorization_manager.get_effective_permissions(user_id).await
     }
 
     /// Create ABAC policy.
     pub async fn create_abac_policy(&self, name: &str, description: &str) -> Result<()> {
-        debug!("Creating ABAC policy '{}'", name);
-
-        // Validate inputs
-        if name.is_empty() {
-            return Err(AuthError::validation("Policy name cannot be empty"));
-        }
-        if description.is_empty() {
-            return Err(AuthError::validation("Policy description cannot be empty"));
-        }
-
-        // Create policy data structure
-        let policy_data = serde_json::json!({
-            "name": name,
-            "description": description,
-            "created_at": chrono::Utc::now(),
-            "rules": [],
-            "active": true
-        });
-
-        // Store policy
-        let key = format!("abac:policy:{}", name);
-        let policy_json = serde_json::to_vec(&policy_data)
-            .map_err(|e| AuthError::validation(format!("Failed to serialize policy: {}", e)))?;
-        self.storage.store_kv(&key, &policy_json, None).await?;
-
-        info!(
-            "ABAC policy '{}' created with description: {}",
-            name, description
-        );
-        Ok(())
+        self.authorization_manager.create_abac_policy(name, description).await
     }
 
     /// Map user attribute for ABAC evaluation.
@@ -3221,35 +1455,7 @@ impl AuthFramework {
         attribute: &str,
         value: &str,
     ) -> Result<()> {
-        debug!(
-            "Mapping attribute '{}' = '{}' for user '{}'",
-            attribute, value, user_id
-        );
-
-        // Validate inputs
-        if user_id.is_empty() || attribute.is_empty() {
-            return Err(AuthError::validation(
-                "User ID and attribute name cannot be empty",
-            ));
-        }
-
-        // Store user attribute
-        let attrs_key = format!("user:{}:attributes", user_id);
-        let mut user_attrs = if let Some(attrs_data) = self.storage.get_kv(&attrs_key).await? {
-            serde_json::from_slice::<std::collections::HashMap<String, String>>(&attrs_data)
-                .unwrap_or_default()
-        } else {
-            std::collections::HashMap::new()
-        };
-
-        user_attrs.insert(attribute.to_string(), value.to_string());
-
-        let attrs_json = serde_json::to_vec(&user_attrs)
-            .map_err(|e| AuthError::validation(format!("Failed to serialize attributes: {}", e)))?;
-        self.storage.store_kv(&attrs_key, &attrs_json, None).await?;
-
-        info!("Attribute '{}' mapped for user '{}'", attribute, user_id);
-        Ok(())
+        self.authorization_manager.map_user_attribute(user_id, attribute, value).await
     }
 
     /// Get user attribute for ABAC evaluation.
@@ -3258,24 +1464,7 @@ impl AuthFramework {
         user_id: &str,
         attribute: &str,
     ) -> Result<Option<String>> {
-        debug!("Getting attribute '{}' for user '{}'", attribute, user_id);
-
-        // Validate inputs
-        if user_id.is_empty() || attribute.is_empty() {
-            return Err(AuthError::validation(
-                "User ID and attribute name cannot be empty",
-            ));
-        }
-
-        // Get user attributes
-        let attrs_key = format!("user:{}:attributes", user_id);
-        if let Some(attrs_data) = self.storage.get_kv(&attrs_key).await? {
-            let user_attrs: std::collections::HashMap<String, String> =
-                serde_json::from_slice(&attrs_data).unwrap_or_default();
-            Ok(user_attrs.get(attribute).cloned())
-        } else {
-            Ok(None)
-        }
+        self.authorization_manager.get_user_attribute(user_id, attribute).await
     }
 
     /// Check dynamic permission with context evaluation (ABAC).
@@ -3286,114 +1475,12 @@ impl AuthFramework {
         resource: &str,
         context: std::collections::HashMap<String, String>,
     ) -> Result<bool> {
-        debug!(
-            "Checking dynamic permission for user '{}': {}:{} with context: {:?}",
-            user_id, action, resource, context
-        );
-
-        // Validate inputs
-        if user_id.is_empty() || action.is_empty() || resource.is_empty() {
-            return Err(AuthError::validation(
-                "User ID, action, and resource cannot be empty",
-            ));
-        }
-
-        // Get user attributes for ABAC evaluation
-        let user_attrs_key = format!("user:{}:attributes", user_id);
-        let user_attrs = if let Some(attrs_data) = self.storage.get_kv(&user_attrs_key).await? {
-            serde_json::from_slice::<std::collections::HashMap<String, String>>(&attrs_data)
-                .unwrap_or_default()
-        } else {
-            std::collections::HashMap::new()
-        };
-
-        // Basic ABAC evaluation with context
-        let mut permission_granted = false;
-
-        // Check role-based permissions first
-        let mut checker = self.permission_checker.write().await;
-        let permission = Permission::new(action, resource);
-        if checker
-            .check_permission(user_id, &permission)
-            .unwrap_or(false)
-        {
-            permission_granted = true;
-        }
-        drop(checker);
-
-        // Apply context-based rules
-        if permission_granted {
-            // Time-based access control
-            if let Some(time_restriction) = context.get("time_restriction") {
-                let current_hour = chrono::Utc::now()
-                    .format("%H")
-                    .to_string()
-                    .parse::<u32>()
-                    .unwrap_or(0);
-                if time_restriction == "business_hours" && !(9..=17).contains(&current_hour) {
-                    permission_granted = false;
-                    debug!("Access denied: outside business hours");
-                }
-            }
-
-            // Location-based access control
-            if let Some(required_location) = context.get("required_location")
-                && let Some(user_location) = user_attrs.get("location")
-                && user_location != required_location
-            {
-                permission_granted = false;
-                debug!(
-                    "Access denied: user location {} != required {}",
-                    user_location, required_location
-                );
-            }
-
-            // Clearance level access control
-            if let Some(required_clearance) = context.get("required_clearance")
-                && let Some(user_clearance) = user_attrs.get("clearance_level")
-            {
-                let required_level = required_clearance.parse::<u32>().unwrap_or(0);
-                let user_level = user_clearance.parse::<u32>().unwrap_or(0);
-                if user_level < required_level {
-                    permission_granted = false;
-                    debug!(
-                        "Access denied: user clearance {} < required {}",
-                        user_level, required_level
-                    );
-                }
-            }
-        }
-
-        debug!(
-            "Dynamic permission check result for user '{}': {}",
-            user_id, permission_granted
-        );
-        Ok(permission_granted)
+        self.authorization_manager.check_dynamic_permission(user_id, action, resource, context).await
     }
 
     /// Create resource for permission management.
     pub async fn create_resource(&self, resource: &str) -> Result<()> {
-        debug!("Creating resource '{}'", resource);
-
-        // Validate input
-        if resource.is_empty() {
-            return Err(AuthError::validation("Resource name cannot be empty"));
-        }
-
-        // Store resource metadata
-        let resource_data = serde_json::json!({
-            "name": resource,
-            "created_at": chrono::Utc::now(),
-            "active": true
-        });
-
-        let key = format!("resource:{}", resource);
-        let resource_json = serde_json::to_vec(&resource_data)
-            .map_err(|e| AuthError::validation(format!("Failed to serialize resource: {}", e)))?;
-        self.storage.store_kv(&key, &resource_json, None).await?;
-
-        info!("Resource '{}' created", resource);
-        Ok(())
+        self.authorization_manager.create_resource(resource).await
     }
 
     /// Delegate permission from one user to another.
@@ -3405,142 +1492,12 @@ impl AuthFramework {
         resource: &str,
         duration: std::time::Duration,
     ) -> Result<()> {
-        debug!(
-            "Delegating permission '{}:{}' from '{}' to '{}' for {:?}",
-            action, resource, delegator_id, delegatee_id, duration
-        );
-
-        // Validate inputs
-        if delegator_id.is_empty()
-            || delegatee_id.is_empty()
-            || action.is_empty()
-            || resource.is_empty()
-        {
-            return Err(AuthError::validation(
-                "All delegation parameters cannot be empty",
-            ));
-        }
-
-        // Check if delegator has the permission
-        let permission = Permission::new(action, resource);
-        let mut checker = self.permission_checker.write().await;
-        if !checker
-            .check_permission(delegator_id, &permission)
-            .unwrap_or(false)
-        {
-            return Err(AuthError::authorization(
-                "Delegator does not have the permission to delegate",
-            ));
-        }
-        drop(checker);
-
-        // Create delegation record
-        let delegation_id = uuid::Uuid::new_v4().to_string();
-        let expires_at = std::time::SystemTime::now() + duration;
-        let delegation_data = serde_json::json!({
-            "id": delegation_id,
-            "delegator_id": delegator_id,
-            "delegatee_id": delegatee_id,
-            "action": action,
-            "resource": resource,
-            "created_at": chrono::Utc::now(),
-            "expires_at": expires_at.duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_else(|e| {
-                    error!("System time error during delegation creation: {}", e);
-                    Duration::from_secs(0)
-                })
-                .as_secs()
-        });
-
-        // Store delegation under a unique ID key
-        let key = format!("delegation:{}", delegation_id);
-        let delegation_json = serde_json::to_vec(&delegation_data)
-            .map_err(|e| AuthError::validation(format!("Failed to serialize delegation: {}", e)))?;
-        self.storage
-            .store_kv(&key, &delegation_json, Some(duration))
-            .await?;
-
-        // Maintain a per-delegatee index so get_active_delegations can find them
-        let index_key = format!("delegations_index:{}", delegatee_id);
-        let mut ids: Vec<String> = match self.storage.get_kv(&index_key).await? {
-            Some(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
-            None => vec![],
-        };
-        ids.push(delegation_id.clone());
-        let ids_json = serde_json::to_vec(&ids)
-            .map_err(|e| AuthError::validation(format!("Failed to serialize delegation index: {}", e)))?;
-        self.storage.store_kv(&index_key, &ids_json, None).await?;
-
-        info!(
-            "Permission '{}:{}' delegated from '{}' to '{}' for {:?}",
-            action, resource, delegator_id, delegatee_id, duration
-        );
-        Ok(())
+        self.authorization_manager.delegate_permission(delegator_id, delegatee_id, action, resource, duration).await
     }
 
     /// Get active delegations for a user.
     pub async fn get_active_delegations(&self, user_id: &str) -> Result<Vec<String>> {
-        debug!("Getting active delegations for user '{}'", user_id);
-
-        if user_id.is_empty() {
-            return Err(AuthError::validation("User ID cannot be empty"));
-        }
-
-        // Read the per-delegatee index populated by delegate_permission
-        let index_key = format!("delegations_index:{}", user_id);
-        let delegation_ids: Vec<String> = match self.storage.get_kv(&index_key).await? {
-            Some(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
-            None => return Ok(vec![]),
-        };
-
-        let now_secs = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        let mut result = Vec::new();
-        let mut active_ids = Vec::new();
-
-        for id in &delegation_ids {
-            let key = format!("delegation:{}", id);
-            match self.storage.get_kv(&key).await? {
-                Some(bytes) => {
-                    if let Ok(data) = serde_json::from_slice::<serde_json::Value>(&bytes) {
-                        // Check if the delegation has expired
-                        let expires_at = data["expires_at"].as_u64().unwrap_or(0);
-                        if expires_at > now_secs {
-                            // Still active
-                            let action = data["action"].as_str().unwrap_or("unknown");
-                            let resource = data["resource"].as_str().unwrap_or("unknown");
-                            let delegator = data["delegator_id"].as_str().unwrap_or("unknown");
-                            result.push(format!(
-                                "{}:{}:delegated_from:{}",
-                                action, resource, delegator
-                            ));
-                            active_ids.push(id.clone());
-                        }
-                        // Expired delegations are pruned from the index below
-                    }
-                }
-                None => {
-                    // Key no longer exists (TTL expired); skip without adding to active_ids
-                }
-            }
-        }
-
-        // Prune expired / missing entries from the index to keep it tidy
-        if active_ids.len() != delegation_ids.len() {
-            if let Ok(pruned) = serde_json::to_vec(&active_ids) {
-                let _ = self.storage.store_kv(&index_key, &pruned, None).await;
-            }
-        }
-
-        debug!(
-            "Found {} active delegations for user '{}'",
-            result.len(),
-            user_id
-        );
-        Ok(result)
+        self.authorization_manager.get_active_delegations(user_id).await
     }
 
     /// Get permission audit logs with filtering.
@@ -3551,396 +1508,39 @@ impl AuthFramework {
         resource: Option<&str>,
         limit: Option<usize>,
     ) -> Result<Vec<String>> {
-        debug!(
-            "Getting permission audit logs with filters - user: {:?}, action: {:?}, resource: {:?}, limit: {:?}",
-            user_id, action, resource, limit
-        );
-
-        let query = AuditQuery {
-            event_types: Some(vec![
-                AuditEventType::PermissionGranted,
-                AuditEventType::PermissionDenied,
-                AuditEventType::RoleAssigned,
-                AuditEventType::RoleRevoked,
-                AuditEventType::RoleCreated,
-                AuditEventType::RoleUpdated,
-                AuditEventType::RoleDeleted,
-            ]),
-            user_id: user_id.map(|s| s.to_string()),
-            resource_type: resource.map(|s| s.to_string()),
-            limit: limit.map(|l| l as u64),
-            sort_order: SortOrder::TimestampDesc,
-            risk_level: None,
-            outcome: None,
-            time_range: None,
-            ip_address: None,
-            actor_id: None,
-            correlation_id: None,
-            offset: None,
-        };
-
-        let events = self.audit_manager.query_events(&query).await?;
-
-        let logs: Vec<String> = events
-            .into_iter()
-            .filter(|e| {
-                // Apply optional action filter on the description field
-                action.is_none_or(|a| {
-                    e.description.to_lowercase().contains(&a.to_lowercase())
-                        || e.details
-                            .values()
-                            .any(|v| v.to_lowercase().contains(&a.to_lowercase()))
-                })
-            })
-            .map(|e| {
-                let ts = e
-                    .timestamp
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| {
-                        chrono::Utc.timestamp_opt(d.as_secs() as i64, 0)
-                            .single()
-                            .map(|dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string())
-                            .unwrap_or_else(|| "unknown-time".to_string())
-                    })
-                    .unwrap_or_else(|_| "unknown-time".to_string());
-                let uid = e.user_id.as_deref().unwrap_or("system");
-                format!(
-                    "[{}] {:?} user={} outcome={:?} - {}",
-                    ts, e.event_type, uid, e.outcome, e.description
-                )
-            })
-            .collect();
-
-        debug!("Retrieved {} audit log entries", logs.len());
-        Ok(logs)
+        self.audit_manager.get_permission_audit_logs(user_id, action, resource, limit).await
     }
 
     /// Get permission metrics for monitoring.
     pub async fn get_permission_metrics(
         &self,
     ) -> Result<std::collections::HashMap<String, u64>, AuthError> {
-        debug!("Getting permission metrics");
-
-        let checker = self.permission_checker.read().await;
-
-        let total_roles = checker.role_count() as u64;
-        let total_users_with_permissions = checker.user_count() as u64;
-        let total_permissions = checker.total_direct_permission_count() as u64;
-
-        drop(checker);
-
-        let active_sessions = self
-            .storage
-            .count_active_sessions()
+        let active_sessions = self.storage.count_active_sessions().await.unwrap_or(0);
+        let permission_checks_last_hour =
+            self.audit_manager.get_permission_checks_last_hour().await.unwrap_or(0);
+        self.authorization_manager
+            .get_permission_metrics(active_sessions, permission_checks_last_hour)
             .await
-            .unwrap_or(0);
-
-        // Count permission-related events in the last hour.
-        let permission_checks_last_hour = {
-            use crate::audit::TimeRange;
-            let one_hour_ago =
-                std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
-            let query = AuditQuery {
-                event_types: Some(vec![
-                    AuditEventType::PermissionGranted,
-                    AuditEventType::PermissionDenied,
-                ]),
-                time_range: Some(TimeRange {
-                    start: one_hour_ago,
-                    end: std::time::SystemTime::now(),
-                }),
-                user_id: None,
-                risk_level: None,
-                outcome: None,
-                resource_type: None,
-                actor_id: None,
-                correlation_id: None,
-                ip_address: None,
-                limit: None,
-                offset: None,
-                sort_order: SortOrder::TimestampDesc,
-            };
-            self.audit_manager
-                .query_events(&query)
-                .await
-                .map(|events| events.len() as u64)
-                .unwrap_or(0)
-        };
-
-        let mut metrics = std::collections::HashMap::new();
-        metrics.insert("total_users_with_permissions".to_string(), total_users_with_permissions);
-        metrics.insert("total_roles".to_string(), total_roles);
-        metrics.insert("total_permissions".to_string(), total_permissions);
-        metrics.insert("active_sessions".to_string(), active_sessions);
-        metrics.insert("permission_checks_last_hour".to_string(), permission_checks_last_hour);
-
-        debug!("Retrieved {} permission metrics", metrics.len());
-        Ok(metrics)
     }
 
-    /// Collect comprehensive security audit statistics
-    /// This aggregates critical security metrics for monitoring and incident response
+    /// Collect comprehensive security audit statistics.
     pub async fn get_security_audit_stats(&self) -> Result<SecurityAuditStats> {
-        let now = std::time::SystemTime::now();
-        let _twenty_four_hours_ago = now - std::time::Duration::from_secs(24 * 60 * 60);
-
-        // Get active sessions count from existing sessions storage
-        let sessions_guard = self.sessions.read().await;
-        let active_sessions = sessions_guard.len() as u64;
-        drop(sessions_guard);
-
-        // Calculate login statistics from audit logs and recent activity
-        let failed_logins_24h = self
-            .audit_manager
-            .get_failed_login_count_24h()
-            .await
-            .unwrap_or(0);
-        let successful_logins_24h = self
-            .audit_manager
-            .get_successful_login_count_24h()
-            .await
-            .unwrap_or(active_sessions * 2);
-        let token_issued_24h = self
-            .audit_manager
-            .get_token_issued_count_24h()
-            .await
-            .unwrap_or(active_sessions * 3);
-
-        // Calculate unique users from session and audit data
-        let unique_users_24h = self
-            .audit_manager
-            .get_unique_users_24h()
-            .await
-            .unwrap_or((successful_logins_24h as f64 * 0.7) as u64);
-
-        // Security-specific metrics from audit logs
-        let password_resets_24h = self
-            .audit_manager
-            .get_password_reset_count_24h()
-            .await
-            .unwrap_or(0);
-        let admin_actions_24h = self
-            .audit_manager
-            .get_admin_action_count_24h()
-            .await
-            .unwrap_or(0);
-        let security_alerts_24h = self
-            .audit_manager
-            .get_security_alert_count_24h()
-            .await
-            .unwrap_or(0);
-
-        Ok(SecurityAuditStats {
-            active_sessions,
-            failed_logins_24h,
-            successful_logins_24h,
-            unique_users_24h,
-            token_issued_24h,
-            password_resets_24h,
-            admin_actions_24h,
-            security_alerts_24h,
-            collection_timestamp: chrono::Utc::now(),
-        })
+        let active_sessions = self.session_manager.count_active_sessions().await.unwrap_or(0);
+        self.audit_manager.get_security_audit_stats(active_sessions).await
     }
 
     /// Get user profile information
-    pub async fn get_user_profile(&self, user_id: &str) -> Result<crate::providers::ProviderProfile> {
-        // Look up real user data stored by register_user under "user:{user_id}"
-        let user_key = format!("user:{}", user_id);
-        if let Ok(Some(user_data_bytes)) = self.storage.get_kv(&user_key).await {
-            if let Ok(user_json_str) = String::from_utf8(user_data_bytes) {
-                if let Ok(user_data) = serde_json::from_str::<serde_json::Value>(&user_json_str) {
-                    let username = user_data["username"].as_str().map(|s| s.to_string());
-                    let email = user_data["email"].as_str().map(|s| s.to_string());
-                    let name = user_data["name"].as_str().map(|s| s.to_string());
-                    let email_verified = user_data["email_verified"].as_bool();
-
-                    // Collect any extra fields as additional_data
-                    let mut additional_data = std::collections::HashMap::new();
-                    if let Some(obj) = user_data.as_object() {
-                        for (k, v) in obj {
-                            match k.as_str() {
-                                "user_id" | "username" | "email" | "name" | "email_verified"
-                                | "password_hash" | "created_at" | "updated_at" => {}
-                                _ => {
-                                    additional_data.insert(k.clone(), v.clone());
-                                }
-                            }
-                        }
-                    }
-
-                    return Ok(crate::providers::ProviderProfile {
-                        id: Some(user_id.to_string()),
-                        provider: Some("local".to_string()),
-                        username,
-                        name,
-                        email,
-                        email_verified,
-                        picture: None,
-                        locale: None,
-                        additional_data,
-                    });
-                }
-            }
-        }
-
-        // User not found in storage — return a meaningful error rather than example.com placeholder
-        Err(AuthError::UserNotFound)
+    pub async fn get_user_profile(
+        &self,
+        user_id: &str,
+    ) -> Result<crate::providers::ProviderProfile> {
+        self.user_manager.get_user_profile(user_id).await
     }
 }
 
-/// Security audit statistics aggregated from audit logs
-/// Provides comprehensive security metrics for monitoring and incident response
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityAuditStats {
-    pub active_sessions: u64,
-    pub failed_logins_24h: u64,
-    pub successful_logins_24h: u64,
-    pub unique_users_24h: u64,
-    pub token_issued_24h: u64,
-    pub password_resets_24h: u64,
-    pub admin_actions_24h: u64,
-    pub security_alerts_24h: u64,
-    pub collection_timestamp: chrono::DateTime<chrono::Utc>,
-}
+pub use crate::audit::SecurityAuditStats;
 
-impl SecurityAuditStats {
-    /// Calculate security score based on current metrics
-    /// Returns a value between 0.0 (critical) and 1.0 (excellent)
-    pub fn security_score(&self) -> f64 {
-        let mut score = 1.0;
-
-        // Penalize high failure rates
-        if self.successful_logins_24h > 0 {
-            let failure_rate = self.failed_logins_24h as f64
-                / (self.successful_logins_24h + self.failed_logins_24h) as f64;
-            if failure_rate > 0.1 {
-                score -= failure_rate * 0.3;
-            } // High failure rate
-        }
-
-        // Penalize security alerts
-        if self.security_alerts_24h > 0 {
-            score -= (self.security_alerts_24h as f64 * 0.1).min(0.4);
-        }
-
-        // Bonus for healthy activity
-        if self.successful_logins_24h > 0 && self.failed_logins_24h < 10 {
-            score += 0.05;
-        }
-
-        score.clamp(0.0, 1.0)
-    }
-
-    /// Determines if the current security metrics require immediate attention.
-    ///
-    /// This function analyzes various security metrics to identify potential
-    /// security incidents that require immediate administrative action.
-    ///
-    /// # Returns
-    ///
-    /// * `true` if immediate security attention is required
-    /// * `false` if security metrics are within acceptable ranges
-    ///
-    /// # Criteria for Immediate Attention
-    ///
-    /// - More than 100 failed login attempts in 24 hours (potential brute force)
-    /// - More than 5 security alerts in 24 hours (multiple incidents)
-    /// - Security score below 0.3 (critical security threshold)
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use auth_framework::auth::SecurityAuditStats;
-    ///
-    /// # fn alert_security_team(_: &SecurityAuditStats) {}
-    /// # let security_stats: SecurityAuditStats = todo!();
-    /// if security_stats.requires_immediate_attention() {
-    ///     // Trigger security alerts, notify administrators
-    ///     alert_security_team(&security_stats);
-    /// }
-    /// ```
-    pub fn requires_immediate_attention(&self) -> bool {
-        self.failed_logins_24h > 100 ||  // Brute force attack pattern
-        self.security_alerts_24h > 5 ||   // Multiple security incidents
-        self.security_score() < 0.3 // Critical security score
-    }
-
-    /// Generates a detailed security alert message if immediate attention is required.
-    ///
-    /// This function creates a human-readable alert message describing the specific
-    /// security concerns that triggered the alert. The message includes specific
-    /// metrics and recommended actions.
-    ///
-    /// # Returns
-    ///
-    /// * `Some(String)` containing the alert message if attention is required
-    /// * `None` if no immediate security concerns are detected
-    ///
-    /// # Alert Content
-    ///
-    /// The alert message includes:
-    /// - Current security score
-    /// - Specific metrics that triggered the alert
-    /// - Severity indicators
-    /// - Recommended immediate actions
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use auth_framework::auth::SecurityAuditStats;
-    ///
-    /// # fn notify_administrators(_: &str) {}
-    /// # let security_stats: SecurityAuditStats = todo!();
-    /// if let Some(alert) = security_stats.security_alert_message() {
-    ///     log::error!("Security Alert: {}", alert);
-    ///     notify_administrators(&alert);
-    /// }
-    /// ```
-    pub fn security_alert_message(&self) -> Option<String> {
-        if !self.requires_immediate_attention() {
-            return None;
-        }
-
-        let mut alerts = Vec::new();
-
-        if self.failed_logins_24h > 100 {
-            alerts.push(format!(
-                "High failed login attempts: {}",
-                self.failed_logins_24h
-            ));
-        }
-
-        if self.security_alerts_24h > 5 {
-            alerts.push(format!(
-                "Multiple security alerts: {}",
-                self.security_alerts_24h
-            ));
-        }
-
-        if self.security_score() < 0.3 {
-            alerts.push(format!(
-                "Critical security score: {:.2}",
-                self.security_score()
-            ));
-        }
-
-        Some(format!(
-            "🚨 SECURITY ATTENTION REQUIRED: {}",
-            alerts.join(", ")
-        ))
-    }
-}
-
-/// Distributed session coordination statistics
-#[derive(Debug)]
-pub struct SessionCoordinationStats {
-    pub local_active_sessions: u64,
-    pub remote_active_sessions: u64,
-    pub synchronized_sessions: u64,
-    pub coordination_conflicts: u64,
-    pub last_coordination_time: chrono::DateTime<chrono::Utc>,
-}
+pub use crate::auth_modular::session_manager::SessionCoordinationStats;
 
 /// Authentication framework statistics.
 #[derive(Debug, Clone, Default)]
@@ -3977,6 +1577,7 @@ mod tests {
             cookie_same_site: crate::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(3600),
+            previous_secret_key: None,
         });
         let mut framework = AuthFramework::new(config);
 
@@ -4000,6 +1601,7 @@ mod tests {
             cookie_same_site: crate::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(3600),
+            previous_secret_key: None,
         });
         let framework = AuthFramework::new(config);
 
@@ -4022,6 +1624,7 @@ mod tests {
             cookie_same_site: crate::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(3600),
+            previous_secret_key: None,
         });
         let mut framework = AuthFramework::new(config);
         framework.initialize().await.unwrap();
@@ -4049,6 +1652,7 @@ mod tests {
             cookie_same_site: crate::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(3600),
+            previous_secret_key: None,
         });
         let mut framework = AuthFramework::new(config);
         framework.initialize().await.unwrap();
@@ -4072,6 +1676,86 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_grouped_operations_accessors() {
+        let config = AuthConfig::new().security(SecurityConfig {
+            min_password_length: 8,
+            require_password_complexity: false,
+            password_hash_algorithm: crate::config::PasswordHashAlgorithm::Bcrypt,
+            jwt_algorithm: crate::config::JwtAlgorithm::HS256,
+            secret_key: Some("test_secret_key_32_bytes_long!!!!".to_string()),
+            secure_cookies: false,
+            cookie_same_site: crate::config::CookieSameSite::Lax,
+            csrf_protection: false,
+            session_timeout: Duration::from_secs(3600),
+            previous_secret_key: None,
+        });
+        let mut framework = AuthFramework::new(config);
+        framework.initialize().await.unwrap();
+
+        let user_id = framework
+            .users()
+            .register("grouped-user", "grouped-user@example.com", "P@ssw0rd123")
+            .await
+            .unwrap();
+        assert!(
+            framework
+                .users()
+                .exists_by_username("grouped-user")
+                .await
+                .unwrap()
+        );
+
+        let session_id = framework
+            .sessions()
+            .create(&user_id, Duration::from_secs(300), None, None)
+            .await
+            .unwrap();
+        assert!(
+            framework
+                .sessions()
+                .get(&session_id)
+                .await
+                .unwrap()
+                .is_some()
+        );
+        assert_eq!(
+            framework
+                .sessions()
+                .list_for_user(&user_id)
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+
+        framework
+            .authorization()
+            .grant(&user_id, "read", "documents")
+            .await
+            .unwrap();
+        let permissions = framework
+            .authorization()
+            .effective_permissions(&user_id)
+            .await
+            .unwrap();
+        assert!(
+            permissions
+                .iter()
+                .any(|permission| permission == "read:documents")
+        );
+
+        framework.sessions().delete(&session_id).await.unwrap();
+        assert!(
+            framework
+                .sessions()
+                .get(&session_id)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
     async fn test_cleanup_expired_data() {
         let config = AuthConfig::new().security(SecurityConfig {
             min_password_length: 8,
@@ -4083,6 +1767,7 @@ mod tests {
             cookie_same_site: crate::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(3600),
+            previous_secret_key: None,
         });
         let mut framework = AuthFramework::new(config);
         framework.initialize().await.unwrap();

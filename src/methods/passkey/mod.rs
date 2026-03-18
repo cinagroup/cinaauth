@@ -108,6 +108,8 @@ use std::time::Duration;
 
 // coset::iana is used through passkey crate, removed direct import to avoid version mismatch
 #[cfg(feature = "passkeys")]
+use coset::iana::Algorithm;
+#[cfg(feature = "passkeys")]
 use passkey::{
     authenticator::{Authenticator, UiHint, UserCheck, UserValidationMethod},
     client::Client,
@@ -125,8 +127,6 @@ use passkey::{
         },
     },
 };
-#[cfg(feature = "passkeys")]
-use coset::iana::Algorithm;
 #[cfg(feature = "passkeys")]
 use passkey_client::DefaultClientData;
 #[cfg(feature = "passkeys")]
@@ -432,12 +432,11 @@ impl PasskeyAuthMethod {
 
         let allow_credential_ids: Vec<(Vec<u8>, String)> = {
             let passkeys = self.registered_passkeys.read().unwrap();
-            let iter: Box<dyn Iterator<Item = &PasskeyRegistration>> =
-                if let Some(uid) = user_id {
-                    Box::new(passkeys.values().filter(move |reg| reg.user_id == uid))
-                } else {
-                    Box::new(passkeys.values())
-                };
+            let iter: Box<dyn Iterator<Item = &PasskeyRegistration>> = if let Some(uid) = user_id {
+                Box::new(passkeys.values().filter(move |reg| reg.user_id == uid))
+            } else {
+                Box::new(passkeys.values())
+            };
             iter.map(|reg| {
                 (
                     reg.credential_id.clone(),
@@ -517,12 +516,10 @@ impl PasskeyAuthMethod {
         })?;
 
         // Load stored passkey data (public key + counter).
-        let passkey_data: serde_json::Value =
-            serde_json::from_str(&registration.passkey_data).map_err(|e| {
-                AuthError::InvalidCredential {
-                    credential_type: "passkey".to_string(),
-                    message: format!("Failed to parse stored passkey data: {}", e),
-                }
+        let passkey_data: serde_json::Value = serde_json::from_str(&registration.passkey_data)
+            .map_err(|e| AuthError::InvalidCredential {
+                credential_type: "passkey".to_string(),
+                message: format!("Failed to parse stored passkey data: {}", e),
             })?;
 
         let public_key_jwk = passkey_data
@@ -559,23 +556,22 @@ impl PasskeyAuthMethod {
             .await?;
 
         if !verification_result.signature_valid {
-            return Err(AuthError::validation("Passkey signature verification failed"));
+            return Err(AuthError::validation(
+                "Passkey signature verification failed",
+            ));
         }
 
         // Update stored counter and last-used timestamp.
-        let mut passkey_data: serde_json::Value =
-            serde_json::from_str(&registration.passkey_data).map_err(|e| {
-                AuthError::InvalidCredential {
-                    credential_type: "passkey".to_string(),
-                    message: format!(
-                        "Failed to parse stored passkey data during counter update: {}",
-                        e
-                    ),
-                }
+        let mut passkey_data: serde_json::Value = serde_json::from_str(&registration.passkey_data)
+            .map_err(|e| AuthError::InvalidCredential {
+                credential_type: "passkey".to_string(),
+                message: format!(
+                    "Failed to parse stored passkey data during counter update: {}",
+                    e
+                ),
             })?;
-        passkey_data["signature_counter"] = serde_json::Value::Number(
-            serde_json::Number::from(verification_result.new_counter),
-        );
+        passkey_data["signature_counter"] =
+            serde_json::Value::Number(serde_json::Number::from(verification_result.new_counter));
         registration.passkey_data =
             serde_json::to_string(&passkey_data).map_err(|e| AuthError::InvalidCredential {
                 credential_type: "passkey".to_string(),

@@ -202,9 +202,9 @@ impl SecurityManager {
             if let Some(blocked_until) = info.blocked_until {
                 now < blocked_until
             } else {
-                info.request_times.first().is_some_and(|first|
+                info.request_times.first().is_some_and(|first| {
                     now.duration_since(*first) < self.dos_config.monitor_duration * 2
-                )
+                })
             }
         });
 

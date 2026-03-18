@@ -10,8 +10,7 @@ use auth_framework::{
 };
 
 fn make_framework() -> AuthFramework {
-    let config = AuthConfig::new()
-        .secret("test_lifecycle_secret_key_32_bytes!".to_string());
+    let config = AuthConfig::new().secret("test_lifecycle_secret_key_32_bytes!".to_string());
     AuthFramework::new(config)
 }
 
@@ -33,12 +32,16 @@ async fn test_deactivated_user_cannot_login() {
 
     // Confirm the user can log in before deactivation.
     let pre = fw
-        .authenticate("password", Credential::password("deact_user", "SecurePass123!"))
+        .authenticate(
+            "password",
+            Credential::password("deact_user", "SecurePass123!"),
+        )
         .await
         .expect("authenticate call should not error");
     assert!(
         matches!(pre, AuthResult::Success(_)),
-        "active user should be able to log in; got: {:?}", pre
+        "active user should be able to log in; got: {:?}",
+        pre
     );
 
     // Deactivate the account.
@@ -48,12 +51,16 @@ async fn test_deactivated_user_cannot_login() {
 
     // Login must now fail.
     let post = fw
-        .authenticate("password", Credential::password("deact_user", "SecurePass123!"))
+        .authenticate(
+            "password",
+            Credential::password("deact_user", "SecurePass123!"),
+        )
         .await
         .expect("authenticate call should not error");
     assert!(
         matches!(post, AuthResult::Failure(_)),
-        "deactivated user must not be able to log in; got: {:?}", post
+        "deactivated user must not be able to log in; got: {:?}",
+        post
     );
 }
 
@@ -72,7 +79,10 @@ async fn test_reactivated_user_can_login_again() {
 
     // Confirm blocked.
     let blocked = fw
-        .authenticate("password", Credential::password("react_user", "SecurePass123!"))
+        .authenticate(
+            "password",
+            Credential::password("react_user", "SecurePass123!"),
+        )
         .await
         .unwrap();
     assert!(matches!(blocked, AuthResult::Failure(_)));
@@ -82,7 +92,10 @@ async fn test_reactivated_user_can_login_again() {
 
     // Login must succeed again.
     let restored = fw
-        .authenticate("password", Credential::password("react_user", "SecurePass123!"))
+        .authenticate(
+            "password",
+            Credential::password("react_user", "SecurePass123!"),
+        )
         .await
         .unwrap();
     assert!(
@@ -108,10 +121,16 @@ async fn test_password_change_blocks_old_password() {
 
     // Verify old password works.
     let before = fw
-        .authenticate("password", Credential::password("pw_change_user", "OldPass123!"))
+        .authenticate(
+            "password",
+            Credential::password("pw_change_user", "OldPass123!"),
+        )
         .await
         .unwrap();
-    assert!(matches!(before, AuthResult::Success(_)), "old password should work before change");
+    assert!(
+        matches!(before, AuthResult::Success(_)),
+        "old password should work before change"
+    );
 
     // Change password.
     fw.update_user_password("pw_change_user", "NewPass456!")
@@ -120,22 +139,30 @@ async fn test_password_change_blocks_old_password() {
 
     // Old password must now be rejected.
     let old_attempt = fw
-        .authenticate("password", Credential::password("pw_change_user", "OldPass123!"))
+        .authenticate(
+            "password",
+            Credential::password("pw_change_user", "OldPass123!"),
+        )
         .await
         .unwrap();
     assert!(
         matches!(old_attempt, AuthResult::Failure(_)),
-        "old password should be rejected after change; got: {:?}", old_attempt
+        "old password should be rejected after change; got: {:?}",
+        old_attempt
     );
 
     // New password must be accepted.
     let new_attempt = fw
-        .authenticate("password", Credential::password("pw_change_user", "NewPass456!"))
+        .authenticate(
+            "password",
+            Credential::password("pw_change_user", "NewPass456!"),
+        )
         .await
         .unwrap();
     assert!(
         matches!(new_attempt, AuthResult::Success(_)),
-        "new password should be accepted after change; got: {:?}", new_attempt
+        "new password should be accepted after change; got: {:?}",
+        new_attempt
     );
 }
 
@@ -156,7 +183,10 @@ async fn test_deleted_user_cannot_login() {
 
     // Confirm login works before deletion.
     let pre = fw
-        .authenticate("password", Credential::password("del_user", "SecurePass123!"))
+        .authenticate(
+            "password",
+            Credential::password("del_user", "SecurePass123!"),
+        )
         .await
         .unwrap();
     assert!(matches!(pre, AuthResult::Success(_)));
@@ -168,12 +198,16 @@ async fn test_deleted_user_cannot_login() {
 
     // Login must now fail.
     let post = fw
-        .authenticate("password", Credential::password("del_user", "SecurePass123!"))
+        .authenticate(
+            "password",
+            Credential::password("del_user", "SecurePass123!"),
+        )
         .await
         .unwrap();
     assert!(
         matches!(post, AuthResult::Failure(_)),
-        "deleted user must not be able to log in; got: {:?}", post
+        "deleted user must not be able to log in; got: {:?}",
+        post
     );
 }
 
@@ -190,9 +224,13 @@ async fn test_admin_created_user_can_login() {
     fw.initialize().await.unwrap();
 
     // register_user is the call the admin API endpoint delegates to.
-    fw.register_user("admin_created", "admin_created@example.com", "SecurePass123!")
-        .await
-        .expect("admin-path registration should succeed");
+    fw.register_user(
+        "admin_created",
+        "admin_created@example.com",
+        "SecurePass123!",
+    )
+    .await
+    .expect("admin-path registration should succeed");
 
     let result = fw
         .authenticate(
@@ -204,6 +242,7 @@ async fn test_admin_created_user_can_login() {
 
     assert!(
         matches!(result, AuthResult::Success(_)),
-        "admin-created user should be able to log in; got: {:?}", result
+        "admin-created user should be able to log in; got: {:?}",
+        result
     );
 }

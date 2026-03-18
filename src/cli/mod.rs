@@ -1,5 +1,9 @@
 /// Minimal CLI progress bar using terminal output.
 /// For richer progress bars, consider the `indicatif` crate.
+///
+/// > **Status: Stub** — The CLI commands (`Db`, `User`, `Role`, `System`,
+/// > `Security`) print placeholder messages but do not yet connect to storage.
+/// > Database migration commands delegate to `MigrationCli` and are functional.
 pub struct CliProgressBar {}
 
 impl CliProgressBar {
@@ -537,5 +541,3 @@ mod tests {
         assert!(msg.contains("[auth-framework]"));
     }
 }
-
-

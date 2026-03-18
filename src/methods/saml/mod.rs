@@ -408,7 +408,11 @@ impl SamlAuthMethod {
     }
 
     /// Parse and validate SAML assertion from XML
-    fn parse_saml_assertion(&self, assertion_xml: &str, issuer: &str) -> Result<ValidatedSamlAssertion> {
+    fn parse_saml_assertion(
+        &self,
+        assertion_xml: &str,
+        issuer: &str,
+    ) -> Result<ValidatedSamlAssertion> {
         // Parse the XML assertion using quick-xml
         let assertion: SamlAssertionXml = from_str(assertion_xml)
             .map_err(|e| AuthError::validation(format!("Failed to parse SAML assertion: {}", e)))?;
@@ -693,7 +697,10 @@ impl AuthMethod for SamlAuthMethod {
             };
 
             // Validate SAML response and extract assertion using comprehensive validation
-            let assertion = match self.validate_saml_response_comprehensive(&saml_response).await {
+            let assertion = match self
+                .validate_saml_response_comprehensive(&saml_response)
+                .await
+            {
                 Ok(assertion) => assertion,
                 Err(e) => {
                     tracing::warn!("SAML authentication failed: {}", e);

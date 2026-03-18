@@ -118,13 +118,12 @@ impl HardwareOtpToken {
         }
 
         // If the caller supplied API credentials, validate against the Yubico cloud.
-        if let Some(cfg) = &self.config {
-            if let Some(client_id) = &cfg.yubico_client_id {
+        if let Some(cfg) = &self.config
+            && let Some(client_id) = &cfg.yubico_client_id {
                 return self
                     .validate_yubikey_via_api(challenge, client_id, &cfg.yubico_validation_url)
                     .await;
             }
-        }
 
         // No API credentials configured: format alone proves nothing.
         // A well-formed OTP can be constructed by anyone; without the Yubico
@@ -179,22 +178,12 @@ impl HardwareOtpToken {
             "{}?id={}&otp={}&nonce={}",
             validation_url, client_id, otp, nonce
         );
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| {
-                crate::errors::AuthError::internal(format!(
-                    "Yubico API request failed: {}",
-                    e
-                ))
-            })?;
+        let response = client.get(&url).send().await.map_err(|e| {
+            crate::errors::AuthError::internal(format!("Yubico API request failed: {}", e))
+        })?;
 
         let body: String = response.text().await.map_err(|e: reqwest::Error| {
-            crate::errors::AuthError::internal(format!(
-                "Failed to read Yubico API response: {}",
-                e
-            ))
+            crate::errors::AuthError::internal(format!("Failed to read Yubico API response: {}", e))
         })?;
 
         // The Yubico API returns a CRLF-delimited key=value list.
@@ -422,5 +411,3 @@ mod tests {
         assert!(!token.authenticate(bad_otp).await.unwrap());
     }
 }
-
-

@@ -1052,4 +1052,67 @@ MIT
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn test_python_sdk_config_default() {
+        let config = PythonSdkConfig::default();
+        assert_eq!(config.base_url, "https://api.example.com");
+        assert_eq!(config.version, "v1");
+        assert!(config.include_rbac);
+        assert!(config.include_conditional_permissions);
+        assert!(config.include_audit);
+        assert_eq!(config.client_name, "AuthFrameworkClient");
+        assert!(config.async_support);
+        assert!(config.type_hints);
+    }
+
+    #[test]
+    fn test_generate_sdk_default_config() {
+        let generator = PythonSdkGenerator::new(PythonSdkConfig::default());
+        let files = generator.generate_sdk().unwrap();
+        // Default config enables all modules
+        assert!(files.contains_key("client.py"));
+        assert!(files.contains_key("types.py"));
+        assert!(files.contains_key("rbac.py"));
+        assert!(files.contains_key("conditional.py"));
+        assert!(files.contains_key("audit.py"));
+        assert!(files.contains_key("utils.py"));
+        assert!(files.contains_key("__init__.py"));
+        assert!(files.contains_key("setup.py"));
+        assert!(files.contains_key("requirements.txt"));
+        assert!(files.contains_key("README.md"));
+    }
+
+    #[test]
+    fn test_generate_sdk_without_optional_modules() {
+        let config = PythonSdkConfig {
+            include_rbac: false,
+            include_conditional_permissions: false,
+            include_audit: false,
+            type_hints: false,
+            ..PythonSdkConfig::default()
+        };
+        let generator = PythonSdkGenerator::new(config);
+        let files = generator.generate_sdk().unwrap();
+        assert!(files.contains_key("client.py"));
+        assert!(!files.contains_key("types.py"));
+        assert!(!files.contains_key("rbac.py"));
+        assert!(!files.contains_key("conditional.py"));
+        assert!(!files.contains_key("audit.py"));
+    }
+
+    #[test]
+    fn test_generated_client_contains_class_name() {
+        let config = PythonSdkConfig {
+            client_name: "MyClient".to_string(),
+            ..PythonSdkConfig::default()
+        };
+        let generator = PythonSdkGenerator::new(config);
+        let files = generator.generate_sdk().unwrap();
+        let client_code = &files["client.py"];
+        assert!(client_code.contains("MyClient"));
+    }
+}

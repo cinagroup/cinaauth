@@ -108,7 +108,7 @@ pub struct DeviceAuthorizationResponse {
 /// different providers expose different sets of attributes).
 ///
 /// For the *application-level* user model (structured, mandatory fields) see
-/// [`crate::api::users::ProviderProfile`].
+/// [`crate::providers::ProviderProfile`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderProfile {
     /// Unique identifier from the provider
@@ -647,11 +647,7 @@ impl OAuthProvider {
         params.insert("client_secret".to_string(), client_secret.to_string());
         params.insert("refresh_token".to_string(), refresh_token.to_string());
 
-        let response = client
-            .post(&config.token_url)
-            .form(&params)
-            .send()
-            .await?;
+        let response = client.post(&config.token_url).form(&params).send().await?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -805,11 +801,7 @@ impl OAuthProvider {
         let mut params = HashMap::new();
         params.insert("token".to_string(), access_token.to_string());
 
-        let response = client
-            .post(&revocation_url)
-            .form(&params)
-            .send()
-            .await?;
+        let response = client.post(&revocation_url).form(&params).send().await?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -844,21 +836,14 @@ impl OAuthProvider {
         params.insert("client_id".to_string(), client_id.to_string());
         params.insert("scope".to_string(), scope_string);
 
-        let device_auth_url = config
-            .device_authorization_url
-            .as_deref()
-            .ok_or_else(|| {
-                AuthError::auth_method(
-                    self.name(),
-                    "Device authorization URL is not configured for this provider".to_string(),
-                )
-            })?;
+        let device_auth_url = config.device_authorization_url.as_deref().ok_or_else(|| {
+            AuthError::auth_method(
+                self.name(),
+                "Device authorization URL is not configured for this provider".to_string(),
+            )
+        })?;
 
-        let response = client
-            .post(device_auth_url)
-            .form(&params)
-            .send()
-            .await?;
+        let response = client.post(device_auth_url).form(&params).send().await?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This comprehensive API reference documents all public APIs available in AuthFramework v0.4.0. Each endpoint includes detailed descriptions, request/response examples, error handling, and usage patterns to help developers integrate AuthFramework effectively.
+This comprehensive API reference documents all public APIs available in AuthFramework v0.5.0. Each endpoint includes detailed descriptions, request/response examples, error handling, and usage patterns to help developers integrate AuthFramework effectively.
 
 ## Base URL and Versioning
 

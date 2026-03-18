@@ -410,5 +410,3 @@ pub fn collect_validation_errors(validations: Vec<Result<()>>) -> Result<()> {
         Err(AuthError::validation(errors.join("; ")))
     }
 }
-
-

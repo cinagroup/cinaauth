@@ -6,15 +6,15 @@
 
 use crate::api::{ApiResponse, ApiState};
 use axum::{
-    extract::{Path, State},
     Form,
+    extract::{Path, State},
 };
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashSet;
 use std::net::IpAddr;
 use std::sync::RwLock;
-use lazy_static::lazy_static;
 
 // Global IP blacklist (in production, this should be persistent storage)
 lazy_static! {
@@ -76,10 +76,7 @@ pub async fn blacklist_ip_endpoint(
         "reason": form.reason.unwrap_or_else(|| "Manual blacklist".to_string())
     });
 
-    ApiResponse::success_with_message(
-        data,
-        format!("IP {} added to blacklist", ip)
-    )
+    ApiResponse::success_with_message(data, format!("IP {} added to blacklist", ip))
 }
 
 /// DELETE /api/v1/security/blacklist/{ip}
@@ -113,28 +110,20 @@ pub async fn unblock_ip_endpoint(
             "status": "unblocked"
         });
 
-        ApiResponse::success_with_message(
-            data,
-            format!("IP {} removed from blacklist", ip)
-        )
+        ApiResponse::success_with_message(data, format!("IP {} removed from blacklist", ip))
     } else {
         let data = json!({
             "ip": ip.to_string(),
             "status": "not_found"
         });
 
-        ApiResponse::success_with_message(
-            data,
-            format!("IP {} was not in blacklist", ip)
-        )
+        ApiResponse::success_with_message(data, format!("IP {} was not in blacklist", ip))
     }
 }
 
 /// GET /api/v1/security/stats
 /// Get security statistics
-pub async fn stats_endpoint(
-    State(_state): State<ApiState>,
-) -> ApiResponse<SecurityStatsResponse> {
+pub async fn stats_endpoint(State(_state): State<ApiState>) -> ApiResponse<SecurityStatsResponse> {
     let stats = SECURITY_STATS.read().map(|s| s.clone()).unwrap_or_default();
     let blacklist_size = IP_BLACKLIST.read().map(|b| b.len()).unwrap_or(0);
 

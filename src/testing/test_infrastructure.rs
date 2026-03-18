@@ -365,7 +365,10 @@ mod tests {
 
         // Ensure the var is absent before we start
         unsafe { env::remove_var(TEST_KEY) };
-        assert!(env::var(TEST_KEY).is_err(), "TEST_KEY should not exist before test");
+        assert!(
+            env::var(TEST_KEY).is_err(),
+            "TEST_KEY should not exist before test"
+        );
 
         {
             let _guard = TestEnvironmentGuard::new().with_custom_var(TEST_KEY, "isolated-value");
@@ -401,5 +404,3 @@ mod tests {
         assert_eq!(str2.len(), 64);
     }
 }
-
-

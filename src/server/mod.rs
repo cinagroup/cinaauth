@@ -77,8 +77,8 @@ pub use oidc::{
         RpBackChannelConfig,
     },
     oidc_enhanced_ciba::{
-        AuthenticationContext, AuthenticationMode, CibaRequestStatus, CibaTokenResponse,
-        CibaDeviceInfo, ConsentInfo, ConsentStatus, DeviceBinding, EnhancedCibaAuthRequest,
+        AuthenticationContext, AuthenticationMode, CibaDeviceInfo, CibaRequestStatus,
+        CibaTokenResponse, ConsentInfo, ConsentStatus, DeviceBinding, EnhancedCibaAuthRequest,
         EnhancedCibaAuthResponse, EnhancedCibaConfig, EnhancedCibaManager, GeoLocation,
         UserIdentifierHint,
     },
@@ -268,5 +268,3 @@ pub struct ProviderMetadata {
     /// Additional metadata
     pub additional: HashMap<String, serde_json::Value>,
 }
-
-

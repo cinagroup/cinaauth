@@ -17,5 +17,3 @@ pub mod rich_authorization_requests;
 pub use oauth2::OAuth2Server;
 pub use oauth21::OAuth21Server;
 pub use par::PARManager;
-
-

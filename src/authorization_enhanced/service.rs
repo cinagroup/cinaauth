@@ -28,7 +28,7 @@ where
     /// mutation operations not exposed by AsyncRoleSystem (e.g. delete_role)
     /// can be performed without requiring mutable access to the whole service.
     ///
-    /// For MemoryStorage (the default) the clone shares the same Arc<DashMap>
+    /// For MemoryStorage (the default) the clone shares the same `Arc<DashMap>`
     /// as the storage inside role_system, so mutations are immediately visible.
     storage_handle: Arc<TokioMutex<S>>,
 }
@@ -425,7 +425,8 @@ where
     /// Delete a role
     pub async fn delete_role(&self, name: &str) -> Result<()> {
         // Verify the role actually exists before attempting deletion.
-        let exists = self.role_system
+        let exists = self
+            .role_system
             .get_role(name)
             .await
             .map_err(|e| AuthError::authorization(format!("Failed to look up role: {}", e)))?;

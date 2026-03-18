@@ -61,7 +61,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Demo: Create a sample token using the auth framework
     let demo_token = auth_framework
-        .create_auth_token(
+        .tokens()
+        .create(
             "demo_client",
             vec!["read".to_string(), "write".to_string()],
             "oauth",
@@ -75,12 +76,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Scopes: {:?}", demo_token.scopes);
 
     // Validate the demo token
-    if auth_framework.validate_token(&demo_token).await? {
+    if auth_framework.tokens().validate(&demo_token).await? {
         println!("✅ Token validation successful!");
 
         // Check permissions
         if auth_framework
-            .check_permission(&demo_token, "read", "api")
+            .authorization()
+            .check(&demo_token, "read", "api")
             .await?
         {
             println!("✅ Permission check passed for 'read' on 'api'!");

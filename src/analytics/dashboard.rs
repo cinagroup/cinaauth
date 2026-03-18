@@ -2,6 +2,9 @@
 //!
 //! This module provides dashboard components for visualizing
 //! RBAC analytics data and system performance metrics.
+//!
+//! > **Status: Stub** — Widget rendering methods return placeholder data.
+//! > A real implementation should query the analytics event store.
 
 use super::{AnalyticsError, TimeRange};
 use serde::{Deserialize, Serialize};
@@ -699,5 +702,3 @@ mod tests {
         assert_eq!(status, AlertStatus::Warning);
     }
 }
-
-

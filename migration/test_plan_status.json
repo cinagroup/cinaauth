@@ -1,8 +1,8 @@
 {
   "plan_id": "test_plan",
   "status": "Completed",
-  "started_at": "2026-03-16T01:12:11.696956Z",
-  "completed_at": "2026-03-16T01:12:11.699601400Z",
+  "started_at": "2026-03-18T00:07:13.832777900Z",
+  "completed_at": "2026-03-18T00:07:13.852700600Z",
   "phases_completed": [
     "test_phase"
   ],
@@ -18,5 +18,4 @@
     "validation_failures": 0,
     "rollback_count": 0
   }
-}}
 }

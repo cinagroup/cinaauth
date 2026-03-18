@@ -242,13 +242,13 @@ impl WsSecurityClient {
         let password_element = if let Some(pwd) = password {
             let pwd_value = match password_type {
                 PasswordType::PasswordText => pwd.to_string(),
-                PasswordType::PasswordDigest => {
-                    self.compute_password_digest(
-                        pwd,
-                        nonce.as_ref().expect("nonce is Some for PasswordDigest variant"),
-                        &created.expect("created is Some for PasswordDigest variant"),
-                    )?
-                }
+                PasswordType::PasswordDigest => self.compute_password_digest(
+                    pwd,
+                    nonce
+                        .as_ref()
+                        .expect("nonce is Some for PasswordDigest variant"),
+                    &created.expect("created is Some for PasswordDigest variant"),
+                )?,
             };
 
             Some(UsernamePassword {

@@ -3,7 +3,7 @@
 //! Provides a trait for querying the total number of active sessions across all
 //! instances in a distributed deployment.  A no-op [`LocalOnlySessionStore`] is
 //! provided for single-node use; it always reports zero total sessions, which
-//! causes [`crate::auth::AuthFramework::estimate_remote_sessions`] to return `0`
+//! causes `AuthFramework`'s remote-session estimate logic to return `0`
 //! instead of an incorrect `local_count * 2` estimate.
 //!
 //! # Production integration
@@ -56,7 +56,7 @@ pub trait DistributedSessionStore: Send + Sync {
 /// No-op store used when no distributed backend is configured.
 ///
 /// [`total_session_count`][DistributedSessionStore::total_session_count] always
-/// returns `0`, so [`estimate_remote_sessions`] correctly reports zero instead
+/// returns `0`, so the framework correctly reports zero remote sessions instead
 /// of a fabricated value.
 pub struct LocalOnlySessionStore;
 

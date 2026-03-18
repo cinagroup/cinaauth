@@ -74,7 +74,7 @@ async fn handle_config_validate(state: AppState, file: Option<String>) -> Result
     let spinner = create_spinner("Validating configuration...");
 
     let result = if let Some(file_path) = file {
-        use crate::config::ConfigBuilder;
+        use crate::config::config_manager::ConfigBuilder;
         let temp_manager = ConfigBuilder::new().add_file(&file_path, true).build()?;
         temp_manager.validate()
     } else {
@@ -282,10 +282,22 @@ async fn handle_user_action(state: AppState, action: UserAction) -> Result<()> {
             let stats = state.get_user_statistics().await?;
             spinner.finish_with_message("Users loaded".green().to_string());
 
-            println!("  Total users:              {}", stats.total_users.to_string().cyan());
-            println!("  Active sessions:          {}", stats.active_sessions.to_string().cyan());
-            println!("  Failed logins today:      {}", stats.failed_logins_today.to_string().yellow());
-            println!("  New registrations today:  {}", stats.new_registrations_today.to_string().green());
+            println!(
+                "  Total users:              {}",
+                stats.total_users.to_string().cyan()
+            );
+            println!(
+                "  Active sessions:          {}",
+                stats.active_sessions.to_string().cyan()
+            );
+            println!(
+                "  Failed logins today:      {}",
+                stats.failed_logins_today.to_string().yellow()
+            );
+            println!(
+                "  New registrations today:  {}",
+                stats.new_registrations_today.to_string().green()
+            );
 
             if let Some(limit_val) = limit {
                 println!("(Showing up to {} users)", limit_val.to_string().dimmed());
@@ -336,7 +348,11 @@ async fn handle_user_action(state: AppState, action: UserAction) -> Result<()> {
             if let Some(is_active) = active {
                 println!(
                     "   → active: {}",
-                    if is_active { "true".green() } else { "false".red() }
+                    if is_active {
+                        "true".green()
+                    } else {
+                        "false".red()
+                    }
                 );
             }
             println!(
@@ -372,7 +388,11 @@ async fn handle_user_action(state: AppState, action: UserAction) -> Result<()> {
                 "{}",
                 "⚠️  Role assignment requires a connected storage backend.".yellow()
             );
-            println!("   Requested: set role {} for user {}", role.green(), email.cyan());
+            println!(
+                "   Requested: set role {} for user {}",
+                role.green(),
+                email.cyan()
+            );
         }
     }
     Ok(())
@@ -488,9 +508,18 @@ async fn handle_security_action(state: AppState, action: SecurityAction) -> Resu
             spinner.finish_with_message("Security audit complete");
 
             println!("\n📈 Audit Summary:");
-            println!("  • Total tracked events: {}", events.len().to_string().cyan());
-            println!("  • Active sessions:      {}", stats.active_sessions.to_string().green());
-            println!("  • Failed logins today:  {}", stats.failed_logins_today.to_string().yellow());
+            println!(
+                "  • Total tracked events: {}",
+                events.len().to_string().cyan()
+            );
+            println!(
+                "  • Active sessions:      {}",
+                stats.active_sessions.to_string().green()
+            );
+            println!(
+                "  • Failed logins today:  {}",
+                stats.failed_logins_today.to_string().yellow()
+            );
 
             if detailed {
                 if events.is_empty() {
@@ -552,8 +581,7 @@ async fn handle_security_action(state: AppState, action: SecurityAction) -> Resu
                 // heuristics.
                 println!(
                     "{}",
-                    "⚠️  Threat intelligence lookup requires a configured TI backend."
-                        .yellow()
+                    "⚠️  Threat intelligence lookup requires a configured TI backend.".yellow()
                 );
                 println!(
                     "   Requested check for IP: {}  — integrate ThreatIntelligence into AppState to enable.",
@@ -728,5 +756,3 @@ include = [
 "#
     .to_string()
 }
-
-

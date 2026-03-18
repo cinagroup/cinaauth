@@ -243,12 +243,12 @@ impl SecureMfaService {
         let provided_hash = self.hash_code(provided_code, &salt)?;
 
         // Constant-time comparison (code_hash is Option<String>)
-        let is_valid = challenge
-            .code_hash
-            .as_ref()
-            .is_some_and(|stored_hash| {
-                stored_hash.as_bytes().ct_eq(provided_hash.as_bytes()).into()
-            });
+        let is_valid = challenge.code_hash.as_ref().is_some_and(|stored_hash| {
+            stored_hash
+                .as_bytes()
+                .ct_eq(provided_hash.as_bytes())
+                .into()
+        });
 
         if is_valid {
             // Clean up successful challenge
@@ -296,7 +296,9 @@ impl SecureMfaService {
         for _ in 0..count {
             // Generate a secure 16-character alphanumeric backup code
             let mut code_bytes = [0u8; 10]; // 10 bytes = 80 bits of entropy
-            self.rng.fill(&mut code_bytes).map_err(|_| "Failed to generate random bytes".to_string())?;
+            self.rng
+                .fill(&mut code_bytes)
+                .map_err(|_| "Failed to generate random bytes".to_string())?;
 
             // Convert to base32 for human readability (no ambiguous characters)
             let code = base32::encode(base32::Alphabet::Rfc4648 { padding: false }, &code_bytes);
@@ -420,7 +422,13 @@ mod tests {
 
         // Create challenge
         let (challenge_id, code) = mfa_service
-            .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
+            .create_challenge(
+                "user123",
+                MfaType::Sms {
+                    phone_number: String::new(),
+                },
+                6,
+            )
             .await
             .unwrap();
 
@@ -445,7 +453,13 @@ mod tests {
         let mfa_service = SecureMfaService::new(storage);
 
         let (challenge_id, _code) = mfa_service
-            .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
+            .create_challenge(
+                "user123",
+                MfaType::Sms {
+                    phone_number: String::new(),
+                },
+                6,
+            )
             .await
             .unwrap();
 
@@ -484,14 +498,26 @@ mod tests {
         // Should succeed first few times
         for _ in 0..5 {
             let result = mfa_service
-                .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
+                .create_challenge(
+                    "user123",
+                    MfaType::Sms {
+                        phone_number: String::new(),
+                    },
+                    6,
+                )
                 .await;
             assert!(result.is_ok());
         }
 
         // Should fail due to rate limiting
         let result = mfa_service
-            .create_challenge("user123", MfaType::Sms { phone_number: String::new() }, 6)
+            .create_challenge(
+                "user123",
+                MfaType::Sms {
+                    phone_number: String::new(),
+                },
+                6,
+            )
             .await;
         assert!(result.is_err());
     }

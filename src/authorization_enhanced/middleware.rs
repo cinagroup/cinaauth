@@ -398,5 +398,3 @@ mod tests {
         assert!(!is_sensitive_endpoint("/api/health"));
     }
 }
-
-

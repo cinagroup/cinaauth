@@ -20,7 +20,13 @@ impl TotpManager {
     pub async fn generate_secret(&self, user_id: &str) -> Result<String> {
         debug!("Generating TOTP secret for user '{}'", user_id);
 
-        let secret = crate::utils::crypto::generate_token(20);
+        // Generate 20 cryptographically-secure random bytes encoded as RFC 4648 Base32,
+        // compatible with generate_code_for_window() which base32-decodes the secret.
+        let rng = ring::rand::SystemRandom::new();
+        let mut raw_bytes = [0u8; 20];
+        ring::rand::SecureRandom::fill(&rng, &mut raw_bytes)
+            .map_err(|_| AuthError::internal("Failed to generate random bytes for TOTP secret"))?;
+        let secret = base32::encode(base32::Alphabet::Rfc4648 { padding: true }, &raw_bytes);
 
         // Store the secret securely
         let key = format!("user:{}:totp_secret", user_id);
@@ -174,5 +180,46 @@ impl TotpManager {
             Ok(None) => Ok(false),
             Err(_) => Ok(false), // Assume false on error
         }
+    }
+
+    /// Verify a TOTP code during the login MFA flow.
+    /// Reads from `mfa_secret:{user_id}` — the key written by the MFA setup flow.
+    pub async fn verify_login_code(&self, user_id: &str, code: &str) -> Result<bool> {
+        use crate::security::secure_utils::constant_time_compare;
+
+        if code.len() != 6 || !code.chars().all(|c| c.is_ascii_digit()) {
+            return Ok(false);
+        }
+
+        let secret_b32 = match self
+            .storage
+            .get_kv(&format!("mfa_secret:{}", user_id))
+            .await?
+        {
+            Some(data) => String::from_utf8_lossy(&data).to_string(),
+            None => return Ok(false),
+        };
+
+        let secret_bytes =
+            match base32::decode(base32::Alphabet::Rfc4648 { padding: false }, &secret_b32) {
+                Some(bytes) => bytes,
+                None => return Ok(false),
+            };
+
+        let now = chrono::Utc::now().timestamp() as u64;
+        const STEP: u64 = 30;
+        const DIGITS: u32 = 6;
+        let mut matched = false;
+
+        for offset in [0u64, STEP, STEP.wrapping_neg()] {
+            let timestamp = now.wrapping_add(offset);
+            let expected =
+                totp_lite::totp_custom::<totp_lite::Sha1>(STEP, DIGITS, &secret_bytes, timestamp);
+            if constant_time_compare(expected.as_bytes(), code.as_bytes()) {
+                matched = true;
+            }
+        }
+
+        Ok(matched)
     }
 }

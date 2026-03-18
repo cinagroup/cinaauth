@@ -571,4 +571,3 @@ async fn test_oauth2_token_exchange_invalid_grant_type() {
 
     assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 }
-

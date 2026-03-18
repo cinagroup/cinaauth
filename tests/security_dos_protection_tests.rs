@@ -101,7 +101,7 @@ async fn test_request_timeout_protection() {
 
     // Test 3: Multiple quick requests should all complete
     for i in 0..10 {
-        let credential = Credential::password(&format!("user{}", i), "password");
+        let credential = Credential::password(format!("user{}", i), "password");
         let result = timeout(
             Duration::from_secs(1),
             framework.authenticate("password", credential),
@@ -136,7 +136,7 @@ async fn test_concurrent_request_handling() {
     for i in 0..50 {
         let framework = framework.clone();
         let handle = tokio::spawn(async move {
-            let credential = Credential::password(&format!("user{}", i), "password");
+            let credential = Credential::password(format!("user{}", i), "password");
             framework.authenticate("password", credential).await
         });
         handles.push(handle);
@@ -167,7 +167,7 @@ async fn test_concurrent_request_handling() {
     for i in 50..150 {
         let framework = framework.clone();
         let handle = tokio::spawn(async move {
-            let credential = Credential::password(&format!("batch2_user{}", i), "password");
+            let credential = Credential::password(format!("batch2_user{}", i), "password");
             framework.authenticate("password", credential).await
         });
         handles.push(handle);
@@ -215,7 +215,7 @@ async fn test_resource_exhaustion_protection() {
     let mut error_count = 0;
 
     for i in 0..1000 {
-        let credential = Credential::password(&format!("exhaust_user_{}", i), "password");
+        let credential = Credential::password(format!("exhaust_user_{}", i), "password");
         match framework.authenticate("password", credential).await {
             Ok(_) => {
                 success_count += 1;
@@ -270,7 +270,7 @@ async fn test_connection_flooding_protection() {
     for i in 0..200 {
         let framework = framework.clone();
         let handle = tokio::spawn(async move {
-            let credential = Credential::password(&format!("flood_user{}", i), "password");
+            let credential = Credential::password(format!("flood_user{}", i), "password");
             framework.authenticate("password", credential).await
         });
         handles.push(handle);
@@ -328,7 +328,7 @@ async fn test_slow_request_attack_protection() {
             // Slow client: delays before making request
             sleep(Duration::from_millis(50 * i)).await;
 
-            let credential = Credential::password(&format!("slow_user{}", i), "password");
+            let credential = Credential::password(format!("slow_user{}", i), "password");
             framework.authenticate("password", credential).await
         });
         handles.push(handle);
@@ -455,7 +455,7 @@ async fn test_mixed_attack_scenarios() {
         let framework = framework.clone();
         let handle = tokio::spawn(async move {
             sleep(Duration::from_millis(100 * i)).await;
-            let credential = Credential::password(&format!("legit_user{}", i), "password");
+            let credential = Credential::password(format!("legit_user{}", i), "password");
             framework.authenticate("password", credential).await
         });
         handles.push(handle);
@@ -465,7 +465,7 @@ async fn test_mixed_attack_scenarios() {
     for i in 0..30 {
         let framework = framework.clone();
         let handle = tokio::spawn(async move {
-            let credential = Credential::password(&format!("attacker{}", i), "password");
+            let credential = Credential::password(format!("attacker{}", i), "password");
             framework.authenticate("password", credential).await
         });
         handles.push(handle);
@@ -588,7 +588,7 @@ async fn test_system_stability_under_load() {
             // Spread load over time
             sleep(Duration::from_millis(i % 100)).await;
 
-            let credential = Credential::password(&format!("load_user{}", i), "password");
+            let credential = Credential::password(format!("load_user{}", i), "password");
             framework.authenticate("password", credential).await
         });
         handles.push(handle);

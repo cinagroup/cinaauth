@@ -136,32 +136,11 @@ pub trait AuthMethod: Send + Sync {
     }
 }
 
-/// Basic user information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserInfo {
-    /// User ID
-    pub id: String,
-
-    /// Username
-    pub username: String,
-
-    /// Email address
-    pub email: Option<String>,
-
-    /// Display name
-    pub name: Option<String>,
-
-    /// User roles
-    pub roles: Vec<String>,
-
-    /// Whether the user is active
-    pub active: bool,
-
-    /// Additional user attributes
-    pub attributes: HashMap<String, serde_json::Value>,
-}
+/// Basic user information. Alias for the canonical [`crate::auth::UserInfo`].
+pub type UserInfo = crate::auth::UserInfo;
 
 /// Enum wrapper for all supported authentication methods (for registry)
+#[allow(clippy::large_enum_variant)]
 pub enum AuthMethodEnum {
     Password(PasswordMethod),
     Jwt(JwtMethod),
@@ -302,7 +281,9 @@ impl AuthMethod for AuthMethodEnum {
             #[cfg(feature = "passkeys")]
             AuthMethodEnum::Passkey(m) => return m.authenticate(credential, metadata).await,
             #[cfg(feature = "enhanced-device-flow")]
-            AuthMethodEnum::EnhancedDeviceFlow(m) => return m.authenticate(credential, metadata).await,
+            AuthMethodEnum::EnhancedDeviceFlow(m) => {
+                return m.authenticate(credential, metadata).await;
+            }
             _ => {} // Fall through to basic validation for stubbed methods
         }
 
@@ -410,5 +391,3 @@ impl MfaChallenge {
         self
     }
 }
-
-

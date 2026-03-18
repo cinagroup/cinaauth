@@ -57,8 +57,7 @@ pub enum ConfigSource {
 }
 
 /// Settings that can be used by parent applications to configure auth-framework
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AuthFrameworkSettings {
     /// Main auth framework configuration
     #[serde(flatten)]
@@ -379,10 +378,7 @@ impl ConfigManager {
     pub fn get_keys_with_prefix(&self, prefix: &str) -> Vec<String> {
         // Try to deserialize the prefix as a table to enumerate its keys
         if let Ok(table) = self.config.get_table(prefix) {
-            table
-                .keys()
-                .map(|k| format!("{}.{}", prefix, k))
-                .collect()
+            table.keys().map(|k| format!("{}.{}", prefix, k)).collect()
         } else {
             Vec::new()
         }
@@ -465,7 +461,6 @@ impl Default for ConfigManager {
     }
 }
 
-
 impl Default for SessionSettings {
     fn default() -> Self {
         Self {
@@ -543,5 +538,3 @@ mod tests {
         assert!(!sources.is_empty());
     }
 }
-
-

@@ -325,5 +325,3 @@ mod tests {
         assert!(registry.register_client(invalid_config).await.is_err());
     }
 }
-
-

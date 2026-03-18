@@ -1,7 +1,7 @@
 # AuthFramework - Copilot Instructions
 
 ## Project Overview
-AuthFramework is a high-performance Rust authentication and authorization client and server library designed to be THE premier authentication and authorization solution. Focus on exceptional performance, comprehensive security, cross-platform compatibility, and multi-language SDK support.
+AuthFramework is a high-performance Rust authentication and authorization client and server library designed to be THE premier authentication and authorization solution. Focus on exceptional performance, comprehensive security, cross-platform compatibility, multi-language SDK support, and a batteries-included developer experience where the product works out of the box with minimal configuration.
 
 ## Core Principles
 
@@ -18,12 +18,16 @@ AuthFramework is a high-performance Rust authentication and authorization client
 - **Law of Demeter**: Minimize coupling between modules
 - **Boy Scout Rule**: Always leave code cleaner than you found it
 - **Polymorphism over Conditionals**: Use traits and generics instead of match/if chains
+- **Batteries-Included Defaults**: Prefer default behavior that exposes the major product capabilities without requiring users to manually discover and enable extra features
+- **Optimization By Opt-Out**: Let advanced users disable unneeded functionality for footprint and compile-time optimization, but do not make basic usability depend on feature-flag archaeology
 
 ### Architecture Guidelines
 - **Centralized Configuration**: All settings managed through unified config system
 - **Minimal Dependencies**: Only essential external crates, prefer std library
 - **Purposeful Layers**: Clear separation between protocol, core logic, and I/O layers
 - **Avoid Over-engineering**: Build what's needed, not what might be needed
+- **Full Featured By Default**: The default crate build should include the primary end-user capabilities unless there is a strong technical reason not to
+- **Minimal Setup Path**: New users should be able to follow the default documented path with as little configuration and feature selection as possible
 
 ## Quality Standards
 
@@ -36,6 +40,7 @@ AuthFramework is a high-performance Rust authentication and authorization client
 - **Security by Default**: All communications encrypted, secure defaults only
 - **No Security Fallbacks**: Reject insecure connections rather than downgrade
 - **Configurable Security**: Admin/user control over security requirements
+- **Secure Defaults Without Friction**: Prefer secure defaults that still keep the first-run experience straightforward rather than forcing avoidable setup complexity
 
 ### Testing Standards
 - **Test-Driven Development**: Write tests before implementation
@@ -46,6 +51,14 @@ AuthFramework is a high-performance Rust authentication and authorization client
 - **Live Documentation**: Update docs with every code change
 - **Multiple Audiences**: Admin guides, developer docs, contributor guides
 - **Decision Log**: Document all architectural decisions with rationale
+- **Default Path First**: Docs and examples should present the default, out-of-the-box path before advanced optimization or feature-pruning variants
+
+## Feature Policy
+
+- Treat the default feature set as the primary product experience, not a minimal demo profile
+- Prefer opt-out feature reduction for optimization over opt-in feature discovery for common workflows
+- Keep intentionally non-default features limited to cases with strong platform, dependency, or operational justification
+- When introducing or changing feature flags, document which user journeys are expected to work on the default build
 
 ## Rust-Specific Guidelines
 

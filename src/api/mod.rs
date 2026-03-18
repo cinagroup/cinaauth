@@ -14,6 +14,7 @@ pub mod oauth2;
 pub mod oauth_advanced;
 pub mod openapi;
 pub mod responses;
+pub mod saml;
 pub mod security;
 pub mod security_simple;
 pub mod server;
@@ -21,7 +22,6 @@ pub mod users;
 pub mod validation;
 pub mod versioning;
 pub mod webauthn;
-pub mod saml;
 
 #[cfg(feature = "enhanced-rbac")]
 #[cfg(feature = "role-system")]
@@ -47,9 +47,8 @@ pub struct ApiState {
 
 impl ApiState {
     pub async fn new(auth_framework: Arc<AuthFramework>) -> crate::errors::Result<Self> {
-        let rate_limiter = Arc::new(
-            DistributedRateLimiter::new(RateLimitConfig::balanced()).await?,
-        );
+        let rate_limiter =
+            Arc::new(DistributedRateLimiter::new(RateLimitConfig::balanced()).await?);
         Ok(Self {
             auth_framework,
             rate_limiter,
@@ -115,8 +114,7 @@ pub async fn validate_api_token(
         let user_key = format!("user:{}", user_id_str);
         match auth_framework.storage().get_kv(&user_key).await {
             Ok(Some(bytes)) => {
-                let json: serde_json::Value =
-                    serde_json::from_slice(&bytes).unwrap_or_default();
+                let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
                 json["roles"]
                     .as_array()
                     .map(|arr| {
@@ -159,5 +157,3 @@ pub async fn validate_api_token(
         },
     })
 }
-
-

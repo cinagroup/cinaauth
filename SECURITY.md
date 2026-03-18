@@ -59,10 +59,11 @@ For detailed technical analysis, see [`RUSTSEC-2023-0071_COMPREHENSIVE_ANALYSIS.
 
 Currently supported versions of the Auth Framework with security updates:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x:                |
+| Version    | Supported          |
+| ---------- | ------------------ |
+| 0.5.x (rc) | :white_check_mark: |
+| 0.4.x      | :x:                |
+| < 0.4      | :x:                |
 
 ## Security Considerations
 
@@ -233,7 +234,6 @@ The framework includes a SAML integration layer (`src/api/saml.rs`) that impleme
 3. Modern IdPs increasingly support SHA-256 variants; configure your IdP to prefer `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256` where possible
 
 **Mitigation path**: When your SAML Identity Provider supports SHA-256 digests (`http://www.w3.org/2001/04/xmlenc#sha256`), configure it to use them. A future release will add configurable algorithm preference to the SAML handler.
-
 
 ## Changelog
 

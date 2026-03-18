@@ -212,55 +212,54 @@ impl AdvancedJarmManager {
         }
 
         // Each arm returns (encoding_key, decoding_key, validator_jwt_secret).
-        let (encoding_key, decoding_key, validator_jwt_secret) =
-            match (private_pem, public_pem) {
-                (Some(priv_pem), Some(pub_pem)) => {
-                    match (
-                        EncodingKey::from_rsa_pem(priv_pem.as_bytes()),
-                        DecodingKey::from_rsa_pem(pub_pem.as_bytes()),
-                    ) {
-                        (Ok(enc), Ok(dec)) => {
-                            info!("JARM: loaded RSA signing/verification keys from configuration");
-                            // For the internal validator, prefer an explicit env-var secret;
-                            // otherwise generate a fresh random value per instance.
-                            let secret = std::env::var("JARM_JWT_SECRET")
-                                .unwrap_or_else(|_| make_validator_secret());
-                            (enc, dec, secret)
-                        }
-                        (Err(e), _) | (_, Err(e)) => {
-                            warn!(
-                                "JARM: failed to parse provided RSA keys ({}). \
+        let (encoding_key, decoding_key, validator_jwt_secret) = match (private_pem, public_pem) {
+            (Some(priv_pem), Some(pub_pem)) => {
+                match (
+                    EncodingKey::from_rsa_pem(priv_pem.as_bytes()),
+                    DecodingKey::from_rsa_pem(pub_pem.as_bytes()),
+                ) {
+                    (Ok(enc), Ok(dec)) => {
+                        info!("JARM: loaded RSA signing/verification keys from configuration");
+                        // For the internal validator, prefer an explicit env-var secret;
+                        // otherwise generate a fresh random value per instance.
+                        let secret = std::env::var("JARM_JWT_SECRET")
+                            .unwrap_or_else(|_| make_validator_secret());
+                        (enc, dec, secret)
+                    }
+                    (Err(e), _) | (_, Err(e)) => {
+                        warn!(
+                            "JARM: failed to parse provided RSA keys ({}). \
                                  Falling back to development-only symmetric key — \
                                  DO NOT use in production.",
-                                e
-                            );
-                            (
-                                EncodingKey::from_secret(b"test_key_for_development_only"),
-                                DecodingKey::from_secret(b"test_key_for_development_only"),
-                                "test_key_for_development_only".to_string(),
-                            )
-                        }
+                            e
+                        );
+                        (
+                            EncodingKey::from_secret(b"test_key_for_development_only"),
+                            DecodingKey::from_secret(b"test_key_for_development_only"),
+                            "test_key_for_development_only".to_string(),
+                        )
                     }
                 }
-                _ => {
-                    // SECURITY: No RSA key is bundled. Production deployments MUST supply real
-                    // RSA keys via AdvancedJarmConfig or environment configuration.
-                    // The symmetric fallback below is intentionally weak — it triggers visible
-                    // warnings so an operator knows the service is not production-ready.
-                    warn!(
-                        "SECURITY WARNING: AdvancedJarmManager is using a development-only \
+            }
+            _ => {
+                // SECURITY: No RSA key is bundled. Production deployments MUST supply real
+                // RSA keys via AdvancedJarmConfig or environment configuration.
+                // The symmetric fallback below is intentionally weak — it triggers visible
+                // warnings so an operator knows the service is not production-ready.
+                warn!(
+                    "SECURITY WARNING: AdvancedJarmManager is using a development-only \
                          symmetric fallback key for JARM signing. This is NOT secure. Supply \
                          an RSA private key via AdvancedJarmConfig::rsa_private_key_pem or \
                          the JARM_RSA_PRIVATE_KEY_PEM environment variable before deploying \
                          to production."
-                    );
-                    (
-                        EncodingKey::from_secret(b"test_key_for_development_only"),
-                        DecodingKey::from_secret(b"test_key_for_development_only"),
-                        "test_key_for_development_only".to_string(),
-                    )
-                }
-            };
+                );
+                (
+                    EncodingKey::from_secret(b"test_key_for_development_only"),
+                    DecodingKey::from_secret(b"test_key_for_development_only"),
+                    "test_key_for_development_only".to_string(),
+                )
+            }
+        };
 
         // Resolve JWE key pair: config field → environment variable → None.
         let jwe_pub_pem = config
@@ -272,30 +271,32 @@ impl AdvancedJarmManager {
             .clone()
             .or_else(|| std::env::var("JARM_JWE_RECIPIENT_PRIVATE_KEY_PEM").ok());
 
-        let jwe_public_key = jwe_pub_pem.as_deref().and_then(|pem| {
-            match RsaPublicKey::from_public_key_pem(pem) {
-                Ok(k) => {
-                    info!("JARM JWE: loaded RSA recipient public key");
-                    Some(k)
-                }
-                Err(e) => {
-                    warn!("JARM JWE: could not parse recipient public key: {e}");
-                    None
-                }
-            }
-        });
-        let jwe_private_key = jwe_priv_pem.as_deref().and_then(|pem| {
-            match RsaPrivateKey::from_pkcs8_pem(pem) {
-                Ok(k) => {
-                    info!("JARM JWE: loaded RSA recipient private key");
-                    Some(k)
-                }
-                Err(e) => {
-                    warn!("JARM JWE: could not parse recipient private key: {e}");
-                    None
-                }
-            }
-        });
+        let jwe_public_key =
+            jwe_pub_pem
+                .as_deref()
+                .and_then(|pem| match RsaPublicKey::from_public_key_pem(pem) {
+                    Ok(k) => {
+                        info!("JARM JWE: loaded RSA recipient public key");
+                        Some(k)
+                    }
+                    Err(e) => {
+                        warn!("JARM JWE: could not parse recipient public key: {e}");
+                        None
+                    }
+                });
+        let jwe_private_key =
+            jwe_priv_pem
+                .as_deref()
+                .and_then(|pem| match RsaPrivateKey::from_pkcs8_pem(pem) {
+                    Ok(k) => {
+                        info!("JARM JWE: loaded RSA recipient private key");
+                        Some(k)
+                    }
+                    Err(e) => {
+                        warn!("JARM JWE: could not parse recipient private key: {e}");
+                        None
+                    }
+                });
 
         let mut required_issuers = std::collections::HashSet::new();
         required_issuers.insert(config.jarm_issuer.clone());
@@ -774,14 +775,12 @@ impl AdvancedJarmManager {
 
         // Dispatch to algorithm-specific implementation.
         match (algorithm, encryption) {
-            ("RSA-OAEP", "A256GCM") | ("RSA-OAEP-256", "A256GCM") => {
-                self.decrypt_rsa_oaep_a256gcm(
-                    encrypted_key,
-                    initialization_vector,
-                    ciphertext,
-                    authentication_tag,
-                )
-            }
+            ("RSA-OAEP", "A256GCM") | ("RSA-OAEP-256", "A256GCM") => self.decrypt_rsa_oaep_a256gcm(
+                encrypted_key,
+                initialization_vector,
+                ciphertext,
+                authentication_tag,
+            ),
             (alg, enc) => {
                 error!(
                     "Unsupported JWE algorithm/encryption combination: {} + {}",
@@ -1165,13 +1164,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_jwe_encrypt_decrypt_roundtrip() {
-        use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
         use rsa::RsaPrivateKey;
+        use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 
         // Generate a 2048-bit RSA key pair for the test.
         let mut rng = rand_core::OsRng;
-        let private_key = RsaPrivateKey::new(&mut rng, 2048)
-            .expect("RSA key generation failed");
+        let private_key = RsaPrivateKey::new(&mut rng, 2048).expect("RSA key generation failed");
         let public_key = private_key.to_public_key();
 
         let priv_pem = private_key
@@ -1291,5 +1289,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-
-

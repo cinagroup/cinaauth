@@ -141,13 +141,10 @@ pub async fn update_profile(
                 Ok(auth_token) => {
                     // Validate email format before storing to ensure consistency with
                     // the public registration endpoint.
-                    if let Some(ref email) = req.email {
-                        if crate::utils::validation::validate_email(email).is_err() {
-                            return ApiResponse::validation_error_typed(
-                                "Invalid email format",
-                            );
+                    if let Some(ref email) = req.email
+                        && crate::utils::validation::validate_email(email).is_err() {
+                            return ApiResponse::validation_error_typed("Invalid email format");
                         }
-                    }
 
                     // Enforce length limits on name fields to prevent storage abuse.
                     if req.first_name.as_deref().is_some_and(|n| n.len() > 100) {
@@ -194,11 +191,7 @@ pub async fn update_profile(
                             }
                             // Write the new email → user_id mapping.
                             let _ = storage
-                                .store_kv(
-                                    &new_email_key,
-                                    auth_token.user_id.as_bytes(),
-                                    None,
-                                )
+                                .store_kv(&new_email_key, auth_token.user_id.as_bytes(), None)
                                 .await;
                         }
                         user_json["email"] = serde_json::json!(new_email);
@@ -218,10 +211,7 @@ pub async fn update_profile(
                         let _ = storage.store_kv(&user_key, &serialized, None).await;
                     }
 
-                    tracing::info!(
-                        "Profile updated for user: {}",
-                        auth_token.user_id
-                    );
+                    tracing::info!("Profile updated for user: {}", auth_token.user_id);
 
                     // Read back the stored values to build an accurate response.
                     let (stored_username, stored_email, stored_created_at) = {
@@ -252,10 +242,7 @@ pub async fn update_profile(
                         )
                         .await,
                         created_at: stored_created_at,
-                        updated_at: user_json["updated_at"]
-                            .as_str()
-                            .unwrap_or("")
-                            .to_string(),
+                        updated_at: user_json["updated_at"].as_str().unwrap_or("").to_string(),
                     };
 
                     ApiResponse::success(updated_profile)
@@ -357,7 +344,13 @@ pub async fn get_user_profile(
                             // what validate_api_token returns for the user's own token.
                             let user_kv_bytes = {
                                 let uk = format!("user:{}", user_id);
-                                state.auth_framework.storage().get_kv(&uk).await.ok().flatten()
+                                state
+                                    .auth_framework
+                                    .storage()
+                                    .get_kv(&uk)
+                                    .await
+                                    .ok()
+                                    .flatten()
                             };
                             let user_kv_json: serde_json::Value = user_kv_bytes
                                 .as_deref()
@@ -450,36 +443,33 @@ pub async fn get_sessions(
     headers: HeaderMap,
 ) -> ApiResponse<Vec<SessionInfo>> {
     match extract_bearer_token(&headers) {
-        Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
-                Ok(auth_token) => {
-                    let storage = state.auth_framework.storage();
-                    match storage.list_user_sessions(&auth_token.user_id).await {
-                        Ok(sessions) => {
-                            let session_list: Vec<SessionInfo> = sessions
-                                .into_iter()
-                                .filter(|s| !s.is_expired())
-                                .map(|s| SessionInfo {
-                                    id: s.session_id.clone(),
-                                    device: s.user_agent.unwrap_or_default(),
-                                    location: String::new(),
-                                    ip_address: s.ip_address.unwrap_or_default(),
-                                    created_at: s.created_at.to_rfc3339(),
-                                    last_active: s.last_activity.to_rfc3339(),
-                                    is_current: false,
-                                })
-                                .collect();
-                            ApiResponse::success(session_list)
-                        }
-                        Err(_e) => ApiResponse::error_typed(
-                            "SESSION_ERROR",
-                            "Failed to retrieve sessions",
-                        ),
+        Some(token) => match validate_api_token(&state.auth_framework, &token).await {
+            Ok(auth_token) => {
+                let storage = state.auth_framework.storage();
+                match storage.list_user_sessions(&auth_token.user_id).await {
+                    Ok(sessions) => {
+                        let session_list: Vec<SessionInfo> = sessions
+                            .into_iter()
+                            .filter(|s| !s.is_expired())
+                            .map(|s| SessionInfo {
+                                id: s.session_id.clone(),
+                                device: s.user_agent.unwrap_or_default(),
+                                location: String::new(),
+                                ip_address: s.ip_address.unwrap_or_default(),
+                                created_at: s.created_at.to_rfc3339(),
+                                last_active: s.last_activity.to_rfc3339(),
+                                is_current: false,
+                            })
+                            .collect();
+                        ApiResponse::success(session_list)
+                    }
+                    Err(_e) => {
+                        ApiResponse::error_typed("SESSION_ERROR", "Failed to retrieve sessions")
                     }
                 }
-                Err(_e) => ApiResponse::error_typed("USER_ERROR", "Session operation failed"),
             }
-        }
+            Err(_e) => ApiResponse::error_typed("USER_ERROR", "Session operation failed"),
+        },
         None => ApiResponse::<Vec<SessionInfo>>::unauthorized_typed(),
     }
 }

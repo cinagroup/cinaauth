@@ -189,11 +189,21 @@ pub struct TokenManager {
     /// JWT encoding key
     encoding_key: EncodingKey,
 
-    /// JWT decoding key
+    /// JWT decoding key (current)
     decoding_key: DecodingKey,
+
+    /// Optional previous decoding key retained during key-rotation grace period.
+    ///
+    /// Tokens signed with the previous key are still accepted until they expire
+    /// naturally.  Once operators are satisfied all pre-rotation tokens have
+    /// expired, they can call [`TokenManager::retire_previous_key`] to remove it.
+    previous_decoding_key: Option<DecodingKey>,
 
     /// Key material for recreating keys during clone
     key_material: KeyMaterial,
+
+    /// Key material for the previous key (for clone support after rotation)
+    previous_key_material: Option<KeyMaterial>,
 
     /// JWT algorithm
     algorithm: Algorithm,
@@ -415,11 +425,24 @@ impl AuthToken {
 
 impl Clone for TokenManager {
     fn clone(&self) -> Self {
+        let (previous_decoding_key, previous_key_material) = match &self.previous_key_material {
+            Some(KeyMaterial::Hmac(secret)) => (
+                Some(DecodingKey::from_secret(secret)),
+                Some(KeyMaterial::Hmac(secret.clone())),
+            ),
+            Some(KeyMaterial::Rsa { public, .. }) => (
+                DecodingKey::from_rsa_pem(public).ok(),
+                Some(self.previous_key_material.clone().unwrap()),
+            ),
+            None => (None, None),
+        };
         match &self.key_material {
             KeyMaterial::Hmac(secret) => Self {
                 encoding_key: EncodingKey::from_secret(secret),
                 decoding_key: DecodingKey::from_secret(secret),
+                previous_decoding_key,
                 key_material: self.key_material.clone(),
+                previous_key_material,
                 algorithm: self.algorithm,
                 issuer: self.issuer.clone(),
                 audience: self.audience.clone(),
@@ -428,7 +451,9 @@ impl Clone for TokenManager {
             KeyMaterial::Rsa { private, public } => Self {
                 encoding_key: EncodingKey::from_rsa_pem(private).expect("Valid RSA private key"),
                 decoding_key: DecodingKey::from_rsa_pem(public).expect("Valid RSA public key"),
+                previous_decoding_key,
                 key_material: self.key_material.clone(),
+                previous_key_material,
                 algorithm: self.algorithm,
                 issuer: self.issuer.clone(),
                 audience: self.audience.clone(),
@@ -444,7 +469,9 @@ impl TokenManager {
         Self {
             encoding_key: EncodingKey::from_secret(secret),
             decoding_key: DecodingKey::from_secret(secret),
+            previous_decoding_key: None,
             key_material: KeyMaterial::Hmac(secret.to_vec()),
+            previous_key_material: None,
             algorithm: Algorithm::HS256,
             issuer: issuer.into(),
             audience: audience.into(),
@@ -494,15 +521,65 @@ impl TokenManager {
         Ok(Self {
             encoding_key,
             decoding_key,
+            previous_decoding_key: None,
             key_material: KeyMaterial::Rsa {
                 private: private_key.to_vec(),
                 public: public_key.to_vec(),
             },
+            previous_key_material: None,
             algorithm: Algorithm::RS256,
             issuer: issuer.into(),
             audience: audience.into(),
             default_lifetime: Duration::from_secs(3600), // 1 hour
         })
+    }
+
+    /// Rotate HMAC key, keeping the current key as the previous decoding key
+    /// to seamlessly allow verification of tokens signed with the old key.
+    pub fn rotate_hmac_key(&mut self, new_secret: &[u8]) {
+        // Move current key to previous
+        if let KeyMaterial::Hmac(secret) = &self.key_material {
+            self.previous_decoding_key = Some(DecodingKey::from_secret(secret));
+            self.previous_key_material = Some(KeyMaterial::Hmac(secret.clone()));
+        }
+
+        // Set new key
+        self.encoding_key = EncodingKey::from_secret(new_secret);
+        self.decoding_key = DecodingKey::from_secret(new_secret);
+        self.key_material = KeyMaterial::Hmac(new_secret.to_vec());
+        self.algorithm = Algorithm::HS256;
+    }
+
+    /// Rotate RSA key, keeping the current key as the previous decoding key
+    /// to seamlessly allow verification of tokens signed with the old key.
+    pub fn rotate_rsa_key(&mut self, private_key: &[u8], public_key: &[u8]) -> Result<()> {
+        let new_encoding_key = EncodingKey::from_rsa_pem(private_key)
+            .map_err(|e| AuthError::crypto(format!("Invalid RSA private key: {e}")))?;
+        let new_decoding_key = DecodingKey::from_rsa_pem(public_key)
+            .map_err(|e| AuthError::crypto(format!("Invalid RSA public key: {e}")))?;
+
+        // Move current key to previous
+        if let KeyMaterial::Rsa { public, .. } = &self.key_material {
+            self.previous_decoding_key = DecodingKey::from_rsa_pem(public).ok();
+            self.previous_key_material = Some(self.key_material.clone());
+        }
+
+        // Set new key
+        self.encoding_key = new_encoding_key;
+        self.decoding_key = new_decoding_key;
+        self.key_material = KeyMaterial::Rsa {
+            private: private_key.to_vec(),
+            public: public_key.to_vec(),
+        };
+        self.algorithm = Algorithm::RS256;
+
+        Ok(())
+    }
+
+    /// Retire the previous key (if any), so tokens signed with it are no longer valid.
+    pub fn retire_previous_key(&mut self) {
+        self.previous_decoding_key = None;
+        self.previous_key_material = None;
     }
 
     /// Set the default token lifetime.
@@ -550,19 +627,32 @@ impl TokenManager {
         validation.set_issuer(&[&self.issuer]);
         validation.set_audience(&[&self.audience]);
 
-        let token_data =
-            decode::<JwtClaims>(token, &self.decoding_key, &validation).map_err(|e| {
+        match decode::<JwtClaims>(token, &self.decoding_key, &validation) {
+            Ok(token_data) => Ok(token_data.claims),
+            Err(e) => {
                 match e.kind() {
                     jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
-                        AuthError::Token(TokenError::Expired)
+                        Err(AuthError::Token(TokenError::Expired))
                     }
-                    _ => AuthError::Token(TokenError::Invalid {
-                        message: "Invalid token format".to_string(),
-                    }),
-                }
-            })?;
+                    jsonwebtoken::errors::ErrorKind::InvalidSignature => {
+                        // If signature is invalid, try the previous key if configured
+                        if let Some(prev_key) = &self.previous_decoding_key
+                            && let Ok(prev_token_data) =
+                                decode::<JwtClaims>(token, prev_key, &validation)
+                            {
+                                return Ok(prev_token_data.claims);
+                            }
 
-        Ok(token_data.claims)
+                        Err(AuthError::Token(TokenError::Invalid {
+                            message: "Invalid token signature".to_string(),
+                        }))
+                    }
+                    _ => Err(AuthError::Token(TokenError::Invalid {
+                        message: "Invalid token format".to_string(),
+                    })),
+                }
+            }
+        }
     }
 
     /// Create a complete authentication token with JWT.

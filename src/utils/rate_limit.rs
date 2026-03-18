@@ -25,9 +25,10 @@ impl RateLimiter {
 
     /// Check if a request is allowed for the given key
     pub fn check_rate_limit(&self, key: &str) -> Result<bool> {
-        let mut requests = self.requests.lock().map_err(|_| {
-            AuthError::internal("Failed to acquire rate limiter lock".to_string())
-        })?;
+        let mut requests = self
+            .requests
+            .lock()
+            .map_err(|_| AuthError::internal("Failed to acquire rate limiter lock".to_string()))?;
 
         let now = Instant::now();
         let entry = requests.entry(key.to_string()).or_insert_with(Vec::new);
@@ -56,9 +57,10 @@ impl RateLimiter {
 
     /// Get the number of requests for a key
     pub fn get_request_count(&self, key: &str) -> Result<usize> {
-        let requests = self.requests.lock().map_err(|_| {
-            AuthError::internal("Failed to acquire rate limiter lock".to_string())
-        })?;
+        let requests = self
+            .requests
+            .lock()
+            .map_err(|_| AuthError::internal("Failed to acquire rate limiter lock".to_string()))?;
 
         let now = Instant::now();
         if let Some(entry) = requests.get(key) {
@@ -74,9 +76,10 @@ impl RateLimiter {
 
     /// Clean up expired entries
     pub fn cleanup(&self) -> Result<usize> {
-        let mut requests = self.requests.lock().map_err(|_| {
-            AuthError::internal("Failed to acquire rate limiter lock".to_string())
-        })?;
+        let mut requests = self
+            .requests
+            .lock()
+            .map_err(|_| AuthError::internal("Failed to acquire rate limiter lock".to_string()))?;
 
         let now = Instant::now();
         let mut removed_count = 0;
@@ -96,9 +99,10 @@ impl RateLimiter {
 
     /// Reset rate limit for a specific key
     pub fn reset(&self, key: &str) -> Result<()> {
-        let mut requests = self.requests.lock().map_err(|_| {
-            AuthError::internal("Failed to acquire rate limiter lock".to_string())
-        })?;
+        let mut requests = self
+            .requests
+            .lock()
+            .map_err(|_| AuthError::internal("Failed to acquire rate limiter lock".to_string()))?;
 
         requests.remove(key);
         Ok(())
@@ -139,12 +143,12 @@ mod tests {
     #[test]
     fn test_cleanup() {
         let limiter = RateLimiter::new(10, Duration::from_millis(100));
-        
+
         limiter.check_rate_limit("key1").unwrap();
         limiter.check_rate_limit("key2").unwrap();
-        
+
         thread::sleep(Duration::from_millis(150));
-        
+
         let removed = limiter.cleanup().unwrap();
         assert_eq!(removed, 2);
     }

@@ -364,8 +364,7 @@ impl SecurityTokenService {
             claims: &auth_context.claims,
         };
 
-        let encoding_key =
-            EncodingKey::from_secret(self.config.jwt_signing_secret.as_bytes());
+        let encoding_key = EncodingKey::from_secret(self.config.jwt_signing_secret.as_bytes());
 
         jwt_encode(&Header::new(Algorithm::HS256), &jwt_claims, &encoding_key)
             .map_err(|e| AuthError::internal(format!("WS-Trust JWT signing failed: {e}")))
@@ -546,12 +545,10 @@ impl Default for StsConfig {
         let mut bytes = [0u8; 32];
         rng.fill(&mut bytes)
             .expect("System CSPRNG unavailable; cannot initialise StsConfig JWT signing secret");
-        let jwt_signing_secret = bytes
-            .iter()
-            .fold(String::with_capacity(64), |mut s, b| {
-                s.push_str(&format!("{b:02x}"));
-                s
-            });
+        let jwt_signing_secret = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
+            s.push_str(&format!("{b:02x}"));
+            s
+        });
 
         Self {
             issuer: "https://sts.example.com".to_string(),

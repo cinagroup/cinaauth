@@ -10,8 +10,8 @@
 
 use auth_framework::{
     AuthConfig, AuthFramework,
-    server::{DeviceAuthManager, DeviceAuthorizationRequest, DeviceAuthorizationStatus},
     server::oauth::par::{PARManager, PushedAuthorizationRequest},
+    server::{DeviceAuthManager, DeviceAuthorizationRequest, DeviceAuthorizationStatus},
 };
 use std::collections::HashMap;
 use std::sync::Arc;

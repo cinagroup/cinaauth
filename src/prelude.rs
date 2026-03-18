@@ -11,6 +11,20 @@
 //! This imports all the essential types you need to get started with authentication
 //! and authorization in your application.
 //!
+//! # Recommended Entry Points
+//!
+//! - Use [`AuthFramework`] for the normal library entry point.
+//! - Use [`ModularAuthFramework`] only when you need direct access to the
+//!   component managers from `auth_modular`.
+//! - Use [`AuthFramework::users`], [`AuthFramework::sessions`],
+//!   [`AuthFramework::tokens`], and [`AuthFramework::authorization`] when you
+//!   want grouped operations instead of the full façade.
+//! - Use [`AppConfigBuilder`] for simple app-defined configuration.
+//! - Use [`LayeredConfigBuilder`] and [`ConfigManager`] for layered config
+//!   sourced from files and environment variables.
+//! - Use [`SessionManager`] for the standard session engine and
+//!   [`SecureSessionManager`] when you need the hardened secure-session layer.
+//!
 //! # What's Included
 //!
 //! ## Core Framework Types
@@ -28,7 +42,7 @@
 //! ## Tokens and Sessions
 //! - [`AuthToken`] - Authentication token representation
 //! - [`SessionData`] - Session data structure
-//! - [`UserProfile`] - User profile information
+//! - [`ProviderProfile`] - Provider-backed user profile information
 //!
 //! ## Permissions and Authorization
 //! - [`Permission`] - Permission representation
@@ -40,18 +54,20 @@
 //! - [`MemoryStorage`] - In-memory storage implementation
 //!
 //! ## Web Framework Integration
-//! - [`RequireAuth`] - Middleware for requiring authentication
-//! - [`AuthenticatedUser`] - Extractor for authenticated users
-//! - [`RequirePermission`] - Middleware for permission checking
+//! - `RequireAuth` - Middleware for requiring authentication
+//! - `AuthenticatedUser` - Extractor for authenticated users
+//! - `RequirePermission` - Middleware for permission checking
 //!
 //! ## Builder Patterns and Helpers
 //! - [`AuthBuilder`] - Fluent builder for framework setup
 //! - [`SecurityPreset`] - Pre-configured security levels
-//! - [`ConfigBuilder`] - Configuration builder
+//! - [`AppConfigBuilder`] - Simple application configuration builder
+//! - [`LayeredConfigBuilder`] - Layered configuration builder
 //!
 //! ## Time and Rate Limiting Helpers
 //! - Time duration helpers: [`hours`], [`minutes`], [`days`], [`weeks`]
-//! - Rate limiting helpers: [`requests`], [`per_second`], [`per_minute`], [`per_hour`]
+//! - Rate limiting helpers: [`requests`], [`RequestCount::per_second`],
+//!   [`RequestCount::per_minute`], [`RequestCount::per_hour`]
 //!
 //! # Quick Start Example
 //!
@@ -85,10 +101,18 @@
 
 // Re-export core framework types
 pub use crate::AuthFramework;
-pub use crate::auth::{AuthStats, UserInfo};
+pub use crate::ModularAuthFramework;
+pub use crate::auth::{
+    AdminOperations, AuditOperations, AuthStats, AuthorizationOperations, MfaOperations,
+    MonitoringOperations, SessionOperations, TokenOperations, UserInfo, UserInfo as CoreUserInfo,
+    UserOperations,
+};
 
 // Re-export configuration types
-pub use crate::config::app_config::{AppConfig, ConfigBuilder};
+pub use crate::config::app_config::{AppConfig, ConfigBuilder as AppConfigBuilder};
+pub use crate::config::config_manager::{
+    AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder, ConfigManager,
+};
 pub use crate::config::{
     AuditConfig, AuthConfig, CookieSameSite, JwtAlgorithm, PasswordHashAlgorithm, RateLimitConfig,
     SecurityConfig, StorageConfig,
@@ -131,7 +155,7 @@ pub use crate::security::secure_session::{
     DeviceFingerprint, SecureSession, SecureSessionConfig, SecureSessionManager, SecurityFlags,
 };
 pub use crate::session::manager::{
-    DeviceInfo, Session, SessionConfig, SessionManager as LegacySessionManager, SessionState,
+    DeviceInfo, Session, SessionConfig, SessionManager, SessionState,
 };
 
 // Re-export middleware and extractors for web frameworks

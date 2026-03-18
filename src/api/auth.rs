@@ -26,17 +26,27 @@ pub struct LoginResponse {
     pub refresh_token: String,
     pub token_type: String,
     pub expires_in: u64,
-    pub user: UserInfo,
+    pub user: LoginUserInfo,
+    /// Risk level of this login attempt: "low", "medium", "high", or "critical".
+    /// Clients can use this to prompt the user to enable MFA or perform additional verification.
+    pub login_risk_level: String,
+    /// Non-blocking security advisories for the authenticated session.
+    /// Empty in the common case; populated when adaptive risk policy detects elevated risk.
+    pub security_warnings: Vec<String>,
 }
 
-/// User information in login response
+/// User information embedded in login and validation responses.
 #[derive(Debug, Serialize)]
-pub struct UserInfo {
+pub struct LoginUserInfo {
     pub id: String,
     pub username: String,
     pub roles: Vec<String>,
     pub permissions: Vec<String>,
 }
+
+/// Backward-compatible alias.
+#[allow(dead_code)]
+pub(crate) type UserInfo = LoginUserInfo;
 
 async fn build_login_response(
     state: &ApiState,
@@ -61,7 +71,7 @@ async fn build_login_response(
         _ => vec![],
     };
 
-    let user_info = UserInfo {
+    let user_info = LoginUserInfo {
         id: user_id.to_string(),
         username,
         roles: roles.clone(),
@@ -106,6 +116,8 @@ async fn build_login_response(
         token_type: "Bearer".to_string(),
         expires_in: 3600,
         user: user_info,
+        login_risk_level: "low".to_string(), // Caller may override after build
+        security_warnings: Vec::new(),       // Caller may override after build
     })
 }
 
@@ -130,9 +142,64 @@ pub struct LogoutRequest {
     pub refresh_token: Option<String>,
 }
 
+/// Compute a login risk level string from request headers.
+///
+/// This is a lightweight, header-only heuristic used to populate the
+/// `login_risk_level` field in the login response and to trigger security
+/// warnings when MFA is not enrolled.  It does **not** replace a full
+/// risk-engine evaluation — for that, see `AuthorizationContextBuilder`.
+pub(crate) fn login_risk_level(headers: &HeaderMap) -> (&'static str, Vec<String>) {
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let forwarded_for = headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let mut risk_points: u8 = 0;
+    let mut warnings: Vec<String> = Vec::new();
+
+    if user_agent.is_empty() {
+        risk_points = risk_points.saturating_add(30);
+        warnings.push(
+            "No browser User-Agent detected; this request may originate from an automated script."
+                .to_string(),
+        );
+    }
+
+    // Detect Tor exit nodes by well-known header patterns.  This is a best-effort
+    // check and can be defeated; a proper geo-IP database lookup is more reliable.
+    if user_agent.to_lowercase().contains("tor browser") {
+        risk_points = risk_points.saturating_add(40);
+        warnings.push("Login originated from the Tor Browser.".to_string());
+    }
+
+    // Multiple IPs in X-Forwarded-For typically indicate a proxy or VPN hop.
+    let hop_count = forwarded_for.split(',').count();
+    if hop_count >= 2 {
+        risk_points = risk_points.saturating_add(15);
+        warnings.push(format!(
+            "Request passed through {} proxy hops (X-Forwarded-For).",
+            hop_count
+        ));
+    }
+
+    let level = match risk_points {
+        0..=9 => "low",
+        10..=29 => "medium",
+        30..=59 => "high",
+        _ => "critical",
+    };
+    (level, warnings)
+}
+
 /// POST /auth/login
 pub async fn login(
     State(state): State<ApiState>,
+    headers: HeaderMap,
     Json(req): Json<LoginRequest>,
 ) -> ApiResponse<LoginResponse> {
     // Validate required fields
@@ -146,20 +213,27 @@ pub async fn login(
         );
     }
 
-    if let (Some(challenge_id), Some(mfa_code)) = (req.challenge_id.clone(), req.mfa_code.as_deref()) {
+    if let (Some(challenge_id), Some(mfa_code)) =
+        (req.challenge_id.clone(), req.mfa_code.as_deref())
+    {
         return match state
             .auth_framework
             .complete_mfa_by_id(&challenge_id, mfa_code)
             .await
         {
             Ok(token) => {
-                build_login_response(
+                let mut response = build_login_response(
                     &state,
                     &token.user_id,
                     req.username,
                     token.permissions.clone(),
                 )
-                .await
+                .await;
+                // MFA completion means the step-up was satisfied — mark as low risk.
+                if let Some(data) = response.data.as_mut() {
+                    data.login_risk_level = "low".to_string();
+                }
+                response
             }
             Err(e) => {
                 tracing::debug!("MFA completion failed during login: {}", e);
@@ -170,6 +244,10 @@ pub async fn login(
             }
         };
     }
+
+    // Compute adaptive risk from request headers before touching the auth core
+    // so the risk assessment can influence the response even on success.
+    let (risk_level, mut risk_warnings) = login_risk_level(&headers);
 
     // Create credential for authentication
     let credential = crate::authentication::credentials::Credential::Password {
@@ -185,13 +263,44 @@ pub async fn login(
     {
         Ok(auth_result) => match auth_result {
             crate::auth::AuthResult::Success(token) => {
-                build_login_response(
+                // Check if the user has MFA enrolled.  If not and the risk level is
+                // elevated, add a security advisory recommending MFA enrollment.
+                let mfa_enrolled =
+                    crate::api::mfa::check_user_mfa_status(&state.auth_framework, &token.user_id)
+                        .await;
+
+                if !mfa_enrolled && matches!(risk_level, "high" | "critical") {
+                    risk_warnings.push(
+                        "Your account does not have multi-factor authentication enabled. \
+                         Enable MFA to protect this account from high-risk login contexts."
+                            .to_string(),
+                    );
+                    tracing::warn!(
+                        user_id = %token.user_id,
+                        risk_level = %risk_level,
+                        "High-risk login without MFA enrolled"
+                    );
+                } else {
+                    tracing::info!(
+                        user_id = %token.user_id,
+                        risk_level = %risk_level,
+                        mfa_enrolled = %mfa_enrolled,
+                        "Successful login"
+                    );
+                }
+
+                let mut response = build_login_response(
                     &state,
                     &token.user_id,
                     req.username,
                     token.permissions.clone(),
                 )
-                .await
+                .await;
+                if let Some(data) = response.data.as_mut() {
+                    data.login_risk_level = risk_level.to_string();
+                    data.security_warnings = risk_warnings;
+                }
+                response
             }
             crate::auth::AuthResult::MfaRequired(challenge) => {
                 // Return the challenge data so the client knows how to fulfill MFA.
@@ -226,7 +335,10 @@ pub async fn login(
             // Always return the same error code/message regardless of *why* auth failed.
             // This prevents timing and enumeration attacks that could distinguish
             // "user not found" from "wrong password".
-            tracing::debug!("Authentication error (reported as INVALID_CREDENTIALS): {}", e);
+            tracing::debug!(
+                "Authentication error (reported as INVALID_CREDENTIALS): {}",
+                e
+            );
             ApiResponse::error_typed("INVALID_CREDENTIALS", "Invalid username or password")
         }
     }
@@ -276,7 +388,8 @@ pub async fn refresh_token(
             // user can indefinitely obtain new access tokens.
             {
                 let user_key = format!("user:{}", claims.sub);
-                if let Ok(Some(user_bytes)) = state.auth_framework.storage().get_kv(&user_key).await {
+                if let Ok(Some(user_bytes)) = state.auth_framework.storage().get_kv(&user_key).await
+                {
                     let user_json: serde_json::Value =
                         serde_json::from_slice(&user_bytes).unwrap_or_default();
                     let active = user_json["active"].as_bool().unwrap_or(true);
@@ -338,7 +451,11 @@ pub async fn logout(
 ) -> ApiResponse<()> {
     // Revoke the access token by storing it in the blocklist keyed by JTI
     if let Some(token) = extract_bearer_token(&headers) {
-        match state.auth_framework.token_manager().validate_jwt_token(&token) {
+        match state
+            .auth_framework
+            .token_manager()
+            .validate_jwt_token(&token)
+        {
             Ok(claims) => {
                 let revocation_key = format!("revoked_token:{}", claims.jti);
                 // TTL: longer of token's remaining lifetime or 1 hour; cap at 7 days
@@ -396,7 +513,7 @@ pub async fn logout(
 pub async fn validate_token(
     State(state): State<ApiState>,
     headers: HeaderMap,
-) -> ApiResponse<UserInfo> {
+) -> ApiResponse<LoginUserInfo> {
     match extract_bearer_token(&headers) {
         Some(token) => {
             match crate::api::validate_api_token(&state.auth_framework, &token).await {
@@ -413,7 +530,7 @@ pub async fn validate_token(
                         Err(_) => format!("user_{}", auth_token.user_id), // Fallback if profile fetch fails
                     };
 
-                    let user_info = UserInfo {
+                    let user_info = LoginUserInfo {
                         id: auth_token.user_id,
                         username,
                         roles: auth_token.roles,
@@ -602,11 +719,19 @@ pub async fn register(
     if let Err(e) = state
         .auth_framework
         .storage()
-        .store_kv(&canonical_key, canonical_user_data.to_string().as_bytes(), None)
+        .store_kv(
+            &canonical_key,
+            canonical_user_data.to_string().as_bytes(),
+            None,
+        )
         .await
     {
         tracing::error!("Canonical user record storage failed: {:?}", e);
-        let _ = state.auth_framework.storage().delete_kv(&username_key).await;
+        let _ = state
+            .auth_framework
+            .storage()
+            .delete_kv(&username_key)
+            .await;
         let _ = state.auth_framework.storage().delete_kv(&email_key).await;
         return ApiResponse::error_typed("REGISTRATION_FAILED", "Failed to create user account");
     }
@@ -620,9 +745,17 @@ pub async fn register(
         .await
     {
         tracing::error!("Username-id mapping storage failed: {:?}", e);
-        let _ = state.auth_framework.storage().delete_kv(&username_key).await;
+        let _ = state
+            .auth_framework
+            .storage()
+            .delete_kv(&username_key)
+            .await;
         let _ = state.auth_framework.storage().delete_kv(&email_key).await;
-        let _ = state.auth_framework.storage().delete_kv(&canonical_key).await;
+        let _ = state
+            .auth_framework
+            .storage()
+            .delete_kv(&canonical_key)
+            .await;
         return ApiResponse::error_typed("REGISTRATION_FAILED", "Failed to create user account");
     }
 
@@ -634,7 +767,11 @@ pub async fn register(
     };
     ids.push(user_id.clone());
     if let Ok(idx_json) = serde_json::to_vec(&ids) {
-        let _ = state.auth_framework.storage().store_kv(index_key, &idx_json, None).await;
+        let _ = state
+            .auth_framework
+            .storage()
+            .store_kv(index_key, &idx_json, None)
+            .await;
     }
 
     tracing::info!("New user registered: {} ({})", req.username, user_id);
@@ -692,5 +829,3 @@ pub async fn create_api_key(
         }
     }
 }
-
-

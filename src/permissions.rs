@@ -510,6 +510,13 @@ impl PermissionChecker {
         user_perms.add_role(role);
     }
 
+    /// Remove a role from a user.
+    pub fn remove_user_role(&mut self, user_id: &str, role_name: &str) {
+        if let Some(user_perms) = self.user_permissions.get_mut(user_id) {
+            user_perms.remove_role(role_name);
+        }
+    }
+
     /// Count the number of defined roles.
     pub fn role_count(&self) -> usize {
         self.roles.len()
@@ -919,5 +926,3 @@ mod tests {
 
 #[cfg(test)]
 pub mod abac_delegation_tests;
-
-

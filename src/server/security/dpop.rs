@@ -336,7 +336,8 @@ impl DpopManager {
         errors: &mut Vec<String>,
     ) -> Result<()> {
         let now = Utc::now();
-        let iat = Utc.timestamp_opt(claims.iat, 0)
+        let iat = Utc
+            .timestamp_opt(claims.iat, 0)
             .single()
             .unwrap_or_else(|| now - Duration::hours(1));
 

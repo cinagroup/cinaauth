@@ -538,22 +538,26 @@ impl SecurityMonitor {
 
     /// Record a failed authentication attempt
     pub fn record_failed_attempt(&self) {
-        self.failed_attempts.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.failed_attempts
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Record a rate limit violation
     pub fn record_rate_limit_violation(&self) {
-        self.rate_limit_violations.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.rate_limit_violations
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Get failed attempt count
     pub fn get_failed_attempts(&self) -> u64 {
-        self.failed_attempts.load(std::sync::atomic::Ordering::Relaxed)
+        self.failed_attempts
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get rate limit violation count
     pub fn get_rate_limit_violations(&self) -> u64 {
-        self.rate_limit_violations.load(std::sync::atomic::Ordering::Relaxed)
+        self.rate_limit_violations
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Record a suspicious activity pattern
@@ -571,7 +575,10 @@ impl SecurityMonitor {
     /// Get all suspicious activity patterns
     pub async fn get_all_suspicious_activities(&self) -> Vec<(String, SuspiciousActivity)> {
         let patterns = self.suspicious_patterns.read().await;
-        patterns.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+        patterns
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 
     /// Clear suspicious activity pattern for a user
@@ -767,11 +774,21 @@ mod tests {
         security_monitor
             .record_suspicious_activity("user123".to_string(), activity)
             .await;
-        assert!(security_monitor.get_suspicious_activity("user123").await.is_some());
+        assert!(
+            security_monitor
+                .get_suspicious_activity("user123")
+                .await
+                .is_some()
+        );
 
         // Clear it
         security_monitor.clear_suspicious_activity("user123").await;
-        assert!(security_monitor.get_suspicious_activity("user123").await.is_none());
+        assert!(
+            security_monitor
+                .get_suspicious_activity("user123")
+                .await
+                .is_none()
+        );
     }
 
     #[tokio::test]
@@ -811,7 +828,7 @@ mod tests {
     async fn test_observability_manager_creation() {
         let manager = ObservabilityManager::new().expect("Failed to create manager");
         let config = manager.get_config();
-        
+
         assert!(config.enable_security_monitoring);
         assert!(config.enable_prometheus);
         assert_eq!(config.security_event_max_count, 10000);

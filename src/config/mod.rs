@@ -4,9 +4,10 @@ pub mod app_config;
 pub mod config_manager;
 
 // Re-export for easy access
+pub use app_config::{AppConfig, ConfigBuilder as AppConfigBuilder};
 pub use config_manager::{
-    AuthFrameworkSettings, ConfigBuilder, ConfigIntegration, ConfigManager, SessionCookieSettings,
-    SessionSettings,
+    AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder, ConfigIntegration, ConfigManager,
+    SessionCookieSettings, SessionSettings,
 };
 
 use crate::errors::{AuthError, Result};
@@ -117,6 +118,9 @@ pub struct SecurityConfig {
 
     /// Secret key for signing (should be loaded from environment)
     pub secret_key: Option<String>,
+
+    /// Previous secret key to maintain validation capabilities during rotation
+    pub previous_secret_key: Option<String>,
 
     /// Enable secure cookies
     pub secure_cookies: bool,
@@ -236,6 +240,7 @@ impl Default for SecurityConfig {
             password_hash_algorithm: PasswordHashAlgorithm::Argon2,
             jwt_algorithm: JwtAlgorithm::HS256,
             secret_key: None,
+            previous_secret_key: None,
             secure_cookies: true,
             cookie_same_site: CookieSameSite::Lax,
             csrf_protection: true,
@@ -254,6 +259,80 @@ impl Default for AuditConfig {
             log_tokens: false, // Tokens can be sensitive
             storage: AuditStorage::Tracing,
         }
+    }
+}
+
+/// Runtime-mutable configuration subset.
+///
+/// These fields can be updated via the admin API without restarting the server.
+/// Security-sensitive settings (JWT secret, algorithm, storage backend) are
+/// intentionally excluded and require a process restart to change.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RuntimeConfig {
+    /// Token lifetime in seconds.
+    pub token_lifetime_secs: u64,
+    /// Refresh token lifetime in seconds.
+    pub refresh_token_lifetime_secs: u64,
+    /// Whether MFA is globally enabled.
+    pub enable_multi_factor: bool,
+    /// Whether rate limiting is active.
+    pub rate_limiting_enabled: bool,
+    /// Maximum requests per rate-limit window.
+    pub rate_limit_max_requests: u32,
+    /// Rate-limit window in seconds.
+    pub rate_limit_window_secs: u64,
+    /// Rate-limit burst allowance.
+    pub rate_limit_burst: u32,
+    /// Minimum accepted password length.
+    pub min_password_length: usize,
+    /// Whether password complexity requirements are enforced.
+    pub require_password_complexity: bool,
+    /// Whether the `Secure` flag is set on session cookies.
+    pub secure_cookies: bool,
+    /// Whether CSRF protection middleware is active.
+    pub csrf_protection: bool,
+    /// Session timeout in seconds.
+    pub session_timeout_secs: u64,
+    /// Whether audit logging is active.
+    pub audit_enabled: bool,
+    /// Log successful authentication events.
+    pub audit_log_success: bool,
+    /// Log failed authentication events.
+    pub audit_log_failures: bool,
+    /// Log permission-check events.
+    pub audit_log_permissions: bool,
+    /// Log token issuance/revocation events.
+    pub audit_log_tokens: bool,
+}
+
+impl RuntimeConfig {
+    /// Initialise from a full [`AuthConfig`].
+    pub fn from_auth_config(cfg: &AuthConfig) -> Self {
+        Self {
+            token_lifetime_secs: cfg.token_lifetime.as_secs(),
+            refresh_token_lifetime_secs: cfg.refresh_token_lifetime.as_secs(),
+            enable_multi_factor: cfg.enable_multi_factor,
+            rate_limiting_enabled: cfg.rate_limiting.enabled,
+            rate_limit_max_requests: cfg.rate_limiting.max_requests,
+            rate_limit_window_secs: cfg.rate_limiting.window.as_secs(),
+            rate_limit_burst: cfg.rate_limiting.burst,
+            min_password_length: cfg.security.min_password_length,
+            require_password_complexity: cfg.security.require_password_complexity,
+            secure_cookies: cfg.security.secure_cookies,
+            csrf_protection: cfg.security.csrf_protection,
+            session_timeout_secs: cfg.security.session_timeout.as_secs(),
+            audit_enabled: cfg.audit.enabled,
+            audit_log_success: cfg.audit.log_success,
+            audit_log_failures: cfg.audit.log_failures,
+            audit_log_permissions: cfg.audit.log_permissions,
+            audit_log_tokens: cfg.audit.log_tokens,
+        }
+    }
+}
+
+impl Default for RuntimeConfig {
+    fn default() -> Self {
+        Self::from_auth_config(&AuthConfig::default())
     }
 }
 
@@ -657,6 +736,7 @@ impl SecurityConfig {
             password_hash_algorithm: PasswordHashAlgorithm::Argon2,
             jwt_algorithm: JwtAlgorithm::RS256,
             secret_key: None,
+            previous_secret_key: None,
             secure_cookies: true,
             cookie_same_site: CookieSameSite::Strict,
             csrf_protection: true,
@@ -674,6 +754,7 @@ impl SecurityConfig {
             password_hash_algorithm: PasswordHashAlgorithm::Bcrypt,
             jwt_algorithm: JwtAlgorithm::HS256,
             secret_key: None, // Must be set by developer for security
+            previous_secret_key: None,
             secure_cookies: false,
             cookie_same_site: CookieSameSite::Lax,
             csrf_protection: false,

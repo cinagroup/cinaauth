@@ -444,5 +444,3 @@ pub mod webhooks {
         Ok(format!("sha256={}", hex::encode(result)))
     }
 }
-
-

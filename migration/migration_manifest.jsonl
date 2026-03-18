@@ -985,3 +985,101 @@
 {"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:12:11.698731700+00:00"}
 {"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read_users"],"role_id":"test_role","timestamp":"2026-03-16T01:12:11.699047+00:00"}
 {"expiration":null,"op":"assign_user_role","role_id":"test_role","timestamp":"2026-03-16T01:12:11.699121300+00:00","user_id":"user1"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:23:48.719003100+00:00"}
+{"action":"read","conditions":{},"op":"create_permission","permission_id":"read_users","resource":"users","timestamp":"2026-03-16T01:23:48.719044200+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:23:48.719113100+00:00"}
+{"expiration":null,"op":"assign_user_role","role_id":"test_role","timestamp":"2026-03-16T01:23:48.719443400+00:00","user_id":"user1"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read_users"],"role_id":"test_role","timestamp":"2026-03-16T01:23:48.719447400+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:23:48.719970700+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:23:48.719845400+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:28:58.631050300+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:28:58.630996600+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:28:58.631147400+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:28:58.631092+00:00"}
+{"action":"read","conditions":{},"op":"create_permission","permission_id":"read_users","resource":"users","timestamp":"2026-03-16T01:28:58.631467200+00:00"}
+{"expiration":null,"op":"assign_user_role","role_id":"test_role","timestamp":"2026-03-16T01:28:58.631644500+00:00","user_id":"user1"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read_users"],"role_id":"test_role","timestamp":"2026-03-16T01:28:58.631853100+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:34:28.792263900+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:34:28.793347800+00:00"}
+{"action":"read","conditions":{},"op":"create_permission","permission_id":"read_users","resource":"users","timestamp":"2026-03-16T01:34:28.793378600+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:34:28.793457600+00:00"}
+{"expiration":null,"op":"assign_user_role","role_id":"test_role","timestamp":"2026-03-16T01:34:28.793704200+00:00","user_id":"user1"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read_users"],"role_id":"test_role","timestamp":"2026-03-16T01:34:28.793636100+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:34:28.795683+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:39:29.066935500+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:39:29.067009900+00:00"}
+{"action":"read","conditions":{},"op":"create_permission","permission_id":"read_users","resource":"users","timestamp":"2026-03-16T01:39:29.067192900+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:39:29.067252300+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:39:29.067274200+00:00"}
+{"expiration":null,"op":"assign_user_role","role_id":"test_role","timestamp":"2026-03-16T01:39:29.067383800+00:00","user_id":"user1"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read_users"],"role_id":"test_role","timestamp":"2026-03-16T01:39:29.067548300+00:00"}
+{"action":"read","conditions":{},"op":"create_permission","permission_id":"read_users","resource":"users","timestamp":"2026-03-16T01:45:59.502046900+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read_users"],"role_id":"test_role","timestamp":"2026-03-16T01:45:59.502316+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:45:59.502368200+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:45:59.502400200+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:45:59.502486500+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:45:59.502529500+00:00"}
+{"expiration":null,"op":"assign_user_role","role_id":"test_role","timestamp":"2026-03-16T01:45:59.502919300+00:00","user_id":"user1"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:58:12.142588800+00:00"}
+{"expiration":null,"op":"assign_user_role","role_id":"test_role","timestamp":"2026-03-16T01:58:12.142896+00:00","user_id":"user1"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:58:12.143048400+00:00"}
+{"action":"read","conditions":{},"op":"create_permission","permission_id":"read_users","resource":"users","timestamp":"2026-03-16T01:58:12.143080600+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:58:12.143099200+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-03-16T01:58:12.143139200+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read_users"],"role_id":"test_role","timestamp":"2026-03-16T01:58:12.143629800+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-16T02:13:16.024752600+00:00"}
+{"op":"create_permission","permission_id":"read_users","action":"read","resource":"users","conditions":{},"timestamp":"2026-03-16T02:13:16.025681800+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-16T02:13:16.026312500+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-16T02:13:16.026394700+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read_users"],"parent_role":null,"timestamp":"2026-03-16T02:13:16.026180800+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-16T02:13:16.026478800+00:00"}
+{"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-03-16T02:13:16.026810900+00:00"}
+{"op":"create_permission","permission_id":"read_users","action":"read","resource":"users","conditions":{},"timestamp":"2026-03-16T15:14:51.313796200+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-16T15:14:51.313763900+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-16T15:14:51.314458100+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-16T15:14:51.314821500+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read_users"],"parent_role":null,"timestamp":"2026-03-16T15:14:51.314410900+00:00"}
+{"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-03-16T15:14:51.315363100+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-16T15:14:51.315487700+00:00"}
+{"op":"create_permission","permission_id":"read_users","action":"read","resource":"users","conditions":{},"timestamp":"2026-03-17T19:33:05.290997+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T19:33:05.293404900+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read_users"],"parent_role":null,"timestamp":"2026-03-17T19:33:05.296226700+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T19:33:05.310065600+00:00"}
+{"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-03-17T19:33:05.316226700+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T19:33:05.321725400+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T19:33:05.332019100+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T19:47:22.713200800+00:00"}
+{"op":"create_permission","permission_id":"read_users","action":"read","resource":"users","conditions":{},"timestamp":"2026-03-17T19:47:22.717898900+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T19:47:22.719617300+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T19:47:22.730909+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T19:47:22.733480500+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read_users"],"parent_role":null,"timestamp":"2026-03-17T19:47:22.731817900+00:00"}
+{"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-03-17T19:47:22.733756500+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T21:02:09.061302200+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T21:02:09.061581800+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T21:02:09.066107100+00:00"}
+{"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-03-17T21:02:09.064976100+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T21:02:09.069128300+00:00"}
+{"op":"create_permission","permission_id":"read_users","action":"read","resource":"users","conditions":{},"timestamp":"2026-03-17T21:02:09.070652800+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read_users"],"parent_role":null,"timestamp":"2026-03-17T21:02:09.087513500+00:00"}
+{"op":"create_permission","permission_id":"read_users","action":"read","resource":"users","conditions":{},"timestamp":"2026-03-17T21:44:56.102560400+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T21:44:56.102774600+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read_users"],"parent_role":null,"timestamp":"2026-03-17T21:44:56.103202400+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T21:44:56.103490700+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T21:44:56.103686500+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T21:44:56.103717+00:00"}
+{"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-03-17T21:44:56.106160400+00:00"}
+{"op":"create_permission","permission_id":"read_users","action":"read","resource":"users","conditions":{},"timestamp":"2026-03-17T23:24:10.479867700+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T23:24:10.479872400+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T23:24:10.480365700+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T23:24:10.480759100+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-17T23:24:10.480762300+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read_users"],"parent_role":null,"timestamp":"2026-03-17T23:24:10.480678700+00:00"}
+{"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-03-17T23:24:10.481843500+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-18T00:07:13.840830700+00:00"}
+{"op":"create_permission","permission_id":"read_users","action":"read","resource":"users","conditions":{},"timestamp":"2026-03-18T00:07:13.841449400+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-18T00:07:13.844950600+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-18T00:07:13.844904500+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-03-18T00:07:13.846558700+00:00"}
+{"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read_users"],"parent_role":null,"timestamp":"2026-03-18T00:07:13.845656100+00:00"}
+{"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-03-18T00:07:13.849294200+00:00"}

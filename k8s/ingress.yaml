@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-framework
+  namespace: auth-framework
+  labels:
+    app.kubernetes.io/name: auth-framework
+  annotations:
+    # Uncomment and adjust for your ingress controller:
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  # Uncomment to enable TLS with cert-manager:
+  # tls:
+  #   - hosts:
+  #       - auth.example.com
+  #     secretName: auth-framework-tls
+  rules:
+    - host: auth.example.com   # Replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-framework
+                port:
+                  name: http

@@ -465,12 +465,10 @@ impl Default for AppConfig {
         let mut bytes = [0u8; 32];
         rng.fill(&mut bytes)
             .expect("System CSPRNG unavailable; cannot initialise AppConfig JWT secret");
-        let jwt_secret = bytes
-            .iter()
-            .fold(String::with_capacity(64), |mut s, b| {
-                s.push_str(&format!("{b:02x}"));
-                s
-            });
+        let jwt_secret = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
+            s.push_str(&format!("{b:02x}"));
+            s
+        });
 
         Self {
             environment: "development".to_string(),
@@ -719,5 +717,3 @@ app_version = "1.0.0"
         assert!(result.is_ok());
     }
 }
-
-

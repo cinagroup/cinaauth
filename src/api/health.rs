@@ -403,9 +403,9 @@ async fn get_memory_info() -> MemoryInfo {
     let mut sys = System::new();
     sys.refresh_memory();
 
-    let total_mb = (sys.total_memory() / (1024 * 1024)) as u64;
-    let used_mb = (sys.used_memory() / (1024 * 1024)) as u64;
-    let free_mb = (sys.available_memory() / (1024 * 1024)) as u64;
+    let total_mb = sys.total_memory() / (1024 * 1024);
+    let used_mb = sys.used_memory() / (1024 * 1024);
+    let free_mb = sys.available_memory() / (1024 * 1024);
     let usage_percent = if total_mb > 0 {
         (used_mb as f64 / total_mb as f64) * 100.0
     } else {
@@ -459,7 +459,7 @@ async fn get_network_info() -> NetworkInfo {
     use sysinfo::Networks;
     let networks = Networks::new_with_refreshed_list();
     let (mut sent, mut received) = (0u64, 0u64);
-    for (_name, data) in networks.list() {
+    for data in networks.list().values() {
         sent += data.total_transmitted();
         received += data.total_received();
     }

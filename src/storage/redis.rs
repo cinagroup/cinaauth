@@ -363,5 +363,3 @@ impl AuthStorage for RedisStorage {
         Ok(active_count)
     }
 }
-
-

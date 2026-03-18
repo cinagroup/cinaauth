@@ -192,8 +192,8 @@ impl TuiApp {
         }
 
         // Load real security events from monitoring
-        if let Ok(security_events) = self.state.get_recent_security_events().await {
-            if !security_events.is_empty() {
+        if let Ok(security_events) = self.state.get_recent_security_events().await
+            && !security_events.is_empty() {
                 self.security_events = security_events
                     .into_iter()
                     .map(|e| SecurityEvent {
@@ -205,7 +205,6 @@ impl TuiApp {
                     })
                     .collect();
             }
-        }
 
         self.last_update = Instant::now();
     }
@@ -785,4 +784,27 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
+}
+
+#[cfg(all(test, feature = "tui"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tab_titles() {
+        assert_eq!(Tab::Dashboard.title(), "Dashboard");
+        assert_eq!(Tab::Configuration.title(), "Configuration");
+        assert_eq!(Tab::Users.title(), "Users");
+        assert_eq!(Tab::Security.title(), "Security");
+        assert_eq!(Tab::Servers.title(), "Servers");
+        assert_eq!(Tab::Logs.title(), "Logs");
+    }
+
+    #[test]
+    fn test_tab_all_returns_six_variants() {
+        let all = Tab::all();
+        assert_eq!(all.len(), 6);
+        assert_eq!(all[0], Tab::Dashboard);
+        assert_eq!(all[5], Tab::Logs);
+    }
 }
