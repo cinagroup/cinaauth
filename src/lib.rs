@@ -1,3 +1,5 @@
+#![deny(clippy::unwrap_used)]
+
 /*!
 # Auth Framework
 
@@ -341,4 +343,3 @@ pub use testing::{
     test_infrastructure::{TestEnvironmentGuard, test_data},
     utilities::*,
 };
-#![deny(clippy::unwrap_used)]
