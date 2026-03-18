@@ -1,3 +1,0 @@
-    Checking auth-framework v0.5.0-rc18 (C:\Users\cires\OneDrive\Documents\projects\AuthFramework)
-src\server\security\x509_signing.rs:539:5: error: unexpected closing delimiter: `}`: unexpected closing delimiter
-error: could not compile `auth-framework` (lib) due to 1 previous error
