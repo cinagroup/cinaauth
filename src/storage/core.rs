@@ -889,7 +889,7 @@ impl crate::audit::AuditStorage for MemoryStorage {
 impl MemoryStorage {
     /// Helper method to list KV keys with a prefix
     async fn list_kv_keys(&self, _prefix: &str) -> Result<Vec<String>> {
-        Ok(self.inner.list_kv_keys_by_prefix(prefix))
+        Ok(self.inner.list_kv_keys_by_prefix(_prefix))
     }
 }
 
