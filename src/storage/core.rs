@@ -88,7 +88,7 @@ pub trait AuthStorage: Send + Sync {
     async fn delete_kv(&self, key: &str) -> Result<()>;
 
     /// List keys with a specific prefix.
-    async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> {
+    async fn list_kv_keys(&self, _prefix: &str) -> Result<Vec<String>> {
         Ok(Vec::new())
     }
 
@@ -888,7 +888,7 @@ impl crate::audit::AuditStorage for MemoryStorage {
 
 impl MemoryStorage {
     /// Helper method to list KV keys with a prefix
-    async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> {
+    async fn list_kv_keys(&self, _prefix: &str) -> Result<Vec<String>> {
         Ok(self.inner.list_kv_keys_by_prefix(prefix))
     }
 }

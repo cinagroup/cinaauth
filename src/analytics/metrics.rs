@@ -58,9 +58,50 @@ impl MetricsCollector {
     /// Collect metrics from events
     pub async fn collect_metrics(
         &mut self,
-        _events: &[AnalyticsEvent],
+        events: &[AnalyticsEvent],
     ) -> Result<(), AnalyticsError> {
-        // Aggregating metrics payload into AuthStorage KV
+        for event in events {
+            match event.event_type {
+                crate::analytics::RbacEventType::PermissionCheck => {
+                    *self
+                        .current_metrics
+                        .entry("permission_checks_total".to_string())
+                        .or_insert(0.0) += 1.0;
+                    if let Some(action) = &event.action {
+                        if action == "Granted" {
+                            *self
+                                .current_metrics
+                                .entry("permission_grants_total".to_string())
+                                .or_insert(0.0) += 1.0;
+                        } else {
+                            *self
+                                .current_metrics
+                                .entry("permission_denies_total".to_string())
+                                .or_insert(0.0) += 1.0;
+                        }
+                    }
+                }
+                crate::analytics::RbacEventType::RoleAssignment => {
+                    *self
+                        .current_metrics
+                        .entry("role_assignments_total".to_string())
+                        .or_insert(0.0) += 1.0;
+                }
+                _ => {
+                    *self
+                        .current_metrics
+                        .entry("other_events_total".to_string())
+                        .or_insert(0.0) += 1.0;
+                }
+            }
+        }
+
+        let json_data = serde_json::to_vec(&self.current_metrics).unwrap_or_default();
+        let _ = self
+            .storage
+            .store_kv("current_metrics_snapshot", &json_data, None)
+            .await;
+
         Ok(())
     }
 

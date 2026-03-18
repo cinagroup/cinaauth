@@ -60,11 +60,37 @@ impl ReportGenerator {
     /// Generate report
     pub async fn generate_report(
         &self,
-        _report_type: ReportType,
+        report_type: ReportType,
         _time_range: TimeRange,
     ) -> Result<String, AnalyticsError> {
-        // Generating active report payload from AuthStorage metrics
-        Ok("Generated report content".to_string())
+        let keys = self
+            .storage
+            .list_kv_keys("analytics_event_")
+            .await
+            .unwrap_or_default();
+        let mut total_events = 0;
+
+        for key in keys {
+            if let Ok(Some(data)) = self.storage.get_kv(&key).await {
+                if let Ok(_event) =
+                    serde_json::from_slice::<crate::analytics::AnalyticsEvent>(&data)
+                {
+                    total_events += 1;
+                }
+            }
+        }
+
+        let report_content = match report_type {
+            ReportType::Daily | ReportType::Weekly | ReportType::Monthly => {
+                format!(
+                    "{{\"type\": \"{:?}\", \"total_events\": {}}}",
+                    report_type, total_events
+                )
+            }
+            _ => format!("Report generated. Total events: {}", total_events),
+        };
+
+        Ok(report_content)
     }
 }
 
