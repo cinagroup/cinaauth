@@ -1306,7 +1306,8 @@ impl EnhancedCibaManager {
         // Check expiration if present
         if let Some(exp) = claims.exp {
             let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs();
             if exp < now {
                 return Err(AuthError::InvalidToken("ID token has expired".to_string()));

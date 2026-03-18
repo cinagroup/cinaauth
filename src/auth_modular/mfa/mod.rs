@@ -223,7 +223,10 @@ impl MfaManager {
                 match self.storage.get_kv(&sms_key).await? {
                     Some(stored) => {
                         let stored_code = std::str::from_utf8(&stored).unwrap_or("");
-                        Ok(constant_time_compare(stored_code.as_bytes(), code.as_bytes()))
+                        Ok(constant_time_compare(
+                            stored_code.as_bytes(),
+                            code.as_bytes(),
+                        ))
                     }
                     None => Ok(false),
                 }
@@ -236,7 +239,10 @@ impl MfaManager {
                 match self.storage.get_kv(&email_key).await? {
                     Some(stored) => {
                         let stored_code = std::str::from_utf8(&stored).unwrap_or("");
-                        Ok(constant_time_compare(stored_code.as_bytes(), code.as_bytes()))
+                        Ok(constant_time_compare(
+                            stored_code.as_bytes(),
+                            code.as_bytes(),
+                        ))
                     }
                     None => Ok(false),
                 }

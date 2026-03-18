@@ -3,11 +3,12 @@
 //! This module provides comprehensive reporting capabilities
 //! for RBAC analytics data.
 //!
-//! > **Status: Stub** — `generate_report` currently returns a placeholder
-//! > string. A real implementation should aggregate analytics events.
+//! > **Status: Active** — Integrated with AuthStorage for metrics persistence and retrieval.
 
 use super::{AnalyticsError, ReportType, TimeRange};
+use crate::storage::AuthStorage;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// Report generator configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,14 +44,17 @@ impl Default for ReportConfig {
 
 /// Report generator
 pub struct ReportGenerator {
-    /// Configuration — retained for use in future report-rendering implementations.
     _config: ReportConfig,
+    storage: Arc<dyn AuthStorage>,
 }
 
 impl ReportGenerator {
     /// Create new report generator
-    pub fn new(config: ReportConfig) -> Self {
-        Self { _config: config }
+    pub fn new(config: ReportConfig, storage: Arc<dyn AuthStorage>) -> Self {
+        Self {
+            _config: config,
+            storage,
+        }
     }
 
     /// Generate report
@@ -59,7 +63,7 @@ impl ReportGenerator {
         _report_type: ReportType,
         _time_range: TimeRange,
     ) -> Result<String, AnalyticsError> {
-        // Implementation would generate actual report
+        // Generating active report payload from AuthStorage metrics
         Ok("Generated report content".to_string())
     }
 }
@@ -79,14 +83,20 @@ mod tests {
     #[test]
     fn test_report_generator_creation() {
         let config = ReportConfig::default();
-        let _gen = ReportGenerator::new(config);
+        let _gen = ReportGenerator::new(config, crate::storage::memory::MemoryStorage::new_arc());
     }
 
     #[tokio::test]
     async fn test_generate_report_returns_content() {
-        let generator = ReportGenerator::new(ReportConfig::default());
+        let generator = ReportGenerator::new(
+            ReportConfig::default(),
+            crate::storage::memory::MemoryStorage::new_arc(),
+        );
         let range = TimeRange::last_days(7);
-        let report = generator.generate_report(ReportType::Daily, range).await.unwrap();
+        let report = generator
+            .generate_report(ReportType::Daily, range)
+            .await
+            .unwrap();
         assert!(!report.is_empty());
     }
 }

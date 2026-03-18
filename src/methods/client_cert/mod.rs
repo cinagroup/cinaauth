@@ -385,23 +385,23 @@ impl ClientCertAuthMethod {
             if ext.oid.to_id_string() == "2.5.29.17"
                 && let x509_parser::extensions::ParsedExtension::SubjectAlternativeName(san) =
                     ext.parsed_extension()
-                {
-                    for gn in &san.general_names {
-                        let entry = match gn {
-                            x509_parser::extensions::GeneralName::DNSName(s) => {
-                                format!("dns:{s}")
-                            }
-                            x509_parser::extensions::GeneralName::RFC822Name(s) => {
-                                format!("email:{s}")
-                            }
-                            x509_parser::extensions::GeneralName::IPAddress(ip) => {
-                                format!("ip:{}", fmt_ip(ip))
-                            }
-                            _ => continue,
-                        };
-                        sans.push(entry);
-                    }
+            {
+                for gn in &san.general_names {
+                    let entry = match gn {
+                        x509_parser::extensions::GeneralName::DNSName(s) => {
+                            format!("dns:{s}")
+                        }
+                        x509_parser::extensions::GeneralName::RFC822Name(s) => {
+                            format!("email:{s}")
+                        }
+                        x509_parser::extensions::GeneralName::IPAddress(ip) => {
+                            format!("ip:{}", fmt_ip(ip))
+                        }
+                        _ => continue,
+                    };
+                    sans.push(entry);
                 }
+            }
         }
 
         Ok(CertIdentity {

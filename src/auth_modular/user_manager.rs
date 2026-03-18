@@ -516,37 +516,38 @@ impl UserManager {
     ) -> Result<crate::providers::ProviderProfile> {
         let user_key = format!("user:{}", user_id);
         if let Ok(Some(bytes)) = self.storage.get_kv(&user_key).await
-            && let Ok(user_data) = serde_json::from_slice::<serde_json::Value>(&bytes) {
-                let username = user_data["username"].as_str().map(|s| s.to_string());
-                let email = user_data["email"].as_str().map(|s| s.to_string());
-                let name = user_data["name"].as_str().map(|s| s.to_string());
-                let email_verified = user_data["email_verified"].as_bool();
+            && let Ok(user_data) = serde_json::from_slice::<serde_json::Value>(&bytes)
+        {
+            let username = user_data["username"].as_str().map(|s| s.to_string());
+            let email = user_data["email"].as_str().map(|s| s.to_string());
+            let name = user_data["name"].as_str().map(|s| s.to_string());
+            let email_verified = user_data["email_verified"].as_bool();
 
-                let mut additional_data = std::collections::HashMap::new();
-                if let Some(obj) = user_data.as_object() {
-                    for (k, v) in obj {
-                        match k.as_str() {
-                            "user_id" | "username" | "email" | "name" | "email_verified"
-                            | "password_hash" | "created_at" | "updated_at" => {}
-                            _ => {
-                                additional_data.insert(k.clone(), v.clone());
-                            }
+            let mut additional_data = std::collections::HashMap::new();
+            if let Some(obj) = user_data.as_object() {
+                for (k, v) in obj {
+                    match k.as_str() {
+                        "user_id" | "username" | "email" | "name" | "email_verified"
+                        | "password_hash" | "created_at" | "updated_at" => {}
+                        _ => {
+                            additional_data.insert(k.clone(), v.clone());
                         }
                     }
                 }
-
-                return Ok(crate::providers::ProviderProfile {
-                    id: Some(user_id.to_string()),
-                    provider: Some("local".to_string()),
-                    username,
-                    name,
-                    email,
-                    email_verified,
-                    picture: None,
-                    locale: None,
-                    additional_data,
-                });
             }
+
+            return Ok(crate::providers::ProviderProfile {
+                id: Some(user_id.to_string()),
+                provider: Some("local".to_string()),
+                username,
+                name,
+                email,
+                email_verified,
+                picture: None,
+                locale: None,
+                additional_data,
+            });
+        }
         Err(AuthError::UserNotFound)
     }
 
@@ -556,15 +557,16 @@ impl UserManager {
         let user_key = format!("user:{}", user_id);
         if let Ok(Some(data)) = self.storage.get_kv(&user_key).await
             && let Ok(v) = serde_json::from_slice::<serde_json::Value>(&data)
-                && let Some(arr) = v.get("roles").and_then(|r| r.as_array()) {
-                    let roles: Vec<String> = arr
-                        .iter()
-                        .filter_map(|v| v.as_str().map(String::from))
-                        .collect();
-                    if !roles.is_empty() {
-                        return Ok(roles);
-                    }
-                }
+            && let Some(arr) = v.get("roles").and_then(|r| r.as_array())
+        {
+            let roles: Vec<String> = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect();
+            if !roles.is_empty() {
+                return Ok(roles);
+            }
+        }
         Ok(vec!["user".to_string()])
     }
 
@@ -620,25 +622,26 @@ impl UserManager {
         let canonical_key = format!("user:{}", user_id);
         if let Ok(Some(canonical_bytes)) = self.storage.get_kv(&canonical_key).await
             && let Ok(canonical_str) = String::from_utf8(canonical_bytes)
-                && let Ok(canonical_data) =
-                    serde_json::from_str::<serde_json::Value>(&canonical_str)
-                    && !canonical_data["active"].as_bool().unwrap_or(true) {
-                        return Ok(None);
-                    }
+            && let Ok(canonical_data) = serde_json::from_str::<serde_json::Value>(&canonical_str)
+            && !canonical_data["active"].as_bool().unwrap_or(true)
+        {
+            return Ok(None);
+        }
 
         let mfa_enabled = matches!(
-            self.storage.get_kv(&format!("mfa_enabled:{}", user_id)).await,
+            self.storage
+                .get_kv(&format!("mfa_enabled:{}", user_id))
+                .await,
             Ok(Some(_))
         );
 
-        Ok(Some(CredentialCheckResult { user_id, mfa_enabled }))
+        Ok(Some(CredentialCheckResult {
+            user_id,
+            mfa_enabled,
+        }))
     }
 
-    pub async fn update_user_password(
-        &self,
-        username: &str,
-        new_password: &str,
-    ) -> Result<()> {
+    pub async fn update_user_password(&self, username: &str, new_password: &str) -> Result<()> {
         debug!("Updating password for user: {}", username);
 
         crate::utils::validation::validate_password(new_password)
@@ -674,11 +677,10 @@ impl UserManager {
         let creds_key = format!("user:credentials:{}", username);
         let creds_hash = crate::utils::password::hash_password(new_password)
             .map_err(|e| AuthError::crypto(format!("Failed to hash login credentials: {e}")))?;
-        let creds_bytes = self
-            .storage
-            .get_kv(&creds_key)
-            .await?
-            .ok_or_else(|| AuthError::internal("Login credentials record not found".to_string()))?;
+        let creds_bytes =
+            self.storage.get_kv(&creds_key).await?.ok_or_else(|| {
+                AuthError::internal("Login credentials record not found".to_string())
+            })?;
         let mut creds: serde_json::Value = serde_json::from_slice(&creds_bytes)
             .map_err(|e| AuthError::internal(format!("Failed to parse credentials record: {e}")))?;
         creds["password_hash"] = serde_json::json!(creds_hash);

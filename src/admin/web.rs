@@ -605,9 +605,10 @@ async fn logout_handler(State(state): State<AppState>, request: Request) -> impl
                 .find(|c| c.trim().starts_with("auth_session="))
                 .map(|c| c.trim()["auth_session=".len()..].to_string())
         })
-        && let Ok(mut sessions) = state.admin_sessions.lock() {
-            sessions.remove(&token);
-        }
+        && let Ok(mut sessions) = state.admin_sessions.lock()
+    {
+        sessions.remove(&token);
+    }
     let mut response = Redirect::to("/login").into_response();
     response.headers_mut().insert(
         "Set-Cookie",
@@ -684,28 +685,29 @@ async fn api_users_handler(State(state): State<AppState>) -> impl IntoResponse {
         for user_id in &user_ids {
             let key = format!("user:{}", user_id);
             if let Ok(Some(bytes)) = storage.get_kv(&key).await
-                && let Ok(data) = serde_json::from_slice::<serde_json::Value>(&bytes) {
-                    let email = data["email"].as_str().unwrap_or("").to_string();
-                    let active = data["active"].as_bool().unwrap_or(true);
-                    let created = data["created_at"].as_str().unwrap_or("").to_string();
-                    let last_login = data["last_login"].as_str().map(|s| s.to_string());
-                    let roles: Vec<String> = data["roles"]
-                        .as_array()
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                .collect()
-                        })
-                        .unwrap_or_else(|| vec!["user".to_string()]);
-                    result.push(User {
-                        id: user_id.clone(),
-                        email,
-                        active,
-                        created,
-                        last_login,
-                        roles,
-                    });
-                }
+                && let Ok(data) = serde_json::from_slice::<serde_json::Value>(&bytes)
+            {
+                let email = data["email"].as_str().unwrap_or("").to_string();
+                let active = data["active"].as_bool().unwrap_or(true);
+                let created = data["created_at"].as_str().unwrap_or("").to_string();
+                let last_login = data["last_login"].as_str().map(|s| s.to_string());
+                let roles: Vec<String> = data["roles"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_else(|| vec!["user".to_string()]);
+                result.push(User {
+                    id: user_id.clone(),
+                    email,
+                    active,
+                    created,
+                    last_login,
+                    roles,
+                });
+            }
         }
         result
     } else {

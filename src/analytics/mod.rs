@@ -8,8 +8,10 @@
 //! > public configuration / API surface but do not yet perform real analytics.
 //! > Contributions and production implementations are welcome.
 
+use crate::storage::AuthStorage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::time::{Duration, Instant};
 
 pub mod compliance;
@@ -304,15 +306,17 @@ pub enum TrendDirection {
 /// Main analytics manager
 pub struct AnalyticsManager {
     config: AnalyticsConfig,
+    storage: Arc<dyn AuthStorage>,
     event_buffer: Vec<AnalyticsEvent>,
     last_collection: Instant,
 }
 
 impl AnalyticsManager {
     /// Create new analytics manager
-    pub fn new(config: AnalyticsConfig) -> Self {
+    pub fn new(config: AnalyticsConfig, storage: Arc<dyn AuthStorage>) -> Self {
         Self {
             config,
+            storage,
             event_buffer: Vec::new(),
             last_collection: Instant::now(),
         }
@@ -345,8 +349,43 @@ impl AnalyticsManager {
         _role_id: Option<&str>,
         _time_range: Option<TimeRange>,
     ) -> Result<Vec<RoleUsageStats>, AnalyticsError> {
-        // Implementation would query stored analytics data
-        Ok(vec![])
+        let keys = self
+            .storage
+            .list_kv_keys("analytics_event_")
+            .await
+            .unwrap_or_default();
+        let mut stats: HashMap<String, RoleUsageStats> = HashMap::new();
+        for key in keys {
+            if let Ok(Some(data)) = self.storage.get_kv(&key).await {
+                if let Ok(event) = serde_json::from_slice::<AnalyticsEvent>(&data) {
+                    if let Some(ref role) = event.role_id {
+                        let entry = stats.entry(role.clone()).or_insert_with(|| RoleUsageStats {
+                            role_id: role.clone(),
+                            role_name: role.clone(),
+                            user_count: 1,
+                            permission_checks: 0,
+                            successful_access: 0,
+                            denied_access: 0,
+                            last_used: None,
+                            avg_response_time_ms: 0.0,
+                            top_resources: Vec::new(),
+                        });
+                        if event.event_type == RbacEventType::PermissionCheck {
+                            entry.permission_checks += 1;
+                            if let Some(action) = &event.action {
+                                if action == "Granted" {
+                                    entry.successful_access += 1;
+                                } else {
+                                    entry.denied_access += 1;
+                                }
+                            }
+                            entry.last_used = Some(event.timestamp);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(stats.into_values().collect())
     }
 
     /// Get permission usage statistics
@@ -355,8 +394,35 @@ impl AnalyticsManager {
         _permission_id: Option<&str>,
         _time_range: Option<TimeRange>,
     ) -> Result<Vec<PermissionUsageStats>, AnalyticsError> {
-        // Implementation would query stored analytics data
-        Ok(vec![])
+        let keys = self
+            .storage
+            .list_kv_keys("analytics_event_")
+            .await
+            .unwrap_or_default();
+        let mut stats: HashMap<String, PermissionUsageStats> = HashMap::new();
+        for key in keys {
+            if let Ok(Some(data)) = self.storage.get_kv(&key).await {
+                if let Ok(event) = serde_json::from_slice::<AnalyticsEvent>(&data) {
+                    if let Some(ref perm) = event.resource {
+                        let entry =
+                            stats
+                                .entry(perm.clone())
+                                .or_insert_with(|| PermissionUsageStats {
+                                    permission_id: perm.clone(),
+                                    check_count: 0,
+                                    success_rate: 1.0,
+                                    used_by_roles: Vec::new(),
+                                    top_users: Vec::new(),
+                                    peak_hours: Vec::new(),
+                                });
+                        if event.event_type == RbacEventType::PermissionCheck {
+                            entry.check_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(stats.into_values().collect())
     }
 
     /// Get compliance metrics
@@ -449,8 +515,18 @@ impl AnalyticsManager {
             return Ok(());
         }
 
-        // Implementation would persist events to storage
-        // For now, we'll just clear the buffer
+        // Persist events to storage
+        for event in &self.event_buffer {
+            if let Ok(json_data) = serde_json::to_vec(event) {
+                let key = format!("analytics_event_{}", event.id);
+                // We use an arbitrary TTL of 90 days if data retention is enabled
+                let ttl =
+                    std::time::Duration::from_secs(self.config.data_retention_days as u64 * 86400);
+                let _ = self.storage.store_kv(&key, &json_data, Some(ttl)).await;
+            }
+        }
+
+        // Clear the buffer
         self.event_buffer.clear();
         self.last_collection = Instant::now();
 
@@ -589,14 +665,16 @@ mod tests {
     #[tokio::test]
     async fn test_analytics_manager_creation() {
         let config = AnalyticsConfig::default();
-        let manager = AnalyticsManager::new(config);
+        let manager =
+            AnalyticsManager::new(config, crate::storage::memory::MemoryStorage::new_arc());
         assert_eq!(manager.event_buffer.len(), 0);
     }
 
     #[tokio::test]
     async fn test_record_event() {
         let config = AnalyticsConfig::default();
-        let mut manager = AnalyticsManager::new(config);
+        let mut manager =
+            AnalyticsManager::new(config, crate::storage::memory::MemoryStorage::new_arc());
 
         let event = AnalyticsEvent {
             id: "test_event_1".to_string(),

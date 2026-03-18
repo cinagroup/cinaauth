@@ -119,11 +119,12 @@ impl HardwareOtpToken {
 
         // If the caller supplied API credentials, validate against the Yubico cloud.
         if let Some(cfg) = &self.config
-            && let Some(client_id) = &cfg.yubico_client_id {
-                return self
-                    .validate_yubikey_via_api(challenge, client_id, &cfg.yubico_validation_url)
-                    .await;
-            }
+            && let Some(client_id) = &cfg.yubico_client_id
+        {
+            return self
+                .validate_yubikey_via_api(challenge, client_id, &cfg.yubico_validation_url)
+                .await;
+        }
 
         // No API credentials configured: format alone proves nothing.
         // A well-formed OTP can be constructed by anyone; without the Yubico

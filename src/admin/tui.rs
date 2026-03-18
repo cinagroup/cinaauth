@@ -193,18 +193,19 @@ impl TuiApp {
 
         // Load real security events from monitoring
         if let Ok(security_events) = self.state.get_recent_security_events().await
-            && !security_events.is_empty() {
-                self.security_events = security_events
-                    .into_iter()
-                    .map(|e| SecurityEvent {
-                        timestamp: e.timestamp.to_rfc3339(),
-                        event_type: e.event_type,
-                        user: e.user_id,
-                        details: e.description,
-                        severity: "info".to_string(),
-                    })
-                    .collect();
-            }
+            && !security_events.is_empty()
+        {
+            self.security_events = security_events
+                .into_iter()
+                .map(|e| SecurityEvent {
+                    timestamp: e.timestamp.to_rfc3339(),
+                    event_type: e.event_type,
+                    user: e.user_id,
+                    details: e.description,
+                    severity: "info".to_string(),
+                })
+                .collect();
+        }
 
         self.last_update = Instant::now();
     }

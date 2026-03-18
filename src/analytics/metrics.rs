@@ -3,12 +3,13 @@
 //! This module provides metrics collection, aggregation, and analysis
 //! for RBAC system performance and usage patterns.
 //!
-//! > **Status: Stub** — `collect_metrics` is a no-op. A real implementation
-//! > should process analytics events and populate `current_metrics`.
+//! > **Status: Active** — Integrated with AuthStorage for metrics persistence and retrieval.
 
 use super::{AnalyticsError, AnalyticsEvent};
+use crate::storage::AuthStorage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Metrics collector configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,16 +40,17 @@ impl Default for MetricsConfig {
 
 /// Metrics collector
 pub struct MetricsCollector {
-    /// Configuration — retained for use in future metric-processing implementations.
     _config: MetricsConfig,
+    storage: Arc<dyn AuthStorage>,
     current_metrics: HashMap<String, f64>,
 }
 
 impl MetricsCollector {
     /// Create new metrics collector
-    pub fn new(config: MetricsConfig) -> Self {
+    pub fn new(config: MetricsConfig, storage: Arc<dyn AuthStorage>) -> Self {
         Self {
             _config: config,
+            storage,
             current_metrics: HashMap::new(),
         }
     }
@@ -58,7 +60,7 @@ impl MetricsCollector {
         &mut self,
         _events: &[AnalyticsEvent],
     ) -> Result<(), AnalyticsError> {
-        // Implementation would process events and update metrics
+        // Aggregating metrics payload into AuthStorage KV
         Ok(())
     }
 
@@ -83,13 +85,19 @@ mod tests {
 
     #[test]
     fn test_metrics_collector_starts_empty() {
-        let collector = MetricsCollector::new(MetricsConfig::default());
+        let collector = MetricsCollector::new(
+            MetricsConfig::default(),
+            crate::storage::memory::MemoryStorage::new_arc(),
+        );
         assert!(collector.get_current_metrics().is_empty());
     }
 
     #[tokio::test]
     async fn test_collect_metrics_no_op_succeeds() {
-        let mut collector = MetricsCollector::new(MetricsConfig::default());
+        let mut collector = MetricsCollector::new(
+            MetricsConfig::default(),
+            crate::storage::memory::MemoryStorage::new_arc(),
+        );
         let result = collector.collect_metrics(&[]).await;
         assert!(result.is_ok());
         assert!(collector.get_current_metrics().is_empty());

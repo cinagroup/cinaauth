@@ -432,13 +432,15 @@ pub mod consent {
 
             // Cache miss: try storage.
             if !self.records.contains_key(&key)
-                && let Some(storage) = &self.storage {
-                    let storage_key = Self::storage_key(user_id, client_id);
-                    if let Ok(Some(bytes)) = storage.get_kv(&storage_key).await
-                        && let Ok(record) = serde_json::from_slice::<ConsentRecord>(&bytes) {
-                            self.records.insert(key.clone(), record);
-                        }
+                && let Some(storage) = &self.storage
+            {
+                let storage_key = Self::storage_key(user_id, client_id);
+                if let Ok(Some(bytes)) = storage.get_kv(&storage_key).await
+                    && let Ok(record) = serde_json::from_slice::<ConsentRecord>(&bytes)
+                {
+                    self.records.insert(key.clone(), record);
                 }
+            }
 
             Ok(self
                 .records
@@ -663,10 +665,11 @@ pub mod device_flow_server {
             if let Some(storage) = &self.storage {
                 let key = Self::storage_key(device_code);
                 if let Some(bytes) = storage.get_kv(&key).await?
-                    && let Ok(record) = serde_json::from_slice::<DeviceAuthRecord>(&bytes) {
-                        self.records.insert(device_code.to_string(), record.clone());
-                        return Ok(Some(record));
-                    }
+                    && let Ok(record) = serde_json::from_slice::<DeviceAuthRecord>(&bytes)
+                {
+                    self.records.insert(device_code.to_string(), record.clone());
+                    return Ok(Some(record));
+                }
             }
             Ok(None)
         }

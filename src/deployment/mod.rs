@@ -531,7 +531,8 @@ impl DeploymentManager {
 impl Default for DeploymentConfig {
     fn default() -> Self {
         let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH).unwrap_or_default()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
             .as_secs();
 
         Self {

@@ -451,7 +451,9 @@ impl MonitoringSystem {
         labels: HashMap<String, String>,
     ) -> Result<(), MonitoringError> {
         if let Some(metric) = self.metrics.get_mut(name) {
-            let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default();
 
             let metric_value = MetricValue {
                 value,
@@ -481,7 +483,9 @@ impl MonitoringSystem {
 
     /// Evaluate alert rules
     pub async fn evaluate_alerts(&mut self) -> Result<(), MonitoringError> {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
 
         for rule in &self.alert_rules {
             if !rule.enabled {

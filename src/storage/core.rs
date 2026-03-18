@@ -87,6 +87,11 @@ pub trait AuthStorage: Send + Sync {
     /// Delete arbitrary key-value data.
     async fn delete_kv(&self, key: &str) -> Result<()>;
 
+    /// List keys with a specific prefix.
+    async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> {
+        Ok(Vec::new())
+    }
+
     /// Clean up expired data.
     async fn cleanup_expired(&self) -> Result<()>;
 }

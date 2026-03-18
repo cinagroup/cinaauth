@@ -6,8 +6,8 @@
 //!
 //! [`users()`]: crate::auth::AuthFramework::users
 
-use crate::auth::{AuthFramework, AuthStats, UserInfo};
 use crate::audit::SecurityAuditStats;
+use crate::auth::{AuthFramework, AuthStats, UserInfo};
 use crate::errors::Result;
 use crate::methods::MfaChallenge;
 use crate::permissions::Role;

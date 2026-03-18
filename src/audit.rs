@@ -958,9 +958,7 @@ impl SecurityAuditStats {
     /// }
     /// ```
     pub fn requires_immediate_attention(&self) -> bool {
-        self.failed_logins_24h > 100
-            || self.security_alerts_24h > 5
-            || self.security_score() < 0.3
+        self.failed_logins_24h > 100 || self.security_alerts_24h > 5 || self.security_score() < 0.3
     }
 
     /// Generates a human-readable alert message when immediate attention is required.
@@ -985,16 +983,28 @@ impl SecurityAuditStats {
         let mut alerts = Vec::new();
 
         if self.failed_logins_24h > 100 {
-            alerts.push(format!("High failed login attempts: {}", self.failed_logins_24h));
+            alerts.push(format!(
+                "High failed login attempts: {}",
+                self.failed_logins_24h
+            ));
         }
         if self.security_alerts_24h > 5 {
-            alerts.push(format!("Multiple security alerts: {}", self.security_alerts_24h));
+            alerts.push(format!(
+                "Multiple security alerts: {}",
+                self.security_alerts_24h
+            ));
         }
         if self.security_score() < 0.3 {
-            alerts.push(format!("Critical security score: {:.2}", self.security_score()));
+            alerts.push(format!(
+                "Critical security score: {:.2}",
+                self.security_score()
+            ));
         }
 
-        Some(format!("🚨 SECURITY ATTENTION REQUIRED: {}", alerts.join(", ")))
+        Some(format!(
+            "🚨 SECURITY ATTENTION REQUIRED: {}",
+            alerts.join(", ")
+        ))
     }
 }
 

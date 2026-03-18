@@ -481,11 +481,124 @@ impl X509CertificateManager {
     /// {"library":"/usr/lib/softhsm/libsofthsm2.so","slot":0,"pin":"1234","label":"root-ca"}
     /// ```
     async fn load_ca_from_hsm(&self, hsm_config: &str) -> Result<()> {
-        let _ = hsm_config;
-        // The implementation using pkcs11 crate instead of cryptoki is stubbed here
-        // to remove the unmaintained paste dependency correctly.
+        let config: serde_json::Value = serde_json::from_str(hsm_config).map_err(|e| {
+            AuthError::ConfigurationError(format!("Invalid HSM JSON config: {}", e))
+        })?;
+
+        let library = config["library"].as_str().ok_or_else(|| {
+            AuthError::ConfigurationError("HSM config missing 'library' path".to_string())
+        })?;
+
+        // Extract optional parameters
+        let slot_id = config["slot"].as_u64().unwrap_or(0);
+        let pin = config["pin"].as_str().map(|s| s.to_string());
+        let _label = config["label"].as_str().unwrap_or("root-ca").to_string();
+
+        // Note: Real PKCS#11 operations are synchronous and may block.
+        // We use spawn_blocking to prevent blocking the async runtime.
+        let library_path = library.to_string();
+
+        let handle = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
+            // First, initialize the PKCS#11 context
+            let pkcs11 = cryptoki::context::Pkcs11::new(&library_path).map_err(|e| {
+                AuthError::ConfigurationError(format!("Failed to load PKCS#11 library: {}", e))
+            })?;
+
+            pkcs11
+                .initialize(cryptoki::context::CInitializeArgs::new(
+                    cryptoki::context::CInitializeFlags::OS_LOCKING_OK,
+                ))
+                .map_err(|e| {
+                    AuthError::ConfigurationError(format!(
+                        "Failed to initialize PKCS#11 context: {}",
+                        e
+                    ))
+                })?;
+
+            // Get slots
+            let slots = pkcs11.get_slots_with_token().map_err(|e| {
+                AuthError::ConfigurationError(format!("Failed to get PKCS#11 slots: {}", e))
+            })?;
+
+            if slot_id as usize >= slots.len() {
+                return Err(AuthError::ConfigurationError(format!(
+                    "HSM slot {} not found or has no token",
+                    slot_id
+                )));
+            }
+            let slot = slots[slot_id as usize];
+
+            // Open a session
+            let session = pkcs11.open_ro_session(slot).map_err(|e| {
+                AuthError::ConfigurationError(format!("Failed to open PKCS#11 session: {}", e))
+            })?;
+
+            // Login if PIN is provided
+            if let Some(p) = pin {
+                let auth_pin = cryptoki::types::AuthPin::new(p.into());
+                session
+                    .login(cryptoki::session::UserType::User, Some(&auth_pin))
+                    .map_err(|e| {
+                        AuthError::ConfigurationError(format!("HSM login failed: {}", e))
+                    })?;
+            }
+
+            // Find the certificate object by label
+            let mut search_template: Vec<cryptoki::object::Attribute> = Vec::new();
+            search_template.push(cryptoki::object::Attribute::Class(
+                cryptoki::object::ObjectClass::CERTIFICATE,
+            ));
+            search_template.push(cryptoki::object::Attribute::Label(
+                _label.clone().into_bytes(),
+            ));
+
+            let objects = session.find_objects(&search_template).map_err(|e| {
+                AuthError::ConfigurationError(format!("Failed to search PKCS#11 objects: {}", e))
+            })?;
+
+            if objects.is_empty() {
+                return Err(AuthError::ConfigurationError(format!(
+                    "Certificate with label '{}' not found in HSM",
+                    _label
+                )));
+            }
+
+            // Read the certificate value (usually CKA_VALUE for X.509 certs)
+            let cert_obj = objects[0];
+            let attrs = session
+                .get_attributes(cert_obj, &[cryptoki::object::AttributeType::Value])
+                .map_err(|e| {
+                    AuthError::ConfigurationError(format!(
+                        "Failed to get certificate value from HSM: {}",
+                        e
+                    ))
+                })?;
+
+            if attrs.is_empty() {
+                return Err(AuthError::ConfigurationError(
+                    "Certificate object has no value attribute".to_string(),
+                ));
+            }
+
+            let value = match &attrs[0] {
+                cryptoki::object::Attribute::Value(v) => v.clone(),
+                _ => {
+                    return Err(AuthError::ConfigurationError(
+                        "Invalid value attribute type".to_string(),
+                    ));
+                }
+            };
+
+            Ok(value)
+        });
+
+        let mut _cert_der = handle
+            .await
+            .map_err(|_| AuthError::ConfigurationError("HSM task panicked".to_string()))??;
+
+        // Ensure proper parsing of the DER bytes (stubbed for now, normally we'd parse and store it)
         Err(AuthError::ConfigurationError(
-            "HSM support using PKCS#11 is configured, but complete mapping is pending.".to_string()
+            "HSM support using PKCS#11 mapped: pending integration into caching model.".to_string(),
         ))
     }
 

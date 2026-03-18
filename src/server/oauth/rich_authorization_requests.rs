@@ -1144,7 +1144,8 @@ impl RarManager {
             .unwrap_or_else(|| {
                 use std::time::{SystemTime, UNIX_EPOCH};
                 let now = SystemTime::now()
-                    .duration_since(UNIX_EPOCH).unwrap_or_default()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
                     .as_secs() as i64;
                 now + 3600 // Default 1 hour expiration
             });
@@ -1154,10 +1155,12 @@ impl RarManager {
             sub: subject.to_string(),
             client_id: client_id.to_string(),
             created_at: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs(),
             last_activity: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs(),
             expires_at: expires_at as u64,
             state: crate::server::oidc::oidc_session_management::OidcSessionState::Authenticated,

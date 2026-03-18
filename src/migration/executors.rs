@@ -847,20 +847,21 @@ async fn validate_hierarchy_integrity(config: &MigrationConfig) -> Result<(), Mi
     for line in content.lines() {
         if let Ok(record) = serde_json::from_str::<serde_json::Value>(line)
             && record.get("op").and_then(|v| v.as_str()) == Some("create_role")
-                && let Some(id) = record.get("role_id").and_then(|v| v.as_str()) {
-                    if !role_ids.insert(id.to_string()) {
-                        return Err(MigrationError::ValidationError(format!(
-                            "Duplicate role ID detected in manifest: {}",
-                            id
-                        )));
-                    }
-                    if record.get("parent_role").and_then(|v| v.as_str()) == Some(id) {
-                        return Err(MigrationError::ValidationError(format!(
-                            "Role '{}' references itself as parent",
-                            id
-                        )));
-                    }
-                }
+            && let Some(id) = record.get("role_id").and_then(|v| v.as_str())
+        {
+            if !role_ids.insert(id.to_string()) {
+                return Err(MigrationError::ValidationError(format!(
+                    "Duplicate role ID detected in manifest: {}",
+                    id
+                )));
+            }
+            if record.get("parent_role").and_then(|v| v.as_str()) == Some(id) {
+                return Err(MigrationError::ValidationError(format!(
+                    "Role '{}' references itself as parent",
+                    id
+                )));
+            }
+        }
     }
     Ok(())
 }

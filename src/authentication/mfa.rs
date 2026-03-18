@@ -194,7 +194,8 @@ impl TotpProvider {
 
         let time_step = time_step.unwrap_or_else(|| {
             SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap_or_default()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs()
                 / self.config.period
         });
@@ -231,7 +232,8 @@ impl TotpProvider {
             time / self.config.period
         } else {
             SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap_or_default()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs()
                 / self.config.period
         };
@@ -496,7 +498,8 @@ impl<S: MfaStorage> MfaManager<S> {
         let challenge_data = match &method.method_data {
             MfaMethodData::Totp { .. } => MfaChallengeData::Totp {
                 time_window: SystemTime::now()
-                    .duration_since(UNIX_EPOCH).unwrap_or_default()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
                     .as_secs()
                     / self.config.totp_config.period,
             },

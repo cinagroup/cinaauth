@@ -685,9 +685,10 @@ pub async fn list_saml_idps(
     for entity_id in &entity_ids {
         let key = format!("saml_idp:{}", entity_id);
         if let Ok(Some(data)) = state.auth_framework.storage().get_kv(&key).await
-            && let Ok(cfg) = serde_json::from_slice::<serde_json::Value>(&data) {
-                idps.push(cfg);
-            }
+            && let Ok(cfg) = serde_json::from_slice::<serde_json::Value>(&data)
+        {
+            idps.push(cfg);
+        }
     }
 
     Json(ApiResponse::success_with_message(
@@ -1021,9 +1022,10 @@ fn extract_attributes_from_saml(saml_xml: &str) -> Result<HashMap<String, Vec<St
                     in_attr_value = false;
                 } else if local == b"Attribute" && in_attribute {
                     if let Some(name) = current_attr_name.take()
-                        && !current_values.is_empty() {
-                            attributes.insert(name, std::mem::take(&mut current_values));
-                        }
+                        && !current_values.is_empty()
+                    {
+                        attributes.insert(name, std::mem::take(&mut current_values));
+                    }
                     in_attribute = false;
                 } else if local == b"AttributeStatement" {
                     in_attr_statement = false;

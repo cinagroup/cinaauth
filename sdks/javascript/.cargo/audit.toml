@@ -1,0 +1,2 @@
+- id = "RUSTSEC-2023-0071"
+  reason = "No fix available for rsa. Main dependencies depend on it."

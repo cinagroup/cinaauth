@@ -265,16 +265,12 @@ pub use oauth2_server::{
 
 // Server configuration types — ClientType and ClientConfig come from the canonical `client` module.
 pub use client::{ClientConfig, ClientType};
-pub use server::{
-    ClientRegistrationRequest, WorkingServerConfig,
-};
+pub use server::{ClientRegistrationRequest, WorkingServerConfig};
 
 /// Deprecated alias for [`ClientRegistrationRequest`].
-#[deprecated(
-    since = "0.5.0",
-    note = "Use `ClientRegistrationRequest` instead"
-)]
-pub type ServerClientRegistrationRequest = server::core::client_registration::ClientRegistrationRequest;
+#[deprecated(since = "0.5.0", note = "Use `ClientRegistrationRequest` instead")]
+pub type ServerClientRegistrationRequest =
+    server::core::client_registration::ClientRegistrationRequest;
 
 // Advanced server modules and RFC implementations.
 // Hidden from top-level docs/autocomplete to avoid cluttering the onboarding path;
@@ -294,13 +290,13 @@ pub use server::TokenIntrospectionService;
 
 // Security and authentication module re-exports
 pub use audit::{AuditEvent, AuditEventType, AuditLogger, EventOutcome, RiskLevel};
-pub use authentication::mfa::{MfaMethodType, TotpProvider};
 /// Deprecated alias for `authentication::mfa::MfaManager`. Use `auth_modular` MFA operations instead.
 #[deprecated(
     since = "0.5.0",
     note = "Use `AuthFramework::mfa()` accessor or `auth_modular::MfaManager` instead"
 )]
 pub use authentication::mfa::MfaManager as LegacyMfaManager;
+pub use authentication::mfa::{MfaMethodType, TotpProvider};
 pub use authorization::{
     AbacPermission as AuthzPermission, AbacRole as AuthzRole, AccessCondition, AuthorizationEngine,
 };
@@ -310,15 +306,10 @@ pub use security::secure_session::{
     DeviceFingerprint, SecureSession, SecureSessionConfig, SecureSessionManager, SecurityFlags,
 };
 pub use security::secure_utils::{SecureComparison, SecureRandomGen};
-pub use session::manager::{
-    DeviceInfo, Session, SessionConfig, SessionManager, SessionState,
-};
 /// Deprecated alias for [`SessionManager`]. Use `SessionManager` directly.
-#[deprecated(
-    since = "0.5.0",
-    note = "Use `SessionManager` instead"
-)]
+#[deprecated(since = "0.5.0", note = "Use `SessionManager` instead")]
 pub use session::manager::SessionManager as LegacySessionManager;
+pub use session::manager::{DeviceInfo, Session, SessionConfig, SessionManager, SessionState};
 pub use utils::rate_limit::RateLimiter;
 
 // Multi-tenant support

@@ -142,9 +142,10 @@ pub async fn update_profile(
                     // Validate email format before storing to ensure consistency with
                     // the public registration endpoint.
                     if let Some(ref email) = req.email
-                        && crate::utils::validation::validate_email(email).is_err() {
-                            return ApiResponse::validation_error_typed("Invalid email format");
-                        }
+                        && crate::utils::validation::validate_email(email).is_err()
+                    {
+                        return ApiResponse::validation_error_typed("Invalid email format");
+                    }
 
                     // Enforce length limits on name fields to prevent storage abuse.
                     if req.first_name.as_deref().is_some_and(|n| n.len() > 100) {

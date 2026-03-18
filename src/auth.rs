@@ -176,8 +176,8 @@ pub struct AuthFramework {
 }
 
 pub use crate::auth_operations::{
-    AdminOperations, AuditOperations, AuthorizationOperations, MfaOperations,
-    MonitoringOperations, SessionOperations, TokenOperations, UserOperations,
+    AdminOperations, AuditOperations, AuthorizationOperations, MfaOperations, MonitoringOperations,
+    SessionOperations, TokenOperations, UserOperations,
 };
 
 /// Extract JWT secret bytes from `config` or the `JWT_SECRET` env-var.
@@ -307,12 +307,10 @@ impl AuthFramework {
         let token_manager =
             TokenManager::new_hmac(default_secret, "auth-framework", "auth-framework");
 
-        let user_manager =
-            crate::auth_modular::user_manager::UserManager::new(storage.clone());
+        let user_manager = crate::auth_modular::user_manager::UserManager::new(storage.clone());
         let session_manager =
             crate::auth_modular::session_manager::SessionManager::new(storage.clone());
-        let mfa_manager =
-            crate::auth_modular::mfa::MfaManager::new(storage.clone());
+        let mfa_manager = crate::auth_modular::mfa::MfaManager::new(storage.clone());
         let authorization_manager =
             crate::auth_modular::authorization_manager::AuthorizationManager::new(
                 Arc::new(RwLock::new(PermissionChecker::new())),
@@ -390,12 +388,10 @@ impl AuthFramework {
         let audit_storage = Arc::new(crate::storage::MemoryStorage::new());
         let audit_manager = Arc::new(crate::audit::AuditLogger::new(audit_storage));
 
-        let user_manager =
-            crate::auth_modular::user_manager::UserManager::new(storage.clone());
+        let user_manager = crate::auth_modular::user_manager::UserManager::new(storage.clone());
         let session_manager =
             crate::auth_modular::session_manager::SessionManager::new(storage.clone());
-        let mfa_manager =
-            crate::auth_modular::mfa::MfaManager::new(storage.clone());
+        let mfa_manager = crate::auth_modular::mfa::MfaManager::new(storage.clone());
         let authorization_manager =
             crate::auth_modular::authorization_manager::AuthorizationManager::new(
                 Arc::new(RwLock::new(PermissionChecker::new())),
@@ -432,12 +428,10 @@ impl AuthFramework {
     /// caller.
     pub fn replace_storage(&mut self, storage: std::sync::Arc<dyn AuthStorage>) {
         self.storage = storage.clone();
-        self.user_manager =
-            crate::auth_modular::user_manager::UserManager::new(storage.clone());
+        self.user_manager = crate::auth_modular::user_manager::UserManager::new(storage.clone());
         self.session_manager =
             crate::auth_modular::session_manager::SessionManager::new(storage.clone());
-        self.mfa_manager =
-            crate::auth_modular::mfa::MfaManager::new(storage.clone());
+        self.mfa_manager = crate::auth_modular::mfa::MfaManager::new(storage.clone());
         self.authorization_manager =
             crate::auth_modular::authorization_manager::AuthorizationManager::new(
                 Arc::new(RwLock::new(PermissionChecker::new())),
@@ -646,11 +640,11 @@ impl AuthFramework {
                 ref username,
                 ref password,
             } = credential
-            {
-                return self
-                    .authenticate_password_builtin(username, password, &metadata)
-                    .await;
-            }
+        {
+            return self
+                .authenticate_password_builtin(username, password, &metadata)
+                .await;
+        }
 
         // Get the authentication method
         let method = self.methods.get(method_name).ok_or_else(|| {
@@ -692,7 +686,8 @@ impl AuthFramework {
                 );
 
                 // Store MFA challenge with resource limits
-                self.guard_and_store_mfa_challenge((**challenge).clone()).await?;
+                self.guard_and_store_mfa_challenge((**challenge).clone())
+                    .await?;
 
                 // Log audit event
                 self.log_audit_event("mfa_required", &challenge.user_id, method_name, &metadata)
@@ -763,7 +758,8 @@ impl AuthFramework {
                     ),
                     data: HashMap::new(),
                 };
-                self.guard_and_store_mfa_challenge(challenge.clone()).await?;
+                self.guard_and_store_mfa_challenge(challenge.clone())
+                    .await?;
                 self.log_audit_event("mfa_required", user_id, "password", metadata)
                     .await;
                 info!(
@@ -827,7 +823,10 @@ impl AuthFramework {
             .mint_and_store_token(&challenge.user_id, scopes, "mfa", None)
             .await?;
 
-        info!("MFA completed successfully for user '{}'", challenge.user_id);
+        info!(
+            "MFA completed successfully for user '{}'",
+            challenge.user_id
+        );
         Ok(token)
     }
 
@@ -907,7 +906,9 @@ impl AuthFramework {
         if !self.validate_token(token).await? {
             return Ok(false);
         }
-        self.authorization_manager.check_token_permission(token, action, resource).await
+        self.authorization_manager
+            .check_token_permission(token, action, resource)
+            .await
     }
 
     /// Refresh a token.
@@ -1006,7 +1007,11 @@ impl AuthFramework {
 
         self.session_manager.delete_session(session_id).await?;
 
-        let remaining = self.session_manager.count_active_sessions().await.unwrap_or(0);
+        let remaining = self
+            .session_manager
+            .count_active_sessions()
+            .await
+            .unwrap_or(0);
         self.monitoring_manager
             .update_session_count(remaining)
             .await;
@@ -1040,27 +1045,32 @@ impl AuthFramework {
         Ok(())
     }
 
-/// Detect if the process is running in a production environment by inspecting
-/// well-known environment variables and container indicators.
-fn is_production_environment() -> bool {
-    if let Ok(env) = std::env::var("ENVIRONMENT")
-        && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
-    {
-        return true;
+    /// Detect if the process is running in a production environment by inspecting
+    /// well-known environment variables and container indicators.
+    fn is_production_environment() -> bool {
+        if let Ok(env) = std::env::var("ENVIRONMENT")
+            && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
+        {
+            return true;
+        }
+        if let Ok(env) = std::env::var("ENV")
+            && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
+        {
+            return true;
+        }
+        if let Ok(env) = std::env::var("NODE_ENV")
+            && env.to_lowercase() == "production"
+        {
+            return true;
+        }
+        if let Ok(env) = std::env::var("RUST_ENV")
+            && env.to_lowercase() == "production"
+        {
+            return true;
+        }
+        std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
+            || std::env::var("DOCKER_CONTAINER").is_ok()
     }
-    if let Ok(env) = std::env::var("ENV")
-        && (env.to_lowercase() == "production" || env.to_lowercase() == "prod")
-    {
-        return true;
-    }
-    if let Ok(env) = std::env::var("NODE_ENV") && env.to_lowercase() == "production" {
-        return true;
-    }
-    if let Ok(env) = std::env::var("RUST_ENV") && env.to_lowercase() == "production" {
-        return true;
-    }
-    std::env::var("KUBERNETES_SERVICE_HOST").is_ok() || std::env::var("DOCKER_CONTAINER").is_ok()
-}
 
     /// Get authentication framework statistics.
     pub async fn get_stats(&self) -> Result<AuthStats> {
@@ -1073,10 +1083,21 @@ fn is_production_environment() -> bool {
             let _ = rate_limiter.cleanup().ok();
         }
 
-        let active_sessions =
-            self.session_manager.count_active_sessions().await.unwrap_or(0) as u32;
-        let failed_attempts = self.audit_manager.get_failed_login_count_24h().await.unwrap_or(0) as u32;
-        let successful_attempts = self.audit_manager.get_successful_login_count_24h().await.unwrap_or(0) as u32;
+        let active_sessions = self
+            .session_manager
+            .count_active_sessions()
+            .await
+            .unwrap_or(0) as u32;
+        let failed_attempts = self
+            .audit_manager
+            .get_failed_login_count_24h()
+            .await
+            .unwrap_or(0) as u32;
+        let successful_attempts = self
+            .audit_manager
+            .get_successful_login_count_24h()
+            .await
+            .unwrap_or(0) as u32;
 
         stats.registered_methods = self.methods.keys().cloned().collect();
         stats.active_sessions = active_sessions as u64;
@@ -1181,7 +1202,10 @@ fn is_production_environment() -> bool {
         app_name: &str,
         secret: &str,
     ) -> Result<String> {
-        self.mfa_manager.totp.generate_qr_code(user_id, app_name, secret).await
+        self.mfa_manager
+            .totp
+            .generate_qr_code(user_id, app_name, secret)
+            .await
     }
 
     /// Generate current TOTP code using provided secret.
@@ -1195,7 +1219,10 @@ fn is_production_environment() -> bool {
         secret: &str,
         time_window: Option<u64>,
     ) -> Result<String> {
-        self.mfa_manager.totp.generate_code_for_window(secret, time_window).await
+        self.mfa_manager
+            .totp
+            .generate_code_for_window(secret, time_window)
+            .await
     }
 
     /// Verify TOTP code.
@@ -1206,7 +1233,9 @@ fn is_production_environment() -> bool {
     /// Check IP rate limit.
     pub async fn check_ip_rate_limit(&self, ip: &str) -> Result<bool> {
         debug!("Checking IP rate limit for '{}'", ip);
-        let Some(ref rate_limiter) = self.rate_limiter else { return Ok(true); };
+        let Some(ref rate_limiter) = self.rate_limiter else {
+            return Ok(true);
+        };
         if !rate_limiter.is_allowed(&format!("ip:{}", ip)) {
             warn!("Rate limit exceeded for IP: {}", ip);
             return Err(AuthError::rate_limit(format!(
@@ -1221,23 +1250,45 @@ fn is_production_environment() -> bool {
     pub async fn get_security_metrics(&self) -> Result<std::collections::HashMap<String, u64>> {
         debug!("Getting security metrics");
         let mut metrics = std::collections::HashMap::new();
-        let total_active_sessions = self.session_manager.count_active_sessions().await.unwrap_or(0);
+        let total_active_sessions = self
+            .session_manager
+            .count_active_sessions()
+            .await
+            .unwrap_or(0);
         metrics.insert("active_sessions".to_string(), total_active_sessions);
         metrics.insert("total_tokens".to_string(), total_active_sessions);
-        metrics.insert("failed_attempts".to_string(), self.audit_manager.get_failed_login_count_24h().await.unwrap_or(0));
-        metrics.insert("successful_attempts".to_string(), self.audit_manager.get_successful_login_count_24h().await.unwrap_or(0));
+        metrics.insert(
+            "failed_attempts".to_string(),
+            self.audit_manager
+                .get_failed_login_count_24h()
+                .await
+                .unwrap_or(0),
+        );
+        metrics.insert(
+            "successful_attempts".to_string(),
+            self.audit_manager
+                .get_successful_login_count_24h()
+                .await
+                .unwrap_or(0),
+        );
         metrics.insert("expired_tokens".to_string(), 0u64);
         Ok(metrics)
     }
 
     /// Register phone number for SMS MFA.
     pub async fn register_phone_number(&self, user_id: &str, phone_number: &str) -> Result<()> {
-        self.mfa_manager.sms.register_phone_number(user_id, phone_number).await
+        self.mfa_manager
+            .sms
+            .register_phone_number(user_id, phone_number)
+            .await
     }
 
     /// Generate backup codes.
     pub async fn generate_backup_codes(&self, user_id: &str, count: usize) -> Result<Vec<String>> {
-        self.mfa_manager.backup_codes.generate_codes(user_id, count).await
+        self.mfa_manager
+            .backup_codes
+            .generate_codes(user_id, count)
+            .await
     }
     /// Grant permission to a user.
     pub async fn grant_permission(
@@ -1246,7 +1297,9 @@ fn is_production_environment() -> bool {
         action: &str,
         resource: &str,
     ) -> Result<()> {
-        self.authorization_manager.grant_permission(user_id, action, resource).await
+        self.authorization_manager
+            .grant_permission(user_id, action, resource)
+            .await
     }
 
     /// Initiate email challenge.
@@ -1266,7 +1319,9 @@ fn is_production_environment() -> bool {
         email: &str,
         password: &str,
     ) -> Result<String> {
-        self.user_manager.register_user(username, email, password).await
+        self.user_manager
+            .register_user(username, email, password)
+            .await
     }
 
     /// Update the roles assigned to a user.
@@ -1281,7 +1336,9 @@ fn is_production_environment() -> bool {
 
     /// Verify a user's password by user_id against the stored bcrypt hash.
     pub async fn verify_user_password(&self, user_id: &str, password: &str) -> Result<bool> {
-        self.user_manager.verify_user_password(user_id, password).await
+        self.user_manager
+            .verify_user_password(user_id, password)
+            .await
     }
 
     /// Look up a user's username by their user_id.
@@ -1309,7 +1366,9 @@ fn is_production_environment() -> bool {
 
     /// Update user password.
     pub async fn update_user_password(&self, username: &str, new_password: &str) -> Result<()> {
-        self.user_manager.update_user_password(username, new_password).await
+        self.user_manager
+            .update_user_password(username, new_password)
+            .await
     }
 
     /// Delete a user by username.
@@ -1319,7 +1378,9 @@ fn is_production_environment() -> bool {
 
     /// Verify MFA code with proper challenge validation.
     async fn verify_mfa_code(&self, challenge: &MfaChallenge, code: &str) -> Result<bool> {
-        self.mfa_manager.verify_challenge_code(challenge, code).await
+        self.mfa_manager
+            .verify_challenge_code(challenge, code)
+            .await
     }
 
     /// Log an audit event via tracing, subject to per-event-type config guards.
@@ -1330,7 +1391,9 @@ fn is_production_environment() -> bool {
         method: &str,
         metadata: &CredentialMetadata,
     ) {
-        if !self.config.audit.enabled { return; }
+        if !self.config.audit.enabled {
+            return;
+        }
         let should_log = match event_type {
             "auth_success" | "mfa_required" => self.config.audit.log_success,
             "auth_failure" => self.config.audit.log_failures,
@@ -1362,7 +1425,9 @@ fn is_production_environment() -> bool {
         method: &str,
         lifetime: Option<Duration>,
     ) -> Result<AuthToken> {
-        let token = self.token_manager.create_auth_token(user_id, scopes, method, lifetime)?;
+        let token = self
+            .token_manager
+            .create_auth_token(user_id, scopes, method, lifetime)?;
         self.storage.store_token(&token).await?;
         Ok(token)
     }
@@ -1410,17 +1475,23 @@ fn is_production_environment() -> bool {
 
     /// Assign a role to a user.
     pub async fn assign_role(&self, user_id: &str, role_name: &str) -> Result<()> {
-        self.authorization_manager.assign_role(user_id, role_name).await
+        self.authorization_manager
+            .assign_role(user_id, role_name)
+            .await
     }
 
     /// Remove a role from a user.
     pub async fn remove_role(&self, user_id: &str, role_name: &str) -> Result<()> {
-        self.authorization_manager.remove_role(user_id, role_name).await
+        self.authorization_manager
+            .remove_role(user_id, role_name)
+            .await
     }
 
     /// Set role inheritance.
     pub async fn set_role_inheritance(&self, child_role: &str, parent_role: &str) -> Result<()> {
-        self.authorization_manager.set_role_inheritance(child_role, parent_role).await
+        self.authorization_manager
+            .set_role_inheritance(child_role, parent_role)
+            .await
     }
 
     /// Revoke permission from a user.
@@ -1430,22 +1501,30 @@ fn is_production_environment() -> bool {
         action: &str,
         resource: &str,
     ) -> Result<()> {
-        self.authorization_manager.revoke_permission(user_id, action, resource).await
+        self.authorization_manager
+            .revoke_permission(user_id, action, resource)
+            .await
     }
 
     /// Check if user has a role.
     pub async fn user_has_role(&self, user_id: &str, role_name: &str) -> Result<bool> {
-        self.authorization_manager.user_has_role(user_id, role_name).await
+        self.authorization_manager
+            .user_has_role(user_id, role_name)
+            .await
     }
 
     /// Get effective permissions for a user.
     pub async fn get_effective_permissions(&self, user_id: &str) -> Result<Vec<String>> {
-        self.authorization_manager.get_effective_permissions(user_id).await
+        self.authorization_manager
+            .get_effective_permissions(user_id)
+            .await
     }
 
     /// Create ABAC policy.
     pub async fn create_abac_policy(&self, name: &str, description: &str) -> Result<()> {
-        self.authorization_manager.create_abac_policy(name, description).await
+        self.authorization_manager
+            .create_abac_policy(name, description)
+            .await
     }
 
     /// Map user attribute for ABAC evaluation.
@@ -1455,7 +1534,9 @@ fn is_production_environment() -> bool {
         attribute: &str,
         value: &str,
     ) -> Result<()> {
-        self.authorization_manager.map_user_attribute(user_id, attribute, value).await
+        self.authorization_manager
+            .map_user_attribute(user_id, attribute, value)
+            .await
     }
 
     /// Get user attribute for ABAC evaluation.
@@ -1464,7 +1545,9 @@ fn is_production_environment() -> bool {
         user_id: &str,
         attribute: &str,
     ) -> Result<Option<String>> {
-        self.authorization_manager.get_user_attribute(user_id, attribute).await
+        self.authorization_manager
+            .get_user_attribute(user_id, attribute)
+            .await
     }
 
     /// Check dynamic permission with context evaluation (ABAC).
@@ -1475,7 +1558,9 @@ fn is_production_environment() -> bool {
         resource: &str,
         context: std::collections::HashMap<String, String>,
     ) -> Result<bool> {
-        self.authorization_manager.check_dynamic_permission(user_id, action, resource, context).await
+        self.authorization_manager
+            .check_dynamic_permission(user_id, action, resource, context)
+            .await
     }
 
     /// Create resource for permission management.
@@ -1492,12 +1577,16 @@ fn is_production_environment() -> bool {
         resource: &str,
         duration: std::time::Duration,
     ) -> Result<()> {
-        self.authorization_manager.delegate_permission(delegator_id, delegatee_id, action, resource, duration).await
+        self.authorization_manager
+            .delegate_permission(delegator_id, delegatee_id, action, resource, duration)
+            .await
     }
 
     /// Get active delegations for a user.
     pub async fn get_active_delegations(&self, user_id: &str) -> Result<Vec<String>> {
-        self.authorization_manager.get_active_delegations(user_id).await
+        self.authorization_manager
+            .get_active_delegations(user_id)
+            .await
     }
 
     /// Get permission audit logs with filtering.
@@ -1508,7 +1597,9 @@ fn is_production_environment() -> bool {
         resource: Option<&str>,
         limit: Option<usize>,
     ) -> Result<Vec<String>> {
-        self.audit_manager.get_permission_audit_logs(user_id, action, resource, limit).await
+        self.audit_manager
+            .get_permission_audit_logs(user_id, action, resource, limit)
+            .await
     }
 
     /// Get permission metrics for monitoring.
@@ -1516,8 +1607,11 @@ fn is_production_environment() -> bool {
         &self,
     ) -> Result<std::collections::HashMap<String, u64>, AuthError> {
         let active_sessions = self.storage.count_active_sessions().await.unwrap_or(0);
-        let permission_checks_last_hour =
-            self.audit_manager.get_permission_checks_last_hour().await.unwrap_or(0);
+        let permission_checks_last_hour = self
+            .audit_manager
+            .get_permission_checks_last_hour()
+            .await
+            .unwrap_or(0);
         self.authorization_manager
             .get_permission_metrics(active_sessions, permission_checks_last_hour)
             .await
@@ -1525,8 +1619,14 @@ fn is_production_environment() -> bool {
 
     /// Collect comprehensive security audit statistics.
     pub async fn get_security_audit_stats(&self) -> Result<SecurityAuditStats> {
-        let active_sessions = self.session_manager.count_active_sessions().await.unwrap_or(0);
-        self.audit_manager.get_security_audit_stats(active_sessions).await
+        let active_sessions = self
+            .session_manager
+            .count_active_sessions()
+            .await
+            .unwrap_or(0);
+        self.audit_manager
+            .get_security_audit_stats(active_sessions)
+            .await
     }
 
     /// Get user profile information

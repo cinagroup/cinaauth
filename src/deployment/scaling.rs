@@ -90,7 +90,8 @@ impl AutoScaler {
 
         // Keep only recent metrics within the window
         let cutoff = SystemTime::now()
-            .duration_since(UNIX_EPOCH).unwrap_or_default()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
             .as_secs()
             - self.policy.metrics_window.as_secs();
 
@@ -106,7 +107,8 @@ impl AutoScaler {
                 current_instances: self.current_instances,
                 target_instances: self.current_instances,
                 timestamp: SystemTime::now()
-                    .duration_since(UNIX_EPOCH).unwrap_or_default()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
                     .as_secs(),
                 metrics: self.get_average_metrics()?,
             });
@@ -296,7 +298,8 @@ impl AutoScaler {
             response_time: Duration::from_millis(sum_response_time / count as u64),
             error_rate: sum_error_rate / count,
             timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap_or_default()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs(),
         })
     }
@@ -353,7 +356,8 @@ mod tests {
             response_time: Duration::from_millis(50),
             error_rate: 0.01,
             timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap_or_default()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs(),
         };
 
@@ -374,7 +378,8 @@ mod tests {
             response_time: Duration::from_millis(50),
             error_rate: 0.01,
             timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap_or_default()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs(),
         };
 
@@ -397,7 +402,8 @@ mod tests {
             response_time: Duration::from_millis(200),
             error_rate: 0.05,
             timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap_or_default()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs(),
         };
 
@@ -418,7 +424,8 @@ mod tests {
             current_instances: 1,
             target_instances: 3,
             timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap_or_default()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
                 .as_secs(),
             metrics: ScalingMetrics {
                 cpu_utilization: 0.9,
@@ -427,7 +434,8 @@ mod tests {
                 response_time: Duration::from_millis(200),
                 error_rate: 0.05,
                 timestamp: SystemTime::now()
-                    .duration_since(UNIX_EPOCH).unwrap_or_default()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
                     .as_secs(),
             },
         };

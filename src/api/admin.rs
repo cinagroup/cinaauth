@@ -166,13 +166,15 @@ pub async fn list_users(
                             }
                         }
                         if let Some(ref role) = query.role
-                            && !item.roles.contains(role) {
-                                continue;
-                            }
+                            && !item.roles.contains(role)
+                        {
+                            continue;
+                        }
                         if let Some(filter_active) = query.active
-                            && item.active != filter_active {
-                                continue;
-                            }
+                            && item.active != filter_active
+                        {
+                            continue;
+                        }
                         users.push(item);
                     }
                 }

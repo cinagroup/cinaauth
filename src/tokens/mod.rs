@@ -639,9 +639,9 @@ impl TokenManager {
                         if let Some(prev_key) = &self.previous_decoding_key
                             && let Ok(prev_token_data) =
                                 decode::<JwtClaims>(token, prev_key, &validation)
-                            {
-                                return Ok(prev_token_data.claims);
-                            }
+                        {
+                            return Ok(prev_token_data.claims);
+                        }
 
                         Err(AuthError::Token(TokenError::Invalid {
                             message: "Invalid token signature".to_string(),

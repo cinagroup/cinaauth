@@ -217,7 +217,8 @@ impl MutualTlsManager {
 
         // Check certificate validity period
         let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
             .as_secs() as i64;
 
         if cert.validity.not_before.timestamp() > now {
@@ -565,7 +566,8 @@ impl MutualTlsManager {
 
         // Check certificate validity period
         let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).unwrap_or_default()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
             .as_secs();
 
         let not_before = client_cert.validity().not_before.timestamp() as u64;
