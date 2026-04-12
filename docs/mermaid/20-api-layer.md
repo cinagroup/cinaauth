@@ -6,27 +6,26 @@
 ```mermaid
 classDiagram
     class ApiServer {
-        -ApiState state
         -ApiServerConfig config
-        +new(framework, config) Self
+        -Arc~AuthFramework~ auth_framework
+        +new(framework) Self
+        +with_config(framework, config) Self
         +start() Result
-        +stop() Result
-        +router() Router
-        +health() HealthResponse
+        +build_router() Result~Router~
+        +config() ApiServerConfig
+        +address() String
     }
     class ApiServerConfig {
-        +String bind_address
+        +String host
         +u16 port
-        +Option~TlsConfig~ tls
-        +Duration request_timeout
-        +Vec~String~ cors_origins
-        +bool enable_swagger_ui
+        +CorsConfig cors
+        +usize max_body_size
+        +bool enable_tracing
     }
     class ApiState {
         -Arc~AuthFramework~ framework
-        -Arc~ApiServerConfig~ config
-        -Arc~AuditLogger~ audit_logger
-        +get_framework() Arc~AuthFramework~
+        -Arc~DistributedRateLimiter~ rate_limiter
+        +new(framework) Result~ApiState~
     }
     class ApiResponse {
         +bool success
@@ -135,7 +134,7 @@ classDiagram
         +Option~String~ message
         +Option~u64~ latency_ms
     }
-    note for AuthorizeRequest "pub use alias: api::AuthorizeRequest = oauth2_server::AuthorizationRequest. Canonical definition in src/oauth2_server.rs."
+    note for AuthorizeRequest "pub use alias: api::AuthorizeRequest = oauth2_server::AuthorizationRequest. Canonical definition in src/server/oauth/oauth2_server.rs."
     note for ApiTokenRequest "API-layer DTO; the canonical OAuth2 token request type is oauth2_server::TokenRequest, re-exported via api::TokenRequest."
     note for ApiTokenResponse "API-layer DTO; the canonical OAuth2 token response type is oauth2_server::TokenResponse, re-exported via api::TokenResponse."
     ApiServer *-- ApiState

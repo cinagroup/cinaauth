@@ -1,2 +1,11 @@
-[build]
-target-dir = "C:\\Users\\cires\\.cache\\auth-framework\\target"
+# Use standard target/ directory for portability across machines and CI.
+# Override locally via CARGO_TARGET_DIR env var if needed.
+# [build]
+# target-dir = "target"
+
+# Prevent coverage instrumentation files (.profraw) from accumulating in the
+# project root.  When tests are run with -C instrument-coverage, LLVM writes
+# profraw files to the path given by LLVM_PROFILE_FILE.  This keeps them
+# inside target/ so they are cleaned up by `cargo clean`.
+[env]
+LLVM_PROFILE_FILE = { value = "target/coverage/default_%m_%p.profraw", force = false }

@@ -50,8 +50,13 @@ fn create_working_config() -> AuthConfig {
             log_tokens: false,
             storage: auth_framework::config::AuditStorage::Tracing,
         },
+        enable_caching: false,
+        max_failed_attempts: 5,
+        enable_rbac: false,
+        enable_middleware: false,
         method_configs: HashMap::new(),
         force_production_mode: false,
+        cors: auth_framework::CorsConfig::default(),
     }
 }
 

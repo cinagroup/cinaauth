@@ -2,12 +2,167 @@
 <html>
 
 <head>
-  <title>Config</title>
+  <title>Config - Auth Framework Admin</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+      color: #333;
+    }
+  
+    nav {
+      background: #1a1a2e;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+  
+    nav a {
+      color: #e0e0e0;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+  
+    nav a:hover {
+      color: #fff;
+    }
+  
+    nav .brand {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #fff;
+      margin-right: 1rem;
+    }
+  
+    nav .active {
+      color: #fff;
+      border-bottom: 2px solid #4fc3f7;
+    }
+  
+    .container {
+      max-width: 960px;
+      margin: 1.5rem auto;
+      padding: 0 1rem;
+    }
+  
+    .card {
+      background: #fff;
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+  
+    h1 {
+      margin-top: 0;
+    }
+  
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+  
+    th,
+    td {
+      text-align: left;
+      padding: 0.5rem;
+      border-bottom: 1px solid #eee;
+    }
+  
+    th {
+      background: #fafafa;
+      font-size: 0.85rem;
+      color: #555;
+      text-transform: uppercase;
+    }
+  
+    input[type="text"] {
+      padding: 0.3rem 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      width: 150px;
+    }
+  
+    button {
+      padding: 0.3rem 0.8rem;
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+  
+    button:hover {
+      background: #16213e;
+    }
+  
+    .info {
+      color: #555;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 
 <body>
-  <h1>Configuration</h1>
-  <p>Configuration management will be implemented here.</p>
+  <nav>
+    <span class="brand">AuthFramework</span>
+    <a href="/">Dashboard</a>
+    <a href="/config" class="active">Config</a>
+    <a href="/users">Users</a>
+    <a href="/security">Security</a>
+    <a href="/servers">Servers</a>
+    <a href="/logs">Logs</a>
+    <a href="/logout">Logout</a>
+  </nav>
+  <div class="container">
+    <h1>Configuration</h1>
+    <div class="card">
+      {% if live_updates_enabled %}
+      <p class="info">Runtime-safe configuration fields can be updated live from this page.</p>
+      {% else %}
+      <p class="info">Live runtime updates are unavailable because no AuthFramework instance is attached.</p>
+      {% endif %}
+    
+      {% if items.is_empty() %}
+      <p>No runtime configuration items are available.</p>
+      {% else %}
+      <table>
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Value</th>
+            <th>Description</th>
+            <th>Update</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.key }}</td>
+            <td>{{ item.value }}</td>
+            <td>{{ item.description }}</td>
+            <td>
+              {% if item.editable && live_updates_enabled %}
+              <form method="post" action="/config/edit?csrf_token={{ csrf_token }}" style="display:inline">
+                <input type="hidden" name="key" value="{{ item.key }}">
+                <input type="text" name="value" value="{{ item.value }}">
+                <button type="submit">Apply</button>
+              </form>
+              {% else %}
+              <span class="info">Read only</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    </div>
 </body>
 
 </html>

@@ -59,7 +59,15 @@ impl Default for RoleConverter {
 }
 
 impl RoleConverter {
-    /// Create new role converter with custom settings
+    /// Create new role converter with custom settings.
+    ///
+    /// For a more readable alternative, prefer the builder API:
+    ///
+    /// ```rust,ignore
+    /// RoleConverter::default()
+    ///     .with_id_prefix("imported_")
+    ///     .without_hierarchy()
+    /// ```
     pub fn new(
         id_prefix: String,
         preserve_hierarchy: bool,
@@ -70,6 +78,36 @@ impl RoleConverter {
             preserve_hierarchy,
             merge_duplicate_permissions,
         }
+    }
+
+    /// Set the ID prefix for converted roles (default: `"migrated_"`).
+    pub fn with_id_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.id_prefix = prefix.into();
+        self
+    }
+
+    /// Preserve the role hierarchy from the legacy system (default: `true`).
+    pub fn with_hierarchy(mut self) -> Self {
+        self.preserve_hierarchy = true;
+        self
+    }
+
+    /// Discard the role hierarchy from the legacy system.
+    pub fn without_hierarchy(mut self) -> Self {
+        self.preserve_hierarchy = false;
+        self
+    }
+
+    /// Merge duplicate permissions during conversion (default: `true`).
+    pub fn with_deduplication(mut self) -> Self {
+        self.merge_duplicate_permissions = true;
+        self
+    }
+
+    /// Keep duplicate permissions as-is during conversion.
+    pub fn without_deduplication(mut self) -> Self {
+        self.merge_duplicate_permissions = false;
+        self
     }
 
     /// Convert legacy role to role-system v1.0 format

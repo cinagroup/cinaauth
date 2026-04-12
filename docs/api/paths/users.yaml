@@ -1,13 +1,10 @@
 # User Management Endpoints
-# User profile and account management
-# All user endpoints are under /api/v1/users
 
 profile:
     get:
         tags:
             - Users
-        summary: Get user profile
-        description: Get current authenticated user's complete profile information
+        summary: Get the authenticated user's profile
         operationId: getUserProfile
         security:
             - bearerAuth: []
@@ -26,13 +23,10 @@ profile:
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
 
-    patch:
+    put:
         tags:
             - Users
-        summary: Update user profile
-        description: |
-            Update current user's profile information. Only provided fields will be updated.
-            Some fields like username and email may require additional verification.
+        summary: Update the authenticated user's profile
         operationId: updateUserProfile
         security:
             - bearerAuth: []
@@ -59,14 +53,11 @@ profile:
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
 
-password:
+changePassword:
     post:
         tags:
             - Users
-        summary: Change password
-        description: |
-            Change current user's password. Requires current password for verification.
-            New password must meet complexity requirements.
+        summary: Change the authenticated user's password
         operationId: changePassword
         security:
             - bearerAuth: []
@@ -82,21 +73,97 @@ password:
                 content:
                     application/json:
                         schema:
+                            $ref: "../schemas/common.yaml#/ApiResponse"
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+sessions:
+    get:
+        tags:
+            - Users
+        summary: List the authenticated user's active sessions
+        operationId: getUserSessions
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: Active sessions retrieved
+                content:
+                    application/json:
+                        schema:
                             allOf:
                                 - $ref: "../schemas/common.yaml#/ApiResponse"
                                 - type: object
                                   properties:
                                       data:
-                                          type: object
-                                          properties:
-                                              message:
-                                                  type: string
-                                                  example: "Password successfully changed"
-            "400":
-                description: Invalid password or doesn't meet requirements
+                                          type: array
+                                          items:
+                                              $ref: "../schemas/users.yaml#/SessionInfo"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+sessionById:
+    delete:
+        tags:
+            - Users
+        summary: Revoke one active session
+        operationId: revokeUserSession
+        security:
+            - bearerAuth: []
+        parameters:
+            - name: session_id
+              in: path
+              required: true
+              schema:
+                  type: string
+              example: "session_123"
+        responses:
+            "200":
+                description: Session revoked successfully
                 content:
                     application/json:
                         schema:
-                            $ref: "../schemas/common.yaml#/ApiError"
+                            $ref: "../schemas/common.yaml#/ApiResponse"
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
+            "403":
+                $ref: "../components/responses.yaml#/Forbidden"
+            "404":
+                $ref: "../components/responses.yaml#/NotFound"
+
+userProfileById:
+    get:
+        tags:
+            - Users
+            - Admin
+        summary: Get another user's profile (admin only)
+        operationId: getUserProfileById
+        security:
+            - bearerAuth: []
+        parameters:
+            - name: user_id
+              in: path
+              required: true
+              schema:
+                  type: string
+              example: "user_123"
+        responses:
+            "200":
+                description: User profile retrieved
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/users.yaml#/UserProfile"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+            "403":
+                $ref: "../components/responses.yaml#/Forbidden"
+            "404":
+                $ref: "../components/responses.yaml#/NotFound"

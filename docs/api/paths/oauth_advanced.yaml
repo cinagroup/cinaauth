@@ -1,128 +1,36 @@
-# OAuth 2.0 Advanced Features - Additional Endpoints
-# Includes token introspection, PAR, DPoP, device flow, RAR, and logout endpoints
+# OAuth 2.0 Advanced and Auxiliary Endpoints
 
-# ============================================================================
-# Token Introspection - RFC 7662
-# ============================================================================
-/api/v1/oauth/introspect:
+introspect:
     post:
-        summary: Introspect OAuth 2.0 Token
-        description: |
-            RFC 7662 - Token introspection endpoint that allows resource servers 
-            to query the authorization server about the state and metadata of a token.
-
-            **Security**: Requires client authentication via Basic Auth or client credentials.
-        operationId: introspectToken
         tags:
-            - OAuth 2.0
-        security:
-            - basicAuth: []
-            - clientCredentials: []
+            - OAuth
+        summary: Introspect a token
+        description: Requires client authentication via HTTP Basic auth or request-body client credentials.
+        operationId: introspectToken
         requestBody:
             required: true
             content:
                 application/x-www-form-urlencoded:
                     schema:
-                        type: object
-                        required:
-                            - token
-                        properties:
-                            token:
-                                type: string
-                                description: The token to introspect (access or refresh token)
-                                example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-                            token_type_hint:
-                                type: string
-                                description: Hint about the type of token being introspected
-                                enum:
-                                    - access_token
-                                    - refresh_token
-                                example: "access_token"
+                        $ref: "../schemas/oauth.yaml#/IntrospectTokenRequest"
         responses:
             "200":
-                description: Token introspection successful
+                description: Introspection completed
                 content:
                     application/json:
                         schema:
-                            type: object
-                            required:
-                                - active
-                            properties:
-                                active:
-                                    type: boolean
-                                    description: Whether the token is currently active
-                                    example: true
-                                scope:
-                                    type: string
-                                    description: Space-separated list of scopes
-                                    example: "read write"
-                                client_id:
-                                    type: string
-                                    description: Client identifier
-                                    example: "client_123"
-                                username:
-                                    type: string
-                                    description: Username of the resource owner
-                                    example: "user@example.com"
-                                token_type:
-                                    type: string
-                                    description: Type of token
-                                    example: "Bearer"
-                                exp:
-                                    type: integer
-                                    description: Token expiration timestamp
-                                    example: 1735689600
-                                iat:
-                                    type: integer
-                                    description: Token issuance timestamp
-                                    example: 1735686000
-                                nbf:
-                                    type: integer
-                                    description: Token not-before timestamp
-                                    example: 1735686000
-                                sub:
-                                    type: string
-                                    description: Subject identifier
-                                    example: "user_123"
-                                aud:
-                                    type: string
-                                    description: Intended audience
-                                    example: "api.example.com"
-                                iss:
-                                    type: string
-                                    description: Issuer identifier
-                                    example: "https://auth.example.com"
-                                jti:
-                                    type: string
-                                    description: JWT ID
-                                    example: "token_abc123"
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
+                            $ref: "../schemas/oauth.yaml#/TokenIntrospectionResponse"
             "400":
                 $ref: "../components/responses.yaml#/BadRequest"
-            "429":
-                $ref: "../components/responses.yaml#/RateLimit"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
 
-# ============================================================================
-# Pushed Authorization Requests - RFC 9126
-# ============================================================================
-/api/v1/oauth/par:
+par:
     post:
-        summary: Submit Pushed Authorization Request
-        description: |
-            RFC 9126 - Allows clients to push the authorization request parameters 
-            to the authorization server before initiating the authorization flow.
-            Returns a request URI that can be used in the authorization endpoint.
-
-            **Security Benefits**:
-            - Prevents authorization request parameter tampering
-            - Reduces URL length issues
-            - Protects sensitive parameters from browser history
-        operationId: pushedAuthorizationRequest
         tags:
-            - OAuth 2.0
-        security:
-            - clientCredentials: []
+            - OAuth
+        summary: Submit a pushed authorization request
+        operationId: pushedAuthorizationRequest
         requestBody:
             required: true
             content:
@@ -136,81 +44,54 @@
                         properties:
                             response_type:
                                 type: string
-                                description: OAuth response type
                                 example: "code"
                             client_id:
                                 type: string
-                                description: Client identifier
                                 example: "client_123"
                             redirect_uri:
                                 type: string
                                 format: uri
-                                description: Callback URI
-                                example: "https://app.example.com/callback"
+                                example: "https://client.example.com/callback"
                             scope:
                                 type: string
-                                description: Space-separated scopes
-                                example: "read write"
+                                example: "openid profile email"
                             state:
                                 type: string
-                                description: Client state for CSRF protection
-                                example: "random_state_value"
-                            code_challenge:
-                                type: string
-                                description: PKCE code challenge
-                                example: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
-                            code_challenge_method:
-                                type: string
-                                description: PKCE code challenge method
-                                enum:
-                                    - S256
-                                    - plain
-                                example: "S256"
+                                example: "xyz123"
                             nonce:
                                 type: string
-                                description: OIDC nonce for ID token
-                                example: "random_nonce_value"
+                                example: "nonce123"
+                            code_challenge:
+                                type: string
+                            code_challenge_method:
+                                type: string
         responses:
             "201":
-                description: Authorization request successfully pushed
+                description: Request pushed successfully
                 content:
                     application/json:
                         schema:
                             type: object
-                            required:
-                                - request_uri
-                                - expires_in
                             properties:
                                 request_uri:
                                     type: string
-                                    description: URI referencing the authorization request
                                     example: "urn:ietf:params:oauth:request_uri:6esc_11ACC5bwc014ltc14eY22c"
                                 expires_in:
                                     type: integer
-                                    description: Lifetime of the request URI in seconds
                                     example: 90
+                            required:
+                                - request_uri
+                                - expires_in
             "400":
                 $ref: "../components/responses.yaml#/BadRequest"
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
-            "429":
-                $ref: "../components/responses.yaml#/RateLimit"
 
-# ============================================================================
-# Device Authorization Grant - RFC 8628
-# ============================================================================
-/api/v1/oauth/device/code:
+device:
     post:
-        summary: Request Device Authorization
-        description: |
-            RFC 8628 - Initiates the device authorization flow for input-constrained devices.
-            Returns a device code and user code that the user must enter on another device.
-
-            **Use Cases**: Smart TVs, IoT devices, CLI applications, game consoles
-        operationId: deviceAuthorizationRequest
         tags:
-            - OAuth 2.0
-            - Device Flow
+            - OAuth
+        summary: Initiate the device authorization helper flow
+        description: The current server exposes device-code issuance at /oauth/device. The standard token polling companion route is not mounted separately; clients should treat this as a partial implementation.
+        operationId: deviceAuthorization
         requestBody:
             required: true
             content:
@@ -222,229 +103,146 @@
                         properties:
                             client_id:
                                 type: string
-                                description: Client identifier
-                                example: "cli_app_123"
+                                example: "client_123"
                             scope:
                                 type: string
-                                description: Space-separated scopes
-                                example: "read write"
+                                example: "openid profile email"
         responses:
             "200":
-                description: Device authorization initiated
+                description: Device code issued
                 content:
                     application/json:
                         schema:
                             type: object
+                            properties:
+                                device_code:
+                                    type: string
+                                    example: "dc_0123456789abcdef"
+                                user_code:
+                                    type: string
+                                    example: "WDJBMJHT"
+                                verification_uri:
+                                    type: string
+                                    example: "/device"
+                                verification_uri_complete:
+                                    type: string
+                                    example: "/device?user_code=WDJBMJHT"
+                                expires_in:
+                                    type: integer
+                                    example: 600
+                                interval:
+                                    type: integer
+                                    example: 5
                             required:
                                 - device_code
                                 - user_code
                                 - verification_uri
+                                - verification_uri_complete
                                 - expires_in
-                            properties:
-                                device_code:
-                                    type: string
-                                    description: Device verification code (client keeps polling with this)
-                                    example: "GmRhmhcxhwAzkoEqiMEg_DnyEysNkuNhszIySk9eS"
-                                user_code:
-                                    type: string
-                                    description: End-user verification code (user types this)
-                                    example: "WDJB-MJHT"
-                                verification_uri:
-                                    type: string
-                                    format: uri
-                                    description: URI where user should enter the user code
-                                    example: "https://auth.example.com/device"
-                                verification_uri_complete:
-                                    type: string
-                                    format: uri
-                                    description: Complete URI with user code (for QR codes)
-                                    example: "https://auth.example.com/device?user_code=WDJB-MJHT"
-                                expires_in:
-                                    type: integer
-                                    description: Device code lifetime in seconds
-                                    example: 1800
-                                interval:
-                                    type: integer
-                                    description: Minimum polling interval in seconds
-                                    example: 5
+                                - interval
             "400":
                 $ref: "../components/responses.yaml#/BadRequest"
-            "429":
-                $ref: "../components/responses.yaml#/RateLimit"
 
-/api/v1/oauth/device/token:
+ciba:
     post:
-        summary: Poll for Device Authorization Token
-        description: |
-            RFC 8628 - Client polls this endpoint to check if the user has completed 
-            authorization. Must respect the polling interval to avoid rate limiting.
-
-            **Error Codes**:
-            - `authorization_pending`: User hasn't completed authorization yet
-            - `slow_down`: Client is polling too frequently
-            - `access_denied`: User denied the request
-            - `expired_token`: Device code expired
-        operationId: deviceTokenPoll
         tags:
-            - OAuth 2.0
-            - Device Flow
+            - OAuth
+            - OpenID Connect
+        summary: Initiate a backchannel authentication request
+        description: The endpoint creates an auth_req_id and stores pending state. The REST token endpoint does not currently document a CIBA polling grant.
+        operationId: cibaBackchannelAuth
         requestBody:
             required: true
             content:
                 application/x-www-form-urlencoded:
                     schema:
                         type: object
-                        required:
-                            - grant_type
-                            - device_code
-                            - client_id
                         properties:
-                            grant_type:
-                                type: string
-                                description: Must be "urn:ietf:params:oauth:grant-type:device_code"
-                                example: "urn:ietf:params:oauth:grant-type:device_code"
-                            device_code:
-                                type: string
-                                description: Device code from authorization request
-                                example: "GmRhmhcxhwAzkoEqiMEg_DnyEysNkuNhszIySk9eS"
                             client_id:
                                 type: string
-                                description: Client identifier
-                                example: "cli_app_123"
+                                example: "client_123"
+                            scope:
+                                type: string
+                                example: "openid"
+                            login_hint:
+                                type: string
+                                example: "user@example.com"
+                            login_hint_token:
+                                type: string
+                            id_token_hint:
+                                type: string
+                            binding_message:
+                                type: string
+                                example: "Approve sign-in"
         responses:
             "200":
-                description: Authorization complete, tokens issued
-                content:
-                    application/json:
-                        schema:
-                            $ref: "../schemas/oauth.yaml#/TokenResponse"
-            "400":
-                description: Authorization pending or error
+                description: Backchannel authentication initiated
                 content:
                     application/json:
                         schema:
                             type: object
-                            required:
-                                - error
                             properties:
-                                error:
+                                auth_req_id:
                                     type: string
-                                    enum:
-                                        - authorization_pending
-                                        - slow_down
-                                        - access_denied
-                                        - expired_token
-                                    example: "authorization_pending"
-                                error_description:
-                                    type: string
-                                    example: "User has not yet completed authorization"
+                                    example: "5d1d18b8-6c1e-4d40-a2dd-1ef24f2c2938"
+                                expires_in:
+                                    type: integer
+                                    example: 120
                                 interval:
                                     type: integer
-                                    description: New polling interval (for slow_down error)
-                                    example: 10
-            "429":
-                $ref: "../components/responses.yaml#/RateLimit"
+                                    example: 5
+                            required:
+                                - auth_req_id
+                                - expires_in
+                                - interval
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
 
-# ============================================================================
-# OIDC Logout Endpoints
-# ============================================================================
-/api/v1/oauth/logout:
+endSession:
     get:
-        summary: OIDC Front-Channel Logout
-        description: |
-            OpenID Connect Front-Channel Logout - Initiates logout flow that 
-            terminates the user's session across all participating clients.
-
-            **Use Cases**: Enterprise SSO, coordinated logout across multiple applications
-        operationId: frontChannelLogout
         tags:
-            - OAuth 2.0
             - OpenID Connect
+        summary: Perform RP-initiated logout
+        operationId: endSession
         parameters:
             - name: id_token_hint
               in: query
-              required: false
               schema:
                   type: string
-              description: ID token hint to identify the session
-              example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
             - name: post_logout_redirect_uri
               in: query
-              required: false
               schema:
                   type: string
                   format: uri
-              description: Where to redirect after logout
-              example: "https://app.example.com/logged-out"
             - name: state
               in: query
-              required: false
               schema:
                   type: string
-              description: Client state value
-              example: "random_state_value"
-        responses:
-            "302":
-                description: Redirects to post_logout_redirect_uri or confirmation page
-            "400":
-                $ref: "../components/responses.yaml#/BadRequest"
-
-/api/v1/oauth/backchannel-logout:
-    post:
-        summary: OIDC Back-Channel Logout
-        description: |
-            OpenID Connect Back-Channel Logout - Server-to-server logout notification.
-            The authorization server POSTs logout tokens to registered client endpoints.
-
-            **Security**: Validates logout token JWT signature
-        operationId: backChannelLogout
-        tags:
-            - OAuth 2.0
-            - OpenID Connect
-        requestBody:
-            required: true
-            content:
-                application/x-www-form-urlencoded:
-                    schema:
-                        type: object
-                        required:
-                            - logout_token
-                        properties:
-                            logout_token:
-                                type: string
-                                description: JWT logout token
-                                example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
         responses:
             "200":
-                description: Logout processed successfully
+                description: Logout completed without redirect
                 content:
                     application/json:
                         schema:
-                            $ref: "../schemas/common.yaml#/ApiResponse"
-            "400":
-                $ref: "../components/responses.yaml#/BadRequest"
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
+                            type: object
+                            properties:
+                                status:
+                                    type: string
+                                    example: "logged_out"
+                            required:
+                                - status
+            "302":
+                description: Redirect to the validated post_logout_redirect_uri
 
-# ============================================================================
-# Dynamic Client Registration - RFC 7591
-# ============================================================================
-/api/v1/oauth/register:
+register:
     post:
-        summary: Register OAuth Client
-        description: |
-            RFC 7591 - Dynamically register a new OAuth 2.0 client with the authorization server.
-
-            **Security**: Requires initial registration token or public registration must be enabled.
-            **Use Cases**: SaaS platforms, multi-tenant applications, developer portals
-        operationId: registerClient
         tags:
-            - OAuth 2.0
-            - Client Management
+            - OAuth
+        summary: Dynamically register a client
+        description: Requires an admin bearer token or a configured initial access token.
+        operationId: registerClient
         security:
             - bearerAuth: []
-            - registrationToken: []
-            - {} # Allow unauthenticated if public registration enabled
         requestBody:
             required: true
             content:
@@ -462,88 +260,33 @@
                 $ref: "../components/responses.yaml#/BadRequest"
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
-            "429":
-                $ref: "../components/responses.yaml#/RateLimit"
+            "403":
+                $ref: "../components/responses.yaml#/Forbidden"
 
-/api/v1/oauth/register/{client_id}:
+clientInfo:
     get:
-        summary: Get OAuth Client Configuration
-        description: |
-            RFC 7591 - Retrieve the current configuration of a dynamically registered client.
-
-            **Security**: Requires registration access token from registration response.
-        operationId: getClientConfiguration
         tags:
-            - OAuth 2.0
-            - Client Management
-        security:
-            - bearerAuth: []
+            - OAuth
+        summary: Read stored client metadata
+        operationId: getClientInfo
         parameters:
-            - $ref: "../components/parameters.yaml#/ClientId"
+            - name: client_id
+              in: path
+              required: true
+              schema:
+                  type: string
+              example: "client_123"
         responses:
             "200":
-                description: Client configuration retrieved
+                description: Client metadata returned successfully
                 content:
                     application/json:
                         schema:
-                            $ref: "../schemas/oauth.yaml#/ClientRegistrationResponse"
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
-            "404":
-                $ref: "../components/responses.yaml#/NotFound"
-
-    put:
-        summary: Update OAuth Client Configuration
-        description: |
-            RFC 7591 - Update the configuration of a dynamically registered client.
-
-            **Security**: Requires registration access token. Cannot update all fields.
-        operationId: updateClientConfiguration
-        tags:
-            - OAuth 2.0
-            - Client Management
-        security:
-            - bearerAuth: []
-        parameters:
-            - $ref: "../components/parameters.yaml#/ClientId"
-        requestBody:
-            required: true
-            content:
-                application/json:
-                    schema:
-                        $ref: "../schemas/oauth.yaml#/ClientRegistrationRequest"
-        responses:
-            "200":
-                description: Client updated successfully
-                content:
-                    application/json:
-                        schema:
-                            $ref: "../schemas/oauth.yaml#/ClientRegistrationResponse"
-            "400":
-                $ref: "../components/responses.yaml#/BadRequest"
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
-            "404":
-                $ref: "../components/responses.yaml#/NotFound"
-
-    delete:
-        summary: Delete OAuth Client
-        description: |
-            RFC 7591 - Delete a dynamically registered client.
-
-            **Security**: Requires registration access token. Revokes all tokens.
-        operationId: deleteClient
-        tags:
-            - OAuth 2.0
-            - Client Management
-        security:
-            - bearerAuth: []
-        parameters:
-            - $ref: "../components/parameters.yaml#/ClientId"
-        responses:
-            "204":
-                description: Client deleted successfully
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/oauth.yaml#/ClientInfoResponse"
             "404":
                 $ref: "../components/responses.yaml#/NotFound"

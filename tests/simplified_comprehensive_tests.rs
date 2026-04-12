@@ -62,12 +62,12 @@ mod test_helpers {
             refresh_token: Some(format!("refresh_token_{}", Uuid::new_v4())),
             issued_at: now,
             expires_at: now + chrono::Duration::hours(1),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             auth_method: "jwt".to_string(),
             client_id: Some("test-client".to_string()),
             user_profile: Some(create_test_user()),
-            permissions: vec!["read:data".to_string(), "write:data".to_string()],
-            roles: vec!["user".to_string()],
+            permissions: vec!["read:data".to_string(), "write:data".to_string()].into(),
+            roles: vec!["user".to_string()].into(),
             metadata: TokenMetadata {
                 issued_ip: Some("192.168.1.100".to_string()),
                 user_agent: Some("Mozilla/5.0 Test Browser".to_string()),
@@ -289,7 +289,7 @@ mod token_tests {
         assert!(token.access_token.starts_with("access_token_"));
         assert!(token.refresh_token.is_some());
         assert_eq!(token.token_type.as_ref().unwrap(), "Bearer");
-        assert_eq!(token.scopes, vec!["read", "write"]);
+        assert_eq!(token.scopes, auth_framework::types::Scopes::new(vec!["read".to_string(), "write".to_string()]));
     }
 
     #[test]
@@ -458,7 +458,7 @@ mod edge_case_tests {
     async fn test_token_with_empty_scopes() {
         let storage = Arc::new(MemoryStorage::new());
         let mut token = create_test_token("user123");
-        token.scopes = vec![]; // Empty scopes
+        token.scopes = auth_framework::types::Scopes::empty(); // Empty scopes
 
         assert!(storage.store_token(&token).await.is_ok());
 

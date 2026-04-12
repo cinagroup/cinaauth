@@ -148,7 +148,13 @@ pub mod token {
                 }
                 Ok(())
             }
-            _ => Ok(()), // Allow other token types
+            _ => {
+                // Reject unrecognized token types rather than silently accepting them.
+                Err(AuthError::validation(format!(
+                    "Unsupported token type: {}",
+                    token_type
+                )))
+            }
         }
     }
 
@@ -408,5 +414,259 @@ pub fn collect_validation_errors(validations: Vec<Result<()>>) -> Result<()> {
         Ok(())
     } else {
         Err(AuthError::validation(errors.join("; ")))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    // ── JWT validation ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_validate_jwt_format_empty() {
+        assert!(jwt::validate_jwt_format("").is_err());
+    }
+
+    #[test]
+    fn test_validate_jwt_format_wrong_parts() {
+        assert!(jwt::validate_jwt_format("one.two").is_err());
+        assert!(jwt::validate_jwt_format("a.b.c.d").is_err());
+    }
+
+    #[test]
+    fn test_validate_required_claims_missing() {
+        let claims = json!({"sub": "user1"});
+        assert!(jwt::validate_required_claims(&claims, &["sub"]).is_ok());
+        assert!(jwt::validate_required_claims(&claims, &["aud"]).is_err());
+    }
+
+    #[test]
+    fn test_validate_time_claims_expired() {
+        let claims = json!({"exp": 1000000});
+        assert!(jwt::validate_time_claims(&claims).is_err());
+    }
+
+    #[test]
+    fn test_validate_time_claims_future_nbf() {
+        let far_future = (SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 999999) as i64;
+        let claims = json!({"nbf": far_future});
+        assert!(jwt::validate_time_claims(&claims).is_err());
+    }
+
+    #[test]
+    fn test_validate_time_claims_valid_no_claims() {
+        let claims = json!({});
+        assert!(jwt::validate_time_claims(&claims).is_ok());
+    }
+
+    // ── Token validation ────────────────────────────────────────────────
+
+    #[test]
+    fn test_validate_token_type_success() {
+        assert!(token::validate_token_type("bearer", &["bearer", "dpop"]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_token_type_unsupported() {
+        assert!(token::validate_token_type("mac", &["bearer"]).is_err());
+    }
+
+    #[test]
+    fn test_validate_token_format_empty() {
+        assert!(token::validate_token_format("", "anything").is_err());
+    }
+
+    #[test]
+    fn test_validate_token_format_access_token_too_short() {
+        assert!(
+            token::validate_token_format("short", "urn:ietf:params:oauth:token-type:access_token")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validate_token_format_refresh_token_too_short() {
+        assert!(
+            token::validate_token_format(
+                "shorttoken",
+                "urn:ietf:params:oauth:token-type:refresh_token"
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validate_scope_empty() {
+        let scopes = token::validate_scope("").unwrap();
+        assert!(scopes.is_empty());
+    }
+
+    #[test]
+    fn test_validate_scope_valid() {
+        let scopes = token::validate_scope("read write openid").unwrap();
+        assert_eq!(scopes, vec!["read", "write", "openid"]);
+    }
+
+    #[test]
+    fn test_validate_scope_invalid_chars() {
+        assert!(token::validate_scope("read <script>").is_err());
+    }
+
+    // ── Client validation ───────────────────────────────────────────────
+
+    #[test]
+    fn test_validate_client_id_valid() {
+        assert!(client::validate_client_id("my-client.app_01").is_ok());
+    }
+
+    #[test]
+    fn test_validate_client_id_empty() {
+        assert!(client::validate_client_id("").is_err());
+    }
+
+    #[test]
+    fn test_validate_client_id_too_short() {
+        assert!(client::validate_client_id("ab").is_err());
+    }
+
+    #[test]
+    fn test_validate_client_id_too_long() {
+        let long_id = "a".repeat(256);
+        assert!(client::validate_client_id(&long_id).is_err());
+    }
+
+    #[test]
+    fn test_validate_client_id_invalid_chars() {
+        assert!(client::validate_client_id("my client!").is_err());
+    }
+
+    #[test]
+    fn test_validate_redirect_uri_valid() {
+        assert!(client::validate_redirect_uri("https://example.com/callback").is_ok());
+        assert!(client::validate_redirect_uri("http://localhost:8080/cb").is_ok());
+        assert!(client::validate_redirect_uri("custom://app/callback").is_ok());
+    }
+
+    #[test]
+    fn test_validate_redirect_uri_empty() {
+        assert!(client::validate_redirect_uri("").is_err());
+    }
+
+    #[test]
+    fn test_validate_redirect_uri_not_absolute() {
+        assert!(client::validate_redirect_uri("/callback").is_err());
+    }
+
+    #[test]
+    fn test_validate_redirect_uri_with_fragment() {
+        assert!(client::validate_redirect_uri("https://example.com/cb#section").is_err());
+    }
+
+    #[test]
+    fn test_validate_grant_type_success() {
+        assert!(
+            client::validate_grant_type(
+                "authorization_code",
+                &["authorization_code", "refresh_token"]
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn test_validate_grant_type_unsupported() {
+        assert!(client::validate_grant_type("implicit", &["authorization_code"]).is_err());
+    }
+
+    // ── Request validation ──────────────────────────────────────────────
+
+    #[test]
+    fn test_validate_required_params() {
+        let mut params = HashMap::new();
+        params.insert("code".to_string(), "abc123".to_string());
+        assert!(request::validate_required_params(&params, &["code"]).is_ok());
+        assert!(request::validate_required_params(&params, &["code", "state"]).is_err());
+    }
+
+    #[test]
+    fn test_validate_required_params_empty_value() {
+        let mut params = HashMap::new();
+        params.insert("code".to_string(), "  ".to_string());
+        assert!(request::validate_required_params(&params, &["code"]).is_err());
+    }
+
+    #[test]
+    fn test_validate_param_format_alphanum() {
+        assert!(request::validate_param_format("abc123", "nonce", "alphanum").is_ok());
+        assert!(request::validate_param_format("abc-123", "nonce", "alphanum").is_err());
+    }
+
+    #[test]
+    fn test_validate_param_format_empty() {
+        assert!(request::validate_param_format("", "nonce", "alphanum").is_err());
+    }
+
+    #[test]
+    fn test_validate_code_challenge_method() {
+        assert!(request::validate_code_challenge_method("S256").is_ok());
+        assert!(request::validate_code_challenge_method("plain").is_ok());
+        assert!(request::validate_code_challenge_method("S512").is_err());
+    }
+
+    #[test]
+    fn test_validate_response_type() {
+        assert!(request::validate_response_type("code", &["code", "token"]).is_ok());
+        assert!(request::validate_response_type("id_token", &["code"]).is_err());
+    }
+
+    // ── URL validation ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_validate_url_format_valid() {
+        assert!(url::validate_url_format("https://example.com").is_ok());
+        assert!(url::validate_url_format("http://localhost:8080").is_ok());
+    }
+
+    #[test]
+    fn test_validate_url_format_empty() {
+        assert!(url::validate_url_format("").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_format_no_scheme() {
+        assert!(url::validate_url_format("example.com").is_err());
+    }
+
+    #[test]
+    fn test_validate_https_required() {
+        assert!(url::validate_https_required("https://example.com").is_ok());
+        assert!(url::validate_https_required("http://example.com").is_err());
+    }
+
+    // ── collect_validation_errors ────────────────────────────────────────
+
+    #[test]
+    fn test_collect_validation_errors_all_ok() {
+        let validations = vec![Ok(()), Ok(())];
+        assert!(collect_validation_errors(validations).is_ok());
+    }
+
+    #[test]
+    fn test_collect_validation_errors_some_fail() {
+        let validations = vec![
+            Ok(()),
+            Err(AuthError::validation("err1")),
+            Err(AuthError::validation("err2")),
+        ];
+        let err = collect_validation_errors(validations).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(msg.contains("err1"));
+        assert!(msg.contains("err2"));
     }
 }

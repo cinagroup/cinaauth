@@ -16,8 +16,8 @@ pub mod context;
 #[cfg(feature = "enhanced-rbac")]
 mod hierarchy_tests_fixed;
 
-// #[cfg(feature = "enhanced-rbac")]
-// pub mod storage;
+#[cfg(feature = "enhanced-rbac")]
+pub mod storage;
 
 // Re-export core role-system types for convenience
 #[cfg(feature = "enhanced-rbac")]
@@ -53,5 +53,5 @@ pub use context::{
 };
 
 // Export storage adapters
-// #[cfg(feature = "enhanced-rbac")]
-// pub use storage::{DatabaseStorage, MemoryStorage};
+#[cfg(feature = "enhanced-rbac")]
+pub use storage::{DatabaseStorage, MemoryRbacStorage, RoleStorage};

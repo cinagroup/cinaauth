@@ -45,7 +45,7 @@ Enhancement suggestions are welcome! When proposing an enhancement:
 
 ### Prerequisites
 
-- Rust 1.70+ (stable)
+- Rust 1.85+ (stable, edition 2024)
 - Git
 
 ### Local Development
@@ -53,7 +53,7 @@ Enhancement suggestions are welcome! When proposing an enhancement:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/auth-framework.git
+   git clone https://github.com/ciresnave/auth-framework.git
    cd auth-framework
    ```
 
@@ -72,7 +72,7 @@ Enhancement suggestions are welcome! When proposing an enhancement:
 4. Run examples:
 
    ```bash
-   cargo run --example basic_fixed
+   cargo run --example complete_rest_api_server --features api-server
    ```
 
 ### Project Structure
@@ -80,19 +80,42 @@ Enhancement suggestions are welcome! When proposing an enhancement:
 ```text
 auth-framework/
 ├── src/
-│   ├── auth.rs           # Main authentication framework
-│   ├── config.rs         # Configuration management
-│   ├── credentials.rs    # Credential types and handling
-│   ├── errors.rs         # Error types and handling
-│   ├── lib.rs           # Library entry point
-│   ├── methods.rs        # Authentication methods
-│   ├── permissions.rs    # Permission system
-│   ├── providers.rs      # OAuth providers
-│   ├── storage.rs        # Storage backends
-│   ├── tokens.rs         # Token management
-│   └── utils.rs          # Utility functions
-├── examples/            # Example code
-└── tests/              # Integration tests
+│   ├── lib.rs               # Library entry point and module declarations
+│   ├── auth.rs              # Core authentication framework
+│   ├── auth_operations.rs   # High-level auth operation wrappers
+│   ├── config.rs            # Configuration management
+│   ├── credentials.rs       # Credential types and handling
+│   ├── errors.rs            # Error types and handling
+│   ├── storage.rs           # Storage backend trait and implementations
+│   ├── tokens.rs            # Token management
+│   ├── client.rs            # OAuth/OIDC client
+│   ├── api/                 # REST API endpoints (auth, MFA, users, etc.)
+│   ├── server/              # OAuth2/OIDC/SAML server implementations
+│   │   ├── oauth/           # OAuth 2.0 server (device flow, PAR, DPoP, etc.)
+│   │   └── oidc/            # OpenID Connect (CIBA, JARM, backchannel logout)
+│   ├── protocols/           # Protocol implementations
+│   │   ├── kerberos.rs      # Kerberos 5 with SPNEGO and AES-CTS
+│   │   ├── gnap.rs          # GNAP (Grant Negotiation and Authorization)
+│   │   ├── radius.rs        # RADIUS authentication
+│   │   ├── openid4vp.rs     # OpenID for Verifiable Presentations
+│   │   ├── uma.rs           # UMA 2.0 (User-Managed Access)
+│   │   ├── cas.rs           # Central Authentication Service
+│   │   ├── scim.rs          # SCIM 2.0 provisioning
+│   │   └── ws_*.rs          # WS-Federation, WS-Trust, WS-Security
+│   ├── admin/               # Admin interfaces (CLI, TUI, Web GUI)
+│   ├── auth_modular/        # Modular authentication architecture
+│   ├── security/            # Crypto, JWT validation, secure operations
+│   ├── session/             # Session management with geo-IP
+│   ├── methods/             # Auth methods (passkeys, MFA, hardware tokens)
+│   └── distributed/        # Distributed rate limiting
+├── tests/                   # Integration tests
+├── examples/                # Example applications
+├── docs/                    # Documentation (guides, API, architecture)
+├── ffi/                     # FFI bindings for multi-language support
+├── sdks/                    # Language SDKs (Python, JavaScript)
+├── docker/                  # Docker configurations
+├── k8s/                     # Kubernetes manifests
+└── migration/               # Database migration tools
 ```
 
 ## Testing

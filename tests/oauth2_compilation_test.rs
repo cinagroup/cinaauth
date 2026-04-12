@@ -18,18 +18,13 @@ async fn test_oauth2_module_compilation() {
         code_challenge: Some("challenge".to_string()),
         code_challenge_method: Some("S256".to_string()),
         nonce: None,
+        resource: None,
     };
 
-    let _token_req = TokenRequest {
-        grant_type: "authorization_code".to_string(),
-        code: Some("code123".to_string()),
-        redirect_uri: Some("http://localhost:3000/callback".to_string()),
-        client_id: Some("test".to_string()),
-        client_secret: None,
-        code_verifier: Some("verifier".to_string()),
-        refresh_token: None,
-        ..Default::default()
-    };
+    let _token_req = TokenRequest::authorization_code("code123")
+        .redirect_uri("http://localhost:3000/callback")
+        .client_id("test")
+        .code_verifier("verifier");
 
     let _revoke_req = RevokeRequest {
         token: "token123".to_string(),

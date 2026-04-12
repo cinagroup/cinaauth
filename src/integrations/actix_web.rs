@@ -25,13 +25,24 @@ use futures_util::future::{LocalBoxFuture, Ready, ready};
 use std::{future::Future, pin::Pin, rc::Rc, sync::Arc};
 
 #[cfg(feature = "actix-integration")]
-/// Actix-web middleware for authentication
+/// Actix-web middleware for authentication.
+///
+/// # Example
+/// ```rust,ignore
+/// let mw = AuthMiddleware::new(fw.clone()).skip_path("/public");
+/// ```
 pub struct AuthMiddleware {
     auth_framework: Arc<AuthFramework>,
     skip_paths: Vec<String>,
 }
 
 impl AuthMiddleware {
+    /// Create a new auth middleware.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mw = AuthMiddleware::new(fw.clone());
+    /// ```
     pub fn new(auth_framework: Arc<AuthFramework>) -> Self {
         Self {
             auth_framework,
@@ -39,11 +50,23 @@ impl AuthMiddleware {
         }
     }
 
+    /// Add a path to skip authentication.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mw = mw.skip_path("/health");
+    /// ```
     pub fn skip_path(mut self, path: impl Into<String>) -> Self {
         self.skip_paths.push(path.into());
         self
     }
 
+    /// Add multiple paths to skip authentication.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mw = mw.skip_paths(vec!["/health".into(), "/metrics".into()]);
+    /// ```
     pub fn skip_paths(mut self, paths: Vec<String>) -> Self {
         self.skip_paths.extend(paths);
         self
@@ -75,6 +98,12 @@ where
     }
 }
 
+/// Actix-web service wrapper for auth middleware.
+///
+/// # Example
+/// ```rust,ignore
+/// // Created by AuthMiddleware::new_transform
+/// ```
 pub struct AuthMiddlewareService<S> {
     service: Rc<S>,
     auth_framework: Arc<AuthFramework>,
@@ -164,12 +193,13 @@ where
                                     .scope
                                     .split_whitespace()
                                     .map(|s| s.to_string())
-                                    .collect(),
+                                    .collect::<Vec<_>>()
+                                    .into(),
                                 auth_method: "jwt".to_string(),
                                 client_id: None,
                                 user_profile: None,
-                                permissions: claims.permissions.unwrap_or_default(),
-                                roles: claims.roles.unwrap_or_default(),
+                                permissions: claims.permissions.unwrap_or_default().into(),
+                                roles: claims.roles.unwrap_or_default().into(),
                                 metadata: crate::tokens::TokenMetadata::default(),
                             };
                             tracing::debug!("AuthToken stored in request extensions");
@@ -192,7 +222,14 @@ where
     }
 }
 
-/// Extractor for authenticated user tokens
+/// Extractor for authenticated user tokens.
+///
+/// # Example
+/// ```rust,ignore
+/// async fn handler(user: AuthenticatedUser) -> impl Responder {
+///     format!("Hello {}", user.0.user_id)
+/// }
+/// ```
 pub struct AuthenticatedUser(pub AuthToken);
 
 impl FromRequest for AuthenticatedUser {
@@ -215,7 +252,13 @@ impl FromRequest for AuthenticatedUser {
     }
 }
 
-/// Extractor for checking permissions
+/// Extractor for checking permissions.
+///
+/// # Example
+/// ```rust,ignore
+/// let rp = RequirePermission::any_user(perm, authz_engine);
+/// let ok = rp.check_access("user-1", &req).await?;
+/// ```
 pub struct RequirePermission<S: AuthorizationStorage> {
     permission: AbacPermission,
     authorization: Arc<AuthorizationEngine<S>>,
@@ -235,7 +278,12 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
         }
     }
 
-    /// Create without specific user ID requirement (validates any authenticated user)
+    /// Create without specific user ID requirement (validates any authenticated user).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let rp = RequirePermission::any_user(perm, engine);
+    /// ```
     pub fn any_user(
         permission: AbacPermission,
         authorization: Arc<AuthorizationEngine<S>>,
@@ -243,7 +291,12 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
         Self::new(permission, authorization, None)
     }
 
-    /// Create with specific user ID requirement (validates specific user)
+    /// Create with specific user ID requirement (validates specific user).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let rp = RequirePermission::specific_user(perm, engine, "user-1".into());
+    /// ```
     pub fn specific_user(
         permission: AbacPermission,
         authorization: Arc<AuthorizationEngine<S>>,
@@ -252,7 +305,12 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
         Self::new(permission, authorization, Some(user_id))
     }
 
-    /// Check if the current user has the specific permission this struct was created with
+    /// Check if the current user has the specific permission this struct was created with.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let ok = rp.check_access("user-1", &req).await?;
+    /// ```
     pub async fn check_access(
         &self,
         user_id: &str,
@@ -279,7 +337,12 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
         }
     }
 
-    /// Validate that the current request has the required permission
+    /// Validate that the current request has the required permission.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// rp.validate(&token, &req, &fw).await?;
+    /// ```
     pub async fn validate(
         &self,
         token: &AuthToken,
@@ -375,7 +438,7 @@ impl<S: AuthorizationStorage + 'static> FromRequest for RequirePermission<S> {
                     resource: "temp".to_string(),
                     action: "temp".to_string(),
                     conditions: None,
-                    attributes: Vec::new(),
+                    attributes: std::collections::HashMap::new(),
                 };
 
                 // Return the RequirePermission instance, which can then be used
@@ -416,13 +479,24 @@ fn extract_token_from_request(req: &HttpRequest) -> Result<String> {
     Ok(auth_str[7..].to_string())
 }
 
-/// Configuration for Actix-web integration
+/// Configuration for Actix-web integration.
+///
+/// # Example
+/// ```rust,ignore
+/// let config = ActixConfig::new(fw.clone()).with_authorization(engine);
+/// ```
 pub struct ActixConfig<S: AuthorizationStorage> {
     pub auth_framework: Arc<AuthFramework>,
     pub authorization_engine: Option<Arc<AuthorizationEngine<S>>>,
 }
 
 impl<S: AuthorizationStorage + 'static> ActixConfig<S> {
+    /// Create a new Actix config.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let cfg = ActixConfig::new(fw.clone());
+    /// ```
     pub fn new(auth_framework: Arc<AuthFramework>) -> Self {
         Self {
             auth_framework,
@@ -430,12 +504,23 @@ impl<S: AuthorizationStorage + 'static> ActixConfig<S> {
         }
     }
 
+    /// Add an authorization engine.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let cfg = cfg.with_authorization(engine);
+    /// ```
     pub fn with_authorization(mut self, engine: Arc<AuthorizationEngine<S>>) -> Self {
         self.authorization_engine = Some(engine);
         self
     }
 
-    /// Configure Actix-web app with auth middleware
+    /// Configure Actix-web app with auth middleware.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// cfg.configure_app::<()>(&mut service_cfg);
+    /// ```
     pub fn configure_app<T>(&self, cfg: &mut web::ServiceConfig)
     where
         T: 'static,
@@ -504,5 +589,109 @@ mod tests {
         let req = test::TestRequest::get().uri("/protected").to_request();
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_client_error());
+    }
+
+    #[actix_web::test]
+    async fn test_skip_path_health() {
+        let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
+            .with_jwt_secret("auth-framework");
+        let config = AuthConfig::new()
+            .secret("auth-framework".to_string());
+        let auth_framework = Arc::new(AuthFramework::new(config));
+
+        let middleware = AuthMiddleware::new(auth_framework.clone());
+        // Default skip paths include "/health"
+        let app = test::init_service(
+            App::new()
+                .wrap(middleware)
+                .route("/health", web::get().to(|| async { "ok" })),
+        )
+        .await;
+
+        let req = test::TestRequest::get().uri("/health").to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_web::test]
+    async fn test_skip_paths_custom() {
+        let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
+            .with_jwt_secret("auth-framework");
+        let config = AuthConfig::new()
+            .secret("auth-framework".to_string());
+        let auth_framework = Arc::new(AuthFramework::new(config));
+
+        let middleware = AuthMiddleware::new(auth_framework.clone())
+            .skip_path("/public".to_string());
+
+        let app = test::init_service(
+            App::new()
+                .wrap(middleware)
+                .route("/public", web::get().to(|| async { "ok" })),
+        )
+        .await;
+
+        let req = test::TestRequest::get().uri("/public").to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_web::test]
+    async fn test_invalid_bearer_token() {
+        let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
+            .with_jwt_secret("auth-framework");
+        let config = AuthConfig::new()
+            .secret("auth-framework".to_string());
+        let auth_framework = Arc::new(AuthFramework::new(config));
+
+        let app = test::init_service(
+            App::new()
+                .wrap(AuthMiddleware::new(auth_framework.clone()))
+                .route("/protected", web::get().to(test_handler)),
+        )
+        .await;
+
+        // Malformed bearer token should fail
+        let req = test::TestRequest::get()
+            .uri("/protected")
+            .insert_header(("Authorization", "Bearer invalid.jwt.token"))
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_client_error());
+    }
+
+    #[actix_web::test]
+    async fn test_missing_bearer_prefix() {
+        let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
+            .with_jwt_secret("auth-framework");
+        let config = AuthConfig::new()
+            .secret("auth-framework".to_string());
+        let auth_framework = Arc::new(AuthFramework::new(config));
+
+        let app = test::init_service(
+            App::new()
+                .wrap(AuthMiddleware::new(auth_framework.clone()))
+                .route("/protected", web::get().to(test_handler)),
+        )
+        .await;
+
+        // No "Bearer " prefix
+        let req = test::TestRequest::get()
+            .uri("/protected")
+            .insert_header(("Authorization", "some-raw-token"))
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_client_error());
+    }
+
+    #[actix_web::test]
+    async fn test_actix_config_new() {
+        let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
+            .with_jwt_secret("test-actix-config");
+        let config = AuthConfig::new().secret("test-actix-config".to_string());
+        let fw = Arc::new(AuthFramework::new(config));
+
+        let actix_config: ActixConfig<crate::storage::MemoryStorage> = ActixConfig::new(fw);
+        assert!(actix_config.authorization_engine.is_none());
     }
 }

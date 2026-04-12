@@ -15,7 +15,7 @@
 //! # Core Capabilities
 //!
 //! - **Real-time Monitoring**: Live metrics and health status
-//! - **Configuration Management**: Dynamic configuration updates
+//! - **Configuration Management**: Configuration inspection and disk-backed reloads
 //! - **User Management**: User account and permission administration
 //! - **Security Monitoring**: Threat detection and incident response
 //! - **Audit Logging**: Comprehensive activity tracking
@@ -40,7 +40,8 @@
 //!
 //! # Configuration Management
 //!
-//! - **Live Updates**: Modify configuration without restarts
+//! - **Configuration Inspection**: Review current effective settings
+//! - **Disk-Backed Reloads**: Reload configuration from the configured sources
 //! - **Validation**: Real-time configuration validation
 //! - **Backup/Restore**: Configuration versioning and rollback
 //! - **Environment Management**: Dev, staging, production configs
@@ -81,19 +82,65 @@ use chrono;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-/// Shared application state
+/// Server-side admin GUI session metadata.
+///
+/// Tracks an authenticated admin session with CSRF protection.
+/// Sessions expire after `expires_at` is passed.
+///
+/// # Example
+/// ```rust,ignore
+/// let session = AdminSessionRecord {
+///     username: "admin".into(),
+///     created_at: chrono::Utc::now(),
+///     expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
+///     last_activity: chrono::Utc::now(),
+///     csrf_token: "random-token".into(),
+/// };
+/// ```
+#[derive(Debug, Clone)]
+pub struct AdminSessionRecord {
+    pub username: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+    pub last_activity: chrono::DateTime<chrono::Utc>,
+    /// Per-session CSRF token (Synchronizer Token Pattern).
+    pub csrf_token: String,
+}
+
+/// In-memory login throttling state for the admin GUI.
+///
+/// Tracks failed login attempts to mitigate brute force attacks
+/// on the administrative interface.
+#[derive(Debug, Clone)]
+pub struct AdminLoginAttemptRecord {
+    pub failed_attempts: u32,
+    pub first_failed_at: chrono::DateTime<chrono::Utc>,
+    pub last_failed_at: chrono::DateTime<chrono::Utc>,
+    pub locked_until: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// Shared application state.
+///
+/// # Example
+/// ```rust,ignore
+/// let state = AppState::new(settings)?;
+/// ```
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<RwLock<AuthFrameworkSettings>>,
     pub config_manager: crate::config::ConfigManager,
     pub health_status: HealthStatus,
     pub server_status: Arc<RwLock<ServerStatus>>,
-    /// Active admin GUI session tokens (each set on login, cleared on logout).
+    /// Active admin GUI sessions keyed by random session token.
     ///
-    /// Using a `Mutex`-guarded `HashSet` so the same `AppState` clone shared
-    /// across all Axum handlers can atomically add/remove tokens without a
-    /// full async runtime requirement at the lock site.
-    pub admin_sessions: Arc<std::sync::Mutex<std::collections::HashSet<String>>>,
+    /// Using a `Mutex`-guarded map so the same `AppState` clone shared across
+    /// all Axum handlers can atomically validate, renew, and revoke sessions
+    /// without requiring an async lock at the middleware site.
+    pub admin_sessions:
+        Arc<std::sync::Mutex<std::collections::HashMap<String, AdminSessionRecord>>>,
+    /// Failed admin GUI login attempts keyed by username.
+    pub admin_login_attempts:
+        Arc<std::sync::Mutex<std::collections::HashMap<String, AdminLoginAttemptRecord>>>,
     /// Optional reference to the running AuthFramework instance.
     /// When present, web/API handlers can query live storage data (users, events, etc.).
     pub auth_framework: Option<Arc<crate::AuthFramework>>,
@@ -108,16 +155,50 @@ impl std::fmt::Debug for AppState {
     }
 }
 
+/// Current running state of the server
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerRunState {
+    /// Server is actively running and accepting connections
+    Running,
+    /// Server is stopped
+    Stopped,
+    /// Server is paused
+    Paused,
+}
+
 /// Server status information
 #[derive(Debug, Clone)]
 pub struct ServerStatus {
-    pub web_server_running: bool,
+    pub web_server_state: ServerRunState,
     pub web_server_port: Option<u16>,
     pub last_config_update: Option<chrono::DateTime<chrono::Utc>>,
     pub active_sessions: u32,
     pub health_status: HealthStatus,
+    pub started_at: chrono::DateTime<chrono::Utc>,
 }
 
+pub(crate) fn format_uptime_since(
+    started_at: chrono::DateTime<chrono::Utc>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> String {
+    let elapsed = now.signed_duration_since(started_at);
+    if elapsed < chrono::Duration::zero() {
+        return "0m".to_string();
+    }
+
+    let seconds = elapsed.num_seconds() as u64;
+    let days = seconds / 86_400;
+    let hours = (seconds % 86_400) / 3_600;
+    let minutes = (seconds % 3_600) / 60;
+
+    if days > 0 {
+        format!("{days}d {hours}h {minutes}m")
+    } else if hours > 0 {
+        format!("{hours}h {minutes}m")
+    } else {
+        format!("{minutes}m")
+    }
+}
 /// System health status
 #[derive(Debug, Clone)]
 pub enum HealthStatus {
@@ -161,11 +242,12 @@ impl AppState {
         let config_manager = crate::config::ConfigManager::new()?;
 
         let server_status = ServerStatus {
-            web_server_running: false,
+            web_server_state: ServerRunState::Stopped,
             web_server_port: None,
             last_config_update: None,
             active_sessions: 0,
             health_status: HealthStatus::Healthy,
+            started_at: chrono::Utc::now(),
         };
 
         Ok(Self {
@@ -173,13 +255,19 @@ impl AppState {
             config_manager,
             health_status: HealthStatus::Healthy,
             server_status: Arc::new(RwLock::new(server_status)),
-            admin_sessions: Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
+            admin_sessions: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            admin_login_attempts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             auth_framework: None,
         })
     }
 
     /// Attach a running [`crate::AuthFramework`] instance so that admin GUI
     /// handlers can query live storage data (users, audit events, etc.).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let state = state.with_auth_framework(fw.clone());
+    /// ```
     pub fn with_auth_framework(mut self, af: Arc<crate::AuthFramework>) -> Self {
         self.auth_framework = Some(af);
         self
@@ -193,10 +281,9 @@ impl AppState {
             match storage.get_kv("health_check_ping").await {
                 Ok(_) => {
                     let status = self.server_status.read().await;
-                    if status.web_server_running {
-                        HealthStatus::Healthy
-                    } else {
-                        HealthStatus::Warning("Web server not running".to_string())
+                    match status.web_server_state {
+                        ServerRunState::Running => HealthStatus::Healthy,
+                        _ => HealthStatus::Warning("Web server not running".to_string()),
                     }
                 }
                 Err(e) => HealthStatus::Critical(format!("Storage unavailable: {}", e)),
@@ -218,42 +305,29 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn update_server_status(&self, running: bool, port: Option<u16>) {
+    pub async fn update_server_status(&self, state: ServerRunState, port: Option<u16>) {
         let mut status = self.server_status.write().await;
-        status.web_server_running = running;
+        status.web_server_state = state;
         status.web_server_port = port;
     }
 
-    /// Get server information for display in TUI
+    /// Get server information for display in TUI.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let info = state.get_server_info().await?;
+    /// println!("version: {}", info.version);
+    /// ```
     pub async fn get_server_info(&self) -> Result<ServerInfo> {
-        use std::sync::OnceLock;
-        use std::time::SystemTime;
-        static START_TIME: OnceLock<SystemTime> = OnceLock::new();
-        let start = START_TIME.get_or_init(SystemTime::now);
-
-        let uptime = match start.elapsed() {
-            Ok(d) => {
-                let s = d.as_secs();
-                let (days, hours, mins) = (s / 86400, (s % 86400) / 3600, (s % 3600) / 60);
-                if days > 0 {
-                    format!("{days}d {hours}h {mins}m")
-                } else if hours > 0 {
-                    format!("{hours}h {mins}m")
-                } else {
-                    format!("{mins}m")
-                }
-            }
-            Err(_) => "Unknown".to_string(),
-        };
-
         let status = self.server_status.read().await;
+        let uptime = format_uptime_since(status.started_at, chrono::Utc::now());
         Ok(ServerInfo {
             version: env!("CARGO_PKG_VERSION").to_string(),
             uptime,
-            status: if status.web_server_running {
-                "Running"
-            } else {
-                "Stopped"
+            status: match status.web_server_state {
+                ServerRunState::Running => "Running",
+                ServerRunState::Stopped => "Stopped",
+                ServerRunState::Paused => "Paused",
             }
             .to_string(),
             port: status.web_server_port,
@@ -261,7 +335,13 @@ impl AppState {
         })
     }
 
-    /// Get user statistics for display in TUI
+    /// Get user statistics for display in TUI.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let stats = state.get_user_statistics().await?;
+    /// println!("total users: {}", stats.total_users);
+    /// ```
     pub async fn get_user_statistics(&self) -> Result<UserStatistics> {
         if let Some(ref af) = self.auth_framework {
             let storage = af.storage();
@@ -275,11 +355,18 @@ impl AppState {
             };
 
             let status = self.server_status.read().await;
+            let (failed_logins, new_regs) = match af.get_security_audit_stats().await {
+                Ok(stats) => (
+                    stats.failed_logins_24h as u32,
+                    stats.password_resets_24h as u32,
+                ),
+                Err(_) => (0, 0),
+            };
             Ok(UserStatistics {
                 total_users,
                 active_sessions: status.active_sessions,
-                failed_logins_today: 0, // Requires an audit-log query (not yet stored).
-                new_registrations_today: 0, // Requires an audit-log query (not yet stored).
+                failed_logins_today: failed_logins,
+                new_registrations_today: new_regs,
             })
         } else {
             let status = self.server_status.read().await;
@@ -292,7 +379,12 @@ impl AppState {
         }
     }
 
-    /// Get recent security events for display in TUI
+    /// Get recent security events for display in TUI.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let events = state.get_recent_security_events().await?;
+    /// ```
     pub async fn get_recent_security_events(&self) -> Result<Vec<SecurityEvent>> {
         if let Some(ref af) = self.auth_framework {
             let logs = af
@@ -362,6 +454,11 @@ pub enum CliCommand {
         #[command(subcommand)]
         action: SecurityAction,
     },
+    /// Maintenance operations for backup, restore, reset, and migration generation
+    Maintenance {
+        #[command(subcommand)]
+        action: MaintenanceAction,
+    },
     /// Show system status
     Status {
         /// Show detailed information
@@ -370,6 +467,43 @@ pub enum CliCommand {
         /// Output format (json, yaml, table)
         #[arg(long, default_value = "table")]
         format: String,
+    },
+}
+
+#[derive(Debug, Clone, clap::Subcommand)]
+pub enum MaintenanceAction {
+    /// Export a logical maintenance snapshot to disk
+    Backup {
+        /// Output snapshot path
+        output_path: String,
+        /// Preview the operation without writing the snapshot
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Restore a logical maintenance snapshot from disk
+    Restore {
+        /// Input snapshot path
+        backup_path: String,
+        /// Confirm destructive overwrite
+        #[arg(long)]
+        confirm: bool,
+        /// Preview the restore without mutating storage
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Reset logical auth data in the configured backend
+    Reset {
+        /// Confirm destructive deletion
+        #[arg(long)]
+        confirm: bool,
+        /// Preview the reset without deleting data
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Create a backend-specific migration template
+    CreateMigration {
+        /// Human-readable migration name
+        name: String,
     },
 }
 
@@ -541,13 +675,14 @@ mod tests {
     #[test]
     fn test_server_status_default_fields() {
         let status = ServerStatus {
-            web_server_running: false,
+            web_server_state: ServerRunState::Stopped,
             web_server_port: None,
             last_config_update: None,
             active_sessions: 0,
             health_status: HealthStatus::Healthy,
+            started_at: chrono::Utc::now(),
         };
-        assert!(!status.web_server_running);
+        assert_eq!(status.web_server_state, ServerRunState::Stopped);
         assert_eq!(status.active_sessions, 0);
         assert!(status.web_server_port.is_none());
     }
@@ -602,5 +737,17 @@ mod tests {
         assert_eq!(event.event_type, "LoginFailure");
         assert!(event.ip_address.is_some());
         assert!(event.user_id.is_some());
+    }
+
+    #[test]
+    fn test_format_uptime_since() {
+        let started_at = chrono::DateTime::parse_from_rfc3339("2026-03-21T10:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let now = chrono::DateTime::parse_from_rfc3339("2026-03-21T12:45:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+
+        assert_eq!(format_uptime_since(started_at, now), "2h 45m");
     }
 }

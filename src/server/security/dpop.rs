@@ -225,7 +225,7 @@ impl DpopManager {
                 }
                 Err(e) => {
                     tracing::warn!("Access token JWT validation failed: {}", e);
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "Invalid DPoP-bound access token".to_string(),
                     ));
                 }
@@ -756,16 +756,16 @@ impl DpopManager {
         // Parse the access token as a JWT to extract claims
         let token_parts: Vec<&str> = access_token.split('.').collect();
         if token_parts.len() != 3 {
-            return Err(AuthError::InvalidToken("Invalid JWT format".to_string()));
+            return Err(AuthError::token("Invalid JWT format".to_string()));
         }
 
         // Decode the payload (claims) section
         let payload = URL_SAFE_NO_PAD
             .decode(token_parts[1])
-            .map_err(|_| AuthError::InvalidToken("Invalid JWT payload encoding".to_string()))?;
+            .map_err(|_| AuthError::token("Invalid JWT payload encoding".to_string()))?;
 
         let claims: serde_json::Value = serde_json::from_slice(&payload)
-            .map_err(|_| AuthError::InvalidToken("Invalid JWT claims format".to_string()))?;
+            .map_err(|_| AuthError::token("Invalid JWT claims format".to_string()))?;
 
         // Parse the DPoP proof to get the JWK
         let (dpop_header, _dpop_claims) = self.parse_dpop_proof(dpop_proof_jwt)?;
@@ -788,7 +788,7 @@ impl DpopManager {
             }
         }
 
-        Err(AuthError::InvalidToken(
+        Err(AuthError::token(
             "Access token not bound to DPoP key".to_string(),
         ))
     }
@@ -804,22 +804,23 @@ impl DpopManager {
             .get("cnf")
             .and_then(|c| c.as_object())
             .ok_or_else(|| {
-                AuthError::InvalidToken("Access token missing confirmation claim".to_string())
+                AuthError::token("Access token missing confirmation claim".to_string())
             })?;
 
-        let token_jkt = cnf.get("jkt").and_then(|j| j.as_str()).ok_or_else(|| {
-            AuthError::InvalidToken("Access token missing JWK thumbprint".to_string())
-        })?;
+        let token_jkt = cnf
+            .get("jkt")
+            .and_then(|j| j.as_str())
+            .ok_or_else(|| AuthError::token("Access token missing JWK thumbprint".to_string()))?;
 
         // Calculate thumbprint from DPoP proof JWK
         let (dpop_header, _dpop_claims) = self.parse_dpop_proof(dpop_proof_jwt)?;
         let jwk = dpop_header
             .get("jwk")
-            .ok_or_else(|| AuthError::InvalidToken("DPoP proof missing JWK".to_string()))?;
+            .ok_or_else(|| AuthError::token("DPoP proof missing JWK".to_string()))?;
         let dpop_jkt = self.calculate_jwk_thumbprint(jwk)?;
 
         if token_jkt != dpop_jkt {
-            return Err(AuthError::InvalidToken(
+            return Err(AuthError::token(
                 "DPoP proof JWK does not match access token binding".to_string(),
             ));
         }
@@ -862,7 +863,7 @@ mod tests {
 
     fn create_test_dpop_manager() -> DpopManager {
         let jwt_config = SecureJwtConfig::default();
-        let jwt_validator = SecureJwtValidator::new(jwt_config);
+        let jwt_validator = SecureJwtValidator::new(jwt_config).expect("test JWT config");
         DpopManager::new(jwt_validator)
     }
     fn create_test_jwk() -> serde_json::Value {

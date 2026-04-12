@@ -3,7 +3,7 @@
 //! This test validates that our enterprise authentication components work
 //! independently of the OAuth modules that have compilation issues.
 
-use auth_framework::{
+use auth_framework::protocols::{
     saml_assertions::{SamlAssertionBuilder, SamlAssertionValidator, SamlNameId, SamlSubject},
     ws_security::{PasswordType, WsSecurityClient, WsSecurityConfig},
     ws_trust::{
@@ -226,7 +226,7 @@ fn test_ws_trust_soap_request_generation() {
         auth_context: None,
     };
 
-    let soap_request = sts.create_rst_soap_request(&request).unwrap();
+    let soap_request = sts.create_rst_soap_request(&request, "test_user", Some("test_pass")).unwrap();
 
     assert!(soap_request.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
     assert!(soap_request.contains("<soap:Envelope"));
@@ -327,7 +327,7 @@ fn test_complete_enterprise_workflow() {
             key_size: None,
             existing_token: None,
             auth_context: None,
-        })
+        }, "employee@corp.com", Some("employee_pass"))
         .unwrap();
 
     assert!(soap_message.contains("<soap:Envelope"));

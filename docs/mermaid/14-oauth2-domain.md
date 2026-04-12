@@ -1,6 +1,6 @@
 # Package: oauth2 domain (Layer 2)
-> `src/oauth2.rs` — domain model, NOT wired to HTTP handlers
 
+> `src/server/oauth/oauth2_server.rs` and `src/server/oauth/oauth2_enhanced_storage.rs` — canonical OAuth domain/server types re-exported from `crate::oauth2_server`
 > [← 13-audit](13-audit.md) · [index](23-cross-package.md) · [15-server-layer →](15-server-layer.md)
 
 ```mermaid
@@ -140,9 +140,9 @@ classDiagram
         +bool active
     }
     note for ClientType "Canonical ClientType in src/client.rs. Re-exported by server::mod, server::core::client_registry, oauth2_enhanced_storage"
-    note for TokenRequest "Canonical in oauth2_server.rs. client_id is Option to support HTTP Basic auth. api::oauth2 re-exports these types."
-    note for TokenResponse "Canonical in oauth2_server.rs. api::oauth2 re-exports."
-    note for AuthorizationRequest "Canonical in oauth2_server.rs. api::oauth2 re-exports as AuthorizeRequest alias."
+    note for TokenRequest "Canonical in src/server/oauth/oauth2_server.rs. client_id is Option to support HTTP Basic auth. api::oauth2 re-exports these types."
+    note for TokenResponse "Canonical in src/server/oauth/oauth2_server.rs. api::oauth2 re-exports."
+    note for AuthorizationRequest "Canonical in src/server/oauth/oauth2_server.rs. api::oauth2 re-exports as AuthorizeRequest alias."
     OAuth2Server *-- EnhancedTokenStorage
     OAuth2Server *-- OAuth2Config
     OAuth2Server ..> TokenRequest

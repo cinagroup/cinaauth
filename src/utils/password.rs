@@ -2,9 +2,12 @@
 
 use crate::errors::{AuthError, Result};
 use argon2::{
-    Argon2,
+    Argon2, Params,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
+
+/// Maximum password length to prevent denial-of-service via hashing.
+const MAX_PASSWORD_LENGTH: usize = 128;
 
 /// Password strength levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,10 +25,19 @@ pub struct PasswordStrength {
     pub feedback: Vec<String>,
 }
 
-/// Hash a password using Argon2
+/// Hash a password using Argon2id with OWASP-minimum parameters.
 pub fn hash_password(password: &str) -> Result<String> {
+    if password.len() > MAX_PASSWORD_LENGTH {
+        return Err(AuthError::validation(format!(
+            "Password exceeds maximum length of {} bytes",
+            MAX_PASSWORD_LENGTH
+        )));
+    }
     let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
+    // OWASP minimum: 46 MiB memory, 1 iteration, 1 degree of parallelism
+    let params = Params::new(46 * 1024, 1, 1, None)
+        .map_err(|e| AuthError::internal(format!("Invalid Argon2 params: {}", e)))?;
+    let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
 
     let password_hash = argon2
         .hash_password(password.as_bytes(), &salt)
@@ -34,11 +46,18 @@ pub fn hash_password(password: &str) -> Result<String> {
     Ok(password_hash.to_string())
 }
 
-/// Verify a password against its hash
+/// Verify a password against its hash.
+///
+/// The Argon2 parameters are read from the hash itself, so verification
+/// works for hashes created with any parameter set.
 pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
+    if password.len() > MAX_PASSWORD_LENGTH {
+        return Ok(false);
+    }
     let parsed_hash = PasswordHash::new(hash)
         .map_err(|e| AuthError::internal(format!("Invalid password hash: {}", e)))?;
 
+    // Argon2::default() extracts algorithm/params from the PHC string
     let argon2 = Argon2::default();
 
     match argon2.verify_password(password.as_bytes(), &parsed_hash) {

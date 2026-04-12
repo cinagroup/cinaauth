@@ -11,6 +11,12 @@ pub mod jwt_server {
     use serde::{Deserialize, Serialize};
     use std::sync::Arc;
 
+    /// Configuration for the JWT token server.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = JwtServerConfig { issuer: "https://auth.example.com".into(), key_id: "k1".into() };
+    /// ```
     #[derive(Debug, Clone)]
     pub struct JwtServerConfig {
         pub issuer: String,
@@ -32,6 +38,12 @@ pub mod jwt_server {
     }
 
     impl JwtServer {
+        /// Create a new JWT server.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let server = JwtServer::new(JwtServerConfig::default(), storage).await?;
+        /// ```
         pub async fn new(config: JwtServerConfig, storage: Arc<dyn AuthStorage>) -> Result<Self> {
             Ok(Self { config, storage })
         }
@@ -41,10 +53,22 @@ pub mod jwt_server {
         /// `JwtServer` requires no async startup work — all state is set up in [`Self::new`].
         /// This method is provided for API symmetry with other server modules that
         /// do require an initialization step (e.g., connecting to external services).
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// server.initialize().await?;
+        /// ```
         pub async fn initialize(&self) -> Result<()> {
             Ok(())
         }
 
+        /// Get the well-known JWT configuration for discovery.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let config = server.get_well_known_jwt_configuration().await?;
+        /// println!("issuer: {}", config.issuer);
+        /// ```
         pub async fn get_well_known_jwt_configuration(&self) -> Result<JwtWellKnownConfiguration> {
             Ok(JwtWellKnownConfiguration {
                 issuer: self.config.issuer.clone(),
@@ -52,7 +76,13 @@ pub mod jwt_server {
             })
         }
 
-        /// Store JWT metadata in storage
+        /// Store JWT metadata in storage.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let meta = server.get_well_known_jwt_configuration().await?;
+        /// server.store_jwt_metadata(&meta).await?;
+        /// ```
         pub async fn store_jwt_metadata(&self, metadata: &JwtWellKnownConfiguration) -> Result<()> {
             let key = format!("jwt_metadata:{}", self.config.issuer);
             let value = serde_json::to_string(metadata).map_err(|e| {
@@ -64,7 +94,14 @@ pub mod jwt_server {
             Ok(())
         }
 
-        /// Retrieve JWT metadata from storage
+        /// Retrieve JWT metadata from storage.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// if let Some(meta) = server.get_stored_metadata().await? {
+        ///     println!("stored issuer: {}", meta.issuer);
+        /// }
+        /// ```
         pub async fn get_stored_metadata(&self) -> Result<Option<JwtWellKnownConfiguration>> {
             let key = format!("jwt_metadata:{}", self.config.issuer);
 
@@ -82,7 +119,12 @@ pub mod jwt_server {
             }
         }
 
-        /// Store JWT signing key information
+        /// Store JWT signing key information.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// server.store_signing_key("pem-encoded-key-data").await?;
+        /// ```
         pub async fn store_signing_key(&self, key_data: &str) -> Result<()> {
             let key = format!("jwt_key:{}", self.config.key_id);
             self.storage
@@ -93,6 +135,12 @@ pub mod jwt_server {
         }
     }
 
+    /// Well-known JWT configuration for OIDC discovery.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let wk = JwtWellKnownConfiguration { issuer: "https://auth.example.com".into(), jwks_uri: "https://auth.example.com/jwks".into() };
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct JwtWellKnownConfiguration {
         pub issuer: String,
@@ -106,6 +154,12 @@ pub mod api_gateway {
     use crate::storage::AuthStorage;
     use std::sync::Arc;
 
+    /// Configuration for the API gateway module.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = ApiGatewayConfig { name: "my-gateway".into() };
+    /// ```
     #[derive(Debug, Clone)]
     pub struct ApiGatewayConfig {
         pub name: String,
@@ -125,6 +179,12 @@ pub mod api_gateway {
     }
 
     impl ApiGateway {
+        /// Create a new API gateway.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let gw = ApiGateway::new(ApiGatewayConfig::default(), storage).await?;
+        /// ```
         pub async fn new(config: ApiGatewayConfig, storage: Arc<dyn AuthStorage>) -> Result<Self> {
             Ok(Self { config, storage })
         }
@@ -134,11 +194,21 @@ pub mod api_gateway {
         /// `ApiGateway` requires no async startup work — all state is set up in [`Self::new`].
         /// This method is provided for API symmetry with other server modules that
         /// do require an initialization step (e.g., connecting to external services).
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// gw.initialize().await?;
+        /// ```
         pub async fn initialize(&self) -> Result<()> {
             Ok(())
         }
 
-        /// Store API gateway configuration metadata
+        /// Store API gateway configuration metadata.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// gw.store_gateway_metadata().await?;
+        /// ```
         pub async fn store_gateway_metadata(&self) -> Result<()> {
             let key = format!("api_gateway_config:{}", self.config.name);
             let metadata = serde_json::json!({
@@ -154,7 +224,12 @@ pub mod api_gateway {
             Ok(())
         }
 
-        /// Store API route configuration
+        /// Store API route configuration.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// gw.store_route_config("/api/users", "{\"auth\": true}").await?;
+        /// ```
         pub async fn store_route_config(&self, route_path: &str, config_data: &str) -> Result<()> {
             let key = format!("api_gateway_route:{}:{}", self.config.name, route_path);
             self.storage
@@ -168,7 +243,14 @@ pub mod api_gateway {
             Ok(())
         }
 
-        /// Get API route configuration
+        /// Get API route configuration.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// if let Some(cfg) = gw.get_route_config("/api/users").await? {
+        ///     println!("route config: {}", cfg);
+        /// }
+        /// ```
         pub async fn get_route_config(&self, route_path: &str) -> Result<Option<String>> {
             let key = format!("api_gateway_route:{}:{}", self.config.name, route_path);
 
@@ -182,7 +264,12 @@ pub mod api_gateway {
             }
         }
 
-        /// Get gateway name from config
+        /// Get gateway name from config.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let name = gw.get_gateway_name();
+        /// ```
         pub fn get_gateway_name(&self) -> &str {
             &self.config.name
         }
@@ -196,6 +283,12 @@ pub mod saml_idp {
     use serde::{Deserialize, Serialize};
     use std::sync::Arc;
 
+    /// Configuration for the SAML Identity Provider.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SamlIdpConfig { entity_id: "https://idp.example.com".into() };
+    /// ```
     #[derive(Debug, Clone)]
     pub struct SamlIdpConfig {
         pub entity_id: String,
@@ -215,6 +308,12 @@ pub mod saml_idp {
     }
 
     impl SamlIdentityProvider {
+        /// Create a new SAML Identity Provider.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let idp = SamlIdentityProvider::new(SamlIdpConfig::default(), storage).await?;
+        /// ```
         pub async fn new(config: SamlIdpConfig, storage: Arc<dyn AuthStorage>) -> Result<Self> {
             Ok(Self { config, storage })
         }
@@ -224,17 +323,34 @@ pub mod saml_idp {
         /// `SamlIdentityProvider` requires no async startup work — all state is set up in [`Self::new`].
         /// This method is provided for API symmetry with other server modules that
         /// do require an initialization step (e.g., connecting to external services).
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// idp.initialize().await?;
+        /// ```
         pub async fn initialize(&self) -> Result<()> {
             Ok(())
         }
 
+        /// Get the SAML metadata for this identity provider.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let meta = idp.get_metadata().await?;
+        /// println!("entity: {}", meta.entity_id);
+        /// ```
         pub async fn get_metadata(&self) -> Result<SamlMetadata> {
             Ok(SamlMetadata {
                 entity_id: self.config.entity_id.clone(),
             })
         }
 
-        /// Store SAML metadata in storage
+        /// Store SAML metadata in storage.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// idp.store_saml_metadata(&meta).await?;
+        /// ```
         pub async fn store_saml_metadata(&self, metadata: &SamlMetadata) -> Result<()> {
             let key = format!("saml_metadata:{}", self.config.entity_id);
             let value = serde_json::to_string(metadata).map_err(|e| {
@@ -246,7 +362,12 @@ pub mod saml_idp {
             Ok(())
         }
 
-        /// Store SAML assertion
+        /// Store SAML assertion.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// idp.store_assertion("assertion-1", "<xml>...</xml>").await?;
+        /// ```
         pub async fn store_assertion(
             &self,
             assertion_id: &str,
@@ -268,7 +389,14 @@ pub mod saml_idp {
             Ok(())
         }
 
-        /// Retrieve SAML assertion
+        /// Retrieve SAML assertion.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// if let Some(xml) = idp.get_assertion("assertion-1").await? {
+        ///     println!("assertion: {}", xml);
+        /// }
+        /// ```
         pub async fn get_assertion(&self, assertion_id: &str) -> Result<Option<String>> {
             let key = format!("saml_assertion:{}:{}", self.config.entity_id, assertion_id);
 
@@ -283,6 +411,12 @@ pub mod saml_idp {
         }
     }
 
+    /// SAML metadata document.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let meta = SamlMetadata { entity_id: "https://idp.example.com".into() };
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct SamlMetadata {
         pub entity_id: String,
@@ -301,6 +435,11 @@ pub mod consent {
     use std::sync::Arc;
 
     /// Configuration for the consent module.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = ConsentConfig { require_explicit_consent: true, remember_consent_ttl_secs: 3600 };
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct ConsentConfig {
         /// Require explicit consent for every OAuth 2.0 authorization request.
@@ -319,6 +458,14 @@ pub mod consent {
     }
 
     /// A stored consent decision.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let record = ConsentRecord {
+    ///     user_id: "u1".into(), client_id: "c1".into(),
+    ///     scopes: vec!["openid".into()], granted_at: 0, expires_at: None,
+    /// };
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct ConsentRecord {
         pub user_id: String,
@@ -359,6 +506,11 @@ pub mod consent {
 
     impl ConsentManager {
         /// Create an in-memory-only `ConsentManager`.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let mgr = ConsentManager::new(ConsentConfig::default());
+        /// ```
         pub fn new(config: ConsentConfig) -> Self {
             Self {
                 config,
@@ -369,6 +521,11 @@ pub mod consent {
 
         /// Create a storage-backed `ConsentManager` that persists decisions across
         /// restarts using the provided `AuthStorage` implementation.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let mgr = ConsentManager::new_with_storage(ConsentConfig::default(), storage);
+        /// ```
         pub fn new_with_storage(config: ConsentConfig, storage: Arc<dyn AuthStorage>) -> Self {
             Self {
                 config,
@@ -383,6 +540,11 @@ pub mod consent {
         }
 
         /// Record a consent decision, persisting to storage if configured.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// mgr.grant(record).await?;
+        /// ```
         pub async fn grant(&mut self, record: ConsentRecord) -> Result<()> {
             let key = format!("{}:{}", record.user_id, record.client_id);
             if let Some(storage) = &self.storage {
@@ -407,6 +569,11 @@ pub mod consent {
         }
 
         /// Revoke a previously granted consent, removing it from storage if configured.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let was_present = mgr.revoke("user-1", "client-1").await?;
+        /// ```
         pub async fn revoke(&mut self, user_id: &str, client_id: &str) -> Result<bool> {
             let key = format!("{}:{}", user_id, client_id);
             if let Some(storage) = &self.storage {
@@ -419,6 +586,11 @@ pub mod consent {
 
         /// Check whether consent for the given scopes has already been granted.
         /// Checks the in-process cache first; falls back to storage on a cache miss.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let ok = mgr.has_consent("user-1", "client-1", &["openid".into()]).await?;
+        /// ```
         pub async fn has_consent(
             &mut self,
             user_id: &str,
@@ -449,6 +621,12 @@ pub mod consent {
         }
 
         /// Return the configuration in use.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let cfg = mgr.config();
+        /// assert!(cfg.require_explicit_consent);
+        /// ```
         pub fn config(&self) -> &ConsentConfig {
             &self.config
         }
@@ -461,6 +639,11 @@ pub mod introspection {
     use serde::{Deserialize, Serialize};
 
     /// Configuration for the token introspection module.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = IntrospectionConfig { restrict_to_registered_servers: true, include_claims: false };
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct IntrospectionConfig {
         /// Allow only registered resource servers to call the introspection endpoint.
@@ -479,6 +662,12 @@ pub mod introspection {
     }
 
     /// Response body for RFC 7662 token introspection.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let resp = IntrospectionResponse::inactive();
+    /// assert!(!resp.active);
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct IntrospectionResponse {
         pub active: bool,
@@ -498,6 +687,11 @@ pub mod introspection {
 
     impl IntrospectionResponse {
         /// Return an `active: false` response (e.g., for invalid/expired tokens).
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let resp = IntrospectionResponse::inactive();
+        /// ```
         pub fn inactive() -> Self {
             Self {
                 active: false,
@@ -519,11 +713,21 @@ pub mod introspection {
 
     impl IntrospectionManager {
         /// Create a new `IntrospectionManager`.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let mgr = IntrospectionManager::new(IntrospectionConfig::default());
+        /// ```
         pub fn new(config: IntrospectionConfig) -> Self {
             Self { config }
         }
 
         /// Return the configuration in use.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let cfg = mgr.config();
+        /// ```
         pub fn config(&self) -> &IntrospectionConfig {
             &self.config
         }
@@ -540,6 +744,12 @@ pub mod device_flow_server {
     use std::sync::Arc;
 
     /// Configuration for the device flow module.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = DeviceFlowConfig::default();
+    /// assert_eq!(config.user_code_length, 8);
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct DeviceFlowConfig {
         /// Length of the user code (e.g., 8 characters).
@@ -564,6 +774,11 @@ pub mod device_flow_server {
     }
 
     /// State of a pending device authorization request.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let state = DeviceAuthState::Pending;
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub enum DeviceAuthState {
         Pending,
@@ -573,6 +788,14 @@ pub mod device_flow_server {
     }
 
     /// A device authorization record.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let rec = DeviceAuthRecord {
+    ///     device_code: "dc".into(), user_code: "UC".into(),
+    ///     client_id: "c1".into(), scopes: vec![], state: DeviceAuthState::Pending, expires_at: 0,
+    /// };
+    /// ```
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct DeviceAuthRecord {
         pub device_code: String,
@@ -615,6 +838,11 @@ pub mod device_flow_server {
 
     impl DeviceFlowManager {
         /// Create an in-memory-only `DeviceFlowManager`.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let mgr = DeviceFlowManager::new(DeviceFlowConfig::default());
+        /// ```
         pub fn new(config: DeviceFlowConfig) -> Self {
             Self {
                 config,
@@ -625,6 +853,11 @@ pub mod device_flow_server {
 
         /// Create a storage-backed `DeviceFlowManager` that persists device
         /// authorization records across restarts.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let mgr = DeviceFlowManager::new_with_storage(DeviceFlowConfig::default(), storage);
+        /// ```
         pub fn new_with_storage(config: DeviceFlowConfig, storage: Arc<dyn AuthStorage>) -> Self {
             Self {
                 config,
@@ -639,6 +872,11 @@ pub mod device_flow_server {
         }
 
         /// Persist a new device authorization record.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// mgr.register(record).await?;
+        /// ```
         pub async fn register(&mut self, record: DeviceAuthRecord) -> Result<()> {
             if let Some(storage) = &self.storage {
                 let key = Self::storage_key(&record.device_code);
@@ -658,6 +896,13 @@ pub mod device_flow_server {
         }
 
         /// Look up a record by device code, checking storage on a cache miss.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// if let Some(rec) = mgr.get("device-code-1").await? {
+        ///     println!("state: {:?}", rec.state);
+        /// }
+        /// ```
         pub async fn get(&mut self, device_code: &str) -> Result<Option<DeviceAuthRecord>> {
             if let Some(record) = self.records.get(device_code) {
                 return Ok(Some(record.clone()));
@@ -675,6 +920,11 @@ pub mod device_flow_server {
         }
 
         /// Approve the authorization request for a given user code.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let approved = mgr.approve("USER-CODE", "access-token".into()).await?;
+        /// ```
         pub async fn approve(&mut self, user_code: &str, access_token: String) -> Result<bool> {
             // Find the matching record (by user_code, not device_code).
             let device_code = self
@@ -706,8 +956,344 @@ pub mod device_flow_server {
         }
 
         /// Return the configuration in use.
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let cfg = mgr.config();
+        /// assert_eq!(cfg.user_code_length, 8);
+        /// ```
         pub fn config(&self) -> &DeviceFlowConfig {
             &self.config
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::MemoryStorage;
+    use std::sync::Arc;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn now_secs() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    }
+
+    // ── JwtServer ───────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_jwt_server_store_and_get_metadata() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = jwt_server::JwtServerConfig {
+            issuer: "https://auth.example.com".into(),
+            key_id: "key_1".into(),
+        };
+        let server = jwt_server::JwtServer::new(config, storage).await.unwrap();
+        server.initialize().await.unwrap();
+
+        let wkc = server.get_well_known_jwt_configuration().await.unwrap();
+        assert_eq!(wkc.issuer, "https://auth.example.com");
+
+        server.store_jwt_metadata(&wkc).await.unwrap();
+        let retrieved = server.get_stored_metadata().await.unwrap();
+        assert!(retrieved.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_jwt_server_store_signing_key() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = jwt_server::JwtServerConfig {
+            issuer: "https://auth.example.com".into(),
+            key_id: "key_2".into(),
+        };
+        let server = jwt_server::JwtServer::new(config, storage).await.unwrap();
+        server.store_signing_key("test-key-data").await.unwrap();
+    }
+
+    // ── ApiGateway ──────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_api_gateway_store_and_get_route() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = api_gateway::ApiGatewayConfig {
+            name: "test-gw".into(),
+        };
+        let gw = api_gateway::ApiGateway::new(config, storage).await.unwrap();
+        gw.initialize().await.unwrap();
+        assert_eq!(gw.get_gateway_name(), "test-gw");
+
+        gw.store_route_config("/api/v1/users", r#"{"auth":"required"}"#)
+            .await
+            .unwrap();
+        let route = gw.get_route_config("/api/v1/users").await.unwrap();
+        assert!(route.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_api_gateway_get_route_not_found() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = api_gateway::ApiGatewayConfig { name: "gw2".into() };
+        let gw = api_gateway::ApiGateway::new(config, storage).await.unwrap();
+        assert!(gw.get_route_config("/nope").await.unwrap().is_none());
+    }
+
+    // ── SAML IdP ────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_saml_idp_store_and_get_assertion() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = saml_idp::SamlIdpConfig {
+            entity_id: "urn:example:idp".into(),
+        };
+        let saml = saml_idp::SamlIdentityProvider::new(config, storage)
+            .await
+            .unwrap();
+        saml.initialize().await.unwrap();
+        saml.store_assertion("assert_1", "<Assertion/>")
+            .await
+            .unwrap();
+        let a = saml.get_assertion("assert_1").await.unwrap();
+        assert_eq!(a.as_deref(), Some("<Assertion/>"));
+    }
+
+    #[tokio::test]
+    async fn test_saml_idp_get_assertion_not_found() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = saml_idp::SamlIdpConfig {
+            entity_id: "urn:example:idp2".into(),
+        };
+        let saml = saml_idp::SamlIdentityProvider::new(config, storage)
+            .await
+            .unwrap();
+        assert!(saml.get_assertion("nope").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_saml_idp_metadata() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = saml_idp::SamlIdpConfig {
+            entity_id: "urn:example:idp3".into(),
+        };
+        let saml = saml_idp::SamlIdentityProvider::new(config, storage)
+            .await
+            .unwrap();
+        let meta = saml.get_metadata().await.unwrap();
+        assert_eq!(meta.entity_id, "urn:example:idp3");
+    }
+
+    // ── ConsentManager ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_consent_grant_and_check() {
+        let config = consent::ConsentConfig {
+            require_explicit_consent: true,
+            remember_consent_ttl_secs: 3600,
+        };
+        let mut cm = consent::ConsentManager::new(config);
+        let record = consent::ConsentRecord {
+            user_id: "user1".into(),
+            client_id: "client1".into(),
+            scopes: vec!["read".into(), "write".into()],
+            granted_at: now_secs(),
+            expires_at: Some(now_secs() + 3600),
+        };
+        cm.grant(record).await.unwrap();
+        assert!(
+            cm.has_consent("user1", "client1", &["read".into()])
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_consent_no_consent_by_default() {
+        let config = consent::ConsentConfig {
+            require_explicit_consent: true,
+            remember_consent_ttl_secs: 3600,
+        };
+        let mut cm = consent::ConsentManager::new(config);
+        assert!(
+            !cm.has_consent("user1", "client1", &["read".into()])
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_consent_revoke() {
+        let config = consent::ConsentConfig {
+            require_explicit_consent: true,
+            remember_consent_ttl_secs: 3600,
+        };
+        let mut cm = consent::ConsentManager::new(config);
+        cm.grant(consent::ConsentRecord {
+            user_id: "user2".into(),
+            client_id: "client2".into(),
+            scopes: vec!["read".into()],
+            granted_at: now_secs(),
+            expires_at: None,
+        })
+        .await
+        .unwrap();
+        let revoked = cm.revoke("user2", "client2").await.unwrap();
+        assert!(revoked);
+        assert!(
+            !cm.has_consent("user2", "client2", &["read".into()])
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_consent_revoke_nonexistent() {
+        let config = consent::ConsentConfig {
+            require_explicit_consent: true,
+            remember_consent_ttl_secs: 3600,
+        };
+        let mut cm = consent::ConsentManager::new(config);
+        let revoked = cm.revoke("ghost", "ghost_client").await.unwrap();
+        assert!(!revoked);
+    }
+
+    #[tokio::test]
+    async fn test_consent_with_storage() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = consent::ConsentConfig {
+            require_explicit_consent: true,
+            remember_consent_ttl_secs: 3600,
+        };
+        let mut cm = consent::ConsentManager::new_with_storage(config, storage);
+        cm.grant(consent::ConsentRecord {
+            user_id: "user3".into(),
+            client_id: "client3".into(),
+            scopes: vec!["openid".into()],
+            granted_at: now_secs(),
+            expires_at: None,
+        })
+        .await
+        .unwrap();
+        assert!(
+            cm.has_consent("user3", "client3", &["openid".into()])
+                .await
+                .unwrap()
+        );
+    }
+
+    // ── DeviceFlowManager ───────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_device_flow_register_and_get() {
+        let config = device_flow_server::DeviceFlowConfig {
+            user_code_length: 8,
+            device_code_ttl_secs: 300,
+            polling_interval_secs: 5,
+            verification_uri: "https://auth.example.com/device".into(),
+        };
+        let mut df = device_flow_server::DeviceFlowManager::new(config);
+        df.register(device_flow_server::DeviceAuthRecord {
+            device_code: "dev_code_1".into(),
+            user_code: "ABCD-EFGH".into(),
+            client_id: "mobile_app".into(),
+            scopes: vec!["read".into()],
+            state: device_flow_server::DeviceAuthState::Pending,
+            expires_at: now_secs() + 300,
+        })
+        .await
+        .unwrap();
+        let record = df.get("dev_code_1").await.unwrap();
+        assert!(record.is_some());
+        assert_eq!(record.unwrap().user_code, "ABCD-EFGH");
+    }
+
+    #[tokio::test]
+    async fn test_device_flow_get_not_found() {
+        let config = device_flow_server::DeviceFlowConfig {
+            user_code_length: 8,
+            device_code_ttl_secs: 300,
+            polling_interval_secs: 5,
+            verification_uri: "https://auth.example.com/device".into(),
+        };
+        let mut df = device_flow_server::DeviceFlowManager::new(config);
+        assert!(df.get("nonexistent").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_device_flow_approve() {
+        let config = device_flow_server::DeviceFlowConfig {
+            user_code_length: 8,
+            device_code_ttl_secs: 300,
+            polling_interval_secs: 5,
+            verification_uri: "https://auth.example.com/device".into(),
+        };
+        let mut df = device_flow_server::DeviceFlowManager::new(config);
+        df.register(device_flow_server::DeviceAuthRecord {
+            device_code: "dev_code_2".into(),
+            user_code: "WXYZ-1234".into(),
+            client_id: "tv_app".into(),
+            scopes: vec!["read".into()],
+            state: device_flow_server::DeviceAuthState::Pending,
+            expires_at: now_secs() + 300,
+        })
+        .await
+        .unwrap();
+        let approved = df
+            .approve("WXYZ-1234", "access_token_here".into())
+            .await
+            .unwrap();
+        assert!(approved);
+
+        let record = df.get("dev_code_2").await.unwrap().unwrap();
+        matches!(
+            record.state,
+            device_flow_server::DeviceAuthState::Authorized { .. }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_device_flow_approve_nonexistent() {
+        let config = device_flow_server::DeviceFlowConfig {
+            user_code_length: 8,
+            device_code_ttl_secs: 300,
+            polling_interval_secs: 5,
+            verification_uri: "https://auth.example.com/device".into(),
+        };
+        let mut df = device_flow_server::DeviceFlowManager::new(config);
+        let approved = df.approve("NO_CODE", "token".into()).await.unwrap();
+        assert!(!approved);
+    }
+
+    #[tokio::test]
+    async fn test_device_flow_with_storage() {
+        let storage: Arc<dyn crate::storage::AuthStorage> = Arc::new(MemoryStorage::new());
+        let config = device_flow_server::DeviceFlowConfig {
+            user_code_length: 8,
+            device_code_ttl_secs: 300,
+            polling_interval_secs: 5,
+            verification_uri: "https://auth.example.com/device".into(),
+        };
+        let mut df = device_flow_server::DeviceFlowManager::new_with_storage(config, storage);
+        df.register(device_flow_server::DeviceAuthRecord {
+            device_code: "stored_code".into(),
+            user_code: "ST0R-ED00".into(),
+            client_id: "app".into(),
+            scopes: vec![],
+            state: device_flow_server::DeviceAuthState::Pending,
+            expires_at: now_secs() + 300,
+        })
+        .await
+        .unwrap();
+        let record = df.get("stored_code").await.unwrap();
+        assert!(record.is_some());
+    }
+
+    // ── IntrospectionManager ────────────────────────────────────────────
+
+    #[test]
+    fn test_introspection_inactive_response() {
+        let resp = introspection::IntrospectionResponse::inactive();
+        assert!(!resp.active);
     }
 }

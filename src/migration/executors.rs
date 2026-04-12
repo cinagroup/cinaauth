@@ -82,8 +82,8 @@ pub async fn execute_migration_plan(
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let plan: auth_framework::migration::MigrationPlan = todo!();
-/// # let config: auth_framework::migration::MigrationConfig = todo!();
+/// # let plan: auth_framework::migration::MigrationPlan = unimplemented!();
+/// # let config: auth_framework::migration::MigrationConfig = unimplemented!();
 /// let rs = AsyncRoleSystem::new(
 ///     RoleSystem::with_storage(MemoryStorage::new(), RoleSystemConfig::default())
 /// );
@@ -1062,20 +1062,108 @@ async fn validate_post_migration_state(config: &MigrationConfig) -> Result<(), M
 }
 
 /// Backup implementations
-async fn create_full_backup(_config: &MigrationConfig) -> Result<String, MigrationError> {
-    Ok("FULL_BACKUP_DATA".to_string())
+async fn create_full_backup(config: &MigrationConfig) -> Result<String, MigrationError> {
+    // Serialize the full working directory contents into a JSON manifest
+    let working_dir = &config.working_directory;
+    let mut entries = Vec::new();
+
+    if working_dir.exists() {
+        let mut read_dir = fs::read_dir(working_dir).await?;
+
+        while let Ok(Some(entry)) = read_dir.next_entry().await {
+            if let Ok(content) = fs::read_to_string(entry.path()).await {
+                entries.push(serde_json::json!({
+                    "path": entry.file_name().to_string_lossy(),
+                    "content": content,
+                }));
+            }
+        }
+    }
+
+    let backup = serde_json::json!({
+        "backup_type": "full",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "working_directory": working_dir.display().to_string(),
+        "entries": entries,
+    });
+
+    Ok(serde_json::to_string_pretty(&backup)?)
 }
 
-async fn create_incremental_backup(_config: &MigrationConfig) -> Result<String, MigrationError> {
-    Ok("INCREMENTAL_BACKUP_DATA".to_string())
+async fn create_incremental_backup(config: &MigrationConfig) -> Result<String, MigrationError> {
+    // Incremental: only include status files (migration-related state)
+    let working_dir = &config.working_directory;
+    let mut entries = Vec::new();
+
+    if working_dir.exists() {
+        let mut read_dir = fs::read_dir(working_dir).await?;
+
+        while let Ok(Some(entry)) = read_dir.next_entry().await {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.ends_with("_status.json") || name.ends_with("_manifest.json") {
+                if let Ok(content) = fs::read_to_string(entry.path()).await {
+                    entries.push(serde_json::json!({
+                        "path": name,
+                        "content": content,
+                    }));
+                }
+            }
+        }
+    }
+
+    let backup = serde_json::json!({
+        "backup_type": "incremental",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "working_directory": working_dir.display().to_string(),
+        "entries": entries,
+    });
+
+    Ok(serde_json::to_string_pretty(&backup)?)
 }
 
-async fn create_config_backup(_config: &MigrationConfig) -> Result<String, MigrationError> {
-    Ok("CONFIG_BACKUP_DATA".to_string())
+async fn create_config_backup(config: &MigrationConfig) -> Result<String, MigrationError> {
+    let backup = serde_json::json!({
+        "backup_type": "config",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "migration_config": {
+            "working_directory": config.working_directory.display().to_string(),
+            "dry_run": config.dry_run,
+            "verbose": config.verbose,
+        },
+    });
+
+    Ok(serde_json::to_string_pretty(&backup)?)
 }
 
-async fn create_data_backup(_config: &MigrationConfig) -> Result<String, MigrationError> {
-    Ok("DATA_BACKUP_DATA".to_string())
+async fn create_data_backup(config: &MigrationConfig) -> Result<String, MigrationError> {
+    // Data backup: serialize all data files (non-config, non-status)
+    let working_dir = &config.working_directory;
+    let mut entries = Vec::new();
+
+    if working_dir.exists() {
+        let mut read_dir = fs::read_dir(working_dir).await?;
+
+        while let Ok(Some(entry)) = read_dir.next_entry().await {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.ends_with(".json") && !name.ends_with("_status.json") {
+                if let Ok(content) = fs::read_to_string(entry.path()).await {
+                    entries.push(serde_json::json!({
+                        "path": name,
+                        "content": content,
+                    }));
+                }
+            }
+        }
+    }
+
+    let backup = serde_json::json!({
+        "backup_type": "data",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "working_directory": working_dir.display().to_string(),
+        "entries": entries,
+    });
+
+    Ok(serde_json::to_string_pretty(&backup)?)
 }
 
 /// Save migration status to disk
@@ -1094,8 +1182,7 @@ async fn save_migration_status(
 /// Log message with timestamp
 fn log_message(config: &MigrationConfig, message: &str) {
     if config.verbose {
-        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S");
-        println!("[{}] {}", timestamp, message);
+        tracing::info!(message, "migration");
     }
 }
 
@@ -1350,5 +1437,100 @@ mod tests {
         let result = execute_migration_plan(&plan, &config).await.unwrap();
         assert_eq!(result.status, MigrationStatus::Completed);
         assert_eq!(result.metrics.roles_migrated, 1);
+    }
+
+    #[tokio::test]
+    async fn test_create_full_backup_reads_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        tokio::fs::write(tmp.path().join("data.json"), r#"{"key":"val"}"#)
+            .await
+            .unwrap();
+        tokio::fs::write(tmp.path().join("notes.txt"), "hello")
+            .await
+            .unwrap();
+
+        let config = MigrationConfig {
+            working_directory: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let backup_str = create_full_backup(&config).await.unwrap();
+        let backup: serde_json::Value = serde_json::from_str(&backup_str).unwrap();
+        assert_eq!(backup["backup_type"], "full");
+        let entries = backup["entries"].as_array().unwrap();
+        assert_eq!(entries.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_create_incremental_backup_only_status_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        tokio::fs::write(tmp.path().join("migration_status.json"), "{}")
+            .await
+            .unwrap();
+        tokio::fs::write(tmp.path().join("v1_manifest.json"), "{}")
+            .await
+            .unwrap();
+        tokio::fs::write(tmp.path().join("data.json"), "{}")
+            .await
+            .unwrap();
+
+        let config = MigrationConfig {
+            working_directory: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let backup_str = create_incremental_backup(&config).await.unwrap();
+        let backup: serde_json::Value = serde_json::from_str(&backup_str).unwrap();
+        assert_eq!(backup["backup_type"], "incremental");
+        let entries = backup["entries"].as_array().unwrap();
+        // Only migration_status.json and v1_manifest.json should be included
+        assert_eq!(entries.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_create_config_backup_serializes_config() {
+        let config = MigrationConfig {
+            dry_run: true,
+            verbose: true,
+            ..Default::default()
+        };
+        let backup_str = create_config_backup(&config).await.unwrap();
+        let backup: serde_json::Value = serde_json::from_str(&backup_str).unwrap();
+        assert_eq!(backup["backup_type"], "config");
+        assert_eq!(backup["migration_config"]["dry_run"], true);
+        assert_eq!(backup["migration_config"]["verbose"], true);
+    }
+
+    #[tokio::test]
+    async fn test_create_data_backup_excludes_status_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        tokio::fs::write(tmp.path().join("users.json"), "[]")
+            .await
+            .unwrap();
+        tokio::fs::write(tmp.path().join("migration_status.json"), "{}")
+            .await
+            .unwrap();
+
+        let config = MigrationConfig {
+            working_directory: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let backup_str = create_data_backup(&config).await.unwrap();
+        let backup: serde_json::Value = serde_json::from_str(&backup_str).unwrap();
+        assert_eq!(backup["backup_type"], "data");
+        let entries = backup["entries"].as_array().unwrap();
+        // Only users.json; migration_status.json is excluded
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["path"], "users.json");
+    }
+
+    #[tokio::test]
+    async fn test_create_full_backup_empty_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config = MigrationConfig {
+            working_directory: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let backup_str = create_full_backup(&config).await.unwrap();
+        let backup: serde_json::Value = serde_json::from_str(&backup_str).unwrap();
+        assert_eq!(backup["entries"].as_array().unwrap().len(), 0);
     }
 }

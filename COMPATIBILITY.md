@@ -90,6 +90,43 @@ before building stable integrations on top of them.
 | Redis storage backend                    | `redis-storage`                       |
 | Tiered storage (Redis + Postgres)        | `tiered-storage`                      |
 | HSM / PKCS#11 integration (cryptoki)     | *(always compiled, API experimental)* |
+| Kerberos authentication                  | *(always compiled, fully implemented)* |
+| OpenID for Verifiable Presentations      | *(always compiled, ~85% — DID resolution + JWS verification)* |
+| GNAP (Grant Negotiation & Authorization) | *(always compiled, substantially complete)* |
+| UMA 2.0 (User-Managed Access)           | *(always compiled, API experimental)* |
+| ACME (RFC 8555)                          | *(always compiled, client-side — account, order, challenge)* |
+| SPIFFE/SVID                              | *(always compiled, ID validation + JWT-SVID + trust bundles)* |
+| CAEP (Continuous Access Evaluation)      | *(always compiled, SSE transmitter/receiver + event types)* |
+| OpenID4VCI (Credential Issuance)         | *(always compiled, issuer-side — offers, issuance, deferred)* |
+
+#### Protocol Implementation Details
+
+| Protocol          | LOC    | Tests | Completeness | Key Capabilities                                                                                                                                                                                                      |
+| ----------------- | ------ | ----- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Kerberos**      | ~1,780 | 25    | Full         | ASN.1 DER parser, AES-CTS-HMAC-SHA1-96 (etypes 17/18), n-fold key derivation (RFC 3961), SPNEGO/GSS-API, MIT keytab v2, AP-REQ validation with replay detection and clock skew                                        |
+| **GNAP**          | ~1,800 | 38    | Substantial  | Full transaction lifecycle, JWK thumbprint (RFC 7638), ES256/RS256 client key binding with cryptographic proof, interaction hash (draft §4.2.3), continuation token rotation, token introspection/revocation/rotation |
+| **ACME**          | ~550   | 19    | Substantial  | ES256 JWS signing (RFC 8555 §6.2), account registration, order lifecycle, HTTP-01/DNS-01 challenge key authorization, CSR finalization, certificate download, JWK thumbprint (RFC 7638), anti-replay nonce management |
+| **SPIFFE**        | ~500   | 28    | Substantial  | SPIFFE ID parsing/validation per spec, JWT-SVID validation (expiration, audience, algorithm), X.509-SVID fingerprinting, trust bundle management, workload authorization policies with wildcard matching              |
+| **CAEP**          | ~480   | 17    | Substantial  | SSE Framework stream management (create/pause/delete), 5 CAEP event types, SET claims encoding (RFC 8417), push+poll delivery, event receiver with deduplication, authorization policy callbacks                      |
+| **OpenID4VCI**    | ~450   | 17    | Substantial  | Credential Issuer Metadata, credential offers with pre-authorized codes, nonce lifecycle, jwt_vc_json/ldp_vc/sd-jwt formats, immediate + deferred issuance, proof-of-possession validation                            |
+| **OpenID4VP**     | ~600   | 27    | Substantial  | DID resolution (did:key Ed25519/P-256, did:web), JWS verification (EdDSA, ES256), W3C VP data model validation, presentation request generation                                                                       |
+| **UMA 2.0**       | ~300   | 11    | Core         | Resource registration (§3.1), permission tickets (§3.2), RPT issuance with claims-based policy evaluation (§3.3), resource set CRUD, ticket expiration                                                                |
+| **PASETO**        | ~280   | 13    | Core         | v4.local symmetric encryption/decryption, claim validation (exp, nbf, iss, aud), key generation, token builder API                                                                                                    |
+| **SD-JWT**        | ~380   | 12    | Core         | Selective Disclosure JWT (IETF draft), issuer/verifier roles, SHA-256 disclosure digests, selective presentation, forged disclosure rejection, key-binding JWT parsing                                                |
+| **FIDO1/U2F**     | ~270   | 12    | Core         | Registration request/response parsing (reserved byte, public key, key handle extraction), authentication with user presence and counter validation                                                                    |
+| **Macaroons**     | ~250   | 10    | Core         | HMAC-SHA256 chained caveat construction, independent caveat verification via replayed chain, token attenuation                                                                                                        |
+| **TACACS+**       | ~300   | 10    | Core         | RFC 8907 packet header (12-byte wire format roundtrip), AuthenStart/Reply bodies, XOR-based body obfuscation with SHA-256 pseudo-pad                                                                                  |
+| **SIWE**          | ~350   | 14    | Core         | ERC-4361 message construction/parsing, domain and nonce validation, expiration checking, EIP-55 Ethereum address format verification                                                                                  |
+| **IndieAuth**     | ~350   | 14    | Core         | PKCE S256 (code verifier/challenge generation and verification), authorization URL building, callback verification, profile URL validation                                                                            |
+| **OAuth 1.0a**    | ~340   | 12    | Core         | RFC 5849 request signing (HMAC-SHA1, HMAC-SHA256, Plaintext), RFC 3986 percent encoding, signature base string, Authorization header generation                                                                       |
+| **SAML 2.0**      | ~800   | 10    | Core         | Assertion/NameID/Subject/Conditions/AuthnStatement/AuthzDecision builder, XML generation with injection escaping, attribute statements                                                                                |
+| **SCIM 2.0**      | ~400   | 8     | Core         | User/Group resource types, SCIM schema, list response, patch operations, attribute filtering                                                                                                                          |
+| **CAS**           | ~300   | 8     | Core         | Service ticket validation, proxy granting, CAS 2.0/3.0 protocol support                                                                                                                                               |
+| **RADIUS**        | ~350   | 10    | Core         | Packet construction/parsing, authenticator hashing, attribute TLV encoding, Access-Request/Accept/Reject/Challenge                                                                                                    |
+| **WS-Trust**      | ~700   | 8     | Core         | Security Token Service (STS), RST/RSTR lifecycle, WS-Security UsernameToken, SOAP envelope construction, token issuance/validation/renewal/cancellation                                                               |
+| **WS-Security**   | ~350   | 6     | Core         | UsernameToken header with PasswordText/PasswordDigest, nonce/timestamp, BinarySecurityToken, XML header generation                                                                                                    |
+| **WS-Federation** | ~300   | 6     | Core         | Sign-in/sign-out URL construction, security token request/response parsing, metadata generation                                                                                                                       |
+| **HOTP**          | ~200   | 6     | Core         | RFC 4226 HMAC-based OTP generation and verification, counter management, configurable digit length                                                                                                                    |
 
 ### Deprecated
 
@@ -113,7 +150,7 @@ target release. Migration guidance is published in the [changelog](CHANGELOG.md)
 | **MySQL / MariaDB**   | `mysql-storage`    |    ⬜    | Experimental | Functional; fewer CI test cycles than Postgres          |
 | **Redis**             | `redis-storage`    |    ⬜    | Stable       | For distributed session storage and caching             |
 | **Tiered (Redis+PG)** | `tiered-storage`   |    ⬜    | Experimental | Hot-path Redis cache with Postgres persistence          |
-| **SQLite**            | *(planned)*        |    ⬜    | Roadmap      | Planned in a separate crate for lightweight deployments |
+| **SQLite**            | Experimental       |    \u26a0\ufe0f    | Preview      | Available via `sqlite-storage` feature for lightweight/embedded deployments |
 | **SurrealDB**         | *(planned)*        |    ⬜    | Roadmap      | Planned as an optional community-maintained integration |
 
 **Choosing a storage backend for production:**

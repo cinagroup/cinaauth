@@ -1,6 +1,6 @@
 # AuthFramework Development Roadmap
 
-Last updated: March 17, 2026 (Phase 3 API Maturity complete)
+Last updated: March 21, 2026 (release-readiness audit follow-up)
 
 ## Strategic Vision
 
@@ -37,10 +37,10 @@ This means the roadmap should optimize for:
 - The crate already includes substantial functionality across authentication, authorization, API server, admin UI, monitoring, deployment, storage, and web integrations.
 - The project direction is now explicitly shifting toward a batteries-included default build with opt-out feature reduction for optimization-focused users.
 - `cargo check --all-features` currently passes.
-- `cargo test --all-features` is fully green (all tests passing, 0 failures).
-- `cargo doc --no-deps` is now warning-free.
-- Clippy is clean at zero warnings across all targets.
-- Phase 3 API Maturity is complete: `UserInfo` deduplicated, `#[deprecated]` legacy aliases in place, `docs/STABLE_API_MAP.md` published, advanced RFC types hidden from root autodiscovery.
+- Recent targeted reruns passed for the SAML and analytics remediation paths.
+- A fresh `cargo test --all-features` rerun should still be completed before release sign-off.
+- Rustdoc and clippy should be revalidated as part of final release preparation.
+- Phase 3 API Maturity is complete: `UserInfo` deduplicated, `#[deprecated]` legacy aliases in place, and advanced RFC types hidden from root autodiscovery.
 
 ### Major Capabilities Already Present
 
@@ -91,16 +91,15 @@ The original roadmap was heavily weighted toward foundational work that is now a
 - [x] Python SDK repository exists
 - [x] JavaScript/TypeScript SDK repository exists
 
-### Still Missing or Not Yet Release-Ready
+### Release-Readiness Items Recently Closed
 
-- [x] Kubernetes manifests are not yet present
-- [x] Community issue templates are not yet present
-- [x] A code of conduct file is not yet present
-- [x] The default feature story is now clearly defined and documented as a batteries-included baseline
-- [x] All-features test suite is now fully green
-- [x] Rustdoc output is now warning-free
-- [x] Clippy output is now warning-free across all targets and tests
-- [x] The public Rust API still has overlapping entry points and duplicate type names that hurt discoverability — substantially improved by Phase 1 DX work (grouped accessors, canonical aliases, deprecation plan); remaining polish tracked in Phase 3
+- [x] Kubernetes manifests are present under `k8s/`
+- [x] Community issue templates are present under `.github/ISSUE_TEMPLATE/`
+- [x] A code of conduct is present at `CODE_OF_CONDUCT.md`
+- [x] The default feature story is clearly documented as a batteries-included baseline
+- [ ] Re-run the full all-features test suite after the latest remediation work
+- [ ] Reconfirm rustdoc and clippy status immediately before release
+- [x] The public Rust API overlap has been substantially reduced by the DX work tracked in this roadmap
 
 ## Phase 1: Stabilization and Developer Experience (Current)
 
@@ -215,7 +214,7 @@ This phase is focused on making the project not just feature-rich, but the easie
 
 - [x] Replace duplicated public concepts with canonical types or explicit namespaces — `UserInfo` deduplicated across `methods`, `api`, and `auth_modular`; `api::auth::LoginUserInfo` renamed; `#[deprecated]` aliases added for legacy names
 - [x] Narrow the default public surface so auto-complete and docs steer users toward the right abstractions — advanced RFC types (`DpopManager`, `PARManager`, `PrivateKeyJwtManager`, `TokenIntrospectionService`, `ServerOAuth2Server`, WS-Security/WS-Trust, OIDC backchannel/frontchannel logout) now carry `#[doc(hidden)]` at root; fully accessible via sub-module paths
-- [x] Establish a stable public API map with migration guidance for legacy entry points — `docs/STABLE_API_MAP.md` created with canonical names, grouped accessors, deprecated aliases, and type disambiguation tables
+- [x] Establish a stable public API map with migration guidance for legacy entry points — canonical names, grouped accessors, deprecated aliases, and type disambiguation tables were completed as part of the API maturity work
 - [x] Keep advanced internals available without letting them dominate the onboarding path — `#[doc(hidden)]` on root re-exports keeps advanced types programmatically accessible while removing them from the default docs/autocomplete surface
 - [x] Ensure the canonical public API is fully usable on the default build without requiring users to discover extra feature flags first — `AuthFramework`, `prelude::*`, grouped accessors, and all core types work on default features
 

@@ -23,26 +23,26 @@
 //! # Usage Examples
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oidc::oidc_error_extensions::{OidcErrorManager, OidcErrorCode};
+//! use auth_framework::server::oidc::oidc_error_extensions::{OidcErrorManager, OidcErrorCode, OidcErrorResponse};
 //!
+//! // Parse error codes from strings (e.g. from HTTP query params):
+//! let code: OidcErrorCode = "invalid_request".parse().unwrap();
+//! assert_eq!(code.to_string(), "invalid_request");
+//!
+//! // Build an error response fluently:
+//! let response = OidcErrorResponse::new(OidcErrorCode::LoginRequired)
+//!     .description("Session expired, please log in again")
+//!     .state("state123")
+//!     .detail("session_age", serde_json::json!(7200))
+//!     .build();
+//!
+//! // OidcErrorManager with custom mappings:
 //! let mut manager = OidcErrorManager::default();
-//!
-//! // Add custom error mapping
 //! manager.add_custom_error_mapping(
 //!     "payment_required".to_string(),
 //!     OidcErrorCode::InsufficientIdentityAssurance,
 //! );
-//!
-//! // Resolve error from identifier
 //! let error_code = manager.resolve_error_code("payment_required");
-//!
-//! // Create error response from identifier
-//! let response = manager.create_error_response_from_identifier(
-//!     "payment_required",
-//!     Some("Payment verification required".to_string()),
-//!     Some("state123".to_string()),
-//!     std::collections::HashMap::new(),
-//! ).unwrap();
 //! ```
 
 use crate::errors::{AuthError, Result};
@@ -93,6 +93,72 @@ pub enum OidcErrorCode {
     UserSelectionRequired,
 }
 
+impl std::fmt::Display for OidcErrorCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::InvalidRequest => "invalid_request",
+            Self::InvalidClient => "invalid_client",
+            Self::InvalidGrant => "invalid_grant",
+            Self::UnauthorizedClient => "unauthorized_client",
+            Self::UnsupportedGrantType => "unsupported_grant_type",
+            Self::InvalidScope => "invalid_scope",
+            Self::InteractionRequired => "interaction_required",
+            Self::LoginRequired => "login_required",
+            Self::AccountSelectionRequired => "account_selection_required",
+            Self::ConsentRequired => "consent_required",
+            Self::InvalidRequestUri => "invalid_request_uri",
+            Self::InvalidRequestObject => "invalid_request_object",
+            Self::RequestNotSupported => "request_not_supported",
+            Self::RequestUriNotSupported => "request_uri_not_supported",
+            Self::RegistrationNotSupported => "registration_not_supported",
+            Self::UnmetAuthenticationRequirements => "unmet_authentication_requirements",
+            Self::UnmetAuthenticationContextRequirements => "unmet_authentication_context_requirements",
+            Self::SessionSelectionRequired => "session_selection_required",
+            Self::AuthenticationMethodRequired => "authentication_method_required",
+            Self::InsufficientIdentityAssurance => "insufficient_identity_assurance",
+            Self::TemporarilyUnavailable => "temporarily_unavailable",
+            Self::RegistrationRequired => "registration_required",
+            Self::UnsupportedPromptValue => "unsupported_prompt_value",
+            Self::UserSelectionRequired => "user_selection_required",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for OidcErrorCode {
+    type Err = AuthError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "invalid_request" => Ok(Self::InvalidRequest),
+            "invalid_client" => Ok(Self::InvalidClient),
+            "invalid_grant" => Ok(Self::InvalidGrant),
+            "unauthorized_client" => Ok(Self::UnauthorizedClient),
+            "unsupported_grant_type" => Ok(Self::UnsupportedGrantType),
+            "invalid_scope" => Ok(Self::InvalidScope),
+            "interaction_required" => Ok(Self::InteractionRequired),
+            "login_required" => Ok(Self::LoginRequired),
+            "account_selection_required" => Ok(Self::AccountSelectionRequired),
+            "consent_required" => Ok(Self::ConsentRequired),
+            "invalid_request_uri" => Ok(Self::InvalidRequestUri),
+            "invalid_request_object" => Ok(Self::InvalidRequestObject),
+            "request_not_supported" => Ok(Self::RequestNotSupported),
+            "request_uri_not_supported" => Ok(Self::RequestUriNotSupported),
+            "registration_not_supported" => Ok(Self::RegistrationNotSupported),
+            "unmet_authentication_requirements" => Ok(Self::UnmetAuthenticationRequirements),
+            "unmet_authentication_context_requirements" => Ok(Self::UnmetAuthenticationContextRequirements),
+            "session_selection_required" => Ok(Self::SessionSelectionRequired),
+            "authentication_method_required" => Ok(Self::AuthenticationMethodRequired),
+            "insufficient_identity_assurance" => Ok(Self::InsufficientIdentityAssurance),
+            "temporarily_unavailable" => Ok(Self::TemporarilyUnavailable),
+            "registration_required" => Ok(Self::RegistrationRequired),
+            "unsupported_prompt_value" => Ok(Self::UnsupportedPromptValue),
+            "user_selection_required" => Ok(Self::UserSelectionRequired),
+            other => Err(AuthError::validation(format!("Unknown OIDC error code: {other}"))),
+        }
+    }
+}
+
 /// OpenID Connect error response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OidcErrorResponse {
@@ -110,6 +176,74 @@ pub struct OidcErrorResponse {
     /// Additional error details
     #[serde(flatten)]
     pub additional_details: HashMap<String, serde_json::Value>,
+}
+
+impl OidcErrorResponse {
+    /// Start building an error response for the given error code.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use auth_framework::server::oidc::oidc_error_extensions::{OidcErrorCode, OidcErrorResponse};
+    ///
+    /// let resp = OidcErrorResponse::new(OidcErrorCode::LoginRequired)
+    ///     .description("Session expired")
+    ///     .state("abc123")
+    ///     .build();
+    /// ```
+    pub fn new(error: OidcErrorCode) -> OidcErrorResponseBuilder {
+        OidcErrorResponseBuilder {
+            inner: OidcErrorResponse {
+                error,
+                error_description: None,
+                error_uri: None,
+                state: None,
+                additional_details: HashMap::new(),
+            },
+        }
+    }
+}
+
+/// Fluent builder for [`OidcErrorResponse`].
+pub struct OidcErrorResponseBuilder {
+    inner: OidcErrorResponse,
+}
+
+impl OidcErrorResponseBuilder {
+    /// Set a human-readable error description.
+    pub fn description(mut self, desc: impl Into<String>) -> Self {
+        self.inner.error_description = Some(desc.into());
+        self
+    }
+
+    /// Set the error documentation URI.
+    pub fn error_uri(mut self, uri: impl Into<String>) -> Self {
+        self.inner.error_uri = Some(uri.into());
+        self
+    }
+
+    /// Set the OAuth `state` parameter.
+    pub fn state(mut self, state: impl Into<String>) -> Self {
+        self.inner.state = Some(state.into());
+        self
+    }
+
+    /// Add a single additional detail.
+    pub fn detail(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.inner.additional_details.insert(key.into(), value);
+        self
+    }
+
+    /// Set all additional details at once (replaces any previously added).
+    pub fn details(mut self, details: HashMap<String, serde_json::Value>) -> Self {
+        self.inner.additional_details = details;
+        self
+    }
+
+    /// Consume the builder and return the [`OidcErrorResponse`].
+    pub fn build(self) -> OidcErrorResponse {
+        self.inner
+    }
 }
 
 /// Authentication requirements details
@@ -267,43 +401,43 @@ impl OidcErrorManager {
         requirements: AuthenticationRequirements,
         state: Option<String>,
     ) -> OidcErrorResponse {
-        let mut additional_details = HashMap::new();
+        let mut builder = OidcErrorResponse::new(OidcErrorCode::UnmetAuthenticationRequirements)
+            .description(
+                OidcErrorCode::UnmetAuthenticationRequirements
+                    .get_description()
+                    .to_string(),
+            )
+            .error_uri(format!(
+                "{}#UnmetAuthenticationRequirements",
+                self.error_base_uri
+            ));
+
+        if let Some(s) = state {
+            builder = builder.state(s);
+        }
 
         if let Some(acr_values) = &requirements.acr_values {
-            additional_details.insert(
-                "required_acr_values".to_string(),
-                serde_json::to_value(acr_values).unwrap(),
+            builder = builder.detail(
+                "required_acr_values",
+                serde_json::to_value(acr_values).unwrap_or_default(),
             );
         }
 
         if let Some(amr_values) = &requirements.amr_values {
-            additional_details.insert(
-                "required_amr_values".to_string(),
-                serde_json::to_value(amr_values).unwrap(),
+            builder = builder.detail(
+                "required_amr_values",
+                serde_json::to_value(amr_values).unwrap_or_default(),
             );
         }
 
         if let Some(max_age) = requirements.max_age {
-            additional_details.insert(
-                "max_age".to_string(),
+            builder = builder.detail(
+                "max_age",
                 serde_json::Value::Number(serde_json::Number::from(max_age)),
             );
         }
 
-        OidcErrorResponse {
-            error: OidcErrorCode::UnmetAuthenticationRequirements,
-            error_description: Some(
-                OidcErrorCode::UnmetAuthenticationRequirements
-                    .get_description()
-                    .to_string(),
-            ),
-            error_uri: Some(format!(
-                "{}#UnmetAuthenticationRequirements",
-                self.error_base_uri
-            )),
-            state,
-            additional_details,
-        }
+        builder.build()
     }
 
     /// Create error response for insufficient ACR
@@ -313,27 +447,28 @@ impl OidcErrorManager {
         achieved_acr: Option<String>,
         state: Option<String>,
     ) -> OidcErrorResponse {
-        let mut additional_details = HashMap::new();
-        additional_details.insert(
-            "required_acr_values".to_string(),
-            serde_json::to_value(required_acr).unwrap(),
-        );
+        let mut builder =
+            OidcErrorResponse::new(OidcErrorCode::UnmetAuthenticationContextRequirements)
+                .description(
+                    OidcErrorCode::UnmetAuthenticationContextRequirements
+                        .get_description()
+                        .to_string(),
+                )
+                .error_uri(format!("{}#ACRRequirements", self.error_base_uri))
+                .detail(
+                    "required_acr_values",
+                    serde_json::to_value(required_acr).unwrap_or_default(),
+                );
 
         if let Some(acr) = achieved_acr {
-            additional_details.insert("achieved_acr".to_string(), serde_json::Value::String(acr));
+            builder = builder.detail("achieved_acr", serde_json::Value::String(acr));
         }
 
-        OidcErrorResponse {
-            error: OidcErrorCode::UnmetAuthenticationContextRequirements,
-            error_description: Some(
-                OidcErrorCode::UnmetAuthenticationContextRequirements
-                    .get_description()
-                    .to_string(),
-            ),
-            error_uri: Some(format!("{}#ACRRequirements", self.error_base_uri)),
-            state,
-            additional_details,
+        if let Some(s) = state {
+            builder = builder.state(s);
         }
+
+        builder.build()
     }
 
     /// Create generic error response
@@ -344,14 +479,18 @@ impl OidcErrorManager {
         state: Option<String>,
         additional_details: HashMap<String, serde_json::Value>,
     ) -> OidcErrorResponse {
-        OidcErrorResponse {
-            error: error_code.clone(),
-            error_description: custom_description
-                .or_else(|| Some(error_code.get_description().to_string())),
-            error_uri: Some(format!("{}#{:?}", self.error_base_uri, error_code)),
-            state,
-            additional_details,
+        let mut builder = OidcErrorResponse::new(error_code.clone())
+            .description(
+                custom_description.unwrap_or_else(|| error_code.get_description().to_string()),
+            )
+            .error_uri(format!("{}#{:?}", self.error_base_uri, error_code))
+            .details(additional_details);
+
+        if let Some(s) = state {
+            builder = builder.state(s);
         }
+
+        builder.build()
     }
 
     /// Add custom error mapping
@@ -371,38 +510,8 @@ impl OidcErrorManager {
             return Some(error_code.clone());
         }
 
-        // Check standard error codes
-        match identifier {
-            "invalid_request" => Some(OidcErrorCode::InvalidRequest),
-            "invalid_client" => Some(OidcErrorCode::InvalidClient),
-            "invalid_grant" => Some(OidcErrorCode::InvalidGrant),
-            "unauthorized_client" => Some(OidcErrorCode::UnauthorizedClient),
-            "unsupported_grant_type" => Some(OidcErrorCode::UnsupportedGrantType),
-            "invalid_scope" => Some(OidcErrorCode::InvalidScope),
-            "interaction_required" => Some(OidcErrorCode::InteractionRequired),
-            "login_required" => Some(OidcErrorCode::LoginRequired),
-            "account_selection_required" => Some(OidcErrorCode::AccountSelectionRequired),
-            "consent_required" => Some(OidcErrorCode::ConsentRequired),
-            "invalid_request_uri" => Some(OidcErrorCode::InvalidRequestUri),
-            "invalid_request_object" => Some(OidcErrorCode::InvalidRequestObject),
-            "request_not_supported" => Some(OidcErrorCode::RequestNotSupported),
-            "request_uri_not_supported" => Some(OidcErrorCode::RequestUriNotSupported),
-            "registration_not_supported" => Some(OidcErrorCode::RegistrationNotSupported),
-            "unmet_authentication_requirements" => {
-                Some(OidcErrorCode::UnmetAuthenticationRequirements)
-            }
-            "unmet_authentication_context_requirements" => {
-                Some(OidcErrorCode::UnmetAuthenticationContextRequirements)
-            }
-            "session_selection_required" => Some(OidcErrorCode::SessionSelectionRequired),
-            "authentication_method_required" => Some(OidcErrorCode::AuthenticationMethodRequired),
-            "insufficient_identity_assurance" => Some(OidcErrorCode::InsufficientIdentityAssurance),
-            "temporarily_unavailable" => Some(OidcErrorCode::TemporarilyUnavailable),
-            "registration_required" => Some(OidcErrorCode::RegistrationRequired),
-            "unsupported_prompt_value" => Some(OidcErrorCode::UnsupportedPromptValue),
-            "user_selection_required" => Some(OidcErrorCode::UserSelectionRequired),
-            _ => None,
-        }
+        // Delegate to FromStr for standard error codes
+        identifier.parse::<OidcErrorCode>().ok()
     }
 
     /// Create error response from string identifier
@@ -519,6 +628,71 @@ mod tests {
         );
         assert!(OidcErrorCode::LoginRequired.requires_interaction());
         assert!(OidcErrorCode::UnmetAuthenticationRequirements.is_authentication_error());
+    }
+
+    #[test]
+    fn test_oidc_error_code_display_roundtrip() {
+        // Every variant should round-trip through Display → FromStr
+        let codes = vec![
+            OidcErrorCode::InvalidRequest,
+            OidcErrorCode::InvalidClient,
+            OidcErrorCode::InvalidGrant,
+            OidcErrorCode::UnauthorizedClient,
+            OidcErrorCode::UnsupportedGrantType,
+            OidcErrorCode::InvalidScope,
+            OidcErrorCode::InteractionRequired,
+            OidcErrorCode::LoginRequired,
+            OidcErrorCode::AccountSelectionRequired,
+            OidcErrorCode::ConsentRequired,
+            OidcErrorCode::InvalidRequestUri,
+            OidcErrorCode::InvalidRequestObject,
+            OidcErrorCode::RequestNotSupported,
+            OidcErrorCode::RequestUriNotSupported,
+            OidcErrorCode::RegistrationNotSupported,
+            OidcErrorCode::UnmetAuthenticationRequirements,
+            OidcErrorCode::UnmetAuthenticationContextRequirements,
+            OidcErrorCode::SessionSelectionRequired,
+            OidcErrorCode::AuthenticationMethodRequired,
+            OidcErrorCode::InsufficientIdentityAssurance,
+            OidcErrorCode::TemporarilyUnavailable,
+            OidcErrorCode::RegistrationRequired,
+            OidcErrorCode::UnsupportedPromptValue,
+            OidcErrorCode::UserSelectionRequired,
+        ];
+
+        for code in codes {
+            let s = code.to_string();
+            let parsed: OidcErrorCode = s.parse().unwrap();
+            assert_eq!(parsed, code);
+        }
+    }
+
+    #[test]
+    fn test_oidc_error_code_from_str_invalid() {
+        let result = "not_a_real_error".parse::<OidcErrorCode>();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_oidc_error_response_builder() {
+        let resp = OidcErrorResponse::new(OidcErrorCode::LoginRequired)
+            .description("Session expired")
+            .error_uri("https://example.com/errors#login")
+            .state("abc123")
+            .detail("session_id", serde_json::json!("sess-42"))
+            .build();
+
+        assert_eq!(resp.error, OidcErrorCode::LoginRequired);
+        assert_eq!(resp.error_description.as_deref(), Some("Session expired"));
+        assert_eq!(
+            resp.error_uri.as_deref(),
+            Some("https://example.com/errors#login")
+        );
+        assert_eq!(resp.state.as_deref(), Some("abc123"));
+        assert_eq!(
+            resp.additional_details.get("session_id"),
+            Some(&serde_json::json!("sess-42"))
+        );
     }
 
     #[test]

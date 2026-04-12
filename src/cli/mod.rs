@@ -1,9 +1,10 @@
 /// Minimal CLI progress bar using terminal output.
 /// For richer progress bars, consider the `indicatif` crate.
 ///
-/// > **Status: Stub** — The CLI commands (`Db`, `User`, `Role`, `System`,
-/// > `Security`) print placeholder messages but do not yet connect to storage.
-/// > Database migration commands delegate to `MigrationCli` and are functional.
+/// The CLI delegates database migrations to `MigrationCli` and uses the core
+/// `AuthFramework` APIs for user, role, status, health, audit, and session management.
+/// Destructive database maintenance flows are implemented as logical snapshot
+/// export/import operations backed by the maintenance module.
 pub struct CliProgressBar {}
 
 impl CliProgressBar {
@@ -29,13 +30,15 @@ pub fn format_cli_output(msg: &str) -> String {
 #[cfg(feature = "cli")]
 use crate::AppConfig;
 #[cfg(feature = "cli")]
+use crate::auth_operations::UserListQuery;
+#[cfg(feature = "cli")]
 use crate::migrations::MigrationCli;
+#[cfg(feature = "cli")]
+use crate::permissions::{Permission, Role};
 #[cfg(feature = "cli")]
 use clap::{Parser, Subcommand};
 #[cfg(feature = "cli")]
-use rpassword;
-#[cfg(feature = "cli")]
-use std::process;
+use std::{io, process};
 
 #[cfg(feature = "cli")]
 #[derive(Parser)]
@@ -225,6 +228,7 @@ pub enum SecurityCommands {
 #[cfg(feature = "cli")]
 pub struct CliHandler {
     config: AppConfig,
+    dry_run: bool,
     // storage: Option<PostgresStorage>, // Removed unused field
 }
 
@@ -232,10 +236,70 @@ pub struct CliHandler {
 impl CliHandler {
     pub async fn new(config: AppConfig) -> Result<Self, Box<dyn std::error::Error>> {
         // Removed unused storage variable
-        Ok(Self { config })
+        Ok(Self {
+            config,
+            dry_run: false,
+        })
+    }
+
+    async fn framework(&self) -> Result<crate::AuthFramework, Box<dyn std::error::Error>> {
+        Ok(self.config.build_auth_framework().await?)
+    }
+
+    fn prompt_password(prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
+        let password = rpassword::prompt_password(prompt)?;
+        if password.is_empty() {
+            return Err(
+                io::Error::new(io::ErrorKind::InvalidInput, "Password cannot be empty").into(),
+            );
+        }
+        Ok(password)
+    }
+
+    fn default_username_from_email(email: &str) -> String {
+        email
+            .split('@')
+            .next()
+            .filter(|value| !value.is_empty())
+            .unwrap_or("user")
+            .to_string()
+    }
+
+    fn print_user_summary(user: &crate::auth::UserInfo) {
+        let roles = if user.roles.is_empty() {
+            "-".to_string()
+        } else {
+            user.roles.join(", ")
+        };
+        let email = user.email.as_deref().unwrap_or("-");
+        println!(
+            "{}\t{}\t{}\tactive={}\troles={}",
+            user.id, user.username, email, user.active, roles
+        );
+    }
+
+    fn print_role_permissions(role: &Role) {
+        let mut permissions: Vec<String> =
+            role.permissions.iter().map(ToString::to_string).collect();
+        permissions.sort();
+
+        println!("Role: {}", role.name);
+        if let Some(description) = &role.description {
+            println!("Description: {}", description);
+        }
+        println!("Active: {}", role.active);
+        println!("Permissions:");
+        if permissions.is_empty() {
+            println!("  (none)");
+        } else {
+            for permission in permissions {
+                println!("  {}", permission);
+            }
+        }
     }
 
     pub async fn handle_command(&mut self, cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+        self.dry_run = cli.dry_run;
         match cli.command {
             Some(Commands::Db { command }) => self.handle_db_command(command).await?,
             Some(Commands::User { command }) => self.handle_user_command(command).await?,
@@ -267,12 +331,34 @@ impl CliHandler {
                     eprintln!("WARNING: This will destroy all data!");
                     process::exit(1);
                 }
-                println!("Resetting database...");
-                // Implementation would drop and recreate all tables
+                let framework = self.framework().await?;
+                let report = framework.maintenance().reset(self.dry_run).await?;
+                if report.dry_run {
+                    println!(
+                        "Dry run: reset would delete {} users, {} roles, {} tokens, {} sessions, and {} KV entries.",
+                        report.users_deleted,
+                        report.roles_seen,
+                        report.tokens_deleted,
+                        report.sessions_deleted,
+                        report.kv_entries_deleted
+                    );
+                } else {
+                    println!(
+                        "Reset completed: deleted {} users, {} tokens, {} sessions, and {} KV entries.",
+                        report.users_deleted,
+                        report.tokens_deleted,
+                        report.sessions_deleted,
+                        report.kv_entries_deleted
+                    );
+                }
             }
             DbCommands::CreateMigration { name } => {
-                println!("Creating migration: {}", name);
-                // Implementation would create a new migration file template
+                let report = crate::maintenance::create_migration_file(&self.config, &name).await?;
+                println!(
+                    "Created {} migration template: {}",
+                    report.backend,
+                    report.path.display()
+                );
             }
         }
         Ok(())
@@ -284,50 +370,84 @@ impl CliHandler {
     ) -> Result<(), Box<dyn std::error::Error>> {
         match command {
             UserCommands::List {
-                limit: _limit,
-                offset: _offset,
-                active_only: _active_only,
+                limit,
+                offset,
+                active_only,
             } => {
-                println!("Listing users...");
-                // Implementation would query and display users
+                let framework = self.framework().await?;
+                let mut query = UserListQuery::new();
+                if let Some(l) = limit {
+                    query = query.limit(l);
+                }
+                if let Some(o) = offset {
+                    query = query.offset(o);
+                }
+                if active_only {
+                    query = query.active_only();
+                }
+                let users = framework.users().list_with_query(query).await?;
+                if users.is_empty() {
+                    println!("No users found.");
+                } else {
+                    for user in users {
+                        Self::print_user_summary(&user);
+                    }
+                }
             }
             UserCommands::Create {
                 email,
-                username: _username,
-                password: _password,
-                admin: _admin,
+                username,
+                password,
+                admin,
             } => {
-                println!("Creating user: {}", email);
-
-                let _password = if let Some(pwd) = _password {
-                    pwd
-                } else {
-                    // Prompt for password securely
-                    rpassword::prompt_password("Password: ")?
+                let framework = self.framework().await?;
+                let username =
+                    username.unwrap_or_else(|| Self::default_username_from_email(&email));
+                let password = match password {
+                    Some(password) => password,
+                    None => Self::prompt_password("Password: ")?,
                 };
-
-                // Implementation would create user with proper password hashing
-                println!("User created successfully");
+                let user_id = framework
+                    .users()
+                    .register(&username, &email, &password)
+                    .await?;
+                if admin {
+                    framework
+                        .authorization()
+                        .assign_role(&user_id, "admin")
+                        .await?;
+                }
+                println!("Created user '{}' with ID {}", username, user_id);
             }
             UserCommands::Show { user_id } => {
-                println!("User details for: {}", user_id);
-                // Implementation would show comprehensive user information
+                let framework = self.framework().await?;
+                let user = framework.users().get(&user_id).await?;
+                Self::print_user_summary(&user);
             }
             UserCommands::Update {
                 user_id,
                 email,
                 active,
             } => {
-                println!("Updating user: {}", user_id);
+                if email.is_none() && active.is_none() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "Provide --email and/or --active when updating a user",
+                    )
+                    .into());
+                }
+
+                let framework = self.framework().await?;
                 if let Some(email) = email {
-                    println!("  New email: {}", email);
-                    // Implementation would update user email with validation
+                    framework.users().update_email(&user_id, &email).await?;
                 }
                 if let Some(active) = active {
-                    println!("  Setting active status to: {}", active);
-                    // Implementation would update user active status
+                    framework
+                        .users()
+                        .set_status(&user_id, active.into())
+                        .await?;
                 }
-                println!("User updated successfully");
+                println!("Updated user {}", user_id);
             }
             UserCommands::Delete { user_id, confirm } => {
                 if !confirm {
@@ -335,21 +455,24 @@ impl CliHandler {
                     eprintln!("WARNING: This will permanently delete the user!");
                     process::exit(1);
                 }
-                println!("Deleting user: {}", user_id);
-                // Implementation would safely delete user and related data
-                println!("User deleted successfully");
+                let framework = self.framework().await?;
+                framework.users().delete_by_id(&user_id).await?;
+                println!("Deleted user {}", user_id);
             }
             UserCommands::ResetPassword { user_id, password } => {
-                println!("Resetting password for user: {}", user_id);
-                let _new_password = if let Some(pwd) = password {
-                    pwd
-                } else {
-                    rpassword::prompt_password("New password: ")?
+                let framework = self.framework().await?;
+                let password = match password {
+                    Some(password) => password,
+                    None => Self::prompt_password("New password: ")?,
                 };
-                // Implementation would hash and update user password
-                println!("Password reset successfully");
+                framework
+                    .users()
+                    .update_password_by_id(&user_id, &password)
+                    .await?;
+                println!("Password updated for user {}", user_id);
             }
         }
+
         Ok(())
     }
 
@@ -359,41 +482,66 @@ impl CliHandler {
     ) -> Result<(), Box<dyn std::error::Error>> {
         match command {
             RoleCommands::List => {
-                println!("Available roles:");
-                // Implementation would list all roles with descriptions
-            }
-            RoleCommands::Create {
-                name,
-                description: _,
-            } => {
-                println!("Creating role: {}", name);
-                // Implementation would create new role
-            }
-            RoleCommands::Assign { user_id, role_name } => {
-                println!("Assigning role '{}' to user {}", role_name, user_id);
-                // Implementation would assign role to user
-            }
-            RoleCommands::Remove { user_id, role_name } => {
-                println!("Removing role '{}' from user {}", role_name, user_id);
-                // Implementation would remove role from user
-                println!("Role removed successfully");
-            }
-            RoleCommands::Permissions { role_name } => {
-                println!("Permissions for role '{}':", role_name);
-                // Implementation would list all permissions for the role
-                println!("  • read:users");
-                println!("  • write:users");
-                // ... more permissions
+                let framework = self.framework().await?;
+                let mut roles = framework.authorization().list_roles().await;
+                roles.sort_by(|left, right| left.name.cmp(&right.name));
+                if roles.is_empty() {
+                    println!("No roles found.");
+                } else {
+                    for role in roles {
+                        println!(
+                            "{}\tactive={}\tpermissions={}",
+                            role.name,
+                            role.active,
+                            role.permissions.len()
+                        );
+                    }
+                }
             }
             RoleCommands::AddPermission {
                 role_name,
                 permission,
             } => {
-                println!("Adding permission '{}' to role '{}'", permission, role_name);
-                // Implementation would add permission to role
-                println!("Permission added successfully");
+                let framework = self.framework().await?;
+                let permission = Permission::parse(&permission)?;
+                framework
+                    .authorization()
+                    .add_role_permission(&role_name, permission)
+                    .await?;
+                println!("Added permission to role {}", role_name);
+            }
+            RoleCommands::Create { name, description } => {
+                let framework = self.framework().await?;
+                let role = match description {
+                    Some(description) => Role::new(&name).with_description(description),
+                    None => Role::new(&name),
+                };
+                framework.authorization().create_role(role).await?;
+                println!("Created role {}", name);
+            }
+            RoleCommands::Assign { user_id, role_name } => {
+                let framework = self.framework().await?;
+                framework
+                    .authorization()
+                    .assign_role(&user_id, &role_name)
+                    .await?;
+                println!("Assigned role {} to {}", role_name, user_id);
+            }
+            RoleCommands::Remove { user_id, role_name } => {
+                let framework = self.framework().await?;
+                framework
+                    .authorization()
+                    .remove_role(&user_id, &role_name)
+                    .await?;
+                println!("Removed role {} from {}", role_name, user_id);
+            }
+            RoleCommands::Permissions { role_name } => {
+                let framework = self.framework().await?;
+                let role = framework.authorization().role(&role_name).await?;
+                Self::print_role_permissions(&role);
             }
         }
+
         Ok(())
     }
 
@@ -403,34 +551,27 @@ impl CliHandler {
     ) -> Result<(), Box<dyn std::error::Error>> {
         match command {
             SystemCommands::Status => {
-                println!("System Status:");
-                println!("  Database: Connected");
+                let framework = self.framework().await?;
+                let stats = framework.monitoring().stats().await?;
+                let audit = framework.audit().security_stats().await?;
                 println!(
-                    "  Redis: {}",
-                    if self.config.redis.is_some() {
-                        "Connected"
-                    } else {
-                        "Not configured"
-                    }
+                    "Registered methods: {}",
+                    stats.registered_methods.join(", ")
                 );
-                // More status checks
+                println!("Active sessions: {}", stats.active_sessions);
+                println!("Active MFA challenges: {}", stats.active_mfa_challenges);
+                println!("Authentication attempts: {}", stats.auth_attempts);
+                println!("Security score: {:.2}", audit.security_score());
             }
             SystemCommands::Health => {
-                // Comprehensive health check
-                println!("Running health checks...");
-
-                // Check database connectivity
-                println!("✓ Database connectivity");
-
-                // Check Redis if configured
-                if self.config.redis.is_some() {
-                    println!("✓ Redis connectivity");
+                let framework = self.framework().await?;
+                let health = framework.monitoring().health_check().await?;
+                for (component, result) in health {
+                    println!(
+                        "{}\t{:?}\t{}\t{}ms",
+                        component, result.status, result.message, result.response_time
+                    );
                 }
-
-                // Check migrations status
-                println!("✓ Database migrations");
-
-                println!("All health checks passed");
             }
             SystemCommands::Config { output } => {
                 let template = include_str!("../config/auth.toml.template");
@@ -442,12 +583,32 @@ impl CliHandler {
                 }
             }
             SystemCommands::Backup { output_path } => {
-                println!("Creating backup at: {}", output_path);
-                // Implementation would:
-                // 1. Export database data
-                // 2. Export configuration
-                // 3. Create compressed archive
-                println!("Backup completed successfully");
+                let framework = self.framework().await?;
+                let report = framework
+                    .maintenance()
+                    .backup_to_file(&output_path, self.dry_run)
+                    .await?;
+                if report.dry_run {
+                    println!(
+                        "Dry run: backup would write {} users, {} roles, {} tokens, {} sessions, and {} KV entries to {}.",
+                        report.manifest.user_count,
+                        report.manifest.role_count,
+                        report.manifest.token_count,
+                        report.manifest.session_count,
+                        report.manifest.kv_entry_count,
+                        report.output_path.display()
+                    );
+                } else {
+                    println!(
+                        "Backup written to {} (users={}, roles={}, tokens={}, sessions={}, kv={}).",
+                        report.output_path.display(),
+                        report.manifest.user_count,
+                        report.manifest.role_count,
+                        report.manifest.token_count,
+                        report.manifest.session_count,
+                        report.manifest.kv_entry_count
+                    );
+                }
             }
             SystemCommands::Restore {
                 backup_path,
@@ -458,13 +619,32 @@ impl CliHandler {
                     eprintln!("WARNING: This will overwrite existing data!");
                     process::exit(1);
                 }
-                println!("Restoring from backup: {}", backup_path);
-                // Implementation would:
-                // 1. Validate backup file
-                // 2. Stop services
-                // 3. Restore database
-                // 4. Restore configuration
-                println!("Restore completed successfully");
+                let framework = self.framework().await?;
+                let report = framework
+                    .maintenance()
+                    .restore_from_file(&backup_path, self.dry_run)
+                    .await?;
+                if report.dry_run {
+                    println!(
+                        "Dry run: restore would apply snapshot from {} (users={}, roles={}, tokens={}, sessions={}, kv={}).",
+                        report.input_path.display(),
+                        report.manifest.user_count,
+                        report.manifest.role_count,
+                        report.manifest.token_count,
+                        report.manifest.session_count,
+                        report.manifest.kv_entry_count
+                    );
+                } else {
+                    println!(
+                        "Restore completed from {} (users={}, roles={}, tokens={}, sessions={}, kv={}).",
+                        report.input_path.display(),
+                        report.manifest.user_count,
+                        report.manifest.role_count,
+                        report.manifest.token_count,
+                        report.manifest.session_count,
+                        report.manifest.kv_entry_count
+                    );
+                }
             }
         }
         Ok(())
@@ -476,36 +656,98 @@ impl CliHandler {
     ) -> Result<(), Box<dyn std::error::Error>> {
         match command {
             SecurityCommands::Audit { days } => {
-                let days = days.unwrap_or(7);
-                println!("Security audit for last {} days:", days);
-                // Implementation would show security events and analysis
+                let framework = self.framework().await?;
+                let stats = framework.audit().security_stats().await?;
+                let logs = framework
+                    .audit()
+                    .permission_logs(None, None, None, Some(20))
+                    .await?;
+                println!(
+                    "Security audit summary for the last {} day(s):",
+                    days.unwrap_or(1)
+                );
+                println!("  active_sessions={}", stats.active_sessions);
+                println!("  failed_logins_24h={}", stats.failed_logins_24h);
+                println!("  successful_logins_24h={}", stats.successful_logins_24h);
+                println!("  security_alerts_24h={}", stats.security_alerts_24h);
+                if logs.is_empty() {
+                    println!("Recent permission audit logs: none");
+                } else {
+                    println!("Recent permission audit logs:");
+                    for log in logs {
+                        println!("  {}", log);
+                    }
+                }
             }
             SecurityCommands::Sessions { user_id } => {
+                let framework = self.framework().await?;
                 if let Some(user_id) = user_id {
-                    println!("Active sessions for user: {}", user_id);
+                    let sessions = framework.sessions().list_for_user(&user_id).await?;
+                    if sessions.is_empty() {
+                        println!("No sessions found for user {}", user_id);
+                    } else {
+                        for session in sessions {
+                            println!(
+                                "{}\tuser={}\texpires={}\tip={}",
+                                session.session_id,
+                                session.user_id,
+                                session.expires_at,
+                                session.ip_address.as_deref().unwrap_or("-")
+                            );
+                        }
+                    }
                 } else {
-                    println!("All active sessions:");
+                    let users = framework.users().list_with_query(UserListQuery::new()).await?;
+                    let mut found_any = false;
+                    for user in users {
+                        let sessions = framework.sessions().list_for_user(&user.id).await?;
+                        for session in sessions {
+                            found_any = true;
+                            println!(
+                                "{}\tuser={}\texpires={}\tip={}",
+                                session.session_id,
+                                session.user_id,
+                                session.expires_at,
+                                session.ip_address.as_deref().unwrap_or("-")
+                            );
+                        }
+                    }
+                    if !found_any {
+                        println!("No active sessions found.");
+                    }
                 }
-                // Implementation would list active sessions
             }
-            SecurityCommands::LockUser { user_id, reason: _ } => {
-                println!("Locking user account: {}", user_id);
-                // Implementation would lock user account
+            SecurityCommands::LockUser { user_id, reason } => {
+                let framework = self.framework().await?;
+                framework
+                    .users()
+                    .set_status(&user_id, crate::auth_operations::UserStatus::Inactive)
+                    .await?;
+                if let Some(reason) = reason {
+                    println!("Locked user {}: {}", user_id, reason);
+                } else {
+                    println!("Locked user {}", user_id);
+                }
             }
             SecurityCommands::TerminateSession { session_id, reason } => {
-                println!("Terminating session: {}", session_id);
+                let framework = self.framework().await?;
+                framework.sessions().delete(&session_id).await?;
                 if let Some(reason) = reason {
-                    println!("  Reason: {}", reason);
+                    println!("Terminated session {}: {}", session_id, reason);
+                } else {
+                    println!("Terminated session {}", session_id);
                 }
-                // Implementation would invalidate session and log event
-                println!("Session terminated successfully");
             }
             SecurityCommands::UnlockUser { user_id } => {
-                println!("Unlocking user account: {}", user_id);
-                // Implementation would unlock user account and log event
-                println!("User account unlocked successfully");
+                let framework = self.framework().await?;
+                framework
+                    .users()
+                    .set_status(&user_id, crate::auth_operations::UserStatus::Active)
+                    .await?;
+                println!("Unlocked user {}", user_id);
             }
         }
+
         Ok(())
     }
 }
@@ -526,9 +768,17 @@ pub async fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 // Place tests at the end of the file to avoid clippy warning
-#[cfg(test)]
+#[cfg(all(test, feature = "cli"))]
 mod tests {
-    use super::{CliProgressBar, format_cli_output};
+    use super::{
+        Cli, CliHandler, CliProgressBar, Commands, DbCommands, SystemCommands, format_cli_output,
+    };
+    use crate::auth_operations::UserListQuery;
+    use crate::config::app_config::AppConfig;
+    use crate::methods::{AuthMethodEnum, JwtMethod};
+    use crate::permissions::Role;
+    use tempfile::tempdir;
+
     #[test]
     fn test_progress_bar() {
         let pb = CliProgressBar::new("Test");
@@ -539,5 +789,186 @@ mod tests {
     fn test_terminal_formatting() {
         let msg = format_cli_output("Hello");
         assert!(msg.contains("[auth-framework]"));
+    }
+
+    #[cfg(all(feature = "cli", feature = "sqlite-storage"))]
+    #[tokio::test]
+    async fn maintenance_cli_smoke_test_roundtrip() {
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("maintenance-smoke.db");
+        let snapshot_path = temp_dir.path().join("snapshot.json");
+
+        let database_url = format!(
+            "sqlite://{}?mode=rwc",
+            db_path.to_string_lossy().replace('\\', "/")
+        );
+
+        let mut config = AppConfig::default();
+        config.database.url = database_url;
+
+        let mut seed_framework = config.build_auth_framework().await.unwrap();
+        seed_framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
+
+        let user_id = seed_framework
+            .users()
+            .register("cli-smoke", "cli-smoke@example.com", "Password123!")
+            .await
+            .unwrap();
+        seed_framework
+            .authorization()
+            .create_role(Role::new("operator"))
+            .await
+            .unwrap();
+        seed_framework
+            .authorization()
+            .assign_role(&user_id, "operator")
+            .await
+            .unwrap();
+        seed_framework
+            .tokens()
+            .create(&user_id, &["read"], "jwt", None)
+            .await
+            .unwrap();
+        seed_framework
+            .sessions()
+            .create(
+                &user_id,
+                std::time::Duration::from_secs(600),
+                Some("127.0.0.1".to_string()),
+                Some("cli-smoke".to_string()),
+            )
+            .await
+            .unwrap();
+        seed_framework
+            .storage()
+            .store_kv("smoke:key", b"present", None)
+            .await
+            .unwrap();
+        drop(seed_framework);
+
+        let mut handler = CliHandler::new(config.clone()).await.unwrap();
+        handler
+            .handle_command(Cli {
+                command: Some(Commands::System {
+                    command: SystemCommands::Backup {
+                        output_path: snapshot_path.to_string_lossy().to_string(),
+                    },
+                }),
+                config: "auth.toml".to_string(),
+                verbose: false,
+                dry_run: false,
+            })
+            .await
+            .unwrap();
+        assert!(snapshot_path.exists());
+
+        handler
+            .handle_command(Cli {
+                command: Some(Commands::Db {
+                    command: DbCommands::Reset { confirm: true },
+                }),
+                config: "auth.toml".to_string(),
+                verbose: false,
+                dry_run: false,
+            })
+            .await
+            .unwrap();
+
+        let reset_framework = config.build_auth_framework().await.unwrap();
+        assert!(
+            reset_framework
+                .users()
+                .list_with_query(UserListQuery::new())
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            reset_framework
+                .storage()
+                .get_kv("smoke:key")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        drop(reset_framework);
+
+        handler
+            .handle_command(Cli {
+                command: Some(Commands::System {
+                    command: SystemCommands::Restore {
+                        backup_path: snapshot_path.to_string_lossy().to_string(),
+                        confirm: true,
+                    },
+                }),
+                config: "auth.toml".to_string(),
+                verbose: false,
+                dry_run: false,
+            })
+            .await
+            .unwrap();
+
+        let restored_framework = config.build_auth_framework().await.unwrap();
+        let restored_user = restored_framework.users().get(&user_id).await.unwrap();
+        assert_eq!(restored_user.username, "cli-smoke");
+        assert_eq!(
+            restored_framework
+                .tokens()
+                .list_for_user(&user_id)
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            restored_framework
+                .sessions()
+                .list_for_user(&user_id)
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(
+            restored_framework
+                .authorization()
+                .has_role(&user_id, "operator")
+                .await
+                .unwrap()
+        );
+        assert_eq!(
+            restored_framework
+                .storage()
+                .get_kv("smoke:key")
+                .await
+                .unwrap()
+                .unwrap(),
+            b"present"
+        );
+        drop(restored_framework);
+
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(temp_dir.path()).unwrap();
+        let migration_result = handler
+            .handle_command(Cli {
+                command: Some(Commands::Db {
+                    command: DbCommands::CreateMigration {
+                        name: "smoke test migration".to_string(),
+                    },
+                }),
+                config: "auth.toml".to_string(),
+                verbose: false,
+                dry_run: false,
+            })
+            .await;
+        std::env::set_current_dir(original_dir).unwrap();
+        migration_result.unwrap();
+
+        let migration_dir = temp_dir.path().join("migrations").join("sqlite");
+        let entries = std::fs::read_dir(&migration_dir)
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(entries.len(), 1);
     }
 }

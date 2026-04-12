@@ -13,6 +13,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 
 /// Token introspection request (RFC 7662)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -317,7 +318,9 @@ impl TokenIntrospectionService {
         match self.storage.get_token(token).await? {
             Some(auth_token) => {
                 if let Some(ref refresh_token) = auth_token.refresh_token {
-                    if refresh_token == token && !auth_token.is_expired() {
+                    let token_matches: bool =
+                        refresh_token.as_bytes().ct_eq(token.as_bytes()).into();
+                    if token_matches && !auth_token.is_expired() {
                         let mut response = TokenIntrospectionResponse::from_auth_token(
                             &auth_token,
                             None,
@@ -735,12 +738,12 @@ mod tests {
             refresh_token: None,
             issued_at: Utc::now(),
             expires_at: Utc::now() + Duration::hours(1),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             auth_method: "test".to_string(),
             client_id: None,
             user_profile: None,
-            permissions: vec!["read:data".to_string(), "write:data".to_string()],
-            roles: vec!["user".to_string()],
+            permissions: vec!["read:data".to_string(), "write:data".to_string()].into(),
+            roles: vec!["user".to_string()].into(),
             metadata: Default::default(),
         };
 

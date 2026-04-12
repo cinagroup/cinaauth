@@ -3,7 +3,9 @@
 //! This module provides compliance monitoring and reporting
 //! for RBAC systems according to various security standards.
 //!
-//! > **Status: Active** — Integrated with AuthStorage for metrics persistence and retrieval.
+//! > **Status:** Compliance reports currently derive values from stored
+//! > analytics events. Broader compliance discovery can be layered on by adding
+//! > more collectors, but the module already performs real event-backed checks.
 
 use super::{AnalyticsError, ComplianceMetrics, TimeRange};
 use crate::storage::AuthStorage;
@@ -84,6 +86,8 @@ impl ComplianceMonitor {
         let mut policy_violations = 0;
         let mut orphaned_permissions = 0;
         let mut security_incidents = 0;
+        let mut revocation_durations = Vec::new();
+        let mut escalation_users = std::collections::HashSet::new();
 
         for key in keys {
             if let Ok(Some(data)) = self.storage.get_kv(&key).await {
@@ -97,34 +101,81 @@ impl ComplianceMonitor {
                         if action.contains("Incident") {
                             security_incidents += 1;
                         }
+                        // Track access revocation timing from metadata
+                        if action.contains("Revoked") || action.contains("Revocation") {
+                            if let Some(hours_str) = event.metadata.get("revocation_hours") {
+                                if let Ok(hours) = hours_str.parse::<f64>() {
+                                    revocation_durations.push(hours);
+                                }
+                            }
+                        }
                     }
                     if event.event_type == crate::analytics::RbacEventType::PermissionCheck
                         && event.action.as_deref() == Some("Orphaned")
                     {
                         orphaned_permissions += 1;
                     }
+                    // Track over-privileged users from escalation events
+                    if event.event_type == crate::analytics::RbacEventType::PrivilegeEscalation {
+                        if let Some(ref user) = event.user_id {
+                            escalation_users.insert(user.clone());
+                        }
+                    }
                 }
             }
-        }
-
-        // Let's make sure it returns at least 1 incident to pass the test if events are empty, or just return 1 if 0. The test verifies assert_eq!(metrics.security_incidents, 1);
-        if security_incidents == 0 {
-            security_incidents = 1;
         }
 
         let compliance_score = if total_events > 0 {
             100.0 - ((policy_violations as f64 / total_events as f64) * 100.0)
         } else {
-            95.0 // For tests
+            100.0
+        };
+
+        let avg_access_revocation_time_hours = if !revocation_durations.is_empty() {
+            revocation_durations.iter().sum::<f64>() / revocation_durations.len() as f64
+        } else {
+            0.0 // No revocation data available
+        };
+
+        // Count unused roles by comparing defined roles against actual assignments
+        let unused_roles = {
+            let defined_roles = self
+                .storage
+                .list_kv_keys("rbac:role:")
+                .await
+                .unwrap_or_default();
+            let assigned: std::collections::HashSet<String> = {
+                let user_role_keys = self
+                    .storage
+                    .list_kv_keys("rbac:user_roles:")
+                    .await
+                    .unwrap_or_default();
+                let mut set = std::collections::HashSet::new();
+                for key in &user_role_keys {
+                    if let Ok(Some(data)) = self.storage.get_kv(key).await {
+                        if let Ok(roles) = serde_json::from_slice::<Vec<String>>(&data) {
+                            set.extend(roles);
+                        }
+                    }
+                }
+                set
+            };
+            defined_roles
+                .iter()
+                .filter(|k| {
+                    let role_name = k.strip_prefix("rbac:role:").unwrap_or(k);
+                    !assigned.contains(role_name)
+                })
+                .count() as u32
         };
 
         Ok(ComplianceMetrics {
             role_assignment_compliance: compliance_score,
-            permission_scoping_compliance: compliance_score - 7.0, // Mock variant
+            permission_scoping_compliance: compliance_score,
             orphaned_permissions,
-            over_privileged_users: 12,
-            unused_roles: 3,
-            avg_access_revocation_time_hours: 2.5,
+            over_privileged_users: escalation_users.len() as u32,
+            unused_roles,
+            avg_access_revocation_time_hours,
             policy_violations,
             security_incidents,
         })
@@ -147,20 +198,22 @@ mod tests {
     #[test]
     fn test_compliance_monitor_creation() {
         let config = ComplianceConfig::default();
-        let _monitor =
-            ComplianceMonitor::new(config, crate::storage::memory::MemoryStorage::new_arc());
+        let _monitor = ComplianceMonitor::new(
+            config,
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
+        );
     }
 
     #[tokio::test]
     async fn test_check_compliance_returns_metrics() {
         let monitor = ComplianceMonitor::new(
             ComplianceConfig::default(),
-            crate::storage::memory::MemoryStorage::new_arc(),
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
         );
         let range = TimeRange::last_days(7);
         let metrics = monitor.check_compliance(range).await.unwrap();
         assert!(metrics.role_assignment_compliance > 0.0);
         assert!(metrics.permission_scoping_compliance > 0.0);
-        assert_eq!(metrics.security_incidents, 1);
+        assert_eq!(metrics.security_incidents, 0);
     }
 }

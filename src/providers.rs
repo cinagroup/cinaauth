@@ -67,7 +67,7 @@ pub struct OAuthProviderConfig {
     pub revocation_url: Option<String>,
 
     /// Default scopes to request
-    pub default_scopes: Vec<String>,
+    pub default_scopes: crate::types::Scopes,
 
     /// Whether this provider supports PKCE
     pub supports_pkce: bool,
@@ -79,7 +79,110 @@ pub struct OAuthProviderConfig {
     pub supports_device_flow: bool,
 
     /// Custom parameters to include in authorization requests
-    pub additional_params: HashMap<String, String>,
+    pub additional_params: crate::types::AdditionalParams,
+}
+
+impl OAuthProviderConfig {
+    /// Start building an `OAuthProviderConfig` with fluent setters.
+    ///
+    /// `authorization_url` and `token_url` are required; everything else has
+    /// sensible defaults.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use auth_framework::providers::OAuthProviderConfig;
+    /// let cfg = OAuthProviderConfig::builder(
+    ///         "https://provider.example/authorize",
+    ///         "https://provider.example/token",
+    ///     )
+    ///     .userinfo_url("https://provider.example/userinfo")
+    ///     .supports_pkce(true)
+    ///     .default_scope("openid")
+    ///     .build();
+    /// ```
+    pub fn builder(
+        authorization_url: impl Into<String>,
+        token_url: impl Into<String>,
+    ) -> OAuthProviderConfigBuilder {
+        OAuthProviderConfigBuilder {
+            inner: OAuthProviderConfig {
+                authorization_url: authorization_url.into(),
+                token_url: token_url.into(),
+                device_authorization_url: None,
+                userinfo_url: None,
+                revocation_url: None,
+                default_scopes: crate::types::Scopes::empty(),
+                supports_pkce: false,
+                supports_refresh: false,
+                supports_device_flow: false,
+                additional_params: crate::types::AdditionalParams::new(),
+            },
+        }
+    }
+}
+
+/// Fluent builder for [`OAuthProviderConfig`].
+#[derive(Debug, Clone)]
+pub struct OAuthProviderConfigBuilder {
+    inner: OAuthProviderConfig,
+}
+
+impl OAuthProviderConfigBuilder {
+    /// Set the device authorization endpoint URL.
+    pub fn device_authorization_url(mut self, url: impl Into<String>) -> Self {
+        self.inner.device_authorization_url = Some(url.into());
+        self
+    }
+
+    /// Set the user info endpoint URL.
+    pub fn userinfo_url(mut self, url: impl Into<String>) -> Self {
+        self.inner.userinfo_url = Some(url.into());
+        self
+    }
+
+    /// Set the revocation endpoint URL.
+    pub fn revocation_url(mut self, url: impl Into<String>) -> Self {
+        self.inner.revocation_url = Some(url.into());
+        self
+    }
+
+    /// Add a default scope to request.
+    pub fn default_scope(mut self, scope: impl Into<String>) -> Self {
+        self.inner.default_scopes.push(scope.into());
+        self
+    }
+
+    /// Set whether PKCE is supported.
+    pub fn supports_pkce(mut self, yes: bool) -> Self {
+        self.inner.supports_pkce = yes;
+        self
+    }
+
+    /// Set whether refresh tokens are supported.
+    pub fn supports_refresh(mut self, yes: bool) -> Self {
+        self.inner.supports_refresh = yes;
+        self
+    }
+
+    /// Set whether device flow is supported.
+    pub fn supports_device_flow(mut self, yes: bool) -> Self {
+        self.inner.supports_device_flow = yes;
+        self
+    }
+
+    /// Add a custom parameter to authorization requests.
+    pub fn param(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.inner
+            .additional_params
+            .insert(key.into(), value.into());
+        self
+    }
+
+    /// Consume the builder and return the finished config.
+    pub fn build(self) -> OAuthProviderConfig {
+        self.inner
+    }
 }
 
 /// Device flow authorization response.
@@ -318,13 +421,22 @@ impl ProviderProfile {
         Ok(profile)
     }
 
-    /// Create an AuthToken with this profile's information
+    /// Create an AuthToken with this profile's information.
+    /// If `lifetime` is `None`, defaults to 1 hour.
     pub fn to_auth_token(&self, access_token: String) -> AuthToken {
+        self.to_auth_token_with_lifetime(access_token, std::time::Duration::from_secs(3600))
+    }
+
+    /// Create an AuthToken with an explicit lifetime.
+    pub fn to_auth_token_with_lifetime(
+        &self,
+        access_token: String,
+        lifetime: std::time::Duration,
+    ) -> AuthToken {
         let user_id = self.id.as_deref().unwrap_or("unknown").to_string();
         let auth_method = self.provider.as_deref().unwrap_or("oauth").to_string();
-        let expires_in = std::time::Duration::from_secs(3600); // 1 hour default
 
-        let mut token = AuthToken::new(user_id.clone(), access_token, expires_in, auth_method);
+        let mut token = AuthToken::new(user_id.clone(), access_token, lifetime, auth_method);
         token.subject = self.id.clone();
         token.issuer = self.provider.clone();
         token.user_profile = Some(self.clone());
@@ -404,11 +516,11 @@ impl OAuthProvider {
                 device_authorization_url: Some("https://github.com/login/device/code".to_string()),
                 userinfo_url: Some("https://api.github.com/user".to_string()),
                 revocation_url: None,
-                default_scopes: vec!["user:email".to_string()],
+                default_scopes: vec!["user:email".to_string()].into(),
                 supports_pkce: true,
                 supports_refresh: false,
                 supports_device_flow: true,
-                additional_params: HashMap::new(),
+                additional_params: crate::types::AdditionalParams::new(),
             },
 
             Self::Google => OAuthProviderConfig {
@@ -423,11 +535,12 @@ impl OAuthProvider {
                     "openid".to_string(),
                     "profile".to_string(),
                     "email".to_string(),
-                ],
+                ]
+                .into(),
                 supports_pkce: true,
                 supports_refresh: true,
                 supports_device_flow: true,
-                additional_params: HashMap::new(),
+                additional_params: crate::types::AdditionalParams::new(),
             },
 
             Self::Microsoft => OAuthProviderConfig {
@@ -443,11 +556,12 @@ impl OAuthProvider {
                     "openid".to_string(),
                     "profile".to_string(),
                     "email".to_string(),
-                ],
+                ]
+                .into(),
                 supports_pkce: true,
                 supports_refresh: true,
                 supports_device_flow: true,
-                additional_params: HashMap::new(),
+                additional_params: crate::types::AdditionalParams::new(),
             },
 
             Self::Discord => OAuthProviderConfig {
@@ -456,11 +570,11 @@ impl OAuthProvider {
                 device_authorization_url: None,
                 userinfo_url: Some("https://discord.com/api/users/@me".to_string()),
                 revocation_url: Some("https://discord.com/api/oauth2/token/revoke".to_string()),
-                default_scopes: vec!["identify".to_string(), "email".to_string()],
+                default_scopes: vec!["identify".to_string(), "email".to_string()].into(),
                 supports_pkce: false,
                 supports_refresh: true,
                 supports_device_flow: false,
-                additional_params: HashMap::new(),
+                additional_params: crate::types::AdditionalParams::new(),
             },
 
             Self::Twitter => OAuthProviderConfig {
@@ -469,11 +583,11 @@ impl OAuthProvider {
                 device_authorization_url: None,
                 userinfo_url: Some("https://api.twitter.com/2/users/me".to_string()),
                 revocation_url: Some("https://api.twitter.com/2/oauth2/revoke".to_string()),
-                default_scopes: vec!["tweet.read".to_string(), "users.read".to_string()],
+                default_scopes: vec!["tweet.read".to_string(), "users.read".to_string()].into(),
                 supports_pkce: true,
                 supports_refresh: true,
                 supports_device_flow: false,
-                additional_params: HashMap::new(),
+                additional_params: crate::types::AdditionalParams::new(),
             },
 
             Self::Facebook => OAuthProviderConfig {
@@ -482,11 +596,11 @@ impl OAuthProvider {
                 device_authorization_url: None,
                 userinfo_url: Some("https://graph.facebook.com/me".to_string()),
                 revocation_url: None,
-                default_scopes: vec!["email".to_string(), "public_profile".to_string()],
+                default_scopes: vec!["email".to_string(), "public_profile".to_string()].into(),
                 supports_pkce: false,
                 supports_refresh: false,
                 supports_device_flow: false,
-                additional_params: HashMap::new(),
+                additional_params: crate::types::AdditionalParams::new(),
             },
 
             Self::LinkedIn => OAuthProviderConfig {
@@ -495,11 +609,12 @@ impl OAuthProvider {
                 device_authorization_url: None,
                 userinfo_url: Some("https://api.linkedin.com/v2/me".to_string()),
                 revocation_url: None,
-                default_scopes: vec!["r_liteprofile".to_string(), "r_emailaddress".to_string()],
+                default_scopes: vec!["r_liteprofile".to_string(), "r_emailaddress".to_string()]
+                    .into(),
                 supports_pkce: false,
                 supports_refresh: true,
                 supports_device_flow: false,
-                additional_params: HashMap::new(),
+                additional_params: crate::types::AdditionalParams::new(),
             },
 
             Self::GitLab => OAuthProviderConfig {
@@ -508,11 +623,11 @@ impl OAuthProvider {
                 device_authorization_url: None,
                 userinfo_url: Some("https://gitlab.com/api/v4/user".to_string()),
                 revocation_url: Some("https://gitlab.com/oauth/revoke".to_string()),
-                default_scopes: vec!["read_user".to_string()],
+                default_scopes: vec!["read_user".to_string()].into(),
                 supports_pkce: true,
                 supports_refresh: true,
                 supports_device_flow: false,
-                additional_params: HashMap::new(),
+                additional_params: crate::types::AdditionalParams::new(),
             },
 
             Self::Custom { config, .. } => *config.clone(),
@@ -555,7 +670,7 @@ impl OAuthProvider {
         let mut url = Url::parse(&config.authorization_url)
             .map_err(|e| AuthError::config(format!("Invalid authorization URL: {e}")))?;
 
-        let scopes = scopes.unwrap_or(&config.default_scopes);
+        let scopes = scopes.unwrap_or(config.default_scopes.as_slice());
 
         {
             let mut query = url.query_pairs_mut();
@@ -967,12 +1082,12 @@ impl ProfileExtractor {
             .bearer_auth(&token.access_token)
             .send()
             .await
-            .map_err(|e| AuthError::NetworkError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let json: Value = response
             .json()
             .await
-            .map_err(|e| AuthError::ParseError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_u64().unwrap_or(0).to_string());
@@ -1024,12 +1139,12 @@ impl ProfileExtractor {
             .bearer_auth(&token.access_token)
             .send()
             .await
-            .map_err(|e| AuthError::NetworkError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let json: Value = response
             .json()
             .await
-            .map_err(|e| AuthError::ParseError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_str().unwrap_or("").to_string());
@@ -1066,12 +1181,12 @@ impl ProfileExtractor {
             .bearer_auth(&token.access_token)
             .send()
             .await
-            .map_err(|e| AuthError::NetworkError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let json: Value = response
             .json()
             .await
-            .map_err(|e| AuthError::ParseError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_str().unwrap_or("").to_string());
@@ -1118,12 +1233,12 @@ impl ProfileExtractor {
             .bearer_auth(&token.access_token)
             .send()
             .await
-            .map_err(|e| AuthError::NetworkError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let json: Value = response
             .json()
             .await
-            .map_err(|e| AuthError::ParseError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_str().unwrap_or("").to_string());
@@ -1172,12 +1287,12 @@ impl ProfileExtractor {
             .bearer_auth(&token.access_token)
             .send()
             .await
-            .map_err(|e| AuthError::NetworkError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let json: Value = response
             .json()
             .await
-            .map_err(|e| AuthError::ParseError(e.to_string()))?;
+            .map_err(|e| AuthError::internal(e.to_string()))?;
 
         let mut profile = ProviderProfile::new();
         profile = profile.with_id(json["id"].as_u64().unwrap_or(0).to_string());
@@ -1229,12 +1344,12 @@ impl ProfileExtractor {
                 .bearer_auth(&token.access_token)
                 .send()
                 .await
-                .map_err(|e| AuthError::NetworkError(e.to_string()))?;
+                .map_err(|e| AuthError::internal(e.to_string()))?;
 
             let json: Value = response
                 .json()
                 .await
-                .map_err(|e| AuthError::ParseError(e.to_string()))?;
+                .map_err(|e| AuthError::internal(e.to_string()))?;
 
             let mut profile = ProviderProfile::new();
             profile = profile.with_id(
@@ -1305,7 +1420,7 @@ impl ProfileExtractor {
 
             Ok(profile)
         } else {
-            Err(AuthError::ConfigurationError(
+            Err(AuthError::config(
                 "Custom provider requires user_info_url".to_string(),
             ))
         }

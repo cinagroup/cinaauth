@@ -338,7 +338,7 @@ impl MetadataProvider {
                 "client_secret_basic".to_string(),
                 "client_secret_post".to_string(),
             ])
-            .code_challenge_methods_supported(vec!["S256".to_string(), "plain".to_string()])
+            .code_challenge_methods_supported(vec!["S256".to_string()])
             .revocation_endpoint(format!("{}/oauth2/revoke", base_url))
             .introspection_endpoint(format!("{}/oauth2/introspect", base_url))
             .scopes_supported(vec![

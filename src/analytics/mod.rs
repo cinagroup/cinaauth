@@ -3,10 +3,10 @@
 //! This module provides comprehensive analytics capabilities for monitoring
 //! and analyzing RBAC usage patterns, security compliance, and system performance.
 //!
-//! > **Status: Experimental** — Several sub-modules (`compliance`, `reports`,
-//! > `metrics`, `dashboard`) currently return placeholder data. They define the
-//! > public configuration / API surface but do not yet perform real analytics.
-//! > Contributions and production implementations are welcome.
+//! > **Status:** Analytics are event-backed today. The `compliance`, `reports`,
+//! > `metrics`, and `dashboard` modules derive results from stored analytics
+//! > events and persisted snapshots, and they expand as additional collectors
+//! > feed the pipeline.
 
 use crate::storage::AuthStorage;
 use serde::{Deserialize, Serialize};
@@ -181,7 +181,7 @@ pub struct PermissionUsageStats {
     pub success_rate: f64,
 
     /// Roles that use this permission
-    pub used_by_roles: Vec<String>,
+    pub used_by_roles: crate::types::Roles,
 
     /// Most active users for this permission
     pub top_users: Vec<UserActivity>,
@@ -411,7 +411,7 @@ impl AnalyticsManager {
                                     permission_id: perm.clone(),
                                     check_count: 0,
                                     success_rate: 1.0,
-                                    used_by_roles: Vec::new(),
+                                    used_by_roles: crate::types::Roles::empty(),
                                     top_users: Vec::new(),
                                     peak_hours: Vec::new(),
                                 });
@@ -438,7 +438,11 @@ impl AnalyticsManager {
         let mut total_events = 0;
         let mut policy_violations = 0;
         let mut orphaned_permissions = 0;
-        let over_privileged_users = 0;
+        let mut security_incidents = 0;
+        // Track revocation timing from events that contain revocation metadata
+        let mut revocation_durations = Vec::new();
+        // Track users with escalation/anomaly events as potentially over-privileged
+        let mut escalation_users = std::collections::HashSet::new();
 
         for key in keys {
             if let Ok(Some(data)) = self.storage.get_kv(&key).await {
@@ -454,6 +458,34 @@ impl AnalyticsManager {
                     {
                         orphaned_permissions += 1;
                     }
+                    if matches!(
+                        event.event_type,
+                        RbacEventType::PolicyViolation
+                            | RbacEventType::PrivilegeEscalation
+                            | RbacEventType::AccessAnomaly
+                    ) || event
+                        .action
+                        .as_deref()
+                        .is_some_and(|action| action.contains("Incident"))
+                    {
+                        security_incidents += 1;
+                    }
+                    // Track over-privileged users from escalation events
+                    if event.event_type == RbacEventType::PrivilegeEscalation {
+                        if let Some(ref user) = event.user_id {
+                            escalation_users.insert(user.clone());
+                        }
+                    }
+                    // Track access revocation timing from metadata
+                    if let Some(ref action) = event.action {
+                        if action.contains("Revoked") || action.contains("Revocation") {
+                            if let Some(hours_str) = event.metadata.get("revocation_hours") {
+                                if let Ok(hours) = hours_str.parse::<f64>() {
+                                    revocation_durations.push(hours);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -464,15 +496,53 @@ impl AnalyticsManager {
             100.0
         };
 
+        let avg_access_revocation_time_hours = if !revocation_durations.is_empty() {
+            revocation_durations.iter().sum::<f64>() / revocation_durations.len() as f64
+        } else {
+            0.0 // No revocation data available
+        };
+
+        // Count unused roles by comparing defined roles against actual assignments
+        let unused_roles = {
+            let defined_roles = self
+                .storage
+                .list_kv_keys("rbac:role:")
+                .await
+                .unwrap_or_default();
+            let assigned: std::collections::HashSet<String> = {
+                let user_role_keys = self
+                    .storage
+                    .list_kv_keys("rbac:user_roles:")
+                    .await
+                    .unwrap_or_default();
+                let mut set = std::collections::HashSet::new();
+                for key in &user_role_keys {
+                    if let Ok(Some(data)) = self.storage.get_kv(key).await {
+                        if let Ok(roles) = serde_json::from_slice::<Vec<String>>(&data) {
+                            set.extend(roles);
+                        }
+                    }
+                }
+                set
+            };
+            defined_roles
+                .iter()
+                .filter(|k: &&String| {
+                    let role_name = k.strip_prefix("rbac:role:").unwrap_or(k);
+                    !assigned.contains(role_name)
+                })
+                .count() as u32
+        };
+
         Ok(ComplianceMetrics {
             role_assignment_compliance: compliance_score,
             permission_scoping_compliance: compliance_score,
             orphaned_permissions,
-            over_privileged_users,
-            unused_roles: 0,
-            avg_access_revocation_time_hours: 0.0,
+            over_privileged_users: escalation_users.len() as u32,
+            unused_roles,
+            avg_access_revocation_time_hours,
             policy_violations,
-            security_incidents: 0,
+            security_incidents,
         })
     }
 
@@ -486,60 +556,122 @@ impl AnalyticsManager {
             .list_kv_keys("analytics_event_")
             .await
             .unwrap_or_default();
-        let mut total_duration = 0.0;
-        let mut event_count = 0;
-        let mut durations = Vec::new();
+        let mut total_events = 0;
+        let mut total_duration_ms = 0.0;
+        let mut duration_samples = Vec::new();
         let mut errors = 0;
+        let mut permission_check_timestamps = Vec::new();
 
         for key in keys {
             if let Ok(Some(data)) = self.storage.get_kv(&key).await {
                 if let Ok(event) = serde_json::from_slice::<AnalyticsEvent>(&data) {
-                    event_count += 1;
-                    // Mocking duration based on metadata if exists, else default 10ms
-                    let duration = 10.0;
-                    total_duration += duration;
-                    durations.push(duration as u64);
-
-                    if let Some(action) = &event.action {
-                        if action.contains("Error") || action.contains("Failed") {
-                            errors += 1;
-                        }
+                    total_events += 1;
+                    if let Some(duration_ms) = event.duration_ms {
+                        total_duration_ms += duration_ms as f64;
+                        duration_samples.push(duration_ms);
+                    }
+                    if event.event_type == RbacEventType::PermissionCheck {
+                        permission_check_timestamps.push(event.timestamp);
+                    }
+                    if matches!(event.result, EventResult::Failure | EventResult::Error) {
+                        errors += 1;
                     }
                 }
             }
         }
 
-        durations.sort_unstable();
-        let p95 = if durations.is_empty() {
+        duration_samples.sort_unstable();
+        let p95 = if duration_samples.is_empty() {
             0.0
         } else {
-            durations[(durations.len() as f64 * 0.95) as usize] as f64
+            let index = ((duration_samples.len() as f64 * 0.95).floor() as usize)
+                .min(duration_samples.len() - 1);
+            duration_samples[index] as f64
         };
-        let p99 = if durations.is_empty() {
+        let p99 = if duration_samples.is_empty() {
             0.0
         } else {
-            durations[(durations.len() as f64 * 0.99) as usize] as f64
+            let index = ((duration_samples.len() as f64 * 0.99).floor() as usize)
+                .min(duration_samples.len() - 1);
+            duration_samples[index] as f64
         };
-        let avg = if event_count > 0 {
-            total_duration / event_count as f64
+        let avg = if duration_samples.is_empty() {
+            0.0
+        } else {
+            total_duration_ms / duration_samples.len() as f64
+        };
+        let error_rate = if total_events > 0 {
+            errors as f64 / total_events as f64
         } else {
             0.0
         };
-        let error_rate = if event_count > 0 {
-            errors as f64 / event_count as f64
-        } else {
-            0.0
+        permission_check_timestamps.sort_unstable();
+        let permission_checks_per_second = match (
+            permission_check_timestamps.first(),
+            permission_check_timestamps.last(),
+        ) {
+            (Some(first), Some(last)) if permission_check_timestamps.len() > 1 => {
+                let span_seconds = (*last - *first).num_seconds().max(1) as f64;
+                permission_check_timestamps.len() as f64 / span_seconds
+            }
+            _ => 0.0,
         };
 
         Ok(PerformanceMetrics {
             avg_permission_check_latency_ms: avg,
             p95_permission_check_latency_ms: p95,
             p99_permission_check_latency_ms: p99,
-            permission_checks_per_second: event_count as f64 / 3600.0, // Assuming 1 hour window for stats
-            permission_cache_hit_rate: 85.0, // Mocked external system stat
+            permission_checks_per_second,
+            // Cache hit rate calculation: count events with metadata key
+            // "cache_hit" set to "true" vs total permission check events.
+            permission_cache_hit_rate: {
+                let cache_hits = self
+                    .event_buffer
+                    .iter()
+                    .filter(|e| e.event_type == RbacEventType::PermissionCheck)
+                    .filter(|e| e.metadata.get("cache_hit").is_some_and(|v| v == "true"))
+                    .count();
+                let cache_total = self
+                    .event_buffer
+                    .iter()
+                    .filter(|e| e.event_type == RbacEventType::PermissionCheck)
+                    .count();
+                if cache_total > 0 {
+                    cache_hits as f64 / cache_total as f64
+                } else {
+                    0.0
+                }
+            },
             error_rate,
-            cpu_usage_percent: 25.0, // Mocked basic telemetry
-            memory_usage_mb: 150,    // Mocked
+            // Best-effort process CPU usage via sysinfo crate
+            cpu_usage_percent: {
+                let mut sys = sysinfo::System::new();
+                let pid = sysinfo::get_current_pid().ok();
+                if let Some(pid) = pid {
+                    sys.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[pid]), true);
+                    sys.process(pid)
+                        .map(|p| p.cpu_usage() as f64)
+                        .unwrap_or(0.0)
+                } else {
+                    0.0
+                }
+            },
+            memory_usage_mb: {
+                // Use Rust's allocator stats when available, or a rough
+                // approximation via /proc/self/statm on Linux.
+                #[cfg(target_os = "linux")]
+                {
+                    std::fs::read_to_string("/proc/self/statm")
+                        .ok()
+                        .and_then(|s| s.split_whitespace().nth(1)?.parse::<u64>().ok())
+                        .map(|pages| pages * 4096 / (1024 * 1024))
+                        .unwrap_or(0)
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    0
+                }
+            },
         })
     }
 
@@ -554,13 +686,11 @@ impl AnalyticsManager {
             .list_kv_keys("analytics_event_")
             .await
             .unwrap_or_default();
-        let mut total_count = 0;
         let mut data_points = Vec::new();
 
         for key in keys {
             if let Ok(Some(data)) = self.storage.get_kv(&key).await {
                 if let Ok(event) = serde_json::from_slice::<AnalyticsEvent>(&data) {
-                    total_count += 1;
                     data_points.push(TimeSeriesData {
                         timestamp: event.timestamp,
                         value: 1.0,
@@ -570,20 +700,28 @@ impl AnalyticsManager {
             }
         }
 
-        // Simple mock of trend direction based on count
-        let direction = if total_count > 100 {
-            TrendDirection::Increasing
-        } else if total_count > 50 {
+        data_points.sort_by_key(|point| point.timestamp);
+        let midpoint = data_points.len() / 2;
+        let previous_value = midpoint as f64;
+        let current_value = (data_points.len() - midpoint) as f64;
+        let change_percent = if previous_value == 0.0 {
+            if current_value == 0.0 { 0.0 } else { 100.0 }
+        } else {
+            ((current_value - previous_value) / previous_value) * 100.0
+        };
+        let direction = if change_percent.abs() < 5.0 {
             TrendDirection::Stable
+        } else if change_percent > 0.0 {
+            TrendDirection::Increasing
         } else {
             TrendDirection::Decreasing
         };
 
         Ok(TrendAnalysis {
             metric_name: metric_name.to_string(),
-            current_value: total_count as f64,
-            previous_value: (total_count as f64) * 0.9,
-            change_percent: 10.0,
+            current_value,
+            previous_value,
+            change_percent,
             trend: direction,
             data_points,
         })
@@ -644,9 +782,17 @@ impl AnalyticsManager {
         Ok(())
     }
 
-    /// Process event for real-time analytics
-    async fn process_real_time_event(&self, _event: &AnalyticsEvent) -> Result<(), AnalyticsError> {
-        // Implementation would update real-time metrics
+    /// Process event for real-time analytics by persisting it to storage
+    /// immediately so that dashboards and alerts can query the latest data
+    /// without waiting for the periodic buffer flush.
+    async fn process_real_time_event(&self, event: &AnalyticsEvent) -> Result<(), AnalyticsError> {
+        let json_data = serde_json::to_vec(event)?;
+        let key = format!("analytics_event_{}", event.id);
+        let ttl = std::time::Duration::from_secs(self.config.data_retention_days as u64 * 86400);
+        self.storage
+            .store_kv(&key, &json_data, Some(ttl))
+            .await
+            .map_err(|e| AnalyticsError::StorageError(e.to_string()))?;
         Ok(())
     }
 
@@ -776,16 +922,20 @@ mod tests {
     #[tokio::test]
     async fn test_analytics_manager_creation() {
         let config = AnalyticsConfig::default();
-        let manager =
-            AnalyticsManager::new(config, crate::storage::memory::MemoryStorage::new_arc());
+        let manager = AnalyticsManager::new(
+            config,
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
+        );
         assert_eq!(manager.event_buffer.len(), 0);
     }
 
     #[tokio::test]
     async fn test_record_event() {
         let config = AnalyticsConfig::default();
-        let mut manager =
-            AnalyticsManager::new(config, crate::storage::memory::MemoryStorage::new_arc());
+        let mut manager = AnalyticsManager::new(
+            config,
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
+        );
 
         let event = AnalyticsEvent {
             id: "test_event_1".to_string(),

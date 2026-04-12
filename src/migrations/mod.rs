@@ -68,7 +68,7 @@ impl MigrationManager {
 
         for migration in available {
             if !applied.contains(&migration.version) {
-                println!("Applying migration: {}", migration.name);
+                tracing::info!(name = %migration.name, "Applying migration");
                 self.apply_migration(&migration).await?;
             }
         }
@@ -314,7 +314,7 @@ impl MigrationCli {
             tokio_postgres::connect(database_url, tokio_postgres::NoTls).await?;
         tokio::spawn(async move {
             if let Err(e) = connection.await {
-                eprintln!("Connection error: {}", e);
+                tracing::error!(error = %e, "Database connection error");
             }
         });
         let mut manager = MigrationManager::new(client);
@@ -322,23 +322,23 @@ impl MigrationCli {
         match command {
             "migrate" => {
                 manager.migrate().await?;
-                println!("Migrations completed successfully");
+                tracing::info!("Migrations completed successfully");
             }
             "status" => {
                 let status = manager.status().await?;
-                println!("Migration Status:");
-                println!("  Applied: {}", status.applied_count);
-                println!("  Pending: {}", status.pending_count);
-                if let Some(latest) = status.latest_applied {
-                    println!("  Latest Applied: {}", latest);
-                }
-                if let Some(next) = status.next_pending {
-                    println!("  Next Pending: {}", next);
-                }
+                tracing::info!(
+                    applied = status.applied_count,
+                    pending = status.pending_count,
+                    latest_applied = ?status.latest_applied,
+                    next_pending = ?status.next_pending,
+                    "Migration status"
+                );
             }
             _ => {
-                eprintln!("Unknown command: {}", command);
-                eprintln!("Available commands: migrate, status");
+                tracing::error!(
+                    command,
+                    "Unknown migration command. Available commands: migrate, status"
+                );
             }
         }
 

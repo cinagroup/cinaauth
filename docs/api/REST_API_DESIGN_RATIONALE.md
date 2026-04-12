@@ -1,5 +1,7 @@
 # AuthFramework REST API Design Rationale
 
+> Historical design note: this document captures rationale, gaps, and proposed API evolution ideas at the time it was written. It is not a route-by-route description of the currently mounted REST router. For the current implementation, use `docs/api/README.md`, `docs/api/complete-reference.md`, and the live `/api/openapi.json` output.
+
 ## Document Purpose
 
 This document explains the **why** behind every design decision in the AuthFramework REST API. It serves as:
@@ -91,7 +93,7 @@ Or for errors:
 
 **Why**: Industry standard, stateless, secure.
 
-```
+```text
 Authorization: Bearer <jwt-token>
 ```
 
@@ -116,7 +118,7 @@ Authorization: Bearer <jwt-token>
 
 ### Path Hierarchy Design
 
-```
+```text
 /
 ├── health/              # Monitoring (always public, unauthenticated)
 ├── metrics/             # Observability (public, Prometheus format)
@@ -384,7 +386,7 @@ Some endpoints are actions, not resource manipulations:
 
 For list endpoints:
 
-```
+```text
 GET /api/v1/rbac/roles?page=2&per_page=50
 ```
 
@@ -413,7 +415,7 @@ GET /api/v1/rbac/roles?page=2&per_page=50
 
 ### Filtering & Sorting
 
-```
+```text
 GET /admin/users?role=admin&sort=created_at&order=desc
 ```
 
@@ -427,7 +429,7 @@ GET /admin/users?role=admin&sort=created_at&order=desc
 
 **Format**: ISO 8601 with timezone (RFC 3339)
 
-```
+```text
 "2025-09-30T12:00:00Z"
 ```
 
@@ -441,7 +443,7 @@ GET /admin/users?role=admin&sort=created_at&order=desc
 
 **Format**: UUID v4 or sequential strings
 
-```
+```text
 "123e4567-e89b-12d3-a456-426614174000"
 ```
 
@@ -551,7 +553,7 @@ Optional `details` object provides additional context:
 
 ### Headers
 
-```
+```text
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
 X-RateLimit-Reset: 1633024800
@@ -712,28 +714,28 @@ Our OpenAPI spec includes:
 
 ### 🟡 Medium Priority
 
-4. **Inconsistent Documentation**
+1. **Inconsistent Documentation**
    - **Problem**: OpenAPI spec mentions endpoints not in code
    - **Impact**: Confusing for users, SDK generation fails
    - **Fix**: Audit OpenAPI against actual routes
 
-5. **No Batch Operations**
+2. **No Batch Operations**
    - **Problem**: Some operations need to happen in bulk
    - **Missing**: Batch user creation, batch permission checks
    - **Impact**: Performance issues for bulk operations
 
-6. **Limited Filtering Options**
+3. **Limited Filtering Options**
    - **Problem**: List endpoints have basic pagination only
    - **Missing**: Filtering by multiple fields, search
    - **Impact**: Clients must filter client-side
 
 ### 🟢 Nice to Have
 
-7. **No WebSocket Support**
+1. **No WebSocket Support**
    - **Opportunity**: Real-time permission updates
    - **Use case**: Live session invalidation, role changes
 
-8. **No GraphQL Alternative**
+2. **No GraphQL Alternative**
    - **Opportunity**: Complex queries with single request
    - **Use case**: Dashboard with user + roles + permissions
 

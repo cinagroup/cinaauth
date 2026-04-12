@@ -147,7 +147,51 @@ impl AlertManager {
                 metrics: HashMap::new(),
                 timestamp: event.timestamp,
             }),
-            _ => None,
+            SecurityEventType::UnusualActivity => Some(Alert {
+                id: format!("unusual_activity_{}", event.timestamp),
+                title: "Unusual activity detected".to_string(),
+                message: format!(
+                    "Unusual activity pattern for user {:?}: {:?}",
+                    event.user_id, event.details
+                ),
+                severity: AlertSeverity::Warning,
+                source: "security".to_string(),
+                metrics: HashMap::new(),
+                timestamp: event.timestamp,
+            }),
+            SecurityEventType::TokenManipulation => Some(Alert {
+                id: format!("token_manipulation_{}", event.timestamp),
+                title: "Token manipulation attempt".to_string(),
+                message: format!(
+                    "Token manipulation detected for user {:?}: {:?}",
+                    event.user_id, event.details
+                ),
+                severity: AlertSeverity::Critical,
+                source: "security".to_string(),
+                metrics: HashMap::new(),
+                timestamp: event.timestamp,
+            }),
+            SecurityEventType::ConfigurationChange => Some(Alert {
+                id: format!("config_change_{}", event.timestamp),
+                title: "Security configuration changed".to_string(),
+                message: format!(
+                    "Configuration change by user {:?}: {:?}",
+                    event.user_id, event.details
+                ),
+                severity: AlertSeverity::Info,
+                source: "configuration".to_string(),
+                metrics: HashMap::new(),
+                timestamp: event.timestamp,
+            }),
+            SecurityEventType::SystemError => Some(Alert {
+                id: format!("system_error_{}", event.timestamp),
+                title: "System error in security subsystem".to_string(),
+                message: format!("System error: {:?}", event.details),
+                severity: AlertSeverity::Warning,
+                source: "system".to_string(),
+                metrics: HashMap::new(),
+                timestamp: event.timestamp,
+            }),
         };
 
         if let Some(alert) = alert {

@@ -6,20 +6,32 @@ use crate::api::{ApiResponse, ApiState, extract_bearer_token};
 use axum::{Json, extract::State, http::HeaderMap};
 use serde::{Deserialize, Serialize};
 
-/// Login request payload
+/// Login request payload.
+///
+/// When `challenge_id` and `mfa_code` are both present the login completes an
+/// in-progress MFA challenge instead of performing a fresh password check.
+/// The two fields must appear together — providing one without the other is
+/// rejected with a validation error.
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
     pub username: String,
     pub password: String,
+    /// Identifier of a pending MFA challenge (returned by a prior login attempt).
     #[serde(default)]
     pub challenge_id: Option<String>,
+    /// The TOTP or backup code that answers the MFA challenge.
     #[serde(default)]
     pub mfa_code: Option<String>,
+    /// When `true`, the session lifetime is extended (e.g. "remember me" cookie).
     #[serde(default)]
     pub remember_me: bool,
 }
 
-/// Login response data
+/// Successful login response.
+///
+/// Contains access and refresh tokens plus user metadata and adaptive risk
+/// information.  Clients should inspect `login_risk_level` and
+/// `security_warnings` to decide whether to prompt for additional verification.
 #[derive(Debug, Serialize)]
 pub struct LoginResponse {
     pub access_token: String,
@@ -43,10 +55,6 @@ pub struct LoginUserInfo {
     pub roles: Vec<String>,
     pub permissions: Vec<String>,
 }
-
-/// Backward-compatible alias.
-#[allow(dead_code)]
-pub(crate) type UserInfo = LoginUserInfo;
 
 async fn build_login_response(
     state: &ApiState,
@@ -78,7 +86,7 @@ async fn build_login_response(
         permissions,
     };
 
-    let token_lifetime = std::time::Duration::from_secs(3600);
+    let token_lifetime = state.auth_framework.config().token_lifetime;
     let access_token = match state.auth_framework.token_manager().create_jwt_token(
         user_id,
         roles,
@@ -94,7 +102,7 @@ async fn build_login_response(
         }
     };
 
-    let refresh_token_lifetime = std::time::Duration::from_secs(86400 * 7);
+    let refresh_token_lifetime = state.auth_framework.config().refresh_token_lifetime;
     let refresh_token = match state.auth_framework.token_manager().create_jwt_token(
         user_id,
         vec!["refresh".to_string()],
@@ -114,30 +122,35 @@ async fn build_login_response(
         access_token,
         refresh_token,
         token_type: "Bearer".to_string(),
-        expires_in: 3600,
+        expires_in: token_lifetime.as_secs(),
         user: user_info,
         login_risk_level: "low".to_string(), // Caller may override after build
         security_warnings: Vec::new(),       // Caller may override after build
     })
 }
 
-/// Token refresh request
+/// Token refresh request.
 #[derive(Debug, Deserialize)]
 pub struct RefreshRequest {
+    /// The refresh token issued during a previous login.
     pub refresh_token: String,
 }
 
-/// Token refresh response
+/// Token refresh response.
 #[derive(Debug, Serialize)]
 pub struct RefreshResponse {
+    /// The newly issued access token.
     pub access_token: String,
+    /// Always `"Bearer"`.
     pub token_type: String,
+    /// Seconds until the new access token expires.
     pub expires_in: u64,
 }
 
-/// Logout request
+/// Logout request.
 #[derive(Debug, Deserialize)]
 pub struct LogoutRequest {
+    /// Optional refresh token to revoke alongside the access token.
     #[serde(default)]
     pub refresh_token: Option<String>,
 }
@@ -196,7 +209,32 @@ pub(crate) fn login_risk_level(headers: &HeaderMap) -> (&'static str, Vec<String
     (level, warnings)
 }
 
-/// POST /auth/login
+/// Increment the per-username failed login counter with a sliding TTL window.
+async fn increment_login_failure(state: &ApiState, lockout_key: &str, window_secs: u64) {
+    let current: u64 = match state.auth_framework.storage().get_kv(lockout_key).await {
+        Ok(Some(bytes)) => std::str::from_utf8(&bytes)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0),
+        _ => 0,
+    };
+    let new_count = current.saturating_add(1);
+    let _ = state
+        .auth_framework
+        .storage()
+        .store_kv(
+            lockout_key,
+            new_count.to_string().as_bytes(),
+            Some(std::time::Duration::from_secs(window_secs)),
+        )
+        .await;
+}
+
+/// `POST /auth/login` — authenticate a user with username/password.
+///
+/// On success returns access + refresh tokens, user metadata, and adaptive
+/// risk information.  Returns `ACCOUNT_LOCKED` after 5 consecutive failures
+/// within 15 minutes.
 pub async fn login(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -226,7 +264,7 @@ pub async fn login(
                     &state,
                     &token.user_id,
                     req.username,
-                    token.permissions.clone(),
+                    token.permissions.to_vec(),
                 )
                 .await;
                 // MFA completion means the step-up was satisfied — mark as low risk.
@@ -248,6 +286,30 @@ pub async fn login(
     // Compute adaptive risk from request headers before touching the auth core
     // so the risk assessment can influence the response even on success.
     let (risk_level, mut risk_warnings) = login_risk_level(&headers);
+
+    // SEC-M1/L1: Per-username failed login rate limiting / account lockout.
+    // Key: "login_failures:{username}" — stores the current failure count as a
+    // decimal string with a 15-minute TTL (auto-resets after 15 min of no attempts).
+    let lockout_key = format!("login_failures:{}", req.username);
+    const MAX_FAILED_ATTEMPTS: u64 = 5;
+    const LOCKOUT_WINDOW_SECS: u64 = 900; // 15 minutes
+    if let Ok(Some(count_bytes)) = state.auth_framework.storage().get_kv(&lockout_key).await {
+        if let Ok(count_str) = std::str::from_utf8(&count_bytes) {
+            if let Ok(count) = count_str.parse::<u64>() {
+                if count >= MAX_FAILED_ATTEMPTS {
+                    tracing::warn!(
+                        username = %req.username,
+                        failed_attempts = count,
+                        "Login rejected — account temporarily locked due to repeated failures"
+                    );
+                    return ApiResponse::error_typed(
+                        "ACCOUNT_LOCKED",
+                        "Too many failed login attempts. Please try again later.",
+                    );
+                }
+            }
+        }
+    }
 
     // Create credential for authentication
     let credential = crate::authentication::credentials::Credential::Password {
@@ -293,9 +355,13 @@ pub async fn login(
                     &state,
                     &token.user_id,
                     req.username,
-                    token.permissions.clone(),
+                    token.permissions.to_vec(),
                 )
                 .await;
+
+                // Reset failed login counter on successful authentication
+                let _ = state.auth_framework.storage().delete_kv(&lockout_key).await;
+
                 if let Some(data) = response.data.as_mut() {
                     data.login_risk_level = risk_level.to_string();
                     data.security_warnings = risk_warnings;
@@ -328,10 +394,14 @@ pub async fn login(
                 .cast()
             }
             crate::auth::AuthResult::Failure(reason) => {
+                // Increment failed login counter
+                increment_login_failure(&state, &lockout_key, LOCKOUT_WINDOW_SECS).await;
                 ApiResponse::error_typed("AUTHENTICATION_FAILED", reason)
             }
         },
         Err(e) => {
+            // Increment failed login counter
+            increment_login_failure(&state, &lockout_key, LOCKOUT_WINDOW_SECS).await;
             // Always return the same error code/message regardless of *why* auth failed.
             // This prevents timing and enumeration attacks that could distinguish
             // "user not found" from "wrong password".
@@ -344,13 +414,13 @@ pub async fn login(
     }
 }
 
-/// POST /auth/refresh
+/// `POST /auth/refresh` — exchange a valid refresh token for a new access token.
 pub async fn refresh_token(
     State(state): State<ApiState>,
     Json(req): Json<RefreshRequest>,
 ) -> ApiResponse<RefreshResponse> {
     if req.refresh_token.is_empty() {
-        return ApiResponse::validation_error_typed("Refresh token is required");
+        return ApiResponse::validation_error_typed("Invalid request");
     }
 
     // Validate the refresh token
@@ -362,7 +432,10 @@ pub async fn refresh_token(
         Ok(claims) => {
             // Check if this is actually a refresh token
             if !claims.scope.contains("refresh") {
-                return ApiResponse::error_typed("INVALID_TOKEN", "Token is not a refresh token");
+                return ApiResponse::error_typed(
+                    "INVALID_TOKEN",
+                    "Expected a refresh token, but received an access token",
+                );
             }
 
             // SECURITY: Reject revoked refresh tokens (e.g. those already passed to /auth/logout).
@@ -376,7 +449,11 @@ pub async fn refresh_token(
                 }
                 Ok(None) => {} // Not revoked — proceed
                 Err(e) => {
-                    tracing::warn!("Refresh token revocation check failed: {}", e);
+                    tracing::error!("Refresh token revocation check failed: {}", e);
+                    return ApiResponse::error_typed(
+                        "INTERNAL_ERROR",
+                        "Unable to verify token status",
+                    );
                 }
             }
 
@@ -412,7 +489,7 @@ pub async fn refresh_token(
                 _ => vec![],
             };
 
-            let token_lifetime = std::time::Duration::from_secs(3600); // 1 hour
+            let token_lifetime = state.auth_framework.config().token_lifetime;
             let new_access_token = match state.auth_framework.token_manager().create_jwt_token(
                 &claims.sub,
                 permissions,
@@ -431,7 +508,7 @@ pub async fn refresh_token(
             let response = RefreshResponse {
                 access_token: new_access_token,
                 token_type: "Bearer".to_string(),
-                expires_in: 3600,
+                expires_in: token_lifetime.as_secs(),
             };
 
             ApiResponse::success(response)
@@ -443,7 +520,7 @@ pub async fn refresh_token(
     }
 }
 
-/// POST /auth/logout
+/// `POST /auth/logout` — revoke access and (optionally) refresh tokens.
 pub async fn logout(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -533,8 +610,8 @@ pub async fn validate_token(
                     let user_info = LoginUserInfo {
                         id: auth_token.user_id,
                         username,
-                        roles: auth_token.roles,
-                        permissions: auth_token.permissions,
+                        roles: auth_token.roles.to_vec(),
+                        permissions: auth_token.permissions.to_vec(),
                     };
                     ApiResponse::success(user_info)
                 }
@@ -545,8 +622,7 @@ pub async fn validate_token(
     }
 }
 
-/// GET /auth/providers
-/// List available OAuth providers
+/// `GET /auth/providers` — list available OAuth providers and their authorize URLs.
 pub async fn list_providers(State(_state): State<ApiState>) -> ApiResponse<Vec<ProviderInfo>> {
     let providers = vec![
         ProviderInfo {
@@ -569,32 +645,43 @@ pub async fn list_providers(State(_state): State<ApiState>) -> ApiResponse<Vec<P
     ApiResponse::success(providers)
 }
 
-/// Provider information
+/// Summary of an available OAuth login provider.
 #[derive(Debug, Serialize)]
 pub struct ProviderInfo {
+    /// Machine-readable identifier (e.g. `"google"`).
     pub name: String,
+    /// Human-readable label.
     pub display_name: String,
+    /// Relative URL to initiate the OAuth flow.
     pub auth_url: String,
 }
 
-/// User registration request
+/// User registration request.
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
+    /// Desired username (validated for length, characters, must start with a letter).
     pub username: String,
+    /// Email address for the new account.
     pub email: String,
+    /// Password (validated against minimum complexity rules).
     pub password: String,
 }
 
-/// User registration response
+/// User registration response.
 #[derive(Debug, Serialize)]
 pub struct RegisterResponse {
+    /// System-generated unique user identifier.
     pub user_id: String,
+    /// The registered username.
     pub username: String,
+    /// The registered email.
     pub email: String,
 }
 
-/// POST /auth/register
-/// Public endpoint for user self-registration
+/// `POST /auth/register` — create a new user account.
+///
+/// Validates username format, password complexity, and email uniqueness
+/// before persisting the new user.
 pub async fn register(
     State(state): State<ApiState>,
     Json(req): Json<RegisterRequest>,
@@ -612,6 +699,17 @@ pub async fn register(
     // Validate password strength (min 8 characters with complexity)
     if let Err(e) = crate::utils::validation::validate_password(&req.password) {
         return ApiResponse::validation_error_typed(format!("{e}"));
+    }
+
+    // Check password against known data breaches (HIBP k-anonymity API)
+    match crate::utils::breach_check::is_password_breached(&req.password).await {
+        Ok(true) => {
+            return ApiResponse::validation_error_typed(
+                "This password has appeared in a known data breach. Please choose a different password.",
+            );
+        }
+        Ok(false) => {} // Password not breached, continue
+        Err(_) => {}    // HIBP API unreachable; fail open to avoid blocking registration
     }
 
     // Validate email format
@@ -767,11 +865,14 @@ pub async fn register(
     };
     ids.push(user_id.clone());
     if let Ok(idx_json) = serde_json::to_vec(&ids) {
-        let _ = state
+        if let Err(e) = state
             .auth_framework
             .storage()
             .store_kv(index_key, &idx_json, None)
-            .await;
+            .await
+        {
+            tracing::warn!("Failed to update user index after registration: {}", e);
+        }
     }
 
     tracing::info!("New user registered: {} ({})", req.username, user_id);
@@ -794,8 +895,8 @@ pub struct CreateApiKeyResponse {
 
 /// POST /api-keys – create an API key (requires authentication)
 pub async fn create_api_key(
-    headers: HeaderMap,
     State(state): State<ApiState>,
+    headers: HeaderMap,
 ) -> ApiResponse<CreateApiKeyResponse> {
     // Require a valid Bearer token; reject unauthenticated requests with 401.
     let token = match crate::api::extract_bearer_token(&headers) {
@@ -827,5 +928,99 @@ pub async fn create_api_key(
             );
             ApiResponse::internal_error_typed()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::HeaderMap;
+
+    #[test]
+    fn test_login_risk_low_normal_request() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "user-agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64)".parse().unwrap(),
+        );
+        let (level, warnings) = login_risk_level(&headers);
+        assert_eq!(level, "low");
+        assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn test_login_risk_high_no_user_agent() {
+        let headers = HeaderMap::new();
+        let (level, warnings) = login_risk_level(&headers);
+        assert_eq!(level, "high");
+        assert!(!warnings.is_empty());
+    }
+
+    #[test]
+    fn test_login_risk_tor_browser() {
+        let mut headers = HeaderMap::new();
+        headers.insert("user-agent", "Mozilla/5.0 (Tor Browser)".parse().unwrap());
+        let (level, warnings) = login_risk_level(&headers);
+        // Tor alone is 40 points → "high"
+        assert!(level == "high" || level == "critical");
+        assert!(warnings.iter().any(|w| w.contains("Tor")));
+    }
+
+    #[test]
+    fn test_login_risk_proxy_hops() {
+        let mut headers = HeaderMap::new();
+        headers.insert("user-agent", "Mozilla/5.0".parse().unwrap());
+        headers.insert("x-forwarded-for", "1.2.3.4, 5.6.7.8".parse().unwrap());
+        let (level, warnings) = login_risk_level(&headers);
+        assert_eq!(level, "medium");
+        assert!(warnings.iter().any(|w| w.contains("proxy")));
+    }
+
+    #[test]
+    fn test_login_request_deserialization() {
+        let json = r#"{"username":"alice","password":"secret"}"#;
+        let req: LoginRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.username, "alice");
+        assert_eq!(req.password, "secret");
+        assert!(!req.remember_me);
+        assert!(req.challenge_id.is_none());
+        assert!(req.mfa_code.is_none());
+    }
+
+    #[test]
+    fn test_login_response_serialization() {
+        let resp = LoginResponse {
+            access_token: "at".into(),
+            refresh_token: "rt".into(),
+            token_type: "Bearer".into(),
+            expires_in: 3600,
+            user: LoginUserInfo {
+                id: "uid".into(),
+                username: "alice".into(),
+                roles: vec!["user".into()],
+                permissions: vec![],
+            },
+            login_risk_level: "low".into(),
+            security_warnings: vec![],
+        };
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["token_type"], "Bearer");
+        assert_eq!(json["expires_in"], 3600);
+        assert_eq!(json["user"]["username"], "alice");
+    }
+
+    #[test]
+    fn test_register_request_deserialization() {
+        let json = r#"{"username":"bob","password":"StrongP@ss1","email":"bob@example.com"}"#;
+        let req: RegisterRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.username, "bob");
+        assert_eq!(req.email, "bob@example.com");
+    }
+
+    #[test]
+    fn test_refresh_request_deserialization() {
+        let json = r#"{"refresh_token":"some_token"}"#;
+        let req: RefreshRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.refresh_token, "some_token");
     }
 }

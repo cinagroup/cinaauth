@@ -24,6 +24,10 @@ mod users_api_tests {
         ApiState::new(Arc::new(auth_framework)).await.unwrap()
     }
 
+    fn unique_registration_password() -> String {
+        format!("UsersApi!A9{}", uuid::Uuid::new_v4().simple())
+    }
+
     /// Register a test user and return a Bearer HeaderMap.
     async fn make_auth_headers(state: &ApiState, suffix: &str) -> (String, HeaderMap) {
         let username = format!("test_user_{}", suffix);
@@ -656,11 +660,12 @@ mod users_api_tests {
         use auth_framework::api::auth::RegisterRequest;
 
         let state = setup_api_state().await;
+        let password = unique_registration_password();
 
         let req1 = RegisterRequest {
             username: "conflict_reg_user".to_string(),
             email: "conflict_reg@example.com".to_string(),
-            password: "SecurePass123!".to_string(),
+            password: password.clone(),
         };
         let resp1 = auth_handlers::register(State(state.clone()), Json(req1)).await;
         assert!(resp1.success, "initial registration should succeed");
@@ -669,7 +674,7 @@ mod users_api_tests {
         let req2 = RegisterRequest {
             username: "conflict_reg_user".to_string(),
             email: "conflict_reg2@example.com".to_string(),
-            password: "SecurePass123!".to_string(),
+            password: password.clone(),
         };
         let api_resp2 = auth_handlers::register(State(state.clone()), Json(req2)).await;
         assert!(
@@ -690,7 +695,7 @@ mod users_api_tests {
         let req3 = RegisterRequest {
             username: "conflict_reg_user2".to_string(),
             email: "conflict_reg@example.com".to_string(),
-            password: "SecurePass123!".to_string(),
+            password: password,
         };
         let api_resp3 = auth_handlers::register(State(state), Json(req3)).await;
         assert!(!api_resp3.success, "duplicate-email registration must fail");
@@ -714,6 +719,9 @@ mod users_api_tests {
         use auth_framework::api::auth::RegisterRequest;
 
         let state = setup_api_state().await;
+        let old_email_password = unique_registration_password();
+        let reclaim_password = unique_registration_password();
+        let new_email_password = unique_registration_password();
 
         // Register a user with email_a.
         let (uid, headers) = make_auth_headers(&state, "email_idx").await;
@@ -725,7 +733,7 @@ mod users_api_tests {
         let dup_old = RegisterRequest {
             username: "email_idx_dup_old".to_string(),
             email: old_email.clone(),
-            password: "SecurePass123!".to_string(),
+            password: old_email_password,
         };
         let dup_old_resp = auth_handlers::register(State(state.clone()), Json(dup_old)).await;
         assert!(
@@ -752,7 +760,7 @@ mod users_api_tests {
         let reclaim_old = RegisterRequest {
             username: "email_idx_reclaim".to_string(),
             email: old_email.clone(),
-            password: "SecurePass123!".to_string(),
+            password: reclaim_password,
         };
         let reclaim_resp = auth_handlers::register(State(state.clone()), Json(reclaim_old)).await;
         assert!(
@@ -765,7 +773,7 @@ mod users_api_tests {
         let dup_new = RegisterRequest {
             username: "email_idx_dup_new".to_string(),
             email: new_email.clone(),
-            password: "SecurePass123!".to_string(),
+            password: new_email_password,
         };
         let dup_new_resp = auth_handlers::register(State(state), Json(dup_new)).await;
         assert!(

@@ -1,9 +1,0 @@
-[project]
-name = "authframework"
-version = "0.5.0rc18"
-description = "Official Python SDK for AuthFramework"
-readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-    "requests>=2.32.5",
-]

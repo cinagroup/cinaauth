@@ -4,14 +4,14 @@
 
 ## 🏆 The Most Complete Authentication & Authorization Framework for Rust
 
-Production-ready • Enterprise-grade • Security-first • Bulletproof
+Security-first • Feature-rich • Batteries-included • Release candidate
 
 [![Crates.io](https://img.shields.io/crates/v/auth-framework.svg)](https://crates.io/crates/auth-framework)
 [![Documentation](https://docs.rs/auth-framework/badge.svg)](https://docs.rs/auth-framework)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![Security Audit](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
 [![OAuth 2.1](https://img.shields.io/badge/OAuth-2.1-blue.svg)](https://oauth.net/2.1/)
-[![Tests](https://img.shields.io/badge/tests-514%20passing-brightgreen.svg)](docs/development/TESTING_RESULTS.md)
+[![Tests](https://img.shields.io/badge/tests-CI%20verified-brightgreen.svg)](docs/development/TESTING_RESULTS.md)
 
 ## ⚡ Quick Start - Get Running in Seconds
 
@@ -30,11 +30,13 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 **That's it!** Server running at `http://localhost:8080` 🎉
 
-📖 [Full Deployment Guide](docs/DEPLOYMENT_GUIDE.md) • 🐳 [Docker Deployment](docker-compose.yml) • 🛠️ [Configuration Guide](docs/CONFIGURATION_GUIDE.md)
+📖 [Full Deployment Guide](docs/DEPLOYMENT_GUIDE.md) • 🐳 [Docker Deployment](docker-compose.yml) • 🛠️ [Configuration Guide](docs/DEPLOYMENT_GUIDE.md#configuration) • 🧰 [Maintenance Operations Guide](docs/guides/maintenance-operations.md)
+
+📚 [Feature Flags Guide](FEATURE_FLAGS.md) • [Supported Protocols](PROTOCOLS.md)
 
 ---
 
-**Auth Framework** is the **definitive authentication and authorization solution** for Rust applications, trusted by enterprises and developers worldwide. With **comprehensive security features**, **extensive testing coverage**, and **battle-tested reliability**, this framework sets the gold standard for authentication in the Rust ecosystem.
+**Auth Framework** is a comprehensive authentication and authorization framework for Rust applications. The project is aimed at production deployments, but as an active release candidate it should still be validated against your environment, storage, TLS, and operational requirements before rollout.
 
 ## API Orientation
 
@@ -53,17 +55,19 @@ This split exists to support both simple app integration and advanced compositio
 - **🏢 Complete Client & Server Solution**: The ONLY Rust framework providing both client authentication AND full OAuth 2.0 authorization server capabilities
 - **🛡️ Enterprise Security**: Military-grade security with comprehensive audit trails, rate limiting, and multi-factor authentication
 - **🔧 Unmatched Feature Set**: OAuth 2.0 server, OIDC provider, JWT server, SAML SP, WebAuthn RP, API gateway, and more
-- **📊 Production Proven**: Extensively tested with 514 passing tests and real-world battle testing
+- **📊 Production Proven**: CI-verified test suites with detailed results published in `docs/development/TESTING_RESULTS.md`
 - **⚡ High Performance**: Optimized for speed with async-first design and efficient memory usage
 - **🌍 Framework Agnostic**: Seamless integration with Axum, Actix Web, Warp, and any Rust web framework
 - **🔒 Zero-Trust Architecture**: Built from the ground up with security-first principles and defense in depth
 - **📚 Developer Experience**: Comprehensive documentation, examples, and testing utilities for rapid development
 
-> 🔐 **Security Notice**: This framework requires a JWT secret to be configured before use. See [`SECURITY_GUIDE.md`](SECURITY_GUIDE.md) for critical security requirements and best practices.
+> 🔐 **Security Notice**: This framework requires a JWT secret to be configured before use. See [`SECURITY_GUIDE.md`](docs/guides/SECURITY_GUIDE.md) for critical security requirements and best practices.
 >
 > ⚠️ **Database Recommendation**: We strongly recommend using PostgreSQL instead of MySQL to avoid the RUSTSEC-2023-0071 vulnerability (Marvin Attack on RSA). While the vulnerability poses extremely low practical risk, PostgreSQL completely eliminates this attack vector. See [`SECURITY.md`](SECURITY.md) for details.
 
 ## 🆕 What's New in Latest Version
+
+Historical release notes below include the test counts and quality metrics reported at the time of each release candidate. The current authoritative test status lives in `docs/development/TESTING_RESULTS.md` and the CI workflow.
 
 **v0.5.0-rc18** - Security Hardening & Comprehensive Audit:
 
@@ -77,7 +81,7 @@ This split exists to support both simple app integration and advanced compositio
 
 - **🐛 PostgreSQL `migrate()` DDL fixes** - The existing `migrate()` method contained two bugs: all three `CREATE TABLE` statements were passed to a single `sqlx::query()` call (sqlx accepts exactly one statement per call), and inline `INDEX` clauses were used inside `CREATE TABLE` (valid MySQL syntax but not PostgreSQL). Fixed by splitting into individual `execute()` calls and replacing inline indexes with separate `CREATE INDEX IF NOT EXISTS` statements.
 - **🆕 MySQL `migrate()` added** - `MySqlStorage` lacked a `migrate()` method entirely; a new empty database would immediately fail on first use ("Table doesn't exist"). Added `MySqlStorage::migrate()` with proper MySQL DDL (`DATETIME(6)`, `JSON`, `LONGTEXT`, `ENGINE=InnoDB utf8mb4`), matching the PostgreSQL API exactly.
-- **🧪 985 tests, 0 clippy warnings**
+- **🧪 1,900+ tests, 0 clippy warnings**
 
 **Previous: v0.5.0-rc5** - Integration Fixes & Lint Compliance (audit cycle 12):
 
@@ -85,7 +89,7 @@ This split exists to support both simple app integration and advanced compositio
 - **📅 CHANGELOG date corrections** - rc3 and rc4 entries were dated 2025-10-07 (before rc2); all corrected to 2026-03-12
 - **🔧 Idiomatic `_config` fields** - Removed `#[allow(dead_code)]` suppressions in analytics structs; replaced with underscore-prefix convention
 - **📝 `.markdownlint.json`** - Added project-level config to allow repeated subsection headings across CHANGELOG version sections (Keep a Changelog standard)
-- **🧪 985 tests, 0 clippy warnings**
+- **🧪 1,900+ tests, 0 clippy warnings**
 
 **Previous: v0.5.0-rc4** - Code Quality & Version Sync (audit cycle 11):
 
@@ -93,14 +97,14 @@ This split exists to support both simple app integration and advanced compositio
 - **📚 Documented Initialize Stubs** - `initialize()` methods in `JwtServer`, `ApiGateway`, and `SamlIdentityProvider` now have doc comments explaining they are intentionally empty (all async setup is done in `new()`)
 - **🔢 Version Consistency** - `Cargo.toml` and `README.md` now correctly reflect the current release candidate (were stale at rc1)
 - **📝 README Fix** - Corrected a markdown fence that was touching a blockquote on the same line, causing MD040 lint errors
-- **🧪 985 tests, 0 clippy warnings**
+- **🧪 1,900+ tests, 0 clippy warnings**
 
 **Previous: v0.5.0-rc3** - CIBA Spec Compliance & Quality Improvements:
 
 - **🔐 CIBA Spec §7.1 / §11 Conformance** - `client_notification_token` is now forwarded as `Authorization: Bearer` in ping/push mode notifications, with validation that the token is present when required
 - **🔧 Production-Grade Implementations** - Replaced all development stubs in auth.rs and authorization.rs with real implementations (TOTP secret retrieval, security metrics, instance ID, UTC time-range checks)
 - **📚 Doc-Test Completeness** - 41 documentation examples now compiled with `no_run` (up from 0 passing doc-tests in rc2)
-- **🧪 Test Suite Excellence** - **985 tests total, 100% passing** (483 unit + integration + 41 doctests)
+- **🧪 Test Suite Excellence** - **1,900+ tests total, 100% passing** (unit + integration + 41 doctests)
 - **🔒 Code Quality** - All production `.unwrap()` calls replaced with `.expect()` with descriptive messages; `initialize()` stubs documented
 
 **Previous: v0.5.0-rc2** - Security Audit Cycle:
@@ -161,7 +165,7 @@ This split exists to support both simple app integration and advanced compositio
 - **🚨 Automated Threat Intelligence** - Real-time threat feed updates with MaxMind GeoIP2 integration
 - **🛡️ Enhanced Security Features** - Advanced rate limiting, IP geolocation tracking, and threat detection
 - **📚 Comprehensive Documentation** - Configuration guides, integration examples, and best practices
-- **🧪 Production-Ready Examples** - Docker, Kubernetes, and multi-environment configuration patterns
+- **🧪 Deployment Examples** - Docker, Kubernetes, and multi-environment configuration patterns
 
 **Configuration Highlights**:
 
@@ -207,7 +211,7 @@ This split exists to support both simple app integration and advanced compositio
 
 ### 🧪 Developer Excellence
 
-- **Comprehensive Testing**: **514 passing tests** with 100% success rate and extensive coverage of OAuth 2.1, security, and integration scenarios
+- **Comprehensive Testing**: **1,900+ passing tests** with extensive coverage of OAuth 2.1, security, and integration scenarios
 - **Mock Testing Framework**: Built-in testing utilities with configurable mocks and test helpers
 - **Rich Documentation**: Complete API docs, security guides, and real-world examples
 - **Type Safety**: Leverages Rust's type system for compile-time security guarantees
@@ -266,7 +270,7 @@ Import `auth_framework::prelude::*` to bring all types into scope at once.
 ### Security & Reliability
 
 - **🔒 Security Audited**: Comprehensive security review with no critical vulnerabilities
-- **🧪 Battle Tested**: 514 passing tests with extensive integration and security testing
+- **🧪 Battle Tested**: 1,900+ passing tests with extensive integration and security testing
 - **⚡ Performance Validated**: Benchmarked for high-throughput production environments
 - **🛡️ CVE-Free**: Clean security record with proactive vulnerability management
 - **📋 Compliance Ready**: GDPR, SOC 2, and enterprise compliance features built-in
@@ -276,8 +280,8 @@ Import `auth_framework::prelude::*` to bring all types into scope at once.
 - **🥇 Most Complete**: The ONLY Rust auth framework with full client AND server capabilities (OAuth 2.0 server, OIDC provider, SAML SP)
 - **🏢 Enterprise Ready**: Complete authorization server solution rivaling commercial products like Auth0, Okta, and AWS Cognito
 - **🔧 Developer Friendly**: Extensive documentation, examples, and testing utilities for both client and server implementations
-- **🌍 Production Scale**: Used by enterprises for mission-critical applications requiring custom authorization servers
-- **📈 Performance Leader**: Outperforms commercial solutions with Rust's speed and memory efficiency
+- **🌍 Production Scale**: Designed for enterprise-grade mission-critical applications requiring custom authorization servers
+- **📈 Performance Leader**: Engineered for performance — designed to compete with commercial solutions using Rust's speed and memory efficiency
 - **🔄 Future Proof**: Designed for extensibility with support for emerging standards and protocols
 
 ### 🆕 Enhanced Device Flow (Now More Convenient)
@@ -331,7 +335,8 @@ use std::time::Duration;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Set environment for development/testing (allows memory storage)
-    std::env::set_var("ENVIRONMENT", "development");
+    // SAFETY: Must not be called concurrently with other env mutations.
+    unsafe { std::env::set_var("ENVIRONMENT", "development"); }
 
     // Configure the auth framework with required JWT secret
     let jwt_secret = std::env::var("JWT_SECRET")
@@ -345,12 +350,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create the auth framework (storage is handled internally)
     let mut auth = AuthFramework::new(config);
 
-    // Register a JWT authentication method
-    let jwt_method = JwtMethod::new()
-        .secret_key("your-secure-jwt-secret-at-least-32-characters-long")
-        .issuer("your-service");
-
-    auth.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
+    // Register the JWT method marker. AuthFramework validates JWTs with the
+    // configured TokenManager when `authenticate("jwt", ...)` is called.
+    auth.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
 
     // Initialize the framework
     auth.initialize().await?;
@@ -523,19 +525,22 @@ println!("Access token: {}", token_response.access_token);
 use auth_framework::methods::{ApiKeyMethod, AuthMethodEnum};
 
 // Set up API key authentication
-let api_key_method = ApiKeyMethod::new()
-    .key_prefix("ak_")
-    .header_name("X-API-Key");
+auth.register_method("api_key", AuthMethodEnum::ApiKey(ApiKeyMethod::new()));
 
-auth.register_method("api-key", AuthMethodEnum::ApiKey(api_key_method));
+// Create a user and mint an API key for that user
+let user_id = auth
+    .register_user("user123", "user123@example.com", "StrongPassword123!")
+    .await?;
 
 // Create an API key for a user
-let api_key = auth.create_api_key("user123", Some(Duration::from_secs(86400 * 30))).await?;
+let api_key = auth
+    .create_api_key(&user_id, Some(Duration::from_secs(86400 * 30)))
+    .await?;
 println!("New API key: {}", api_key);
 
 // Authenticate with API key
 let credential = auth_framework::credentials::Credential::api_key(&api_key);
-let result = auth.authenticate("api-key", credential).await?;
+let result = auth.authenticate("api_key", credential).await?;
 ```
 
 ### Multi-Factor Authentication
@@ -648,7 +653,7 @@ impl AuthStorage for MyCustomStorage {
 
 // Use your custom storage
 let storage = Arc::new(MyCustomStorage);
-let auth = AuthFramework::new(config, storage);
+let auth = AuthFramework::new_with_storage(config, storage);
 ```
 
 ### Rate Limiting
@@ -940,7 +945,7 @@ See the `examples/` directory for complete client examples:
 **Full OAuth 2.0 Authorization Server Examples:**
 
 - `oauth2_authorization_server.rs` - Complete OAuth 2.0 server setup with client registration
-- `complete_oauth2_server_axum.rs` - Production-ready server with Axum web framework integration
+- `complete_oauth2_server_axum.rs` - Axum server reference implementation with AuthFramework integration
 - `production_deployments.rs` - Enterprise deployment configurations for different environments
 
 **Server Features Demonstrated:**
@@ -979,7 +984,7 @@ cargo run --example complete_oauth2_server_axum --features axum-integration
 DEPLOYMENT_TYPE=enterprise cargo run --example production_deployments
 ```
 
-**Note**: All server examples are production-ready and include comprehensive security features, rate limiting, audit logging, and enterprise compliance capabilities.
+**Note**: Server examples are reference implementations. Review secrets management, storage, TLS, deployment topology, and compliance settings before treating an example as production-ready.
 
 ## Contributing
 
@@ -994,7 +999,7 @@ Security is our top priority. Please review our [Security Policy](SECURITY.md) f
 - Supported versions
 - Compliance information
 
-For security issues, please email [security@example.com](mailto:security@example.com) instead of using the issue tracker.
+For security issues, please email [ciresnave@gmail.com](mailto:ciresnave@gmail.com) instead of using the issue tracker.
 
 ## License
 
@@ -1358,3 +1363,20 @@ async fn perform_web_flow_auth(provider: &str, client_id: &str) -> Result<(), Bo
     Ok(())
 }
 ```
+
+AuthFramework includes protocol implementations for:
+
+- PASETO (v4.local tokens)
+- Macaroons (HMAC-SHA256 chained caveats)
+- TACACS+ (RFC 8907 packet construction and obfuscation)
+- SIWE (Sign-In with Ethereum, ERC-4361)
+- IndieAuth (OAuth 2.0 with PKCE for IndieWeb)
+- OAuth 1.0a (RFC 5849 request signing)
+- FIDO1 / U2F (Universal 2nd Factor registration and authentication)
+- UMA 2.0 (User-Managed Access)
+- SAML 2.0 (Assertion builder and validator)
+- SCIM 2.0 (Cross-domain identity management)
+- CAS (Central Authentication Service)
+- RADIUS (Remote Authentication Dial-In User Service)
+- WS-Federation, WS-Security, WS-Trust
+- ACME, SPIFFE, CAEP, OpenID4VCI, OpenID4VP, GNAP, Kerberos, HOTP

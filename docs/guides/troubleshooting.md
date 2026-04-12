@@ -1181,7 +1181,7 @@ auth-framework-cli sessions list --active
 ### Getting Help
 
 - **Documentation**: [docs.authframework.dev](https://docs.authframework.dev)
-- **GitHub Issues**: [github.com/authframework/auth-framework/issues](https://github.com/authframework/auth-framework/issues)
+- **GitHub Issues**: [github.com/ciresnave/auth-framework/issues](https://github.com/ciresnave/auth-framework/issues)
 - **Community Forum**: [forum.authframework.dev](https://forum.authframework.dev)
 - **Emergency Support**: [emergency@authframework.dev](mailto:emergency@authframework.dev)
 
@@ -1195,4 +1195,4 @@ When reporting issues, please include:
 
 ---
 
-*AuthFramework v0.4.0 - THE premier authentication and authorization solution*
+AuthFramework v0.5.0-rc18 - THE premier authentication and authorization solution

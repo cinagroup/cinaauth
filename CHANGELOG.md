@@ -5,6 +5,76 @@ All notable changes to the AuthFramework project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Added `OidcErrorCode` `Display` and `FromStr` implementations for symmetric string ↔ enum conversion; refactored `OidcErrorManager::resolve_error_code()` to delegate to `FromStr`, eliminating a 24-arm match duplicate.
+- Added `OidcErrorResponse::new(code)` fluent builder with `.description()`, `.error_uri()`, `.state()`, `.detail()`, and `.details()` chain; refactored internal `create_*_error` methods to use the builder.
+- Added `GrantType` `FromStr` and `ResponseType` `Display` + `FromStr` for symmetric string ↔ enum conversion in the OAuth 2.0 server module.
+- Added `TokenRequest::authorization_code(code)`, `TokenRequest::refresh(token)`, and `TokenRequest::client_credentials(id, secret)` convenience constructors with chainable `.client_id()`, `.client_secret()`, `.redirect_uri()`, `.code_verifier()`, `.scope()`, and `.resource()` helpers; refactored 10 verbose struct-literal call sites across tests.
+- Added `AuthorizationRequest::new(client_id, response_type, redirect_uri)` constructor with chainable `.scope()`, `.state()`, `.pkce()`, `.nonce()`, and `.resource()` helpers.
+- Added `AdvancedJarmConfig::builder()` and `AdvancedJarmConfigBuilder` for JWT Authorization Response Mode properties (18 fields).
+- Added `EnhancedCibaConfig::builder()` and `EnhancedCibaConfigBuilder` for Client-Initiated Backchannel Authentication (18 fields).
+- Added `IdentityProvider::builder(id, name)` and `OrchestrationRequest::builder(request_id, client_id)` for Federation Orchestration configuration.
+- Added `FapiConfig::builder(issuer, priv_key, pub_key)` and `FapiConfigBuilder` for strongly-typed FAPI profile configuration, and `FapiSession::builder()` / `FapiSessionBuilder` with chainable `.dpop_proof()`, `.add_scopes()`, and `.add_metadata()`.
+- Added `PushedAuthorizationRequest::builder()` and `PushedAuthorizationRequestBuilder` in the PAR module to replace verbose 8-field instantiation with fluent `.pkce()`, `.scope()`, and `.add_param()` methods.
+- Added `PARManager::expiration()` to `PARManager` to allow fluently overriding the default PAR expiration.
+- Added `RegistrationRequest::builder()` and `RegistrationData::new()` with chainable helpers (e.g. `.with_email()`, `.with_names()`, `.mark_completed()`) in `oidc_user_registration.rs` to alleviate Option-heavy struct instantiation.
+- Added `.storage()` and `.error_manager()` to `RegistrationManager` to replace explicit structural initialization and multi-method constructor paths (`with_storage()` / `with_error_manager()`).
+- Added `WebAuthnConfig` struct with `Default`, `new(rp_id, rp_name)`, and `from_env()` constructors, plus `.attestation()` and `.timeout()` chainable helpers; replaces 5 scattered `std::env::var("WEBAUTHN_*")` reads across 3 handler functions in `api/webauthn.rs`.
+- Added `PublicKeyCredentialParameters::es256()`, `rs256()`, and `defaults()` preset constructors to eliminate repeated magic-number credential parameter setup.
+- Added `DeviceAuthManager::expiration(Duration)` and `DeviceAuthManager::interval(Duration)` chainable builder methods as an ergonomic alternative to the positional-parameter `with_settings()`.
+- Added `RarConfig::empty()` constructor for starting with no pre-registered types, plus `.with_type(name, actions)`, `.max_details(n)`, and `.resource_discovery(bool)` chainable helpers for fluent RAR configuration.
+- Added `OAuthError::new(error)` constructor with `.description()`, `.state()`, `.maybe_state()`, and `.error_uri()` chainable helpers; refactored all 12 construction sites in `api/oauth2.rs`.
+- Added `LdapConfig::active_directory(server_url, base_dn)` and `LdapConfig::openldap(server_url, base_dn)` presets with appropriate attribute names, search filters, and STARTTLS defaults.
+- Added `LdapConfig::bind_credentials()` and `LdapConfig::with_groups()` chainable helpers for service-account and group-membership setup.
+- Added `CredentialResponse::immediate()`, `CredentialResponse::deferred()`, and `CredentialResponse::completed()` factory methods for OpenID4VCI credential issuance responses.
+- Added `CredentialConfiguration::new(format)` constructor with `.scope()`, `.binding_methods()`, `.signing_algorithms()`, `.with_display()`, and `.with_definition()` chainable helpers.
+- Added `IssuerMetadata::builder(issuer)` and `IssuerMetadataBuilder` with `.add_credential()`, `.display()`, `.credential_endpoint()`, and `.batch_credential_endpoint()` chain; default credential endpoint is `{issuer}/credential`.
+- Added `AuditEvent::builder(event_type, description)` and `AuditEventBuilder` for ergonomic audit event construction, replacing 14-field struct literals.
+- Added `AuditQuery::builder()`, `AuditQueryBuilder`, and `AuditQuery::default()` with convenience methods `last_24h()` and `last_seconds(n)` for time-range filtering.
+- Added `PasswordPolicy::nist_800_63b()` and `high_security()` presets, `with_banned_words()` chaining, and `PasswordPolicy::builder()` for customisation.
+- Added `MigrationConfig::dry_run()`, `conservative()`, and `aggressive()` presets plus `MigrationConfig::builder()` for fluent configuration.
+- Added `OidcAuthorizationRequest::builder(client_id, redirect_uri)` and `OidcAuthorizationRequestBuilder` for OIDC authorization request construction.
+- Refactored all internal `AuditQuery` and `AuditEvent` construction sites across `audit.rs`, `session/manager.rs`, `storage/core.rs`, and `storage/dashmap_memory.rs` to use the new builders.
+- Added `KerberosConfig::builder(principal, realm)` fluent builder and `KerberosConfig::active_directory()` preset for common AD environments.
+- Added `RadiusConfig::with_server(addr, secret)` and `with_options()` convenience constructors that validate the shared secret at construction time.
+- Added `RadiusPacket::add_attribute()` helper to reduce manual `RadiusAttribute` struct construction.
+- Added `ThreatIntelConfig::disabled()` and `aggressive()` presets for common deployment scenarios.
+- Added `SecureSessionConfig::for_high_security()` and `for_mobile()` preset constructors with documented rationale for every default value.
+- Added `SecurityEvent::builder(event_type, severity)` and `SecurityEventBuilder` for ergonomic event construction without manual `HashMap::new()` boilerplate.
+- Added `SessionConfigBuilder::for_web_app()`, `for_api_service()`, and `for_high_security()` preset constructors that pre-fill all fields for common deployment scenarios.
+- Improved `StorageBuilder::custom()` documentation with proper rustdoc, trait links, and a complete usage example.
+- Added `UserOperations::check_username()`, `check_email()`, and `check_password_strength()` — synchronous validation returning `Result<()>` with an actionable error message on failure.
+- Added `TokenCreateRequest` builder and `TokenOperations::create_token(req)` for self-documenting token creation (replaces positional `Option` parameters).
+- Added `SessionOperations::list_for_user_filtered(user_id, SessionFilter)` for filtered session listings (active-only or include-inactive).
+- Added `AdminOperations::set_user_attributes(user_id, &[(&str, &str)])` for setting multiple ABAC attributes in a single call.
+- Added `RateLimitConfig::per_second()`, `per_minute()`, and `per_hour()` convenience constructors.
+- Added `AuthToken::has_refresh_token()` and `get_refresh_token()` accessors.
+- Added `SessionData::time_until_expiry()` and `is_active()` convenience methods.
+- Added logical maintenance support for CLI `db reset`, `db create-migration`, `system backup`, and `system restore`, including checksum-validated JSON snapshots and backend-aware migration template generation.
+- Added admin-binary `maintenance` commands for backup, restore, reset, and migration template generation so the shipped `auth-framework` executable can invoke the logical maintenance layer directly.
+- Added `StreamConfig::builder()`, `StreamConfig::poll()`, and `StreamConfig::push()` factory methods plus `StreamConfigBuilder` with `.audience()`, `.events_supported()`, and `.delivery_method()` chainable helpers for CAEP event streaming configuration.
+- Added `ClientRegistrationRequest::builder(redirect_uri)` and `ClientRegistrationRequestBuilder` with fluent helpers for auth method, grant types, response types, client name, software metadata, and arbitrary metadata entries (RFC 7591).
+- Added `ClientJwtConfig::builder(client_id, public_key_jwk)` and `ClientJwtConfigBuilder` with `.rs256_only()`, `.algorithms()`, `.max_jwt_lifetime()`, `.clock_skew()`, and `.audience()`/`.audiences()` chain (RFC 7521).
+- Added `TokenExchangePolicy::builder()` and `TokenExchangePolicyBuilder` with `.subject_token_types()`, `.actor_token_types()`, `.scenarios()`, `.max_token_lifetime()`, `.audience()`, `.scope_map()` chain; also added `TokenExchangePolicy::jwt_only()` preset (RFC 8693).
+- Added `StepUpConfig::builder()` and `StepUpConfigBuilder` starting from defaults with `.token_lifetime()`, `.grace_period()`, `.max_level()`, `.add_rule()`, `.disable_location_stepup()`, and individual enable/disable methods for risk, location, and time step-ups.
+- Added `StepUpContext::new(user_id, resource, session_id, auth_level)` constructor with `.with_risk_score()`, `.with_location()`, `.with_auth_time()`, `.with_metadata()`, and `.with_attribute()` chainable helpers; replaces 10-field struct literals.
+- Added `GnapTransactionRequest::builder()` and `GnapTransactionRequestBuilder` with `.client_key()`, `.redirect_interaction()`, `.access()`, `.access_type()`, `.subject_formats()` chain; simplifies 14+ construction sites in GNAP tests.
+- Added `AwsSigV4Request` struct with chainable builder methods (`.region()`, `.service()`, `.method()`, `.host()`, `.payload()`, etc.) and `.sign()` — replaces the 13-positional-parameter `aws_sigv4_authorization()` function.
+- Added `SessionData::ip_address()`, `.user_agent()`, and `.with_data()` chainable helpers for fluent session construction alongside the existing `with_metadata()`.
+- Added `Display` implementations for `AuditEventType`, `RiskLevel`, and `EventOutcome` (snake_case string output); audit log formatting now uses `Display` instead of `Debug`.
+
+### Changed
+
+- Backup and restore now enumerate KV state across the supported storage backends instead of only handling in-memory storage, preserving user records, sessions, tokens, and auxiliary KV-backed state consistently.
+- Admin GUI authentication now uses expiring server-side session records and in-memory lockout tracking for repeated failed logins instead of indefinite token-set membership.
+- Admin CLI security commands now use live session, token, and audit data for session inspection, audit-log display, threat reporting, and forced logout; threat-intelligence feed updates now fail explicitly instead of simulating success.
+- SAML SP endpoints now require an explicit `saml_sp:config` and no longer fall back to placeholder `auth.example.com` values or fabricate `@example.com` identities in assertions.
+- Analytics compliance, performance, and trend reporting now return only values derived from stored analytics events and leave unsupported telemetry at zero/default values instead of fabricating counts.
+- Release documentation now reflects the current `v0.5.0-rc18` validation pass instead of stale `v0.4.0`/`rc1` markers and hard-coded historical pass counts.
+
 ## [0.5.0-rc18] - 2026-03-15
 
 ### :lock: Security Fixes (audit cycle 24)
@@ -394,7 +464,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SECURITY: Fixed `POST /oauth/revoke` not blocking revoked JWT tokens in middleware** (`src/api/oauth2.rs`): The revoke endpoint stored `oauth2_revoked_token:{token}` but the authentication middleware (`validate_api_token`) checks `revoked_token:{jti}`. JWT tokens revoked via this endpoint continued to be accepted by all protected endpoints indefinitely. The handler now also decodes the JWT to extract the `jti` claim, computes the remaining TTL (`exp − now + 60 s`), and persists a `revoked_token:{jti}` entry in KV storage so the middleware correctly blocks the token. (Note: the cycle 7 fix to `oauth::revoke_token` was applied to a function not in the route table — `server.rs` routes `/oauth/revoke` to `oauth2::revoke`, not `oauth::revoke_token`.)
 - **SECURITY: Fixed `POST /oauth/introspect` ignoring the revocation list** (`src/api/oauth_advanced.rs`): The routed introspection endpoint (`oauth_advanced::introspect_token`) did not check the revocation list and returned `"active": true` for any cryptographically-valid JWT regardless of revocation status. The cycle 7 fix was applied to `oauth_simple::introspect_token`, which is not in the route table. The correct endpoint now cross-checks `revoked_token:{jti}` in storage before reporting a token as active; revoked tokens receive `"active": false`.
 - **Fixed `POST /oauth/par` storing nothing in the routed endpoint** (`src/api/oauth_advanced.rs`): The cycle 7 fix was applied to `oauth_simple::pushed_authorization_request`, which is not in the route table. The actually-routed `oauth_advanced::pushed_authorization_request` accepted `_state` (discarding the injected `State`), so no storage access was possible and the generated `request_uri` could never be resolved. The handler now captures `State(state)`, serializes all form fields to JSON, and stores `par_request:{id}` with a 90-second TTL. It returns 500 on storage failure instead of issuing an unresolvable URI.
-- **Fixed `OAuth2Server::get_user_email` embedding fabricated email addresses in tokens** (`src/oauth2_server.rs`, `src/oauth2_enhanced_storage.rs`): `get_user_email()` returned `format!("{}@example.com", username)` for every user, embedding incorrect email addresses in issued JWT tokens and session contexts. Added `email: Option<String>` field (backwards-compatible via `#[serde(default)]`) to `UserCredentials` and updated `get_user_email()` to read the actual stored email, returning `None` when not set.
+- **Fixed `OAuth2Server::get_user_email` embedding fabricated email addresses in tokens** (`src/server/oauth/oauth2_server.rs`, `src/server/oauth/oauth2_enhanced_storage.rs`): `get_user_email()` returned `format!("{}@example.com", username)` for every user, embedding incorrect email addresses in issued JWT tokens and session contexts. Added `email: Option<String>` field (backwards-compatible via `#[serde(default)]`) to `UserCredentials` and updated `get_user_email()` to read the actual stored email, returning `None` when not set.
 - **Removed dead hardcoded placeholder data from admin web GUI handlers** (`src/admin/web.rs`): `security_handler`, `servers_handler`, and `logs_handler` each constructed large arrays of hardcoded fake data (example.com usernames, fabricated timestamps, hardcoded server metrics) into `_`-prefixed variables that were never referenced. Removed all three dead arrays.
 - **Added 3 integration tests for security fixes** (`tests/oauth_advanced_tests.rs`): `test_introspect_reports_revoked_token_as_inactive` (verifies revoked JWTs return `active: false` from introspect), `test_revoke_endpoint_persists_jti_revocation_key` (verifies POST /oauth/revoke writes `revoked_token:{jti}` to storage), `test_par_persists_request_params_in_storage` (verifies POST /oauth/par stores `par_request:{id}` with correct fields).
 

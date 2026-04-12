@@ -72,8 +72,11 @@ fn make_validator() -> SecureJwtValidator {
         },
         require_secure_transport: false, // disabled for bench; no TLS in unit context
         jwt_secret: BENCH_SECRET.to_string(),
+        rsa_public_key_pem: None,
+        ec_public_key_pem: None,
+        ed_public_key_pem: None,
     };
-    SecureJwtValidator::new(config)
+    SecureJwtValidator::new(config).expect("bench JWT config")
 }
 
 // ---------------------------------------------------------------------------

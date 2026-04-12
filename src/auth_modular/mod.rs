@@ -38,7 +38,7 @@
 //!
 //! // Create modular framework
 //! let config = AuthConfig::default();
-//! let auth = AuthFramework::new(config);
+//! let auth = AuthFramework::new(config).expect("valid modular auth framework config");
 //!
 //! // Access individual managers
 //! let mfa_manager = auth.mfa_manager();
@@ -119,29 +119,30 @@ pub struct AuthFramework {
 impl AuthFramework {
     /// Create a new authentication framework.
     ///
-    /// # Panics
+    /// Returns a descriptive error if the configuration is invalid rather than
+    /// panicking, so callers can decide how to handle startup failures.
     ///
-    /// Panics if:
-    /// - The configuration is invalid (e.g., weak JWT secret in a non-test environment).
-    /// - No JWT secret is configured via `config.security.secret_key`, `config.secret`,
-    ///   or the `JWT_SECRET` environment variable.
-    /// - The Redis storage backend fails to connect (when the `redis-storage` feature is enabled).
+    /// Equivalent to [`AuthFramework::try_new`].
     ///
-    /// Prefer [`AuthFramework::try_new`] for library code where recoverable error handling
-    /// is desired.
-    pub fn new(config: AuthConfig) -> Self {
-        Self::try_new(config).unwrap_or_else(|e| {
-            panic!(
-                "AuthFramework::new() failed: {e}\n\
-                 Use AuthFramework::try_new() to handle this as a recoverable error."
-            )
-        })
+    /// # Example
+    /// ```rust,ignore
+    /// use auth_framework::{AuthFramework, config::AuthConfig};
+    ///
+    /// let fw = AuthFramework::new(AuthConfig::default())?;
+    /// ```
+    pub fn new(config: AuthConfig) -> crate::errors::Result<Self> {
+        Self::try_new(config)
     }
 
     /// Create a new authentication framework, returning an error instead of panicking.
     ///
     /// This is the preferred constructor for library callers and server startup code where
     /// configuration errors should be handled gracefully rather than aborting the process.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let fw = AuthFramework::try_new(AuthConfig::default())?;
+    /// ```
     pub fn try_new(config: AuthConfig) -> crate::errors::Result<Self> {
         // Validate configuration
         config.validate().map_err(|e| {
@@ -151,22 +152,22 @@ impl AuthFramework {
         // Create token manager
         let token_manager = if let Some(secret) = &config.security.secret_key {
             if secret.len() < 32 {
-                eprintln!(
-                    "WARNING: JWT secret is shorter than 32 characters. Consider using a longer secret for better security."
+                tracing::warn!(
+                    "JWT secret is shorter than 32 characters. Consider using a longer secret for better security."
                 );
             }
             TokenManager::new_hmac(secret.as_bytes(), "auth-framework", "auth-framework")
         } else if let Some(secret) = &config.secret {
             if secret.len() < 32 {
-                eprintln!(
-                    "WARNING: JWT secret is shorter than 32 characters. Consider using a longer secret for better security."
+                tracing::warn!(
+                    "JWT secret is shorter than 32 characters. Consider using a longer secret for better security."
                 );
             }
             TokenManager::new_hmac(secret.as_bytes(), "auth-framework", "auth-framework")
         } else if let Ok(jwt_secret) = std::env::var("JWT_SECRET") {
             if jwt_secret.len() < 32 {
-                eprintln!(
-                    "WARNING: JWT_SECRET is shorter than 32 characters. Consider using a longer secret for better security."
+                tracing::warn!(
+                    "JWT_SECRET is shorter than 32 characters. Consider using a longer secret for better security."
                 );
             }
             TokenManager::new_hmac(jwt_secret.as_bytes(), "auth-framework", "auth-framework")
@@ -235,20 +236,33 @@ impl AuthFramework {
     }
 
     /// Convenience constructor that creates a framework with a custom storage instance.
-    pub fn new_with_storage(config: AuthConfig, storage: Arc<dyn AuthStorage>) -> Self {
-        let mut framework = Self::new(config);
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let fw = AuthFramework::new_with_storage(config, Arc::new(MyStorage::new()))?;
+    /// ```
+    pub fn new_with_storage(
+        config: AuthConfig,
+        storage: Arc<dyn AuthStorage>,
+    ) -> crate::errors::Result<Self> {
+        let mut framework = Self::new(config)?;
         framework.replace_storage(storage);
-        framework
+        Ok(framework)
     }
 
-    /// Create a new framework with SMSKit configuration
+    /// Create a new framework with SMSKit configuration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let fw = AuthFramework::new_with_smskit_config(config, smskit_cfg)?;
+    /// ```
     #[cfg(feature = "smskit")]
     pub fn new_with_smskit_config(
         config: AuthConfig,
         smskit_config: crate::auth_modular::mfa::SmsKitConfig,
     ) -> Result<Self> {
         // First create the framework normally
-        let mut framework = Self::new(config);
+        let mut framework = Self::new(config)?;
 
         // Then replace the MFA manager with one configured for SMSKit
         framework.mfa_manager = crate::auth_modular::mfa::MfaManager::new_with_smskit_config(
@@ -259,7 +273,12 @@ impl AuthFramework {
         Ok(framework)
     }
 
-    /// Register an authentication method
+    /// Register an authentication method.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// fw.register_method("password", AuthMethodEnum::Password(PasswordAuth::default()));
+    /// ```
     pub fn register_method(&mut self, name: impl Into<String>, method: AuthMethodEnum) {
         let name = name.into();
         info!("Registering authentication method: {}", name);
@@ -273,7 +292,15 @@ impl AuthFramework {
         self.methods.insert(name, method);
     }
 
-    /// Initialize the authentication framework
+    /// Initialize the authentication framework.
+    ///
+    /// Sets up default roles and marks the framework as ready. Must be called
+    /// before `authenticate` or `validate_token`.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// fw.initialize().await?;
+    /// ```
     pub async fn initialize(&mut self) -> Result<()> {
         if self.initialized {
             return Ok(());
@@ -296,7 +323,20 @@ impl AuthFramework {
         Ok(())
     }
 
-    /// Authenticate a user with the specified method
+    /// Authenticate a user with the specified method.
+    ///
+    /// Delegates to [`authenticate_with_metadata`](Self::authenticate_with_metadata)
+    /// with empty metadata.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let result = fw.authenticate("jwt", Credential::jwt(token)).await?;
+    /// match result {
+    ///     AuthResult::Success(token) => println!("authenticated"),
+    ///     AuthResult::MfaRequired(challenge) => println!("MFA needed"),
+    ///     AuthResult::Failure(msg) => eprintln!("failed: {msg}"),
+    /// }
+    /// ```
     pub async fn authenticate(
         &self,
         method_name: &str,
@@ -306,7 +346,17 @@ impl AuthFramework {
             .await
     }
 
-    /// Authenticate a user with the specified method and metadata
+    /// Authenticate a user with the specified method and additional metadata.
+    ///
+    /// Metadata can carry client IP, user-agent, and other contextual information
+    /// for adaptive risk scoring and audit logging.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mut meta = CredentialMetadata::new();
+    /// meta.client_ip = Some("203.0.113.1".to_string());
+    /// let result = fw.authenticate_with_metadata("jwt", credential, meta).await?;
+    /// ```
     pub async fn authenticate_with_metadata(
         &self,
         method_name: &str,
@@ -359,6 +409,36 @@ impl AuthFramework {
                 );
                 return Err(AuthError::rate_limit("Too many authentication attempts"));
             }
+        }
+
+        if method_name == "jwt" {
+            return match credential {
+                Credential::Jwt { token } | Credential::Bearer { token } => {
+                    self.authenticate_jwt_builtin(&token, &metadata, "jwt")
+                        .await
+                }
+                _ => Ok(AuthResult::Failure(
+                    "JWT authentication expects Credential::jwt or Credential::bearer".to_string(),
+                )),
+            };
+        }
+
+        if matches!(method_name, "api_key" | "api-key") {
+            return match credential {
+                Credential::ApiKey { key } => {
+                    self.authenticate_api_key_builtin(&key, &metadata, "api_key")
+                        .await
+                }
+                _ => Ok(AuthResult::Failure(
+                    "API key authentication expects Credential::api_key".to_string(),
+                )),
+            };
+        }
+
+        if method_name == "oauth2" {
+            return self
+                .authenticate_oauth2_builtin(credential, &metadata)
+                .await;
         }
 
         // Get the authentication method
@@ -427,7 +507,174 @@ impl AuthFramework {
         }
     }
 
-    /// Complete multi-factor authentication
+    async fn authenticate_jwt_builtin(
+        &self,
+        token: &str,
+        metadata: &CredentialMetadata,
+        auth_method: &str,
+    ) -> Result<AuthResult> {
+        if token.is_empty() {
+            return Ok(AuthResult::Failure("JWT token cannot be empty".to_string()));
+        }
+
+        match self.token_manager.validate_jwt_token(token) {
+            Ok(claims) => {
+                let token =
+                    Self::build_validated_jwt_auth_token(token, claims, metadata, auth_method);
+                Ok(AuthResult::Success(Box::new(token)))
+            }
+            Err(error) => {
+                if let Some(reason) = Self::credential_failure_reason(&error) {
+                    Ok(AuthResult::Failure(reason))
+                } else {
+                    Err(error)
+                }
+            }
+        }
+    }
+
+    async fn authenticate_api_key_builtin(
+        &self,
+        api_key: &str,
+        metadata: &CredentialMetadata,
+        auth_method: &str,
+    ) -> Result<AuthResult> {
+        if api_key.is_empty() {
+            return Ok(AuthResult::Failure("API key cannot be empty".to_string()));
+        }
+
+        match self.user_manager.validate_api_key(api_key).await {
+            Ok(user) => {
+                let scopes: Vec<String> = if user.roles.is_empty() {
+                    vec!["api_user".to_string()]
+                } else {
+                    user.roles.to_vec()
+                };
+                let mut token = self
+                    .token_manager
+                    .create_auth_token(&user.id, scopes.clone(), auth_method, None)?
+                    .with_roles(user.roles)
+                    .with_scopes(scopes);
+                token.metadata.issued_ip = metadata.client_ip.clone();
+                token.metadata.user_agent = metadata.user_agent.clone();
+                Ok(AuthResult::Success(Box::new(token)))
+            }
+            Err(error) => {
+                if let Some(reason) = Self::credential_failure_reason(&error) {
+                    Ok(AuthResult::Failure(reason))
+                } else {
+                    Err(error)
+                }
+            }
+        }
+    }
+
+    async fn authenticate_oauth2_builtin(
+        &self,
+        credential: Credential,
+        metadata: &CredentialMetadata,
+    ) -> Result<AuthResult> {
+        match credential {
+            Credential::OAuth {
+                authorization_code, ..
+            } => {
+                if authorization_code.is_empty() {
+                    return Ok(AuthResult::Failure(
+                        "OAuth authorization code cannot be empty".to_string(),
+                    ));
+                }
+                Ok(AuthResult::Failure(
+                    "OAuth 2.0 authorization codes must be exchanged through an OAuth provider or server endpoint before authentication completes"
+                        .to_string(),
+                ))
+            }
+            Credential::OAuthRefresh { refresh_token } => {
+                if refresh_token.is_empty() {
+                    return Ok(AuthResult::Failure(
+                        "OAuth refresh token cannot be empty".to_string(),
+                    ));
+                }
+                Ok(AuthResult::Failure(
+                    "OAuth 2.0 refresh tokens must be exchanged through an OAuth provider or server endpoint before authentication completes"
+                        .to_string(),
+                ))
+            }
+            Credential::Jwt { token }
+            | Credential::Bearer { token }
+            | Credential::OpenIdConnect { id_token: token, .. } => {
+                self.authenticate_jwt_builtin(&token, metadata, "oauth2").await
+            }
+            _ => Ok(AuthResult::Failure(
+                "OAuth2 authentication expects Credential::oauth_code, Credential::oauth_refresh, Credential::jwt, Credential::bearer, or Credential::openid_connect"
+                    .to_string(),
+            )),
+        }
+    }
+
+    fn build_validated_jwt_auth_token(
+        raw_token: &str,
+        claims: crate::tokens::JwtClaims,
+        metadata: &CredentialMetadata,
+        auth_method: &str,
+    ) -> AuthToken {
+        let crate::tokens::JwtClaims {
+            sub,
+            iss,
+            exp,
+            iat,
+            jti,
+            scope,
+            permissions,
+            roles,
+            client_id,
+            ..
+        } = claims;
+
+        let now = chrono::Utc::now();
+        let issued_at = chrono::DateTime::<chrono::Utc>::from_timestamp(iat, 0).unwrap_or(now);
+        let expires_at = chrono::DateTime::<chrono::Utc>::from_timestamp(exp, 0)
+            .unwrap_or(now + chrono::Duration::hours(1));
+        let lifetime = (expires_at - now)
+            .to_std()
+            .unwrap_or_else(|_| std::time::Duration::from_secs(1));
+        let scopes = if scope.trim().is_empty() {
+            Vec::new()
+        } else {
+            scope.split_whitespace().map(str::to_string).collect()
+        };
+
+        let mut token = AuthToken::new(sub.clone(), raw_token.to_string(), lifetime, auth_method)
+            .with_scopes(scopes)
+            .with_permissions(permissions.unwrap_or_default())
+            .with_roles(roles.unwrap_or_default());
+        token.token_id = jti;
+        token.subject = Some(sub);
+        token.issuer = Some(iss);
+        token.issued_at = issued_at;
+        token.expires_at = expires_at;
+        token.metadata.issued_ip = metadata.client_ip.clone();
+        token.metadata.user_agent = metadata.user_agent.clone();
+        if let Some(client_id) = client_id {
+            token.client_id = Some(client_id);
+        }
+        token
+    }
+
+    fn credential_failure_reason(error: &AuthError) -> Option<String> {
+        match error {
+            AuthError::Token(_) | AuthError::Jwt(_) => Some(error.to_string()),
+            AuthError::Validation { message } => Some(message.clone()),
+            AuthError::UserNotFound => Some("User not found".to_string()),
+            _ => None,
+        }
+    }
+
+    /// Complete multi-factor authentication.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let token = fw.complete_mfa(challenge, "123456").await?;
+    /// ```
     pub async fn complete_mfa(&self, challenge: MfaChallenge, mfa_code: &str) -> Result<AuthToken> {
         debug!("Completing MFA for challenge '{}'", challenge.id);
 
@@ -514,7 +761,12 @@ impl AuthFramework {
         Ok(token)
     }
 
-    /// Validate a token
+    /// Validate a token.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let valid = fw.validate_token(&token).await?;
+    /// ```
     pub async fn validate_token(&self, token: &AuthToken) -> Result<bool> {
         if !self.initialized {
             return Err(AuthError::internal("Framework not initialized"));
@@ -541,7 +793,13 @@ impl AuthFramework {
         }
     }
 
-    /// Get user information from a token
+    /// Get user information from a token.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let info = fw.get_user_info(&token).await?;
+    /// println!("username: {}", info.username);
+    /// ```
     pub async fn get_user_info(&self, token: &AuthToken) -> Result<UserInfo> {
         if !self.validate_token(token).await? {
             return Err(AuthError::auth_method("token", "Invalid token".to_string()));
@@ -550,7 +808,12 @@ impl AuthFramework {
         self.user_manager.get_user_info(&token.user_id).await
     }
 
-    /// Check if a token has a specific permission
+    /// Check if a token has a specific permission.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let allowed = fw.check_permission(&token, "read", "users").await?;
+    /// ```
     pub async fn check_permission(
         &self,
         token: &AuthToken,
@@ -566,32 +829,62 @@ impl AuthFramework {
         checker.check_token_permission(token, &permission)
     }
 
-    /// Get the token manager
+    /// Get the token manager.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let tm = fw.token_manager();
+    /// ```
     pub fn token_manager(&self) -> &TokenManager {
         &self.token_manager
     }
 
-    /// Get the MFA manager
+    /// Get the MFA manager.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mfa = fw.mfa_manager();
+    /// ```
     pub fn mfa_manager(&self) -> &MfaManager {
         &self.mfa_manager
     }
 
-    /// Get the session manager
+    /// Get the session manager.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let sm = fw.session_manager();
+    /// ```
     pub fn session_manager(&self) -> &SessionManager {
         &self.session_manager
     }
 
-    /// Get the user manager
+    /// Get the user manager.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let um = fw.user_manager();
+    /// ```
     pub fn user_manager(&self) -> &UserManager {
         &self.user_manager
     }
 
-    /// Initiate SMS challenge (uses SMSKit)
+    /// Initiate SMS challenge (uses SMSKit).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let challenge_id = fw.initiate_sms_challenge("user-1").await?;
+    /// ```
     pub async fn initiate_sms_challenge(&self, user_id: &str) -> Result<String> {
         self.mfa_manager.sms.initiate_challenge(user_id).await
     }
 
-    /// Send SMS code (uses SMSKit)
+    /// Send SMS code (uses SMSKit).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// fw.send_sms_code(&challenge_id, "+1234567890").await?;
+    /// ```
     pub async fn send_sms_code(&self, challenge_id: &str, phone_number: &str) -> Result<()> {
         self.mfa_manager
             .sms
@@ -599,17 +892,32 @@ impl AuthFramework {
             .await
     }
 
-    /// Generate SMS code (uses SMSKit)
+    /// Generate SMS code (uses SMSKit).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let code = fw.generate_sms_code(&challenge_id).await?;
+    /// ```
     pub async fn generate_sms_code(&self, challenge_id: &str) -> Result<String> {
         self.mfa_manager.sms.generate_code(challenge_id).await
     }
 
-    /// Verify SMS code (uses SMSKit)
+    /// Verify SMS code (uses SMSKit).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let ok = fw.verify_sms_code(&challenge_id, "123456").await?;
+    /// ```
     pub async fn verify_sms_code(&self, challenge_id: &str, code: &str) -> Result<bool> {
         self.mfa_manager.sms.verify_code(challenge_id, code).await
     }
 
-    /// Clean up expired data
+    /// Clean up expired data (sessions, MFA challenges, rate limiter entries).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// fw.cleanup_expired_data().await?;
+    /// ```
     pub async fn cleanup_expired_data(&self) -> Result<()> {
         debug!("Cleaning up expired data");
 
@@ -630,7 +938,13 @@ impl AuthFramework {
         Ok(())
     }
 
-    /// Get authentication framework statistics
+    /// Get authentication framework statistics.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let stats = fw.get_stats().await?;
+    /// println!("methods: {:?}", stats.registered_methods);
+    /// ```
     pub async fn get_stats(&self) -> Result<AuthStats> {
         let mut stats = AuthStats::default();
 
@@ -639,6 +953,9 @@ impl AuthFramework {
         }
 
         stats.active_mfa_challenges = self.mfa_manager.get_active_challenge_count().await as u64;
+
+        // Count tokens from storage as a proxy for tokens_issued
+        stats.tokens_issued = self.storage.count_active_sessions().await.unwrap_or(0) as u64;
 
         Ok(stats)
     }
@@ -694,8 +1011,22 @@ pub struct AuthStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::authentication::credentials::Credential;
     use crate::config::{AuthConfig, SecurityConfig};
     use std::time::Duration;
+
+    async fn initialized_framework(config: AuthConfig) -> AuthFramework {
+        let mut framework = AuthFramework::new(config).expect("test config should be valid");
+        framework
+            .initialize()
+            .await
+            .expect("framework initialization should succeed");
+        framework
+    }
+
+    fn test_config() -> AuthConfig {
+        AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!")
+    }
 
     #[tokio::test]
     async fn test_modular_framework_initialization() {
@@ -711,7 +1042,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let mut framework = AuthFramework::new(config);
+        let mut framework = AuthFramework::new(config).expect("test config should be valid");
 
         assert!(framework.initialize().await.is_ok());
         assert!(framework.initialized);
@@ -731,11 +1062,195 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let framework = AuthFramework::new(config);
+        let framework = AuthFramework::new(config).expect("test config should be valid");
 
         // Test that we can access specialized managers
         let _mfa_manager = framework.mfa_manager();
         let _session_manager = framework.session_manager();
         let _user_manager = framework.user_manager();
+    }
+
+    #[tokio::test]
+    async fn test_authenticate_with_metadata_enforces_minimum_duration() {
+        let framework = initialized_framework(test_config()).await;
+        let start = std::time::Instant::now();
+
+        let result = framework
+            .authenticate_with_metadata(
+                "oauth2",
+                Credential::oauth_refresh(""),
+                CredentialMetadata::new(),
+            )
+            .await
+            .expect("empty refresh token should return failure, not error");
+
+        assert!(
+            start.elapsed() >= std::time::Duration::from_millis(90),
+            "timing floor should add a noticeable delay"
+        );
+        assert!(matches!(result, AuthResult::Failure(_)));
+    }
+
+    #[tokio::test]
+    async fn test_authenticate_oauth2_refresh_empty_returns_failure() {
+        let framework = initialized_framework(test_config()).await;
+
+        let result = framework
+            .authenticate("oauth2", Credential::oauth_refresh(""))
+            .await
+            .expect("empty refresh token should return failure, not error");
+
+        match result {
+            AuthResult::Failure(reason) => {
+                assert!(reason.contains("refresh token cannot be empty"));
+            }
+            _ => panic!("expected failure result for empty OAuth refresh token"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_authenticate_oauth2_openid_connect_routes_to_jwt_validation() {
+        let framework = initialized_framework(test_config()).await;
+        let jwt = framework
+            .token_manager()
+            .create_jwt_token("oidc-user", vec!["openid".to_string()], None)
+            .expect("jwt creation should succeed");
+
+        let result = framework
+            .authenticate("oauth2", Credential::openid_connect(jwt))
+            .await
+            .expect("valid OIDC credential should authenticate");
+
+        match result {
+            AuthResult::Success(token) => {
+                assert_eq!(token.user_id, "oidc-user");
+                assert_eq!(token.auth_method, "oauth2");
+            }
+            _ => panic!("expected success result for OpenID Connect credential"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_authenticate_oauth2_unsupported_credential_returns_failure() {
+        let framework = initialized_framework(test_config()).await;
+
+        let result = framework
+            .authenticate("oauth2", Credential::password("alice", "secret"))
+            .await
+            .expect("unsupported credential should return failure, not error");
+
+        match result {
+            AuthResult::Failure(reason) => {
+                assert!(reason.contains("OAuth2 authentication expects"));
+            }
+            _ => panic!("expected failure result for unsupported OAuth2 credential"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_rate_limiting_without_client_ip_uses_shared_unknown_bucket() {
+        let config = AuthConfig::new()
+            .secret("test_secret_key_32_bytes_long!!!!")
+            .rate_limiting(crate::config::RateLimitConfig {
+                enabled: true,
+                max_requests: 1,
+                window: Duration::from_secs(60),
+                burst: 0,
+            });
+        let framework = initialized_framework(config).await;
+
+        let first = framework
+            .authenticate_with_metadata(
+                "oauth2",
+                Credential::oauth_code("first-code"),
+                CredentialMetadata::new(),
+            )
+            .await
+            .expect("first request should pass rate limiting");
+        assert!(matches!(first, AuthResult::Failure(_)));
+
+        let second = framework
+            .authenticate_with_metadata(
+                "oauth2",
+                Credential::oauth_code("second-code"),
+                CredentialMetadata::new(),
+            )
+            .await;
+        assert!(second.is_err(), "second request should be rate limited");
+        assert!(second
+            .unwrap_err()
+            .to_string()
+            .contains("Too many authentication attempts"));
+    }
+
+    #[tokio::test]
+    async fn test_complete_mfa_missing_challenge_returns_expired_error() {
+        let framework = initialized_framework(test_config()).await;
+        let challenge = MfaChallenge::new(
+            crate::methods::MfaType::BackupCode,
+            "user-123",
+            Duration::from_secs(60),
+        );
+
+        let result = framework.complete_mfa(challenge, "123456").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("expired"));
+    }
+
+    #[tokio::test]
+    async fn test_complete_mfa_expired_challenge_is_removed() {
+        let framework = initialized_framework(test_config()).await;
+        let mut challenge = MfaChallenge::new(
+            crate::methods::MfaType::BackupCode,
+            "user-123",
+            Duration::from_secs(60),
+        );
+        challenge.expires_at = chrono::Utc::now() - chrono::Duration::seconds(1);
+        framework
+            .mfa_manager
+            .store_challenge(challenge.clone())
+            .await
+            .expect("storing challenge should succeed");
+
+        let result = framework.complete_mfa(challenge.clone(), "123456").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("expired"));
+        assert!(framework
+            .mfa_manager
+            .get_challenge(&challenge.id)
+            .await
+            .expect("challenge lookup should succeed")
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn test_validate_token_returns_false_for_expired_token() {
+        let framework = initialized_framework(test_config()).await;
+        let mut token = framework
+            .token_manager()
+            .create_auth_token("user-123", vec!["read".to_string()], "jwt", None)
+            .expect("token creation should succeed");
+        token.expires_at = chrono::Utc::now() - chrono::Duration::seconds(1);
+
+        let valid = framework
+            .validate_token(&token)
+            .await
+            .expect("expired token should return false, not error");
+        assert!(!valid);
+    }
+
+    #[tokio::test]
+    async fn test_validate_token_returns_false_when_not_in_storage() {
+        let framework = initialized_framework(test_config()).await;
+        let token = framework
+            .token_manager()
+            .create_auth_token("user-123", vec!["read".to_string()], "jwt", None)
+            .expect("token creation should succeed");
+
+        let valid = framework
+            .validate_token(&token)
+            .await
+            .expect("missing stored token should return false, not error");
+        assert!(!valid);
     }
 }

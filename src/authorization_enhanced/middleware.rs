@@ -374,21 +374,21 @@ mod tests {
         // Build a token with the admin role — should grant all permissions.
         let mut admin_token =
             AuthToken::new("admin-user", "tok", Duration::from_secs(3600), "test");
-        admin_token.roles = vec!["admin".into()];
+        admin_token.roles = vec!["admin".into()].into();
         assert!(check_token_permission(&admin_token, "read", "users"));
         assert!(check_token_permission(&admin_token, "delete", "secrets"));
 
         // Token with explicit permission should pass only for that permission.
         let mut limited_token =
             AuthToken::new("regular-user", "tok2", Duration::from_secs(3600), "test");
-        limited_token.permissions = vec!["read:users".into()];
+        limited_token.permissions = vec!["read:users".into()].into();
         assert!(check_token_permission(&limited_token, "read", "users"));
         assert!(!check_token_permission(&limited_token, "write", "users"));
 
         // Wildcard permission should pass for any action on the matching prefix.
         let mut wildcard_token =
             AuthToken::new("power-user", "tok3", Duration::from_secs(3600), "test");
-        wildcard_token.permissions = vec!["read:*".into()];
+        wildcard_token.permissions = vec!["read:*".into()].into();
         assert!(check_token_permission(&wildcard_token, "read", "anything"));
 
         // Verify is_public_endpoint and is_sensitive_endpoint agree on common paths.

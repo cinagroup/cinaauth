@@ -6,9 +6,10 @@
 use crate::errors::{AuthError, Result};
 use crate::security::MfaConfig;
 use async_trait::async_trait;
-use rand::RngExt;
+use ring::rand::SecureRandom;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
+use subtle::ConstantTimeEq;
 use totp_lite::{Sha1, totp};
 
 /// MFA method types
@@ -239,6 +240,8 @@ impl TotpProvider {
         };
 
         // Check current time step and ±1 time step for clock skew tolerance
+        // Use constant-time comparison to prevent timing attacks
+        let mut matched = false;
         for step_offset in [-1i64, 0, 1] {
             let time_step_i64 = current_time_step as i64 + step_offset;
             // Skip negative time steps to avoid u64 overflow
@@ -247,12 +250,11 @@ impl TotpProvider {
             }
             let time_step = time_step_i64 as u64;
             let expected_code = self.generate_code(secret, Some(time_step))?;
-            if expected_code == code {
-                return Ok(true);
-            }
+            let eq: bool = expected_code.as_bytes().ct_eq(code.as_bytes()).into();
+            matched |= eq;
         }
 
-        Ok(false)
+        Ok(matched)
     }
 
     /// Verify TOTP code with configurable time window
@@ -264,7 +266,6 @@ impl TotpProvider {
             / self.config.period;
 
         // Check within the specified time window using constant-time comparison
-        use subtle::ConstantTimeEq;
 
         for i in 0..=window {
             // Check current and positive offset
@@ -313,33 +314,38 @@ pub struct BackupCodesProvider;
 impl BackupCodesProvider {
     /// Generate backup codes
     pub fn generate_codes(count: u8) -> Vec<String> {
-        let mut rng = rand::rng();
+        let rng = ring::rand::SystemRandom::new();
         (0..count)
             .map(|_| {
-                format!(
-                    "{:04}-{:04}",
-                    rng.random_range(1000..9999),
-                    rng.random_range(1000..9999)
-                )
+                let mut buf = [0u8; 4];
+                rng.fill(&mut buf).expect("system RNG failure");
+                let val1 = u16::from_le_bytes([buf[0], buf[1]]) % 8999 + 1000;
+                let val2 = u16::from_le_bytes([buf[2], buf[3]]) % 8999 + 1000;
+                format!("{:04}-{:04}", val1, val2)
             })
             .collect()
     }
 
     /// Hash backup codes for storage
     pub fn hash_codes(codes: &[String]) -> Result<Vec<String>> {
+        use sha2::{Digest, Sha256};
         codes
             .iter()
             .map(|code| {
-                // In production, use a proper password hashing function
-                Ok(format!("hashed_{}", code))
+                let hash = Sha256::digest(code.as_bytes());
+                Ok(hex::encode(hash))
             })
             .collect()
     }
 
     /// Verify backup code
     pub fn verify_code(hashed_codes: &[String], provided_code: &str) -> bool {
-        let expected_hash = format!("hashed_{}", provided_code);
-        hashed_codes.contains(&expected_hash)
+        use sha2::{Digest, Sha256};
+        let provided_hash = hex::encode(Sha256::digest(provided_code.as_bytes()));
+        let provided_bytes = provided_hash.as_bytes();
+        hashed_codes
+            .iter()
+            .any(|h| h.as_bytes().ct_eq(provided_bytes).into())
     }
 }
 
@@ -600,8 +606,10 @@ impl<S: MfaStorage> MfaManager<S> {
                     false
                 }
             }
-            MfaChallengeData::Sms { code, .. } => code == response,
-            MfaChallengeData::Email { code, .. } => code == response,
+            MfaChallengeData::Sms { code, .. } => code.as_bytes().ct_eq(response.as_bytes()).into(),
+            MfaChallengeData::Email { code, .. } => {
+                code.as_bytes().ct_eq(response.as_bytes()).into()
+            }
             MfaChallengeData::BackupCodes { .. } => {
                 let user_methods = self
                     .storage
@@ -663,9 +671,13 @@ impl<S: MfaStorage> MfaManager<S> {
 
 /// Generate a numeric code of specified length
 fn generate_numeric_code(length: u8) -> String {
-    let mut rng = rand::rng();
+    let rng = ring::rand::SystemRandom::new();
     (0..length)
-        .map(|_| rng.random_range(0..10).to_string())
+        .map(|_| {
+            let mut buf = [0u8; 1];
+            rng.fill(&mut buf).expect("system RNG failure");
+            (buf[0] % 10).to_string()
+        })
         .collect()
 }
 

@@ -145,15 +145,23 @@ impl AuthMetrics {
     }
 }
 
-// Security event logging
+// Security event logging — use the builder for ergonomic construction:
+//
+// let event = SecurityEvent::builder(SecurityEventType::FailedLogin, SecurityEventSeverity::Medium)
+//     .user("user-123")
+//     .ip("10.0.0.1")
+//     .detail("reason", "invalid password")
+//     .build();
+//
+// Full struct definition:
 #[derive(Serialize, Debug)]
 pub struct SecurityEvent {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: u64,
     pub event_type: SecurityEventType,
     pub user_id: Option<String>,
-    pub source_ip: IpAddr,
-    pub user_agent: Option<String>,
-    pub details: Value,
+    pub ip_address: Option<String>,
+    pub details: HashMap<String, String>,
+    pub severity: SecurityEventSeverity,
 }
 
 #[derive(Serialize, Debug)]

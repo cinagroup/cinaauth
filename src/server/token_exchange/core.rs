@@ -39,7 +39,7 @@
 //! let jwt_validator = SecureJwtValidator::new(SecureJwtConfig {
 //!     jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
 //!     ..SecureJwtConfig::default()
-//! });
+//! })?;
 //! let mut manager = TokenExchangeManager::new(jwt_validator);
 //!
 //! let request = TokenExchangeRequest {
@@ -61,14 +61,17 @@
 //! ```
 
 use crate::errors::{AuthError, Result};
+#[cfg(feature = "saml")]
+use crate::methods::saml::SamlSignatureValidator;
 use crate::security::secure_jwt::{SecureJwtClaims, SecureJwtValidator};
 use crate::server::token_exchange::token_exchange_common::{
     ServiceComplexityLevel, TokenExchangeCapabilities, TokenExchangeService, TokenValidationResult,
     ValidationUtils,
 };
 use async_trait::async_trait;
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use base64::Engine as _;
 use chrono::{Duration, Utc};
+use jsonwebtoken::{Algorithm, Header, encode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -90,23 +93,23 @@ pub struct TokenExchangeRequest {
     /// Type of the actor token
     pub actor_token_type: Option<String>,
 
-    /// Requested token type
+    /// Type of the requested security token
     pub requested_token_type: Option<String>,
 
-    /// Target audience for the token
+    /// Intended audience for the requested token
     pub audience: Option<String>,
 
-    /// Requested scope
+    /// Scope of the access token
     pub scope: Option<String>,
 
-    /// Resource parameter
+    /// Requested resource for the exchanged token
     pub resource: Option<String>,
 }
 
 /// Token Exchange Response (RFC 8693)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenExchangeResponse {
-    /// Access token issued by authorization server
+    /// The security token issued by the authorization server
     pub access_token: String,
 
     /// Token type (typically "Bearer")
@@ -200,6 +203,105 @@ pub struct TokenExchangePolicy {
     pub scope_mapping: HashMap<String, Vec<String>>,
 }
 
+impl TokenExchangePolicy {
+    /// Create a builder for `TokenExchangePolicy` starting from defaults.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::server::token_exchange::TokenExchangePolicy;
+    ///
+    /// let policy = TokenExchangePolicy::builder()
+    ///     .max_token_lifetime(chrono::Duration::minutes(30))
+    ///     .require_actor_for_delegation(false)
+    ///     .audience("api.example.com")
+    ///     .build();
+    /// ```
+    pub fn builder() -> TokenExchangePolicyBuilder {
+        TokenExchangePolicyBuilder {
+            inner: Self::default(),
+        }
+    }
+
+    /// Preset: JWT-only token exchange policy.
+    ///
+    /// Only allows JWT and access-token subject types, JWT requested types,
+    /// and delegation/audience-restriction scenarios.
+    pub fn jwt_only() -> Self {
+        Self {
+            allowed_subject_token_types: vec![TokenType::Jwt, TokenType::AccessToken],
+            allowed_actor_token_types: vec![TokenType::AccessToken],
+            allowed_scenarios: vec![
+                ExchangeScenario::OnBehalfOf,
+                ExchangeScenario::AudienceRestriction,
+            ],
+            max_token_lifetime: Duration::hours(1),
+            require_actor_for_delegation: true,
+            allowed_audiences: Vec::new(),
+            scope_mapping: HashMap::new(),
+        }
+    }
+}
+
+/// Builder for [`TokenExchangePolicy`].
+pub struct TokenExchangePolicyBuilder {
+    inner: TokenExchangePolicy,
+}
+
+impl TokenExchangePolicyBuilder {
+    /// Set the allowed subject token types.
+    pub fn subject_token_types(mut self, types: Vec<TokenType>) -> Self {
+        self.inner.allowed_subject_token_types = types;
+        self
+    }
+
+    /// Set the allowed actor token types.
+    pub fn actor_token_types(mut self, types: Vec<TokenType>) -> Self {
+        self.inner.allowed_actor_token_types = types;
+        self
+    }
+
+    /// Set the allowed exchange scenarios.
+    pub fn scenarios(mut self, scenarios: Vec<ExchangeScenario>) -> Self {
+        self.inner.allowed_scenarios = scenarios;
+        self
+    }
+
+    /// Set the maximum token lifetime for exchanged tokens.
+    pub fn max_token_lifetime(mut self, lifetime: Duration) -> Self {
+        self.inner.max_token_lifetime = lifetime;
+        self
+    }
+
+    /// Set whether actor tokens are required for delegation.
+    pub fn require_actor_for_delegation(mut self, required: bool) -> Self {
+        self.inner.require_actor_for_delegation = required;
+        self
+    }
+
+    /// Add a single allowed audience.
+    pub fn audience(mut self, aud: impl Into<String>) -> Self {
+        self.inner.allowed_audiences.push(aud.into());
+        self
+    }
+
+    /// Set all allowed audiences.
+    pub fn audiences(mut self, auds: Vec<String>) -> Self {
+        self.inner.allowed_audiences = auds;
+        self
+    }
+
+    /// Add a scope mapping entry (source scope → allowed target scopes).
+    pub fn scope_map(mut self, source: impl Into<String>, targets: Vec<String>) -> Self {
+        self.inner.scope_mapping.insert(source.into(), targets);
+        self
+    }
+
+    /// Build the [`TokenExchangePolicy`].
+    pub fn build(self) -> TokenExchangePolicy {
+        self.inner
+    }
+}
+
 /// Token exchange scenarios
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExchangeScenario {
@@ -217,25 +319,6 @@ pub enum ExchangeScenario {
 
     /// Scope reduction
     ScopeReduction,
-}
-
-/// SAML token claims extracted from XML
-#[derive(Debug, Clone)]
-struct SamlClaims {
-    /// Subject (NameID)
-    pub subject: String,
-    /// Issuer
-    pub issuer: String,
-    /// Audience restriction (optional)
-    pub audience: Option<String>,
-    /// Token expiry timestamp (NotOnOrAfter)
-    pub expiry: Option<i64>,
-    /// Not before timestamp (NotBefore)
-    pub not_before: Option<i64>,
-    /// Session ID from authentication statement
-    pub session_id: Option<String>,
-    /// Scopes derived from attribute statements
-    pub scopes: Vec<String>,
 }
 
 /// Token Exchange Manager
@@ -256,6 +339,7 @@ impl TokenExchangeManager {
         "urn:ietf:params:oauth:token-type:jwt",
         "urn:ietf:params:oauth:token-type:access_token",
         "urn:ietf:params:oauth:token-type:id_token",
+        "urn:ietf:params:oauth:token-type:saml1",
         "urn:ietf:params:oauth:token-type:saml2",
     ];
 
@@ -404,25 +488,14 @@ impl TokenExchangeManager {
 
     /// Validate JWT token using SECURE cryptographic verification
     async fn validate_jwt_token(&self, token: &str) -> Result<SecureJwtClaims> {
-        // SECURITY FIX: Use proper key management from SecureJwtValidator
-        // Get the proper decoding key from the configured JWT validator
-        let decoding_key = self.jwt_validator.get_decoding_key();
-
-        // Use secure JWT validation with proper cryptographic verification
-        self.jwt_validator
-            .validate_token(token, &decoding_key)
-            .map_err(|e| {
-                AuthError::auth_method("token_exchange", format!("JWT validation failed: {}", e))
-            })
+        // Delegate entirely to SecureJwtValidator::validate which handles
+        // algorithm allow-list enforcement, key selection, and full claims validation.
+        self.jwt_validator.validate(token).map_err(|e| {
+            AuthError::auth_method("token_exchange", format!("JWT validation failed: {}", e))
+        })
     }
 
-    /// Validate SAML token structure and basic properties
-    async fn validate_saml_token(
-        &self,
-        token: &str,
-        token_type: &TokenType,
-    ) -> Result<SecureJwtClaims> {
-        // Basic SAML token validation
+    fn extract_saml_xml(&self, token: &str) -> Result<String> {
         if token.trim().is_empty() {
             return Err(AuthError::auth_method(
                 "token_exchange",
@@ -430,10 +503,32 @@ impl TokenExchangeManager {
             ));
         }
 
-        // Check for basic SAML structure markers
-        let has_saml_markers = token.contains("<saml:")
-            || token.contains("<saml2:")
-            || token.contains("urn:oasis:names:tc:SAML");
+        let decoded = if token.trim_start().starts_with('<') {
+            token.to_string()
+        } else {
+            String::from_utf8(
+                base64::engine::general_purpose::STANDARD
+                    .decode(token)
+                    .map_err(|e| {
+                        AuthError::auth_method(
+                            "token_exchange",
+                            format!("Invalid base64-encoded SAML token: {}", e),
+                        )
+                    })?,
+            )
+            .map_err(|e| {
+                AuthError::auth_method(
+                    "token_exchange",
+                    format!("Invalid UTF-8 in SAML token: {}", e),
+                )
+            })?
+        };
+
+        let has_saml_markers = decoded.contains("<saml:")
+            || decoded.contains("<saml2:")
+            || decoded.contains("<Assertion")
+            || decoded.contains("<Response")
+            || decoded.contains("urn:oasis:names:tc:SAML");
 
         if !has_saml_markers {
             return Err(AuthError::auth_method(
@@ -442,78 +537,215 @@ impl TokenExchangeManager {
             ));
         }
 
-        // IMPLEMENTATION COMPLETE: Parse SAML XML and extract claims
-        let saml_claims = SamlClaims {
-            subject: token
-                .find("<saml:NameID")
-                .and_then(|start| {
-                    let content_start = token[start..].find('>').map(|pos| start + pos + 1)?;
-                    let content_end = token[content_start..]
-                        .find("</saml:NameID>")
-                        .map(|pos| content_start + pos)?;
-                    Some(token[content_start..content_end].trim().to_string())
-                })
-                .unwrap_or_else(|| "saml_subject".to_string()),
-            issuer: token
-                .find("<saml:Issuer")
-                .and_then(|start| {
-                    let content_start = token[start..].find('>').map(|pos| start + pos + 1)?;
-                    let content_end = token[content_start..]
-                        .find("</saml:Issuer>")
-                        .map(|pos| content_start + pos)?;
-                    Some(token[content_start..content_end].trim().to_string())
-                })
-                .unwrap_or_else(|| "saml_identity_provider".to_string()),
-            audience: token.find("<saml:Audience").and_then(|start| {
-                let content_start = token[start..].find('>').map(|pos| start + pos + 1)?;
-                let content_end = token[content_start..]
-                    .find("</saml:Audience>")
-                    .map(|pos| content_start + pos)?;
-                Some(token[content_start..content_end].trim().to_string())
-            }),
-            expiry: Some(chrono::Utc::now().timestamp() + 3600), // 1 hour default
-            not_before: Some(chrono::Utc::now().timestamp()),
-            session_id: Some(format!("saml_session_{}", uuid::Uuid::new_v4())),
-            scopes: {
-                let mut scopes = Vec::new();
-                if token.contains("emailaddress") {
-                    scopes.push("email".to_string());
+        Ok(decoded)
+    }
+
+    #[cfg(feature = "saml")]
+    fn extract_xml_text(&self, xml: &str, local_name: &str) -> Option<String> {
+        let patterns = [
+            format!("<{local_name}>"),
+            format!("<saml:{local_name}>"),
+            format!("<saml2:{local_name}>"),
+            format!("<{local_name} "),
+            format!("<saml:{local_name} "),
+            format!("<saml2:{local_name} "),
+        ];
+
+        for pattern in patterns {
+            if let Some(start) = xml.find(&pattern) {
+                let content_start = xml[start..].find('>').map(|index| start + index + 1)?;
+                let end_patterns = [
+                    format!("</{local_name}>"),
+                    format!("</saml:{local_name}>"),
+                    format!("</saml2:{local_name}>"),
+                ];
+
+                for end_pattern in end_patterns {
+                    if let Some(relative_end) = xml[content_start..].find(&end_pattern) {
+                        return Some(
+                            xml[content_start..content_start + relative_end]
+                                .trim()
+                                .to_string(),
+                        );
+                    }
                 }
-                if token.contains("identity/claims/name") {
-                    scopes.push("profile".to_string());
+            }
+        }
+
+        None
+    }
+
+    #[cfg(feature = "saml")]
+    fn extract_xml_attribute(&self, xml: &str, attribute_name: &str) -> Option<String> {
+        for pattern in [
+            format!("{attribute_name}=\""),
+            format!("{attribute_name}='"),
+        ] {
+            if let Some(start) = xml.find(&pattern) {
+                let value_start = start + pattern.len();
+                if let Some(relative_end) = xml[value_start..].find(['"', '\'']) {
+                    return Some(xml[value_start..value_start + relative_end].to_string());
                 }
-                if token.contains("claims/groups") || token.contains("role") {
-                    scopes.push("groups".to_string());
-                }
-                if scopes.is_empty() {
-                    scopes.push("saml_authenticated".to_string());
-                }
-                scopes
-            },
-        };
+            }
+        }
+
+        None
+    }
+
+    #[cfg(feature = "saml")]
+    fn parse_saml_timestamp(&self, timestamp: &str) -> Result<i64> {
+        chrono::DateTime::parse_from_rfc3339(timestamp)
+            .or_else(|_| chrono::DateTime::parse_from_str(timestamp, "%Y-%m-%dT%H:%M:%S%.fZ"))
+            .or_else(|_| chrono::DateTime::parse_from_str(timestamp, "%Y-%m-%dT%H:%M:%SZ"))
+            .map(|dt| dt.timestamp())
+            .map_err(|_| {
+                AuthError::auth_method(
+                    "token_exchange",
+                    format!("Invalid SAML timestamp: {}", timestamp),
+                )
+            })
+    }
+
+    #[cfg(feature = "saml")]
+    fn extract_saml_timestamp(&self, xml: &str, attribute_name: &str) -> Result<Option<i64>> {
+        match self.extract_xml_attribute(xml, attribute_name) {
+            Some(timestamp) => self.parse_saml_timestamp(&timestamp).map(Some),
+            None => Ok(None),
+        }
+    }
+
+    #[cfg(feature = "saml")]
+    fn validate_saml_assertion_xml(
+        &self,
+        xml: &str,
+        token_type: &TokenType,
+    ) -> Result<SecureJwtClaims> {
+        let validator = SamlSignatureValidator;
+        let certificate = validator.extract_embedded_certificate(xml).map_err(|e| {
+            AuthError::auth_method(
+                "token_exchange",
+                format!(
+                    "SAML assertion is missing a usable embedded certificate: {}",
+                    e
+                ),
+            )
+        })?;
+
+        let signature_valid = validator
+            .validate_xml_signature(xml, &certificate)
+            .map_err(|e| {
+                AuthError::auth_method(
+                    "token_exchange",
+                    format!("SAML signature validation failed: {}", e),
+                )
+            })?;
+
+        if !signature_valid {
+            return Err(AuthError::auth_method(
+                "token_exchange",
+                "SAML signature validation failed",
+            ));
+        }
+
+        let subject = self.extract_xml_text(xml, "NameID").ok_or_else(|| {
+            AuthError::auth_method("token_exchange", "SAML assertion is missing NameID")
+        })?;
+        let issuer = self.extract_xml_text(xml, "Issuer").ok_or_else(|| {
+            AuthError::auth_method("token_exchange", "SAML assertion is missing Issuer")
+        })?;
+        let audience = self.extract_xml_text(xml, "Audience");
+        let issue_instant = self.extract_saml_timestamp(xml, "IssueInstant")?;
+        let not_before = self.extract_saml_timestamp(xml, "NotBefore")?;
+        let not_on_or_after = self.extract_saml_timestamp(xml, "NotOnOrAfter")?;
+        let session_id = self.extract_xml_attribute(xml, "SessionIndex");
 
         let now = chrono::Utc::now().timestamp();
-        let claims = SecureJwtClaims {
-            iss: saml_claims.issuer,
-            sub: saml_claims.subject,
-            aud: saml_claims
-                .audience
-                .unwrap_or_else(|| "target_audience".to_string()),
-            exp: saml_claims.expiry.unwrap_or(now + 3600), // Use SAML expiry or default 1 hour
-            nbf: saml_claims.not_before.unwrap_or(now),
-            iat: now,
+        if let Some(value) = issue_instant {
+            if value > now + 30 {
+                return Err(AuthError::auth_method(
+                    "token_exchange",
+                    "SAML assertion issue instant is in the future",
+                ));
+            }
+            if now - value > 300 {
+                return Err(AuthError::auth_method(
+                    "token_exchange",
+                    "SAML assertion is too old",
+                ));
+            }
+        }
+        if let Some(value) = not_before
+            && now < value
+        {
+            return Err(AuthError::auth_method(
+                "token_exchange",
+                "SAML assertion is not yet valid",
+            ));
+        }
+        if let Some(value) = not_on_or_after
+            && now >= value
+        {
+            return Err(AuthError::auth_method(
+                "token_exchange",
+                "SAML assertion has expired",
+            ));
+        }
+
+        let mut scopes = Vec::new();
+        if xml.contains("emailaddress") {
+            scopes.push("email".to_string());
+        }
+        if xml.contains("identity/claims/name") || xml.contains("givenname") {
+            scopes.push("profile".to_string());
+        }
+        if xml.contains("claims/groups") || xml.contains("role") || xml.contains("Role") {
+            scopes.push("groups".to_string());
+        }
+        if scopes.is_empty() {
+            scopes.push("saml_authenticated".to_string());
+        }
+
+        Ok(SecureJwtClaims {
+            iss: issuer,
+            sub: subject,
+            aud: audience.unwrap_or_else(|| "target_audience".to_string()),
+            exp: not_on_or_after.unwrap_or(now + 3600),
+            nbf: not_before.unwrap_or(now),
+            iat: issue_instant.unwrap_or(now),
             jti: format!("saml_token_{}", uuid::Uuid::new_v4()),
-            scope: saml_claims.scopes.join(" "),
+            scope: scopes.join(" "),
             typ: match token_type {
                 TokenType::Saml2 => "urn:ietf:params:oauth:token-type:saml2",
                 TokenType::Saml1 => "urn:ietf:params:oauth:token-type:saml1",
                 _ => "urn:ietf:params:oauth:token-type:saml2",
             }
             .to_string(),
-            sid: saml_claims.session_id,
+            sid: session_id,
             client_id: None,
             auth_ctx_hash: Some(format!("saml_ctx_{}", uuid::Uuid::new_v4())),
-        };
+        })
+    }
+
+    #[cfg(not(feature = "saml"))]
+    fn validate_saml_assertion_xml(
+        &self,
+        _xml: &str,
+        _token_type: &TokenType,
+    ) -> Result<SecureJwtClaims> {
+        Err(AuthError::auth_method(
+            "token_exchange",
+            "SAML validation requires the 'saml' feature to be enabled",
+        ))
+    }
+
+    /// Validate SAML token structure and basic properties
+    async fn validate_saml_token(
+        &self,
+        token: &str,
+        token_type: &TokenType,
+    ) -> Result<SecureJwtClaims> {
+        let xml = self.extract_saml_xml(token)?;
+        let claims = self.validate_saml_assertion_xml(&xml, token_type)?;
 
         tracing::info!(
             "SAML token validation completed - parsed subject: {}, issuer: {}, scopes: {}",
@@ -546,19 +778,16 @@ impl TokenExchangeManager {
         context: &TokenExchangeContext,
         _policy: &TokenExchangePolicy,
     ) -> Result<ExchangeScenario> {
-        // If actor token is present, it's delegation (on-behalf-of)
         if context.actor_claims.is_some() {
             return Ok(ExchangeScenario::OnBehalfOf);
         }
 
-        // If audience is different, it's audience restriction
-        if context.audience.is_some()
-            && context.audience.as_ref() != Some(&context.subject_claims.aud)
-        {
-            return Ok(ExchangeScenario::AudienceRestriction);
+        if let Some(audience) = context.audience.as_ref() {
+            if audience != &context.subject_claims.aud {
+                return Ok(ExchangeScenario::AudienceRestriction);
+            }
         }
 
-        // If scope is reduced, it's scope reduction
         if let Some(requested_scope) = &context.scope {
             let current_scope: Vec<&str> = context.subject_claims.scope.split(' ').collect();
             if requested_scope.len() < current_scope.len() {
@@ -566,21 +795,19 @@ impl TokenExchangeManager {
             }
         }
 
-        // Default to acting-as (impersonation)
         Ok(ExchangeScenario::ActingAs)
     }
 
-    /// Validate exchange scenario
     fn validate_exchange_scenario(
         &self,
         scenario: &ExchangeScenario,
         context: &TokenExchangeContext,
         policy: &TokenExchangePolicy,
     ) -> Result<()> {
-        if !policy.allowed_scenarios.contains(scenario) {
+        if !policy.allowed_scenarios.is_empty() && !policy.allowed_scenarios.contains(scenario) {
             return Err(AuthError::auth_method(
                 "token_exchange",
-                "Exchange scenario not allowed",
+                "Exchange scenario is not permitted by policy",
             ));
         }
 
@@ -594,19 +821,18 @@ impl TokenExchangeManager {
                 }
             }
             ExchangeScenario::AudienceRestriction => {
-                if let Some(ref audience) = context.audience
-                    && !policy.allowed_audiences.is_empty()
-                    && !policy.allowed_audiences.contains(audience)
-                {
-                    return Err(AuthError::auth_method(
-                        "token_exchange",
-                        "Audience not allowed",
-                    ));
+                if let Some(audience) = context.audience.as_ref() {
+                    if !policy.allowed_audiences.is_empty()
+                        && !policy.allowed_audiences.contains(audience)
+                    {
+                        return Err(AuthError::auth_method(
+                            "token_exchange",
+                            "Audience not allowed",
+                        ));
+                    }
                 }
             }
-            _ => {
-                // Other scenarios don't need special validation for now
-            }
+            _ => {}
         }
 
         Ok(())
@@ -650,12 +876,13 @@ impl TokenExchangeManager {
             new_claims.client_id = Some(actor_claims.sub.clone());
         }
 
-        // Generate JWT (simplified - would use proper signing in production)
-        let access_token = format!(
-            "exchanged_token_{}_{}",
-            new_claims.jti,
-            URL_SAFE_NO_PAD.encode(&new_claims.sub)
-        );
+        // Generate a proper HMAC-signed JWT from the exchange claims
+        let access_token = encode(
+            &Header::new(Algorithm::HS256),
+            &new_claims,
+            &self.jwt_validator.get_encoding_key(),
+        )
+        .map_err(|e| AuthError::internal(format!("Failed to sign exchanged token: {}", e)))?;
 
         // Determine issued token type
         let issued_token_type = request
@@ -671,55 +898,6 @@ impl TokenExchangeManager {
             scope: Some(new_claims.scope),
             issued_token_type: Some(issued_token_type),
         })
-    }
-
-    /// Get appropriate JWT decoding key for token validation
-    fn get_jwt_decoding_key(&self, token: &str) -> Result<jsonwebtoken::DecodingKey> {
-        use jsonwebtoken::DecodingKey;
-
-        // Extract JWT header to determine key ID and algorithm
-        let token_parts: Vec<&str> = token.split('.').collect();
-        if token_parts.len() < 2 {
-            return Err(AuthError::InvalidToken("Invalid JWT format".to_string()));
-        }
-
-        let header_b64 = token_parts[0];
-        let header_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .decode(header_b64)
-            .map_err(|_| AuthError::InvalidToken("Invalid JWT header encoding".to_string()))?;
-
-        let header: serde_json::Value = serde_json::from_slice(&header_bytes)
-            .map_err(|_| AuthError::InvalidToken("Invalid JWT header JSON".to_string()))?;
-
-        // In production, this would:
-        // 1. Extract 'kid' (key ID) from header
-        // 2. Look up appropriate key from JWKS endpoint or key store
-        // 3. Support multiple algorithms (RS256, ES256, etc.)
-
-        let algorithm = header
-            .get("alg")
-            .and_then(|a| a.as_str())
-            .unwrap_or("HS256");
-
-        match algorithm {
-            "HS256" => {
-                // Load HMAC secret from configuration
-                let secret = std::env::var("JWT_HMAC_SECRET")
-                    .unwrap_or_else(|_| "default_hmac_secret_for_development".to_string());
-                Ok(DecodingKey::from_secret(secret.as_bytes()))
-            }
-            "RS256" => {
-                // Load RSA public key from configuration or JWKS
-                let public_key_pem = std::env::var("JWT_RSA_PUBLIC_KEY")
-                    .unwrap_or_else(|_| include_str!("../../../public.pem").to_string());
-                DecodingKey::from_rsa_pem(public_key_pem.as_bytes())
-                    .map_err(|e| AuthError::InvalidToken(format!("Invalid RSA key: {}", e)))
-            }
-            _ => {
-                // Fallback for development
-                Ok(DecodingKey::from_secret("fallback_secret".as_bytes()))
-            }
-        }
     }
 }
 
@@ -767,10 +945,9 @@ impl TokenExchangeService for TokenExchangeManager {
 
         match self.parse_token_type(token_type)? {
             TokenType::Jwt | TokenType::AccessToken | TokenType::IdToken => {
-                // Load proper JWT validation key from configuration
-                let decoding_key = self.get_jwt_decoding_key(token)?;
-
-                match self.jwt_validator.validate_token(token, &decoding_key) {
+                // Use the secure validate path which handles algorithm checking
+                // and key selection internally — no caller-supplied key needed.
+                match self.jwt_validator.validate(token) {
                     Ok(claims) => {
                         // Convert timestamp to DateTime
                         use chrono::{TimeZone, Utc};
@@ -851,17 +1028,76 @@ impl TokenExchangeService for TokenExchangeManager {
                 }
             }
             TokenType::Saml2 | TokenType::Saml1 => {
-                // Basic SAML validation (simplified)
-                Ok(TokenValidationResult {
-                    is_valid: true, // Simplified validation
-                    subject: None,  // Would extract from SAML assertion
-                    issuer: None,   // Would extract from SAML assertion
-                    audience: Vec::new(),
-                    scopes: Vec::new(),
-                    expires_at: None,
-                    metadata: HashMap::new(),
-                    validation_messages: vec!["SAML validation not fully implemented".to_string()],
-                })
+                match self
+                    .validate_saml_token(token, &self.parse_token_type(token_type)?)
+                    .await
+                {
+                    Ok(claims) => {
+                        use chrono::{TimeZone, Utc};
+                        let expires_at = Utc.timestamp_opt(claims.exp, 0).single();
+                        let audience = if claims.aud.is_empty() {
+                            Vec::new()
+                        } else {
+                            vec![claims.aud.clone()]
+                        };
+                        let scopes = if claims.scope.is_empty() {
+                            Vec::new()
+                        } else {
+                            claims
+                                .scope
+                                .split_whitespace()
+                                .map(|scope| scope.to_string())
+                                .collect()
+                        };
+
+                        let mut metadata = HashMap::new();
+                        metadata.insert(
+                            "sub".to_string(),
+                            serde_json::Value::String(claims.sub.clone()),
+                        );
+                        metadata.insert(
+                            "iss".to_string(),
+                            serde_json::Value::String(claims.iss.clone()),
+                        );
+                        metadata.insert(
+                            "aud".to_string(),
+                            serde_json::Value::String(claims.aud.clone()),
+                        );
+                        metadata.insert(
+                            "scope".to_string(),
+                            serde_json::Value::String(claims.scope.clone()),
+                        );
+                        metadata.insert(
+                            "typ".to_string(),
+                            serde_json::Value::String(claims.typ.clone()),
+                        );
+                        if let Some(ref sid) = claims.sid {
+                            metadata
+                                .insert("sid".to_string(), serde_json::Value::String(sid.clone()));
+                        }
+
+                        Ok(TokenValidationResult {
+                            is_valid: true,
+                            subject: Some(claims.sub),
+                            issuer: Some(claims.iss),
+                            audience,
+                            scopes,
+                            expires_at,
+                            metadata,
+                            validation_messages: Vec::new(),
+                        })
+                    }
+                    Err(error) => Ok(TokenValidationResult {
+                        is_valid: false,
+                        subject: None,
+                        issuer: None,
+                        audience: Vec::new(),
+                        scopes: Vec::new(),
+                        expires_at: None,
+                        metadata: HashMap::new(),
+                        validation_messages: vec![error.to_string()],
+                    }),
+                }
             }
             _ => Err(AuthError::InvalidRequest(format!(
                 "Token validation not supported for type: {}",
@@ -910,7 +1146,7 @@ mod tests {
 
     fn create_test_manager() -> TokenExchangeManager {
         let jwt_config = SecureJwtConfig::default();
-        let jwt_validator = SecureJwtValidator::new(jwt_config);
+        let jwt_validator = SecureJwtValidator::new(jwt_config).expect("test JWT config");
         TokenExchangeManager::new(jwt_validator)
     }
 
@@ -1007,5 +1243,44 @@ mod tests {
 
         let result = manager.exchange_token(request, "test_client").await;
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_token_exchange_policy_builder() {
+        let policy = TokenExchangePolicy::builder()
+            .max_token_lifetime(Duration::minutes(30))
+            .require_actor_for_delegation(false)
+            .audience("api.example.com")
+            .audience("internal.example.com")
+            .scope_map("admin", vec!["read".into(), "write".into()])
+            .build();
+
+        assert_eq!(policy.max_token_lifetime, Duration::minutes(30));
+        assert!(!policy.require_actor_for_delegation);
+        assert_eq!(policy.allowed_audiences.len(), 2);
+        assert_eq!(policy.scope_mapping.get("admin").unwrap().len(), 2);
+        // Builder starts from default so subject types are populated
+        assert!(!policy.allowed_subject_token_types.is_empty());
+    }
+
+    #[test]
+    fn test_token_exchange_policy_jwt_only_preset() {
+        let policy = TokenExchangePolicy::jwt_only();
+        assert_eq!(policy.allowed_subject_token_types.len(), 2);
+        assert!(policy.allowed_subject_token_types.contains(&TokenType::Jwt));
+        assert!(policy.allowed_subject_token_types.contains(&TokenType::AccessToken));
+        assert!(policy.require_actor_for_delegation);
+    }
+
+    #[tokio::test]
+    async fn test_token_exchange_policy_builder_register() {
+        let manager = create_test_manager();
+        let policy = TokenExchangePolicy::builder()
+            .scenarios(vec![ExchangeScenario::OnBehalfOf, ExchangeScenario::AudienceRestriction])
+            .max_token_lifetime(Duration::minutes(15))
+            .build();
+        manager
+            .register_policy("test_client".to_string(), policy)
+            .await;
     }
 }

@@ -55,7 +55,7 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! # let token_manager: TokenManager = todo!();
+//! # let token_manager: TokenManager = unimplemented!();
 //! // Configure passkey authentication
 //! let config = PasskeyConfig {
 //!     rp_name: "Example Corp".to_string(),
@@ -65,6 +65,7 @@
 //!     user_verification: "required".to_string(),
 //!     authenticator_attachment: None,
 //!     require_resident_key: false,
+//!     ..Default::default()
 //! };
 //!
 //! let passkey_method = PasskeyAuthMethod::new(config, token_manager)?;
@@ -106,7 +107,7 @@ use std::{collections::HashMap, sync::RwLock};
 #[cfg(feature = "passkeys")]
 use std::time::Duration;
 
-// coset::iana is used through passkey crate, removed direct import to avoid version mismatch
+// Keep the direct coset import aligned with passkey's coset version.
 #[cfg(feature = "passkeys")]
 use coset::iana::Algorithm;
 #[cfg(feature = "passkeys")]
@@ -212,7 +213,7 @@ impl UserValidationMethod for PasskeyUserValidation {
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let token_manager: TokenManager = todo!();
+/// # let token_manager: TokenManager = unimplemented!();
 /// let config = PasskeyConfig {
 ///     rp_name: "Example Corp".to_string(),
 ///     rp_id: "example.com".to_string(),
@@ -221,6 +222,7 @@ impl UserValidationMethod for PasskeyUserValidation {
 ///     user_verification: "required".to_string(),
 ///     authenticator_attachment: None,
 ///     require_resident_key: false,
+///     ..Default::default()
 /// };
 ///
 /// let passkey_method = PasskeyAuthMethod::new(config, token_manager)?;
@@ -282,6 +284,14 @@ pub struct PasskeyConfig {
     pub authenticator_attachment: Option<String>, // "platform", "cross-platform"
     /// Require resident keys
     pub require_resident_key: bool,
+    /// Attestation conveyance preference: "none", "indirect", "direct", or "enterprise".
+    /// Defaults to "direct" to request authenticator attestation for device verification.
+    #[serde(default = "default_attestation_conveyance")]
+    pub attestation_conveyance: String,
+}
+
+fn default_attestation_conveyance() -> String {
+    "direct".to_string()
 }
 
 impl Default for PasskeyConfig {
@@ -294,6 +304,7 @@ impl Default for PasskeyConfig {
             user_verification: "preferred".to_string(),
             authenticator_attachment: None,
             require_resident_key: false,
+            attestation_conveyance: default_attestation_conveyance(),
         }
     }
 }
@@ -385,7 +396,13 @@ impl PasskeyAuthMethod {
                 exclude_credentials: None,
                 authenticator_selection: None,
                 hints: None,
-                attestation: AttestationConveyancePreference::None,
+                attestation: match self.config.attestation_conveyance.as_str() {
+                    "none" => AttestationConveyancePreference::None,
+                    "indirect" => AttestationConveyancePreference::Indirect,
+                    "enterprise" => AttestationConveyancePreference::Enterprise,
+                    // Default to Direct for security — requests authenticator attestation
+                    _ => AttestationConveyancePreference::Direct,
+                },
                 attestation_formats: None,
                 extensions: None,
             },
@@ -401,19 +418,43 @@ impl PasskeyAuthMethod {
         let credential_id = &credential.raw_id;
         let credential_id_b64 = URL_SAFE_NO_PAD.encode(credential_id.as_slice());
 
-        // Store the registration (in production, you'd extract and store the actual passkey)
+        // Serialize the credential attestation response so the public key and
+        // counter are available for future authentication verification.
+        let credential_value = serde_json::to_value(&credential).unwrap_or(serde_json::Value::Null);
+        let public_key_value = credential_value
+            .pointer("/response/authenticatorData/attestedCredentialData/credentialPublicKey")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        let sign_count = credential_value
+            .pointer("/response/authenticatorData/signCount")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let passkey_data_json = serde_json::json!({
+            "credential_id": credential_id_b64,
+            "public_key": public_key_value,
+            "signature_counter": sign_count,
+            "raw_attestation": credential_value,
+        });
+        let passkey_data_str = serde_json::to_string(&passkey_data_json).map_err(|e| {
+            AuthError::validation(format!("Failed to serialize passkey data: {}", e))
+        })?;
+
         let registration = PasskeyRegistration {
             user_id: user_id.to_string(),
             user_name: user_name.to_string(),
             user_display_name: user_display_name.to_string(),
             credential_id: credential_id.as_slice().to_vec(),
-            passkey_data: String::new(), // Would store serialized Passkey here
+            passkey_data: passkey_data_str,
             created_at: SystemTime::now(),
             last_used: None,
         };
 
         {
-            let mut passkeys = self.registered_passkeys.write().unwrap();
+            let mut passkeys = self.registered_passkeys.write().map_err(|_| {
+                AuthError::internal(
+                    "Lock poisoned — a prior thread panicked while holding this lock",
+                )
+            })?;
             passkeys.insert(credential_id_b64.clone(), registration);
         }
 
@@ -431,7 +472,11 @@ impl PasskeyAuthMethod {
         let challenge: Bytes = challenge_bytes.clone().into();
 
         let allow_credential_ids: Vec<(Vec<u8>, String)> = {
-            let passkeys = self.registered_passkeys.read().unwrap();
+            let passkeys = self.registered_passkeys.read().map_err(|_| {
+                AuthError::internal(
+                    "Lock poisoned — a prior thread panicked while holding this lock",
+                )
+            })?;
             let iter: Box<dyn Iterator<Item = &PasskeyRegistration>> = if let Some(uid) = user_id {
                 Box::new(passkeys.values().filter(move |reg| reg.user_id == uid))
             } else {
@@ -449,7 +494,11 @@ impl PasskeyAuthMethod {
         // Store the challenge for each credential that may respond, and under "latest"
         // so complete_authentication / AuthMethod::authenticate can verify it.
         {
-            let mut challenges = self.pending_challenges.write().unwrap();
+            let mut challenges = self.pending_challenges.write().map_err(|_| {
+                AuthError::internal(
+                    "Lock poisoned — a prior thread panicked while holding this lock",
+                )
+            })?;
             for (_, cred_id_b64) in &allow_credential_ids {
                 challenges.insert(cred_id_b64.clone(), challenge_bytes.clone());
             }
@@ -478,7 +527,12 @@ impl PasskeyAuthMethod {
                     _ => UserVerificationRequirement::Preferred,
                 },
                 hints: None,
-                attestation: AttestationConveyancePreference::None,
+                attestation: match self.config.attestation_conveyance.as_str() {
+                    "none" => AttestationConveyancePreference::None,
+                    "indirect" => AttestationConveyancePreference::Indirect,
+                    "enterprise" => AttestationConveyancePreference::Enterprise,
+                    _ => AttestationConveyancePreference::Direct,
+                },
                 attestation_formats: None,
                 extensions: None,
             },
@@ -499,7 +553,11 @@ impl PasskeyAuthMethod {
 
         // Find the registered passkey
         let mut registration = {
-            let passkeys = self.registered_passkeys.read().unwrap();
+            let passkeys = self.registered_passkeys.read().map_err(|_| {
+                AuthError::internal(
+                    "Lock poisoned — a prior thread panicked while holding this lock",
+                )
+            })?;
             passkeys
                 .get(&credential_id_b64)
                 .ok_or_else(|| AuthError::validation("Unknown credential ID"))?
@@ -533,7 +591,11 @@ impl PasskeyAuthMethod {
 
         // Retrieve the stored challenge for this credential.
         let expected_challenge_bytes: Vec<u8> = {
-            let challenges = self.pending_challenges.read().unwrap();
+            let challenges = self.pending_challenges.read().map_err(|_| {
+                AuthError::internal(
+                    "Lock poisoned — a prior thread panicked while holding this lock",
+                )
+            })?;
             challenges
                 .get(&credential_id_b64)
                 .or_else(|| challenges.get("latest"))
@@ -580,7 +642,11 @@ impl PasskeyAuthMethod {
         registration.last_used = Some(SystemTime::now());
 
         {
-            let mut passkeys = self.registered_passkeys.write().unwrap();
+            let mut passkeys = self.registered_passkeys.write().map_err(|_| {
+                AuthError::internal(
+                    "Lock poisoned — a prior thread panicked while holding this lock",
+                )
+            })?;
             passkeys.insert(credential_id_b64.clone(), registration.clone());
         }
 
@@ -642,7 +708,11 @@ impl AuthMethod for PasskeyAuthMethod {
                     // Find the registered passkey
                     let credential_id_b64 = URL_SAFE_NO_PAD.encode(&credential_id);
                     let registration = {
-                        let passkeys = self.registered_passkeys.read().unwrap();
+                        let passkeys = self.registered_passkeys.read().map_err(|_| {
+                            AuthError::internal(
+                                "Lock poisoned — a prior thread panicked while holding this lock",
+                            )
+                        })?;
                         passkeys
                             .get(&credential_id_b64)
                             .cloned()
@@ -676,7 +746,11 @@ impl AuthMethod for PasskeyAuthMethod {
                     // Retrieve the stored challenge for this credential (set during initiate_authentication).
                     // Fall back to "latest" for usernameless flows.
                     let expected_challenge_bytes: Vec<u8> = {
-                        let challenges = self.pending_challenges.read().unwrap();
+                        let challenges = self.pending_challenges.read().map_err(|_| {
+                            AuthError::internal(
+                                "Lock poisoned — a prior thread panicked while holding this lock",
+                            )
+                        })?;
                         challenges
                             .get(&credential_id_b64)
                             .or_else(|| challenges.get("latest"))
@@ -735,7 +809,8 @@ impl AuthMethod for PasskeyAuthMethod {
                             updated_registration.last_used = Some(SystemTime::now());
 
                             {
-                                let mut passkeys = self.registered_passkeys.write().unwrap();
+                                let mut passkeys = self.registered_passkeys.write()
+                                    .map_err(|_| AuthError::internal("Lock poisoned — a prior thread panicked while holding this lock"))?;
                                 passkeys.insert(credential_id_b64.clone(), updated_registration);
                             }
 
@@ -1488,6 +1563,7 @@ mod tests {
             user_verification: "preferred".to_string(),
             authenticator_attachment: None,
             require_resident_key: false,
+            ..Default::default()
         };
 
         let result = PasskeyAuthMethod::new(config, token_manager);
@@ -1519,6 +1595,7 @@ mod tests {
             user_verification: "invalid".to_string(), // Invalid user verification
             authenticator_attachment: None,
             require_resident_key: false,
+            ..Default::default()
         };
 
         #[cfg(feature = "passkeys")]

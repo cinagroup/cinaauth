@@ -4,6 +4,7 @@
 # Coverage instrumentation data
 *.profraw
 **/*.profraw
+*.profdata
 
 # Development backup directories
 backup-*/
@@ -38,6 +39,10 @@ tree_out.txt
 test_*.txt
 test_results*.txt
 final_test_out.txt
+release_test_output*.txt
+full_release_test_output.txt
+migration/migration_manifest.jsonl
+migration/test_plan_status.json
 
 # Log files
 *.log
@@ -61,12 +66,26 @@ facebook_post.md
 *.backup
 *.md.backup
 
-# Development scripts (root-level only, not scripts/)
+# Development scripts (root-level only, not scripts/ or sdks/)
 /*.ps1
+/*.py
 
 # Python bytecode / cache
-main.py
 __pycache__/
 **/__pycache__/
 *.pyc
+
+# Error dump files
+err*.txt
+
+# Node.js
+node_modules/
+
+# Dev-only documents (not for publish)
+COMPREHENSIVE_AUDIT_RC18.md
+COMPREHENSIVE_AUDIT_*.md
+REMEDIATION_PLAN.md
+CRITICAL_SECURITY_AUDIT_REPORT.md
+RE_AUDIT_*.md
+REST_API_AUDIT_AND_ACTION_PLAN.md
 

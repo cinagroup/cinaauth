@@ -104,16 +104,11 @@ mod framework_lifecycle_tests {
     #[test]
     fn test_framework_new_with_env_var_fallback() {
         // Test JWT_SECRET environment variable fallback
-        unsafe {
-            std::env::set_var("JWT_SECRET", "env_secret_key_32_bytes_long!!!!!");
-        }
+        let _env = auth_framework::testing::test_infrastructure::TestEnvironmentGuard::new()
+            .with_jwt_secret("env_secret_key_32_bytes_long!!!!!");
 
         let config = AuthConfig::new(); // No explicit secret
         let _framework = AuthFramework::new(config);
-
-        unsafe {
-            std::env::remove_var("JWT_SECRET");
-        }
     }
 }
 
@@ -184,10 +179,13 @@ mod authentication_tests {
         let result = framework.authenticate("password", credential).await;
 
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            AuthError::Internal { message: _ }
-        ));
+        assert!(
+            matches!(
+                result.unwrap_err(),
+                AuthError::Configuration { .. }
+            ),
+            "Uninitialized framework should return Configuration error"
+        );
     }
 
     #[tokio::test]
@@ -271,6 +269,11 @@ mod authentication_tests {
             .authenticate_with_metadata("password", credential, metadata)
             .await;
         assert!(result.is_ok());
+        // With no registered users, password auth yields a Failure variant
+        match result.unwrap() {
+            auth_framework::AuthResult::Failure(_) => {}
+            other => panic!("Expected Failure for unknown user, got {:?}", other),
+        }
     }
 
     #[tokio::test]
@@ -283,7 +286,12 @@ mod authentication_tests {
         let result = framework
             .authenticate_with_metadata("password", credential, metadata)
             .await;
-        assert!(result.is_ok()); // Should still work but log warning
+        assert!(result.is_ok());
+        // Localhost IP should still be processed; no registered user → Failure
+        match result.unwrap() {
+            auth_framework::AuthResult::Failure(_) => {}
+            other => panic!("Expected Failure for localhost auth, got {:?}", other),
+        }
     }
 }
 
@@ -318,7 +326,7 @@ mod token_management_tests {
         assert!(result.is_ok());
         let token = result.unwrap();
         assert_eq!(token.user_id, "user123");
-        assert_eq!(token.scopes, vec!["read", "write"]);
+        assert_eq!(token.scopes, auth_framework::types::Scopes::new(vec!["read".to_string(), "write".to_string()]));
         assert_eq!(token.auth_method, "password");
     }
 
@@ -350,10 +358,13 @@ mod token_management_tests {
         let result = framework.validate_token(&token).await;
 
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            AuthError::Internal { message: _ }
-        ));
+        assert!(
+            matches!(
+                result.unwrap_err(),
+                AuthError::Configuration { .. }
+            ),
+            "Uninitialized framework should return Configuration error"
+        );
     }
 
     #[tokio::test]
@@ -662,6 +673,7 @@ mod rate_limiting_tests {
 
         let result = framework.check_ip_rate_limit("192.168.1.1").await;
         assert!(result.is_ok());
+        assert!(result.unwrap(), "First request should be within rate limit");
     }
 }
 

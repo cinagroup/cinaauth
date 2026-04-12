@@ -3,6 +3,7 @@
 use crate::errors::{AuthError, Result};
 use crate::storage::AuthStorage;
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tracing::{debug, info, warn};
 
 /// TOTP manager for handling time-based one-time passwords
@@ -134,7 +135,7 @@ impl TotpManager {
             if let Ok(expected_code) = self
                 .generate_code_for_window(&user_secret, Some(window))
                 .await
-                && code == expected_code
+                && bool::from(code.as_bytes().ct_eq(expected_code.as_bytes()))
             {
                 info!("TOTP code verification successful for user '{}'", user_id);
                 return Ok(true);
@@ -174,16 +175,23 @@ impl TotpManager {
 
     /// Check if user has TOTP secret configured
     pub async fn has_totp_secret(&self, user_id: &str) -> Result<bool> {
-        let key = format!("totp_secret:{}", user_id);
-        match self.storage.get_kv(&key).await {
+        let api_key = format!("mfa_secret:{}", user_id);
+        match self.storage.get_kv(&api_key).await {
             Ok(Some(_)) => Ok(true),
-            Ok(None) => Ok(false),
+            Ok(None) => {
+                let modular_key = format!("user:{}:totp_secret", user_id);
+                match self.storage.get_kv(&modular_key).await {
+                    Ok(Some(_)) => Ok(true),
+                    Ok(None) => Ok(false),
+                    Err(_) => Ok(false),
+                }
+            }
             Err(_) => Ok(false), // Assume false on error
         }
     }
 
     /// Verify a TOTP code during the login MFA flow.
-    /// Reads from `mfa_secret:{user_id}` — the key written by the MFA setup flow.
+    /// Reads from `mfa_secret:{user_id}` (API setup) or `user:{user_id}:totp_secret` (modular setup).
     pub async fn verify_login_code(&self, user_id: &str, code: &str) -> Result<bool> {
         use crate::security::secure_utils::constant_time_compare;
 
@@ -191,20 +199,32 @@ impl TotpManager {
             return Ok(false);
         }
 
+        // Try the API MFA key first, then fall back to the modular TOTP key.
         let secret_b32 = match self
             .storage
             .get_kv(&format!("mfa_secret:{}", user_id))
             .await?
         {
             Some(data) => String::from_utf8_lossy(&data).to_string(),
-            None => return Ok(false),
+            None => match self
+                .storage
+                .get_kv(&format!("user:{}:totp_secret", user_id))
+                .await?
+            {
+                Some(data) => String::from_utf8_lossy(&data).to_string(),
+                None => return Ok(false),
+            },
         };
 
-        let secret_bytes =
-            match base32::decode(base32::Alphabet::Rfc4648 { padding: false }, &secret_b32) {
-                Some(bytes) => bytes,
-                None => return Ok(false),
-            };
+        let secret_bytes = match base32::decode(
+            base32::Alphabet::Rfc4648 { padding: false },
+            &secret_b32,
+        )
+        .or_else(|| base32::decode(base32::Alphabet::Rfc4648 { padding: true }, &secret_b32))
+        {
+            Some(bytes) => bytes,
+            None => return Ok(false),
+        };
 
         let now = chrono::Utc::now().timestamp() as u64;
         const STEP: u64 = 30;

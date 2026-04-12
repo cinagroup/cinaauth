@@ -73,11 +73,14 @@ impl MySqlStorage {
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS sessions (
-                session_id VARCHAR(255) NOT NULL PRIMARY KEY,
-                user_id    VARCHAR(255) NOT NULL,
-                data       JSON         NOT NULL,
-                expires_at DATETIME(6),
-                created_at DATETIME(6)  DEFAULT CURRENT_TIMESTAMP(6),
+                session_id    VARCHAR(255) NOT NULL PRIMARY KEY,
+                user_id       VARCHAR(255) NOT NULL,
+                data          JSON         NOT NULL,
+                expires_at    DATETIME(6),
+                created_at    DATETIME(6)  DEFAULT CURRENT_TIMESTAMP(6),
+                last_activity DATETIME(6)  DEFAULT CURRENT_TIMESTAMP(6),
+                ip_address    VARCHAR(45),
+                user_agent    TEXT,
                 INDEX idx_sessions_user_id (user_id),
                 INDEX idx_sessions_expires_at (expires_at)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
@@ -212,24 +215,49 @@ impl AuthStorage for MySqlStorage {
                     format!("Failed to decode column issued_at: {}", e),
                 ))
             })?;
-            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let user_id: String = row.try_get("user_id").map_err(|e| {
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column user_id: {}", e),
+                ))
+            })?;
             let (roles, permissions) = self.fetch_user_roles_and_permissions(&user_id).await;
             Ok(Some(AuthToken {
-                token_id: row.try_get("token_id").unwrap_or_default(),
+                token_id: row.try_get("token_id").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column token_id: {}",
+                            e
+                        )),
+                    )
+                })?,
                 user_id,
-                access_token: row.try_get("access_token").unwrap_or_default(),
+                access_token: row.try_get("access_token").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column access_token: {}",
+                            e
+                        )),
+                    )
+                })?,
                 refresh_token: row.try_get("refresh_token").ok(),
                 token_type: row.try_get("token_type").ok(),
                 expires_at,
-                scopes,
+                scopes: scopes.into(),
                 issued_at,
-                auth_method: row.try_get("auth_method").unwrap_or_default(),
+                auth_method: row.try_get("auth_method").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column auth_method: {}",
+                            e
+                        )),
+                    )
+                })?,
                 subject: row.try_get("subject").ok(),
                 issuer: row.try_get("issuer").ok(),
                 client_id: row.try_get("client_id").ok(),
                 user_profile: None,
-                permissions,
-                roles,
+                permissions: permissions.into(),
+                roles: roles.into(),
                 metadata,
             }))
         } else {
@@ -277,24 +305,49 @@ impl AuthStorage for MySqlStorage {
                     format!("Failed to decode column issued_at: {}", e),
                 ))
             })?;
-            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let user_id: String = row.try_get("user_id").map_err(|e| {
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column user_id: {}", e),
+                ))
+            })?;
             let (roles, permissions) = self.fetch_user_roles_and_permissions(&user_id).await;
             Ok(Some(AuthToken {
-                token_id: row.try_get("token_id").unwrap_or_default(),
+                token_id: row.try_get("token_id").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column token_id: {}",
+                            e
+                        )),
+                    )
+                })?,
                 user_id,
-                access_token: row.try_get("access_token").unwrap_or_default(),
+                access_token: row.try_get("access_token").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column access_token: {}",
+                            e
+                        )),
+                    )
+                })?,
                 refresh_token: row.try_get("refresh_token").ok(),
                 token_type: row.try_get("token_type").ok(),
                 expires_at,
-                scopes,
+                scopes: scopes.into(),
                 issued_at,
-                auth_method: row.try_get("auth_method").unwrap_or_default(),
+                auth_method: row.try_get("auth_method").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column auth_method: {}",
+                            e
+                        )),
+                    )
+                })?,
                 subject: row.try_get("subject").ok(),
                 issuer: row.try_get("issuer").ok(),
                 client_id: row.try_get("client_id").ok(),
                 user_profile: None,
-                permissions,
-                roles,
+                permissions: permissions.into(),
+                roles: roles.into(),
                 metadata,
             }))
         } else {
@@ -394,24 +447,49 @@ impl AuthStorage for MySqlStorage {
                     format!("Failed to decode column issued_at: {}", e),
                 ))
             })?;
-            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let user_id: String = row.try_get("user_id").map_err(|e| {
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to decode column user_id: {}", e),
+                ))
+            })?;
             let (roles, permissions) = self.fetch_user_roles_and_permissions(&user_id).await;
             tokens.push(AuthToken {
-                token_id: row.try_get("token_id").unwrap_or_default(),
+                token_id: row.try_get("token_id").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column token_id: {}",
+                            e
+                        )),
+                    )
+                })?,
                 user_id,
-                access_token: row.try_get("access_token").unwrap_or_default(),
+                access_token: row.try_get("access_token").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column access_token: {}",
+                            e
+                        )),
+                    )
+                })?,
                 refresh_token: row.try_get("refresh_token").ok(),
                 token_type: row.try_get("token_type").ok(),
                 expires_at,
-                scopes,
+                scopes: scopes.into(),
                 issued_at,
-                auth_method: row.try_get("auth_method").unwrap_or_default(),
+                auth_method: row.try_get("auth_method").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column auth_method: {}",
+                            e
+                        )),
+                    )
+                })?,
                 subject: row.try_get("subject").ok(),
                 issuer: row.try_get("issuer").ok(),
                 client_id: row.try_get("client_id").ok(),
                 user_profile: None,
-                permissions,
-                roles,
+                permissions: permissions.into(),
+                roles: roles.into(),
                 metadata,
             });
         }
@@ -425,15 +503,19 @@ impl AuthStorage for MySqlStorage {
         // Store session in DB
         sqlx::query(
             r#"
-            INSERT INTO sessions (session_id, user_id, created_at, expires_at, data)
-            VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE data = VALUES(data), expires_at = VALUES(expires_at)
+            INSERT INTO sessions (session_id, user_id, created_at, expires_at, last_activity, ip_address, user_agent, data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE data = VALUES(data), expires_at = VALUES(expires_at),
+                last_activity = VALUES(last_activity), ip_address = VALUES(ip_address), user_agent = VALUES(user_agent)
             "#,
         )
         .bind(session_id)
         .bind(&data.user_id)
         .bind(data.created_at)
         .bind(data.expires_at)
+        .bind(data.last_activity)
+        .bind(&data.ip_address)
+        .bind(&data.user_agent)
         .bind(serde_json::to_string(&data.data).unwrap_or_default())
         .execute(&self.pool)
         .await
@@ -448,7 +530,7 @@ impl AuthStorage for MySqlStorage {
         use sqlx::Row;
         let row = sqlx::query(
             r#"
-            SELECT session_id, user_id, created_at, expires_at, data
+            SELECT session_id, user_id, created_at, expires_at, last_activity, ip_address, user_agent, data
             FROM sessions WHERE session_id = ?
             "#,
         )
@@ -477,8 +559,22 @@ impl AuthStorage for MySqlStorage {
                 ))
             })?;
             Ok(Some(crate::storage::SessionData {
-                session_id: row.try_get("session_id").unwrap_or_default(),
-                user_id: row.try_get("user_id").unwrap_or_default(),
+                session_id: row.try_get("session_id").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column session_id: {}",
+                            e
+                        )),
+                    )
+                })?,
+                user_id: row.try_get("user_id").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column user_id: {}",
+                            e
+                        )),
+                    )
+                })?,
                 created_at,
                 expires_at,
                 last_activity: row.try_get("last_activity").unwrap_or(created_at),
@@ -506,17 +602,21 @@ impl AuthStorage for MySqlStorage {
         &self,
         key: &str,
         value: &[u8],
-        _ttl: Option<std::time::Duration>,
+        ttl: Option<std::time::Duration>,
     ) -> Result<()> {
+        let expires_at = ttl.map(|d| {
+            chrono::Utc::now().naive_utc() + chrono::Duration::seconds(d.as_secs() as i64)
+        });
         sqlx::query(
             r#"
-            INSERT INTO kv_store (`key`, `value`)
-            VALUES (?, ?)
-            ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)
+            INSERT INTO kv_store (`key`, `value`, expires_at)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), expires_at = VALUES(expires_at)
             "#,
         )
         .bind(key)
         .bind(value)
+        .bind(expires_at)
         .execute(&self.pool)
         .await
         .map_err(|e| {
@@ -528,15 +628,17 @@ impl AuthStorage for MySqlStorage {
     }
     async fn get_kv(&self, _key: &str) -> Result<Option<Vec<u8>>> {
         use sqlx::Row;
-        let row = sqlx::query("SELECT `value` FROM kv_store WHERE `key` = ?")
-            .bind(_key)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| {
-                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
-                    format!("Failed to get kv: {}", e),
-                ))
-            })?;
+        let row = sqlx::query(
+            "SELECT `value` FROM kv_store WHERE `key` = ? AND (expires_at IS NULL OR expires_at > UTC_TIMESTAMP(6))",
+        )
+        .bind(_key)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| {
+            crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                format!("Failed to get kv: {}", e),
+            ))
+        })?;
         Ok(row.and_then(|r| r.try_get("value").ok()))
     }
     async fn delete_kv(&self, _key: &str) -> Result<()> {
@@ -551,6 +653,36 @@ impl AuthStorage for MySqlStorage {
             })?;
         Ok(())
     }
+
+    async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> {
+        use sqlx::Row;
+
+        let rows = sqlx::query(
+                "SELECT `key` FROM kv_store WHERE `key` LIKE ? AND (expires_at IS NULL OR expires_at > UTC_TIMESTAMP(6)) ORDER BY `key`",
+            )
+            .bind(format!("{prefix}%"))
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| {
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to list kv keys: {}", e),
+                ))
+            })?;
+
+        rows.into_iter()
+            .map(|row| {
+                row.try_get("key").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode kv key: {}",
+                            e
+                        )),
+                    )
+                })
+            })
+            .collect()
+    }
+
     async fn cleanup_expired(&self) -> Result<()> {
         let now = chrono::Utc::now().naive_utc();
         let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -574,6 +706,16 @@ impl AuthStorage for MySqlStorage {
                     format!("Failed to cleanup expired sessions: {}", e),
                 ))
             })?;
+        // Clean up expired KV entries
+        sqlx::query("DELETE FROM kv_store WHERE expires_at IS NOT NULL AND expires_at < ?")
+            .bind(&now_str)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                crate::errors::AuthError::Storage(crate::errors::StorageError::operation_failed(
+                    format!("Failed to cleanup expired kv entries: {}", e),
+                ))
+            })?;
         Ok(())
     }
 
@@ -581,7 +723,7 @@ impl AuthStorage for MySqlStorage {
         use sqlx::Row;
         let rows = sqlx::query(
             r#"
-            SELECT session_id, user_id, data, expires_at, created_at, last_accessed
+            SELECT session_id, user_id, data, expires_at, created_at, last_activity, ip_address, user_agent
             FROM sessions
             WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW())
             "#,
@@ -604,14 +746,47 @@ impl AuthStorage for MySqlStorage {
                 .unwrap_or_default();
 
             sessions.push(SessionData {
-                session_id: row.try_get("session_id").unwrap_or_default(),
-                user_id: row.try_get("user_id").unwrap_or_default(),
+                session_id: row.try_get("session_id").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column session_id: {}",
+                            e
+                        )),
+                    )
+                })?,
+                user_id: row.try_get("user_id").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column user_id: {}",
+                            e
+                        )),
+                    )
+                })?,
                 data,
-                expires_at: row
-                    .try_get("expires_at")
-                    .unwrap_or_else(|_| chrono::Utc::now()),
-                created_at: row.try_get("created_at").unwrap_or_default(),
-                last_activity: row.try_get("last_activity").unwrap_or_default(),
+                expires_at: row.try_get("expires_at").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column expires_at: {}",
+                            e
+                        )),
+                    )
+                })?,
+                created_at: row.try_get("created_at").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column created_at: {}",
+                            e
+                        )),
+                    )
+                })?,
+                last_activity: row.try_get("last_activity").map_err(|e| {
+                    crate::errors::AuthError::Storage(
+                        crate::errors::StorageError::operation_failed(format!(
+                            "Failed to decode column last_activity: {}",
+                            e
+                        )),
+                    )
+                })?,
                 ip_address: row.try_get("ip_address").ok(),
                 user_agent: row.try_get("user_agent").ok(),
             });

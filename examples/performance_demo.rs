@@ -93,12 +93,12 @@ async fn demo_unified_storage() -> Result<()> {
             refresh_token: None,
             issued_at: Utc::now(),
             expires_at: Utc::now() + chrono::Duration::hours(1),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             auth_method: "jwt".to_string(),
             client_id: Some("demo-client".to_string()),
             user_profile: None,
-            permissions: vec!["read:data".to_string(), "write:data".to_string()],
-            roles: vec!["user".to_string()],
+            permissions: vec!["read:data".to_string(), "write:data".to_string()].into(),
+            roles: vec!["user".to_string()].into(),
             metadata: Default::default(),
         };
 

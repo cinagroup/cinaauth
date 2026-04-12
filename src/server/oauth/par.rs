@@ -40,6 +40,91 @@ pub struct PushedAuthorizationRequest {
     pub additional_params: HashMap<String, String>,
 }
 
+impl PushedAuthorizationRequest {
+    /// Create a new builder for a PushedAuthorizationRequest.
+    pub fn builder(
+        client_id: impl Into<String>,
+        response_type: impl Into<String>,
+        redirect_uri: impl Into<String>,
+    ) -> PushedAuthorizationRequestBuilder {
+        PushedAuthorizationRequestBuilder {
+            client_id: client_id.into(),
+            response_type: response_type.into(),
+            redirect_uri: redirect_uri.into(),
+            scope: None,
+            state: None,
+            code_challenge: None,
+            code_challenge_method: None,
+            additional_params: HashMap::new(),
+        }
+    }
+}
+
+/// Builder for PushedAuthorizationRequest
+pub struct PushedAuthorizationRequestBuilder {
+    client_id: String,
+    response_type: String,
+    redirect_uri: String,
+    scope: Option<String>,
+    state: Option<String>,
+    code_challenge: Option<String>,
+    code_challenge_method: Option<String>,
+    additional_params: HashMap<String, String>,
+}
+
+impl PushedAuthorizationRequestBuilder {
+    /// Set the scopes list
+    pub fn scope(mut self, scope: impl Into<String>) -> Self {
+        self.scope = Some(scope.into());
+        self
+    }
+
+    /// Set the state parameter
+    pub fn state(mut self, state: impl Into<String>) -> Self {
+        self.state = Some(state.into());
+        self
+    }
+
+    /// Set PKCE code challenge
+    pub fn code_challenge(mut self, challenge: impl Into<String>) -> Self {
+        self.code_challenge = Some(challenge.into());
+        self
+    }
+
+    /// Set PKCE code challenge method
+    pub fn code_challenge_method(mut self, method: impl Into<String>) -> Self {
+        self.code_challenge_method = Some(method.into());
+        self
+    }
+
+    /// Set PKCE challenge and method together
+    pub fn pkce(mut self, challenge: impl Into<String>, method: impl Into<String>) -> Self {
+        self.code_challenge = Some(challenge.into());
+        self.code_challenge_method = Some(method.into());
+        self
+    }
+
+    /// Add an additional custom parameter
+    pub fn add_param(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.additional_params.insert(key.into(), value.into());
+        self
+    }
+
+    /// Build the request
+    pub fn build(self) -> PushedAuthorizationRequest {
+        PushedAuthorizationRequest {
+            client_id: self.client_id,
+            response_type: self.response_type,
+            redirect_uri: self.redirect_uri,
+            scope: self.scope,
+            state: self.state,
+            code_challenge: self.code_challenge,
+            code_challenge_method: self.code_challenge_method,
+            additional_params: self.additional_params,
+        }
+    }
+}
+
 /// PAR response containing request URI
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PushedAuthorizationResponse {
@@ -107,6 +192,14 @@ impl PARManager {
             requests: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             default_expiration: expiration,
         }
+    }
+
+    /// Set the default expiration time for PAR requests (chainable).
+    ///
+    /// Default: 90 seconds (RFC 9126 recommendation).
+    pub fn expiration(mut self, expiration: Duration) -> Self {
+        self.default_expiration = expiration;
+        self
     }
 
     /// Store a pushed authorization request
@@ -295,6 +388,25 @@ pub struct PARStatistics {
 mod tests {
     use super::*;
     use tokio::time::sleep;
+
+    #[test]
+    fn test_par_request_builder() {
+        let req = PushedAuthorizationRequest::builder("client_id", "code", "https://app/callback")
+            .scope("openid profile")
+            .state("state123")
+            .pkce("challenge_abc", "S256")
+            .add_param("custom", "value")
+            .build();
+
+        assert_eq!(req.client_id, "client_id");
+        assert_eq!(req.response_type, "code");
+        assert_eq!(req.redirect_uri, "https://app/callback");
+        assert_eq!(req.scope, Some("openid profile".to_string()));
+        assert_eq!(req.state, Some("state123".to_string()));
+        assert_eq!(req.code_challenge, Some("challenge_abc".to_string()));
+        assert_eq!(req.code_challenge_method, Some("S256".to_string()));
+        assert_eq!(req.additional_params.get("custom").map(String::as_str), Some("value"));
+    }
 
     fn create_test_request() -> PushedAuthorizationRequest {
         PushedAuthorizationRequest {

@@ -12,6 +12,8 @@ use std::collections::HashMap;
 pub mod client_cert;
 pub mod enhanced_device;
 pub mod hardware_token;
+#[cfg(feature = "ldap-auth")]
+pub mod ldap;
 pub mod passkey;
 #[cfg(feature = "saml")]
 pub mod saml;
@@ -21,6 +23,8 @@ pub use client_cert::ClientCertAuthMethod;
 #[cfg(feature = "enhanced-device-flow")]
 pub use enhanced_device::EnhancedDeviceFlowMethod;
 pub use hardware_token::HardwareOtpToken;
+#[cfg(feature = "ldap-auth")]
+pub use ldap::{LdapAuthMethod, LdapConfig};
 #[cfg(feature = "passkeys")]
 pub use passkey::PasskeyAuthMethod;
 #[cfg(feature = "saml")]
@@ -173,10 +177,6 @@ pub struct ApiKeyMethod;
 #[derive(Debug)]
 pub struct OAuth2Method;
 
-#[cfg(feature = "ldap-auth")]
-#[derive(Debug)]
-pub struct LdapAuthMethod;
-
 #[derive(Debug)]
 pub struct OpenIdConnectAuthMethod;
 
@@ -274,7 +274,7 @@ impl AuthMethod for AuthMethodEnum {
         credential: Credential,
         metadata: CredentialMetadata,
     ) -> Result<Self::MethodResult> {
-        // Dispatch to real implementations if available
+        let _ = &metadata;
         match self {
             #[cfg(feature = "saml")]
             AuthMethodEnum::Saml(m) => return m.authenticate(credential, metadata).await,
@@ -284,63 +284,144 @@ impl AuthMethod for AuthMethodEnum {
             AuthMethodEnum::EnhancedDeviceFlow(m) => {
                 return m.authenticate(credential, metadata).await;
             }
-            _ => {} // Fall through to basic validation for stubbed methods
-        }
-
-        // Enhanced stub implementation with basic credential validation
-
-        // Validate credential based on type
-        match &credential {
-            Credential::Password { username, password } => {
-                if username.is_empty() || password.is_empty() {
-                    return Ok(MethodResult::Failure {
-                        reason: "Username or password cannot be empty".to_string(),
-                    });
+            AuthMethodEnum::Password(_) => match credential {
+                Credential::Password { username, password } => {
+                    if username.is_empty() || password.is_empty() {
+                        return Self::failure("Username or password cannot be empty");
+                    }
+                    return Self::failure(
+                        "Password authentication is handled by AuthFramework's built-in storage-backed password flow",
+                    );
                 }
-            }
-            Credential::Jwt { token } => {
-                if token.is_empty() {
-                    return Ok(MethodResult::Failure {
-                        reason: "JWT token cannot be empty".to_string(),
-                    });
+                _ => {
+                    return Self::failure("Password authentication expects Credential::password");
                 }
-            }
-            Credential::ApiKey { key } => {
-                if key.is_empty() {
-                    return Ok(MethodResult::Failure {
-                        reason: "API key cannot be empty".to_string(),
-                    });
+            },
+            AuthMethodEnum::Jwt(_) => match credential {
+                Credential::Jwt { token } | Credential::Bearer { token } => {
+                    if token.is_empty() {
+                        return Self::failure("JWT token cannot be empty");
+                    }
+                    return Self::failure(
+                        "JWT authentication must be performed through AuthFramework so the active TokenManager can validate the token signature",
+                    );
                 }
+                _ => {
+                    return Self::failure(
+                        "JWT authentication expects Credential::jwt or Credential::bearer",
+                    );
+                }
+            },
+            AuthMethodEnum::ApiKey(_) => match credential {
+                Credential::ApiKey { key } => {
+                    if key.is_empty() {
+                        return Self::failure("API key cannot be empty");
+                    }
+                    return Self::failure(
+                        "API key authentication must be performed through AuthFramework so the stored key can be resolved to a user and session token",
+                    );
+                }
+                _ => {
+                    return Self::failure("API key authentication expects Credential::api_key");
+                }
+            },
+            AuthMethodEnum::OAuth2(_) => match credential {
+                Credential::OAuth {
+                    authorization_code, ..
+                } => {
+                    if authorization_code.is_empty() {
+                        return Self::failure("OAuth authorization code cannot be empty");
+                    }
+                    return Self::failure(
+                        "OAuth 2.0 authorization codes must be exchanged through an OAuth provider or server endpoint before authentication completes",
+                    );
+                }
+                Credential::OAuthRefresh { refresh_token } => {
+                    if refresh_token.is_empty() {
+                        return Self::failure("OAuth refresh token cannot be empty");
+                    }
+                    return Self::failure(
+                        "OAuth 2.0 refresh tokens must be exchanged through an OAuth provider or server endpoint before authentication completes",
+                    );
+                }
+                Credential::Jwt { token }
+                | Credential::Bearer { token }
+                | Credential::OpenIdConnect {
+                    id_token: token, ..
+                } => {
+                    if token.is_empty() {
+                        return Self::failure("OAuth token cannot be empty");
+                    }
+                    return Self::failure(
+                        "OAuth 2.0 token authentication must be performed through AuthFramework so token validation and auditing use the active framework state",
+                    );
+                }
+                _ => {
+                    return Self::failure(
+                        "OAuth2 authentication expects Credential::oauth_code, Credential::oauth_refresh, Credential::jwt, Credential::bearer, or Credential::openid_connect",
+                    );
+                }
+            },
+            #[cfg(feature = "ldap-auth")]
+            AuthMethodEnum::Ldap(_) => {
+                return Self::failure(
+                    "LDAP authentication requires a concrete LDAP integration and cannot use the generic AuthMethodEnum fallback",
+                );
             }
-            _ => {
-                // For other credential types, basic validation passed
+            AuthMethodEnum::HardwareOtpToken(_) => {
+                return Self::failure(
+                    "Hardware token authentication requires the concrete hardware token flow rather than the generic AuthMethodEnum fallback",
+                );
+            }
+            AuthMethodEnum::ClientCert(_) => {
+                return Self::failure(
+                    "Client certificate authentication requires the concrete client certificate flow rather than the generic AuthMethodEnum fallback",
+                );
+            }
+            AuthMethodEnum::OpenIdConnect(_) => {
+                return Self::failure(
+                    "OpenID Connect authentication should be performed through the OIDC provider or AuthFramework integrations",
+                );
+            }
+            AuthMethodEnum::AdvancedMfa(_) => {
+                return Self::failure(
+                    "Advanced MFA authentication requires the concrete MFA flow rather than the generic AuthMethodEnum fallback",
+                );
             }
         }
-
-        // Check metadata for suspicious patterns
-        if let Some(ip) = &metadata.client_ip
-            && ip.starts_with("127.")
-        {
-            tracing::warn!("Authentication attempt from localhost");
-        }
-
-        // For methods that don't override this implementation, provide basic validation
-        // In a production system, this should never be reached - all auth methods should implement their own logic
-        tracing::warn!(
-            "Using default authentication method - this should not happen in production"
-        );
-
-        // Return failure by default - concrete implementations should override this
-        Ok(MethodResult::Failure {
-            reason:
-                "Authentication method not fully implemented - please use a concrete implementation"
-                    .to_string(),
-        })
     }
 
     fn validate_config(&self) -> Result<()> {
-        // Enhanced stub implementation with basic validation
-        Ok(())
+        match self {
+            AuthMethodEnum::Password(_) => Ok(()),
+            AuthMethodEnum::Jwt(_) => Ok(()),
+            AuthMethodEnum::ApiKey(_) => Ok(()),
+            AuthMethodEnum::OAuth2(_) => Ok(()),
+            #[cfg(feature = "saml")]
+            AuthMethodEnum::Saml(method) => method.validate_config(),
+            #[cfg(feature = "ldap-auth")]
+            AuthMethodEnum::Ldap(_) => Ok(()),
+            AuthMethodEnum::HardwareOtpToken(method) => {
+                if method.device_id.trim().is_empty() {
+                    return Err(AuthError::config(
+                        "Hardware token device_id cannot be empty",
+                    ));
+                }
+                if method.token_type.trim().is_empty() {
+                    return Err(AuthError::config(
+                        "Hardware token token_type cannot be empty",
+                    ));
+                }
+                Ok(())
+            }
+            AuthMethodEnum::ClientCert(_) => Ok(()),
+            AuthMethodEnum::OpenIdConnect(_) => Ok(()),
+            AuthMethodEnum::AdvancedMfa(_) => Ok(()),
+            #[cfg(feature = "enhanced-device-flow")]
+            AuthMethodEnum::EnhancedDeviceFlow(method) => method.validate_config(),
+            #[cfg(feature = "passkeys")]
+            AuthMethodEnum::Passkey(method) => method.validate_config(),
+        }
     }
 
     fn supports_refresh(&self) -> bool {
@@ -355,6 +436,14 @@ impl AuthMethod for AuthMethodEnum {
     }
 }
 
+impl AuthMethodEnum {
+    fn failure(reason: impl Into<String>) -> Result<MethodResult> {
+        Ok(MethodResult::Failure {
+            reason: reason.into(),
+        })
+    }
+}
+
 impl MfaChallenge {
     /// Create a new MFA challenge.
     pub fn new(
@@ -366,7 +455,8 @@ impl MfaChallenge {
             id: uuid::Uuid::new_v4().to_string(),
             mfa_type,
             user_id: user_id.into(),
-            expires_at: chrono::Utc::now() + chrono::Duration::from_std(expires_in).unwrap(),
+            expires_at: chrono::Utc::now()
+                + chrono::Duration::from_std(expires_in).unwrap_or(chrono::Duration::hours(1)),
             created_at: chrono::Utc::now(),
             attempts: 0,
             max_attempts: 3,

@@ -301,12 +301,12 @@ async fn login_handler(
     let response = LoginResponse {
         access_token: token.access_token.clone(),
         refresh_token: token.refresh_token.clone(),
-        expires_in: 3600, // 1 hour
+        expires_in: (token.expires_at - token.issued_at).num_seconds().max(0) as u64,
         user: UserInfo {
             id: token.user_id.clone(),
             username: Some(request.username),
             email: None,
-            roles: token.roles.clone(),
+            roles: token.roles.to_vec(),
         },
     };
 
@@ -324,7 +324,9 @@ pub async fn logout_handler(
     if !jti.is_empty() {
         let key = format!("revoked_token:{}", jti);
         let ttl = std::time::Duration::from_secs(7 * 24 * 60 * 60); // 7 days
-        let _ = storage.store_kv(&key, b"revoked", Some(ttl)).await;
+        if let Err(e) = storage.store_kv(&key, b"revoked", Some(ttl)).await {
+            tracing::warn!("Failed to revoke token {} during logout: {}", jti, e);
+        }
     }
     tracing::info!("User {} logged out, token revoked", user.user_id);
     Ok(Json(
@@ -347,7 +349,7 @@ async fn refresh_handler(
                     .unwrap_or(""),
             )
             .body(axum::body::Body::empty())
-            .unwrap(),
+            .expect("valid request builder"),
     )?;
 
     // Validate current token to extract claims
@@ -374,10 +376,11 @@ async fn refresh_handler(
         .token_manager()
         .create_jwt_token(&claims.sub, scopes, None)?;
 
+    let expires_in = auth.config().token_lifetime.as_secs();
     Ok(Json(serde_json::json!({
         "access_token": new_token_str,
         "token_type": "Bearer",
-        "expires_in": 3600
+        "expires_in": expires_in
     })))
 }
 
@@ -493,12 +496,12 @@ where
             refresh_token: None,
             issued_at,
             expires_at,
-            scopes,
+            scopes: scopes.into(),
             auth_method: "jwt".to_string(),
             client_id: claims.client_id,
             user_profile: None,
-            permissions: permissions.clone(),
-            roles: roles.clone(),
+            permissions: permissions.clone().into(),
+            roles: roles.clone().into(),
             metadata: crate::tokens::TokenMetadata::default(),
         };
 
@@ -592,13 +595,37 @@ where
     }
 
     fn require_permission(self, _permission: &str) -> Self {
-        // This would implement permission checking middleware
-        self
+        self.layer(axum::middleware::from_fn(
+            |_request: axum::extract::Request, _next: axum::middleware::Next| async move {
+                tracing::error!(
+                    "require_permission() was used without an enforcing authorization backend"
+                );
+                axum::response::Response::builder()
+                    .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"error":"Authorization middleware misconfigured","details":"require_permission() requires an enforcing authorization backend. Use enhanced-rbac middleware for production routes."}"#,
+                    ))
+                    .unwrap_or_default()
+            },
+        ))
     }
 
     fn require_role(self, _role: &str) -> Self {
-        // This would implement role checking middleware
-        self
+        self.layer(axum::middleware::from_fn(
+            |_request: axum::extract::Request, _next: axum::middleware::Next| async move {
+                tracing::error!(
+                    "require_role() was used without an enforcing authorization backend"
+                );
+                axum::response::Response::builder()
+                    .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"error":"Authorization middleware misconfigured","details":"require_role() requires an enforcing authorization backend. Use enhanced-rbac middleware for production routes."}"#,
+                    ))
+                    .unwrap_or_default()
+            },
+        ))
     }
 }
 

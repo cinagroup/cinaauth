@@ -1,48 +1,60 @@
 # 🧪 Comprehensive Testing Results - v0.5.0-rc18
 
-**Date**: March 16, 2026
-**Status**: ✅ **ALL TESTS PASSING** (514/514 - 100%)
-**Test Execution Time**: ~4 seconds (library tests)
+**Date**: March 20, 2026
+**Status**: ✅ **Historical rc18 validation snapshot retained with targeted remediation reruns added**
+**Validation Note**: This document preserves the broader rc18 scoped-test snapshot and now also records the targeted Rust tests rerun during the current remediation pass.
 
 ---
 
 ## 📊 Executive Summary
 
-AuthFramework v0.5.0-rc18 has achieved **100% test pass rate** across all library test suites:
+AuthFramework v0.5.0-rc18 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed SAML and analytics paths were revalidated with targeted Rust test commands.
 
-```
-╔══════════════════════════════════════════════════════════════╗
-║                   TEST SUITE RESULTS                         ║
-╠══════════════════════════════════════════════════════════════╣
-║  Library Tests (cargo test --all-features --lib):            ║
-║    514/514  ✅  (~4s)                                        ║
-║  ────────────────────────────────────────────────────────   ║
-║  TOTAL:                       514/514  ✅                    ║
-║  PASS RATE:                    100.0%                        ║
-║  Clippy warnings:              0                             ║
-║  Rustdoc warnings:             0                             ║
-╚══════════════════════════════════════════════════════════════╝
+```text
++-------------------------------------------------------------+
+|                    VERIFIED TEST RESULTS                     |
++-------------------------------------------------------------+
+| Library tests      cargo test --lib --all-features          |
+| 535 passed                                                    |
+| ------------------------------------------------------------- |
+| Doctests           cargo test --doc --all-features            |
+| 39 passed, 3 ignored                                          |
+| ------------------------------------------------------------- |
+| Integration tests  tests/*.rs executed as separate targets    |
+| 236 passed                                                    |
+| ------------------------------------------------------------- |
+| Total executed     810 passed, 3 ignored                      |
++-------------------------------------------------------------+
 ```
 
-**Command used**: `cargo test --all-features --lib`
+**Historical snapshot commands**:
+
+- `cargo test --lib --all-features`
+- `cargo test --doc --all-features`
+- Integration test files executed as separate targets under `tests/*.rs`
+
+**Targeted remediation reruns**:
+
+- `cargo test --test webauthn_saml_api_tests --features saml`
+- `cargo test --lib analytics::compliance::tests::test_check_compliance_returns_metrics --features admin-binary`
 
 ---
 
 ## 🔄 Growth Since rc1
 
-| Release         | Library Tests | Integration Tests | Clippy         | Rustdoc        |
-| --------------- | ------------- | ----------------- | -------------- | -------------- |
-| rc1 (Oct 2025)  | 93            | 0                 | clean          | warnings       |
-| rc6 (Mar 2026)  | 985\*         | many              | clean          | warnings       |
-| rc18 (Mar 2026) | **514**       | separate binaries | **0 warnings** | **0 warnings** |
+| Release         | Library Tests | Integration Tests | Doctests                 | Notes                            |
+| --------------- | ------------- | ----------------- | ------------------------ | -------------------------------- |
+| rc1 (Oct 2025)  | 93            | 0                 | not tracked here         | Initial baseline                 |
+| rc6 (Mar 2026)  | 985\*         | many              | not tracked here         | Historical mixed-count reporting |
+| rc18 (Mar 2026) | **535**       | **236**           | **39 passed, 3 ignored** | Current scoped verification      |
 
-\* rc6 count included integration test binaries compiled together; rc18 counts only `--lib` tests. Integration tests run as separate binaries and are counted separately.
+\* The rc6 count mixed library and integration execution modes. The rc18 numbers above reflect separately verified test scopes.
 
 ---
 
 ## 📋 Historical Breakdown (rc1 Reference)
 
-The detailed per-suite breakdown below is from the original rc1 test run (October 2025). It documents the OAuth 2.1 and Security test suites that formed the initial project baseline. The rc18 test suite is a strict superset of these tests.
+The detailed per-suite breakdown below is preserved from the original rc1 test run (October 2025). It documents the early OAuth 2.1 and security suites that formed the initial baseline. The current rc18 suite is materially larger than this historical snapshot.
 
 ---
 
@@ -376,77 +388,51 @@ The detailed per-suite breakdown below is from the original rc1 test run (Octobe
 - ✅ MFA system (TOTP, SMS, Email, WebAuthn, Backup Codes)
 - ✅ Multi-layer defense architecture
 
-### Testing Excellence ✅
+### Testing Validation ✅
 
-- ✅ 93 comprehensive tests
-- ✅ 100% pass rate
-- ✅ Unit tests
-- ✅ Integration tests
-- ✅ E2E tests
-- ✅ Security tests
-- ✅ Stress tests
-- ✅ Concurrency tests
+- ✅ 810 tests executed in the scoped rc18 validation pass
+- ✅ 0 failing test targets in the exercised Rust suite
+- ✅ Library, doctest, and integration targets validated separately
+- ✅ Security-sensitive integration suites exercised during remediation
+- ✅ Historical rc1 counts removed from the release-facing summary
 
 ---
 
-## 📊 Performance Metrics
+## 📊 Validation Metrics
 
-### Test Execution Performance
+### Test Execution Snapshot
 
-| Metric           | Value                    | Assessment      |
-| ---------------- | ------------------------ | --------------- |
-| Total Tests      | 93                       | ✅ Comprehensive |
-| Pass Rate        | 100%                     | ✅ Excellent     |
-| Total Time       | 116.83s                  | ✅ Reasonable    |
-| Fastest Suite    | IP Blacklisting (0.00s)  | ✅ Excellent     |
-| Most Thorough    | DoS Protection (110.36s) | ✅ Comprehensive |
-| Average per Test | 1.26s                    | ✅ Acceptable    |
+| Target Group      | Command Scope                             | Result                |
+| ----------------- | ----------------------------------------- | --------------------- |
+| Library tests     | `cargo test --lib --all-features`         | 535 passed            |
+| Doctests          | `cargo test --doc --all-features`         | 39 passed, 3 ignored  |
+| Integration tests | `tests/*.rs` executed as separate targets | 236 passed            |
+| Total exercised   | Combined scoped validation                | 810 passed, 3 ignored |
 
-### Coverage Analysis
+### Coverage Note
 
-| Component            | Tests | Coverage | Status     |
-| -------------------- | ----- | -------- | ---------- |
-| OAuth 2.1 Core       | 41    | 100%     | ✅ Complete |
-| Token Introspection  | 9     | 100%     | ✅ Complete |
-| PAR                  | 9     | 100%     | ✅ Complete |
-| Device Authorization | 14    | 100%     | ✅ Complete |
-| E2E Integration      | 9     | 100%     | ✅ Complete |
-| Rate Limiting        | 12    | 100%     | ✅ Complete |
-| DoS Protection       | 10    | 100%     | ✅ Complete |
-| IP Blacklisting      | 12    | 100%     | ✅ Complete |
-| MFA System           | 18    | 100%     | ✅ Complete |
+This document records the suites exercised during the rc18 remediation pass. It does not claim line coverage percentages, branch coverage percentages, or exhaustive feature-flag validation beyond the commands listed above.
 
 ---
 
-## 🚀 Production Readiness
+## 🚀 Release Validation Snapshot
 
-### Security Posture: ⭐⭐⭐⭐⭐ **Very High**
+### Security Posture
 
-- ✅ **OAuth 2.1 Compliant**: All RFCs implemented and tested
-- ✅ **Rate Limiting**: Multiple layers (IP, user, endpoint, burst)
-- ✅ **DoS Protection**: Comprehensive defenses validated
-- ✅ **IP Blacklisting**: Fast, thread-safe, IPv4/IPv6
-- ✅ **MFA System**: RFC-compliant, multiple methods, backup recovery
-- ✅ **Multi-Layer Defense**: Defense in depth architecture
+- ✅ OAuth, SAML, admin, and maintenance surfaces were exercised and remediated during the rc18 pass
+- ✅ The current summary reflects implemented protections and executed tests, not placeholder marketing claims
+- ✅ Deployment-specific hardening requirements still depend on real environment configuration such as secrets, certificates, storage backends, and optional features
 
-### Quality Assurance: ⭐⭐⭐⭐⭐ **Very High**
+### Quality Assurance
 
-- ✅ **Test Coverage**: 93 comprehensive tests
-- ✅ **Pass Rate**: 100% (93/93)
-- ✅ **Test Types**: Unit, integration, E2E, security, stress
-- ✅ **Concurrent Testing**: Thread safety verified
-- ✅ **Performance Testing**: Under load validation
-- ✅ **Error Handling**: Edge cases covered
+- ✅ The historical scoped rc18 validation snapshot is preserved for reference
+- ✅ The changed SAML and analytics paths were rerun successfully in this remediation pass
+- ✅ Integration coverage was run as separate targets to avoid hiding failures in a monolithic terminal stream
+- ✅ This document intentionally avoids unsupported claims about 100% coverage or blanket production readiness
 
-### Confidence Level: ⭐⭐⭐⭐⭐ **Very High**
+### Confidence Level
 
-AuthFramework v0.5.0-rc1 is **production-ready** with:
-
-- Comprehensive OAuth 2.1 implementation
-- Robust security mechanisms
-- Excellent test coverage
-- High performance
-- Production-grade error handling
+AuthFramework v0.5.0-rc18 has high confidence for the Rust targets exercised in this remediation pass, with remaining release confidence still depending on deployment configuration, optional feature combinations, and final packaging cleanup.
 
 ---
 
@@ -492,39 +478,27 @@ jobs:
 
 ---
 
-## 🔗 Related Documentation
-
-- [OAuth 2.1 E2E Test Report](../archives/completion_reports/OAUTH21_E2E_COMPLETE.md)
-- [Security Rate Limiting Report](../archives/completion_reports/SECURITY_RATE_LIMITING_COMPLETE.md)
-- [DoS Protection Report](../archives/completion_reports/SECURITY_DOS_PROTECTION_COMPLETE.md)
-- [IP Blacklisting Report](../archives/completion_reports/SECURITY_IP_BLACKLISTING_COMPLETE.md)
-- [MFA Testing Report](../archives/completion_reports/SECURITY_MFA_TESTING_COMPLETE.md)
-- [Token Introspection Report](../archives/completion_reports/TOKEN_INTROSPECTION_COMPLETE.md)
-- [OAuth Advanced Features Report](../archives/completion_reports/OAUTH_ADVANCED_COMPLETE.md)
-
----
-
 ## ✅ Conclusion
 
-**AuthFramework v0.5.0-rc1 Testing: COMPLETE** ✅
+### AuthFramework v0.5.0-rc18 Validation: In Progress
 
 ### Summary
 
-- **93/93 tests passing (100%)**
-- **OAuth 2.1 fully compliant**
-- **Comprehensive security validation**
-- **Production-ready quality**
-- **Excellent performance**
+- **810 tests passed in the recorded rc18 scoped validation snapshot**
+- **Targeted remediation reruns passed for SAML and analytics paths**
+- **Security remediation coverage was rechecked with focused commands in the current pass**
+- **A fresh full `cargo test --all-features` rerun is still required for final release sign-off**
+- **Historical completion-report links were removed because those archived files are no longer present in the repository**
 
 ### Next Steps
 
-1. ✅ Testing Complete
-2. ⏭️ Documentation cleanup
-3. ⏭️ Release preparation
-4. ⏭️ v0.5.0-rc1 release
+1. Re-run `cargo test --all-features`
+2. Reconfirm rustdoc and clippy status
+3. Complete final release cleanup review
+4. Tag and publish v0.5.0-rc18 once the full suite is green
 
 ---
 
-*Last Updated: October 5, 2025*  
-*Test Suite Version: v0.5.0-rc1*  
-*Status: ✅ All Systems Go*
+*Last Updated: March 21, 2026*  
+*Test Suite Version: v0.5.0-rc18*  
+*Status: ⚠️ Final release sign-off pending full-suite rerun*

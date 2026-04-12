@@ -9,7 +9,24 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Metrics collector for API endpoints
+/// Thread-safe metrics collector for API endpoints.
+///
+/// Tracks per-path request counts, response times, error counts,
+/// and active request gauge.
+///
+/// # Example
+/// ```rust
+/// use auth_framework::api::metrics::ApiMetrics;
+/// use std::time::Duration;
+/// use axum::http::StatusCode;
+///
+/// let m = ApiMetrics::new();
+/// m.record_request("/login");
+/// m.record_response("/login", Duration::from_millis(5), StatusCode::OK);
+///
+/// let snap = m.get_metrics();
+/// assert_eq!(snap.total_requests, 1);
+/// ```
 #[derive(Debug, Clone)]
 pub struct ApiMetrics {
     inner: Arc<Mutex<ApiMetricsInner>>,
@@ -25,6 +42,14 @@ struct ApiMetricsInner {
 }
 
 impl ApiMetrics {
+    /// Create a new, empty metrics collector.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::api::metrics::ApiMetrics;
+    /// let m = ApiMetrics::new();
+    /// assert_eq!(m.get_metrics().total_requests, 0);
+    /// ```
     pub fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(ApiMetricsInner {
@@ -37,6 +62,16 @@ impl ApiMetrics {
         }
     }
 
+    /// Record an incoming request for `path`.
+    ///
+    /// Increments the request counter and the active-requests gauge.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::api::metrics::ApiMetrics;
+    /// let m = ApiMetrics::new();
+    /// m.record_request("/health");
+    /// ```
     pub fn record_request(&self, path: &str) {
         let Ok(mut inner) = self.inner.lock() else {
             return;
@@ -45,6 +80,21 @@ impl ApiMetrics {
         inner.active_requests += 1;
     }
 
+    /// Record a completed response for `path`.
+    ///
+    /// Stores the response `duration`, increments error counters for
+    /// 4xx/5xx status codes, and decrements the active-requests gauge.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::api::metrics::ApiMetrics;
+    /// use std::time::Duration;
+    /// use axum::http::StatusCode;
+    ///
+    /// let m = ApiMetrics::new();
+    /// m.record_request("/api");
+    /// m.record_response("/api", Duration::from_millis(12), StatusCode::OK);
+    /// ```
     pub fn record_response(&self, path: &str, duration: Duration, status: StatusCode) {
         let Ok(mut inner) = self.inner.lock() else {
             return;
@@ -62,6 +112,19 @@ impl ApiMetrics {
         inner.active_requests = inner.active_requests.saturating_sub(1);
     }
 
+    /// Snapshot all collected metrics.
+    ///
+    /// Returns a [`MetricsSnapshot`] with uptime, totals, and per-endpoint
+    /// statistics including average, p95, and p99 response times.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::api::metrics::ApiMetrics;
+    ///
+    /// let m = ApiMetrics::new();
+    /// let snap = m.get_metrics();
+    /// assert_eq!(snap.total_requests, 0);
+    /// ```
     pub fn get_metrics(&self) -> MetricsSnapshot {
         let Ok(inner) = self.inner.lock() else {
             return MetricsSnapshot {
@@ -111,6 +174,23 @@ impl ApiMetrics {
         }
     }
 
+    /// Reset all counters and timers.
+    ///
+    /// Clears request counts, response times, error counts, and resets
+    /// the uptime clock.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::api::metrics::ApiMetrics;
+    /// use std::time::Duration;
+    /// use axum::http::StatusCode;
+    ///
+    /// let m = ApiMetrics::new();
+    /// m.record_request("/x");
+    /// m.record_response("/x", Duration::from_millis(1), StatusCode::OK);
+    /// m.reset();
+    /// assert_eq!(m.get_metrics().total_requests, 0);
+    /// ```
     pub fn reset(&self) {
         let Ok(mut inner) = self.inner.lock() else {
             return;
@@ -128,6 +208,19 @@ impl Default for ApiMetrics {
     }
 }
 
+/// Point-in-time snapshot of API metrics.
+///
+/// Returned by [`ApiMetrics::get_metrics()`]. Use
+/// [`to_prometheus_format()`](MetricsSnapshot::to_prometheus_format)
+/// to export for Prometheus scraping.
+///
+/// # Example
+/// ```rust
+/// use auth_framework::api::metrics::ApiMetrics;
+///
+/// let snap = ApiMetrics::new().get_metrics();
+/// assert_eq!(snap.active_requests, 0);
+/// ```
 #[derive(Debug, Clone)]
 pub struct MetricsSnapshot {
     pub uptime: Duration,
@@ -136,6 +229,22 @@ pub struct MetricsSnapshot {
     pub endpoint_metrics: HashMap<String, EndpointMetrics>,
 }
 
+/// Per-endpoint statistics within a [`MetricsSnapshot`].
+///
+/// # Example
+/// ```rust
+/// use auth_framework::api::metrics::{ApiMetrics, EndpointMetrics};
+/// use std::time::Duration;
+/// use axum::http::StatusCode;
+///
+/// let m = ApiMetrics::new();
+/// m.record_request("/test");
+/// m.record_response("/test", Duration::from_millis(50), StatusCode::OK);
+///
+/// let snap = m.get_metrics();
+/// let ep: &EndpointMetrics = &snap.endpoint_metrics["/test"];
+/// assert_eq!(ep.request_count, 1);
+/// ```
 #[derive(Debug, Clone)]
 pub struct EndpointMetrics {
     pub request_count: u64,
@@ -159,7 +268,18 @@ fn calculate_percentile(durations: &[Duration], percentile: f64) -> Duration {
     sorted.get(index).copied().unwrap_or(Duration::ZERO)
 }
 
-/// Middleware for collecting API metrics
+/// Axum middleware that records request and response metrics.
+///
+/// Attach via `axum::middleware::from_fn(metrics_middleware)`.
+///
+/// # Example
+/// ```rust,ignore
+/// use axum::{Router, middleware};
+/// use auth_framework::api::metrics::metrics_middleware;
+///
+/// let app = Router::new()
+///     .layer(middleware::from_fn(metrics_middleware));
+/// ```
 pub async fn metrics_middleware(request: Request, next: Next) -> Result<Response, StatusCode> {
     let start_time = Instant::now();
     let path = request.uri().path().to_string();
@@ -181,8 +301,16 @@ pub async fn metrics_middleware(request: Request, next: Next) -> Result<Response
     Ok(response)
 }
 
-/// Prometheus metrics format output
 impl MetricsSnapshot {
+    /// Render the snapshot in Prometheus text exposition format.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::api::metrics::ApiMetrics;
+    ///
+    /// let prom = ApiMetrics::new().get_metrics().to_prometheus_format();
+    /// assert!(prom.contains("auth_framework_uptime_seconds"));
+    /// ```
     pub fn to_prometheus_format(&self) -> String {
         let mut output = String::new();
 

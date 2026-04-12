@@ -29,21 +29,20 @@
 //!     jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
 //!     ..SecureJwtConfig::default()
 //! };
-//! let jwt_validator = SecureJwtValidator::new(jwt_config);
+//! let jwt_validator = SecureJwtValidator::new(jwt_config)?;
 //!
 //! // Create manager with custom cleanup interval
 //! let manager = PrivateKeyJwtManager::new(jwt_validator)
 //!     .with_cleanup_interval(Duration::minutes(30));
 //!
 //! // Configure client for JWT authentication
-//! let config = ClientJwtConfig {
-//!     client_id: "example_client".to_string(),
-//!     public_key_jwk: serde_json::json!({"kty": "RSA", "n": "...", "e": "AQAB"}),
-//!     allowed_algorithms: vec![Algorithm::RS256],
-//!     max_jwt_lifetime: Duration::minutes(5),
-//!     clock_skew: Duration::seconds(60),
-//!     expected_audiences: vec!["https://api.example.com".to_string()],
-//! };
+//! let config = ClientJwtConfig::builder(
+//!     "example_client",
+//!     serde_json::json!({"kty": "RSA", "n": "...", "e": "AQAB"}),
+//! )
+//! .rs256_only()
+//! .audience("https://api.example.com")
+//! .build();
 //!
 //! manager.register_client(config).await?;
 //!
@@ -115,6 +114,87 @@ pub struct ClientJwtConfig {
 
     /// Expected audience values (token endpoints)
     pub expected_audiences: Vec<String>,
+}
+
+impl ClientJwtConfig {
+    /// Create a builder for private key JWT client configuration.
+    pub fn builder(
+        client_id: impl Into<String>,
+        public_key_jwk: serde_json::Value,
+    ) -> ClientJwtConfigBuilder {
+        ClientJwtConfigBuilder {
+            client_id: client_id.into(),
+            public_key_jwk,
+            allowed_algorithms: vec![Algorithm::RS256, Algorithm::ES256],
+            max_jwt_lifetime: Duration::minutes(5),
+            clock_skew: Duration::seconds(60),
+            expected_audiences: Vec::new(),
+        }
+    }
+}
+
+/// Builder for private key JWT client configuration.
+pub struct ClientJwtConfigBuilder {
+    client_id: String,
+    public_key_jwk: serde_json::Value,
+    allowed_algorithms: Vec<Algorithm>,
+    max_jwt_lifetime: Duration,
+    clock_skew: Duration,
+    expected_audiences: Vec<String>,
+}
+
+impl ClientJwtConfigBuilder {
+    /// Restrict signing to RS256 only.
+    pub fn rs256_only(mut self) -> Self {
+        self.allowed_algorithms = vec![Algorithm::RS256];
+        self
+    }
+
+    /// Replace the allowed algorithm list.
+    pub fn algorithms(mut self, algorithms: Vec<Algorithm>) -> Self {
+        self.allowed_algorithms = algorithms;
+        self
+    }
+
+    /// Set the maximum JWT lifetime.
+    pub fn max_jwt_lifetime(mut self, max_jwt_lifetime: Duration) -> Self {
+        self.max_jwt_lifetime = max_jwt_lifetime;
+        self
+    }
+
+    /// Set the clock skew tolerance.
+    pub fn clock_skew(mut self, clock_skew: Duration) -> Self {
+        self.clock_skew = clock_skew;
+        self
+    }
+
+    /// Add one expected audience.
+    pub fn audience(mut self, audience: impl Into<String>) -> Self {
+        self.expected_audiences.push(audience.into());
+        self
+    }
+
+    /// Replace the expected audience list.
+    pub fn audiences<I, S>(mut self, audiences: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.expected_audiences = audiences.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Build the client JWT configuration.
+    pub fn build(self) -> ClientJwtConfig {
+        ClientJwtConfig {
+            client_id: self.client_id,
+            public_key_jwk: self.public_key_jwk,
+            allowed_algorithms: self.allowed_algorithms,
+            max_jwt_lifetime: self.max_jwt_lifetime,
+            clock_skew: self.clock_skew,
+            expected_audiences: self.expected_audiences,
+        }
+    }
 }
 
 /// JWT authentication result
@@ -619,7 +699,7 @@ mod tests {
 
     fn create_test_manager() -> PrivateKeyJwtManager {
         let jwt_config = crate::security::secure_jwt::SecureJwtConfig::default();
-        let jwt_validator = SecureJwtValidator::new(jwt_config);
+        let jwt_validator = SecureJwtValidator::new(jwt_config).expect("test JWT config");
         PrivateKeyJwtManager::new(jwt_validator)
     }
 
@@ -643,14 +723,10 @@ mod tests {
     async fn test_client_registration() {
         let manager = create_test_manager();
 
-        let config = ClientJwtConfig {
-            client_id: "test_client".to_string(),
-            public_key_jwk: create_test_jwk(),
-            allowed_algorithms: vec![Algorithm::RS256],
-            max_jwt_lifetime: Duration::minutes(5),
-            clock_skew: Duration::seconds(60),
-            expected_audiences: vec!["https://auth.example.com/token".to_string()],
-        };
+        let config = ClientJwtConfig::builder("test_client", create_test_jwk())
+            .rs256_only()
+            .audience("https://auth.example.com/token")
+            .build();
 
         manager.register_client(config).await.unwrap();
     }
@@ -757,14 +833,10 @@ mod tests {
     async fn test_enhanced_jwt_validation_integration() {
         let manager = create_test_manager();
 
-        let config = ClientJwtConfig {
-            client_id: "test_client".to_string(),
-            public_key_jwk: create_test_jwk(),
-            allowed_algorithms: vec![Algorithm::RS256],
-            max_jwt_lifetime: Duration::minutes(5),
-            clock_skew: Duration::seconds(60),
-            expected_audiences: vec!["https://auth.example.com/token".to_string()],
-        };
+        let config = ClientJwtConfig::builder("test_client", create_test_jwk())
+            .rs256_only()
+            .audience("https://auth.example.com/token")
+            .build();
 
         manager.register_client(config.clone()).await.unwrap();
 
@@ -789,9 +861,28 @@ mod tests {
     }
 
     #[test]
+    fn test_client_jwt_config_builder() {
+        let config = ClientJwtConfig::builder("builder_client", create_test_jwk())
+            .algorithms(vec![Algorithm::RS256])
+            .max_jwt_lifetime(Duration::minutes(10))
+            .clock_skew(Duration::seconds(30))
+            .audiences([
+                "https://auth.example.com/token",
+                "https://auth.example.com/par",
+            ])
+            .build();
+
+        assert_eq!(config.client_id, "builder_client");
+        assert_eq!(config.allowed_algorithms, vec![Algorithm::RS256]);
+        assert_eq!(config.max_jwt_lifetime, Duration::minutes(10));
+        assert_eq!(config.clock_skew, Duration::seconds(30));
+        assert_eq!(config.expected_audiences.len(), 2);
+    }
+
+    #[test]
     fn test_cleanup_interval_configuration() {
         let jwt_config = crate::security::secure_jwt::SecureJwtConfig::default();
-        let jwt_validator = SecureJwtValidator::new(jwt_config);
+        let jwt_validator = SecureJwtValidator::new(jwt_config).expect("test JWT config");
         let manager =
             PrivateKeyJwtManager::new(jwt_validator).with_cleanup_interval(Duration::minutes(30));
 

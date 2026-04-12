@@ -52,47 +52,29 @@
 //! let orchestrator = FederationOrchestratorImpl::new(config, session_manager);
 //!
 //! // Register identity providers
-//! orchestrator.register_identity_provider(IdentityProvider {
-//!     id: "corporate_saml".to_string(),
-//!     name: "Corporate SAML IdP".to_string(),
-//!     protocol: AuthenticationProtocol::Saml2,
-//!     endpoint: "https://corp.example.com/saml/sso".to_string(),
-//!     trust_level: TrustLevel::High,
-//!     capabilities: vec![
-//!         IdpCapability::SingleSignOn,
-//!         IdpCapability::AttributeAssertion,
-//!         IdpCapability::MultiFactorAuth
-//!     ],
-//!     routing_rules: vec![
-//!         IdpRoutingRule {
-//!             condition: "user.domain == 'corp.example.com'".to_string(),
-//!             priority: 100,
-//!             context_requirements: Vec::new(),
-//!             time_constraints: None,
-//!         }
-//!     ],
-//!     ..Default::default()
-//! }).await?;
+//! orchestrator.register_identity_provider(IdentityProvider::builder("corporate_saml", "Corporate SAML IdP")
+//!     .protocol(AuthenticationProtocol::Saml2)
+//!     .endpoint("https://corp.example.com/saml/sso")
+//!     .trust_level(TrustLevel::High)
+//!     .add_capability(IdpCapability::SingleSignOn)
+//!     .add_capability(IdpCapability::AttributeAssertion)
+//!     .add_capability(IdpCapability::MultiFactorAuth)
+//!     .build()
+//! ).await?;
 //!
 //! // Create orchestrated authentication request
-//! let auth_request = OrchestrationRequest {
-//!     request_id: "req_12345".to_string(),
-//!     user_hint: Some("user@corp.example.com".to_string()),
-//!     client_id: "app123".to_string(),
-//!     scopes: vec!["openid".to_string(), "profile".to_string()],
-//!     requested_attributes: vec![
-//!         "email".to_string(),
-//!         "department".to_string(),
-//!         "roles".to_string()
-//!     ],
-//!     authentication_context: Some(serde_json::json!({
+//! let auth_request = OrchestrationRequest::builder("req_12345", "app123")
+//!     .user_hint("user@corp.example.com")
+//!     .scopes(vec!["openid".to_string(), "profile".to_string()])
+//!     .add_attribute("email")
+//!     .add_attribute("department")
+//!     .add_attribute("roles")
+//!     .authentication_context(serde_json::json!({
 //!         "ip_address": "10.0.0.100",
 //!         "user_agent": "Mozilla/5.0...",
 //!         "risk_score": 0.2
-//!     })),
-//!     orchestration_preferences: OrchestrationPreferences::default(),
-//!     custom_parameters: std::collections::HashMap::new(),
-//! };
+//!     }))
+//!     .build();
 //!
 //! // Process orchestrated authentication
 //! let result = orchestrator.orchestrate_authentication(auth_request).await?;
@@ -394,6 +376,74 @@ pub struct IdentityProvider {
     pub health_metrics: IdpHealthMetrics,
 }
 
+impl IdentityProvider {
+    /// Create a builder for an `IdentityProvider` with default collections and health metrics.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::server::core::federated_authentication_orchestration::{
+    ///     IdentityProvider, AuthenticationProtocol, TrustLevel
+    /// };
+    ///
+    /// let idp = IdentityProvider::builder("idp-1", "Corp IdP")
+    ///     .protocol(AuthenticationProtocol::OpenIdConnect)
+    ///     .endpoint("https://auth.corp.com")
+    ///     .trust_level(TrustLevel::High)
+    ///     .build();
+    /// ```
+    pub fn builder(id: impl Into<String>, name: impl Into<String>) -> IdentityProviderBuilder {
+        IdentityProviderBuilder {
+            inner: Self {
+                id: id.into(),
+                name: name.into(),
+                ..Self::default()
+            },
+        }
+    }
+}
+
+/// Builder for [`IdentityProvider`].
+pub struct IdentityProviderBuilder {
+    inner: IdentityProvider,
+}
+
+impl IdentityProviderBuilder {
+    /// Set the authentication protocol.
+    pub fn protocol(mut self, protocol: AuthenticationProtocol) -> Self {
+        self.inner.protocol = protocol;
+        self
+    }
+
+    /// Set the endpoint URL.
+    pub fn endpoint(mut self, url: impl Into<String>) -> Self {
+        self.inner.endpoint = url.into();
+        self
+    }
+
+    /// Set the trust level.
+    pub fn trust_level(mut self, level: TrustLevel) -> Self {
+        self.inner.trust_level = level;
+        self
+    }
+
+    /// Add a capability.
+    pub fn add_capability(mut self, cap: IdpCapability) -> Self {
+        self.inner.capabilities.push(cap);
+        self
+    }
+
+    /// Set specific configuration keys.
+    pub fn with_config(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.inner.configuration.insert(key.into(), value);
+        self
+    }
+
+    /// Build the [`IdentityProvider`].
+    pub fn build(self) -> IdentityProvider {
+        self.inner
+    }
+}
+
 impl Default for IdentityProvider {
     fn default() -> Self {
         Self {
@@ -612,6 +662,88 @@ pub struct OrchestrationRequest {
     pub custom_parameters: HashMap<String, serde_json::Value>,
 }
 
+impl OrchestrationRequest {
+    /// Create a builder for an `OrchestrationRequest`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::server::core::federated_authentication_orchestration::OrchestrationRequest;
+    ///
+    /// let req = OrchestrationRequest::builder("req-123", "client-456")
+    ///     .user_hint("jdoe@example.com")
+    ///     .add_scope("openid")
+    ///     .build();
+    /// ```
+    pub fn builder(request_id: impl Into<String>, client_id: impl Into<String>) -> OrchestrationRequestBuilder {
+        OrchestrationRequestBuilder {
+            inner: Self {
+                request_id: request_id.into(),
+                client_id: client_id.into(),
+                user_hint: None,
+                scopes: Vec::new(),
+                requested_attributes: Vec::new(),
+                authentication_context: None,
+                orchestration_preferences: Default::default(),
+                custom_parameters: HashMap::new(),
+            },
+        }
+    }
+}
+
+/// Builder for [`OrchestrationRequest`].
+pub struct OrchestrationRequestBuilder {
+    inner: OrchestrationRequest,
+}
+
+impl OrchestrationRequestBuilder {
+    /// Add a user hint (e.g. email or username for IdP routing).
+    pub fn user_hint(mut self, hint: impl Into<String>) -> Self {
+        self.inner.user_hint = Some(hint.into());
+        self
+    }
+
+    /// Add a requested scope.
+    pub fn add_scope(mut self, scope: impl Into<String>) -> Self {
+        self.inner.scopes.push(scope.into());
+        self
+    }
+
+    /// Add multiple requested scopes at once.
+    pub fn scopes(mut self, scopes: Vec<String>) -> Self {
+        self.inner.scopes = scopes;
+        self
+    }
+
+    /// Add a requested attribute.
+    pub fn add_attribute(mut self, attr: impl Into<String>) -> Self {
+        self.inner.requested_attributes.push(attr.into());
+        self
+    }
+
+    /// Set an authentication context.
+    pub fn authentication_context(mut self, ctx: serde_json::Value) -> Self {
+        self.inner.authentication_context = Some(ctx);
+        self
+    }
+
+    /// Set the orchestration preferences.
+    pub fn preferences(mut self, prefs: OrchestrationPreferences) -> Self {
+        self.inner.orchestration_preferences = prefs;
+        self
+    }
+
+    /// Add a custom parameter.
+    pub fn with_param(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.inner.custom_parameters.insert(key.into(), value);
+        self
+    }
+
+    /// Build the [`OrchestrationRequest`].
+    pub fn build(self) -> OrchestrationRequest {
+        self.inner
+    }
+}
+
 /// Orchestration preferences
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OrchestrationPreferences {
@@ -758,29 +890,59 @@ pub struct OrchestrationMetadata {
     pub transformations_applied: u32,
 }
 
-/// Federation orchestrator trait
+/// Federation orchestrator trait.
+///
+/// # Example
+/// ```rust,ignore
+/// let response = orchestrator.orchestrate_authentication(request).await?;
+/// ```
 #[async_trait]
 pub trait FederationOrchestrator: Send + Sync {
-    /// Orchestrate authentication request
+    /// Orchestrate authentication request.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let resp = orch.orchestrate_authentication(req).await?;
+    /// ```
     async fn orchestrate_authentication(
         &self,
         request: OrchestrationRequest,
     ) -> Result<OrchestrationResponse>;
 
-    /// Register identity provider
+    /// Register identity provider.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// orch.register_identity_provider(idp).await?;
+    /// ```
     async fn register_identity_provider(&self, idp: IdentityProvider) -> Result<()>;
 
-    /// Update IdP health metrics
+    /// Update IdP health metrics.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// orch.update_idp_health("idp-1", metrics).await?;
+    /// ```
     async fn update_idp_health(&self, idp_id: &str, metrics: IdpHealthMetrics) -> Result<()>;
 
-    /// Get IdP recommendations for user
+    /// Get IdP recommendations for user.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let recs = orch.get_idp_recommendations("user@example.com", &ctx).await?;
+    /// ```
     async fn get_idp_recommendations(
         &self,
         user_hint: &str,
         context: &serde_json::Value,
     ) -> Result<Vec<IdpRecommendation>>;
 
-    /// Bridge federated session with OIDC session management
+    /// Bridge federated session with OIDC session management.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let session_id = orch.bridge_federated_session("orch-1", None, "client-1").await?;
+    /// ```
     async fn bridge_federated_session(
         &self,
         orchestration_session_id: &str,
@@ -788,7 +950,12 @@ pub trait FederationOrchestrator: Send + Sync {
         client_id: &str,
     ) -> Result<String>;
 
-    /// Synchronize session state across federation
+    /// Synchronize session state across federation.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let synced = orch.synchronize_federation_sessions("orch-1").await?;
+    /// ```
     async fn synchronize_federation_sessions(&self, orchestration_session_id: &str)
     -> Result<bool>;
 }
@@ -831,7 +998,12 @@ pub struct FederationOrchestratorImpl {
 }
 
 impl FederationOrchestratorImpl {
-    /// Create new federation orchestrator
+    /// Create new federation orchestrator.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let orch = FederationOrchestratorImpl::new(config, session_mgr);
+    /// ```
     pub fn new(config: FederationOrchestratorConfig, session_manager: Arc<SessionManager>) -> Self {
         Self {
             config,
@@ -843,13 +1015,23 @@ impl FederationOrchestratorImpl {
         }
     }
 
-    /// Set CAEP manager integration
+    /// Set CAEP manager integration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let orch = orch.with_caep_manager(caep_mgr);
+    /// ```
     pub fn with_caep_manager(mut self, caep_manager: Arc<CaepManager>) -> Self {
         self.caep_manager = Some(caep_manager);
         self
     }
 
-    /// Set step-up auth manager integration
+    /// Set step-up auth manager integration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let orch = orch.with_step_up_manager(step_up_mgr);
+    /// ```
     pub fn with_step_up_manager(mut self, step_up_manager: Arc<SteppedUpAuthManager>) -> Self {
         self.step_up_manager = Some(step_up_manager);
         self
@@ -1399,7 +1581,7 @@ impl FederationOrchestratorImpl {
             {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time must be after UNIX EPOCH")
                     .as_secs();
 
                 return Ok(expires_timestamp > now);
@@ -1411,7 +1593,7 @@ impl FederationOrchestratorImpl {
             {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time must be after UNIX EPOCH")
                     .as_secs();
 
                 // Consider session invalid if older than 8 hours
@@ -1432,7 +1614,7 @@ impl FederationOrchestratorImpl {
             {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time must be after UNIX EPOCH")
                     .as_secs();
 
                 if expires_timestamp > now {
@@ -1469,7 +1651,7 @@ impl FederationOrchestratorImpl {
                     if let Some(refresh_expires_timestamp) = refresh_expires_at.as_u64() {
                         let now = std::time::SystemTime::now()
                             .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
+                            .expect("System time must be after UNIX EPOCH")
                             .as_secs();
 
                         if refresh_expires_timestamp > now {
@@ -1519,7 +1701,7 @@ impl FederationOrchestratorImpl {
             {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time must be after UNIX EPOCH")
                     .as_secs();
 
                 return Ok(expires_timestamp > now);
@@ -1531,7 +1713,7 @@ impl FederationOrchestratorImpl {
             {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time must be after UNIX EPOCH")
                     .as_secs();
 
                 // Consider token invalid if older than 12 hours
@@ -1675,15 +1857,15 @@ impl FederationOrchestrator for FederationOrchestratorImpl {
                 client_id: request.client_id.clone(),
                 created_at: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time must be after UNIX EPOCH")
                     .as_secs(),
                 last_activity: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time must be after UNIX EPOCH")
                     .as_secs(),
                 expires_at: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("System time must be after UNIX EPOCH")
                     .as_secs()
                     + 3600, // Default 1 hour expiration
                 state:
@@ -1780,11 +1962,59 @@ impl FederationOrchestrator for FederationOrchestratorImpl {
 
     async fn get_idp_recommendations(
         &self,
-        _user_hint: &str,
+        user_hint: &str,
         _context: &serde_json::Value,
     ) -> Result<Vec<IdpRecommendation>> {
-        // Simplified implementation - return empty recommendations
-        Ok(Vec::new())
+        let idps = self.identity_providers.read().await;
+        let mut recommendations = Vec::new();
+
+        // Heuristic: if user_hint looks like an email, try to match domain to an IdP endpoint
+        if let Some(domain) = user_hint.split('@').nth(1) {
+            let domain_lower = domain.to_lowercase();
+            for (id, idp) in idps.iter() {
+                if idp.endpoint.to_lowercase().contains(&domain_lower)
+                    || idp.name.to_lowercase().contains(&domain_lower)
+                {
+                    recommendations.push(IdpRecommendation {
+                        idp_id: id.clone(),
+                        score: 0.9,
+                        reason: format!("Email domain '{}' matches IdP '{}'", domain, idp.name),
+                        confidence: 0.8,
+                    });
+                }
+            }
+        }
+
+        // If no domain match, recommend healthy IdPs with highest trust level
+        if recommendations.is_empty() {
+            for (id, idp) in idps.iter() {
+                if idp.circuit_state == CircuitBreakerState::Closed {
+                    let trust_score = match idp.trust_level {
+                        TrustLevel::High => 0.8,
+                        TrustLevel::Medium => 0.5,
+                        TrustLevel::Low => 0.3,
+                        TrustLevel::Conditional => 0.4,
+                    };
+                    recommendations.push(IdpRecommendation {
+                        idp_id: id.clone(),
+                        score: trust_score,
+                        reason: format!(
+                            "Healthy IdP '{}' with {:?} trust",
+                            idp.name, idp.trust_level
+                        ),
+                        confidence: 0.5,
+                    });
+                }
+            }
+        }
+
+        // Sort by score descending
+        recommendations.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        Ok(recommendations)
     }
 
     async fn bridge_federated_session(
@@ -1823,15 +2053,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_identity_provider_creation() {
-        let idp = IdentityProvider {
-            id: "test_idp".to_string(),
-            name: "Test IdP".to_string(),
-            protocol: AuthenticationProtocol::OpenIdConnect,
-            endpoint: "https://test.example.com/auth".to_string(),
-            trust_level: TrustLevel::High,
-            capabilities: vec![IdpCapability::SingleSignOn, IdpCapability::MultiFactorAuth],
-            ..Default::default()
-        };
+        let idp = IdentityProvider::builder("test_idp", "Test IdP")
+            .protocol(AuthenticationProtocol::OpenIdConnect)
+            .endpoint("https://test.example.com/auth")
+            .trust_level(TrustLevel::High)
+            .add_capability(IdpCapability::SingleSignOn)
+            .add_capability(IdpCapability::MultiFactorAuth)
+            .build();
 
         assert_eq!(idp.id, "test_idp");
         assert_eq!(idp.protocol, AuthenticationProtocol::OpenIdConnect);
@@ -1841,18 +2069,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_orchestration_request_creation() {
-        let request = OrchestrationRequest {
-            request_id: "req123".to_string(),
-            user_hint: Some("user@example.com".to_string()),
-            client_id: "app123".to_string(),
-            scopes: vec!["openid".to_string(), "profile".to_string()],
-            requested_attributes: vec!["email".to_string(), "name".to_string()],
-            authentication_context: Some(serde_json::json!({
+        let request = OrchestrationRequest::builder("req123", "app123")
+            .user_hint("user@example.com")
+            .scopes(vec!["openid".to_string(), "profile".to_string()])
+            .add_attribute("email")
+            .add_attribute("name")
+            .authentication_context(serde_json::json!({
                 "ip_address": "192.168.1.1"
-            })),
-            orchestration_preferences: OrchestrationPreferences::default(),
-            custom_parameters: HashMap::new(),
-        };
+            }))
+            .build();
 
         assert_eq!(request.request_id, "req123");
         assert_eq!(request.scopes.len(), 2);

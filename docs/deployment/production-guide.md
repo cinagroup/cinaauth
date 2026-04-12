@@ -1,4 +1,4 @@
-# AuthFramework v0.4.0 - Production Deployment Guide
+# AuthFramework v0.5.0-rc18 - Production Deployment Guide
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/auth-framework/auth-framework.git
+git clone https://github.com/ciresnave/auth-framework.git
 cd auth-framework
 ```
 
@@ -558,7 +558,7 @@ apt update && apt upgrade -y
 
 ### Community
 
-- **GitHub Issues**: <https://github.com/auth-framework/auth-framework/issues>
+- **GitHub Issues**: <https://github.com/ciresnave/auth-framework/issues>
 - **Discord Community**: <https://discord.gg/authframework>
 - **Stack Overflow**: Tag `authframework`
 

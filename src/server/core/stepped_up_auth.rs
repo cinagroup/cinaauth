@@ -25,24 +25,16 @@
 //! use auth_framework::server::core::stepped_up_auth::{
 //!     SteppedUpAuthManager, StepUpConfig, AuthenticationLevel, StepUpContext
 //! };
-//! use std::collections::HashMap;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let config = StepUpConfig::default();
+//! let config = StepUpConfig::builder()
+//!     .grace_period(chrono::Duration::minutes(10))
+//!     .build();
 //! let step_up_manager = SteppedUpAuthManager::new(config);
 //!
 //! // Create step-up context
-//! let context = StepUpContext {
-//!     user_id: "user123".to_string(),
-//!     resource: "sensitive-resource".to_string(),
-//!     resource_metadata: HashMap::new(),
-//!     risk_score: Some(0.3),
-//!     location: None,
-//!     session_id: "session123".to_string(),
-//!     current_auth_level: AuthenticationLevel::Basic,
-//!     auth_time: chrono::Utc::now(),
-//!     custom_attributes: HashMap::new(),
-//! };
+//! let context = StepUpContext::new("user123", "sensitive-resource", "session123", AuthenticationLevel::Basic)
+//!     .with_risk_score(0.3);
 //!
 //! // Check if step-up is required for a resource
 //! let step_up_required = step_up_manager.evaluate_step_up_requirement(&context).await?;
@@ -161,6 +153,174 @@ impl Default for StepUpConfig {
     }
 }
 
+impl StepUpConfig {
+    /// Create a builder starting from the default configuration.
+    ///
+    /// The builder starts with sensible defaults (all levels, risk/location/time
+    /// step-ups enabled, 30-minute token lifetime, 5-minute grace period) and
+    /// lets you override only what you need.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use auth_framework::server::core::stepped_up_auth::StepUpConfig;
+    /// use chrono::Duration;
+    ///
+    /// let config = StepUpConfig::builder()
+    ///     .grace_period(Duration::minutes(10))
+    ///     .disable_location_stepup()
+    ///     .build();
+    /// ```
+    pub fn builder() -> StepUpConfigBuilder {
+        StepUpConfigBuilder {
+            inner: Self::default(),
+        }
+    }
+}
+
+/// Builder for [`StepUpConfig`] starting from defaults.
+pub struct StepUpConfigBuilder {
+    inner: StepUpConfig,
+}
+
+impl StepUpConfigBuilder {
+    /// Set the default token lifetime for step-up tokens.
+    pub fn token_lifetime(mut self, lifetime: Duration) -> Self {
+        self.inner.default_token_lifetime = lifetime;
+        self
+    }
+
+    /// Set the step-up grace period.
+    pub fn grace_period(mut self, period: Duration) -> Self {
+        self.inner.step_up_grace_period = period;
+        self
+    }
+
+    /// Set the maximum authentication level.
+    pub fn max_level(mut self, level: AuthenticationLevel) -> Self {
+        self.inner.max_authentication_level = level;
+        self
+    }
+
+    /// Add a step-up evaluation rule.
+    pub fn add_rule(mut self, rule: StepUpRule) -> Self {
+        self.inner.evaluation_rules.push(rule);
+        self
+    }
+
+    /// Replace all evaluation rules.
+    pub fn rules(mut self, rules: Vec<StepUpRule>) -> Self {
+        self.inner.evaluation_rules = rules;
+        self
+    }
+
+    /// Set allowed authentication methods for a given level.
+    pub fn level_methods(mut self, level: AuthenticationLevel, methods: Vec<AuthenticationMethod>) -> Self {
+        self.inner.level_methods.insert(level, methods);
+        self
+    }
+
+    /// Enable risk-based step-up evaluation.
+    pub fn enable_risk_stepup(mut self) -> Self {
+        self.inner.enable_risk_based_stepup = true;
+        self
+    }
+
+    /// Disable risk-based step-up evaluation.
+    pub fn disable_risk_stepup(mut self) -> Self {
+        self.inner.enable_risk_based_stepup = false;
+        self
+    }
+
+    /// Enable location-based step-up evaluation.
+    pub fn enable_location_stepup(mut self) -> Self {
+        self.inner.enable_location_based_stepup = true;
+        self
+    }
+
+    /// Disable location-based step-up evaluation.
+    pub fn disable_location_stepup(mut self) -> Self {
+        self.inner.enable_location_based_stepup = false;
+        self
+    }
+
+    /// Enable time-based step-up evaluation.
+    pub fn enable_time_stepup(mut self) -> Self {
+        self.inner.enable_time_based_stepup = true;
+        self
+    }
+
+    /// Disable time-based step-up evaluation.
+    pub fn disable_time_stepup(mut self) -> Self {
+        self.inner.enable_time_based_stepup = false;
+        self
+    }
+
+    /// Build the [`StepUpConfig`].
+    pub fn build(self) -> StepUpConfig {
+        self.inner
+    }
+}
+
+impl StepUpContext {
+    /// Create a new `StepUpContext` with the required fields and empty optional fields.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use auth_framework::server::core::stepped_up_auth::{StepUpContext, AuthenticationLevel};
+    ///
+    /// let ctx = StepUpContext::new("user123", "sensitive-resource", "session-1", AuthenticationLevel::Basic)
+    ///     .with_risk_score(0.8);
+    /// ```
+    pub fn new(
+        user_id: impl Into<String>,
+        resource: impl Into<String>,
+        session_id: impl Into<String>,
+        current_auth_level: AuthenticationLevel,
+    ) -> Self {
+        Self {
+            user_id: user_id.into(),
+            resource: resource.into(),
+            resource_metadata: HashMap::new(),
+            risk_score: None,
+            location: None,
+            session_id: session_id.into(),
+            current_auth_level,
+            auth_time: Utc::now(),
+            custom_attributes: HashMap::new(),
+        }
+    }
+
+    /// Set the risk score.
+    pub fn with_risk_score(mut self, score: f64) -> Self {
+        self.risk_score = Some(score);
+        self
+    }
+
+    /// Set the location information.
+    pub fn with_location(mut self, location: LocationInfo) -> Self {
+        self.location = Some(location);
+        self
+    }
+
+    /// Set the authentication time.
+    pub fn with_auth_time(mut self, auth_time: DateTime<Utc>) -> Self {
+        self.auth_time = auth_time;
+        self
+    }
+
+    /// Add a resource metadata entry.
+    pub fn with_metadata(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.resource_metadata.insert(key.into(), value);
+        self
+    }
+
+    /// Add a custom attribute.
+    pub fn with_attribute(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.custom_attributes.insert(key.into(), value);
+        self
+    }
+}
+
 /// Authentication levels for stepped-up authentication
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum AuthenticationLevel {
@@ -175,12 +335,24 @@ pub enum AuthenticationLevel {
 }
 
 impl AuthenticationLevel {
-    /// Check if this level meets the minimum required level
+    /// Check if this level meets the minimum required level.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::server::core::stepped_up_auth::AuthenticationLevel;
+    /// assert!(AuthenticationLevel::High.meets_requirement(AuthenticationLevel::Enhanced));
+    /// ```
     pub fn meets_requirement(&self, required: AuthenticationLevel) -> bool {
         *self >= required
     }
 
-    /// Get the next higher authentication level
+    /// Get the next higher authentication level.
+    ///
+    /// # Example
+    /// ```rust
+    /// use auth_framework::server::core::stepped_up_auth::AuthenticationLevel;
+    /// assert_eq!(AuthenticationLevel::Basic.next_level(), Some(AuthenticationLevel::Enhanced));
+    /// ```
     pub fn next_level(&self) -> Option<AuthenticationLevel> {
         match self {
             AuthenticationLevel::Basic => Some(AuthenticationLevel::Enhanced),
@@ -226,6 +398,12 @@ pub struct StepUpRule {
 }
 
 impl StepUpRule {
+    /// Create a new step-up rule.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let rule = StepUpRule::new("admin_ops", StepUpTrigger::ResourceType("admin".into()), AuthenticationLevel::Maximum);
+    /// ```
     pub fn new(rule_id: &str, trigger: StepUpTrigger, required_level: AuthenticationLevel) -> Self {
         Self {
             rule_id: rule_id.to_string(),
@@ -397,7 +575,12 @@ pub struct SteppedUpAuthManager {
 }
 
 impl SteppedUpAuthManager {
-    /// Create new stepped-up authentication manager
+    /// Create new stepped-up authentication manager.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mgr = SteppedUpAuthManager::new(StepUpConfig::default());
+    /// ```
     pub fn new(config: StepUpConfig) -> Self {
         Self {
             config,
@@ -407,7 +590,12 @@ impl SteppedUpAuthManager {
         }
     }
 
-    /// Create new stepped-up authentication manager with CIBA integration
+    /// Create new stepped-up authentication manager with CIBA integration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mgr = SteppedUpAuthManager::with_ciba(config, ciba_manager);
+    /// ```
     pub fn with_ciba(config: StepUpConfig, ciba_manager: Arc<EnhancedCibaManager>) -> Self {
         Self {
             config,
@@ -417,7 +605,15 @@ impl SteppedUpAuthManager {
         }
     }
 
-    /// Evaluate whether step-up authentication is required
+    /// Evaluate whether step-up authentication is required.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let result = mgr.evaluate_step_up_requirement(&context).await?;
+    /// if result.required {
+    ///     println!("step-up needed to {:?}", result.target_level);
+    /// }
+    /// ```
     pub async fn evaluate_step_up_requirement(
         &self,
         context: &StepUpContext,
@@ -524,7 +720,12 @@ impl SteppedUpAuthManager {
         })
     }
 
-    /// Initiate step-up authentication
+    /// Initiate step-up authentication.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let req = mgr.initiate_step_up("user-1", AuthenticationLevel::Basic, AuthenticationLevel::High, "/admin", "admin access").await?;
+    /// ```
     pub async fn initiate_step_up(
         &self,
         user_id: &str,
@@ -580,7 +781,12 @@ impl SteppedUpAuthManager {
         Ok(step_up_request)
     }
 
-    /// Initiate backchannel step-up authentication using CIBA
+    /// Initiate backchannel step-up authentication using CIBA.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let req = mgr.initiate_backchannel_step_up("user-1", AuthenticationLevel::Basic, AuthenticationLevel::High, "/admin", "admin access", None).await?;
+    /// ```
     pub async fn initiate_backchannel_step_up(
         &self,
         user_id: &str,
@@ -677,7 +883,12 @@ impl SteppedUpAuthManager {
         Ok(step_up_request)
     }
 
-    /// Complete step-up authentication
+    /// Complete step-up authentication.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let resp = mgr.complete_step_up("req-1", AuthenticationMethod::Biometric, true).await?;
+    /// ```
     pub async fn complete_step_up(
         &self,
         request_id: &str,
@@ -748,7 +959,12 @@ impl SteppedUpAuthManager {
         })
     }
 
-    /// Get step-up request by ID
+    /// Get step-up request by ID.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let req = mgr.get_step_up_request("req-1").await?;
+    /// ```
     pub async fn get_step_up_request(&self, request_id: &str) -> Result<StepUpRequest> {
         let requests = self.active_requests.read().await;
         requests
@@ -757,7 +973,12 @@ impl SteppedUpAuthManager {
             .ok_or_else(|| AuthError::auth_method("step_up", "Request not found"))
     }
 
-    /// Cancel step-up request
+    /// Cancel step-up request.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.cancel_step_up("req-1").await?;
+    /// ```
     pub async fn cancel_step_up(&self, request_id: &str) -> Result<()> {
         let mut requests = self.active_requests.write().await;
 
@@ -768,7 +989,12 @@ impl SteppedUpAuthManager {
         Ok(())
     }
 
-    /// Clean up expired requests
+    /// Clean up expired requests.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let removed = mgr.cleanup_expired_requests().await?;
+    /// ```
     pub async fn cleanup_expired_requests(&self) -> Result<usize> {
         let mut requests = self.active_requests.write().await;
         let now = Utc::now();
@@ -779,7 +1005,12 @@ impl SteppedUpAuthManager {
         Ok(initial_count - requests.len())
     }
 
-    /// Get configuration
+    /// Get configuration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let cfg = mgr.config();
+    /// ```
     pub fn config(&self) -> &StepUpConfig {
         &self.config
     }
@@ -880,12 +1111,24 @@ impl SteppedUpAuthManager {
         Ok(token)
     }
 
-    /// Check if backchannel authentication is available
+    /// Check if backchannel authentication is available.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// if mgr.has_ciba_support() { /* … */ }
+    /// ```
     pub fn has_ciba_support(&self) -> bool {
         self.ciba_manager.is_some()
     }
 
-    /// Get CIBA authentication status for step-up request
+    /// Get CIBA authentication status for step-up request.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// if let Some(status) = mgr.get_ciba_step_up_status("req-1").await? {
+    ///     println!("ciba status: {}", status);
+    /// }
+    /// ```
     pub async fn get_ciba_step_up_status(
         &self,
         request_id: &str,
@@ -938,7 +1181,12 @@ impl SteppedUpAuthManager {
         Ok(None)
     }
 
-    /// Validate session for step-up eligibility
+    /// Validate session for step-up eligibility.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let eligible = mgr.validate_session_for_step_up("sess-1").await?;
+    /// ```
     pub async fn validate_session_for_step_up(&self, session_id: &str) -> Result<bool> {
         if session_id.is_empty() {
             return Ok(false);
@@ -959,7 +1207,12 @@ impl SteppedUpAuthManager {
         }
     }
 
-    /// Get user's current sessions for coordinated step-up
+    /// Get user's current sessions for coordinated step-up.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let sessions = mgr.get_user_sessions("user-1").await?;
+    /// ```
     pub async fn get_user_sessions(&self, user_id: &str) -> Result<Vec<String>> {
         if user_id.is_empty() {
             return Ok(Vec::new());
@@ -975,7 +1228,12 @@ impl SteppedUpAuthManager {
         Ok(session_ids)
     }
 
-    /// Cleanup expired step-up requests with session coordination
+    /// Cleanup expired step-up requests with session coordination.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let removed = mgr.cleanup_expired_requests_with_sessions().await?;
+    /// ```
     pub async fn cleanup_expired_requests_with_sessions(&self) -> Result<usize> {
         let mut requests = self.active_requests.write().await;
         let now = Utc::now();
@@ -1033,17 +1291,7 @@ mod tests {
         let config = StepUpConfig::default();
         let manager = SteppedUpAuthManager::new(config);
 
-        let context = StepUpContext {
-            user_id: "test_user".to_string(),
-            resource: "basic-resource".to_string(),
-            resource_metadata: HashMap::new(),
-            risk_score: None,
-            location: None,
-            session_id: "session123".to_string(),
-            current_auth_level: AuthenticationLevel::Basic,
-            auth_time: Utc::now(),
-            custom_attributes: HashMap::new(),
-        };
+        let context = StepUpContext::new("test_user", "basic-resource", "session123", AuthenticationLevel::Basic);
 
         let result = manager
             .evaluate_step_up_requirement(&context)
@@ -1058,17 +1306,8 @@ mod tests {
         let config = StepUpConfig::default();
         let manager = SteppedUpAuthManager::new(config);
 
-        let context = StepUpContext {
-            user_id: "test_user".to_string(),
-            resource: "sensitive-resource".to_string(),
-            resource_metadata: HashMap::new(),
-            risk_score: Some(0.8),
-            location: None,
-            session_id: "session123".to_string(),
-            current_auth_level: AuthenticationLevel::Basic,
-            auth_time: Utc::now(),
-            custom_attributes: HashMap::new(),
-        };
+        let context = StepUpContext::new("test_user", "sensitive-resource", "session123", AuthenticationLevel::Basic)
+            .with_risk_score(0.8);
 
         let result = manager
             .evaluate_step_up_requirement(&context)
@@ -1130,5 +1369,35 @@ mod tests {
         assert!(response.success);
         assert_eq!(response.achieved_level, AuthenticationLevel::Enhanced);
         assert!(response.session_token.is_some());
+    }
+
+    #[test]
+    fn test_step_up_config_builder() {
+        let config = StepUpConfig::builder()
+            .grace_period(Duration::minutes(10))
+            .token_lifetime(Duration::hours(1))
+            .disable_location_stepup()
+            .max_level(AuthenticationLevel::High)
+            .build();
+
+        assert_eq!(config.step_up_grace_period, Duration::minutes(10));
+        assert_eq!(config.default_token_lifetime, Duration::hours(1));
+        assert!(!config.enable_location_based_stepup);
+        assert!(config.enable_risk_based_stepup); // still on from default
+        assert_eq!(config.max_authentication_level, AuthenticationLevel::High);
+    }
+
+    #[test]
+    fn test_step_up_context_new() {
+        let ctx = StepUpContext::new("user1", "resource1", "sess1", AuthenticationLevel::Basic)
+            .with_risk_score(0.5);
+
+        assert_eq!(ctx.user_id, "user1");
+        assert_eq!(ctx.resource, "resource1");
+        assert_eq!(ctx.session_id, "sess1");
+        assert_eq!(ctx.current_auth_level, AuthenticationLevel::Basic);
+        assert_eq!(ctx.risk_score, Some(0.5));
+        assert!(ctx.location.is_none());
+        assert!(ctx.resource_metadata.is_empty());
     }
 }

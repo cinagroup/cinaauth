@@ -456,8 +456,17 @@ impl ConfigManager {
 }
 
 impl Default for ConfigManager {
+    /// Creates a `ConfigManager` with default settings.
+    ///
+    /// # Panics
+    /// Panics if the default configuration cannot be built (e.g. config files are
+    /// malformed). Prefer `ConfigManager::new()` which returns `Result` for
+    /// graceful error handling in production code.
     fn default() -> Self {
-        Self::new().expect("Failed to create default configuration manager")
+        Self::new().expect(
+            "ConfigManager::default(): failed to build default configuration. \
+             Use ConfigManager::new() for Result-based error handling.",
+        )
     }
 }
 

@@ -199,32 +199,36 @@ class MFAService:
         )
 
     async def get_backup_codes(self) -> dict[str, Any]:
-        """Get MFA backup codes.
+        """Fail fast because the current REST API does not expose backup-code retrieval.
 
         Returns:
-            List of backup codes.
+            This method always raises because existing backup codes are not retrievable.
 
         """
-        return await self._client.make_request("GET", "/mfa/backup-codes")
+        raise NotImplementedError(
+            "The current AuthFramework REST API does not expose a GET /mfa/backup-codes "
+            "endpoint. Use regenerate_backup_codes() to issue a fresh set of backup codes."
+        )
 
-    async def regenerate_backup_codes(self, password: str) -> dict[str, Any]:
+    async def regenerate_backup_codes(
+        self, password: str | None = None
+    ) -> dict[str, Any]:
         """Regenerate MFA backup codes.
 
         Args:
-            password: User's password for confirmation
+            password: Retained for backward compatibility. The current REST endpoint ignores it.
 
         Returns:
             New backup codes.
 
         """
-        data = {"password": password}
-        config = RequestConfig(json_data=data)
+        del password
         return await self._client.make_request(
-            "POST", "/mfa/backup-codes/regenerate", config=config
+            "POST", "/mfa/regenerate-backup-codes"
         )
 
     async def verify_backup_code(self, code: str) -> dict[str, Any]:
-        """Verify backup code during login.
+        """Verify a one-time backup code for the authenticated user.
 
         Args:
             code: Backup code
@@ -233,8 +237,8 @@ class MFAService:
             Verification response.
 
         """
-        data = {"code": code}
+        data = {"backup_code": code}
         config = RequestConfig(json_data=data)
         return await self._client.make_request(
-            "POST", "/mfa/backup-code/verify", config=config
+            "POST", "/mfa/verify-backup-code", config=config
         )

@@ -7,7 +7,26 @@ use crate::authentication::credentials::{Credential, CredentialMetadata};
 use crate::errors::{AuthError, Result};
 use crate::methods::{AuthMethod, MethodResult};
 use crate::tokens::AuthToken;
+#[cfg(feature = "enhanced-device-flow")]
+use base64::Engine as _;
+#[cfg(feature = "enhanced-device-flow")]
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::{Deserialize, Serialize};
+
+/// Extract the `sub` claim from a JWT access token without verifying the
+/// signature.  This is acceptable here because the token was *just* received
+/// over TLS from the authorisation server; full signature verification is
+/// performed later by the framework's token validation layer.
+#[cfg(feature = "enhanced-device-flow")]
+fn extract_sub_from_jwt(jwt: &str) -> Option<String> {
+    let parts: Vec<&str> = jwt.splitn(3, '.').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let payload = URL_SAFE_NO_PAD.decode(parts[1]).ok()?;
+    let claims: serde_json::Value = serde_json::from_slice(&payload).ok()?;
+    claims.get("sub").and_then(|v| v.as_str()).map(String::from)
+}
 
 /// Instructions for device flow authentication
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,21 +109,47 @@ impl EnhancedDeviceFlowMethod {
 
     /// Initiate device flow and return instructions
     pub async fn initiate_device_flow(&self) -> Result<DeviceFlowInstructions> {
-        // This would integrate with oauth-device-flows crate
-        // For now, return a basic implementation
+        let client = reqwest::Client::new();
+        let mut params = std::collections::HashMap::new();
+        params.insert("client_id", self.client_id.clone());
+        if !self.scopes.is_empty() {
+            params.insert("scope", self.scopes.join(" "));
+        }
+
+        let res = client
+            .post(&self.device_auth_url)
+            .form(&params)
+            .send()
+            .await
+            .map_err(AuthError::Network)?;
+
+        if !res.status().is_success() {
+            return Err(AuthError::config(&format!(
+                "Device auth request failed: {}",
+                res.status()
+            )));
+        }
+
+        #[derive(Deserialize)]
+        struct DeviceAuthResponse {
+            #[allow(dead_code)]
+            device_code: String,
+            user_code: String,
+            verification_uri: String,
+            verification_uri_complete: Option<String>,
+            expires_in: u64,
+            interval: Option<u64>,
+        }
+
+        let data: DeviceAuthResponse = res.json().await.map_err(AuthError::Network)?;
+
         Ok(DeviceFlowInstructions {
-            verification_uri: "https://github.com/login/device".to_string(),
-            verification_uri_complete: Some(
-                "https://github.com/login/device?user_code=ABCD-1234".to_string(),
-            ),
-            user_code: "ABCD-1234".to_string(),
-            qr_code: if self.enable_qr_code {
-                Some("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==".to_string())
-            } else {
-                None
-            },
-            expires_in: 900,
-            interval: 5,
+            verification_uri: data.verification_uri,
+            verification_uri_complete: data.verification_uri_complete,
+            user_code: data.user_code,
+            qr_code: None, // QR Code generation could be added here
+            expires_in: data.expires_in,
+            interval: data.interval.unwrap_or(5),
         })
     }
 }
@@ -119,25 +164,66 @@ impl AuthMethod for EnhancedDeviceFlowMethod {
         credential: Credential,
         _metadata: CredentialMetadata,
     ) -> Result<Self::MethodResult> {
-        match credential {
+        let (device_code, _interval) = match credential {
             Credential::EnhancedDeviceFlow {
                 device_code,
-                interval: _interval,
+                interval,
                 ..
-            } => {
-                // Simplified implementation - would use oauth-device-flows for real implementation
-                let token = AuthToken::new(
-                    device_code.clone(),
-                    "device_access_token".to_string(),
-                    std::time::Duration::from_secs(3600),
-                    "enhanced_device_flow",
-                );
-                Ok(MethodResult::Success(Box::new(token)))
+            } => (device_code, interval),
+            _ => {
+                return Ok(MethodResult::Failure {
+                    reason: "Invalid credential type for enhanced device flow".to_string(),
+                });
             }
-            _ => Ok(MethodResult::Failure {
-                reason: "Invalid credential type for enhanced device flow".to_string(),
-            }),
+        };
+
+        let client = reqwest::Client::new();
+        let mut params = std::collections::HashMap::new();
+        params.insert("client_id", self.client_id.clone());
+        params.insert(
+            "grant_type",
+            "urn:ietf:params:oauth:grant-type:device_code".to_string(),
+        );
+        params.insert("device_code", device_code);
+
+        if let Some(secret) = &self.client_secret {
+            params.insert("client_secret", secret.clone());
         }
+
+        let res = client
+            .post(&self.token_url)
+            .form(&params)
+            .send()
+            .await
+            .map_err(AuthError::Network)?;
+
+        if !res.status().is_success() {
+            let error_text = res.text().await.unwrap_or_default();
+            // Typical errors like authorization_pending, slow_down, expired_token, access_denied
+            return Ok(MethodResult::Failure {
+                reason: format!("Token exchange failed: {}", error_text),
+            });
+        }
+
+        #[derive(Deserialize)]
+        struct TokenResponse {
+            access_token: String,
+            refresh_token: Option<String>,
+            expires_in: Option<u64>,
+        }
+
+        let token_data: TokenResponse = res.json().await.map_err(AuthError::Network)?;
+
+        // Extract user_id from the JWT access token (the `sub` claim).
+        let user_id = extract_sub_from_jwt(&token_data.access_token)
+            .unwrap_or_else(|| "unknown_device_user".to_string());
+
+        let expires_in = std::time::Duration::from_secs(token_data.expires_in.unwrap_or(3600));
+
+        let mut token = AuthToken::new(user_id, &token_data.access_token, expires_in, self.name());
+        token.refresh_token = token_data.refresh_token;
+
+        Ok(MethodResult::Success(Box::new(token)))
     }
 
     fn name(&self) -> &str {

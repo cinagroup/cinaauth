@@ -1,5 +1,6 @@
 //! Utility modules for the AuthFramework.
 
+pub mod breach_check;
 pub mod crypto;
 pub mod password;
 pub mod rate_limit;

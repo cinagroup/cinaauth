@@ -29,17 +29,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server = ApiServer::new(auth_framework.clone());
 
     info!("📖 OAuth2 Endpoints Available:");
-    info!("  Authorization: GET  http://127.0.0.1:8080/api/v1/oauth2/authorize");
-    info!("  Token:         POST http://127.0.0.1:8080/api/v1/oauth2/token");
-    info!("  Revoke:        POST http://127.0.0.1:8080/api/v1/oauth2/revoke");
-    info!("  UserInfo:      GET  http://127.0.0.1:8080/api/v1/oauth2/userinfo");
+    info!("  Authorization: GET  http://127.0.0.1:8080/api/v1/oauth/authorize");
+    info!("  Token:         POST http://127.0.0.1:8080/api/v1/oauth/token");
+    info!("  Revoke:        POST http://127.0.0.1:8080/api/v1/oauth/revoke");
+    info!("  UserInfo:      GET  http://127.0.0.1:8080/api/v1/oauth/userinfo");
     info!("");
     info!("🔍 Testing OAuth2 Authorization Code Flow:");
     info!(
-        "1. GET /api/v1/oauth2/authorize?response_type=code&client_id=test_client&redirect_uri=http://localhost:3000/callback&scope=openid%20profile&state=xyz"
+        "1. GET /api/v1/oauth/authorize?response_type=code&client_id=test_client&redirect_uri=http://localhost:3000/callback&scope=openid%20profile&state=xyz"
     );
     info!("2. Use returned authorization_url to get code");
-    info!("3. POST /api/v1/oauth2/token with authorization_code grant");
+    info!("3. POST /api/v1/oauth/token with authorization_code grant");
     info!("4. Use access_token for authenticated requests");
     info!("");
     info!("🔐 PKCE Support:");

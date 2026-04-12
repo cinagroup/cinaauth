@@ -391,6 +391,108 @@ impl Default for MigrationConfig {
     }
 }
 
+impl MigrationConfig {
+    /// Dry-run mode: analyse the migration plan without applying changes.
+    ///
+    /// Verbose logging is enabled automatically.
+    pub fn dry_run() -> Self {
+        Self {
+            dry_run: true,
+            verbose: true,
+            ..Default::default()
+        }
+    }
+
+    /// Conservative mode: sequential execution with long timeouts.
+    ///
+    /// Best for production environments where safety is paramount.
+    pub fn conservative() -> Self {
+        Self {
+            max_concurrent_operations: 1,
+            operation_timeout: chrono::Duration::minutes(120),
+            verbose: true,
+            ..Default::default()
+        }
+    }
+
+    /// Aggressive mode: maximum parallelism for large-scale migrations.
+    pub fn aggressive() -> Self {
+        Self {
+            max_concurrent_operations: 16,
+            operation_timeout: chrono::Duration::minutes(60),
+            ..Default::default()
+        }
+    }
+
+    /// Create a builder starting from the default configuration.
+    pub fn builder() -> MigrationConfigBuilder {
+        MigrationConfigBuilder {
+            config: MigrationConfig::default(),
+        }
+    }
+}
+
+/// Fluent builder for [`MigrationConfig`].
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use auth_framework::migration::MigrationConfig;
+///
+/// let config = MigrationConfig::builder()
+///     .working_directory("./my_migration")
+///     .dry_run(true)
+///     .max_concurrent(8)
+///     .build();
+/// ```
+#[derive(Debug, Clone)]
+pub struct MigrationConfigBuilder {
+    config: MigrationConfig,
+}
+
+impl MigrationConfigBuilder {
+    /// Set the working directory.
+    pub fn working_directory(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.config.working_directory = dir.into();
+        self
+    }
+
+    /// Set the backup directory.
+    pub fn backup_directory(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.config.backup_directory = dir.into();
+        self
+    }
+
+    /// Set maximum concurrent operations.
+    pub fn max_concurrent(mut self, count: usize) -> Self {
+        self.config.max_concurrent_operations = count;
+        self
+    }
+
+    /// Set operation timeout.
+    pub fn timeout(mut self, timeout: chrono::Duration) -> Self {
+        self.config.operation_timeout = timeout;
+        self
+    }
+
+    /// Enable or disable dry-run mode.
+    pub fn dry_run(mut self, enabled: bool) -> Self {
+        self.config.dry_run = enabled;
+        self
+    }
+
+    /// Enable or disable verbose logging.
+    pub fn verbose(mut self, enabled: bool) -> Self {
+        self.config.verbose = enabled;
+        self
+    }
+
+    /// Consume the builder and produce the config.
+    pub fn build(self) -> MigrationConfig {
+        self.config
+    }
+}
+
 impl MigrationManager {
     /// Create new migration manager
     pub fn new(config: MigrationConfig) -> Result<Self, MigrationError> {
@@ -601,5 +703,47 @@ mod tests {
         assert!(RiskLevel::Low < RiskLevel::Medium);
         assert!(RiskLevel::Medium < RiskLevel::High);
         assert!(RiskLevel::High < RiskLevel::Critical);
+    }
+
+    #[test]
+    fn test_migration_config_dry_run_preset() {
+        let config = MigrationConfig::dry_run();
+        assert!(config.dry_run);
+        assert!(config.verbose);
+    }
+
+    #[test]
+    fn test_migration_config_conservative_preset() {
+        let config = MigrationConfig::conservative();
+        assert_eq!(config.max_concurrent_operations, 1);
+        assert!(config.verbose);
+        assert!(!config.dry_run);
+    }
+
+    #[test]
+    fn test_migration_config_aggressive_preset() {
+        let config = MigrationConfig::aggressive();
+        assert_eq!(config.max_concurrent_operations, 16);
+    }
+
+    #[test]
+    fn test_migration_config_builder() {
+        let config = MigrationConfig::builder()
+            .working_directory("/tmp/migration")
+            .dry_run(true)
+            .max_concurrent(8)
+            .verbose(true)
+            .build();
+        assert_eq!(config.working_directory, PathBuf::from("/tmp/migration"));
+        assert!(config.dry_run);
+        assert_eq!(config.max_concurrent_operations, 8);
+        assert!(config.verbose);
+    }
+
+    #[tokio::test]
+    async fn test_migration_manager_with_dry_run_preset() {
+        let config = MigrationConfig::dry_run();
+        let manager = MigrationManager::new(config);
+        assert!(manager.is_ok());
     }
 }

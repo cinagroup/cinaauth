@@ -12,7 +12,7 @@
 
 use auth_framework::{
     AuthConfig, AuthFramework,
-    distributed_rate_limiting::{
+    distributed::rate_limiting::{
         DistributedRateLimiter, RateLimitConfig, RateLimitResult, RateLimitStrategy,
     },
     server::{DeviceAuthManager, DeviceAuthorizationRequest},
@@ -240,8 +240,9 @@ async fn test_device_auth_polling_rate_limit() {
         error
     );
 
-    // Wait for minimum interval (5 seconds)
-    sleep(Duration::from_secs(6)).await;
+    // The first slow_down adds 5 seconds to the 5-second base interval,
+    // so the next allowed poll is after roughly 10 seconds.
+    sleep(Duration::from_secs(11)).await;
 
     // Should be allowed to poll again
     let poll3 = device_manager.poll_authorization(&device_code).await;

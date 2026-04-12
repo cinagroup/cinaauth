@@ -582,7 +582,7 @@ pub async fn get_user_roles(
 
             // If this is the calling user, include their effective permissions
             let effective_permissions: Vec<String> = if user_id == auth_token.user_id {
-                auth_token.permissions.clone()
+                auth_token.permissions.to_vec()
             } else {
                 vec![]
             };
@@ -871,12 +871,16 @@ mod tests {
             refresh_token: Some("test_refresh_token".to_string()),
             issued_at: Utc::now(),
             expires_at: Utc::now() + chrono::Duration::hours(1),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             auth_method: "password".to_string(),
             client_id: Some("test_client".to_string()),
             user_profile: None,
-            permissions: permissions.into_iter().map(|s| s.to_string()).collect(),
-            roles: vec!["admin".to_string()],
+            permissions: permissions
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+                .into(),
+            roles: vec!["admin".to_string()].into(),
             metadata: TokenMetadata::default(),
         }
     }

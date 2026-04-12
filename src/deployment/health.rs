@@ -129,6 +129,7 @@ pub struct HealthMonitor {
     service_health: ServiceHealth,
     system_metrics: SystemMetrics,
     failure_counts: HashMap<String, u32>,
+    sys: tokio::sync::Mutex<sysinfo::System>,
 }
 
 impl HealthMonitor {
@@ -169,6 +170,7 @@ impl HealthMonitor {
                 timestamp: now.as_secs(),
             },
             failure_counts: HashMap::new(),
+            sys: tokio::sync::Mutex::new(sysinfo::System::new_all()),
         }
     }
 
@@ -435,73 +437,22 @@ impl HealthMonitor {
     }
 
     /// Get CPU usage percentage.
-    ///
-    /// Reads `/proc/stat` on Linux and falls back to a cross-platform
-    /// `sysinfo`-compatible placeholder.  Returns a value in [0.0, 1.0].
     async fn get_cpu_usage(&self) -> Result<f64, HealthError> {
-        #[cfg(target_os = "linux")]
-        {
-            use std::fs;
-            // Two-sample measurement is ideal but would require state; a
-            // single-sample approximation reads the running-total for a quick
-            // health-endpoint response.
-            if let Ok(contents) = fs::read_to_string("/proc/stat") {
-                if let Some(line) = contents.lines().next() {
-                    // cpu user nice system idle iowait irq softirq …
-                    let parts: Vec<u64> = line
-                        .split_ascii_whitespace()
-                        .skip(1)
-                        .filter_map(|s| s.parse().ok())
-                        .collect();
-                    if parts.len() >= 4 {
-                        let idle = parts[3];
-                        let total: u64 = parts.iter().sum();
-                        if total > 0 {
-                            return Ok(1.0 - idle as f64 / total as f64);
-                        }
-                    }
-                }
-            }
-        }
-        // Non-Linux platforms: report 0.0 (unknown).
-        // A production deployment should integrate the `sysinfo` crate for
-        // cross-platform CPU metrics.
-        tracing::debug!("CPU usage not available on this platform; reporting 0.0");
-        Ok(0.0)
+        let mut sys = self.sys.lock().await;
+        sys.refresh_cpu_usage();
+        Ok(sys.global_cpu_usage() as f64 / 100.0)
     }
 
     /// Get memory usage percentage.
-    ///
-    /// Reads `/proc/meminfo` on Linux; returns 0.0 on other platforms.
     async fn get_memory_usage(&self) -> Result<f64, HealthError> {
-        #[cfg(target_os = "linux")]
-        {
-            use std::fs;
-            if let Ok(contents) = fs::read_to_string("/proc/meminfo") {
-                let mut total = 0u64;
-                let mut available = 0u64;
-                for line in contents.lines() {
-                    if line.starts_with("MemTotal:") {
-                        total = line
-                            .split_ascii_whitespace()
-                            .nth(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(0);
-                    } else if line.starts_with("MemAvailable:") {
-                        available = line
-                            .split_ascii_whitespace()
-                            .nth(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(0);
-                    }
-                }
-                if total > 0 {
-                    return Ok(1.0 - available as f64 / total as f64);
-                }
-            }
+        let mut sys = self.sys.lock().await;
+        sys.refresh_memory();
+        let total = sys.total_memory();
+        if total > 0 {
+            Ok(sys.used_memory() as f64 / total as f64)
+        } else {
+            Ok(0.0)
         }
-        tracing::debug!("Memory usage not available on this platform; reporting 0.0");
-        Ok(0.0)
     }
 
     /// Get disk usage percentage for `path`.
@@ -559,95 +510,46 @@ impl HealthMonitor {
     }
 
     /// Get network I/O metrics.
-    ///
-    /// Reads `/proc/net/dev` on Linux; returns zeroed metrics on other platforms.
     async fn get_network_io(&self) -> Result<NetworkIoMetrics, HealthError> {
-        #[cfg(target_os = "linux")]
-        {
-            use std::fs;
-            if let Ok(contents) = fs::read_to_string("/proc/net/dev") {
-                let mut bytes_recv = 0u64;
-                let mut pkts_recv = 0u64;
-                let mut bytes_sent = 0u64;
-                let mut pkts_sent = 0u64;
-                for line in contents.lines().skip(2) {
-                    // iface: rx_bytes rx_pkts … tx_bytes tx_pkts …
-                    let fields: Vec<&str> = line.split_ascii_whitespace().collect();
-                    if fields.len() >= 10 {
-                        bytes_recv += fields[1].parse::<u64>().unwrap_or(0);
-                        pkts_recv += fields[2].parse::<u64>().unwrap_or(0);
-                        bytes_sent += fields[9].parse::<u64>().unwrap_or(0);
-                        pkts_sent += fields[10].parse::<u64>().unwrap_or(0);
-                    }
-                }
-                return Ok(NetworkIoMetrics {
-                    bytes_sent,
-                    bytes_received: bytes_recv,
-                    packets_sent: pkts_sent,
-                    packets_received: pkts_recv,
-                });
-            }
+        let mut networks = sysinfo::Networks::new_with_refreshed_list();
+        // Give a tiny wait so network diffs can be populated
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        networks.refresh_list();
+
+        let mut bytes_recv = 0u64;
+        let mut pkts_recv = 0u64;
+        let mut bytes_sent = 0u64;
+        let mut pkts_sent = 0u64;
+
+        for (_, data) in networks.into_iter() {
+            bytes_recv += data.received();
+            pkts_recv += data.packets_received();
+            bytes_sent += data.transmitted();
+            pkts_sent += data.packets_transmitted();
         }
-        tracing::debug!("Network I/O metrics not available on this platform; reporting zeroes");
+
         Ok(NetworkIoMetrics {
-            bytes_sent: 0,
-            bytes_received: 0,
-            packets_sent: 0,
-            packets_received: 0,
+            bytes_sent,
+            bytes_received: bytes_recv,
+            packets_sent: pkts_sent,
+            packets_received: pkts_recv,
         })
     }
 
     /// Get the number of running processes.
-    ///
-    /// Counts entries in `/proc` on Linux; returns 0 on other platforms.
     async fn get_process_count(&self) -> Result<u32, HealthError> {
-        #[cfg(target_os = "linux")]
-        {
-            use std::fs;
-            if let Ok(entries) = fs::read_dir("/proc") {
-                let count = entries
-                    .filter_map(|e| e.ok())
-                    .filter(|e| {
-                        e.file_name()
-                            .to_str()
-                            .map(|s| s.chars().all(|c| c.is_ascii_digit()))
-                            .unwrap_or(false)
-                    })
-                    .count();
-                return Ok(count as u32);
-            }
-        }
-        tracing::debug!("Process count not available on this platform; reporting 0");
-        Ok(0)
+        let mut sys = self.sys.lock().await;
+        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+        Ok(sys.processes().len() as u32)
     }
 
     /// Get load averages.
-    ///
-    /// Reads `/proc/loadavg` on Linux; returns zeroes on other platforms.
     async fn get_load_average(&self) -> Result<LoadAverage, HealthError> {
-        #[cfg(target_os = "linux")]
-        {
-            use std::fs;
-            if let Ok(contents) = fs::read_to_string("/proc/loadavg") {
-                let parts: Vec<f64> = contents
-                    .split_ascii_whitespace()
-                    .take(3)
-                    .filter_map(|s| s.parse().ok())
-                    .collect();
-                if parts.len() >= 3 {
-                    return Ok(LoadAverage {
-                        one_minute: parts[0],
-                        five_minutes: parts[1],
-                        fifteen_minutes: parts[2],
-                    });
-                }
-            }
-        }
-        tracing::debug!("Load average not available on this platform; reporting zeroes");
+        let load = sysinfo::System::load_average();
         Ok(LoadAverage {
-            one_minute: 0.0,
-            five_minutes: 0.0,
-            fifteen_minutes: 0.0,
+            one_minute: load.one,
+            five_minutes: load.five,
+            fifteen_minutes: load.fifteen,
         })
     }
 

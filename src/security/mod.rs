@@ -1,3 +1,19 @@
+//! Security primitives and hardened implementations.
+//!
+//! This module contains:
+//!
+//! - **[`secure_jwt`]** — Production-grade JWT creation and validation with
+//!   key-rotation and revocation support.
+//! - **[`secure_mfa`]** — Hardened TOTP, backup-code, and recovery-flow logic.
+//! - **[`secure_session`]** — Session management with abuse-detection guards.
+//! - **[`timing_protection`]** — Constant-time comparison utilities to prevent
+//!   timing side-channel attacks.
+//! - **[`presets`]** — One-call security presets (`HighSecurity`, `Standard`,
+//!   `Development`) and an automated security-audit report generator.
+//!
+//! Most users interact with these through [`AuthFramework`](crate::auth::AuthFramework)
+//! rather than importing security types directly.
+
 use serde::{Deserialize, Serialize};
 
 // Timing protection utilities
@@ -12,6 +28,10 @@ pub mod secure_utils;
 
 // Security presets for easy configuration
 pub mod presets;
+
+// Enhanced cryptography (ChaCha20-Poly1305, Ed25519, X25519)
+#[cfg(feature = "enhanced-crypto")]
+pub mod enhanced_crypto;
 
 // Re-export presets for convenience
 pub use presets::{
@@ -133,9 +153,13 @@ pub struct LockoutConfig {
 }
 
 /// SMS configuration
+///
+/// **Security note:** `api_key` is never serialized to prevent accidental
+/// secret leakage in logs or config dumps.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SmsConfig {
     pub provider: String,
+    #[serde(skip_serializing, default)]
     pub api_key: String,
     pub from_number: String,
 }
@@ -151,11 +175,15 @@ impl Default for SmsConfig {
 }
 
 /// Email configuration
+///
+/// **Security note:** `password` is never serialized to prevent accidental
+/// secret leakage in logs or config dumps.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmailConfig {
     pub smtp_server: String,
     pub smtp_port: u16,
     pub username: String,
+    #[serde(skip_serializing, default)]
     pub password: String,
     pub from_email: String,
     pub use_tls: bool,

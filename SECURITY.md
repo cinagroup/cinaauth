@@ -100,7 +100,7 @@ We take security vulnerabilities seriously. If you discover a security issue:
 
 Instead, please:
 
-1. **Email**: Send details to [security@example.com](mailto:security@example.com)
+1. **Email**: Send details to [ciresnave@gmail.com](mailto:ciresnave@gmail.com)
 2. **Include**:
    - Description of the vulnerability
    - Steps to reproduce
@@ -209,9 +209,13 @@ This library aims to help users meet common security standards:
 
 We regularly audit and update dependencies. Security-sensitive dependencies include:
 
-- `ring`: Cryptographic operations
+- `ring`: Cryptographic operations (HMAC, random generation, key agreement)
 - `jsonwebtoken`: JWT implementation
 - `argon2`: Password hashing
+- `sha2`: SHA-256/SHA-512 digests
+- `hmac`: HMAC constructions (backchannel logout, RADIUS)
+- `md-5`: MD5 for RADIUS RFC 2865 protocol compliance only
+- `aes-gcm`: AES-GCM authenticated encryption
 - `redis`: Storage backend
 - `tokio`: Async runtime
 
@@ -235,6 +239,30 @@ The framework includes a SAML integration layer (`src/api/saml.rs`) that impleme
 
 **Mitigation path**: When your SAML Identity Provider supports SHA-256 digests (`http://www.w3.org/2001/04/xmlenc#sha256`), configure it to use them. A future release will add configurable algorithm preference to the SAML handler.
 
+## Known Implementation Limitations
+
+The following protocol implementations have known limitations that users should be aware of:
+
+### Protocol Stubs
+
+Several protocol modules provide partial or stub implementations that are not yet suitable for production use without additional cryptographic verification:
+
+- **Kerberos/SPNEGO**: AP-REQ validation performs basic ASN.1 tag checking only. Full Kerberos ticket validation requires integration with a KDC. The module returns an error indicating this limitation.
+- **SAML Assertions**: XML signature verification uses SHA-1 per protocol specification. No full XML canonicalization (C14N) or signature chain validation is implemented.
+- **WS-Federation JWT**: JWT payload extraction is implemented but signature verification is not performed. Use a dedicated JWT validator for production token verification.
+- **WS-Trust**: Issued tokens are stored in-memory only. They are lost on restart and not shared across instances. Production deployments should integrate with the StorageBackend KV layer.
+- **GNAP**: Implements grant negotiation flow with transaction state management but lacks DPoP proof validation and full key binding.
+- **OpenID4VP**: Parses and structurally validates Verifiable Presentations but does not perform cryptographic signature verification on credentials.
+- **UMA 2.0**: Implements resource registration, permission tickets, and basic policy evaluation. Does not include a full claims-gathering interaction flow.
+
+### MD5 in RADIUS
+
+The RADIUS client (`src/protocols/radius.rs`) uses MD5 as required by RFC 2865. MD5 is known to be cryptographically weak, but its use is mandated by the RADIUS protocol specification. Mitigate by:
+
+1. Using RADIUS over IPsec or a secure tunnel
+2. Migrating to RADIUS/TLS (RFC 6614) when infrastructure supports it
+3. Using strong shared secrets (32+ random bytes)
+
 ## Changelog
 
 Security-related changes will be clearly marked in the changelog with the `[SECURITY]` tag.
@@ -243,7 +271,7 @@ Security-related changes will be clearly marked in the changelog with the `[SECU
 
 For security questions or concerns:
 
-- **Email**: [security@example.com](mailto:security@example.com)
+- **Email**: [ciresnave@gmail.com](mailto:ciresnave@gmail.com)
 - **PGP Key**: Available on request
 
 ## Acknowledgments

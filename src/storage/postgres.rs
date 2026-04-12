@@ -15,7 +15,13 @@ pub struct PostgresStorage {
 }
 
 impl PostgresStorage {
-    /// Create a new PostgreSQL storage instance
+    /// Create a new PostgreSQL storage instance.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let pool = PgPool::connect("postgres://user:pass@localhost/db").await?;
+    /// let storage = PostgresStorage::new(pool);
+    /// ```
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -62,19 +68,14 @@ impl PostgresStorage {
         })?;
 
         // Secondary indexes for auth_tokens (PostgreSQL requires separate CREATE INDEX statements)
-        for (name, col) in [
-            ("idx_auth_tokens_user_id", "user_id"),
-            ("idx_auth_tokens_access_token", "access_token"),
-            ("idx_auth_tokens_expires_at", "expires_at"),
+        for stmt in [
+            "CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens (user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_auth_tokens_access_token ON auth_tokens (access_token)",
+            "CREATE INDEX IF NOT EXISTS idx_auth_tokens_expires_at ON auth_tokens (expires_at)",
         ] {
-            sqlx::query(&format!(
-                "CREATE INDEX IF NOT EXISTS {name} ON auth_tokens ({col})"
-            ))
-            .execute(&self.pool)
-            .await
-            .map_err(|e| {
+            sqlx::query(stmt).execute(&self.pool).await.map_err(|e| {
                 AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
-                    "Migration failed (index {name}): {e}"
+                    "Migration failed (index): {e}"
                 )))
             })?;
         }
@@ -99,18 +100,13 @@ impl PostgresStorage {
             )))
         })?;
 
-        for (name, col) in [
-            ("idx_sessions_user_id", "user_id"),
-            ("idx_sessions_expires_at", "expires_at"),
+        for stmt in [
+            "CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at)",
         ] {
-            sqlx::query(&format!(
-                "CREATE INDEX IF NOT EXISTS {name} ON sessions ({col})"
-            ))
-            .execute(&self.pool)
-            .await
-            .map_err(|e| {
+            sqlx::query(stmt).execute(&self.pool).await.map_err(|e| {
                 AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
-                    "Migration failed (index {name}): {e}"
+                    "Migration failed (index): {e}"
                 )))
             })?;
         }
@@ -436,6 +432,37 @@ impl AuthStorage for PostgresStorage {
                 )))
             })?;
         Ok(())
+    }
+
+    async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT key
+            FROM kv_store
+            WHERE key LIKE $1 AND (expires_at IS NULL OR expires_at > NOW())
+            ORDER BY key
+            "#,
+        )
+        .bind(format!("{prefix}%"))
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| {
+            AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
+                "Failed to list kv keys: {}",
+                e
+            )))
+        })?;
+
+        rows.into_iter()
+            .map(|row| {
+                row.try_get("key").map_err(|e| {
+                    AuthError::Storage(crate::errors::StorageError::operation_failed(format!(
+                        "Failed to decode kv key: {}",
+                        e
+                    )))
+                })
+            })
+            .collect()
     }
 
     async fn cleanup_expired(&self) -> Result<()> {

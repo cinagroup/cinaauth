@@ -27,6 +27,13 @@ pub mod collectors;
 pub mod exporters;
 pub mod health;
 
+// Re-export atomic counters so other modules can increment them directly.
+pub use collectors::{
+    AUTH_FAILED_REQUESTS, AUTH_SUCCESSFUL_REQUESTS, AUTH_TOTAL_REQUESTS, SESSION_ACTIVE_COUNT,
+    SESSION_CREATED_TOTAL, SESSION_EXPIRED_COUNT, TOKEN_CREATION_COUNT, TOKEN_EXPIRATION_COUNT,
+    TOKEN_VALIDATION_COUNT,
+};
+
 /// Monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonitoringConfig {
@@ -103,6 +110,91 @@ pub struct SecurityEvent {
     pub severity: SecurityEventSeverity,
     /// Timestamp
     pub timestamp: u64,
+}
+
+impl SecurityEvent {
+    /// Start building a new [`SecurityEvent`] of the given type and severity.
+    ///
+    /// The builder auto-fills `timestamp` at build time, so callers only need
+    /// to supply the fields that are relevant to the event.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let event = SecurityEvent::builder(SecurityEventType::FailedLogin, SecurityEventSeverity::Medium)
+    ///     .user("user-123")
+    ///     .ip("192.168.1.1")
+    ///     .detail("reason", "bad password")
+    ///     .build();
+    /// ```
+    pub fn builder(
+        event_type: SecurityEventType,
+        severity: SecurityEventSeverity,
+    ) -> SecurityEventBuilder {
+        SecurityEventBuilder {
+            event_type,
+            severity,
+            user_id: None,
+            ip_address: None,
+            details: HashMap::new(),
+        }
+    }
+}
+
+/// Ergonomic builder for [`SecurityEvent`].
+///
+/// Created via [`SecurityEvent::builder()`].
+pub struct SecurityEventBuilder {
+    event_type: SecurityEventType,
+    severity: SecurityEventSeverity,
+    user_id: Option<String>,
+    ip_address: Option<String>,
+    details: HashMap<String, String>,
+}
+
+impl SecurityEventBuilder {
+    /// Attach a user ID to this event.
+    pub fn user(mut self, user_id: impl Into<String>) -> Self {
+        self.user_id = Some(user_id.into());
+        self
+    }
+
+    /// Attach an IP address to this event.
+    pub fn ip(mut self, ip_address: impl Into<String>) -> Self {
+        self.ip_address = Some(ip_address.into());
+        self
+    }
+
+    /// Add a single key-value detail to the event.
+    pub fn detail(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.details.insert(key.into(), value.into());
+        self
+    }
+
+    /// Add multiple details at once from an iterator.
+    pub fn details(
+        mut self,
+        iter: impl IntoIterator<Item = (impl Into<String>, impl Into<String>)>,
+    ) -> Self {
+        for (k, v) in iter {
+            self.details.insert(k.into(), v.into());
+        }
+        self
+    }
+
+    /// Build the [`SecurityEvent`], setting the timestamp to the current time.
+    pub fn build(self) -> SecurityEvent {
+        SecurityEvent {
+            event_type: self.event_type,
+            user_id: self.user_id,
+            ip_address: self.ip_address,
+            details: self.details,
+            severity: self.severity,
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+        }
+    }
 }
 
 /// Security event types
@@ -517,7 +609,23 @@ impl MonitoringManager {
     /// Perform health check
     pub async fn health_check(&self) -> Result<HashMap<String, HealthCheckResult>> {
         if !self.config.enable_health_checks {
-            return Ok(HashMap::new());
+            let mut results = HashMap::new();
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            results.insert(
+                "monitoring".to_string(),
+                HealthCheckResult {
+                    component: "monitoring".to_string(),
+                    status: HealthStatus::Healthy,
+                    message: "Health checks disabled; monitoring subsystem not active"
+                        .to_string(),
+                    timestamp,
+                    response_time: 0,
+                },
+            );
+            return Ok(results);
         }
 
         let mut results = HashMap::new();
@@ -747,6 +855,41 @@ mod tests {
         let events = manager.get_security_events(None).await;
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event_type, SecurityEventType::FailedLogin);
+    }
+
+    #[tokio::test]
+    async fn test_security_event_builder() {
+        let event = SecurityEvent::builder(
+            SecurityEventType::AccountLockout,
+            SecurityEventSeverity::High,
+        )
+        .user("user-42")
+        .ip("10.0.0.1")
+        .detail("reason", "too many failures")
+        .detail("attempts", "5")
+        .build();
+
+        assert_eq!(event.event_type, SecurityEventType::AccountLockout);
+        assert_eq!(event.severity, SecurityEventSeverity::High);
+        assert_eq!(event.user_id.as_deref(), Some("user-42"));
+        assert_eq!(event.ip_address.as_deref(), Some("10.0.0.1"));
+        assert_eq!(event.details.len(), 2);
+        assert_eq!(event.details["reason"], "too many failures");
+        assert!(event.timestamp > 0);
+    }
+
+    #[tokio::test]
+    async fn test_security_event_builder_minimal() {
+        let event = SecurityEvent::builder(
+            SecurityEventType::SystemError,
+            SecurityEventSeverity::Low,
+        )
+        .build();
+
+        assert_eq!(event.event_type, SecurityEventType::SystemError);
+        assert!(event.user_id.is_none());
+        assert!(event.ip_address.is_none());
+        assert!(event.details.is_empty());
     }
 
     #[tokio::test]

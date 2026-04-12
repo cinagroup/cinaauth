@@ -234,7 +234,7 @@ mod tests {
             client_id: "test_client".to_string(),
             client_type: ClientType::Confidential,
             client_secret: Some("test_secret".to_string()),
-            redirect_uris: vec!["https://example.com/callback".to_string()],
+            redirect_uris: vec!["https://example.com/callback".to_string()].into(),
             ..Default::default()
         };
 
@@ -312,14 +312,14 @@ mod tests {
 
         // Test empty redirect URIs
         let invalid_config = ClientConfig {
-            redirect_uris: vec![],
+            redirect_uris: vec![].into(),
             ..Default::default()
         };
         assert!(registry.register_client(invalid_config).await.is_err());
 
         // Test insecure redirect URI
         let invalid_config = ClientConfig {
-            redirect_uris: vec!["http://example.com/callback".to_string()],
+            redirect_uris: vec!["http://example.com/callback".to_string()].into(),
             ..Default::default()
         };
         assert!(registry.register_client(invalid_config).await.is_err());

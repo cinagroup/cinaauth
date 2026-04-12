@@ -61,9 +61,9 @@ impl SecureMfaService {
                 })?;
 
                 // Use rejection sampling for uniform distribution (0-9)
-                let digit = byte[0] % 250; // Use 250 to avoid bias (250 is divisible by 10)
-                if digit < 250 {
-                    code.push(char::from(b'0' + (digit % 10)));
+                // Reject values >= 250 to avoid modulo bias (250 is divisible by 10)
+                if byte[0] < 250 {
+                    code.push(char::from(b'0' + (byte[0] % 10)));
                     break;
                 }
             }
@@ -72,16 +72,23 @@ impl SecureMfaService {
         Ok(SecureMfaCode { code })
     }
 
-    /// Hash MFA code for secure storage
+    /// Hash MFA code for secure storage using PBKDF2-HMAC-SHA256.
+    ///
+    /// Although MFA codes are short-lived, we use a proper KDF to resist
+    /// brute-force attacks on the 1M possible 6-digit code values.
     fn hash_code(&self, code: &str, salt: &[u8]) -> Result<String> {
-        use ring::digest;
+        use ring::pbkdf2;
 
-        let mut context = digest::Context::new(&digest::SHA256);
-        context.update(salt);
-        context.update(code.as_bytes());
-        let hash = context.finish();
+        let mut out = [0u8; 32];
+        pbkdf2::derive(
+            pbkdf2::PBKDF2_HMAC_SHA256,
+            std::num::NonZeroU32::new(10_000).unwrap(),
+            salt,
+            code.as_bytes(),
+            &mut out,
+        );
 
-        Ok(base64::engine::general_purpose::STANDARD.encode(hash.as_ref()))
+        Ok(base64::engine::general_purpose::STANDARD.encode(&out))
     }
 
     /// Generate secure salt
@@ -183,14 +190,12 @@ impl SecureMfaService {
 
     /// Verify MFA code with constant-time comparison
     pub async fn verify_challenge(&self, challenge_id: &str, provided_code: &str) -> Result<bool> {
-        // Validate input format
-        if provided_code.is_empty() || provided_code.len() > 12 {
-            return Ok(false);
-        }
-
-        if !provided_code.chars().all(|c| c.is_ascii_digit()) {
-            return Ok(false);
-        }
+        // Always perform the full verification path to prevent timing oracles.
+        // Input format validation is deferred until after the hash comparison
+        // to avoid leaking information about valid challenge IDs via response timing.
+        let format_valid = !provided_code.is_empty()
+            && provided_code.len() <= 12
+            && provided_code.chars().all(|c| c.is_ascii_digit());
 
         // Retrieve challenge
         let challenge_data = self
@@ -201,19 +206,32 @@ impl SecureMfaService {
         let mut challenge: MfaChallenge = match challenge_data {
             Some(data) => serde_json::from_slice(&data)
                 .map_err(|_| AuthError::validation("Invalid challenge data"))?,
-            None => return Ok(false), // Challenge not found or expired
+            None => {
+                // Challenge not found — still perform dummy work to prevent timing leak
+                let dummy_salt = [0u8; 32];
+                let _ = self.hash_code("000000", &dummy_salt);
+                return Ok(false);
+            }
         };
+
+        // Rate-limit verification attempts per user
+        self.check_rate_limit(&challenge.user_id)?;
 
         // Check if challenge is expired
         if chrono::Utc::now() > challenge.expires_at {
             // Clean up expired challenge
             self.cleanup_challenge(challenge_id).await?;
+            // Still perform dummy hash to keep constant timing
+            let dummy_salt = [0u8; 32];
+            let _ = self.hash_code("000000", &dummy_salt);
             return Ok(false);
         }
 
         // Check attempt limits
         if challenge.attempts >= challenge.max_attempts {
             self.cleanup_challenge(challenge_id).await?;
+            let dummy_salt = [0u8; 32];
+            let _ = self.hash_code("000000", &dummy_salt);
             return Ok(false);
         }
 
@@ -239,16 +257,26 @@ impl SecureMfaService {
             None => return Ok(false),
         };
 
-        // Hash provided code with same salt
-        let provided_hash = self.hash_code(provided_code, &salt)?;
+        // Hash provided code with same salt (always performed regardless of format_valid)
+        let provided_hash = self.hash_code(
+            if format_valid {
+                provided_code
+            } else {
+                "000000"
+            },
+            &salt,
+        )?;
 
         // Constant-time comparison (code_hash is Option<String>)
-        let is_valid = challenge.code_hash.as_ref().is_some_and(|stored_hash| {
+        let hash_matches = challenge.code_hash.as_ref().is_some_and(|stored_hash| {
             stored_hash
                 .as_bytes()
                 .ct_eq(provided_hash.as_bytes())
                 .into()
         });
+
+        // Both format AND hash must be valid
+        let is_valid = format_valid && hash_matches;
 
         if is_valid {
             // Clean up successful challenge
@@ -332,7 +360,7 @@ impl SecureMfaService {
 
             ring::pbkdf2::derive(
                 ring::pbkdf2::PBKDF2_HMAC_SHA256,
-                std::num::NonZeroU32::new(100_000).unwrap(), // 100k iterations
+                std::num::NonZeroU32::new(100_000).expect("100_000 is non-zero"), // 100k iterations
                 &salt,
                 code.as_bytes(),
                 &mut hash,
@@ -364,6 +392,10 @@ impl SecureMfaService {
             return Ok(false);
         }
 
+        // Iterate ALL codes without early return to prevent timing attacks
+        // that could reveal which position the valid code occupies.
+        let mut found = false;
+
         for hashed_code in hashed_codes {
             let parts: Vec<&str> = hashed_code.split(':').collect();
             if parts.len() != 2 {
@@ -384,19 +416,22 @@ impl SecureMfaService {
             let mut derived_hash = [0u8; 32];
             ring::pbkdf2::derive(
                 ring::pbkdf2::PBKDF2_HMAC_SHA256,
-                std::num::NonZeroU32::new(100_000).unwrap(),
+                std::num::NonZeroU32::new(100_000).expect("100_000 is non-zero"),
                 &salt,
                 provided_code.as_bytes(),
                 &mut derived_hash,
             );
 
-            // Constant-time comparison
-            if subtle::ConstantTimeEq::ct_eq(&stored_hash[..], &derived_hash[..]).into() {
-                return Ok(true);
+            // Constant-time comparison — do NOT early-return on match to prevent
+            // leaking which position the valid code is at via timing analysis.
+            let matches: bool =
+                subtle::ConstantTimeEq::ct_eq(&stored_hash[..], &derived_hash[..]).into();
+            if matches {
+                found = true;
             }
         }
 
-        Ok(false)
+        Ok(found)
     }
 }
 

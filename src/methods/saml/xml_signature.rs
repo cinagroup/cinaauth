@@ -41,7 +41,10 @@ impl XmlCanonicalizer {
             match reader.read_event() {
                 Ok(Event::Start(ref e)) => {
                     // Push new namespace context
-                    let mut ns_ctx = namespace_stack.last().unwrap().clone();
+                    let mut ns_ctx = namespace_stack
+                        .last()
+                        .expect("namespace stack initialized before loop")
+                        .clone();
 
                     // Process namespace declarations
                     for attr in e.attributes() {
@@ -161,6 +164,10 @@ impl XmlCanonicalizer {
 pub struct SamlSignatureValidator;
 
 impl SamlSignatureValidator {
+    fn local_name<'a>(&self, name: &'a [u8]) -> &'a [u8] {
+        name.rsplit(|byte| *byte == b':').next().unwrap_or(name)
+    }
+
     /// Validate XML signature using pure Rust cryptography
     pub fn validate_xml_signature(&self, xml: &str, cert_der: &[u8]) -> Result<bool> {
         // 1. Parse certificate and extract public key
@@ -234,7 +241,7 @@ impl SamlSignatureValidator {
 
         loop {
             match reader.read_event() {
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"SignedInfo" => {
+                Ok(Event::Start(ref e)) if self.local_name(e.name().as_ref()) == b"SignedInfo" => {
                     inside_signed_info = true;
                     depth = 1;
                     signed_info.push_str(&format!(
@@ -355,7 +362,9 @@ impl SamlSignatureValidator {
 
         loop {
             match reader.read_event() {
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"SignatureValue" => {
+                Ok(Event::Start(ref e))
+                    if self.local_name(e.name().as_ref()) == b"SignatureValue" =>
+                {
                     inside_signature_value = true;
                 }
                 Ok(Event::Text(ref e)) if inside_signature_value => {
@@ -364,7 +373,9 @@ impl SamlSignatureValidator {
                     })?;
                     signature_value.push_str(&text);
                 }
-                Ok(Event::End(ref e)) if e.name().as_ref() == b"SignatureValue" => {
+                Ok(Event::End(ref e))
+                    if self.local_name(e.name().as_ref()) == b"SignatureValue" =>
+                {
                     break;
                 }
                 Ok(Event::Eof) => break,
@@ -384,16 +395,112 @@ impl SamlSignatureValidator {
             .collect())
     }
 
-    /// Construct RSA public key in PKCS#1 format for Ring
+    /// Extract an embedded X.509 certificate from KeyInfo/X509Certificate.
+    pub fn extract_embedded_certificate(&self, xml: &str) -> Result<Vec<u8>> {
+        let mut reader = Reader::from_str(xml);
+        let mut inside_certificate = false;
+        let mut certificate = String::new();
+
+        loop {
+            match reader.read_event() {
+                Ok(Event::Start(ref e))
+                    if self.local_name(e.name().as_ref()) == b"X509Certificate" =>
+                {
+                    inside_certificate = true;
+                }
+                Ok(Event::Text(ref e)) if inside_certificate => {
+                    let text = e.xml_content().map_err(|e| {
+                        AuthError::validation(&format!("XML text decode error: {}", e))
+                    })?;
+                    certificate.push_str(&text);
+                }
+                Ok(Event::End(ref e))
+                    if self.local_name(e.name().as_ref()) == b"X509Certificate" =>
+                {
+                    break;
+                }
+                Ok(Event::Eof) => break,
+                Err(e) => return Err(AuthError::validation(&format!("XML parsing error: {}", e))),
+                _ => continue,
+            }
+        }
+
+        if certificate.trim().is_empty() {
+            return Err(AuthError::validation(
+                "No embedded X509Certificate element found in SAML assertion",
+            ));
+        }
+
+        BASE64
+            .decode(
+                certificate
+                    .chars()
+                    .filter(|c| !c.is_whitespace())
+                    .collect::<String>(),
+            )
+            .map_err(|e| AuthError::validation(&format!("Invalid embedded certificate: {}", e)))
+    }
+
+    /// Construct RSA public key in PKCS#1 DER format for Ring
+    ///
+    /// Ring's `RSA_PKCS1_2048_8192_SHA256` expects the key as a DER-encoded
+    /// `RSAPublicKey` (PKCS#1) per RFC 8017:
+    /// ```text
+    /// RSAPublicKey ::= SEQUENCE {
+    ///   modulus           INTEGER,
+    ///   publicExponent    INTEGER
+    /// }
+    /// ```
     fn construct_rsa_public_key(
         &self,
         rsa_key: &x509_parser::public_key::RSAPublicKey,
     ) -> Result<Vec<u8>> {
-        // For RSA, Ring expects the raw public key data
-        // This is a simplified implementation - in production, you'd want proper ASN.1 encoding
-        let mut key_data = Vec::new();
-        key_data.extend_from_slice(rsa_key.modulus);
-        key_data.extend_from_slice(rsa_key.exponent);
+        /// Encode a byte slice as a DER INTEGER.
+        /// Prepends a leading 0x00 byte if the high bit is set (positive sign).
+        fn der_encode_integer(value: &[u8]) -> Vec<u8> {
+            // Strip leading zero bytes (but keep at least one byte)
+            let stripped = match value.iter().position(|&b| b != 0) {
+                Some(pos) => &value[pos..],
+                None => &[0u8],
+            };
+
+            let needs_pad = stripped[0] & 0x80 != 0;
+            let len = stripped.len() + if needs_pad { 1 } else { 0 };
+
+            let mut out = Vec::with_capacity(2 + len);
+            out.push(0x02); // INTEGER tag
+            der_push_length(&mut out, len);
+            if needs_pad {
+                out.push(0x00);
+            }
+            out.extend_from_slice(stripped);
+            out
+        }
+
+        /// Push a DER length encoding (supports lengths up to 65535).
+        fn der_push_length(buf: &mut Vec<u8>, len: usize) {
+            if len < 0x80 {
+                buf.push(len as u8);
+            } else if len <= 0xFF {
+                buf.push(0x81);
+                buf.push(len as u8);
+            } else {
+                buf.push(0x82);
+                buf.push((len >> 8) as u8);
+                buf.push(len as u8);
+            }
+        }
+
+        let modulus_der = der_encode_integer(rsa_key.modulus);
+        let exponent_der = der_encode_integer(rsa_key.exponent);
+
+        let seq_content_len = modulus_der.len() + exponent_der.len();
+        let mut key_data = Vec::with_capacity(4 + seq_content_len);
+        key_data.push(0x30); // SEQUENCE tag
+        der_push_length(&mut key_data, seq_content_len);
+        key_data.extend_from_slice(&modulus_der);
+        key_data.extend_from_slice(&exponent_der);
+
         Ok(key_data)
     }
 

@@ -1,16 +1,42 @@
 //! Administrative API Endpoints
 //!
-//! Handles user management, system configuration, and admin operations
+//! Handles user management, system configuration, and admin operations.
+//!
+//! # Security Model
+//!
+//! **Every handler in this module must independently verify the caller holds the
+//! `admin` role** via [`verify_admin_role`].  There is no middleware-level admin
+//! guard on these routes — authorization is enforced per-handler so that
+//! non-admin error paths can still return proper 401/403 responses.
+//!
+//! When adding new admin endpoints, always call `verify_admin_role(&auth_token)?`
+//! immediately after token validation.
 
 use crate::api::{
     ApiResponse, ApiState, extract_bearer_token, responses::Pagination, validate_api_token,
 };
+use crate::tokens::AuthToken;
 use axum::{
     Json,
     extract::{Path, Query, State},
     http::HeaderMap,
 };
 use serde::{Deserialize, Serialize};
+
+// ---------------------------------------------------------------------------
+// Helper: verify the authenticated token carries the admin role
+// ---------------------------------------------------------------------------
+/// Checks that `auth_token` carries the `admin` role. Returns `Ok(())` on
+/// success or an `ApiResponse::forbidden_typed()` error suitable for early
+/// return from any admin handler.
+#[allow(clippy::result_large_err)]
+fn verify_admin_role<T: Serialize>(auth_token: &AuthToken) -> Result<(), ApiResponse<T>> {
+    if auth_token.roles.contains(&"admin".to_string()) {
+        Ok(())
+    } else {
+        Err(ApiResponse::<T>::forbidden_typed())
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Helper: load all user IDs from the global index
@@ -147,8 +173,8 @@ pub async fn list_users(
     match extract_bearer_token(&headers) {
         Some(token) => match validate_api_token(&state.auth_framework, &token).await {
             Ok(auth_token) => {
-                if !auth_token.roles.contains(&"admin".to_string()) {
-                    return ApiResponse::<UserListResponse>::forbidden_typed();
+                if let Err(resp) = verify_admin_role::<UserListResponse>(&auth_token) {
+                    return resp;
                 }
 
                 let storage = state.auth_framework.storage();
@@ -275,8 +301,8 @@ pub async fn create_user(
             match validate_api_token(&state.auth_framework, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
-                    if !auth_token.roles.contains(&"admin".to_string()) {
-                        return ApiResponse::forbidden_typed();
+                    if let Err(resp) = verify_admin_role(&auth_token) {
+                        return resp;
                     }
 
                     match state
@@ -288,13 +314,18 @@ pub async fn create_user(
                             if !(req.roles.is_empty()
                                 || req.roles.len() == 1 && req.roles[0] == "user")
                             {
-                                let _ = state
+                                if let Err(e) = state
                                     .auth_framework
                                     .update_user_roles(&user_id, &req.roles)
-                                    .await;
+                                    .await
+                                {
+                                    tracing::warn!("Failed to set roles for new user {}: {}", user_id, e);
+                                }
                             }
                             if !req.active {
-                                let _ = state.auth_framework.set_user_active(&user_id, false).await;
+                                if let Err(e) = state.auth_framework.set_user_active(&user_id, false).await {
+                                    tracing::warn!("Failed to deactivate new user {}: {}", user_id, e);
+                                }
                             }
                             let new_user = UserListItem {
                                 id: user_id.clone(),
@@ -352,8 +383,8 @@ pub async fn update_user_roles(
             match validate_api_token(&state.auth_framework, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
-                    if !auth_token.roles.contains(&"admin".to_string()) {
-                        return ApiResponse::forbidden();
+                    if let Err(resp) = verify_admin_role(&auth_token) {
+                        return resp;
                     }
 
                     match state
@@ -391,8 +422,8 @@ pub async fn delete_user(
             match validate_api_token(&state.auth_framework, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
-                    if !auth_token.roles.contains(&"admin".to_string()) {
-                        return ApiResponse::forbidden();
+                    if let Err(resp) = verify_admin_role(&auth_token) {
+                        return resp;
                     }
 
                     // Prevent self-deletion
@@ -937,7 +968,7 @@ pub async fn get_config(
                 if !auth_token.roles.contains(&"admin".to_string()) {
                     return ApiResponse::forbidden_typed();
                 }
-                let cfg = state.auth_framework.get_runtime_config().await;
+                let cfg = state.auth_framework.runtime_config().await;
                 ApiResponse::success(AdminConfigView::from(cfg))
             }
             Err(e) => {
@@ -971,7 +1002,7 @@ pub async fn update_config(
                 }
 
                 // Load current config, merge, then validate via update_runtime_config.
-                let mut current = state.auth_framework.get_runtime_config().await;
+                let mut current = state.auth_framework.runtime_config().await;
                 if let Some(v) = update.token_lifetime_secs {
                     current.token_lifetime_secs = v;
                 }

@@ -1,86 +1,117 @@
 # WebAuthn and SAML Implementation Guide
 
-## Overview
+This guide reflects the current WebAuthn and SAML routes mounted by `ApiServer`.
 
-AuthFramework now includes comprehensive WebAuthn (passwordless authentication) and SAML 2.0 (Security Assertion Markup Language) implementations, providing enterprise-grade authentication and single sign-on capabilities.
+## WebAuthn
 
-## WebAuthn Implementation
+## SAML Route Summary
 
-### What is WebAuthn?
+- `POST /api/v1/webauthn/registration/init`
+- `POST /api/v1/webauthn/registration/complete`
+- `POST /api/v1/webauthn/authentication/init`
+- `POST /api/v1/webauthn/authentication/complete`
+- `GET /api/v1/webauthn/credentials/{username}`
+- `DELETE /api/v1/webauthn/credentials/{username}/{credential_id}`
 
-WebAuthn (Web Authentication API) is a W3C standard for passwordless authentication using public key cryptography. It enables:
+## Registration Flow
 
-- **Passwordless Login**: Users authenticate with biometrics, security keys, or platform authenticators
-- **Phishing Resistant**: Based on public key cryptography with origin binding
-- **Multi-Factor Authentication**: Can be used as a second factor or standalone authentication
-- **Cross-Platform**: Works with FIDO2 security keys, Windows Hello, Touch ID, Face ID, etc.
+### 1. Initialize registration
 
-### WebAuthn Endpoints
-
-#### 1. Registration Flow
-
-**Initialize Registration**
+Request:
 
 ```http
-POST /api/v1/webauthn/register/init
+POST /api/v1/webauthn/registration/init
 Content-Type: application/json
-Authorization: Bearer {token}
 
 {
   "username": "user@example.com",
-  "display_name": "John Doe"
+  "display_name": "Jane Doe",
+  "authenticator_attachment": "platform",
+  "user_verification": "preferred"
 }
 ```
 
-Response:
+Current response shape:
 
 ```json
 {
   "success": true,
+  "message": "WebAuthn registration challenge generated",
   "data": {
-    "challenge": "base64-encoded-challenge",
+    "challenge": "base64url-challenge",
     "rp": {
-      "name": "AuthFramework",
-      "id": "example.com"
+      "id": "localhost",
+      "name": "AuthFramework"
     },
     "user": {
-      "id": "user-id-base64",
+      "id": "dXNlckBleGFtcGxlLmNvbQ",
       "name": "user@example.com",
-      "displayName": "John Doe"
+      "display_name": "Jane Doe"
     },
-    "pubKeyCredParams": [
-      {"type": "public-key", "alg": -7},
-      {"type": "public-key", "alg": -257}
+    "pubkey_cred_params": [
+      { "type": "public-key", "alg": -7 },
+      { "type": "public-key", "alg": -257 }
     ],
-    "authenticatorSelection": {
-      "authenticatorAttachment": "cross-platform",
-      "requireResidentKey": false,
-      "userVerification": "preferred"
-    },
     "timeout": 60000,
-    "attestation": "none"
+    "excludeCredentials": null,
+    "authenticatorSelection": {
+      "authenticator_attachment": "platform",
+      "require_resident_key": false,
+      "user_verification": "preferred"
+    },
+    "attestation": "direct",
+    "session_id": "webauthn_550e8400-e29b-41d4-a716-446655440000"
   }
 }
 ```
 
-**Complete Registration**
+Notes:
+
+- `challenge` is base64url encoded.
+- `user.id` is the base64url-encoded username.
+- The wire format mixes snake_case fields such as `pubkey_cred_params` and `display_name` with the WebAuthn-compatible keys `excludeCredentials` and `authenticatorSelection`.
+
+### 2. Complete registration
+
+Request:
 
 ```http
-POST /api/v1/webauthn/register/complete
+POST /api/v1/webauthn/registration/complete
 Content-Type: application/json
-Authorization: Bearer {token}
+
+{
+  "session_id": "webauthn_550e8400-e29b-41d4-a716-446655440000",
+  "credential_id": "credential-id-base64",
+  "credential_public_key": "base64url-encoded-cose-public-key",
+  "attestation_object": "base64url-attestation",
+  "client_data_json": "base64url-client-data",
+  "authenticator_data": "base64url-authenticator-data",
+  "signature": "base64url-signature"
+}
+```
+
+Success response:
+
+```json
+{
+  "success": true,
+  "message": "WebAuthn credential registered successfully"
+}
+```
+
+## Authentication Flow
+
+### 1. Initialize authentication
+
+Request:
+
+```http
+POST /api/v1/webauthn/authentication/init
+Content-Type: application/json
 
 {
   "username": "user@example.com",
-  "credential": {
-    "id": "credential-id-base64",
-    "rawId": "credential-raw-id-base64",
-    "response": {
-      "clientDataJSON": "base64-encoded-client-data",
-      "attestationObject": "base64-encoded-attestation"
-    },
-    "type": "public-key"
-  }
+  "user_verification": "preferred"
 }
 ```
 
@@ -89,298 +120,185 @@ Response:
 ```json
 {
   "success": true,
+  "message": "WebAuthn authentication challenge generated",
   "data": {
-    "credential_id": "credential-id",
-    "message": "WebAuthn credential registered successfully"
-  }
-}
-```
-
-#### 2. Authentication Flow
-
-**Initialize Authentication**
-
-```http
-POST /api/v1/webauthn/authenticate/init
-Content-Type: application/json
-
-{
-  "username": "user@example.com"
-}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "challenge": "base64-encoded-challenge",
-    "rpId": "example.com",
-    "allowCredentials": [
+    "challenge": "base64url-challenge",
+    "allow_credentials": [
       {
         "type": "public-key",
         "id": "credential-id-base64",
-        "transports": ["usb", "nfc", "ble"]
+        "transports": ["internal", "usb"]
       }
     ],
     "timeout": 60000,
-    "userVerification": "preferred"
+    "user_verification": "preferred",
+    "session_id": "webauthn_auth_550e8400-e29b-41d4-a716-446655440000"
   }
 }
 ```
 
-**Complete Authentication**
+### 2. Complete authentication
+
+Request:
 
 ```http
-POST /api/v1/webauthn/authenticate/complete
+POST /api/v1/webauthn/authentication/complete
 Content-Type: application/json
 
 {
-  "username": "user@example.com",
-  "credential": {
-    "id": "credential-id-base64",
-    "rawId": "credential-raw-id-base64",
-    "response": {
-      "clientDataJSON": "base64-encoded-client-data",
-      "authenticatorData": "base64-encoded-auth-data",
-      "signature": "base64-encoded-signature",
-      "userHandle": "base64-encoded-user-handle"
-    },
-    "type": "public-key"
-  }
+  "session_id": "webauthn_auth_550e8400-e29b-41d4-a716-446655440000",
+  "credential_id": "credential-id-base64",
+  "authenticator_data": "base64url-authenticator-data",
+  "client_data_json": "base64url-client-data",
+  "signature": "base64url-signature",
+  "user_handle": "base64url-user-handle"
 }
 ```
 
-Response:
+Success response:
 
 ```json
 {
   "success": true,
+  "message": "WebAuthn authentication successful",
   "data": {
     "access_token": "jwt-access-token",
-    "refresh_token": "jwt-refresh-token",
     "token_type": "Bearer",
-    "expires_in": 3600
+    "expires_in": 3600,
+    "user_id": "user@example.com",
+    "authentication_method": "webauthn"
   }
 }
 ```
 
-#### 3. Credential Management
+Important detail: the current WebAuthn authentication response does not include a refresh token.
 
-**List Credentials**
+## Credential Management
+
+### List credentials
 
 ```http
 GET /api/v1/webauthn/credentials/{username}
 Authorization: Bearer {token}
 ```
 
-Response:
+Response data is the stored credential JSON for that user.
 
-```json
-{
-  "success": true,
-  "data": {
-    "credentials": [
-      {
-        "credential_id": "cred-id-1",
-        "name": "YubiKey 5",
-        "created_at": "2025-10-05T10:00:00Z",
-        "last_used": "2025-10-05T15:30:00Z"
-      },
-      {
-        "credential_id": "cred-id-2",
-        "name": "Touch ID",
-        "created_at": "2025-10-01T08:00:00Z",
-        "last_used": "2025-10-05T09:00:00Z"
-      }
-    ]
-  }
-}
-```
-
-**Delete Credential**
+### Delete a credential
 
 ```http
 DELETE /api/v1/webauthn/credentials/{username}/{credential_id}
 Authorization: Bearer {token}
 ```
 
-### WebAuthn Client Example
+## Browser Integration Example
 
 ```javascript
-// Initialize registration
-async function registerWebAuthn(username, displayName) {
-  // 1. Get challenge from server
-  const initResponse = await fetch('/api/v1/webauthn/register/init', {
+async function registerWebAuthn(accessToken, username, displayName) {
+  const initResponse = await fetch('/api/v1/webauthn/registration/init', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`
+      'Authorization': `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ username, display_name: displayName })
+    body: JSON.stringify({
+      username,
+      display_name: displayName,
+      authenticator_attachment: 'platform',
+      user_verification: 'preferred',
+    }),
   });
-  
-  const options = await initResponse.json();
-  
-  // 2. Create credential using WebAuthn API
+
+  const initPayload = await initResponse.json();
+  const options = initPayload.data;
+
   const credential = await navigator.credentials.create({
     publicKey: {
-      ...options.data,
-      challenge: base64ToArrayBuffer(options.data.challenge),
+      ...options,
+      challenge: base64UrlToArrayBuffer(options.challenge),
       user: {
-        ...options.data.user,
-        id: base64ToArrayBuffer(options.data.user.id)
-      }
-    }
+        ...options.user,
+        id: base64UrlToArrayBuffer(options.user.id),
+      },
+    },
   });
-  
-  // 3. Send credential to server
-  const completeResponse = await fetch('/api/v1/webauthn/register/complete', {
+
+  return fetch('/api/v1/webauthn/registration/complete', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`
+      'Authorization': `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
-      username,
-      credential: credentialToJSON(credential)
-    })
+      session_id: options.session_id,
+      credential_id: credential.id,
+      credential_public_key: extractCredentialPublicKey(credential),
+      attestation_object: arrayBufferToBase64Url(credential.response.attestationObject),
+      client_data_json: arrayBufferToBase64Url(credential.response.clientDataJSON),
+      authenticator_data: extractAuthenticatorData(credential),
+      signature: extractAttestationSignature(credential),
+    }),
   });
-  
-  return completeResponse.json();
-}
-
-// Authenticate with WebAuthn
-async function authenticateWebAuthn(username) {
-  // 1. Get challenge from server
-  const initResponse = await fetch('/api/v1/webauthn/authenticate/init', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username })
-  });
-  
-  const options = await initResponse.json();
-  
-  // 2. Get assertion using WebAuthn API
-  const credential = await navigator.credentials.get({
-    publicKey: {
-      ...options.data,
-      challenge: base64ToArrayBuffer(options.data.challenge),
-      allowCredentials: options.data.allowCredentials.map(cred => ({
-        ...cred,
-        id: base64ToArrayBuffer(cred.id)
-      }))
-    }
-  });
-  
-  // 3. Send assertion to server
-  const completeResponse = await fetch('/api/v1/webauthn/authenticate/complete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      username,
-      credential: credentialToJSON(credential)
-    })
-  });
-  
-  return completeResponse.json();
-}
-
-// Helper functions
-function base64ToArrayBuffer(base64) {
-  const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-function credentialToJSON(credential) {
-  return {
-    id: credential.id,
-    rawId: arrayBufferToBase64(credential.rawId),
-    response: {
-      clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
-      attestationObject: credential.response.attestationObject 
-        ? arrayBufferToBase64(credential.response.attestationObject)
-        : undefined,
-      authenticatorData: credential.response.authenticatorData
-        ? arrayBufferToBase64(credential.response.authenticatorData)
-        : undefined,
-      signature: credential.response.signature
-        ? arrayBufferToBase64(credential.response.signature)
-        : undefined
-    },
-    type: credential.type
-  };
-}
-
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
 }
 ```
 
----
+## SAML
 
-## SAML 2.0 Implementation
+The SAML routes are mounted only when the crate is built with the `saml` feature.
 
-### What is SAML?
+## Route Summary
 
-SAML (Security Assertion Markup Language) is an XML-based standard for exchanging authentication and authorization data between identity providers (IdP) and service providers (SP). It enables:
+- `GET /api/v1/saml/metadata`
+- `POST /api/v1/saml/sso`
+- `POST /api/v1/saml/acs`
+- `POST /api/v1/saml/slo`
+- `GET /api/v1/saml/slo/response`
+- `POST /api/v1/saml/assertion`
+- `GET /api/v1/saml/idps`
 
-- **Single Sign-On (SSO)**: Users authenticate once and access multiple applications
-- **Identity Federation**: Organizations can use external identity providers
-- **Enterprise Integration**: Standard protocol used by major enterprise identity systems
-- **Centralized Authentication**: IT departments maintain control over authentication
+## Required Storage Configuration
 
-### SAML Endpoints
+### Service provider configuration
 
-#### 1. Service Provider Endpoints
+Store JSON under `saml_sp:config` with:
 
-**Get SAML Metadata**
+```json
+{
+  "entity_id": "https://auth.example.com/saml",
+  "acs_url": "https://auth.example.com/api/v1/saml/acs",
+  "slo_url": "https://auth.example.com/api/v1/saml/slo/response"
+}
+```
+
+### Identity provider configuration
+
+Each IdP is loaded from `saml_idp:{entity_id}`. The config must include `sso_url` and, for logout, `slo_url`. Signed response validation expects `signing_cert` when the `saml` feature is enabled.
+
+An index of configured IdPs is stored at `saml_idps:index` as a JSON array of entity IDs.
+
+## Metadata Endpoint
 
 ```http
 GET /api/v1/saml/metadata
 ```
 
-Response (XML):
+This route returns raw XML with content type `application/samlmetadata+xml`.
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<EntityDescriptor entityID="https://your-app.com/saml" xmlns="urn:oasis:names:tc:SAML:2.0:metadata">
-  <SPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
-    <KeyDescriptor use="signing">
-      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
-        <X509Data>
-          <X509Certificate>MIICertificateData...</X509Certificate>
-        </X509Data>
-      </KeyInfo>
-    </KeyDescriptor>
-    <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
-                        Location="https://your-app.com/api/v1/saml/slo/response"/>
-    <AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
-                             Location="https://your-app.com/api/v1/saml/acs"
-                             index="0" isDefault="true"/>
-  </SPSSODescriptor>
-</EntityDescriptor>
-```
+## SSO Flow
 
-**Initiate SSO**
+### 1. Initiate SSO
+
+Request:
 
 ```http
-POST /api/v1/saml/sso/init
+POST /api/v1/saml/sso
 Content-Type: application/json
 
 {
   "idp_entity_id": "https://idp.example.com/saml",
-  "relay_state": "optional-state-data"
+  "relay_state": "/dashboard",
+  "force_authn": false,
+  "is_passive": false
 }
 ```
 
@@ -390,50 +308,59 @@ Response:
 {
   "success": true,
   "data": {
-    "redirect_url": "https://idp.example.com/saml/sso?SAMLRequest=...",
-    "request_id": "req-id-123"
+    "redirect_url": "https://idp.example.com/sso?SAMLRequest=...",
+    "saml_request": "base64-encoded-authn-request",
+    "relay_state": "/dashboard"
   }
 }
 ```
 
-**Assertion Consumer Service (ACS)**
+### 2. Assertion Consumer Service
+
+Request:
 
 ```http
 POST /api/v1/saml/acs
 Content-Type: application/x-www-form-urlencoded
 
-SAMLResponse=base64-encoded-saml-response&RelayState=optional-state
+SAMLResponse=base64-encoded-response&RelayState=%2Fdashboard
 ```
 
-Response:
+Success response:
 
 ```json
 {
   "success": true,
+  "message": "SAML authentication successful",
   "data": {
     "access_token": "jwt-access-token",
-    "refresh_token": "jwt-refresh-token",
     "token_type": "Bearer",
     "expires_in": 3600,
-    "user_info": {
-      "username": "user@example.com",
+    "refresh_token": "jwt-refresh-token",
+    "user_id": "user@example.com",
+    "authentication_method": "saml",
+    "attributes": {
       "email": "user@example.com",
-      "name": "John Doe"
-    }
+      "role": "admin"
+    },
+    "relay_state": "/dashboard"
   }
 }
 ```
 
-#### 2. Single Logout (SLO)
+## Single Logout
 
-**Initiate Logout**
+### Initiate logout
+
+Request:
 
 ```http
-POST /api/v1/saml/slo/init
+POST /api/v1/saml/slo
 Content-Type: application/json
-Authorization: Bearer {token}
 
 {
+  "name_id": "user@example.com",
+  "session_index": "optional-session-index",
   "idp_entity_id": "https://idp.example.com/saml"
 }
 ```
@@ -443,320 +370,37 @@ Response:
 ```json
 {
   "success": true,
+  "message": "SAML logout initiated",
   "data": {
-    "redirect_url": "https://idp.example.com/saml/slo?SAMLRequest=...",
-    "request_id": "logout-req-123"
+    "redirect_url": "https://idp.example.com/slo?SAMLRequest=...",
+    "status": "logout_initiated"
   }
 }
 ```
 
-**Handle SLO Response**
+### Handle SLO response
 
 ```http
 GET /api/v1/saml/slo/response?SAMLResponse=...&RelayState=...
 ```
 
-Response:
+Success response:
 
 ```json
 {
   "success": true,
-  "data": {
-    "message": "Successfully logged out from all services"
-  }
+  "message": "SAML logout completed successfully"
 }
 ```
 
-#### 3. Identity Provider Endpoints
+## Assertion Generation
 
-**Create SAML Assertion (IdP functionality)**
+`POST /api/v1/saml/assertion` returns a wrapped XML string. The current request body expects:
 
-```http
-POST /api/v1/saml/assertion/create
-Content-Type: application/json
-Authorization: Bearer {admin-token}
+- `username`
+- `audience`
+- `email` when `username` is not already an email address
 
-{
-  "username": "user@example.com",
-  "sp_entity_id": "https://sp.example.com/saml",
-  "acs_url": "https://sp.example.com/api/v1/saml/acs",
-  "attributes": {
-    "email": "user@example.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "roles": ["user", "developer"]
-  }
-}
-```
+## IdP Listing
 
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "saml_response": "base64-encoded-saml-response",
-    "assertion_id": "assertion-123",
-    "expires_at": "2025-10-05T16:00:00Z"
-  }
-}
-```
-
-**List Configured Identity Providers**
-
-```http
-GET /api/v1/saml/idps
-Authorization: Bearer {token}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "idps": [
-      {
-        "entity_id": "https://idp1.example.com/saml",
-        "name": "Corporate IdP",
-        "sso_url": "https://idp1.example.com/saml/sso",
-        "slo_url": "https://idp1.example.com/saml/slo",
-        "enabled": true
-      },
-      {
-        "entity_id": "https://idp2.example.com/saml",
-        "name": "Partner IdP",
-        "sso_url": "https://idp2.example.com/saml/sso",
-        "enabled": false
-      }
-    ]
-  }
-}
-```
-
-### SAML Integration Example
-
-#### Service Provider (Your Application)
-
-```javascript
-// Initiate SAML SSO
-async function initiateSSO(idpEntityId) {
-  const response = await fetch('/api/v1/saml/sso/init', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      idp_entity_id: idpEntityId,
-      relay_state: window.location.pathname // Return user to current page
-    })
-  });
-  
-  const data = await response.json();
-  
-  if (data.success) {
-    // Redirect user to IdP for authentication
-    window.location.href = data.data.redirect_url;
-  }
-}
-
-// Handle SAML response (in your ACS endpoint handler)
-async function handleSAMLResponse(samlResponse, relayState) {
-  const response = await fetch('/api/v1/saml/acs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      SAMLResponse: samlResponse,
-      RelayState: relayState || ''
-    })
-  });
-  
-  const data = await response.json();
-  
-  if (data.success) {
-    // Store tokens
-    localStorage.setItem('access_token', data.data.access_token);
-    localStorage.setItem('refresh_token', data.data.refresh_token);
-    
-    // Redirect to original location or home
-    window.location.href = relayState || '/dashboard';
-  }
-}
-
-// Initiate logout
-async function initiateLogout(idpEntityId, accessToken) {
-  const response = await fetch('/api/v1/saml/slo/init', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`
-    },
-    body: JSON.stringify({ idp_entity_id: idpEntityId })
-  });
-  
-  const data = await response.json();
-  
-  if (data.success) {
-    // Clear local tokens
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    
-    // Redirect to IdP for logout
-    window.location.href = data.data.redirect_url;
-  }
-}
-```
-
-#### Identity Provider Configuration
-
-To configure an external IdP (like Okta, Azure AD, Auth0):
-
-1. **Get your SP metadata**: `GET /api/v1/saml/metadata`
-2. **Configure IdP with your metadata**:
-   - Entity ID: Your application's SAML entity ID
-   - ACS URL: `https://your-app.com/api/v1/saml/acs`
-   - SLO URL: `https://your-app.com/api/v1/saml/slo/response`
-3. **Configure IdP in AuthFramework** (via config or admin API)
-4. **Map SAML attributes** to user fields
-
----
-
-## Security Considerations
-
-### WebAuthn Security
-
-1. **Challenge Validation**: Challenges are cryptographically random and expire after 60 seconds
-2. **Origin Binding**: Credentials are bound to your domain and cannot be used on phishing sites
-3. **Attestation**: Optional attestation verification for security key validation
-4. **Counter Verification**: Clone detection through signature counters
-5. **User Verification**: Biometric or PIN verification on the authenticator
-
-### SAML Security
-
-1. **XML Signature Verification**: All SAML responses are cryptographically verified
-2. **Assertion Encryption**: Sensitive assertions can be encrypted
-3. **Replay Protection**: Assertion IDs are tracked to prevent replay attacks
-4. **Time Validation**: Assertions have NotBefore and NotOnOrAfter timestamps
-5. **Audience Restriction**: Assertions are bound to specific service providers
-
-### Best Practices
-
-1. **Use HTTPS**: All WebAuthn and SAML endpoints require HTTPS in production
-2. **Store Challenges Securely**: Server-side challenge storage with expiration
-3. **Validate All Inputs**: Strict validation of all SAML XML and WebAuthn JSON
-4. **Audit Logging**: Log all authentication attempts and failures
-5. **Rate Limiting**: Protect against brute force attacks
-6. **Certificate Management**: Regular rotation of SAML signing certificates
-
----
-
-## Configuration
-
-### WebAuthn Configuration
-
-```rust
-// In your AuthFramework configuration
-let config = AuthFrameworkConfig {
-    // ... other config
-    webauthn: WebAuthnConfig {
-        rp_name: "AuthFramework".to_string(),
-        rp_id: "example.com".to_string(),
-        rp_origin: "https://example.com".to_string(),
-        timeout_ms: 60000,
-        attestation: AttestationConveyancePreference::None,
-        user_verification: UserVerificationRequirement::Preferred,
-    },
-};
-```
-
-### SAML Configuration
-
-```rust
-// In your AuthFramework configuration
-let config = AuthFrameworkConfig {
-    // ... other config
-    saml: SamlConfig {
-        entity_id: "https://your-app.com/saml".to_string(),
-        acs_url: "https://your-app.com/api/v1/saml/acs".to_string(),
-        slo_url: "https://your-app.com/api/v1/saml/slo/response".to_string(),
-        signing_cert_path: "/path/to/signing-cert.pem".to_string(),
-        signing_key_path: "/path/to/signing-key.pem".to_string(),
-        identity_providers: vec![
-            IdPConfig {
-                entity_id: "https://idp.example.com/saml".to_string(),
-                sso_url: "https://idp.example.com/saml/sso".to_string(),
-                slo_url: Some("https://idp.example.com/saml/slo".to_string()),
-                cert_path: "/path/to/idp-cert.pem".to_string(),
-            }
-        ],
-    },
-};
-```
-
----
-
-## Testing
-
-### WebAuthn Testing
-
-Use virtual authenticators in Chrome DevTools or Firefox:
-
-```javascript
-// Chrome DevTools > Settings > Devices > Add Virtual Authenticator
-// Or programmatically:
-await navigator.credentials.create({
-  publicKey: {
-    // ... WebAuthn options
-  }
-});
-```
-
-### SAML Testing
-
-Use SAML testing tools:
-
-- **SAMLtest.id**: Free SAML IdP for testing
-- **SAML Tracer**: Browser extension for debugging SAML flows
-- **Okta Developer**: Free developer account with SAML support
-
----
-
-## Troubleshooting
-
-### WebAuthn Issues
-
-**"NotAllowedError"**
-
-- Check HTTPS is enabled
-- Verify rpId matches your domain
-- Ensure user gesture triggered the operation
-
-**"InvalidStateError"**
-
-- Credential already exists
-- Check excludeCredentials list
-
-### SAML Issues
-
-**"Invalid Signature"**
-
-- Verify certificate paths are correct
-- Check certificate hasn't expired
-- Ensure clock synchronization between servers
-
-**"Assertion Expired"**
-
-- Check NotBefore/NotOnOrAfter timestamps
-- Verify clock synchronization
-- Adjust assertion validity period
-
----
-
-## Status
-
-✅ **COMPLETE** - Comprehensive WebAuthn and SAML 2.0 implementations are now functional with:
-
-- Full WebAuthn registration and authentication flows
-- SAML 2.0 SP and IdP functionality
-- Single Sign-On (SSO) and Single Logout (SLO)
-- Credential management and IdP configuration
-- Security best practices and validation
-- Complete API endpoints and examples
+`GET /api/v1/saml/idps` returns the JSON configs stored for the entity IDs listed in `saml_idps:index`.

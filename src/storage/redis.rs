@@ -148,22 +148,33 @@ impl AuthStorage for RedisStorage {
         let mut conn = self.get_connection().await?;
         let pattern = format!("{}session:*", self.key_prefix);
 
-        // Use SCAN to find all session keys
-        let keys: Vec<String> = conn
-            .keys(&pattern)
-            .await
-            .map_err(|e| AuthError::Storage(StorageError::operation_failed(e.to_string())))?;
-
+        // Use cursor-based SCAN instead of KEYS to avoid blocking Redis (SEC-M3).
+        let mut cursor: u64 = 0;
         let mut user_sessions = Vec::new();
+        loop {
+            let (next_cursor, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+                .arg(cursor)
+                .arg("MATCH")
+                .arg(&pattern)
+                .arg("COUNT")
+                .arg(100)
+                .query_async(&mut conn)
+                .await
+                .map_err(|e| AuthError::Storage(StorageError::operation_failed(e.to_string())))?;
 
-        // Check each session to see if it belongs to the user
-        for key in keys {
-            if let Ok(session_json) = conn.get::<_, String>(&key).await
-                && let Ok(session) = serde_json::from_str::<SessionData>(&session_json)
-                && session.user_id == user_id
-                && !session.is_expired()
-            {
-                user_sessions.push(session);
+            for key in keys {
+                if let Ok(session_json) = conn.get::<_, String>(&key).await
+                    && let Ok(session) = serde_json::from_str::<SessionData>(&session_json)
+                    && session.user_id == user_id
+                    && !session.is_expired()
+                {
+                    user_sessions.push(session);
+                }
+            }
+
+            cursor = next_cursor;
+            if cursor == 0 {
+                break;
             }
         }
 
@@ -173,13 +184,19 @@ impl AuthStorage for RedisStorage {
     async fn store_kv(&self, key: &str, value: &[u8], ttl: Option<Duration>) -> Result<()> {
         let mut conn = self.get_connection().await?;
         let kv_key = self.kv_key(key);
-        let ttl_secs = ttl
-            .map(|d| d.as_secs())
-            .unwrap_or(self.default_ttl.as_secs());
-        let _: () = conn
-            .set_ex(&kv_key, value, ttl_secs)
-            .await
-            .map_err(|e| AuthError::Storage(StorageError::operation_failed(e.to_string())))?;
+        // SEC-L5: When no TTL is specified, store without expiration so that
+        // configuration data and permanent records don't silently vanish.
+        if let Some(duration) = ttl {
+            let _: () = conn
+                .set_ex(&kv_key, value, duration.as_secs())
+                .await
+                .map_err(|e| AuthError::Storage(StorageError::operation_failed(e.to_string())))?;
+        } else {
+            let _: () = conn
+                .set(&kv_key, value)
+                .await
+                .map_err(|e| AuthError::Storage(StorageError::operation_failed(e.to_string())))?;
+        }
         Ok(())
     }
 
@@ -210,17 +227,19 @@ impl AuthStorage for RedisStorage {
     async fn store_token(&self, token: &AuthToken) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
+        // Reject already-expired tokens rather than re-activating them with a
+        // fresh TTL (SEC-H1).
+        let now = chrono::Utc::now();
+        if token.expires_at <= now {
+            return Err(AuthError::Storage(StorageError::operation_failed(
+                "Cannot store an already-expired token".to_string(),
+            )));
+        }
+        let ttl = (token.expires_at - now).num_seconds() as u64;
+
         // Serialize token
         let token_data = serde_json::to_string(token)
             .map_err(|e| AuthError::Storage(StorageError::serialization(e.to_string())))?;
-
-        // Calculate TTL from token expiration
-        let now = chrono::Utc::now();
-        let ttl = if token.expires_at > now {
-            (token.expires_at - now).num_seconds() as u64
-        } else {
-            self.default_ttl.as_secs()
-        };
 
         // Store token by ID
         let token_key = self.token_key(&token.token_id);
@@ -339,24 +358,36 @@ impl AuthStorage for RedisStorage {
         let mut conn = self.get_connection().await?;
         let pattern = format!("{}session:*", self.key_prefix);
 
-        let keys: Vec<String> = conn
-            .keys(&pattern)
-            .await
-            .map_err(|e| AuthError::Storage(StorageError::operation_failed(e.to_string())))?;
-
-        // Count only non-expired sessions
+        // Use SCAN instead of KEYS to avoid blocking the Redis server
         let mut active_count = 0u64;
-        for key in keys {
-            let ttl: i64 = conn
-                .ttl(&key)
+        let mut cursor: u64 = 0;
+        loop {
+            let (next_cursor, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+                .arg(cursor)
+                .arg("MATCH")
+                .arg(&pattern)
+                .arg("COUNT")
+                .arg(100)
+                .query_async(&mut conn)
                 .await
                 .map_err(|e| AuthError::Storage(StorageError::operation_failed(e.to_string())))?;
 
-            // TTL > 0 means key has expiration and is still active
-            // TTL = -1 means key has no expiration (active)
-            // TTL = -2 means key doesn't exist (expired)
-            if ttl > 0 || ttl == -1 {
-                active_count += 1;
+            for key in keys {
+                let ttl: i64 = conn.ttl(&key).await.map_err(|e| {
+                    AuthError::Storage(StorageError::operation_failed(e.to_string()))
+                })?;
+
+                // TTL > 0 means key has expiration and is still active
+                // TTL = -1 means key has no expiration (active)
+                // TTL = -2 means key doesn't exist (expired)
+                if ttl > 0 || ttl == -1 {
+                    active_count += 1;
+                }
+            }
+
+            cursor = next_cursor;
+            if cursor == 0 {
+                break;
             }
         }
 

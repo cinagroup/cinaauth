@@ -93,11 +93,10 @@ pub use oidc::{
     oidc_response_modes::{
         FormPostResponseMode, JarmResponseMode, MultipleResponseTypesManager, ResponseMode,
     },
-    // Temporarily disabled: oidc_rp_initiated_logout module
-    // oidc_rp_initiated_logout::{
-    //     ClientLogoutConfig, RpInitiatedLogoutConfig, RpInitiatedLogoutManager,
-    //     RpInitiatedLogoutRequest, RpInitiatedLogoutResponse,
-    // },
+    oidc_rp_initiated_logout::{
+        ClientLogoutConfig, LogoutNotificationTarget, RpInitiatedLogoutConfig,
+        RpInitiatedLogoutManager, RpInitiatedLogoutRequest, RpInitiatedLogoutResponse,
+    },
     oidc_session_management::{
         OidcSession, OidcSessionState, SessionCheckRequest, SessionCheckResponse, SessionManager,
     },
@@ -156,13 +155,9 @@ use std::time::SystemTime;
 // Re-export the canonical ClientType for use via `server::ClientType`.
 pub use crate::client::ClientType;
 
-// Temporarily commenting out the full AuthServer struct until OAuth modules are fixed
-// This will be re-enabled once the base64 and type system issues are resolved
-
 /// Minimal server configuration for working components
 #[derive(Debug, Clone, Default)]
 pub struct WorkingServerConfig {
-    // Temporarily simplified until hierarchical imports are resolved
 }
 
 /// Trait for server-side authentication providers

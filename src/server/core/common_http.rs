@@ -27,18 +27,15 @@ impl HttpClient {
                 config.timeout.connect_timeout.as_secs(),
             ))
             .connect_timeout(config.timeout.connect_timeout)
-            .danger_accept_invalid_certs(!config.security.enable_tls);
+            .danger_accept_invalid_certs(config.security.accept_invalid_certs);
 
         // Add default headers
         let mut headers = reqwest::header::HeaderMap::new();
         for (key, value) in &config.headers {
-            let header_name =
-                reqwest::header::HeaderName::from_bytes(key.as_bytes()).map_err(|e| {
-                    AuthError::ConfigurationError(format!("Invalid header name: {}", e))
-                })?;
-            let header_value = reqwest::header::HeaderValue::from_str(value).map_err(|e| {
-                AuthError::ConfigurationError(format!("Invalid header value: {}", e))
-            })?;
+            let header_name = reqwest::header::HeaderName::from_bytes(key.as_bytes())
+                .map_err(|e| AuthError::config(format!("Invalid header name: {}", e)))?;
+            let header_value = reqwest::header::HeaderValue::from_str(value)
+                .map_err(|e| AuthError::config(format!("Invalid header value: {}", e)))?;
             headers.insert(header_name, header_value);
         }
 
@@ -51,9 +48,9 @@ impl HttpClient {
 
         client_builder = client_builder.default_headers(headers);
 
-        let client = client_builder.build().map_err(|e| {
-            AuthError::ConfigurationError(format!("Failed to create HTTP client: {}", e))
-        })?;
+        let client = client_builder
+            .build()
+            .map_err(|e| AuthError::config(format!("Failed to create HTTP client: {}", e)))?;
 
         Ok(Self {
             client,

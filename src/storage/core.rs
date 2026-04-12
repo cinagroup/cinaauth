@@ -11,7 +11,68 @@ use std::time::Duration;
 #[cfg(feature = "redis-storage")]
 use crate::errors::StorageError;
 
-/// Trait for authentication data storage.
+/// Trait for authentication data storage backends.
+///
+/// All persistence in `AuthFramework` goes through this trait — tokens,
+/// sessions, and arbitrary key-value data.  Implement it to plug in a
+/// custom database while keeping the rest of the framework unchanged.
+///
+/// # Provided Implementations
+///
+/// | Backend | Type | Feature flag |
+/// |---------|------|-------------|
+/// | In-memory (DashMap) | [`MemoryStorage`] | *(always available)* |
+/// | PostgreSQL | [`PostgresStorage`](crate::storage::postgres::PostgresStorage) | `postgres-storage` |
+/// | MySQL | [`MySqlStorage`](crate::storage::mysql::MySqlStorage) | `mysql-storage` |
+/// | Redis | [`RedisStorage`] | `redis-storage` |
+/// | SQLite | [`SqliteStorage`](crate::storage::sqlite::SqliteStorage) | `sqlite-storage` |
+/// | Encrypted wrapper | [`EncryptedStorage`](crate::storage::encryption::EncryptedStorage) | *(always available)* |
+///
+/// # Implementing This Trait
+///
+/// Custom storage backends must:
+///
+/// 1. **Be thread-safe** — the trait requires `Send + Sync`.
+/// 2. **Handle concurrent access** — multiple tasks will read/write
+///    simultaneously. Use connection pooling or interior mutability.
+/// 3. **Honour TTL** — [`store_kv`](Self::store_kv) accepts an optional TTL.
+///    Expired entries must not be returned by [`get_kv`](Self::get_kv).
+/// 4. **Override `list_kv_keys`** — the default returns an empty `Vec`.
+///    Analytics, compliance, and RBAC queries depend on real data.
+/// 5. **Implement `cleanup_expired`** — periodically called to prune stale
+///    tokens and sessions.
+///
+/// # Example (skeleton)
+///
+/// ```rust,no_run
+/// use auth_framework::storage::{AuthStorage, SessionData};
+/// use auth_framework::tokens::AuthToken;
+/// use auth_framework::errors::Result;
+/// use async_trait::async_trait;
+/// use std::time::Duration;
+///
+/// struct MyStorage { /* ... */ }
+///
+/// #[async_trait]
+/// impl AuthStorage for MyStorage {
+///     async fn store_token(&self, token: &AuthToken) -> Result<()> { todo!() }
+///     async fn get_token(&self, token_id: &str) -> Result<Option<AuthToken>> { todo!() }
+///     async fn get_token_by_access_token(&self, _: &str) -> Result<Option<AuthToken>> { todo!() }
+///     async fn update_token(&self, token: &AuthToken) -> Result<()> { todo!() }
+///     async fn delete_token(&self, token_id: &str) -> Result<()> { todo!() }
+///     async fn list_user_tokens(&self, user_id: &str) -> Result<Vec<AuthToken>> { todo!() }
+///     async fn store_session(&self, id: &str, data: &SessionData) -> Result<()> { todo!() }
+///     async fn get_session(&self, id: &str) -> Result<Option<SessionData>> { todo!() }
+///     async fn delete_session(&self, id: &str) -> Result<()> { todo!() }
+///     async fn list_user_sessions(&self, user_id: &str) -> Result<Vec<SessionData>> { todo!() }
+///     async fn count_active_sessions(&self) -> Result<u64> { todo!() }
+///     async fn store_kv(&self, key: &str, value: &[u8], ttl: Option<Duration>) -> Result<()> { todo!() }
+///     async fn get_kv(&self, key: &str) -> Result<Option<Vec<u8>>> { todo!() }
+///     async fn delete_kv(&self, key: &str) -> Result<()> { todo!() }
+///     async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> { todo!() }
+///     async fn cleanup_expired(&self) -> Result<()> { todo!() }
+/// }
+/// ```
 #[async_trait]
 pub trait AuthStorage: Send + Sync {
     /// Bulk store tokens.
@@ -88,7 +149,14 @@ pub trait AuthStorage: Send + Sync {
     async fn delete_kv(&self, key: &str) -> Result<()>;
 
     /// List keys with a specific prefix.
+    ///
+    /// **Important:** All storage backends must override this method to return
+    /// real key data. The default returns an empty `Vec` for backward compatibility
+    /// but will cause analytics, compliance, and RBAC queries to operate on empty data.
     async fn list_kv_keys(&self, _prefix: &str) -> Result<Vec<String>> {
+        tracing::warn!(
+            "list_kv_keys called on a storage backend that does not override it — returning empty"
+        );
         Ok(Vec::new())
     }
 
@@ -97,6 +165,30 @@ pub trait AuthStorage: Send + Sync {
 }
 
 /// Session data stored in the backend.
+///
+/// All fields are public for serialization flexibility. When constructing
+/// a new session prefer [`SessionData::new`] which initialises timestamps
+/// consistently.
+///
+/// # Chainable construction
+///
+/// ```rust,ignore
+/// let session = SessionData::new("sess-1", "user-1", Duration::from_secs(3600))
+///     .ip_address("127.0.0.1")
+///     .user_agent("Mozilla/5.0")
+///     .with_data("role", json!("admin"));
+/// ```
+///
+/// The older [`SessionData::with_metadata`] helper sets both IP and
+/// user-agent in a single call and remains available.
+///
+/// # Invariants (not enforced at the type level)
+///
+/// * `created_at <= last_activity`
+/// * `created_at < expires_at`
+/// * `last_activity` is updated on every authenticated access.
+/// * `data` may contain arbitrary application-specific key/value pairs
+///   — the framework never reads them.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionData {
     /// Session ID
@@ -124,7 +216,19 @@ pub struct SessionData {
     pub data: HashMap<String, serde_json::Value>,
 }
 
-/// In-memory storage implementation (for development/testing).
+/// In-memory storage implementation (for development/testing only).
+///
+/// # ⚠️ Production Unsuitability
+///
+/// This implementation is NOT recommended for production use:
+/// - **Data Loss**: All stored tokens and sessions are lost on process restart
+/// - **Memory Growth**: No automatic cleanup; memory usage grows unbounded
+/// - **TTL Ignored**: Expiration times are not enforced; expired tokens may be returned
+/// - **Single Instance**: Cannot be used in multi-instance deployments
+/// - **No Persistence**: No option to back up or export data
+///
+/// Use `PostgresStorage`, `MySqlStorage`, `RedisStorage`, or `SqliteStorage` for production.
+///
 /// SECURITY UPDATE: Now uses DashMap for deadlock-free concurrent operations
 #[derive(Debug, Clone)]
 pub struct MemoryStorage {
@@ -163,7 +267,11 @@ impl MemoryStorage {
 #[async_trait::async_trait]
 impl crate::authorization::AuthorizationStorage for MemoryStorage {
     async fn store_role(&self, role: &crate::authorization::AbacRole) -> crate::errors::Result<()> {
-        let mut roles = self.roles.write().unwrap();
+        let mut roles = self.roles.write().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         roles.insert(role.id.clone(), role.clone());
         Ok(())
     }
@@ -172,7 +280,11 @@ impl crate::authorization::AuthorizationStorage for MemoryStorage {
         &self,
         role_id: &str,
     ) -> crate::errors::Result<Option<crate::authorization::AbacRole>> {
-        let roles = self.roles.read().unwrap();
+        let roles = self.roles.read().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         Ok(roles.get(role_id).cloned())
     }
 
@@ -180,19 +292,31 @@ impl crate::authorization::AuthorizationStorage for MemoryStorage {
         &self,
         role: &crate::authorization::AbacRole,
     ) -> crate::errors::Result<()> {
-        let mut roles = self.roles.write().unwrap();
+        let mut roles = self.roles.write().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         roles.insert(role.id.clone(), role.clone());
         Ok(())
     }
 
     async fn delete_role(&self, role_id: &str) -> crate::errors::Result<()> {
-        let mut roles = self.roles.write().unwrap();
+        let mut roles = self.roles.write().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         roles.remove(role_id);
         Ok(())
     }
 
     async fn list_roles(&self) -> crate::errors::Result<Vec<crate::authorization::AbacRole>> {
-        let roles = self.roles.read().unwrap();
+        let roles = self.roles.read().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         Ok(roles.values().cloned().collect())
     }
 
@@ -200,13 +324,21 @@ impl crate::authorization::AuthorizationStorage for MemoryStorage {
         &self,
         user_role: &crate::authorization::UserRole,
     ) -> crate::errors::Result<()> {
-        let mut user_roles = self.user_roles.write().unwrap();
+        let mut user_roles = self.user_roles.write().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         user_roles.push(user_role.clone());
         Ok(())
     }
 
     async fn remove_role(&self, user_id: &str, role_id: &str) -> crate::errors::Result<()> {
-        let mut user_roles = self.user_roles.write().unwrap();
+        let mut user_roles = self.user_roles.write().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         user_roles.retain(|ur| ur.user_id != user_id || ur.role_id != role_id);
         Ok(())
     }
@@ -215,7 +347,11 @@ impl crate::authorization::AuthorizationStorage for MemoryStorage {
         &self,
         user_id: &str,
     ) -> crate::errors::Result<Vec<crate::authorization::UserRole>> {
-        let user_roles = self.user_roles.read().unwrap();
+        let user_roles = self.user_roles.read().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         Ok(user_roles
             .iter()
             .filter(|ur| ur.user_id == user_id)
@@ -227,7 +363,11 @@ impl crate::authorization::AuthorizationStorage for MemoryStorage {
         &self,
         role_id: &str,
     ) -> crate::errors::Result<Vec<crate::authorization::UserRole>> {
-        let user_roles = self.user_roles.read().unwrap();
+        let user_roles = self.user_roles.read().map_err(|_| {
+            crate::errors::AuthError::internal(
+                "Lock poisoned — a prior thread panicked while holding this lock",
+            )
+        })?;
         Ok(user_roles
             .iter()
             .filter(|ur| ur.role_id == role_id)
@@ -306,6 +446,10 @@ impl AuthStorage for MemoryStorage {
     async fn delete_kv(&self, key: &str) -> Result<()> {
         // Delegate to DashMap implementation for deadlock-free operations
         self.inner.delete_kv(key).await
+    }
+
+    async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> {
+        Ok(self.inner.list_kv_keys_by_prefix(prefix))
     }
 
     async fn cleanup_expired(&self) -> Result<()> {
@@ -643,6 +787,22 @@ impl AuthStorage for RedisStorage {
         Ok(())
     }
 
+    async fn list_kv_keys(&self, prefix: &str) -> Result<Vec<String>> {
+        let mut conn = self.get_connection().await?;
+        let pattern = self.key(&format!("kv:{prefix}*"));
+        let keys: Vec<String> = redis::cmd("KEYS")
+            .arg(&pattern)
+            .query_async(&mut conn)
+            .await
+            .map_err(|e| StorageError::operation_failed(format!("Failed to list KV keys: {e}")))?;
+
+        Ok(keys
+            .into_iter()
+            .filter_map(|key| key.strip_prefix(&self.key_prefix).map(str::to_string))
+            .filter_map(|key| key.strip_prefix("kv:").map(str::to_string))
+            .collect())
+    }
+
     async fn cleanup_expired(&self) -> Result<()> {
         // Redis handles expiration automatically, so this is a no-op
         Ok(())
@@ -681,7 +841,18 @@ impl AuthStorage for RedisStorage {
 }
 
 impl SessionData {
-    /// Create a new session.
+    /// Create a new session with consistent timestamps.
+    ///
+    /// # Arguments
+    /// * `session_id` - Unique session identifier (typically a UUID)
+    /// * `user_id` - Associated user ID
+    /// * `expires_in` - Session lifetime from now
+    ///
+    /// Use [`with_metadata`](SessionData::with_metadata) to attach IP and
+    /// user-agent information after construction.
+    ///
+    /// # Panics
+    /// If `expires_in` conversion to `chrono::Duration` fails catastrophically.
     pub fn new(
         session_id: impl Into<String>,
         user_id: impl Into<String>,
@@ -693,7 +864,8 @@ impl SessionData {
             session_id: session_id.into(),
             user_id: user_id.into(),
             created_at: now,
-            expires_at: now + chrono::Duration::from_std(expires_in).unwrap(),
+            expires_at: now
+                + chrono::Duration::from_std(expires_in).unwrap_or(chrono::Duration::hours(1)),
             last_activity: now,
             ip_address: None,
             user_agent: None,
@@ -706,15 +878,49 @@ impl SessionData {
         chrono::Utc::now() > self.expires_at
     }
 
+    /// Return the remaining lifetime of this session.
+    ///
+    /// Returns [`Duration::ZERO`](std::time::Duration::ZERO) when the session
+    /// has already expired.
+    pub fn time_until_expiry(&self) -> std::time::Duration {
+        let remaining = self.expires_at - chrono::Utc::now();
+        remaining
+            .to_std()
+            .unwrap_or(std::time::Duration::ZERO)
+    }
+
+    /// Check if the session is still active (not expired).
+    pub fn is_active(&self) -> bool {
+        !self.is_expired()
+    }
+
     /// Update the last activity timestamp.
     pub fn update_activity(&mut self) {
         self.last_activity = chrono::Utc::now();
     }
 
-    /// Set session metadata.
+    /// Set session metadata (IP address and user-agent) in one call.
     pub fn with_metadata(mut self, ip_address: Option<String>, user_agent: Option<String>) -> Self {
         self.ip_address = ip_address;
         self.user_agent = user_agent;
+        self
+    }
+
+    /// Set the client IP address.
+    pub fn ip_address(mut self, ip: impl Into<String>) -> Self {
+        self.ip_address = Some(ip.into());
+        self
+    }
+
+    /// Set the client user-agent string.
+    pub fn user_agent(mut self, ua: impl Into<String>) -> Self {
+        self.user_agent = Some(ua.into());
+        self
+    }
+
+    /// Add a custom data entry (chainable).
+    pub fn with_data(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.data.insert(key.into(), value);
         self
     }
 
@@ -838,23 +1044,10 @@ impl crate::audit::AuditStorage for MemoryStorage {
         use std::collections::HashMap;
 
         // Pull all events matching the time range in the query.
-        let audit_query = crate::audit::AuditQuery {
-            event_types: None,
-            user_id: None,
-            risk_level: None,
-            outcome: None,
-            time_range: Some(crate::audit::TimeRange {
-                start: query.time_range.start,
-                end: query.time_range.end,
-            }),
-            ip_address: None,
-            resource_type: None,
-            actor_id: None,
-            correlation_id: None,
-            limit: None,
-            offset: None,
-            sort_order: crate::audit::SortOrder::TimestampAsc,
-        };
+        let audit_query = crate::audit::AuditQuery::builder()
+            .time_range(query.time_range.start, query.time_range.end)
+            .sort_order(crate::audit::SortOrder::TimestampAsc)
+            .build();
         let events = self.query_events(&audit_query).await?;
         let total_events = events.len() as u64;
 
@@ -932,21 +1125,19 @@ mod tests {
     use super::*;
     use crate::tokens::AuthToken;
 
+    // ── Token CRUD ──────────────────────────────────────────────────
+
     #[tokio::test]
     async fn test_memory_storage() {
         let storage = MemoryStorage::new();
 
-        // Create a test token
         let token = AuthToken::new("user123", "token123", Duration::from_secs(3600), "test");
 
-        // Store token
         storage.store_token(&token).await.unwrap();
 
-        // Retrieve token
         let retrieved = storage.get_token(&token.token_id).await.unwrap().unwrap();
         assert_eq!(retrieved.user_id, "user123");
 
-        // Retrieve by access token
         let retrieved = storage
             .get_token_by_access_token(&token.access_token)
             .await
@@ -954,15 +1145,86 @@ mod tests {
             .unwrap();
         assert_eq!(retrieved.token_id, token.token_id);
 
-        // List user tokens
         let user_tokens = storage.list_user_tokens("user123").await.unwrap();
         assert_eq!(user_tokens.len(), 1);
 
-        // Delete token
         storage.delete_token(&token.token_id).await.unwrap();
         let retrieved = storage.get_token(&token.token_id).await.unwrap();
         assert!(retrieved.is_none());
     }
+
+    #[tokio::test]
+    async fn test_token_update() {
+        let storage = MemoryStorage::new();
+        let mut token =
+            AuthToken::new("user1", "access_original", Duration::from_secs(3600), "pw");
+        storage.store_token(&token).await.unwrap();
+
+        token.auth_method = "mfa".to_string();
+        storage.update_token(&token).await.unwrap();
+
+        let retrieved = storage.get_token(&token.token_id).await.unwrap().unwrap();
+        assert_eq!(retrieved.auth_method, "mfa");
+    }
+
+    #[tokio::test]
+    async fn test_token_get_nonexistent() {
+        let storage = MemoryStorage::new();
+        let result = storage.get_token("nonexistent").await.unwrap();
+        assert!(result.is_none());
+
+        let result = storage
+            .get_token_by_access_token("nonexistent")
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_list_user_tokens_multiple() {
+        let storage = MemoryStorage::new();
+        let t1 = AuthToken::new("user_a", "at1", Duration::from_secs(3600), "pw");
+        let t2 = AuthToken::new("user_a", "at2", Duration::from_secs(3600), "pw");
+        let t3 = AuthToken::new("user_b", "at3", Duration::from_secs(3600), "pw");
+
+        storage.store_token(&t1).await.unwrap();
+        storage.store_token(&t2).await.unwrap();
+        storage.store_token(&t3).await.unwrap();
+
+        let user_a_tokens = storage.list_user_tokens("user_a").await.unwrap();
+        assert_eq!(user_a_tokens.len(), 2);
+
+        let user_b_tokens = storage.list_user_tokens("user_b").await.unwrap();
+        assert_eq!(user_b_tokens.len(), 1);
+
+        let empty = storage.list_user_tokens("nobody").await.unwrap();
+        assert!(empty.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_store_tokens_bulk() {
+        let storage = MemoryStorage::new();
+        let tokens = vec![
+            AuthToken::new("u1", "a1", Duration::from_secs(3600), "pw"),
+            AuthToken::new("u2", "a2", Duration::from_secs(3600), "pw"),
+            AuthToken::new("u3", "a3", Duration::from_secs(3600), "pw"),
+        ];
+        let ids: Vec<String> = tokens.iter().map(|t| t.token_id.clone()).collect();
+
+        storage.store_tokens_bulk(&tokens).await.unwrap();
+
+        for id in &ids {
+            assert!(storage.get_token(id).await.unwrap().is_some());
+        }
+
+        storage.delete_tokens_bulk(&ids).await.unwrap();
+
+        for id in &ids {
+            assert!(storage.get_token(id).await.unwrap().is_none());
+        }
+    }
+
+    // ── Session CRUD ────────────────────────────────────────────────
 
     #[tokio::test]
     async fn test_session_storage() {
@@ -974,13 +1236,11 @@ mod tests {
                 Some("Test Agent".to_string()),
             );
 
-        // Store session
         storage
             .store_session(&session.session_id, &session)
             .await
             .unwrap();
 
-        // Retrieve session
         let retrieved = storage
             .get_session(&session.session_id)
             .await
@@ -989,11 +1249,87 @@ mod tests {
         assert_eq!(retrieved.user_id, "user123");
         assert_eq!(retrieved.ip_address, Some("192.168.1.1".to_string()));
 
-        // Delete session
         storage.delete_session(&session.session_id).await.unwrap();
         let retrieved = storage.get_session(&session.session_id).await.unwrap();
         assert!(retrieved.is_none());
     }
+
+    #[tokio::test]
+    async fn test_session_get_nonexistent() {
+        let storage = MemoryStorage::new();
+        let result = storage.get_session("no_such_session").await.unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_list_user_sessions() {
+        let storage = MemoryStorage::new();
+
+        let s1 = SessionData::new("s1", "alice", Duration::from_secs(3600));
+        let s2 = SessionData::new("s2", "alice", Duration::from_secs(3600));
+        let s3 = SessionData::new("s3", "bob", Duration::from_secs(3600));
+
+        storage.store_session("s1", &s1).await.unwrap();
+        storage.store_session("s2", &s2).await.unwrap();
+        storage.store_session("s3", &s3).await.unwrap();
+
+        let alice_sessions = storage.list_user_sessions("alice").await.unwrap();
+        assert_eq!(alice_sessions.len(), 2);
+
+        let bob_sessions = storage.list_user_sessions("bob").await.unwrap();
+        assert_eq!(bob_sessions.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_count_active_sessions() {
+        let storage = MemoryStorage::new();
+
+        let s1 = SessionData::new("cs1", "u1", Duration::from_secs(3600));
+        let s2 = SessionData::new("cs2", "u2", Duration::from_secs(3600));
+        storage.store_session("cs1", &s1).await.unwrap();
+        storage.store_session("cs2", &s2).await.unwrap();
+
+        let count = storage.count_active_sessions().await.unwrap();
+        assert!(count >= 2);
+    }
+
+    #[tokio::test]
+    async fn test_store_sessions_bulk() {
+        let storage = MemoryStorage::new();
+        let sessions = vec![
+            ("bs1".to_string(), SessionData::new("bs1", "u1", Duration::from_secs(3600))),
+            ("bs2".to_string(), SessionData::new("bs2", "u2", Duration::from_secs(3600))),
+        ];
+
+        storage.store_sessions_bulk(&sessions).await.unwrap();
+        assert!(storage.get_session("bs1").await.unwrap().is_some());
+        assert!(storage.get_session("bs2").await.unwrap().is_some());
+
+        let ids = vec!["bs1".to_string(), "bs2".to_string()];
+        storage.delete_sessions_bulk(&ids).await.unwrap();
+        assert!(storage.get_session("bs1").await.unwrap().is_none());
+        assert!(storage.get_session("bs2").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_session_custom_data() {
+        let storage = MemoryStorage::new();
+        let mut session = SessionData::new("sd1", "u1", Duration::from_secs(3600));
+        session.set_data("theme", serde_json::json!("dark"));
+        session.set_data("lang", serde_json::json!("en"));
+
+        storage.store_session("sd1", &session).await.unwrap();
+
+        let retrieved = storage.get_session("sd1").await.unwrap().unwrap();
+        assert_eq!(
+            retrieved.get_data("theme"),
+            Some(&serde_json::json!("dark"))
+        );
+        assert_eq!(retrieved.get_data("lang"), Some(&serde_json::json!("en")));
+        assert_eq!(retrieved.get_data("missing"), None);
+    }
+
+    // ── KV Storage ──────────────────────────────────────────────────
 
     #[tokio::test]
     async fn test_kv_storage() {
@@ -1002,19 +1338,187 @@ mod tests {
         let key = "test_key";
         let value = b"test_value";
 
-        // Store KV
         storage
             .store_kv(key, value, Some(Duration::from_secs(3600)))
             .await
             .unwrap();
 
-        // Retrieve KV
         let retrieved = storage.get_kv(key).await.unwrap().unwrap();
         assert_eq!(retrieved, value);
 
-        // Delete KV
         storage.delete_kv(key).await.unwrap();
         let retrieved = storage.get_kv(key).await.unwrap();
         assert!(retrieved.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_kv_no_ttl() {
+        let storage = MemoryStorage::new();
+        storage
+            .store_kv("persistent", b"forever", None)
+            .await
+            .unwrap();
+
+        let retrieved = storage.get_kv("persistent").await.unwrap().unwrap();
+        assert_eq!(retrieved, b"forever");
+    }
+
+    #[tokio::test]
+    async fn test_kv_overwrite() {
+        let storage = MemoryStorage::new();
+        storage
+            .store_kv("k1", b"v1", Some(Duration::from_secs(3600)))
+            .await
+            .unwrap();
+        storage
+            .store_kv("k1", b"v2", Some(Duration::from_secs(3600)))
+            .await
+            .unwrap();
+
+        let retrieved = storage.get_kv("k1").await.unwrap().unwrap();
+        assert_eq!(retrieved, b"v2");
+    }
+
+    #[tokio::test]
+    async fn test_kv_get_nonexistent() {
+        let storage = MemoryStorage::new();
+        let result = storage.get_kv("no_such_key").await.unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_kv_list_keys_prefix() {
+        let storage = MemoryStorage::new();
+        storage
+            .store_kv("user:1:name", b"alice", None)
+            .await
+            .unwrap();
+        storage
+            .store_kv("user:1:email", b"alice@x.com", None)
+            .await
+            .unwrap();
+        storage
+            .store_kv("user:2:name", b"bob", None)
+            .await
+            .unwrap();
+        storage
+            .store_kv("session:abc", b"data", None)
+            .await
+            .unwrap();
+
+        let user1_keys = storage.list_kv_keys("user:1:").await.unwrap();
+        assert_eq!(user1_keys.len(), 2);
+
+        let all_user_keys = storage.list_kv_keys("user:").await.unwrap();
+        assert_eq!(all_user_keys.len(), 3);
+
+        let session_keys = storage.list_kv_keys("session:").await.unwrap();
+        assert_eq!(session_keys.len(), 1);
+
+        let empty = storage.list_kv_keys("nonexistent:").await.unwrap();
+        assert!(empty.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_kv_binary_data() {
+        let storage = MemoryStorage::new();
+        let binary = vec![0u8, 1, 2, 255, 254, 253, 0, 128];
+        storage
+            .store_kv("binary_key", &binary, None)
+            .await
+            .unwrap();
+
+        let retrieved = storage.get_kv("binary_key").await.unwrap().unwrap();
+        assert_eq!(retrieved, binary);
+    }
+
+    // ── Cleanup ──────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_cleanup_expired() {
+        let storage = MemoryStorage::new();
+
+        // Store a KV entry with a very short TTL (already expired by the time
+        // cleanup runs because DashMap wraps its own expiry clock).
+        // Note: MemoryStorage cleanup uses TimestampedToken's own expires_at
+        // (derived from default_ttl), NOT AuthToken.expires_at. We test KV
+        // cleanup because it respects TTLs directly.
+        storage
+            .store_kv("expire_me", b"val", Some(Duration::from_secs(0)))
+            .await
+            .unwrap();
+        storage
+            .store_kv("keep_me", b"val", Some(Duration::from_secs(3600)))
+            .await
+            .unwrap();
+
+        // Give a tiny window for the zero-TTL entry to register as expired
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        storage.cleanup_expired().await.unwrap();
+
+        // Zero-TTL entry should be cleaned up, valid entry remains
+        assert!(storage.get_kv("expire_me").await.unwrap().is_none());
+        assert!(storage.get_kv("keep_me").await.unwrap().is_some());
+    }
+
+    // ── Session expiration ──────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_session_is_expired() {
+        let mut session = SessionData::new("exp1", "u1", Duration::from_secs(3600));
+        assert!(!session.is_expired());
+
+        session.expires_at = chrono::Utc::now() - chrono::Duration::seconds(1);
+        assert!(session.is_expired());
+    }
+
+    #[tokio::test]
+    async fn test_session_update_activity() {
+        let mut session = SessionData::new("act1", "u1", Duration::from_secs(3600));
+        let first_activity = session.last_activity;
+        // Small delay to ensure timestamp changes
+        session.update_activity();
+        assert!(session.last_activity >= first_activity);
+    }
+
+    // ── Token upsert semantics ──────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_token_store_twice_overwrites_primary() {
+        let storage = MemoryStorage::new();
+        let token = AuthToken::new("u1", "at1", Duration::from_secs(3600), "pw");
+        let token_id = token.token_id.clone();
+
+        storage.store_token(&token).await.unwrap();
+        storage.store_token(&token).await.unwrap();
+
+        // Primary DashMap uses insert() so only one entry with this token_id exists.
+        let got = storage.get_token(&token_id).await.unwrap();
+        assert!(got.is_some());
+    }
+
+    // ── Delete idempotency ──────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_delete_nonexistent_token() {
+        let storage = MemoryStorage::new();
+        // Deleting a key that doesn't exist should not error
+        let result = storage.delete_token("nope").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_delete_nonexistent_session() {
+        let storage = MemoryStorage::new();
+        let result = storage.delete_session("nope").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_delete_nonexistent_kv() {
+        let storage = MemoryStorage::new();
+        let result = storage.delete_kv("nope").await;
+        assert!(result.is_ok());
     }
 }

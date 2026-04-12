@@ -46,7 +46,9 @@
 //!
 //! ## Permissions and Authorization
 //! - [`Permission`] - Permission representation
-//! - [`Role`] - Role representation
+//! - [`Role`] - Role representation with builder methods
+//! - [`AbacPolicy`] - Attribute-based access control policy with builder methods
+//! - [`Delegation`] - Permission delegation with builder methods
 //! - [`PermissionChecker`] - Permission validation trait
 //!
 //! ## Storage Abstractions
@@ -60,9 +62,14 @@
 //!
 //! ## Builder Patterns and Helpers
 //! - [`AuthBuilder`] - Fluent builder for framework setup
+//! - [`AuthConfigBuilder`] - Organized builder for AuthConfig with grouped settings
 //! - [`SecurityPreset`] - Pre-configured security levels
 //! - [`AppConfigBuilder`] - Simple application configuration builder
 //! - [`LayeredConfigBuilder`] - Layered configuration builder
+//! - [`AdvancedPermissionCheck`] - Builder for multi-source permission checks
+//! - [`ExecutionMode`] - `DryRun` vs `Execute` for maintenance operations
+//! - [`UserStatus`] - `Active` vs `Inactive` for user account state
+//! - [`SessionFilter`] - `ActiveOnly` vs `IncludeInactive` for session listing
 //!
 //! ## Time and Rate Limiting Helpers
 //! - Time duration helpers: [`hours`], [`minutes`], [`days`], [`weeks`]
@@ -104,8 +111,13 @@ pub use crate::AuthFramework;
 pub use crate::ModularAuthFramework;
 pub use crate::auth::{
     AdminOperations, AuditOperations, AuthStats, AuthorizationOperations, MfaOperations,
-    MonitoringOperations, SessionOperations, TokenOperations, UserInfo, UserInfo as CoreUserInfo,
-    UserOperations,
+    MonitoringOperations, SessionOperations, TokenOperations, UserInfo, UserOperations,
+};
+
+// Re-export request / query structs for operations facades
+pub use crate::auth_operations::{
+    AuditLogQuery, DelegationRequest, ExecutionMode, PermissionContext, SessionCreateRequest,
+    SessionFilter, TokenCreateRequest, UserListQuery, UserStatus,
 };
 
 // Re-export configuration types
@@ -114,8 +126,8 @@ pub use crate::config::config_manager::{
     AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder, ConfigManager,
 };
 pub use crate::config::{
-    AuditConfig, AuthConfig, CookieSameSite, JwtAlgorithm, PasswordHashAlgorithm, RateLimitConfig,
-    SecurityConfig, StorageConfig,
+    AuditConfig, AuthConfig, AuthConfigBuilder, CookieSameSite, CorsConfig, JwtAlgorithm,
+    PasswordHashAlgorithm, RateLimitConfig, SecurityConfig, StorageConfig,
 };
 
 // Re-export error types
@@ -129,17 +141,27 @@ pub use crate::methods::{
     ApiKeyMethod, AuthMethod, AuthMethodEnum, JwtMethod, MethodResult, OAuth2Method, PasswordMethod,
 };
 
+// Re-export common domain types
+pub use crate::types::{
+    AdditionalParams, GrantTypes, IpList, Permissions, RedirectUris, ResponseTypes, Roles, Scopes,
+    UserAttributes, UserAttributesString,
+};
+
 // Re-export SAML if available
 #[cfg(feature = "saml")]
 pub use crate::methods::saml;
 
 // Re-export tokens and user data
 pub use crate::authentication::credentials::Credential;
-pub use crate::providers::{OAuthProvider, OAuthProviderConfig, ProviderProfile};
-pub use crate::tokens::{AuthToken, TokenMetadata};
+pub use crate::providers::{
+    OAuthProvider, OAuthProviderConfig, OAuthProviderConfigBuilder, ProviderProfile,
+};
+pub use crate::tokens::{AuthToken, AuthTokenBuilder, TokenMetadata, TokenMetadataBuilder};
 
 // Re-export permissions and roles
-pub use crate::permissions::{Permission, PermissionChecker, Role};
+pub use crate::permissions::{
+    AbacPolicy, AdvancedPermissionCheck, Delegation, Permission, PermissionChecker, Role,
+};
 
 // Re-export authorization if enhanced RBAC is enabled
 #[cfg(feature = "enhanced-rbac")]
@@ -173,11 +195,14 @@ pub use crate::integrations::warp::{with_auth, with_permission};
 // Re-export monitoring and observability
 pub use crate::monitoring::{
     HealthCheckResult, HealthStatus, MonitoringManager, PerformanceMetrics, SecurityEvent,
-    SecurityEventSeverity, SecurityEventType,
+    SecurityEventBuilder, SecurityEventSeverity, SecurityEventType,
 };
 
 // Re-export audit logging
-pub use crate::audit::{AuditEvent, AuditEventType, AuditLogger, EventOutcome, RiskLevel};
+pub use crate::audit::{
+    AuditEvent, AuditEventBuilder, AuditEventType, AuditLogger, AuditQuery, AuditQueryBuilder,
+    EventOutcome, RiskLevel,
+};
 
 // Re-export security utilities
 pub use crate::security::secure_jwt::{SecureJwtClaims, SecureJwtConfig, SecureJwtValidator};
@@ -190,7 +215,7 @@ pub use crate::security::{
 pub use crate::utils::rate_limit::RateLimiter;
 
 // Re-export testing utilities
-#[cfg(any(test, feature = "testing"))]
+#[cfg(test)]
 pub use crate::testing::{MockAuthMethod, MockStorage};
 
 // Re-export CLI tools if available
@@ -202,6 +227,7 @@ pub use crate::cli;
 pub use crate::api::{ApiError, ApiResponse, ApiServer, ApiState};
 
 // Re-export OIDC server components
+pub use crate::server::oidc::core::{IdTokenRequest, OidcConfigBuilder};
 pub use crate::server::oidc::{
     IdTokenClaims, Jwk, JwkSet, OidcConfig, OidcDiscoveryDocument, OidcProvider,
     UserInfo as OidcUserInfo,
@@ -209,8 +235,8 @@ pub use crate::server::oidc::{
 
 // Re-export OAuth2 server
 pub use crate::oauth2_server::{
-    AuthorizationRequest, GrantType, OAuth2Config, OAuth2Server, ResponseType, TokenRequest,
-    TokenResponse,
+    AuthorizationRequest, GrantType, OAuth2Config, OAuth2ConfigBuilder, OAuth2Server, ResponseType,
+    TokenRequest, TokenResponse,
 };
 
 // Builder patterns and ergonomic helpers
@@ -291,8 +317,12 @@ pub use rate::{RequestCount, requests};
 pub use time::{days, hours, minutes, seconds, weeks};
 
 // Common type aliases for ergonomics
-/// Common type alias for Results with AuthError
+/// Convenience alias for `Result<T, AuthError>`.
 pub type AuthFrameworkResult<T> = Result<T, AuthError>;
+
+/// A boxed, `Send`-safe async future returning `AuthFrameworkResult<()>`.
+///
+/// Useful for storing async handler callbacks in collections.
 pub type AsyncAuthHandler =
     std::pin::Pin<Box<dyn std::future::Future<Output = AuthFrameworkResult<()>> + Send>>;
 

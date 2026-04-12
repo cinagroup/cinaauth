@@ -473,8 +473,8 @@ All custom exceptions are available in `authframework.exceptions`:
 
 - **Documentation**: [AuthFramework Docs](https://authframework.dev/docs)
 - **API Reference**: [API Documentation](https://authframework.dev/api)
-- **Issues**: [GitHub Issues](https://github.com/authframework/authframework/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/authframework/authframework/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ciresnave/auth-framework/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ciresnave/auth-framework/discussions)
 
 ## License
 

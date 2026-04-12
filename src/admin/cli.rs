@@ -1,7 +1,8 @@
 //! Command Line Interface for Auth Framework Administration
 
 use crate::admin::{
-    AppState, CliCommand, ConfigAction, HealthStatus, SecurityAction, ServerAction, UserAction,
+    AppState, CliCommand, ConfigAction, HealthStatus, MaintenanceAction, SecurityAction,
+    ServerAction, ServerRunState, UserAction,
 };
 use crate::errors::{AuthError, Result};
 #[cfg(feature = "cli")]
@@ -13,6 +14,12 @@ use indicatif::{ProgressBar, ProgressStyle};
 #[cfg(feature = "cli")]
 use std::collections::HashMap;
 
+/// Run the CLI with the given application state and command.
+///
+/// # Example
+/// ```rust,ignore
+/// run_cli(state, CliCommand::Status { detailed: true, format: "json".into() }).await?;
+/// ```
 #[cfg(feature = "cli")]
 pub async fn run_cli(state: AppState, command: CliCommand) -> Result<()> {
     match command {
@@ -21,8 +28,18 @@ pub async fn run_cli(state: AppState, command: CliCommand) -> Result<()> {
         CliCommand::Users { action } => handle_user_action(state, action).await?,
         CliCommand::Status { detailed, format } => handle_status(state, detailed, &format).await?,
         CliCommand::Security { action } => handle_security_action(state, action).await?,
+        CliCommand::Maintenance { action } => handle_maintenance_action(state, action).await?,
     }
     Ok(())
+}
+
+#[cfg(feature = "cli")]
+fn require_auth_framework(state: &AppState) -> Result<std::sync::Arc<crate::AuthFramework>> {
+    state.auth_framework.clone().ok_or_else(|| {
+        AuthError::internal(
+            "Admin AppState is not attached to an AuthFramework instance; maintenance commands are unavailable",
+        )
+    })
 }
 
 #[cfg(feature = "cli")]
@@ -201,7 +218,9 @@ async fn handle_server_start(state: AppState, port: Option<u16>, daemon: bool) -
         // Implementation would daemonize the process
     }
 
-    state.update_server_status(true, Some(port_num)).await;
+    state
+        .update_server_status(ServerRunState::Running, Some(port_num))
+        .await;
     println!("✅ Web server started successfully");
     Ok(())
 }
@@ -216,7 +235,9 @@ async fn handle_server_stop(state: AppState, force: bool) -> Result<()> {
         println!("Gracefully shutting down...");
     }
 
-    state.update_server_status(false, None).await;
+    state
+        .update_server_status(ServerRunState::Stopped, None)
+        .await;
     println!("✅ Web server stopped");
     Ok(())
 }
@@ -226,11 +247,15 @@ async fn handle_server_restart(state: AppState, port: Option<u16>) -> Result<()>
     println!("🔄 Restarting web server...");
 
     // Stop
-    state.update_server_status(false, None).await;
+    state
+        .update_server_status(ServerRunState::Stopped, None)
+        .await;
 
     // Start with new port if provided
     let new_port = port.unwrap_or(8080);
-    state.update_server_status(true, Some(new_port)).await;
+    state
+        .update_server_status(ServerRunState::Running, Some(new_port))
+        .await;
 
     println!(
         "✅ Web server restarted on port {}",
@@ -246,7 +271,10 @@ async fn handle_server_status(state: AppState) -> Result<()> {
     println!("{}", "🔍 Server Status".bold().blue());
     println!(
         "Web Server: {}",
-        if status.web_server_running {
+        if matches!(
+            status.web_server_state,
+            crate::admin::ServerRunState::Running
+        ) {
             "Running".green()
         } else {
             "Stopped".red()
@@ -409,12 +437,24 @@ async fn handle_status(state: AppState, detailed: bool, format: &str) -> Result<
     match format {
         "json" => {
             let mut status = HashMap::new();
-            status.insert("web_server_running", server_status.web_server_running);
+            status.insert(
+                "web_server_running",
+                matches!(
+                    server_status.web_server_state,
+                    crate::admin::ServerRunState::Running
+                ),
+            );
             status.insert("health", matches!(health, HealthStatus::Healthy));
             println!("{}", serde_json::to_string_pretty(&status)?);
         }
         "yaml" => {
-            println!("web_server_running: {}", server_status.web_server_running);
+            println!(
+                "web_server_running: {}",
+                matches!(
+                    server_status.web_server_state,
+                    crate::admin::ServerRunState::Running
+                )
+            );
             println!("health: {}", format_health_status(&health));
         }
         "table" => {
@@ -423,7 +463,10 @@ async fn handle_status(state: AppState, detailed: bool, format: &str) -> Result<
             println!("├──────────────────────┼─────────────────────┤");
             println!(
                 "│ Web Server           │ {:19} │",
-                if server_status.web_server_running {
+                if matches!(
+                    server_status.web_server_state,
+                    crate::admin::ServerRunState::Running
+                ) {
                     "Running ✅".green()
                 } else {
                     "Stopped ❌".red()
@@ -458,7 +501,10 @@ async fn handle_status(state: AppState, detailed: bool, format: &str) -> Result<
             println!("├──────────────────────┼─────────────────────┤");
             println!(
                 "│ Web Server           │ {:19} │",
-                if server_status.web_server_running {
+                if matches!(
+                    server_status.web_server_state,
+                    crate::admin::ServerRunState::Running
+                ) {
                     "Running ✅".green()
                 } else {
                     "Stopped ❌".red()
@@ -538,12 +584,27 @@ async fn handle_security_action(state: AppState, action: SecurityAction) -> Resu
             }
         }
         SecurityAction::Sessions { user, terminate } => {
+            let framework = require_auth_framework(&state)?;
+
             if let Some(session_id) = terminate {
                 println!("🔒 Terminating session: {}", session_id.yellow());
                 let spinner = create_spinner("Terminating session...");
-                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                spinner
-                    .finish_with_message("✅ Session terminated successfully".green().to_string());
+
+                let session = framework.sessions().get(&session_id).await?;
+                match session {
+                    Some(session) => {
+                        framework.sessions().delete(&session_id).await?;
+                        spinner.finish_with_message(format!(
+                            "✅ Session terminated successfully for user {}",
+                            session.user_id.green()
+                        ));
+                    }
+                    None => {
+                        spinner.finish_with_message("Session not found".yellow().to_string());
+                        return Err(AuthError::Cli(format!("Session not found: {}", session_id)));
+                    }
+                }
+
                 return Ok(());
             }
 
@@ -551,87 +612,309 @@ async fn handle_security_action(state: AppState, action: SecurityAction) -> Resu
 
             if let Some(user_filter) = user {
                 println!("Filtering by user: {}", user_filter.cyan());
-            }
-
-            let status = state.server_status.read().await;
-            if status.active_sessions == 0 {
-                println!("  (no active sessions)");
+                let sessions = framework.sessions().list_for_user(&user_filter).await?;
+                if sessions.is_empty() {
+                    println!("  (no active sessions for this user)");
+                } else {
+                    for session in sessions {
+                        println!(
+                            "  • {}  expires={}  last_activity={}  ip={}  ua={}",
+                            session.session_id.cyan(),
+                            session
+                                .expires_at
+                                .format("%Y-%m-%d %H:%M:%S UTC")
+                                .to_string()
+                                .green(),
+                            session
+                                .last_activity
+                                .format("%Y-%m-%d %H:%M:%S UTC")
+                                .to_string()
+                                .dimmed(),
+                            session
+                                .ip_address
+                                .unwrap_or_else(|| "unknown".to_string())
+                                .yellow(),
+                            session
+                                .user_agent
+                                .unwrap_or_else(|| "unknown".to_string())
+                                .dimmed(),
+                        );
+                    }
+                }
             } else {
+                let stats = framework.audit().security_stats().await?;
                 println!(
                     "  Active sessions: {}",
-                    status.active_sessions.to_string().cyan()
+                    stats.active_sessions.to_string().cyan()
                 );
                 println!(
                     "  {}",
-                    "(Detailed per-session data requires a storage backend to be configured)"
-                        .dimmed()
+                    "(Pass --user <user_id> to inspect per-user session records)".dimmed()
                 );
             }
         }
         SecurityAction::ThreatIntel { update, check_ip } => {
+            let ti_config = crate::threat_intelligence::ThreatIntelConfig::default();
+            let ti_manager = crate::threat_intelligence::ThreatFeedManager::new(ti_config)
+                .map_err(|e| {
+                    AuthError::Cli(format!("Failed to initialize threat intelligence: {}", e))
+                })?;
+
             if let Some(ip) = check_ip {
                 println!("🌐 Checking IP address: {}", ip.cyan());
 
                 let spinner = create_spinner("Querying threat intelligence...");
+
+                let addr: std::net::IpAddr = ip.parse().map_err(|e| {
+                    spinner.finish_with_message("Invalid IP".red().to_string());
+                    AuthError::Cli(format!("Invalid IP address '{}': {}", ip, e))
+                })?;
+
+                let is_malicious = ti_manager.is_malicious_ip(&addr);
+                let is_tor = ti_manager.is_tor_exit(&addr);
+                let is_vpn = ti_manager.is_proxy_vpn(&addr);
+
                 spinner.finish_with_message("Lookup complete".to_string());
 
-                // A real lookup requires the ThreatIntelligence subsystem to be
-                // reachable from AppState.  Until that integration is wired in,
-                // report the limitation clearly rather than applying incorrect
-                // heuristics.
+                if !is_malicious && !is_tor && !is_vpn {
+                    println!("  {} {}", "✅".green(), "No threats detected.".green());
+                } else {
+                    if is_malicious {
+                        println!("  {} {}", "🚨", "Malicious IP detected!".red().bold());
+                    }
+                    if is_tor {
+                        println!("  {} {}", "🧅", "Tor exit node detected.".yellow());
+                    }
+                    if is_vpn {
+                        println!("  {} {}", "🛡️", "VPN/Proxy detected.".yellow());
+                    }
+                }
+
+                let feed_status = ti_manager.get_feed_status().await;
+                let enabled_count = feed_status
+                    .values()
+                    .filter(|s| !matches!(s, crate::threat_intelligence::FeedStatus::Disabled))
+                    .count();
                 println!(
-                    "{}",
-                    "⚠️  Threat intelligence lookup requires a configured TI backend.".yellow()
+                    "  {} active threat feeds: {}",
+                    "ℹ️",
+                    enabled_count.to_string().cyan()
                 );
-                println!(
-                    "   Requested check for IP: {}  — integrate ThreatIntelligence into AppState to enable.",
-                    ip.cyan()
-                );
+                if enabled_count == 0 {
+                    println!(
+                        "  {}",
+                        "Hint: Enable feeds in threat_intelligence config for real-time data."
+                            .dimmed()
+                    );
+                }
 
                 return Ok(());
             }
 
             if update {
                 println!("🔄 Updating threat intelligence feeds...");
-
-                let pb = ProgressBar::new(3);
-                pb.set_style(ProgressStyle::default_bar().template(
-                    "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}",
-                ).map_err(|e| AuthError::Cli(format!("Progress bar template error: {}", e)))?);
-
-                let feeds = ["Malware IPs", "Bot Networks", "Tor Exit Nodes"];
-
-                for (i, feed) in feeds.iter().enumerate() {
-                    pb.set_position(i as u64);
-                    pb.set_message(format!("Updating {}...", feed));
-                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-                    pb.inc(1);
+                let spinner = create_spinner("Downloading feeds...");
+                match ti_manager.download_all_feeds().await {
+                    Ok(()) => {
+                        spinner.finish_with_message(
+                            "✅ All feeds updated successfully".green().to_string(),
+                        );
+                    }
+                    Err(e) => {
+                        spinner.finish_with_message("Feed update failed".red().to_string());
+                        return Err(AuthError::Cli(format!("Feed update failed: {}", e)));
+                    }
                 }
-
-                pb.finish_with_message(
-                    "✅ All threat feeds updated successfully"
-                        .green()
-                        .to_string(),
-                );
             }
         }
         SecurityAction::AuditLog => {
+            let framework = require_auth_framework(&state)?;
             println!("📋 Displaying audit log...");
             let spinner = create_spinner("Loading audit events...");
-            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-            spinner.finish_with_message("✅ Audit log displayed".green().to_string());
+            let logs = framework
+                .audit()
+                .permission_logs(None, None, None, Some(50))
+                .await?;
+            spinner.finish_with_message("Audit log loaded".green().to_string());
+
+            if logs.is_empty() {
+                println!("  (no audit entries found)");
+            } else {
+                for entry in logs {
+                    println!("  • {}", entry);
+                }
+            }
         }
         SecurityAction::ThreatReport => {
+            let framework = require_auth_framework(&state)?;
             println!("📊 Generating threat report...");
             let spinner = create_spinner("Analyzing threats...");
-            tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-            spinner.finish_with_message("✅ Threat report generated".green().to_string());
+            let stats = framework.audit().security_stats().await?;
+            spinner.finish_with_message("Threat report generated".green().to_string());
+
+            println!(
+                "  Active sessions:         {}",
+                stats.active_sessions.to_string().cyan()
+            );
+            println!(
+                "  Failed logins (24h):    {}",
+                stats.failed_logins_24h.to_string().yellow()
+            );
+            println!(
+                "  Successful logins (24h): {}",
+                stats.successful_logins_24h.to_string().green()
+            );
+            println!(
+                "  Security alerts (24h):  {}",
+                stats.security_alerts_24h.to_string().red()
+            );
+            println!(
+                "  Admin actions (24h):    {}",
+                stats.admin_actions_24h.to_string().cyan()
+            );
+            println!("  Security score:         {:.2}", stats.security_score());
+            if let Some(alert) = stats.security_alert_message() {
+                println!("  {}", alert.red());
+            }
         }
         SecurityAction::ForceLogout { user_id } => {
+            let framework = require_auth_framework(&state)?;
             println!("🔒 Forcing logout for user: {}", user_id.red());
             let spinner = create_spinner("Terminating user sessions...");
-            tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
-            spinner.finish_with_message("✅ User sessions terminated".green().to_string());
+
+            let sessions = framework.sessions().list_for_user(&user_id).await?;
+            for session in &sessions {
+                framework.sessions().delete(&session.session_id).await?;
+            }
+
+            let tokens = framework.tokens().list_for_user(&user_id).await?;
+            for token in &tokens {
+                framework.tokens().revoke(token).await?;
+            }
+
+            spinner
+                .finish_with_message("✅ User sessions and tokens terminated".green().to_string());
+            println!("  Sessions revoked: {}", sessions.len().to_string().cyan());
+            println!("  Tokens revoked:   {}", tokens.len().to_string().cyan());
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "cli")]
+async fn handle_maintenance_action(state: AppState, action: MaintenanceAction) -> Result<()> {
+    match action {
+        MaintenanceAction::Backup {
+            output_path,
+            dry_run,
+        } => {
+            let framework = require_auth_framework(&state)?;
+            let report = framework
+                .maintenance()
+                .backup_to_file(&output_path, dry_run)
+                .await?;
+
+            if report.dry_run {
+                println!(
+                    "Dry run: backup would write {} users, {} roles, {} tokens, {} sessions, and {} KV entries to {}.",
+                    report.manifest.user_count,
+                    report.manifest.role_count,
+                    report.manifest.token_count,
+                    report.manifest.session_count,
+                    report.manifest.kv_entry_count,
+                    report.output_path.display()
+                );
+            } else {
+                println!(
+                    "Backup written to {} (users={}, roles={}, tokens={}, sessions={}, kv={}).",
+                    report.output_path.display(),
+                    report.manifest.user_count,
+                    report.manifest.role_count,
+                    report.manifest.token_count,
+                    report.manifest.session_count,
+                    report.manifest.kv_entry_count
+                );
+            }
+        }
+        MaintenanceAction::Restore {
+            backup_path,
+            confirm,
+            dry_run,
+        } => {
+            if !confirm {
+                return Err(AuthError::Cli(
+                    "Maintenance restore requires --confirm".to_string(),
+                ));
+            }
+
+            let framework = require_auth_framework(&state)?;
+            let report = framework
+                .maintenance()
+                .restore_from_file(&backup_path, dry_run)
+                .await?;
+
+            if report.dry_run {
+                println!(
+                    "Dry run: restore would apply snapshot from {} (users={}, roles={}, tokens={}, sessions={}, kv={}).",
+                    report.input_path.display(),
+                    report.manifest.user_count,
+                    report.manifest.role_count,
+                    report.manifest.token_count,
+                    report.manifest.session_count,
+                    report.manifest.kv_entry_count
+                );
+            } else {
+                println!(
+                    "Restore completed from {} (users={}, roles={}, tokens={}, sessions={}, kv={}).",
+                    report.input_path.display(),
+                    report.manifest.user_count,
+                    report.manifest.role_count,
+                    report.manifest.token_count,
+                    report.manifest.session_count,
+                    report.manifest.kv_entry_count
+                );
+            }
+        }
+        MaintenanceAction::Reset { confirm, dry_run } => {
+            if !confirm {
+                return Err(AuthError::Cli(
+                    "Maintenance reset requires --confirm".to_string(),
+                ));
+            }
+
+            let framework = require_auth_framework(&state)?;
+            let report = framework.maintenance().reset(dry_run).await?;
+
+            if report.dry_run {
+                println!(
+                    "Dry run: reset would delete {} users, {} roles, {} tokens, {} sessions, and {} KV entries.",
+                    report.users_deleted,
+                    report.roles_seen,
+                    report.tokens_deleted,
+                    report.sessions_deleted,
+                    report.kv_entries_deleted
+                );
+            } else {
+                println!(
+                    "Reset completed: deleted {} users, {} tokens, {} sessions, and {} KV entries.",
+                    report.users_deleted,
+                    report.tokens_deleted,
+                    report.sessions_deleted,
+                    report.kv_entries_deleted
+                );
+            }
+        }
+        MaintenanceAction::CreateMigration { name } => {
+            let config = state.config.read().await;
+            let report =
+                crate::maintenance::create_migration_file_for_storage(&config.auth.storage, &name)
+                    .await?;
+            println!(
+                "Created {} migration template: {}",
+                report.backend,
+                report.path.display()
+            );
         }
     }
 
@@ -664,9 +947,11 @@ fn format_health_status(status: &HealthStatus) -> colored::ColoredString {
 fn create_minimal_config_template() -> String {
     r#"# Auth Framework Configuration Template
 # Minimal configuration for getting started
+# NOTE: The framework rejects known placeholder values at startup.
+# You MUST replace secret_key with a real secret (minimum 32 characters).
 
 [jwt]
-secret_key = "${JWT_SECRET_KEY:your-secret-key-here}"
+secret_key = "${JWT_SECRET_KEY:CHANGE_ME_REQUIRED_minimum_32_chars}"
 algorithm = "HS256"
 expiry = "1h"
 
@@ -690,9 +975,11 @@ enabled = false
 fn create_complete_config_template() -> String {
     r#"# Auth Framework Configuration Template
 # Complete configuration with all options
+# NOTE: The framework rejects known placeholder values at startup.
+# You MUST replace secret_key with a real secret (minimum 32 characters).
 
 [jwt]
-secret_key = "${JWT_SECRET_KEY:your-secret-key-here}"
+secret_key = "${JWT_SECRET_KEY:CHANGE_ME_REQUIRED_minimum_32_chars}"
 algorithm = "HS256"
 expiry = "1h"
 refresh_expiry = "30d"
@@ -755,4 +1042,196 @@ include = [
 ]
 "#
     .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{AuthConfig, StorageConfig, config_manager::AuthFrameworkSettings};
+    use crate::methods::{AuthMethodEnum, JwtMethod};
+    use crate::permissions::Role;
+    use tempfile::tempdir;
+
+    #[cfg(all(feature = "cli", feature = "sqlite-storage"))]
+    #[tokio::test]
+    async fn maintenance_admin_cli_smoke_test_roundtrip() {
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("admin-maintenance-smoke.db");
+        let snapshot_path = temp_dir.path().join("admin-snapshot.json");
+        let database_url = format!(
+            "sqlite://{}?mode=rwc",
+            db_path.to_string_lossy().replace('\\', "/")
+        );
+
+        let mut auth_config = AuthConfig::new()
+            .secret("0123456789abcdef0123456789abcdef")
+            .token_lifetime(std::time::Duration::from_secs(3600));
+        auth_config.storage = StorageConfig::Sqlite {
+            connection_string: database_url,
+        };
+
+        let settings = AuthFrameworkSettings {
+            auth: auth_config.clone(),
+            threat_intelligence: None,
+            session: None,
+            custom: std::collections::HashMap::new(),
+        };
+
+        let mut framework = crate::AuthFramework::new(auth_config);
+        framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
+        framework.initialize().await.unwrap();
+
+        let user_id = framework
+            .users()
+            .register(
+                "admin-cli-smoke",
+                "admin-cli-smoke@example.com",
+                "Password123!",
+            )
+            .await
+            .unwrap();
+        framework
+            .authorization()
+            .create_role(Role::new("operator"))
+            .await
+            .unwrap();
+        framework
+            .authorization()
+            .assign_role(&user_id, "operator")
+            .await
+            .unwrap();
+        framework
+            .tokens()
+            .create(&user_id, &["read"], "jwt", None)
+            .await
+            .unwrap();
+        framework
+            .sessions()
+            .create(
+                &user_id,
+                std::time::Duration::from_secs(600),
+                Some("127.0.0.1".to_string()),
+                Some("admin-cli-smoke".to_string()),
+            )
+            .await
+            .unwrap();
+        framework
+            .storage()
+            .store_kv("admin:smoke:key", b"present", None)
+            .await
+            .unwrap();
+
+        let state = AppState::new(settings)
+            .unwrap()
+            .with_auth_framework(std::sync::Arc::new(framework));
+
+        run_cli(
+            state.clone(),
+            CliCommand::Maintenance {
+                action: MaintenanceAction::Backup {
+                    output_path: snapshot_path.to_string_lossy().to_string(),
+                    dry_run: false,
+                },
+            },
+        )
+        .await
+        .unwrap();
+        assert!(snapshot_path.exists());
+
+        run_cli(
+            state.clone(),
+            CliCommand::Maintenance {
+                action: MaintenanceAction::Reset {
+                    confirm: true,
+                    dry_run: false,
+                },
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            state
+                .auth_framework
+                .as_ref()
+                .unwrap()
+                .users()
+                .list_with_query(crate::auth_operations::UserListQuery::new())
+                .await
+                .unwrap()
+                .is_empty()
+        );
+
+        run_cli(
+            state.clone(),
+            CliCommand::Maintenance {
+                action: MaintenanceAction::Restore {
+                    backup_path: snapshot_path.to_string_lossy().to_string(),
+                    confirm: true,
+                    dry_run: false,
+                },
+            },
+        )
+        .await
+        .unwrap();
+
+        let restored_framework = state.auth_framework.as_ref().unwrap();
+        let restored_user = restored_framework.users().get(&user_id).await.unwrap();
+        assert_eq!(restored_user.username, "admin-cli-smoke");
+        assert_eq!(
+            restored_framework
+                .tokens()
+                .list_for_user(&user_id)
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            restored_framework
+                .sessions()
+                .list_for_user(&user_id)
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(
+            restored_framework
+                .authorization()
+                .has_role(&user_id, "operator")
+                .await
+                .unwrap()
+        );
+        assert_eq!(
+            restored_framework
+                .storage()
+                .get_kv("admin:smoke:key")
+                .await
+                .unwrap()
+                .unwrap(),
+            b"present"
+        );
+
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(temp_dir.path()).unwrap();
+        let migration_result = run_cli(
+            state.clone(),
+            CliCommand::Maintenance {
+                action: MaintenanceAction::CreateMigration {
+                    name: "admin smoke migration".to_string(),
+                },
+            },
+        )
+        .await;
+        std::env::set_current_dir(original_dir).unwrap();
+        migration_result.unwrap();
+
+        let migration_dir = temp_dir.path().join("migrations").join("sqlite");
+        let entries = std::fs::read_dir(&migration_dir)
+            .unwrap()
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(entries.len(), 1);
+    }
 }

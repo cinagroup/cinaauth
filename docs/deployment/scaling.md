@@ -55,11 +55,10 @@ previous key for a short overlap window.
 When `cryptoki` (PKCS#11) support is enabled the JWT signing key can be stored in an HSM or
 cloud KMS:
 
-```rust
-// Refer to docs/guides/hsm-integration.md for the full setup guide.
-// At minimum, configure the PKCS#11 library path and token PIN:
-std::env::set_var("CRYPTOKI_LIB", "/usr/lib/softhsm/libsofthsm2.so");
-std::env::set_var("PKCS11_PIN", "<token-pin>");
+```bash
+# Configure these in the process environment before starting AuthFramework.
+export CRYPTOKI_LIB="/usr/lib/softhsm/libsofthsm2.so"
+export PKCS11_PIN="<token-pin>"
 ```
 
 ---

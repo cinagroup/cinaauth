@@ -150,27 +150,41 @@ api_burst_limit = 20
 
 Configure secure session management:
 
-```toml
-[security.session]
-# Session timeouts
-idle_timeout = "30m"
-absolute_timeout = "8h"
-remember_me_timeout = "30d"
+```rust,ignore
+use auth_framework::security::SecureSessionConfig;
+use std::time::Duration;
 
-# Session security
-secure_cookies = true
-http_only_cookies = true
-same_site = "Strict"
-csrf_protection = true
+let session_config = SecureSessionConfig {
+  max_lifetime: Duration::from_secs(8 * 3600),
+  idle_timeout: Duration::from_secs(30 * 60),
+  max_concurrent_sessions: 3,
+  rotation_interval: Duration::from_secs(24 * 3600),
+  require_secure_transport: true,
+  enable_device_fingerprinting: true,
+  max_risk_score: 70,
+  validate_ip_address: true,
+  max_ip_changes: 3,
+  enable_geolocation: false,
+};
+```
 
-# Session storage
-storage_type = "redis"
-encryption_enabled = true
-session_key_rotation = "24h"
+#### SecureSessionConfig Presets (Rust API)
 
-# Concurrent sessions
-max_concurrent_sessions = 3
-invalidate_other_sessions_on_password_change = true
+For programmatic configuration, `SecureSessionConfig` provides presets:
+
+```rust,ignore
+use auth_framework::prelude::*;
+
+// Balanced default (8h lifetime, 30min idle, 3 concurrent)
+let config = SecureSessionConfig::default();
+
+// High-security (2h lifetime, 10min idle, single session, low risk threshold)
+let config = SecureSessionConfig::for_high_security();
+
+// Mobile / native apps (30-day lifetime, lenient IP rules)
+let config = SecureSessionConfig::for_mobile();
+
+let manager = SecureSessionManager::new(config);
 ```
 
 ## Encryption and Key Management
@@ -856,4 +870,4 @@ auth-framework-cli reports compliance --type monthly --output /reports/complianc
 
 ---
 
-*AuthFramework v0.4.0 - THE premier authentication and authorization solution*
+AuthFramework v0.5.0-rc18 - THE premier authentication and authorization solution

@@ -1,3 +1,10 @@
+/// Mock authentication method for testing.
+///
+/// # Example
+/// ```rust,ignore
+/// let mock = MockAuthMethod::new_success();
+/// assert!(mock.should_succeed);
+/// ```
 #[derive(Debug, Clone)]
 pub struct MockAuthMethod {
     /// Whether authentication should succeed
@@ -9,7 +16,13 @@ pub struct MockAuthMethod {
 }
 
 impl MockAuthMethod {
-    /// Create a new mock authentication method that always succeeds
+    /// Create a new mock authentication method that always succeeds.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mock = MockAuthMethod::new_success();
+    /// assert!(mock.should_succeed);
+    /// ```
     pub fn new_success() -> Self {
         MockAuthMethod {
             should_succeed: true,
@@ -18,13 +31,25 @@ impl MockAuthMethod {
         }
     }
 
-    /// Add a user profile for a specific user ID
+    /// Add a user profile for a specific user ID.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mock = MockAuthMethod::new_success()
+    ///     .with_user("user-1", ProviderProfile::new().with_id("user-1"));
+    /// ```
     pub fn with_user(mut self, user_id: impl Into<String>, profile: ProviderProfile) -> Self {
         self.user_profiles.insert(user_id.into(), profile);
         self
     }
 
-    /// Set a delay for authentication (useful for testing timeouts)
+    /// Set a delay for authentication (useful for testing timeouts).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mock = MockAuthMethod::new_success()
+    ///     .with_delay(Duration::from_millis(100));
+    /// ```
     pub fn with_delay(mut self, delay: Duration) -> Self {
         self.delay = Some(delay);
         self
@@ -171,15 +196,15 @@ impl AuthMethod for MockAuthMethod {
             refresh_token: Some(format!("refresh_{}", Uuid::new_v4())),
             token_type: Some("Bearer".to_string()),
             expires_at: chrono::Utc::now() + chrono::Duration::seconds(3600),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             issued_at: chrono::Utc::now(),
             auth_method: "mock".to_string(),
             subject: Some(user_id.clone()),
             issuer: Some("mock".to_string()),
             user_profile: None,
             client_id: Some("test_client".to_string()),
-            permissions: vec!["read:all".to_string(), "write:all".to_string()],
-            roles: vec!["mock_user".to_string()],
+            permissions: vec!["read:all".to_string(), "write:all".to_string()].into(),
+            roles: vec!["mock_user".to_string()].into(),
             metadata: crate::tokens::TokenMetadata::default(),
         };
 
@@ -198,7 +223,7 @@ impl AuthMethod for MockAuthMethod {
             refresh_token: Some("mock_new_refresh_token".to_string()),
             token_type: Some("Bearer".to_string()),
             expires_at: chrono::Utc::now() + chrono::Duration::seconds(3600),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             issued_at: chrono::Utc::now(),
             auth_method: "mock".to_string(),
             client_id: Some("test_client".to_string()),
@@ -206,13 +231,19 @@ impl AuthMethod for MockAuthMethod {
             subject: Some("refreshed_user".to_string()),
             issuer: Some("mock".to_string()),
             user_profile: None,
-            permissions: vec!["read:all".to_string(), "write:all".to_string()],
-            roles: vec!["refreshed_user".to_string()],
+            permissions: vec!["read:all".to_string(), "write:all".to_string()].into(),
+            roles: vec!["refreshed_user".to_string()].into(),
         })
     }
 }
 
 /// Mock storage implementation for testing with DashMap for deadlock-free operations.
+///
+/// # Example
+/// ```rust,ignore
+/// let storage = MockStorage::new();
+/// storage.store_token(&token).await.unwrap();
+/// ```
 #[derive(Debug, Clone)]
 pub struct MockStorage {
     tokens: Arc<DashMap<String, AuthToken>>,
@@ -222,7 +253,12 @@ pub struct MockStorage {
 }
 
 impl MockStorage {
-    /// Create a new mock storage with DashMap for deadlock-free operations
+    /// Create a new mock storage with DashMap for deadlock-free operations.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let storage = MockStorage::new();
+    /// ```
     pub fn new() -> Self {
         Self {
             tokens: Arc::new(DashMap::new()),
@@ -232,14 +268,26 @@ impl MockStorage {
         }
     }
 
-    /// Create a mock storage that fails operations
+    /// Create a mock storage that fails operations.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let storage = MockStorage::new_failing();
+    /// assert!(storage.store_token(&token).await.is_err());
+    /// ```
     pub fn new_failing() -> Self {
         let mut storage = Self::new();
         storage.should_fail = true;
         storage
     }
 
-    /// Preset a token in storage
+    /// Preset a token in storage.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let storage = MockStorage::new();
+    /// storage.with_token(token).unwrap();
+    /// ```
     pub fn with_token(&self, token: AuthToken) -> Result<()> {
         if self.should_fail {
             return Err(AuthError::internal("Mock storage configured to fail"));
@@ -250,7 +298,13 @@ impl MockStorage {
         Ok(())
     }
 
-    /// Clear all storage using DashMap atomic operations
+    /// Clear all storage using DashMap atomic operations.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let storage = MockStorage::new();
+    /// storage.clear();
+    /// ```
     pub fn clear(&self) {
         self.tokens.clear();
         self.sessions.clear();
@@ -449,7 +503,12 @@ pub mod helpers {
     use super::*;
     // use std::sync::Arc;  // Temporarily unused
 
-    /// Create a test user profile
+    /// Create a test user profile.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let profile = helpers::create_test_user_profile("user-1");
+    /// ```
     pub fn create_test_user_profile(user_id: &str) -> ProviderProfile {
         ProviderProfile::new()
             .with_id(user_id)
@@ -459,7 +518,13 @@ pub mod helpers {
             .with_email_verified(true)
     }
 
-    /// Create a test auth token
+    /// Create a test auth token.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let token = helpers::create_test_token("user-1");
+    /// assert_eq!(token.user_id, "user-1");
+    /// ```
     pub fn create_test_token(user_id: &str) -> AuthToken {
         let now = chrono::Utc::now();
         AuthToken {
@@ -469,7 +534,7 @@ pub mod helpers {
             refresh_token: Some(format!("refresh_token_{}", Uuid::new_v4())),
             token_type: Some("Bearer".to_string()),
             expires_at: now + chrono::Duration::seconds(3600),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             issued_at: now,
             auth_method: "test".to_string(),
             client_id: Some("test_client".to_string()),
@@ -477,12 +542,18 @@ pub mod helpers {
             subject: Some(user_id.to_string()),
             issuer: Some("test".to_string()),
             user_profile: None,
-            permissions: vec!["read:all".to_string(), "write:all".to_string()],
-            roles: vec!["test_user".to_string()],
+            permissions: vec!["read:all".to_string(), "write:all".to_string()].into(),
+            roles: vec!["test_user".to_string()].into(),
         }
     }
 
-    /// Create test credentials
+    /// Create test credentials.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let creds = helpers::create_test_credentials();
+    /// assert_eq!(creds.len(), 5);
+    /// ```
     pub fn create_test_credentials() -> Vec<Credential> {
         vec![
             Credential::password("testuser", "testpass"),
@@ -491,5 +562,332 @@ pub mod helpers {
             Credential::device_code("test_device_code", "test_client_id"),
             Credential::jwt("test.jwt.token"),
         ]
+    }
+}
+
+// ── Edge-case tests ──────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod edge_tests {
+    use super::*;
+    use crate::testing::test_infrastructure::TestEnvironmentGuard;
+
+    // --- MockAuthMethod authenticate edge cases ---
+
+    #[tokio::test]
+    async fn test_mock_auth_failure_mode() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let mock = MockAuthMethod {
+            should_succeed: false,
+            user_profiles: HashMap::new(),
+            delay: None,
+        };
+        let cred = Credential::password("user", "pass");
+        let meta = CredentialMetadata::default();
+        let result = mock.authenticate(cred, meta).await.unwrap();
+        match result {
+            MethodResult::Failure { reason } => {
+                assert!(reason.contains("failed"), "Expected failure: {reason}");
+            }
+            _ => panic!("Expected Failure variant"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_mock_auth_api_key_empty() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let mock = MockAuthMethod::new_success();
+        let cred = Credential::api_key("");
+        let meta = CredentialMetadata::default();
+        // Should not panic with empty API key — &key[..0] is valid
+        let result = mock.authenticate(cred, meta).await.unwrap();
+        match result {
+            MethodResult::Success(token) => {
+                assert!(token.user_id.starts_with("api_user_"));
+            }
+            _ => panic!("Expected success"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_mock_auth_api_key_short() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let mock = MockAuthMethod::new_success();
+        let cred = Credential::api_key("abc");
+        let meta = CredentialMetadata::default();
+        let result = mock.authenticate(cred, meta).await.unwrap();
+        match result {
+            MethodResult::Success(token) => {
+                assert_eq!(token.user_id, "api_user_abc");
+            }
+            _ => panic!("Expected success"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_mock_auth_catch_all_credential() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let mock = MockAuthMethod::new_success();
+        let cred = Credential::jwt("some.jwt.token");
+        let meta = CredentialMetadata::default();
+        let result = mock.authenticate(cred, meta).await.unwrap();
+        match result {
+            MethodResult::Success(token) => {
+                assert_eq!(token.user_id, "test_user");
+            }
+            _ => panic!("Expected success"),
+        }
+    }
+
+    // --- MockAuthMethod refresh edge cases ---
+
+    #[tokio::test]
+    async fn test_mock_refresh_success() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let mock = MockAuthMethod::new_success();
+        let token = mock
+            .refresh_token("old_refresh".to_string())
+            .await
+            .unwrap();
+        assert_eq!(token.user_id, "refreshed_user");
+        assert!(token.refresh_token.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_mock_refresh_failure() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let mock = MockAuthMethod {
+            should_succeed: false,
+            user_profiles: HashMap::new(),
+            delay: None,
+        };
+        let result = mock.refresh_token("old_refresh".to_string()).await;
+        assert!(result.is_err());
+    }
+
+    // --- MockStorage token operations ---
+
+    #[tokio::test]
+    async fn test_storage_get_token_by_access_token() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let token = helpers::create_test_token("user1");
+        let access = token.access_token.clone();
+        storage.store_token(&token).await.unwrap();
+        let found = storage
+            .get_token_by_access_token(&access)
+            .await
+            .unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().user_id, "user1");
+    }
+
+    #[tokio::test]
+    async fn test_storage_get_token_by_access_token_not_found() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let found = storage
+            .get_token_by_access_token("nonexistent")
+            .await
+            .unwrap();
+        assert!(found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_storage_update_token() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let mut token = helpers::create_test_token("user1");
+        storage.store_token(&token).await.unwrap();
+        token.user_id = "updated_user".to_string();
+        storage.update_token(&token).await.unwrap();
+        let found = storage
+            .get_token_by_access_token(&token.access_token)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.user_id, "updated_user");
+    }
+
+    #[tokio::test]
+    async fn test_storage_delete_token() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let token = helpers::create_test_token("user1");
+        let tid = token.token_id.clone();
+        storage.store_token(&token).await.unwrap();
+        storage.delete_token(&tid).await.unwrap();
+        let found = storage.get_token(&tid).await.unwrap();
+        assert!(found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_storage_list_user_tokens_filters_by_user() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let t1 = helpers::create_test_token("alice");
+        let t2 = helpers::create_test_token("alice");
+        let t3 = helpers::create_test_token("bob");
+        storage.store_token(&t1).await.unwrap();
+        storage.store_token(&t2).await.unwrap();
+        storage.store_token(&t3).await.unwrap();
+        let alice_tokens = storage.list_user_tokens("alice").await.unwrap();
+        assert_eq!(alice_tokens.len(), 2);
+        let bob_tokens = storage.list_user_tokens("bob").await.unwrap();
+        assert_eq!(bob_tokens.len(), 1);
+    }
+
+    // --- MockStorage session operations ---
+
+    #[tokio::test]
+    async fn test_storage_session_crud() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let session = SessionData {
+            session_id: "sess1".to_string(),
+            user_id: "user1".to_string(),
+            created_at: chrono::Utc::now(),
+            expires_at: chrono::Utc::now() + chrono::Duration::seconds(3600),
+            last_activity: chrono::Utc::now(),
+            ip_address: Some("127.0.0.1".to_string()),
+            user_agent: None,
+            data: Default::default(),
+        };
+        storage.store_session("sess1", &session).await.unwrap();
+        let found = storage.get_session("sess1").await.unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().user_id, "user1");
+
+        storage.delete_session("sess1").await.unwrap();
+        let gone = storage.get_session("sess1").await.unwrap();
+        assert!(gone.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_storage_list_user_sessions_filters_expired() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let active = SessionData {
+            session_id: "active".to_string(),
+            user_id: "user1".to_string(),
+            created_at: chrono::Utc::now(),
+            expires_at: chrono::Utc::now() + chrono::Duration::seconds(3600),
+            last_activity: chrono::Utc::now(),
+            ip_address: None,
+            user_agent: None,
+            data: Default::default(),
+        };
+        let expired = SessionData {
+            session_id: "expired".to_string(),
+            user_id: "user1".to_string(),
+            created_at: chrono::Utc::now() - chrono::Duration::seconds(7200),
+            expires_at: chrono::Utc::now() - chrono::Duration::seconds(3600),
+            last_activity: chrono::Utc::now() - chrono::Duration::seconds(7200),
+            ip_address: None,
+            user_agent: None,
+            data: Default::default(),
+        };
+        storage.store_session("active", &active).await.unwrap();
+        storage.store_session("expired", &expired).await.unwrap();
+        let sessions = storage.list_user_sessions("user1").await.unwrap();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].session_id, "active");
+    }
+
+    // --- MockStorage KV operations ---
+
+    #[tokio::test]
+    async fn test_storage_kv_crud() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        storage
+            .store_kv("key1", b"value1", None)
+            .await
+            .unwrap();
+        let val = storage.get_kv("key1").await.unwrap();
+        assert_eq!(val.unwrap(), b"value1");
+
+        storage.delete_kv("key1").await.unwrap();
+        let gone = storage.get_kv("key1").await.unwrap();
+        assert!(gone.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_storage_kv_not_found() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let val = storage.get_kv("nonexistent").await.unwrap();
+        assert!(val.is_none());
+    }
+
+    // --- MockStorage cleanup ---
+
+    #[tokio::test]
+    async fn test_storage_cleanup_expired_tokens() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let mut expired_token = helpers::create_test_token("user1");
+        expired_token.expires_at = chrono::Utc::now() - chrono::Duration::seconds(10);
+        let valid_token = helpers::create_test_token("user2");
+        storage.store_token(&expired_token).await.unwrap();
+        storage.store_token(&valid_token).await.unwrap();
+        storage.cleanup_expired().await.unwrap();
+        // Expired token should be gone
+        let found_expired = storage
+            .get_token_by_access_token(&expired_token.access_token)
+            .await
+            .unwrap();
+        assert!(found_expired.is_none());
+        // Valid token should remain
+        let found_valid = storage
+            .get_token_by_access_token(&valid_token.access_token)
+            .await
+            .unwrap();
+        assert!(found_valid.is_some());
+    }
+
+    // --- helpers::create_test_credentials ---
+
+    #[test]
+    fn test_create_test_credentials_all_variants() {
+        let creds = helpers::create_test_credentials();
+        assert_eq!(creds.len(), 5);
+        assert!(matches!(&creds[0], Credential::Password { .. }));
+        assert!(matches!(&creds[1], Credential::ApiKey { .. }));
+        assert!(matches!(&creds[2], Credential::OAuth { .. }));
+        assert!(matches!(&creds[3], Credential::DeviceCode { .. }));
+        assert!(matches!(&creds[4], Credential::Jwt { .. }));
+    }
+
+    // --- MockStorage count_active_sessions ---
+
+    #[tokio::test]
+    async fn test_storage_count_active_sessions() {
+        let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+        let storage = MockStorage::new();
+        let active = SessionData {
+            session_id: "active1".to_string(),
+            user_id: "user1".to_string(),
+            created_at: chrono::Utc::now(),
+            expires_at: chrono::Utc::now() + chrono::Duration::seconds(3600),
+            last_activity: chrono::Utc::now(),
+            ip_address: None,
+            user_agent: None,
+            data: Default::default(),
+        };
+        let expired = SessionData {
+            session_id: "expired1".to_string(),
+            user_id: "user2".to_string(),
+            created_at: chrono::Utc::now() - chrono::Duration::seconds(7200),
+            expires_at: chrono::Utc::now() - chrono::Duration::seconds(3600),
+            last_activity: chrono::Utc::now() - chrono::Duration::seconds(7200),
+            ip_address: None,
+            user_agent: None,
+            data: Default::default(),
+        };
+        storage.store_session("active1", &active).await.unwrap();
+        storage.store_session("expired1", &expired).await.unwrap();
+        let count = storage.count_active_sessions().await.unwrap();
+        assert_eq!(count, 1);
     }
 }

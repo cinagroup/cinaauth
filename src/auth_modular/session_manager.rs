@@ -9,6 +9,12 @@ use std::time::Duration;
 use tracing::{debug, info, warn};
 
 /// Statistics from a distributed session coordination pass.
+///
+/// # Example
+/// ```rust,ignore
+/// let stats = session_mgr.coordinate_distributed_sessions().await?;
+/// println!("local={}, remote={}", stats.local_active_sessions, stats.remote_active_sessions);
+/// ```
 #[derive(Debug)]
 pub struct SessionCoordinationStats {
     pub local_active_sessions: u64,
@@ -18,14 +24,29 @@ pub struct SessionCoordinationStats {
     pub last_coordination_time: chrono::DateTime<chrono::Utc>,
 }
 
-/// Session manager for handling user sessions
+/// Session manager for handling user sessions.
+///
+/// # Example
+/// ```rust,ignore
+/// use auth_framework::auth_modular::SessionManager;
+/// use std::sync::Arc;
+///
+/// let mgr = SessionManager::new(storage.clone());
+/// let sid = mgr.create_session("user-1", Duration::from_secs(3600), None, None).await?;
+/// ```
 pub struct SessionManager {
     storage: Arc<dyn AuthStorage>,
     distributed_store: Arc<dyn DistributedSessionStore>,
 }
 
 impl SessionManager {
-    /// Create a new session manager
+    /// Create a new session manager.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use auth_framework::auth_modular::SessionManager;
+    /// let mgr = SessionManager::new(storage.clone());
+    /// ```
     pub fn new(storage: Arc<dyn AuthStorage>) -> Self {
         Self {
             storage,
@@ -34,11 +55,26 @@ impl SessionManager {
     }
 
     /// Replace the distributed session store (multi-node deployments).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.set_distributed_store(Arc::new(RedisSessionStore::new("redis://...").await?));
+    /// ```
     pub fn set_distributed_store(&mut self, store: Arc<dyn DistributedSessionStore>) {
         self.distributed_store = store;
     }
 
-    /// Create a new session
+    /// Create a new session.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let sid = mgr.create_session(
+    ///     "user-1",
+    ///     Duration::from_secs(3600),
+    ///     Some("127.0.0.1".into()),
+    ///     Some("Mozilla/5.0".into()),
+    /// ).await?;
+    /// ```
     pub async fn create_session(
         &self,
         user_id: &str,
@@ -74,7 +110,16 @@ impl SessionManager {
         Ok(session_id)
     }
 
-    /// Get session information
+    /// Get session information.
+    ///
+    /// Returns `None` if the session does not exist or has expired.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// if let Some(session) = mgr.get_session("sess_abc").await? {
+    ///     println!("user: {}", session.user_id);
+    /// }
+    /// ```
     pub async fn get_session(&self, session_id: &str) -> Result<Option<SessionData>> {
         debug!("Getting session '{}'", session_id);
 
@@ -92,7 +137,12 @@ impl SessionManager {
         Ok(session)
     }
 
-    /// Delete a session
+    /// Delete a session.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.delete_session("sess_abc").await?;
+    /// ```
     pub async fn delete_session(&self, session_id: &str) -> Result<()> {
         debug!("Deleting session '{}'", session_id);
 
@@ -101,7 +151,12 @@ impl SessionManager {
         Ok(())
     }
 
-    /// Update session last activity
+    /// Update session last activity timestamp.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.update_session_activity("sess_abc").await?;
+    /// ```
     pub async fn update_session_activity(&self, session_id: &str) -> Result<()> {
         if let Some(mut session) = self.storage.get_session(session_id).await? {
             session.last_activity = chrono::Utc::now();
@@ -110,7 +165,15 @@ impl SessionManager {
         Ok(())
     }
 
-    /// Get all sessions for a user
+    /// Get all active (non-expired) sessions for a user.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let sessions = mgr.get_user_sessions("user-1").await?;
+    /// for (id, data) in &sessions {
+    ///     println!("session {}: ip={:?}", id, data.ip_address);
+    /// }
+    /// ```
     pub async fn get_user_sessions(&self, user_id: &str) -> Result<Vec<(String, SessionData)>> {
         debug!("Getting all sessions for user '{}'", user_id);
         let sessions = self.storage.list_user_sessions(user_id).await?;
@@ -121,7 +184,12 @@ impl SessionManager {
             .collect())
     }
 
-    /// Delete all sessions for a user
+    /// Delete all sessions for a user.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.delete_user_sessions("user-1").await?;
+    /// ```
     pub async fn delete_user_sessions(&self, user_id: &str) -> Result<()> {
         debug!("Deleting all sessions for user '{}'", user_id);
 
@@ -135,7 +203,12 @@ impl SessionManager {
         Ok(())
     }
 
-    /// Clean up expired sessions
+    /// Clean up expired sessions from storage.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.cleanup_expired_sessions().await?;
+    /// ```
     pub async fn cleanup_expired_sessions(&self) -> Result<()> {
         debug!("Cleaning up expired sessions");
         self.storage.cleanup_expired().await?;
@@ -143,7 +216,16 @@ impl SessionManager {
         Ok(())
     }
 
-    /// Validate session and return user info
+    /// Validate a session and return the owning user ID.
+    ///
+    /// Returns `None` if the session is missing or expired.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// if let Some(user_id) = mgr.validate_session("sess_abc").await? {
+    ///     println!("session belongs to {}", user_id);
+    /// }
+    /// ```
     pub async fn validate_session(&self, session_id: &str) -> Result<Option<String>> {
         if let Some(session) = self.get_session(session_id).await?
             && !session.is_expired()
@@ -155,7 +237,12 @@ impl SessionManager {
         Ok(None)
     }
 
-    /// Extend session expiration
+    /// Extend session expiration by `additional_time`.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.extend_session("sess_abc", Duration::from_secs(1800)).await?;
+    /// ```
     pub async fn extend_session(&self, session_id: &str, additional_time: Duration) -> Result<()> {
         debug!(
             "Extending session '{}' by {:?}",
@@ -174,10 +261,18 @@ impl SessionManager {
 
     /// Create a new session with resource-limit guards.
     ///
-    /// Enforces a global cap of 100 000 total sessions and a per-user cap of 50 sessions
-    /// to prevent DoS / resource exhaustion.
+    /// Enforces a global cap of 100 000 total sessions and a per-user cap
+    /// of 50 sessions to prevent DoS / resource exhaustion.
     ///
     /// Returns `(session_id, new_total_count)` so the caller can update monitoring.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let (sid, total) = mgr.create_session_limited(
+    ///     "user-1", Duration::from_secs(3600), None, None,
+    /// ).await?;
+    /// println!("created session {} (total active: {})", sid, total);
+    /// ```
     pub async fn create_session_limited(
         &self,
         user_id: &str,
@@ -213,8 +308,15 @@ impl SessionManager {
         Ok((session_id, total_sessions + 1))
     }
 
-    /// Count the number of currently active sessions
-    /// Used for security audit statistics
+    /// Count the number of currently active sessions.
+    ///
+    /// Used for security audit statistics.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let n = mgr.count_active_sessions().await?;
+    /// println!("{} active sessions", n);
+    /// ```
     pub async fn count_active_sessions(&self) -> Result<u64> {
         debug!("Counting active sessions");
 
@@ -225,7 +327,13 @@ impl SessionManager {
         Ok(active_count)
     }
 
-    /// Get security metrics for sessions
+    /// Get security metrics for sessions.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let metrics = mgr.get_session_security_metrics().await?;
+    /// println!("active: {:?}", metrics.get("active_sessions"));
+    /// ```
     pub async fn get_session_security_metrics(&self) -> Result<HashMap<String, serde_json::Value>> {
         debug!("Collecting session security metrics");
 
@@ -245,6 +353,12 @@ impl SessionManager {
     }
 
     /// Coordinate session state across distributed instances.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let stats = mgr.coordinate_distributed_sessions().await?;
+    /// println!("synced: {}", stats.synchronized_sessions);
+    /// ```
     pub async fn coordinate_distributed_sessions(&self) -> Result<SessionCoordinationStats> {
         tracing::debug!("Coordinating distributed sessions across instances");
 
@@ -314,6 +428,11 @@ impl SessionManager {
     }
 
     /// Synchronize a specific session with remote instances.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.synchronize_session("sess_abc").await?;
+    /// ```
     pub async fn synchronize_session(&self, session_id: &str) -> Result<()> {
         if self.get_session(session_id).await?.is_none() {
             return Err(AuthError::validation(format!(
@@ -323,5 +442,250 @@ impl SessionManager {
         }
         tracing::info!("Session {} synchronized (single-instance)", session_id);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::MemoryStorage;
+
+    fn make_manager() -> SessionManager {
+        SessionManager::new(Arc::new(MemoryStorage::new()))
+    }
+
+    // ── create_session ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_create_session_success() {
+        let mgr = make_manager();
+        let sid = mgr
+            .create_session("u1", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        assert!(sid.starts_with("sess"));
+    }
+
+    #[tokio::test]
+    async fn test_create_session_with_metadata() {
+        let mgr = make_manager();
+        let sid = mgr
+            .create_session(
+                "u2",
+                Duration::from_secs(600),
+                Some("127.0.0.1".into()),
+                Some("TestUA".into()),
+            )
+            .await
+            .unwrap();
+        let session = mgr.get_session(&sid).await.unwrap().unwrap();
+        assert_eq!(session.ip_address.as_deref(), Some("127.0.0.1"));
+        assert_eq!(session.user_agent.as_deref(), Some("TestUA"));
+    }
+
+    #[tokio::test]
+    async fn test_create_session_zero_duration_rejected() {
+        let mgr = make_manager();
+        let result = mgr.create_session("u3", Duration::ZERO, None, None).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_create_session_excessive_duration_rejected() {
+        let mgr = make_manager();
+        let result = mgr
+            .create_session("u4", Duration::from_secs(400 * 24 * 3600), None, None)
+            .await;
+        assert!(result.is_err());
+    }
+
+    // ── get_session ─────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_session_found() {
+        let mgr = make_manager();
+        let sid = mgr
+            .create_session("u5", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        let session = mgr.get_session(&sid).await.unwrap();
+        assert!(session.is_some());
+        assert_eq!(session.unwrap().user_id, "u5");
+    }
+
+    #[tokio::test]
+    async fn test_get_session_not_found() {
+        let mgr = make_manager();
+        let result = mgr.get_session("nonexistent").await.unwrap();
+        assert!(result.is_none());
+    }
+
+    // ── delete_session ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_delete_session() {
+        let mgr = make_manager();
+        let sid = mgr
+            .create_session("u6", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        mgr.delete_session(&sid).await.unwrap();
+        assert!(mgr.get_session(&sid).await.unwrap().is_none());
+    }
+
+    // ── validate_session ────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_validate_session_valid() {
+        let mgr = make_manager();
+        let sid = mgr
+            .create_session("u7", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        let uid = mgr.validate_session(&sid).await.unwrap();
+        assert_eq!(uid.as_deref(), Some("u7"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_session_nonexistent() {
+        let mgr = make_manager();
+        let uid = mgr.validate_session("ghost").await.unwrap();
+        assert!(uid.is_none());
+    }
+
+    // ── extend_session ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_extend_session() {
+        let mgr = make_manager();
+        let sid = mgr
+            .create_session("u8", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        let before = mgr.get_session(&sid).await.unwrap().unwrap().expires_at;
+        mgr.extend_session(&sid, Duration::from_secs(3600))
+            .await
+            .unwrap();
+        let after = mgr.get_session(&sid).await.unwrap().unwrap().expires_at;
+        assert!(after > before);
+    }
+
+    // ── get_user_sessions / delete_user_sessions ────────────────────────
+
+    #[tokio::test]
+    async fn test_get_user_sessions() {
+        let mgr = make_manager();
+        mgr.create_session("u9", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        mgr.create_session("u9", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        let sessions = mgr.get_user_sessions("u9").await.unwrap();
+        assert_eq!(sessions.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_delete_user_sessions() {
+        let mgr = make_manager();
+        mgr.create_session("u10", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        mgr.create_session("u10", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        mgr.delete_user_sessions("u10").await.unwrap();
+        let sessions = mgr.get_user_sessions("u10").await.unwrap();
+        assert!(sessions.is_empty());
+    }
+
+    // ── count_active_sessions ───────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_count_active_sessions() {
+        let mgr = make_manager();
+        let before = mgr.count_active_sessions().await.unwrap();
+        mgr.create_session("u11", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        let after = mgr.count_active_sessions().await.unwrap();
+        assert!(after >= before + 1);
+    }
+
+    // ── create_session_limited ──────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_create_session_limited_success() {
+        let mgr = make_manager();
+        let (sid, count) = mgr
+            .create_session_limited("u12", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        assert!(sid.starts_with("sess"));
+        assert!(count >= 1);
+    }
+
+    // ── get_session_security_metrics ────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_session_security_metrics() {
+        let mgr = make_manager();
+        mgr.create_session("u13", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        let metrics = mgr.get_session_security_metrics().await.unwrap();
+        assert!(metrics.contains_key("active_sessions"));
+        assert!(metrics.contains_key("last_check"));
+    }
+
+    // ── coordinate_distributed_sessions ─────────────────────────────────
+
+    #[tokio::test]
+    async fn test_coordinate_distributed_sessions() {
+        let mgr = make_manager();
+        let stats = mgr.coordinate_distributed_sessions().await.unwrap();
+        // With LocalOnlySessionStore, remote sessions should be 0
+        assert_eq!(stats.remote_active_sessions, 0);
+        assert_eq!(stats.coordination_conflicts, 0);
+    }
+
+    // ── synchronize_session ─────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_synchronize_session_success() {
+        let mgr = make_manager();
+        let sid = mgr
+            .create_session("u14", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        assert!(mgr.synchronize_session(&sid).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_synchronize_session_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.synchronize_session("ghost").await.is_err());
+    }
+
+    // ── update_session_activity ─────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_update_session_activity() {
+        let mgr = make_manager();
+        let sid = mgr
+            .create_session("u15", Duration::from_secs(600), None, None)
+            .await
+            .unwrap();
+        // Just ensure it doesn't error
+        mgr.update_session_activity(&sid).await.unwrap();
+    }
+
+    // ── cleanup_expired_sessions ────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_cleanup_expired_sessions() {
+        let mgr = make_manager();
+        // Just ensure it doesn't error on empty storage
+        mgr.cleanup_expired_sessions().await.unwrap();
     }
 }

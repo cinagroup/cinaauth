@@ -174,6 +174,110 @@ impl Default for EnhancedCibaConfig {
     }
 }
 
+impl EnhancedCibaConfig {
+    /// Create a builder starting from the default configuration.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use auth_framework::server::oidc::oidc_enhanced_ciba::EnhancedCibaConfig;
+    ///
+    /// let config = EnhancedCibaConfig::builder()
+    ///     .issuer("https://auth.example.com/ciba")
+    ///     .enable_consent(false)
+    ///     .build();
+    /// ```
+    pub fn builder() -> EnhancedCibaConfigBuilder {
+        EnhancedCibaConfigBuilder {
+            inner: Self::default(),
+        }
+    }
+}
+
+/// Builder for [`EnhancedCibaConfig`].
+pub struct EnhancedCibaConfigBuilder {
+    inner: EnhancedCibaConfig,
+}
+
+impl EnhancedCibaConfigBuilder {
+    /// Set supported authentication modes.
+    pub fn supported_modes(mut self, modes: Vec<AuthenticationMode>) -> Self {
+        self.inner.supported_modes = modes;
+        self
+    }
+
+    /// Set default auth request expiry duration.
+    pub fn default_auth_req_expiry(mut self, expiry: Duration) -> Self {
+        self.inner.default_auth_req_expiry = expiry;
+        self
+    }
+
+    /// Set the maximum polling interval (seconds).
+    pub fn max_polling_interval(mut self, secs: u64) -> Self {
+        self.inner.max_polling_interval = secs;
+        self
+    }
+
+    /// Set the minimum polling interval (seconds).
+    pub fn min_polling_interval(mut self, secs: u64) -> Self {
+        self.inner.min_polling_interval = secs;
+        self
+    }
+
+    /// Enable or disable consent handling.
+    pub fn enable_consent(mut self, enable: bool) -> Self {
+        self.inner.enable_consent = enable;
+        self
+    }
+
+    /// Enable or disable device binding.
+    pub fn enable_device_binding(mut self, enable: bool) -> Self {
+        self.inner.enable_device_binding = enable;
+        self
+    }
+
+    /// Set the maximum length for binding messages.
+    pub fn max_binding_message_length(mut self, max_len: usize) -> Self {
+        self.inner.max_binding_message_length = max_len;
+        self
+    }
+
+    /// Build the [`EnhancedCibaConfig`].
+    pub fn build(self) -> EnhancedCibaConfig {
+        self.inner
+    }
+
+    /// Set the issuer URI.
+    pub fn issuer(mut self, issuer: impl Into<String>) -> Self {
+        self.inner.issuer = issuer.into();
+        self
+    }
+
+    /// Set the encoding key for JWTs.
+    pub fn encoding_key(mut self, key: EncodingKey) -> Self {
+        self.inner.encoding_key = Some(key);
+        self
+    }
+
+    /// Set the decoding key for JWT validation.
+    pub fn decoding_key(mut self, key: DecodingKey) -> Self {
+        self.inner.decoding_key = Some(key);
+        self
+    }
+
+    /// Set token lifetimes in seconds.
+    pub fn token_lifetimes(
+        mut self,
+        access_token_secs: u64,
+        id_token_secs: u64,
+        refresh_token_secs: u64,
+    ) -> Self {
+        self.inner.access_token_lifetime = access_token_secs;
+        self.inner.id_token_lifetime = id_token_secs;
+        self.inner.refresh_token_lifetime = refresh_token_secs;
+        self
+    }
+}
+
 /// Authentication modes for CIBA
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AuthenticationMode {
@@ -416,7 +520,10 @@ impl EnhancedCibaManager {
     pub fn new(config: EnhancedCibaConfig) -> Self {
         use crate::server::core::common_config::EndpointConfig;
 
-        let jwt_validator = Arc::new(SecureJwtValidator::new(config.jwt_config.clone()));
+        let jwt_validator = Arc::new(
+            SecureJwtValidator::new(config.jwt_config.clone())
+                .expect("CIBA JWT config validation failed — check key material"),
+        );
 
         // Create HTTP client for notifications
         let endpoint_config = EndpointConfig::new(&config.issuer);
@@ -426,7 +533,8 @@ impl EnhancedCibaManager {
         .unwrap_or_else(|_| {
             // Fallback to default configuration
             let fallback_config = EndpointConfig::new("https://localhost");
-            crate::server::core::common_http::HttpClient::new(fallback_config).unwrap()
+            crate::server::core::common_http::HttpClient::new(fallback_config)
+                .expect("localhost fallback endpoint config is valid")
         });
 
         Self {
@@ -445,7 +553,10 @@ impl EnhancedCibaManager {
     ) -> Self {
         use crate::server::core::common_config::EndpointConfig;
 
-        let jwt_validator = Arc::new(SecureJwtValidator::new(config.jwt_config.clone()));
+        let jwt_validator = Arc::new(
+            SecureJwtValidator::new(config.jwt_config.clone())
+                .expect("CIBA JWT config validation failed — check key material"),
+        );
 
         // Create HTTP client for notifications
         let endpoint_config = EndpointConfig::new(&config.issuer);
@@ -455,7 +566,8 @@ impl EnhancedCibaManager {
         .unwrap_or_else(|_| {
             // Fallback to default configuration
             let fallback_config = EndpointConfig::new("https://localhost");
-            crate::server::core::common_http::HttpClient::new(fallback_config).unwrap()
+            crate::server::core::common_http::HttpClient::new(fallback_config)
+                .expect("localhost fallback endpoint config is valid")
         });
 
         Self {
@@ -478,11 +590,10 @@ impl EnhancedCibaManager {
     pub fn new_for_testing() -> Self {
         use jsonwebtoken::{DecodingKey, EncodingKey};
 
-        let config = EnhancedCibaConfig {
-            encoding_key: Some(EncodingKey::from_secret(b"test-secret-key")),
-            decoding_key: Some(DecodingKey::from_secret(b"test-secret-key")),
-            ..Default::default()
-        };
+        let config = EnhancedCibaConfig::builder()
+            .encoding_key(EncodingKey::from_secret(b"test-secret-key"))
+            .decoding_key(DecodingKey::from_secret(b"test-secret-key"))
+            .build();
 
         Self::new(config)
     }
@@ -737,7 +848,7 @@ impl EnhancedCibaManager {
                     // Decode the JWT token to extract the real subject
                     // For now, we'll do basic token validation
                     if token.split('.').count() != 3 {
-                        return Err(AuthError::InvalidToken(
+                        return Err(AuthError::token(
                             "Invalid JWT format in id_token_hint".to_string(),
                         ));
                     }
@@ -745,7 +856,7 @@ impl EnhancedCibaManager {
                     match self.validate_id_token_hint(token) {
                         Ok(claims) => claims.sub,
                         Err(e) => {
-                            return Err(AuthError::InvalidToken(format!(
+                            return Err(AuthError::token(format!(
                                 "id_token_hint validation failed: {}",
                                 e
                             )));
@@ -1058,10 +1169,7 @@ impl EnhancedCibaManager {
         if let Some(ref decoding_key) = self.config.decoding_key {
             match self.jwt_validator.validate_token(token, decoding_key) {
                 Ok(claims) => Ok(claims.sub),
-                Err(e) => Err(AuthError::InvalidToken(format!(
-                    "Invalid ID token hint: {}",
-                    e
-                ))),
+                Err(e) => Err(AuthError::token(format!("Invalid ID token hint: {}", e))),
             }
         } else {
             Err(AuthError::internal(
@@ -1272,7 +1380,7 @@ impl EnhancedCibaManager {
         // Basic JWT structure validation
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {
-            return Err(AuthError::InvalidToken("Invalid JWT structure".to_string()));
+            return Err(AuthError::token("Invalid JWT structure".to_string()));
         }
 
         // For now, perform basic validation without signature verification
@@ -1287,20 +1395,18 @@ impl EnhancedCibaManager {
         use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
         let payload = URL_SAFE_NO_PAD
             .decode(parts[1])
-            .map_err(|_| AuthError::InvalidToken("Invalid JWT payload encoding".to_string()))?;
+            .map_err(|_| AuthError::token("Invalid JWT payload encoding".to_string()))?;
 
         let payload_str = String::from_utf8(payload)
-            .map_err(|_| AuthError::InvalidToken("Invalid JWT payload UTF-8".to_string()))?;
+            .map_err(|_| AuthError::token("Invalid JWT payload UTF-8".to_string()))?;
 
         // Parse JWT claims
         let claims: IdTokenHintClaims = serde_json::from_str(&payload_str)
-            .map_err(|e| AuthError::InvalidToken(format!("Invalid JWT claims: {}", e)))?;
+            .map_err(|e| AuthError::token(format!("Invalid JWT claims: {}", e)))?;
 
         // Basic validation checks
         if claims.sub.is_empty() {
-            return Err(AuthError::InvalidToken(
-                "Missing subject in ID token".to_string(),
-            ));
+            return Err(AuthError::token("Missing subject in ID token".to_string()));
         }
 
         // Check expiration if present
@@ -1310,7 +1416,7 @@ impl EnhancedCibaManager {
                 .unwrap_or_default()
                 .as_secs();
             if exp < now {
-                return Err(AuthError::InvalidToken("ID token has expired".to_string()));
+                return Err(AuthError::token("ID token has expired".to_string()));
             }
         }
 
@@ -1449,12 +1555,11 @@ mod tests {
 
     #[test]
     fn test_binding_message_validation() {
-        let config = EnhancedCibaConfig {
-            max_binding_message_length: 10,
-            encoding_key: Some(jsonwebtoken::EncodingKey::from_secret(b"test-key")),
-            decoding_key: Some(jsonwebtoken::DecodingKey::from_secret(b"test-key")),
-            ..Default::default()
-        };
+        let config = EnhancedCibaConfig::builder()
+            .max_binding_message_length(10)
+            .encoding_key(jsonwebtoken::EncodingKey::from_secret(b"test-key"))
+            .decoding_key(jsonwebtoken::DecodingKey::from_secret(b"test-key"))
+            .build();
 
         let rt = tokio::runtime::Runtime::new().unwrap();
         let manager = EnhancedCibaManager::new(config);

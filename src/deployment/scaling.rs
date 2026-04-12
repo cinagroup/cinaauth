@@ -123,7 +123,8 @@ impl AutoScaler {
         {
             // Check cooldown period
             if let Some(last_scale_up) = self.last_scale_up
-                && now.duration_since(last_scale_up).unwrap() < self.policy.scale_up_cooldown
+                && now.duration_since(last_scale_up).unwrap_or_default()
+                    < self.policy.scale_up_cooldown
             {
                 return Ok(ScalingDecision {
                     action: ScalingAction::NoAction,
@@ -162,7 +163,8 @@ impl AutoScaler {
         {
             // Check cooldown period
             if let Some(last_scale_down) = self.last_scale_down
-                && now.duration_since(last_scale_down).unwrap() < self.policy.scale_down_cooldown
+                && now.duration_since(last_scale_down).unwrap_or_default()
+                    < self.policy.scale_down_cooldown
             {
                 return Ok(ScalingDecision {
                     action: ScalingAction::NoAction,

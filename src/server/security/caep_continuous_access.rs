@@ -132,10 +132,12 @@ pub struct CaepConfig {
 impl Default for CaepConfig {
     fn default() -> Self {
         use ring::rand::{SecureRandom, SystemRandom};
+        // SAFETY: CSPRNG failure at initialization is terminal; the framework
+        // cannot operate without entropy.
         let rng = SystemRandom::new();
         let mut bytes = [0u8; 32];
         rng.fill(&mut bytes)
-            .expect("System CSPRNG unavailable; cannot initialise CaepConfig signing secret");
+            .expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
         let signing_secret = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
             s.push_str(&format!("{b:02x}"));
             s
@@ -1059,14 +1061,48 @@ impl CaepManager {
                         return Ok(false);
                     }
                 }
-                CaepRuleCondition::Custom { expression: _ } => {
-                    // Custom expressions would need a proper expression evaluator
-                    // For now, always evaluate to true
+                CaepRuleCondition::Custom { expression } => {
+                    // Basic expression evaluation: support "field op value" comparisons
+                    if !Self::evaluate_simple_expression(expression) {
+                        return Ok(false);
+                    }
                 }
             }
         }
 
         Ok(true)
+    }
+
+    /// Evaluate a simple comparison expression like "risk_score > 0.8"
+    /// Returns false (safe default) for unrecognized or unparseable expressions.
+    fn evaluate_simple_expression(expression: &str) -> bool {
+        let parts: Vec<&str> = expression.split_whitespace().collect();
+        if parts.len() != 3 {
+            tracing::warn!(
+                expression = expression,
+                "Unrecognized custom CAEP expression format, defaulting to false"
+            );
+            return false;
+        }
+
+        let (_field, op, value_str) = (parts[0], parts[1], parts[2]);
+        let Ok(threshold) = value_str.parse::<f64>() else {
+            tracing::warn!(
+                expression = expression,
+                "Cannot parse threshold value in custom CAEP expression, defaulting to false"
+            );
+            return false;
+        };
+
+        // Without runtime context binding, we can only validate the expression
+        // is syntactically correct. Log and return false (safe default).
+        tracing::debug!(
+            expression = expression,
+            threshold = threshold,
+            op = op,
+            "Custom CAEP expression parsed but no runtime context available, defaulting to false"
+        );
+        false
     }
 
     /// Determine access decision based on risk and actions

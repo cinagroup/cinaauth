@@ -100,6 +100,7 @@ mod oauth2_integration_tests {
             code_challenge: Some("test_challenge".to_string()),
             code_challenge_method: Some("S256".to_string()),
             nonce: None,
+            resource: None,
         };
 
         let auth_headers = make_auth_headers(&state).await;
@@ -139,6 +140,7 @@ mod oauth2_integration_tests {
             code_challenge: Some("test_challenge".to_string()),
             code_challenge_method: Some("S256".to_string()),
             nonce: None,
+            resource: None,
         };
 
         let auth_headers = make_auth_headers(&state).await;
@@ -184,6 +186,7 @@ mod oauth2_integration_tests {
             code_challenge: None,
             code_challenge_method: None,
             nonce: None,
+            resource: None,
         };
 
         let response = oauth2::authorize(State(state), HeaderMap::new(), Query(auth_request))
@@ -208,6 +211,7 @@ mod oauth2_integration_tests {
             code_challenge: Some("test_challenge".to_string()),
             code_challenge_method: Some("plain".to_string()),
             nonce: None,
+            resource: None,
         };
 
         let auth_headers = make_auth_headers(&state).await;
@@ -238,16 +242,10 @@ mod oauth2_integration_tests {
             .unwrap();
 
         // Now test token exchange
-        let token_request = TokenRequest {
-            grant_type: "authorization_code".to_string(),
-            code: Some(code.to_string()),
-            redirect_uri: Some("http://localhost:3000/callback".to_string()),
-            client_id: Some("test_client".to_string()),
-            client_secret: None,
-            code_verifier: Some("test_challenge".to_string()), // For PKCE
-            refresh_token: None,
-            ..Default::default()
-        };
+        let token_request = TokenRequest::authorization_code(code)
+            .redirect_uri("http://localhost:3000/callback")
+            .client_id("test_client")
+            .code_verifier("test_challenge"); // For PKCE
 
         let token_response = oauth2::token(State(state), Json(token_request)).await;
 
@@ -286,7 +284,7 @@ mod oauth2_integration_tests {
             .token_manager()
             .create_auth_token(
                 &user_id,
-                vec!["openid".to_string(), "profile".to_string()],
+                vec!["openid".to_string(), "profile".to_string(), "email".to_string()],
                 "oauth2",
                 None,
             )
@@ -356,6 +354,7 @@ mod oauth2_integration_tests {
             code_challenge: Some(expected_challenge.to_string()),
             code_challenge_method: Some("S256".to_string()),
             nonce: None,
+            resource: None,
         };
 
         let auth_headers = make_auth_headers(&state).await;
@@ -386,16 +385,10 @@ mod oauth2_integration_tests {
             .unwrap();
 
         // Test token exchange with correct code_verifier
-        let token_request = TokenRequest {
-            grant_type: "authorization_code".to_string(),
-            code: Some(code.to_string()),
-            redirect_uri: Some("http://localhost:3000/callback".to_string()),
-            client_id: Some("test_client_pkce".to_string()),
-            client_secret: None,
-            code_verifier: Some(code_verifier.to_string()),
-            refresh_token: None,
-            ..Default::default()
-        };
+        let token_request = TokenRequest::authorization_code(code)
+            .redirect_uri("http://localhost:3000/callback")
+            .client_id("test_client_pkce")
+            .code_verifier(code_verifier);
 
         let token_response = oauth2::token(State(state), Json(token_request)).await;
 
@@ -417,6 +410,7 @@ mod oauth2_integration_tests {
             code_challenge: Some("valid_challenge".to_string()),
             code_challenge_method: Some("plain".to_string()),
             nonce: None,
+            resource: None,
         };
 
         let auth_headers = make_auth_headers(&state).await;
@@ -447,16 +441,10 @@ mod oauth2_integration_tests {
             .unwrap();
 
         // Test token exchange with wrong code_verifier
-        let token_request = TokenRequest {
-            grant_type: "authorization_code".to_string(),
-            code: Some(code.to_string()),
-            redirect_uri: Some("http://localhost:3000/callback".to_string()),
-            client_id: Some("test_client_invalid_pkce".to_string()),
-            client_secret: None,
-            code_verifier: Some("wrong_verifier".to_string()),
-            refresh_token: None,
-            ..Default::default()
-        };
+        let token_request = TokenRequest::authorization_code(code)
+            .redirect_uri("http://localhost:3000/callback")
+            .client_id("test_client_invalid_pkce")
+            .code_verifier("wrong_verifier");
 
         let token_response = oauth2::token(State(state), Json(token_request)).await;
 

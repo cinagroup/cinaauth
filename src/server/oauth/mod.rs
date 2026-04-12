@@ -10,7 +10,10 @@
 pub mod device;
 pub mod oauth2;
 pub mod oauth21;
+pub mod oauth2_enhanced_storage;
+pub mod oauth2_server;
 pub mod par;
+pub mod resource_indicators;
 pub mod rich_authorization_requests;
 
 // Re-export commonly used types - avoid wildcard imports to prevent duplicate definitions

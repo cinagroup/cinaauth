@@ -31,13 +31,20 @@ async fn create_test_server() -> ApiServer {
     let api_config = ApiServerConfig {
         host: "127.0.0.1".to_string(),
         port: 0, // Random port for testing
-        enable_cors: true,
-        allowed_origins: vec!["http://localhost:3000".to_string()],
+        cors: auth_framework::CorsConfig {
+            enabled: true,
+            allowed_origins: vec!["http://localhost:3000".to_string()],
+            ..auth_framework::CorsConfig::default()
+        },
         max_body_size: 1024 * 1024,
         enable_tracing: false,
     };
 
     ApiServer::with_config(auth_framework, api_config)
+}
+
+fn unique_registration_password() -> String {
+    format!("AuthFramework!A9{}", uuid::Uuid::new_v4().simple())
 }
 
 // =============================================================================
@@ -128,13 +135,13 @@ async fn test_successful_login_flow() {
 
     // First register a user
     let username = format!("testuser_{}", uuid::Uuid::new_v4());
-    let password = "SecurePassword123!";
+    let password = unique_registration_password();
 
     let register_response = client
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": username,
-            "password": password,
+            "password": password.clone(),
             "email": format!("{}@test.com", username)
         }))
         .await;
@@ -206,13 +213,13 @@ async fn test_refresh_token_rejects_access_token() {
 
     // Register and login to get tokens
     let username = format!("testuser_{}", uuid::Uuid::new_v4());
-    let password = "SecurePassword123!";
+    let password = unique_registration_password();
 
     client
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": username,
-            "password": password,
+            "password": password.clone(),
             "email": format!("{}@test.com", username)
         }))
         .await;
@@ -255,13 +262,13 @@ async fn test_refresh_token_success() {
 
     // Register and login
     let username = format!("testuser_{}", uuid::Uuid::new_v4());
-    let password = "SecurePassword123!";
+    let password = unique_registration_password();
 
     client
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": username,
-            "password": password,
+            "password": password.clone(),
             "email": format!("{}@test.com", username)
         }))
         .await;
@@ -384,13 +391,15 @@ async fn test_registration_rejects_duplicate_username() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
     let client = axum_test::TestServer::new(app);
+    let first_password = unique_registration_password();
+    let second_password = unique_registration_password();
 
     // First registration should succeed
     let first_response = client
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": "duplicate_test",
-            "password": "StrongPassword123!",
+            "password": first_password,
             "email": "first@example.com"
         }))
         .await;
@@ -401,7 +410,7 @@ async fn test_registration_rejects_duplicate_username() {
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": "duplicate_test",
-            "password": "AnotherPassword456!",
+            "password": second_password,
             "email": "second@example.com"
         }))
         .await;
@@ -413,13 +422,15 @@ async fn test_registration_rejects_duplicate_email() {
     let server = create_test_server().await;
     let app = server.build_router().await.unwrap();
     let client = axum_test::TestServer::new(app);
+    let first_password = unique_registration_password();
+    let second_password = unique_registration_password();
 
     // First registration should succeed
     let first_response = client
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": "user_one",
-            "password": "StrongPassword123!",
+            "password": first_password,
             "email": "duplicate@example.com"
         }))
         .await;
@@ -430,7 +441,7 @@ async fn test_registration_rejects_duplicate_email() {
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": "user_two",
-            "password": "AnotherPassword456!",
+            "password": second_password,
             "email": "duplicate@example.com"
         }))
         .await;
@@ -443,12 +454,13 @@ async fn test_registration_rejects_invalid_email() {
     let app = server.build_router().await.unwrap();
 
     let client = axum_test::TestServer::new(app);
+    let password = unique_registration_password();
 
     let response = client
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": "testuser",
-            "password": "SecurePassword123!",
+            "password": password,
             "email": "not_an_email"
         }))
         .await;
@@ -472,12 +484,13 @@ async fn test_registration_success() {
     let client = axum_test::TestServer::new(app);
 
     let username = format!("testuser_{}", uuid::Uuid::new_v4());
+    let password = unique_registration_password();
 
     let response = client
         .post("/api/v1/auth/register")
         .json(&json!({
             "username": username,
-            "password": "SecurePassword123!",
+            "password": password,
             "email": format!("{}@example.com", username)
         }))
         .await;

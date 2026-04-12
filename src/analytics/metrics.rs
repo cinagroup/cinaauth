@@ -3,7 +3,8 @@
 //! This module provides metrics collection, aggregation, and analysis
 //! for RBAC system performance and usage patterns.
 //!
-//! > **Status: Active** — Integrated with AuthStorage for metrics persistence and retrieval.
+//! > **Status:** Event persistence is wired up today, and higher-level metrics
+//! > currently reflect the analytics events collected so far.
 
 use super::{AnalyticsError, AnalyticsEvent};
 use crate::storage::AuthStorage;
@@ -128,7 +129,7 @@ mod tests {
     fn test_metrics_collector_starts_empty() {
         let collector = MetricsCollector::new(
             MetricsConfig::default(),
-            crate::storage::memory::MemoryStorage::new_arc(),
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
         );
         assert!(collector.get_current_metrics().is_empty());
     }
@@ -137,7 +138,7 @@ mod tests {
     async fn test_collect_metrics_no_op_succeeds() {
         let mut collector = MetricsCollector::new(
             MetricsConfig::default(),
-            crate::storage::memory::MemoryStorage::new_arc(),
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
         );
         let result = collector.collect_metrics(&[]).await;
         assert!(result.is_ok());

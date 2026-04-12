@@ -107,6 +107,14 @@ pub struct BackChannelLogoutConfig {
     pub user_agent: String,
     /// Enable request/response logging
     pub enable_http_logging: bool,
+    /// HMAC signing key for logout tokens (generated randomly if not provided).
+    /// Used only when `rsa_private_key_pem` is `None`; in that case the JWT
+    /// header algorithm is `HS256` (not `RS256`).
+    pub signing_key: Option<Vec<u8>>,
+    /// PEM-encoded RSA private key for signing logout tokens with RS256.
+    /// When set, JWTs use `"alg": "RS256"` and are signed with this key.
+    /// Falls back to `signing_key` HMAC if `None`.
+    pub rsa_private_key_pem: Option<String>,
 }
 
 impl Default for BackChannelLogoutConfig {
@@ -122,6 +130,8 @@ impl Default for BackChannelLogoutConfig {
             include_session_claims: true,
             user_agent: "AuthFramework-OIDC/1.0".to_string(),
             enable_http_logging: false,
+            signing_key: None,
+            rsa_private_key_pem: None,
         }
     }
 }
@@ -191,6 +201,10 @@ pub struct BackChannelLogoutManager {
     rp_configs: HashMap<String, RpBackChannelConfig>,
     /// Active logout requests tracking
     active_logouts: HashMap<String, SystemTime>,
+    /// HMAC signing key for logout tokens (fallback when no RSA key)
+    signing_key: Vec<u8>,
+    /// RSA signing key for RS256 logout tokens (preferred)
+    rsa_signing_key: Option<ring::signature::RsaKeyPair>,
 }
 
 impl BackChannelLogoutManager {
@@ -220,6 +234,7 @@ impl BackChannelLogoutManager {
             ],
             cert_validation: crate::server::core::common_config::CertificateValidation::Full,
             verify_certificates: true,
+            accept_invalid_certs: false,
         };
         endpoint_config
             .headers
@@ -227,12 +242,40 @@ impl BackChannelLogoutManager {
 
         let http_client = crate::server::core::common_http::HttpClient::new(endpoint_config)?;
 
+        // Use provided signing key or generate a random one
+        let signing_key = config.signing_key.clone().unwrap_or_else(|| {
+            use ring::rand::{SecureRandom, SystemRandom};
+            let rng = SystemRandom::new();
+            let mut key = vec![0u8; 32];
+            rng.fill(&mut key)
+                .expect("AuthFramework fatal: system CSPRNG unavailable");
+            key
+        });
+
+        // Parse RSA private key if provided
+        let rsa_signing_key = config.rsa_private_key_pem.as_ref().and_then(|pem| {
+            // Strip PEM header/footer and decode
+            let der = pem
+                .lines()
+                .filter(|l| !l.starts_with("-----"))
+                .collect::<String>();
+            let der_bytes = base64::Engine::decode(
+                &base64::engine::general_purpose::STANDARD,
+                &der,
+            ).ok()?;
+            ring::signature::RsaKeyPair::from_pkcs8(&der_bytes)
+                .or_else(|_| ring::signature::RsaKeyPair::from_der(&der_bytes))
+                .ok()
+        });
+
         Ok(Self {
             config,
             session_manager,
             http_client,
             rp_configs: HashMap::new(),
             active_logouts: HashMap::new(),
+            signing_key,
+            rsa_signing_key,
         })
     }
 
@@ -390,9 +433,16 @@ impl BackChannelLogoutManager {
             // Note: 'nonce' should NOT be included in logout tokens per spec
         });
 
-        // Create JWT header
+        // Select algorithm based on whether an RSA key is available
+        let alg = if self.rsa_signing_key.is_some() {
+            "RS256"
+        } else {
+            "HS256"
+        };
+
+        // Create JWT header — algorithm MUST match the actual signing method
         let header = serde_json::json!({
-            "alg": "RS256",
+            "alg": alg,
             "typ": "logout+jwt",
         });
 
@@ -401,24 +451,37 @@ impl BackChannelLogoutManager {
         let claims_b64 = URL_SAFE_NO_PAD.encode(claims.to_string());
         let signing_input = format!("{}.{}", header_b64, claims_b64);
 
-        // Generate secure signature (in production: use actual RSA private key)
         let signature = self.generate_logout_token_signature(&signing_input)?;
         let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
 
         Ok(format!("{}.{}.{}", header_b64, claims_b64, signature_b64))
     }
 
-    /// Generate secure signature for logout token
+    /// Sign the logout token using RSA (RS256) if available, otherwise HMAC (HS256).
     fn generate_logout_token_signature(&self, signing_input: &str) -> Result<Vec<u8>> {
-        use sha2::{Digest, Sha256};
-
-        let mut hasher = Sha256::new();
-        hasher.update(signing_input.as_bytes());
-        hasher.update(b"logout_token_signature_salt");
-
-        // In production: Use RSA private key signing
-        // This provides a secure signature that's much better than "signature" string
-        Ok(hasher.finalize().to_vec())
+        if let Some(ref rsa_key) = self.rsa_signing_key {
+            // RS256: RSA PKCS#1 v1.5 with SHA-256
+            let rng = ring::rand::SystemRandom::new();
+            let mut sig = vec![0u8; rsa_key.public().modulus_len()];
+            rsa_key
+                .sign(
+                    &ring::signature::RSA_PKCS1_SHA256,
+                    &rng,
+                    signing_input.as_bytes(),
+                    &mut sig,
+                )
+                .map_err(|e| AuthError::internal(format!("RSA signing error: {e}")))?;
+            Ok(sig)
+        } else {
+            // Fallback: HS256
+            use hmac::{Hmac, Mac};
+            use sha2::Sha256;
+            type HmacSha256 = Hmac<Sha256>;
+            let mut mac = HmacSha256::new_from_slice(&self.signing_key)
+                .map_err(|e| AuthError::internal(format!("HMAC key error: {}", e)))?;
+            mac.update(signing_input.as_bytes());
+            Ok(mac.finalize().into_bytes().to_vec())
+        }
     }
 
     /// Send back-channel logout notification to a specific RP

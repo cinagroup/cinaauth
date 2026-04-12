@@ -10,7 +10,9 @@ use axum::{
 };
 
 /// Security headers to validate
-const REQUIRED_SECURITY_HEADERS: &[&str] = &["user-agent", "accept"];
+/// Note: Only user-agent is required. The accept header is omitted because
+/// many legitimate clients (curl, automated tools, health checks) don't send it.
+const REQUIRED_SECURITY_HEADERS: &[&str] = &["user-agent"];
 
 const SUSPICIOUS_PATTERNS: &[&str] = &[
     "<script",

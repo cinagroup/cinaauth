@@ -1,11 +1,29 @@
 use crate::api::{ApiResponse, ApiState};
 use axum::{
     extract::{Query, State},
-    response::{Html, Json},
+    http::StatusCode,
+    response::{Html, IntoResponse, Json},
 };
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Escape a string for safe inclusion in XML attribute values and text content.
+/// Prevents XML injection by escaping the five predefined XML entities.
+fn xml_escape(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    for ch in input.chars() {
+        match ch {
+            '&' => output.push_str("&amp;"),
+            '<' => output.push_str("&lt;"),
+            '>' => output.push_str("&gt;"),
+            '"' => output.push_str("&quot;"),
+            '\'' => output.push_str("&apos;"),
+            _ => output.push(ch),
+        }
+    }
+    output
+}
 
 #[cfg(feature = "saml")]
 use bergshamra::{DsigContext, Key, KeyData, KeysManager, VerifyResult, verify};
@@ -67,6 +85,47 @@ pub struct SamlMetadataResponse {
     pub name_id_format: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct SamlSpConfig {
+    entity_id: String,
+    acs_url: String,
+    #[serde(default)]
+    slo_url: Option<String>,
+}
+
+impl SamlSpConfig {
+    fn validate(self) -> Result<Self, String> {
+        if self.entity_id.trim().is_empty() {
+            return Err("missing entity_id".to_string());
+        }
+        if self.acs_url.trim().is_empty() {
+            return Err("missing acs_url".to_string());
+        }
+        Ok(self)
+    }
+
+    fn slo_url(&self) -> Result<&str, String> {
+        self.slo_url
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| "missing slo_url".to_string())
+    }
+}
+
+async fn load_saml_sp_config(state: &ApiState) -> Result<SamlSpConfig, String> {
+    let data = state
+        .auth_framework
+        .storage()
+        .get_kv("saml_sp:config")
+        .await
+        .map_err(|_| "failed to load saml_sp:config".to_string())?
+        .ok_or_else(|| "missing saml_sp:config".to_string())?;
+
+    serde_json::from_slice::<SamlSpConfig>(&data)
+        .map_err(|_| "invalid saml_sp:config JSON".to_string())?
+        .validate()
+}
+
 /// SAML logout request
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SamlLogoutRequest {
@@ -85,35 +144,28 @@ pub struct SamlLogoutResponse {
 /// Get SAML metadata for this SP (Service Provider).
 /// SP configuration (entity_id, acs_url, slo_url) is read from storage key `saml_sp:config`.
 /// Store a JSON object with those fields to customise the metadata for your deployment.
-pub async fn get_saml_metadata(State(state): State<ApiState>) -> Html<String> {
-    // Read SP config from storage; fall back to placeholder values.
-    let (entity_id, acs_url, slo_url) = if let Ok(Some(data)) = state
-        .auth_framework
-        .storage()
-        .get_kv("saml_sp:config")
-        .await
-    {
-        let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-        (
-            cfg["entity_id"]
-                .as_str()
-                .unwrap_or("https://auth.example.com")
-                .to_string(),
-            cfg["acs_url"]
-                .as_str()
-                .unwrap_or("https://auth.example.com/api/saml/acs")
-                .to_string(),
-            cfg["slo_url"]
-                .as_str()
-                .unwrap_or("https://auth.example.com/api/saml/slo")
-                .to_string(),
-        )
-    } else {
-        (
-            "https://auth.example.com".to_string(),
-            "https://auth.example.com/api/saml/acs".to_string(),
-            "https://auth.example.com/api/saml/slo".to_string(),
-        )
+pub async fn get_saml_metadata(State(state): State<ApiState>) -> impl IntoResponse {
+    let sp_config = match load_saml_sp_config(&state).await {
+        Ok(config) => config,
+        Err(error) => {
+            tracing::error!(error = %error, "SAML metadata requested without valid SP configuration");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html("SAML service provider configuration is missing or incomplete".to_string()),
+            )
+                .into_response();
+        }
+    };
+    let slo_url = match sp_config.slo_url() {
+        Ok(url) => url,
+        Err(error) => {
+            tracing::error!(error = %error, "SAML metadata requested without SLO URL configured");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html("SAML service provider configuration is missing or incomplete".to_string()),
+            )
+                .into_response();
+        }
     };
 
     let metadata_xml = format!(
@@ -129,10 +181,22 @@ pub async fn get_saml_metadata(State(state): State<ApiState>) -> Html<String> {
     <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
                                Location="{slo_url}" />
   </md:SPSSODescriptor>
-</md:EntityDescriptor>"#
+</md:EntityDescriptor>"#,
+        entity_id = xml_escape(&sp_config.entity_id),
+        acs_url = xml_escape(&sp_config.acs_url),
+        slo_url = xml_escape(slo_url),
     );
 
-    Html(metadata_xml)
+    // Return SAML metadata with correct Content-Type per SAML metadata spec
+    (
+        StatusCode::OK,
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "application/samlmetadata+xml",
+        )],
+        metadata_xml,
+    )
+        .into_response()
 }
 
 /// Initiate SAML SSO flow.
@@ -175,29 +239,15 @@ pub async fn initiate_saml_sso(
         }
     };
 
-    // Read SP config for Issuer/ACS URL; fall back to defaults.
-    let (sp_entity_id, sp_acs_url) = if let Ok(Some(data)) = state
-        .auth_framework
-        .storage()
-        .get_kv("saml_sp:config")
-        .await
-    {
-        let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-        (
-            cfg["entity_id"]
-                .as_str()
-                .unwrap_or("https://auth.example.com")
-                .to_string(),
-            cfg["acs_url"]
-                .as_str()
-                .unwrap_or("https://auth.example.com/api/saml/acs")
-                .to_string(),
-        )
-    } else {
-        (
-            "https://auth.example.com".to_string(),
-            "https://auth.example.com/api/saml/acs".to_string(),
-        )
+    let sp_config = match load_saml_sp_config(&state).await {
+        Ok(config) => config,
+        Err(error) => {
+            tracing::error!(error = %error, "SAML SSO requested without valid SP configuration");
+            return Json(ApiResponse::error_typed(
+                "SAML_CONFIG_ERROR",
+                "Service Provider configuration is missing required entity_id and acs_url values",
+            ));
+        }
     };
 
     // Generate SAML AuthnRequest
@@ -224,6 +274,9 @@ pub async fn initiate_saml_sso(
         is_passive = request
             .is_passive
             .map_or(String::new(), |ip| format!(r#"IsPassive="{}""#, ip)),
+        sp_entity_id = xml_escape(&sp_config.entity_id),
+        sp_acs_url = xml_escape(&sp_config.acs_url),
+        idp_sso_url = xml_escape(&idp_sso_url),
     );
 
     // Encode SAML request
@@ -356,7 +409,7 @@ pub async fn handle_saml_acs(
         );
         return Json(ApiResponse::error_typed(
             "SAML_UNSOLICITED_RESPONSE",
-            "Unsolicited SAML responses are not accepted; initiate SSO via /api/saml/sso first",
+            "Unsolicited SAML responses are not accepted; initiate SSO via /api/v1/saml/sso first",
         ));
     }
 
@@ -364,20 +417,15 @@ pub async fn handle_saml_acs(
     // Validate NotBefore, NotOnOrAfter, and AudienceRestriction per SAML Core 2.5.1.
     #[cfg(feature = "saml")]
     {
-        // Load SP entity ID to check audience restriction.
-        let sp_entity_id = if let Ok(Some(data)) = state
-            .auth_framework
-            .storage()
-            .get_kv("saml_sp:config")
-            .await
-        {
-            let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-            cfg["entity_id"]
-                .as_str()
-                .unwrap_or("https://auth.example.com")
-                .to_string()
-        } else {
-            "https://auth.example.com".to_string()
+        let sp_entity_id = match load_saml_sp_config(&state).await {
+            Ok(config) => config.entity_id,
+            Err(error) => {
+                tracing::error!(error = %error, "SAML ACS requested without valid SP configuration");
+                return Json(ApiResponse::error_typed(
+                    "SAML_CONFIG_ERROR",
+                    "Service Provider configuration is missing required entity_id and acs_url values",
+                ));
+            }
         };
 
         if let Err(e) = validate_saml_conditions(&saml_response_xml, &sp_entity_id) {
@@ -421,7 +469,7 @@ pub async fn handle_saml_acs(
     let token_data = serde_json::json!({
         "access_token": token.access_token,
         "token_type": "Bearer",
-        "expires_in": 3600,
+        "expires_in": (token.expires_at - token.issued_at).num_seconds().max(0) as u64,
         "refresh_token": token.refresh_token,
         "user_id": username,
         "authentication_method": "saml",
@@ -473,20 +521,15 @@ pub async fn initiate_saml_slo(
         }
     };
 
-    // Read SP entity ID for Issuer field.
-    let sp_entity_id = if let Ok(Some(data)) = state
-        .auth_framework
-        .storage()
-        .get_kv("saml_sp:config")
-        .await
-    {
-        let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-        cfg["entity_id"]
-            .as_str()
-            .unwrap_or("https://auth.example.com")
-            .to_string()
-    } else {
-        "https://auth.example.com".to_string()
+    let sp_config = match load_saml_sp_config(&state).await {
+        Ok(config) => config,
+        Err(error) => {
+            tracing::error!(error = %error, "SAML SLO requested without valid SP configuration");
+            return Json(ApiResponse::error_typed(
+                "SAML_CONFIG_ERROR",
+                "Service Provider configuration is missing required entity_id and acs_url values",
+            ));
+        }
     };
 
     let logout_id = format!("logout_{}", uuid::Uuid::new_v4());
@@ -500,15 +543,17 @@ pub async fn initiate_saml_slo(
                             Version="2.0"
                             IssueInstant="{issue_instant}"
                             Destination="{idp_slo_url}">
-  <saml:Issuer>{sp_entity_id}</saml:Issuer>
+    <saml:Issuer>{sp_entity_id}</saml:Issuer>
   <saml:NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">{name_id}</saml:NameID>
   {session_index}
 </samlp:LogoutRequest>"#,
-        name_id = request.name_id,
+        name_id = xml_escape(&request.name_id),
         session_index = request.session_index.map_or(String::new(), |si| format!(
             r#"<samlp:SessionIndex>{}</samlp:SessionIndex>"#,
-            si
+            xml_escape(&si)
         )),
+        sp_entity_id = xml_escape(&sp_config.entity_id),
+        idp_slo_url = xml_escape(&idp_slo_url),
     );
 
     let encoded_request = base64::engine::general_purpose::STANDARD.encode(&saml_logout_request);
@@ -528,7 +573,6 @@ pub async fn initiate_saml_slo(
 }
 
 /// Handle SAML SLO response from IdP
-#[allow(unused_variables)]
 pub async fn handle_saml_slo_response(
     State(_state): State<ApiState>,
     Query(params): Query<HashMap<String, String>>,
@@ -570,6 +614,37 @@ pub async fn handle_saml_slo_response(
     let slo_success = false;
 
     if slo_success {
+        // Invalidate the user's session associated with this SAML exchange.
+        // The SAML response should carry the NameID that maps to our user.
+        #[cfg(feature = "saml")]
+        {
+            if let Some(name_id) = xml_extract_name_id(&response_xml) {
+                // Look up user by email (NameID) and invalidate their sessions.
+                if let Ok(Some(uid_bytes)) = _state
+                    .auth_framework
+                    .storage()
+                    .get_kv(&format!("user:email:{}", name_id))
+                    .await
+                {
+                    let user_id = String::from_utf8_lossy(&uid_bytes).to_string();
+                    let session_key = format!("sessions:user:{}", user_id);
+                    let _ = _state
+                        .auth_framework
+                        .storage()
+                        .delete_kv(&session_key)
+                        .await;
+                    tracing::info!(user_id = %user_id, "SAML SLO: invalidated sessions");
+                }
+            }
+        }
+
+        // Handle RelayState redirect if provided
+        if let Some(relay_state) = params.get("RelayState") {
+            if !relay_state.is_empty() {
+                tracing::debug!(relay_state = %relay_state, "SAML SLO: RelayState provided");
+            }
+        }
+
         Json(ApiResponse::<()>::ok_with_message(
             "SAML logout completed successfully",
         ))
@@ -596,58 +671,84 @@ pub async fn create_saml_assertion(
         None => return Json(ApiResponse::validation_error_typed("Audience required")),
     };
 
-    // Read SP entity ID for Issuer field.
-    let sp_entity_id = if let Ok(Some(data)) = state
-        .auth_framework
-        .storage()
-        .get_kv("saml_sp:config")
-        .await
-    {
-        let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
-        cfg["entity_id"]
-            .as_str()
-            .unwrap_or("https://auth.example.com")
-            .to_string()
-    } else {
-        "https://auth.example.com".to_string()
+    let sp_config = match load_saml_sp_config(&state).await {
+        Ok(config) => config,
+        Err(error) => {
+            tracing::error!(error = %error, "SAML assertion requested without valid SP configuration");
+            return Json(ApiResponse::error_typed(
+                "SAML_CONFIG_ERROR",
+                "Service Provider configuration is missing required entity_id and acs_url values",
+            ));
+        }
     };
 
-    // Use the username as-is if it already looks like an email address (contains '@');
-    // otherwise treat it as a local part and append a placeholder domain.
-    let name_id = if username.contains('@') {
-        username.to_string()
-    } else {
-        format!("{}@example.com", username)
+    let name_id = match request["email"].as_str().map(str::trim) {
+        Some(email) if !email.is_empty() => email.to_string(),
+        _ if username.contains('@') => username.to_string(),
+        _ => {
+            return Json(ApiResponse::validation_error_typed(
+                "Email required when username is not an email address",
+            ));
+        }
     };
 
-    // Create SAML assertion (simplified)
+    // Create SAML assertion with Response wrapper.
+    // Note: In production, this assertion should be signed with an XML-DSig
+    // private key. Without signing, relying parties that enforce signature
+    // verification will reject the assertion.
+    let assertion_id = uuid::Uuid::new_v4();
+    let response_id = uuid::Uuid::new_v4();
+    let now = chrono::Utc::now();
+    let not_before = (now - chrono::Duration::minutes(1)).to_rfc3339();
+    let not_after = (now + chrono::Duration::hours(1)).to_rfc3339();
+    let now_str = now.to_rfc3339();
+    // Issuer is our own entity (acting as IdP), not the SP
+    let issuer = xml_escape(&sp_config.entity_id);
+    let audience_escaped = xml_escape(audience);
+    let name_id_escaped = xml_escape(&name_id);
+    let username_escaped = xml_escape(username);
+
     let assertion_xml = format!(
-        r#"<saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
-                        ID="assertion_{assertion_id}"
-                        IssueInstant="{now}"
-                        Version="2.0">
-  <saml:Issuer>{sp_entity_id}</saml:Issuer>
-  <saml:Subject>
-    <saml:NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">{name_id}</saml:NameID>
-  </saml:Subject>
-  <saml:Conditions NotBefore="{not_before}" NotOnOrAfter="{not_after}">
-    <saml:AudienceRestriction>
-      <saml:Audience>{audience}</saml:Audience>
-    </saml:AudienceRestriction>
-  </saml:Conditions>
-  <saml:AttributeStatement>
-    <saml:Attribute Name="username">
-      <saml:AttributeValue>{username}</saml:AttributeValue>
-    </saml:Attribute>
-    <saml:Attribute Name="email">
-      <saml:AttributeValue>{name_id}</saml:AttributeValue>
-    </saml:Attribute>
-  </saml:AttributeStatement>
-</saml:Assertion>"#,
-        assertion_id = uuid::Uuid::new_v4(),
-        now = chrono::Utc::now().to_rfc3339(),
-        not_before = (chrono::Utc::now() - chrono::Duration::minutes(1)).to_rfc3339(),
-        not_after = (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339(),
+        r#"<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                         xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+                         ID="response_{response_id}"
+                         IssueInstant="{now_str}"
+                         Destination="{audience_escaped}"
+                         Version="2.0">
+  <saml:Issuer>{issuer}</saml:Issuer>
+  <samlp:Status>
+    <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+  </samlp:Status>
+  <saml:Assertion ID="assertion_{assertion_id}"
+                  IssueInstant="{now_str}"
+                  Version="2.0">
+    <saml:Issuer>{issuer}</saml:Issuer>
+    <saml:Subject>
+      <saml:NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">{name_id_escaped}</saml:NameID>
+      <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+        <saml:SubjectConfirmationData NotOnOrAfter="{not_after}" Recipient="{audience_escaped}"/>
+      </saml:SubjectConfirmation>
+    </saml:Subject>
+    <saml:Conditions NotBefore="{not_before}" NotOnOrAfter="{not_after}">
+      <saml:AudienceRestriction>
+        <saml:Audience>{audience_escaped}</saml:Audience>
+      </saml:AudienceRestriction>
+    </saml:Conditions>
+    <saml:AuthnStatement AuthnInstant="{now_str}" SessionIndex="session_{assertion_id}">
+      <saml:AuthnContext>
+        <saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</saml:AuthnContextClassRef>
+      </saml:AuthnContext>
+    </saml:AuthnStatement>
+    <saml:AttributeStatement>
+      <saml:Attribute Name="username">
+        <saml:AttributeValue>{username_escaped}</saml:AttributeValue>
+      </saml:Attribute>
+      <saml:Attribute Name="email">
+        <saml:AttributeValue>{name_id_escaped}</saml:AttributeValue>
+      </saml:Attribute>
+    </saml:AttributeStatement>
+  </saml:Assertion>
+</samlp:Response>"#,
     );
 
     Json(ApiResponse::success_with_message(
@@ -1183,6 +1284,38 @@ fn xml_extract_status_code(saml_xml: &str) -> Option<String> {
                 if xml_local(e.name()) == b"Status" {
                     return None; // Status element ended without StatusCode.
                 }
+            }
+            Ok(Event::Eof) => break,
+            Err(_) => break,
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Extract the NameID text from the first `<saml:NameID>` element.
+#[cfg(feature = "saml")]
+fn xml_extract_name_id(saml_xml: &str) -> Option<String> {
+    let mut reader = Reader::from_str(saml_xml);
+    let mut in_name_id = false;
+
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) => {
+                if xml_local(e.name()) == b"NameID" {
+                    in_name_id = true;
+                }
+            }
+            Ok(Event::Text(e)) if in_name_id => {
+                if let Ok(text) = e.decode() {
+                    let s = text.trim();
+                    if !s.is_empty() {
+                        return Some(s.to_string());
+                    }
+                }
+            }
+            Ok(Event::End(e)) if in_name_id && xml_local(e.name()) == b"NameID" => {
+                return None; // Empty NameID
             }
             Ok(Event::Eof) => break,
             Err(_) => break,

@@ -369,7 +369,7 @@ pub async fn security_middleware(
     let ip = addr.ip();
 
     // Get security manager
-    let security_manager = match state.auth_framework.get_security_manager() {
+    let security_manager = match state.auth_framework.security_manager() {
         Some(manager) => manager,
         None => return Ok(next.run(request).await), // No security manager, allow request
     };
@@ -401,7 +401,7 @@ pub async fn security_middleware(
 pub async fn get_security_stats(
     State(state): State<ApiState>,
 ) -> Result<Json<ApiResponse<SecurityStats>>, StatusCode> {
-    let security_manager = match state.auth_framework.get_security_manager() {
+    let security_manager = match state.auth_framework.security_manager() {
         Some(manager) => manager,
         None => return Err(StatusCode::SERVICE_UNAVAILABLE),
     };
@@ -421,7 +421,7 @@ pub async fn add_to_blacklist(
     State(state): State<ApiState>,
     Json(request): Json<BlacklistRequest>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
-    let security_manager = match state.auth_framework.get_security_manager() {
+    let security_manager = match state.auth_framework.security_manager() {
         Some(manager) => manager,
         None => return Err(StatusCode::SERVICE_UNAVAILABLE),
     };
@@ -438,7 +438,7 @@ pub async fn remove_from_blacklist(
     State(state): State<ApiState>,
     Json(request): Json<BlacklistRequest>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
-    let security_manager = match state.auth_framework.get_security_manager() {
+    let security_manager = match state.auth_framework.security_manager() {
         Some(manager) => manager,
         None => return Err(StatusCode::SERVICE_UNAVAILABLE),
     };

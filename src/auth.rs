@@ -1,5 +1,8 @@
 //! Main authentication framework implementation.
 
+use crate::auth_operations::{
+    AuditLogQuery, DelegationRequest, PermissionContext, SessionCreateRequest, UserListQuery,
+};
 use crate::authentication::credentials::{Credential, CredentialMetadata};
 use crate::config::AuthConfig;
 use crate::distributed::DistributedSessionStore;
@@ -44,13 +47,16 @@ pub struct UserInfo {
     pub name: Option<String>,
 
     /// User roles
-    pub roles: Vec<String>,
+    pub roles: crate::types::Roles,
 
     /// Whether the user is active
     pub active: bool,
 
+    /// Whether the user's email address has been verified
+    pub email_verified: bool,
+
     /// Additional user attributes
-    pub attributes: HashMap<String, serde_json::Value>,
+    pub attributes: crate::types::UserAttributes,
 }
 
 /// Returns true when running in a test environment.
@@ -114,11 +120,11 @@ fn is_test_env() -> bool {
 /// let mut auth = AuthFramework::new(config);
 ///
 /// // Register an authentication method
-/// # let password_method: AuthMethodEnum = todo!();
+/// # let password_method: AuthMethodEnum = unimplemented!();
 /// auth.register_method("password", password_method);
 ///
 /// // Authenticate a user
-/// # let credential: Credential = todo!();
+/// # let credential: Credential = unimplemented!();
 /// let result = auth.authenticate("password", credential).await?;
 /// # Ok(())
 /// # }
@@ -157,6 +163,7 @@ pub struct AuthFramework {
     audit_manager: Arc<crate::audit::AuditLogger<Arc<crate::storage::MemoryStorage>>>,
 
     /// Security manager for rate limiting, DoS protection, and IP blacklisting
+    #[cfg(feature = "api-server")]
     security_manager: Arc<crate::api::SecurityManager>,
 
     /// Runtime-mutable configuration. Updated live by the admin API without restart.
@@ -173,11 +180,14 @@ pub struct AuthFramework {
 
     /// Framework initialization state
     initialized: bool,
+
+    /// Whether the caller explicitly replaced the storage backend.
+    storage_overridden: bool,
 }
 
 pub use crate::auth_operations::{
-    AdminOperations, AuditOperations, AuthorizationOperations, MfaOperations, MonitoringOperations,
-    SessionOperations, TokenOperations, UserOperations,
+    AdminOperations, AuditOperations, AuthorizationOperations, MaintenanceOperations,
+    MfaOperations, MonitoringOperations, SessionOperations, TokenOperations, UserOperations,
 };
 
 /// Extract JWT secret bytes from `config` or the `JWT_SECRET` env-var.
@@ -253,9 +263,20 @@ impl AuthFramework {
         AuditOperations { framework: self }
     }
 
+    /// Access focused maintenance operations.
+    pub fn maintenance(&self) -> MaintenanceOperations<'_> {
+        MaintenanceOperations { framework: self }
+    }
+
     /// Read the current runtime-mutable configuration.
-    pub async fn get_runtime_config(&self) -> crate::config::RuntimeConfig {
+    pub async fn runtime_config(&self) -> crate::config::RuntimeConfig {
         self.runtime_config.read().await.clone()
+    }
+
+    #[deprecated(since = "0.6.0", note = "Use `runtime_config()` instead")]
+    #[doc(hidden)]
+    pub async fn get_runtime_config(&self) -> crate::config::RuntimeConfig {
+        self.runtime_config().await
     }
 
     /// Apply a partial or full update to the runtime-mutable configuration.
@@ -295,17 +316,29 @@ impl AuthFramework {
     ///
     /// This method is infallible and creates a basic framework instance.
     /// Configuration validation and component initialization is deferred to `initialize()`.
-    /// This design improves API usability while maintaining security through proper initialization.
+    /// An ephemeral random secret is used for the token manager until `initialize()`
+    /// replaces it with the configured secret. Tokens issued before initialization
+    /// will NOT be valid afterwards.
     pub fn new(config: AuthConfig) -> Self {
         // Store configuration for later validation during initialize()
         let storage = Arc::new(MemoryStorage::new()) as Arc<dyn AuthStorage>;
         let audit_storage = Arc::new(crate::storage::MemoryStorage::new());
         let audit_manager = Arc::new(crate::audit::AuditLogger::new(audit_storage));
 
-        // Create a default token manager that will be replaced during initialization
-        let default_secret = b"temporary_development_secret_replace_in_init";
+        // Create a token manager with a cryptographically random ephemeral secret.
+        // This avoids holding a well-known hardcoded secret in memory.  The real
+        // configured secret is applied during initialize().
+        // SAFETY: CSPRNG failure at initialization is terminal; the framework
+        // cannot operate without entropy.
+        let ephemeral_secret = {
+            let rng = ring::rand::SystemRandom::new();
+            let mut buf = [0u8; 32];
+            ring::rand::SecureRandom::fill(&rng, &mut buf)
+                .expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+            buf
+        };
         let token_manager =
-            TokenManager::new_hmac(default_secret, "auth-framework", "auth-framework");
+            TokenManager::new_hmac(&ephemeral_secret, "auth-framework", "auth-framework");
 
         let user_manager = crate::auth_modular::user_manager::UserManager::new(storage.clone());
         let session_manager =
@@ -328,6 +361,7 @@ impl AuthFramework {
                 crate::monitoring::MonitoringConfig::default(),
             )),
             audit_manager,
+            #[cfg(feature = "api-server")]
             security_manager: Arc::new(crate::api::SecurityManager::new()),
             runtime_config: Arc::new(tokio::sync::RwLock::new(
                 crate::config::RuntimeConfig::default(),
@@ -336,6 +370,7 @@ impl AuthFramework {
             session_manager,
             mfa_manager,
             initialized: false,
+            storage_overridden: false,
         }
     }
 
@@ -409,6 +444,7 @@ impl AuthFramework {
                 crate::monitoring::MonitoringConfig::default(),
             )),
             audit_manager,
+            #[cfg(feature = "api-server")]
             security_manager: Arc::new(crate::api::SecurityManager::new()),
             runtime_config: Arc::new(tokio::sync::RwLock::new(
                 crate::config::RuntimeConfig::from_auth_config(&config),
@@ -417,6 +453,7 @@ impl AuthFramework {
             session_manager,
             mfa_manager,
             initialized: false,
+            storage_overridden: false,
         })
     }
 
@@ -437,6 +474,7 @@ impl AuthFramework {
                 Arc::new(RwLock::new(PermissionChecker::new())),
                 storage,
             );
+        self.storage_overridden = true;
     }
 
     /// Replace the distributed session store.
@@ -468,6 +506,22 @@ impl AuthFramework {
         }
 
         self.methods.insert(name, method);
+    }
+
+    /// Returns `Ok(())` when the framework has been initialised, or a clear
+    /// error telling the caller what to do.
+    ///
+    /// Prefer calling this at the top of every public method that touches
+    /// storage, tokens, sessions, or authorisation state.
+    fn require_initialized(&self) -> Result<()> {
+        if self.initialized {
+            Ok(())
+        } else {
+            Err(AuthError::configuration(
+                "Framework not initialized. Call `initialize().await` first, \
+                 or use `AuthFramework::builder().build().await` which initializes automatically.",
+            ))
+        }
     }
 
     /// Initialize the authentication framework.
@@ -513,18 +567,11 @@ impl AuthFramework {
         self.token_manager = token_manager;
 
         // Set up storage backend if not already configured
-        match &self.config.storage {
-            #[cfg(feature = "redis-storage")]
-            crate::config::StorageConfig::Redis { url, key_prefix } => {
-                let redis_storage =
-                    crate::storage::RedisStorage::new(url, key_prefix).map_err(|e| {
-                        AuthError::configuration(format!("Failed to create Redis storage: {}", e))
-                    })?;
-                self.storage = Arc::new(redis_storage);
-            }
-            _ => {
-                // Keep existing memory storage
-            }
+        if !self.storage_overridden {
+            let storage =
+                crate::storage::factory::build_storage_backend(&self.config.storage, None).await?;
+            self.replace_storage(storage);
+            self.storage_overridden = false;
         }
 
         // Set up rate limiter if enabled
@@ -538,6 +585,9 @@ impl AuthFramework {
         // Initialize permission checker with default roles
         self.authorization_manager.create_default_roles().await;
 
+        // Load any previously persisted roles and user→role assignments
+        self.authorization_manager.load_persisted_roles().await?;
+
         // Perform any necessary setup
         self.cleanup_expired_data().await?;
 
@@ -548,6 +598,32 @@ impl AuthFramework {
     }
 
     /// Authenticate a user with the specified method.
+    ///
+    /// `method_name` must match a previously registered authentication method
+    /// (e.g. `"password"`, `"jwt"`, `"oauth2"`).
+    ///
+    /// # Returns
+    ///
+    /// - [`AuthResult::Success`] — authentication succeeded; contains the issued token.
+    /// - [`AuthResult::MfaRequired`] — first factor passed but MFA is required.
+    /// - [`AuthResult::Failure`] — invalid credentials.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use auth_framework::prelude::*;
+    /// # use auth_framework::authentication::credentials::Credential;
+    /// # use auth_framework::auth::AuthResult;
+    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// let result = auth.authenticate("password", Credential::password("alice", "S3cur3P@ss!")).await?;
+    /// match result {
+    ///     AuthResult::Success(token) => println!("Token: {}", token.access_token),
+    ///     AuthResult::MfaRequired(challenge) => println!("MFA needed: {:?}", challenge),
+    ///     AuthResult::Failure(msg) => eprintln!("Login failed: {msg}"),
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn authenticate(
         &self,
         method_name: &str,
@@ -572,9 +648,7 @@ impl AuthFramework {
         // Record authentication request
         self.monitoring_manager.record_auth_request().await;
 
-        if !self.initialized {
-            return Err(AuthError::internal("Framework not initialized"));
-        }
+        self.require_initialized()?;
 
         // Perform the authentication logic
         let result = self
@@ -646,6 +720,36 @@ impl AuthFramework {
                 .await;
         }
 
+        if method_name == "jwt" {
+            return match credential {
+                Credential::Jwt { token } | Credential::Bearer { token } => {
+                    self.authenticate_jwt_builtin(&token, &metadata, "jwt")
+                        .await
+                }
+                _ => Ok(AuthResult::Failure(
+                    "JWT authentication expects Credential::jwt or Credential::bearer".to_string(),
+                )),
+            };
+        }
+
+        if matches!(method_name, "api_key" | "api-key") {
+            return match credential {
+                Credential::ApiKey { key } => {
+                    self.authenticate_api_key_builtin(&key, &metadata, "api_key")
+                        .await
+                }
+                _ => Ok(AuthResult::Failure(
+                    "API key authentication expects Credential::api_key".to_string(),
+                )),
+            };
+        }
+
+        if method_name == "oauth2" {
+            return self
+                .authenticate_oauth2_builtin(credential, &metadata)
+                .await;
+        }
+
         // Get the authentication method
         let method = self.methods.get(method_name).ok_or_else(|| {
             AuthError::auth_method(method_name, "Authentication method not found".to_string())
@@ -708,6 +812,168 @@ impl AuthFramework {
 
                 Ok(AuthResult::Failure(reason.clone()))
             }
+        }
+    }
+
+    async fn authenticate_jwt_builtin(
+        &self,
+        token: &str,
+        metadata: &CredentialMetadata,
+        auth_method: &str,
+    ) -> Result<AuthResult> {
+        if token.is_empty() {
+            return Ok(AuthResult::Failure("JWT token cannot be empty".to_string()));
+        }
+
+        match self.token_manager.validate_jwt_token(token) {
+            Ok(claims) => {
+                let token =
+                    Self::build_validated_jwt_auth_token(token, claims, metadata, auth_method);
+                Ok(AuthResult::Success(Box::new(token)))
+            }
+            Err(error) => {
+                if let Some(reason) = Self::credential_failure_reason(&error) {
+                    Ok(AuthResult::Failure(reason))
+                } else {
+                    Err(error)
+                }
+            }
+        }
+    }
+
+    async fn authenticate_api_key_builtin(
+        &self,
+        api_key: &str,
+        metadata: &CredentialMetadata,
+        auth_method: &str,
+    ) -> Result<AuthResult> {
+        if api_key.is_empty() {
+            return Ok(AuthResult::Failure("API key cannot be empty".to_string()));
+        }
+
+        match self.validate_api_key(api_key).await {
+            Ok(user) => {
+                let scopes: Vec<String> = if user.roles.is_empty() {
+                    vec!["api_user".to_string()]
+                } else {
+                    user.roles.to_vec()
+                };
+                let mut token = self
+                    .token_manager
+                    .create_auth_token(&user.id, scopes.clone(), auth_method, None)?
+                    .with_roles(user.roles)
+                    .with_scopes(scopes);
+                token.metadata.issued_ip = metadata.client_ip.clone();
+                token.metadata.user_agent = metadata.user_agent.clone();
+                Ok(AuthResult::Success(Box::new(token)))
+            }
+            Err(error) => {
+                if let Some(reason) = Self::credential_failure_reason(&error) {
+                    Ok(AuthResult::Failure(reason))
+                } else {
+                    Err(error)
+                }
+            }
+        }
+    }
+
+    async fn authenticate_oauth2_builtin(
+        &self,
+        credential: Credential,
+        metadata: &CredentialMetadata,
+    ) -> Result<AuthResult> {
+        match credential {
+            Credential::OAuth {
+                authorization_code, ..
+            } => {
+                if authorization_code.is_empty() {
+                    return Ok(AuthResult::Failure(
+                        "OAuth authorization code cannot be empty".to_string(),
+                    ));
+                }
+                Ok(AuthResult::Failure(
+                    "OAuth 2.0 authorization codes must be exchanged through an OAuth provider or server endpoint before authentication completes"
+                        .to_string(),
+                ))
+            }
+            Credential::OAuthRefresh { refresh_token } => {
+                if refresh_token.is_empty() {
+                    return Ok(AuthResult::Failure(
+                        "OAuth refresh token cannot be empty".to_string(),
+                    ));
+                }
+                Ok(AuthResult::Failure(
+                    "OAuth 2.0 refresh tokens must be exchanged through an OAuth provider or server endpoint before authentication completes"
+                        .to_string(),
+                ))
+            }
+            Credential::Jwt { token }
+            | Credential::Bearer { token }
+            | Credential::OpenIdConnect { id_token: token, .. } => {
+                self.authenticate_jwt_builtin(&token, metadata, "oauth2").await
+            }
+            _ => Ok(AuthResult::Failure(
+                "OAuth2 authentication expects Credential::oauth_code, Credential::oauth_refresh, Credential::jwt, Credential::bearer, or Credential::openid_connect"
+                    .to_string(),
+            )),
+        }
+    }
+
+    fn build_validated_jwt_auth_token(
+        raw_token: &str,
+        claims: crate::tokens::JwtClaims,
+        metadata: &CredentialMetadata,
+        auth_method: &str,
+    ) -> AuthToken {
+        let crate::tokens::JwtClaims {
+            sub,
+            iss,
+            exp,
+            iat,
+            jti,
+            scope,
+            permissions,
+            roles,
+            client_id,
+            ..
+        } = claims;
+
+        let now = chrono::Utc::now();
+        let issued_at = chrono::DateTime::<chrono::Utc>::from_timestamp(iat, 0).unwrap_or(now);
+        let expires_at = chrono::DateTime::<chrono::Utc>::from_timestamp(exp, 0)
+            .unwrap_or(now + chrono::Duration::hours(1));
+        let lifetime = (expires_at - now)
+            .to_std()
+            .unwrap_or_else(|_| Duration::from_secs(1));
+        let scopes = if scope.trim().is_empty() {
+            Vec::new()
+        } else {
+            scope.split_whitespace().map(str::to_string).collect()
+        };
+
+        let mut token = AuthToken::new(sub.clone(), raw_token.to_string(), lifetime, auth_method)
+            .with_scopes(scopes)
+            .with_permissions(permissions.unwrap_or_default())
+            .with_roles(roles.unwrap_or_default());
+        token.token_id = jti;
+        token.subject = Some(sub);
+        token.issuer = Some(iss);
+        token.issued_at = issued_at;
+        token.expires_at = expires_at;
+        token.metadata.issued_ip = metadata.client_ip.clone();
+        token.metadata.user_agent = metadata.user_agent.clone();
+        if let Some(client_id) = client_id {
+            token.client_id = Some(client_id);
+        }
+        token
+    }
+
+    fn credential_failure_reason(error: &AuthError) -> Option<String> {
+        match error {
+            AuthError::Token(_) | AuthError::Jwt(_) => Some(error.to_string()),
+            AuthError::Validation { message } => Some(message.clone()),
+            AuthError::UserNotFound => Some("User not found".to_string()),
+            _ => None,
         }
     }
 
@@ -847,9 +1113,7 @@ impl AuthFramework {
 
     /// Validate a token.
     pub async fn validate_token(&self, token: &AuthToken) -> Result<bool> {
-        if !self.initialized {
-            return Err(AuthError::internal("Framework not initialized"));
-        }
+        self.require_initialized()?;
         let valid = token.is_valid()
             && self.token_manager.validate_auth_token(token).is_ok()
             && self.touch_stored_token(token).await?;
@@ -880,23 +1144,75 @@ impl AuthFramework {
             Ok(mut info) => {
                 // Overlay any token-specific attributes on top of the stored profile.
                 if !token_info.attributes.is_empty() {
-                    info.attributes = token_info.attributes;
+                    let string_attrs: HashMap<String, String> = token_info
+                        .attributes
+                        .into_iter()
+                        .map(|(k, v)| {
+                            (
+                                k,
+                                v.as_str()
+                                    .map(|s| s.to_string())
+                                    .unwrap_or_else(|| v.to_string()),
+                            )
+                        })
+                        .collect();
+                    info.attributes = string_attrs.into();
                 }
                 Ok(info)
             }
-            Err(_) => Ok(UserInfo {
-                id: token_info.user_id,
-                username: token_info.username.unwrap_or_else(|| "unknown".to_string()),
-                email: token_info.email,
-                name: token_info.name,
-                roles: token_info.roles,
-                active: false,
-                attributes: token_info.attributes,
-            }),
+            Err(_) => {
+                let string_attrs: HashMap<String, String> = token_info
+                    .attributes
+                    .into_iter()
+                    .map(|(k, v)| {
+                        (
+                            k,
+                            v.as_str()
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| v.to_string()),
+                        )
+                    })
+                    .collect();
+                Ok(UserInfo {
+                    id: token_info.user_id,
+                    username: token_info.username.unwrap_or_else(|| "unknown".to_string()),
+                    email: token_info.email,
+                    name: token_info.name,
+                    roles: token_info.roles.into(),
+                    active: false,
+                    email_verified: false,
+                    attributes: string_attrs.into(),
+                })
+            }
         }
     }
 
-    /// Check if a token has a specific permission.
+    /// Check if a token has permission to perform an action on a resource.
+    ///
+    /// This method validates the token and checks if the authenticated user
+    /// has the required permission for the specified action on the given resource.
+    ///
+    /// # Parameters
+    /// - `token`: The authentication token to validate and check permissions for
+    /// - `action`: The action being requested (e.g., "read", "write", "delete")
+    /// - `resource`: The resource being accessed (e.g., "documents", "users", "reports/123")
+    ///
+    /// # Returns
+    /// Returns `true` if the token is valid and the user has the required permission,
+    /// `false` if the token is invalid or the user lacks permission.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use auth_framework::prelude::*;
+    /// # async fn example(auth: &AuthFramework, token: &AuthToken) -> Result<(), AuthError> {
+    /// if auth.check_permission(token, "read", "documents").await? {
+    ///     println!("User can read documents");
+    /// } else {
+    ///     println!("Access denied");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn check_permission(
         &self,
         token: &AuthToken,
@@ -913,6 +1229,7 @@ impl AuthFramework {
 
     /// Refresh a token.
     pub async fn refresh_token(&self, token: &AuthToken) -> Result<AuthToken> {
+        self.require_initialized()?;
         debug!("Refreshing token for user '{}'", token.user_id);
 
         // Check if the auth method supports refresh
@@ -936,6 +1253,7 @@ impl AuthFramework {
 
     /// Revoke a token.
     pub async fn revoke_token(&self, token: &AuthToken) -> Result<()> {
+        self.require_initialized()?;
         debug!("Revoking token for user '{}'", token.user_id);
 
         // Mark token as revoked
@@ -956,16 +1274,19 @@ impl AuthFramework {
         user_id: &str,
         expires_in: Option<Duration>,
     ) -> Result<String> {
+        self.require_initialized()?;
         self.user_manager.create_api_key(user_id, expires_in).await
     }
 
     /// Validate an API key and return user information.
     pub async fn validate_api_key(&self, api_key: &str) -> Result<UserInfo> {
+        self.require_initialized()?;
         self.user_manager.validate_api_key(api_key).await
     }
 
     /// Revoke an API key.
     pub async fn revoke_api_key(&self, api_key: &str) -> Result<()> {
+        self.require_initialized()?;
         self.user_manager.revoke_api_key(api_key).await
     }
 
@@ -977,9 +1298,7 @@ impl AuthFramework {
         ip_address: Option<String>,
         user_agent: Option<String>,
     ) -> Result<String> {
-        if !self.initialized {
-            return Err(AuthError::internal("Framework not initialized"));
-        }
+        self.require_initialized()?;
         let (session_id, new_total) = self
             .session_manager
             .create_session_limited(user_id, expires_in, ip_address, user_agent)
@@ -990,21 +1309,44 @@ impl AuthFramework {
         Ok(session_id)
     }
 
+    /// Create a new session using a [`SessionCreateRequest`] for better readability.
+    ///
+    /// Prefer [`create_session_with_request`](Self::create_session_with_request)
+    /// with a [`SessionCreateRequest`] for better readability when using optional fields.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use auth_framework::{prelude::*, auth_operations::SessionCreateRequest};
+    /// # use std::time::Duration;
+    /// # async fn example(auth: &AuthFramework) -> Result<(), auth_framework::errors::AuthError> {
+    /// let session_id = auth.create_session_with_request(
+    ///     SessionCreateRequest::new("user_123", Duration::from_secs(3600))
+    ///         .ip_address("192.168.1.1")
+    ///         .user_agent("MyApp/1.0")
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn create_session_with_request(&self, req: SessionCreateRequest) -> Result<String> {
+        self.create_session(
+            req.get_user_id(),
+            req.get_expires_in(),
+            req.get_ip_address().map(|s| s.to_string()),
+            req.get_user_agent().map(|s| s.to_string()),
+        )
+        .await
+    }
+
     /// Get session information.
     pub async fn get_session(&self, session_id: &str) -> Result<Option<SessionData>> {
-        if !self.initialized {
-            return Err(AuthError::internal("Framework not initialized"));
-        }
-
+        self.require_initialized()?;
         self.session_manager.get_session(session_id).await
     }
 
     /// Delete a session.
     pub async fn delete_session(&self, session_id: &str) -> Result<()> {
-        if !self.initialized {
-            return Err(AuthError::internal("Framework not initialized"));
-        }
-
+        self.require_initialized()?;
         self.session_manager.delete_session(session_id).await?;
 
         let remaining = self
@@ -1021,6 +1363,7 @@ impl AuthFramework {
 
     /// Get all tokens for a user.
     pub async fn list_user_tokens(&self, user_id: &str) -> Result<Vec<AuthToken>> {
+        self.require_initialized()?;
         self.storage.list_user_tokens(user_id).await
     }
 
@@ -1088,63 +1431,99 @@ impl AuthFramework {
             .count_active_sessions()
             .await
             .unwrap_or(0) as u32;
-        let failed_attempts = self
-            .audit_manager
-            .get_failed_login_count_24h()
-            .await
-            .unwrap_or(0) as u32;
-        let successful_attempts = self
-            .audit_manager
-            .get_successful_login_count_24h()
-            .await
-            .unwrap_or(0) as u32;
 
         stats.registered_methods = self.methods.keys().cloned().collect();
         stats.active_sessions = active_sessions as u64;
         stats.active_mfa_challenges = self.mfa_manager.get_active_challenge_count().await as u64;
-        stats.tokens_issued = active_sessions as u64;
-        stats.auth_attempts = (successful_attempts + failed_attempts) as u64;
+        // Use monitoring counters for accurate cumulative tracking
+        let perf = self.monitoring_manager.get_performance_metrics();
+        stats.tokens_issued = perf.get("token_creations").copied().unwrap_or(0);
+        stats.auth_attempts = perf.get("auth_successes").copied().unwrap_or(0)
+            + perf.get("auth_failures").copied().unwrap_or(0);
 
         Ok(stats)
     }
 
-    /// Get the token manager.
+    /// Returns a reference to the underlying [`TokenManager`].
+    ///
+    /// Useful for advanced token operations not exposed by the
+    /// [`TokenOperations`] facade.
     pub fn token_manager(&self) -> &TokenManager {
         &self.token_manager
     }
 
-    /// Validate username format.
+    /// Validates a username against the configured format rules.
+    ///
+    /// Returns `Ok(true)` when the name is acceptable, or an error describing
+    /// the specific rule that was violated (length, characters, etc.).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if the username is empty, too long, or contains
+    /// forbidden characters per the active [`SecurityConfig`].
     pub async fn validate_username(&self, username: &str) -> Result<bool> {
         self.user_manager.validate_username(username).await
     }
 
-    /// Validate display name format.
+    /// Validates a display name against the configured format rules.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if the display name is empty or exceeds the
+    /// configured maximum length.
     pub async fn validate_display_name(&self, display_name: &str) -> Result<bool> {
         self.user_manager.validate_display_name(display_name).await
     }
 
-    /// Validate password strength using security policy.
+    /// Checks a password against the active security policy.
+    ///
+    /// Validates minimum length, character-class requirements, and (optionally)
+    /// checks against known-breached password lists.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] describing which policy rule the password violates.
     pub async fn validate_password_strength(&self, password: &str) -> Result<bool> {
         self.user_manager.validate_password_strength(password).await
     }
 
-    /// Validate user input against common injection patterns.
+    /// Validates arbitrary user input against common injection patterns.
+    ///
+    /// Checks for SQL injection, XSS, and command injection markers.
+    /// Returns `Ok(true)` when the input is safe.
     pub async fn validate_user_input(&self, input: &str) -> Result<bool> {
         Ok(crate::utils::validation::validate_user_input(input))
     }
 
-    /// Create an authentication token directly (useful for testing and demos).
+    /// Creates an authentication token directly.
     ///
-    /// Note: In production, tokens should be created through the `authenticate` method.
+    /// This is a low-level API intended for **testing, migration tools, and
+    /// administrative tasks**. In production, tokens should be created through
+    /// [`authenticate`](Self::authenticate) instead.
+    ///
+    /// # Parameters
+    ///
+    /// * `user_id`     — the subject the token is issued to.
+    /// * `scopes`      — OAuth-style scopes (accepts `Vec<String>`, `Scopes`, or `&[&str]`).
+    /// * `method_name` — the auth method to record (must be registered).
+    /// * `lifetime`    — override the default token TTL; `None` uses the
+    ///                   framework-configured default.
+    ///
+    /// # Errors
+    ///
+    /// * [`AuthError::AuthMethod`] if `method_name` is not registered.
+    /// * [`AuthError::RateLimit`] if the user already holds the maximum number
+    ///   of active tokens.
     pub async fn create_auth_token(
         &self,
         user_id: impl Into<String>,
-        scopes: Vec<String>,
+        scopes: impl Into<crate::types::Scopes>,
         method_name: impl Into<String>,
         lifetime: Option<Duration>,
     ) -> Result<AuthToken> {
         let method_name = method_name.into();
         let user_id = user_id.into();
+        let scopes: crate::types::Scopes = scopes.into();
 
         // Validate the method exists and is correctly configured
         let auth_method = self
@@ -1175,27 +1554,61 @@ impl AuthFramework {
         Ok(token)
     }
 
-    /// Initiate SMS challenge for MFA.
+    /// Initiates an SMS-based MFA challenge for `user_id`.
+    ///
+    /// Sends a one-time code via the configured SMS provider and returns a
+    /// challenge ID that must be passed to [`verify_sms_code`](Self::verify_sms_code).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if no phone number is registered or the SMS
+    /// provider fails to deliver.
     pub async fn initiate_sms_challenge(&self, user_id: &str) -> Result<String> {
         self.mfa_manager.sms.initiate_challenge(user_id).await
     }
 
-    /// Verify SMS challenge code.
+    /// Verifies an SMS challenge code previously issued by
+    /// [`initiate_sms_challenge`](Self::initiate_sms_challenge).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if the challenge has expired or if the code is
+    /// invalid.
     pub async fn verify_sms_code(&self, challenge_id: &str, code: &str) -> Result<bool> {
         self.mfa_manager.sms.verify_code(challenge_id, code).await
     }
 
-    /// Register email for a user.
+    /// Registers an email address for email-based MFA for `user_id`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if the email format is invalid or the user does
+    /// not exist.
     pub async fn register_email(&self, user_id: &str, email: &str) -> Result<()> {
         self.mfa_manager.email.register_email(user_id, email).await
     }
 
-    /// Generate TOTP secret for a user.
+    /// Generates a new TOTP secret and stores it for `user_id`.
+    ///
+    /// The returned string is a Base32-encoded secret suitable for importing
+    /// into authenticator apps. Pair with
+    /// [`generate_totp_qr_code`](Self::generate_totp_qr_code) for a scan-ready
+    /// URI.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if secret generation or storage fails.
     pub async fn generate_totp_secret(&self, user_id: &str) -> Result<String> {
         self.mfa_manager.totp.generate_secret(user_id).await
     }
 
-    /// Generate TOTP QR code URL.
+    /// Generates an `otpauth://` URI suitable for rendering as a QR code.
+    ///
+    /// # Parameters
+    ///
+    /// * `user_id`  — identifies the user in the authenticator label.
+    /// * `app_name` — the issuer name shown in the authenticator app.
+    /// * `secret`   — the Base32 TOTP secret from [`generate_totp_secret`](Self::generate_totp_secret).
     pub async fn generate_totp_qr_code(
         &self,
         user_id: &str,
@@ -1208,12 +1621,17 @@ impl AuthFramework {
             .await
     }
 
-    /// Generate current TOTP code using provided secret.
+    /// Generates the current TOTP code for the given Base32 `secret`.
+    ///
+    /// Primarily useful for testing; in production the *user* generates the
+    /// code on their device.
     pub async fn generate_totp_code(&self, secret: &str) -> Result<String> {
         self.mfa_manager.totp.generate_code(secret).await
     }
 
-    /// Generate TOTP code for given secret and optional specific time window
+    /// Generates a TOTP code for the given `secret` and optional time window.
+    ///
+    /// When `time_window` is `None`, the current 30-second window is used.
     pub async fn generate_totp_code_for_window(
         &self,
         secret: &str,
@@ -1225,12 +1643,21 @@ impl AuthFramework {
             .await
     }
 
-    /// Verify TOTP code.
+    /// Verifies a TOTP code against the stored secret for `user_id`.
+    ///
+    /// Applies a configurable clock-skew window (default: ±1 step).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if no TOTP secret is registered for the user.
     pub async fn verify_totp_code(&self, user_id: &str, code: &str) -> Result<bool> {
         self.mfa_manager.totp.verify_code(user_id, code).await
     }
 
-    /// Check IP rate limit.
+    /// Checks whether the given IP address is within the configured rate limit.
+    ///
+    /// Returns `Ok(true)` if the request is allowed, or an
+    /// [`AuthError::RateLimit`] if the caller should be throttled.
     pub async fn check_ip_rate_limit(&self, ip: &str) -> Result<bool> {
         debug!("Checking IP rate limit for '{}'", ip);
         let Some(ref rate_limiter) = self.rate_limiter else {
@@ -1246,7 +1673,10 @@ impl AuthFramework {
         Ok(true)
     }
 
-    /// Get security metrics.
+    /// Return security metrics for monitoring dashboards.
+    ///
+    /// Keys include `active_sessions`, `total_tokens`, `failed_attempts`,
+    /// `successful_attempts`, and `expired_tokens`.
     pub async fn get_security_metrics(&self) -> Result<std::collections::HashMap<String, u64>> {
         debug!("Getting security metrics");
         let mut metrics = std::collections::HashMap::new();
@@ -1275,7 +1705,11 @@ impl AuthFramework {
         Ok(metrics)
     }
 
-    /// Register phone number for SMS MFA.
+    /// Registers a phone number for SMS-based MFA.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if the phone number format is invalid.
     pub async fn register_phone_number(&self, user_id: &str, phone_number: &str) -> Result<()> {
         self.mfa_manager
             .sms
@@ -1283,14 +1717,27 @@ impl AuthFramework {
             .await
     }
 
-    /// Generate backup codes.
+    /// Generate `count` one-time backup codes for the given user.
+    ///
+    /// Codes are persisted server-side (hashed); plaintext codes are returned
+    /// to the caller for display to the user.
     pub async fn generate_backup_codes(&self, user_id: &str, count: usize) -> Result<Vec<String>> {
         self.mfa_manager
             .backup_codes
             .generate_codes(user_id, count)
             .await
     }
-    /// Grant permission to a user.
+    /// Grants an authorization permission to a user.
+    ///
+    /// # Parameters
+    ///
+    /// * `user_id`  — the user receiving the permission.
+    /// * `action`   — the action being allowed (e.g. `"read"`, `"write"`).
+    /// * `resource` — the resource scope (e.g. `"documents"`, `"users:*"`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if the user does not exist or storage fails.
     pub async fn grant_permission(
         &self,
         user_id: &str,
@@ -1302,40 +1749,169 @@ impl AuthFramework {
             .await
     }
 
-    /// Initiate email challenge.
+    /// Initiates an email-based MFA challenge for `user_id`.
+    ///
+    /// Sends a one-time code to the registered email address and returns a
+    /// challenge ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if no email is registered for the user or
+    /// delivery fails.
     pub async fn initiate_email_challenge(&self, user_id: &str) -> Result<String> {
         self.mfa_manager.email.initiate_challenge(user_id).await
     }
 
-    /// Get reference to the storage backend.
+    /// Returns a cloned handle to the storage backend.
+    ///
+    /// Useful when you need to pass storage to another component or run
+    /// direct queries outside the framework's managed API.
     pub fn storage(&self) -> Arc<dyn AuthStorage> {
         self.storage.clone()
     }
 
+    /// Returns a reference to the active framework configuration.
+    pub fn config(&self) -> &AuthConfig {
+        &self.config
+    }
+
+    /// Reset runtime authorization state back to the default roles.
+    pub async fn reset_authorization_runtime(&self) {
+        self.authorization_manager.reset_runtime_state().await;
+    }
+
     /// Register a new user with username, email, and password.
+    ///
+    /// The password is hashed with the configured algorithm (default: Argon2)
+    /// before storage.  Returns the generated user ID on success.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError`] if:
+    /// - The username or email is already taken
+    /// - The password does not meet the configured complexity requirements
+    /// - The storage backend is unavailable
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use auth_framework::prelude::*;
+    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// let user_id = auth.users().register("alice", "alice@example.com", "S3cur3P@ss!").await?;
+    /// println!("Created user: {user_id}");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn register_user(
         &self,
         username: &str,
         email: &str,
         password: &str,
     ) -> Result<String> {
+        self.require_initialized()?;
         self.user_manager
             .register_user(username, email, password)
             .await
     }
 
+    /// List users from the canonical user index with optional filtering and pagination.
+    ///
+    /// This method provides paginated access to the user directory with optional
+    /// filtering by active status.
+    ///
+    /// # Parameters
+    /// - `limit`: Maximum number of users to return (None for no limit)
+    /// - `offset`: Number of users to skip for pagination (None for start from beginning)
+    /// - `active_only`: If true, only return active users; if false, return all users
+    ///
+    /// # Returns
+    /// Returns a vector of [`UserInfo`] structs containing user details.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use auth_framework::prelude::*;
+    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// // Get first 10 active users
+    /// let users = auth.list_users(Some(10), None, true).await?;
+    /// println!("Found {} active users", users.len());
+    ///
+    /// // Get all users (active and inactive)
+    /// let all_users = auth.list_users(None, None, false).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[deprecated(
+        since = "0.6.0",
+        note = "use `list_users_with_query(UserListQuery::new().limit(n).active_only())` instead"
+    )]
+    pub async fn list_users(
+        &self,
+        limit: Option<usize>,
+        offset: Option<usize>,
+        active_only: bool,
+    ) -> Result<Vec<UserInfo>> {
+        self.require_initialized()?;
+        self.user_manager
+            .list_users(limit, offset, active_only)
+            .await
+    }
+
+    /// List users using a [`UserListQuery`] for better readability.
+    ///
+    /// Prefer [`list_users_with_query`](Self::list_users_with_query)
+    /// with a [`UserListQuery`] for better readability when using pagination or filtering.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use auth_framework::{prelude::*, auth_operations::UserListQuery};
+    /// # async fn example(auth: &AuthFramework) -> Result<(), auth_framework::errors::AuthError> {
+    /// let users = auth.list_users_with_query(
+    ///     UserListQuery::new()
+    ///         .limit(50)
+    ///         .active_only()
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn list_users_with_query(&self, query: UserListQuery) -> Result<Vec<UserInfo>> {
+        self.require_initialized()?;
+        self.user_manager
+            .list_users(
+                query.get_limit(),
+                query.get_offset(),
+                query.get_active_only(),
+            )
+            .await
+    }
+
+    /// Get user information by canonical user ID.
+    pub async fn get_user_record(&self, user_id: &str) -> Result<UserInfo> {
+        self.require_initialized()?;
+        self.user_manager.get_user_info(user_id).await
+    }
+
     /// Update the roles assigned to a user.
     pub async fn update_user_roles(&self, user_id: &str, roles: &[String]) -> Result<()> {
+        self.require_initialized()?;
         self.user_manager.update_user_roles(user_id, roles).await
     }
 
     /// Set a user's active / deactivated status.
     pub async fn set_user_active(&self, user_id: &str, active: bool) -> Result<()> {
+        self.require_initialized()?;
         self.user_manager.set_user_active(user_id, active).await
+    }
+
+    /// Update a user's email address.
+    pub async fn update_user_email(&self, user_id: &str, email: &str) -> Result<()> {
+        self.require_initialized()?;
+        self.user_manager.update_user_email(user_id, email).await
     }
 
     /// Verify a user's password by user_id against the stored bcrypt hash.
     pub async fn verify_user_password(&self, user_id: &str, password: &str) -> Result<bool> {
+        self.require_initialized()?;
         self.user_manager
             .verify_user_password(user_id, password)
             .await
@@ -1366,14 +1942,34 @@ impl AuthFramework {
 
     /// Update user password.
     pub async fn update_user_password(&self, username: &str, new_password: &str) -> Result<()> {
+        self.require_initialized()?;
         self.user_manager
             .update_user_password(username, new_password)
             .await
     }
 
+    /// Update user password by canonical user ID.
+    pub async fn update_user_password_by_id(
+        &self,
+        user_id: &str,
+        new_password: &str,
+    ) -> Result<()> {
+        self.require_initialized()?;
+        self.user_manager
+            .update_user_password_by_id(user_id, new_password)
+            .await
+    }
+
     /// Delete a user by username.
     pub async fn delete_user(&self, username: &str) -> Result<()> {
+        self.require_initialized()?;
         self.user_manager.delete_user(username).await
+    }
+
+    /// Delete a user by canonical user ID.
+    pub async fn delete_user_by_id(&self, user_id: &str) -> Result<()> {
+        self.require_initialized()?;
+        self.user_manager.delete_user_by_id(user_id).await
     }
 
     /// Verify MFA code with proper challenge validation.
@@ -1421,7 +2017,7 @@ impl AuthFramework {
     async fn mint_and_store_token(
         &self,
         user_id: &str,
-        scopes: Vec<String>,
+        scopes: impl Into<crate::types::Scopes>,
         method: &str,
         lifetime: Option<Duration>,
     ) -> Result<AuthToken> {
@@ -1443,38 +2039,62 @@ impl AuthFramework {
     }
 
     /// Returns the monitoring manager for metrics collection and health checks.
-    pub fn get_monitoring_manager(&self) -> Arc<crate::monitoring::MonitoringManager> {
+    pub fn monitoring_manager(&self) -> Arc<crate::monitoring::MonitoringManager> {
         self.monitoring_manager.clone()
     }
 
     /// Returns the security manager for rate limiting, DoS protection, and IP blacklisting.
-    pub fn get_security_manager(&self) -> Option<Arc<crate::api::SecurityManager>> {
+    #[cfg(feature = "api-server")]
+    pub fn security_manager(&self) -> Option<Arc<crate::api::SecurityManager>> {
         Some(self.security_manager.clone())
     }
 
-    /// Get current performance metrics
+    /// Return current performance metrics (token counts, latencies, etc.).
     pub async fn get_performance_metrics(&self) -> std::collections::HashMap<String, u64> {
         self.monitoring_manager.get_performance_metrics()
     }
 
-    /// Perform comprehensive health check
+    /// Run a health check on all sub-systems (storage, token engine, etc.).
     pub async fn health_check(
         &self,
     ) -> Result<std::collections::HashMap<String, crate::monitoring::HealthCheckResult>> {
         self.monitoring_manager.health_check().await
     }
 
-    /// Export metrics in Prometheus format
+    /// Export all collected metrics in Prometheus text exposition format.
     pub async fn export_prometheus_metrics(&self) -> String {
         self.monitoring_manager.export_prometheus_metrics().await
     }
     /// Create a new role.
     pub async fn create_role(&self, role: crate::permissions::Role) -> Result<()> {
+        self.require_initialized()?;
         self.authorization_manager.create_role(role).await
+    }
+
+    /// Return all defined roles.
+    pub async fn list_roles(&self) -> Vec<crate::permissions::Role> {
+        self.authorization_manager.list_roles().await
+    }
+
+    /// Fetch a role definition by name.
+    pub async fn get_role(&self, role_name: &str) -> Result<crate::permissions::Role> {
+        self.authorization_manager.get_role(role_name).await
+    }
+
+    /// Add a permission to an existing role.
+    pub async fn add_role_permission(
+        &self,
+        role_name: &str,
+        permission: crate::permissions::Permission,
+    ) -> Result<()> {
+        self.authorization_manager
+            .add_role_permission(role_name, permission)
+            .await
     }
 
     /// Assign a role to a user.
     pub async fn assign_role(&self, user_id: &str, role_name: &str) -> Result<()> {
+        self.require_initialized()?;
         self.authorization_manager
             .assign_role(user_id, role_name)
             .await
@@ -1482,6 +2102,7 @@ impl AuthFramework {
 
     /// Remove a role from a user.
     pub async fn remove_role(&self, user_id: &str, role_name: &str) -> Result<()> {
+        self.require_initialized()?;
         self.authorization_manager
             .remove_role(user_id, role_name)
             .await
@@ -1489,6 +2110,7 @@ impl AuthFramework {
 
     /// Set role inheritance.
     pub async fn set_role_inheritance(&self, child_role: &str, parent_role: &str) -> Result<()> {
+        self.require_initialized()?;
         self.authorization_manager
             .set_role_inheritance(child_role, parent_role)
             .await
@@ -1501,6 +2123,7 @@ impl AuthFramework {
         action: &str,
         resource: &str,
     ) -> Result<()> {
+        self.require_initialized()?;
         self.authorization_manager
             .revoke_permission(user_id, action, resource)
             .await
@@ -1511,6 +2134,11 @@ impl AuthFramework {
         self.authorization_manager
             .user_has_role(user_id, role_name)
             .await
+    }
+
+    /// List the currently assigned runtime roles for a user.
+    pub async fn list_user_roles(&self, user_id: &str) -> Result<Vec<String>> {
+        self.authorization_manager.list_user_roles(user_id).await
     }
 
     /// Get effective permissions for a user.
@@ -1527,7 +2155,26 @@ impl AuthFramework {
             .await
     }
 
-    /// Map user attribute for ABAC evaluation.
+    /// Set a user attribute value for ABAC (Attribute-Based Access Control) evaluation.
+    ///
+    /// User attributes are key-value pairs associated with users that can be used
+    /// in dynamic permission rules. This method stores or updates an attribute value.
+    ///
+    /// # Parameters
+    /// - `user_id`: The ID of the user to set the attribute for
+    /// - `attribute`: The name of the attribute to set
+    /// - `value`: The value to assign to the attribute
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use auth_framework::prelude::*;
+    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// // Set user attributes for policy evaluation
+    /// auth.map_user_attribute("example_user", "department", "engineering").await?;
+    /// auth.map_user_attribute("example_user", "clearance_level", "confidential").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn map_user_attribute(
         &self,
         user_id: &str,
@@ -1539,7 +2186,29 @@ impl AuthFramework {
             .await
     }
 
-    /// Get user attribute for ABAC evaluation.
+    /// Get a user attribute value for ABAC (Attribute-Based Access Control) evaluation.
+    ///
+    /// User attributes are key-value pairs associated with users that can be used
+    /// in dynamic permission rules. Common attributes include department, clearance level,
+    /// location, etc.
+    ///
+    /// # Parameters
+    /// - `user_id`: The ID of the user whose attribute to retrieve
+    /// - `attribute`: The name of the attribute to retrieve
+    ///
+    /// # Returns
+    /// Returns `Some(value)` if the attribute exists, `None` if it doesn't exist.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use auth_framework::prelude::*;
+    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// if let Some(dept) = auth.get_user_attribute("example_user", "department").await? {
+    ///     println!("User is in department: {}", dept);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_user_attribute(
         &self,
         user_id: &str,
@@ -1550,7 +2219,36 @@ impl AuthFramework {
             .await
     }
 
-    /// Check dynamic permission with context evaluation (ABAC).
+    /// Check dynamic permission with context evaluation (ABAC - Attribute-Based Access Control).
+    ///
+    /// This method evaluates permissions based on user attributes, resource attributes,
+    /// and environmental context rather than just role assignments. It's more flexible
+    /// than simple role-based checks but requires more complex policy rules.
+    ///
+    /// # Parameters
+    /// - `user_id`: The ID of the user requesting access
+    /// - `action`: The action being requested (e.g., "read", "write", "delete")
+    /// - `resource`: The resource being accessed (e.g., "documents", "users", "reports/123")
+    /// - `context`: Additional context key-value pairs for policy evaluation
+    ///
+    /// # Returns
+    /// Returns `true` if the permission is granted based on the dynamic policy evaluation.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use auth_framework::prelude::*;
+    /// # use std::collections::HashMap;
+    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// let mut context = HashMap::new();
+    /// context.insert("time_of_day".to_string(), "business_hours".to_string());
+    /// context.insert("ip_location".to_string(), "office".to_string());
+    ///
+    /// if auth.check_dynamic_permission("example_user", "read", "confidential_docs", context).await? {
+    ///     println!("Access granted based on dynamic policy");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn check_dynamic_permission(
         &self,
         user_id: &str,
@@ -1563,12 +2261,75 @@ impl AuthFramework {
             .await
     }
 
+    /// Check dynamic permission using a structured context (preferred).
+    ///
+    /// Prefer [`check_dynamic_permission_with_context`](Self::check_dynamic_permission_with_context)
+    /// with a [`PermissionContext`] for better type safety and readability.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use auth_framework::{prelude::*, auth_operations::PermissionContext};
+    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// let context = PermissionContext::new()
+    ///     .with_attribute("time_of_day", "business_hours")
+    ///     .with_attribute("ip_location", "office");
+    ///
+    /// if auth.check_dynamic_permission_with_context("example_user", "read", "confidential_docs", context).await? {
+    ///     println!("Access granted based on dynamic policy");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn check_dynamic_permission_with_context(
+        &self,
+        user_id: &str,
+        action: &str,
+        resource: &str,
+        context: PermissionContext,
+    ) -> Result<bool> {
+        self.check_dynamic_permission(user_id, action, resource, context.into_attributes())
+            .await
+    }
+
     /// Create resource for permission management.
     pub async fn create_resource(&self, resource: &str) -> Result<()> {
         self.authorization_manager.create_resource(resource).await
     }
 
+    /// Delegate permission from one user to another using a [`DelegationRequest`].
+    ///
+    /// This is the preferred method for delegation as it avoids passing multiple
+    /// parameters and makes the call site self-documenting.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use auth_framework::{AuthFramework, AuthConfig};
+    /// # use auth_framework::auth_operations::DelegationRequest;
+    /// # use std::time::Duration;
+    /// # async fn example(auth: &AuthFramework) -> Result<(), auth_framework::errors::AuthError> {
+    /// let req = DelegationRequest::new("admin_1", "user_2", "write", "reports")
+    ///     .duration(Duration::from_secs(3600));
+    /// auth.delegate_permission_with_request(req).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn delegate_permission_with_request(&self, req: DelegationRequest) -> Result<()> {
+        self.authorization_manager
+            .delegate_permission(
+                req.delegator_id(),
+                req.delegatee_id(),
+                req.action(),
+                req.resource(),
+                req.get_duration(),
+            )
+            .await
+    }
+
     /// Delegate permission from one user to another.
+    ///
+    /// Prefer [`delegate_permission_with_request`](Self::delegate_permission_with_request)
+    /// with a [`DelegationRequest`] for better readability when delegating permissions.
     pub async fn delegate_permission(
         &self,
         delegator_id: &str,
@@ -1599,6 +2360,39 @@ impl AuthFramework {
     ) -> Result<Vec<String>> {
         self.audit_manager
             .get_permission_audit_logs(user_id, action, resource, limit)
+            .await
+    }
+
+    /// Get permission audit logs using an [`AuditLogQuery`] for better readability.
+    ///
+    /// Prefer [`get_permission_audit_logs_with_query`](Self::get_permission_audit_logs_with_query)
+    /// with an [`AuditLogQuery`] for better readability when using multiple filters.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use auth_framework::{prelude::*, auth_operations::AuditLogQuery};
+    /// # async fn example(auth: &AuthFramework) -> Result<(), auth_framework::errors::AuthError> {
+    /// let logs = auth.get_permission_audit_logs_with_query(
+    ///     AuditLogQuery::new()
+    ///         .user("user_123")
+    ///         .action("read")
+    ///         .limit(50)
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn get_permission_audit_logs_with_query(
+        &self,
+        query: AuditLogQuery,
+    ) -> Result<Vec<String>> {
+        self.audit_manager
+            .get_permission_audit_logs(
+                query.get_user_id(),
+                query.get_action(),
+                query.get_resource(),
+                query.get_limit(),
+            )
             .await
     }
 

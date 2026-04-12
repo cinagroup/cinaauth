@@ -22,7 +22,13 @@ use prometheus::{
     register_int_counter_with_registry, register_int_gauge_with_registry,
 };
 
-/// Comprehensive observability manager (simplified)
+/// Comprehensive observability manager (simplified).
+///
+/// # Example
+/// ```rust,ignore
+/// let mgr = ObservabilityManager::new()?;
+/// mgr.record_auth_attempt(true, Duration::from_millis(5), "password").await;
+/// ```
 pub struct ObservabilityManager {
     /// Prometheus metrics registry
     #[cfg(feature = "prometheus")]
@@ -153,7 +159,7 @@ pub enum EventSeverity {
 }
 
 /// Threat level assessment
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ThreatLevel {
     None,
     Low,
@@ -162,7 +168,14 @@ pub enum ThreatLevel {
     Critical,
 }
 
-/// Observability configuration
+/// Observability configuration.
+///
+/// # Example
+/// ```rust
+/// use auth_framework::observability::ObservabilityConfig;
+/// let config = ObservabilityConfig::default();
+/// assert!(config.enable_prometheus);
+/// ```
 #[derive(Debug, Clone)]
 pub struct ObservabilityConfig {
     pub enable_prometheus: bool,
@@ -189,12 +202,22 @@ impl Default for ObservabilityConfig {
 }
 
 impl ObservabilityManager {
-    /// Create new observability manager
+    /// Create new observability manager.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mgr = ObservabilityManager::new()?;
+    /// ```
     pub fn new() -> Result<Self> {
         Self::with_config(ObservabilityConfig::default())
     }
 
-    /// Create with custom configuration
+    /// Create with custom configuration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mgr = ObservabilityManager::with_config(ObservabilityConfig::default())?;
+    /// ```
     pub fn with_config(config: ObservabilityConfig) -> Result<Self> {
         #[cfg(feature = "prometheus")]
         let registry = Registry::new();
@@ -218,17 +241,32 @@ impl ObservabilityManager {
         Ok(manager)
     }
 
-    /// Get observability configuration
+    /// Get observability configuration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let cfg = mgr.get_config();
+    /// ```
     pub fn get_config(&self) -> &ObservabilityConfig {
         &self.config
     }
 
-    /// Get security monitor
+    /// Get security monitor.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let monitor = mgr.get_security_monitor();
+    /// ```
     pub fn get_security_monitor(&self) -> &SecurityMonitor {
         &self.security_monitor
     }
 
-    /// Record authentication attempt
+    /// Record authentication attempt.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.record_auth_attempt(true, Duration::from_millis(5), "password").await;
+    /// ```
     pub async fn record_auth_attempt(&self, success: bool, duration: Duration, _method: &str) {
         #[cfg(feature = "prometheus")]
         {
@@ -245,7 +283,12 @@ impl ObservabilityManager {
         self.update_performance_metrics(duration, success).await;
     }
 
-    /// Record token operation
+    /// Record token operation.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.record_token_operation("issue", "token-1").await;
+    /// ```
     pub async fn record_token_operation(&self, operation: &str, _token_id: &str) {
         #[cfg(feature = "prometheus")]
         {
@@ -258,7 +301,12 @@ impl ObservabilityManager {
         }
     }
 
-    /// Record session operation
+    /// Record session operation.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.record_session_operation("create", Some(Duration::from_secs(3600))).await;
+    /// ```
     pub async fn record_session_operation(&self, operation: &str, duration: Option<Duration>) {
         #[cfg(feature = "prometheus")]
         {
@@ -274,7 +322,12 @@ impl ObservabilityManager {
         }
     }
 
-    /// Record storage operation
+    /// Record storage operation.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.record_storage_operation("get", Duration::from_micros(200), true).await;
+    /// ```
     pub async fn record_storage_operation(
         &self,
         _operation: &str,
@@ -291,7 +344,12 @@ impl ObservabilityManager {
         }
     }
 
-    /// Record security event
+    /// Record security event.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// mgr.record_security_event(event).await;
+    /// ```
     pub async fn record_security_event(&self, event: SecurityEvent) {
         #[cfg(feature = "prometheus")]
         {
@@ -325,22 +383,42 @@ impl ObservabilityManager {
         metrics.error_rate = metrics.error_rate * 0.95 + error_increment * 0.05;
     }
 
-    /// Get current performance metrics
+    /// Get current performance metrics.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let perf = mgr.get_performance_metrics().await;
+    /// ```
     pub async fn get_performance_metrics(&self) -> PerformanceMetrics {
         self.performance_metrics.read().await.clone()
     }
 
-    /// Get security events
+    /// Get security events.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let events = mgr.get_security_events(Some(10)).await;
+    /// ```
     pub async fn get_security_events(&self, limit: Option<usize>) -> Vec<SecurityEvent> {
         self.security_monitor.get_events(limit).await
     }
 
-    /// Get threat assessment for user
+    /// Get threat assessment for user.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let level = mgr.get_user_threat_level("user-1").await;
+    /// ```
     pub async fn get_user_threat_level(&self, user_id: &str) -> ThreatLevel {
         self.security_monitor.get_user_threat_level(user_id).await
     }
 
-    /// Export Prometheus metrics
+    /// Export Prometheus metrics.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let text = mgr.export_prometheus_metrics()?;
+    /// ```
     #[cfg(feature = "prometheus")]
     pub fn export_prometheus_metrics(&self) -> Result<String> {
         use prometheus::TextEncoder;
@@ -356,8 +434,18 @@ impl ObservabilityManager {
 }
 
 impl Default for ObservabilityManager {
+    /// Creates an `ObservabilityManager` with default settings.
+    ///
+    /// # Panics
+    /// Panics if the default observability stack cannot be initialised (e.g.
+    /// Prometheus metric registration fails).  Prefer
+    /// `ObservabilityManager::new()` which returns `Result` for graceful error
+    /// handling in production code.
     fn default() -> Self {
-        Self::new().expect("Failed to create observability manager")
+        Self::new().expect(
+            "ObservabilityManager::default(): failed to initialise. \
+             Use ObservabilityManager::new() for Result-based error handling.",
+        )
     }
 }
 
@@ -869,5 +957,169 @@ mod tests {
         let all_activities = security_monitor.get_all_suspicious_activities().await;
         assert_eq!(all_activities.len(), 1);
         assert_eq!(all_activities[0].0, "test_user");
+    }
+
+    #[tokio::test]
+    async fn test_security_event_recording_and_retrieval() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+
+        let event = SecurityEvent {
+            event_id: uuid::Uuid::new_v4().to_string(),
+            event_type: SecurityEventType::BruteForceAttempt,
+            severity: EventSeverity::High,
+            user_id: Some("user-1".to_string()),
+            ip_address: Some("10.0.0.1".to_string()),
+            details: std::collections::HashMap::new(),
+            timestamp: SystemTime::now(),
+            action_taken: Some("Suspicious login attempt".to_string()),
+        };
+
+        manager.record_security_event(event).await;
+
+        let events = manager.get_security_events(Some(10)).await;
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].action_taken.as_deref(), Some("Suspicious login attempt"));
+    }
+
+    #[tokio::test]
+    async fn test_security_events_limit_none_returns_all() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+
+        for i in 0..5 {
+            let event = SecurityEvent {
+                event_id: uuid::Uuid::new_v4().to_string(),
+                event_type: SecurityEventType::SuspiciousLogin,
+                severity: EventSeverity::Medium,
+                user_id: Some(format!("user-{}", i)),
+                ip_address: None,
+                details: std::collections::HashMap::new(),
+                timestamp: SystemTime::now(),
+                action_taken: None,
+            };
+            manager.record_security_event(event).await;
+        }
+
+        let events = manager.get_security_events(None).await;
+        assert_eq!(events.len(), 5);
+    }
+
+    #[tokio::test]
+    async fn test_user_threat_level_unknown_user() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        let level = manager.get_user_threat_level("nonexistent").await;
+        assert_eq!(level, ThreatLevel::None);
+    }
+
+    #[tokio::test]
+    async fn test_performance_metrics_initial_state() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        let perf = manager.get_performance_metrics().await;
+        assert_eq!(perf.error_rate, 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_config_custom_values() {
+        let config = ObservabilityConfig {
+            enable_security_monitoring: false,
+            enable_prometheus: false,
+            enable_opentelemetry: false,
+            metrics_retention_hours: 12,
+            trace_sampling_ratio: 0.5,
+            security_event_max_count: 500,
+            performance_window_seconds: 60,
+        };
+        let manager = ObservabilityManager::with_config(config).expect("Failed to create manager");
+        let cfg = manager.get_config();
+        assert!(!cfg.enable_security_monitoring);
+        assert!(!cfg.enable_prometheus);
+        assert_eq!(cfg.security_event_max_count, 500);
+    }
+
+    #[tokio::test]
+    async fn test_record_auth_attempt_success_and_failure() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        manager
+            .record_auth_attempt(true, Duration::from_millis(10), "password")
+            .await;
+        manager
+            .record_auth_attempt(false, Duration::from_millis(5), "password")
+            .await;
+        // Should not panic; metrics updated internally
+    }
+
+    #[tokio::test]
+    async fn test_record_token_operations() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        manager.record_token_operation("issue", "tok-1").await;
+        manager.record_token_operation("validate", "tok-1").await;
+        manager.record_token_operation("revoke", "tok-1").await;
+        // Should not panic
+    }
+
+    #[tokio::test]
+    async fn test_record_session_operations() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        manager
+            .record_session_operation("create", Some(Duration::from_secs(3600)))
+            .await;
+        manager
+            .record_session_operation("destroy", None)
+            .await;
+        // Should not panic
+    }
+
+    #[tokio::test]
+    async fn test_record_storage_operation_success_and_failure() {
+        let manager = ObservabilityManager::new().expect("Failed to create manager");
+        manager
+            .record_storage_operation("get", Duration::from_micros(100), true)
+            .await;
+        manager
+            .record_storage_operation("set", Duration::from_micros(200), false)
+            .await;
+        // Should not panic
+    }
+
+    #[tokio::test]
+    async fn test_clear_nonexistent_suspicious_activity() {
+        let monitor = SecurityMonitor::new();
+        // Should not panic
+        monitor.clear_suspicious_activity("nonexistent").await;
+        assert!(monitor.get_suspicious_activity("nonexistent").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_overwrite_suspicious_activity() {
+        let monitor = SecurityMonitor::new();
+
+        let activity1 = SuspiciousActivity {
+            user_id: "user-1".to_string(),
+            ip_address: "1.1.1.1".to_string(),
+            activity_type: "brute_force".to_string(),
+            count: 3,
+            first_seen: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            risk_score: 50.0,
+        };
+        monitor
+            .record_suspicious_activity("user-1".to_string(), activity1)
+            .await;
+
+        let activity2 = SuspiciousActivity {
+            user_id: "user-1".to_string(),
+            ip_address: "2.2.2.2".to_string(),
+            activity_type: "token_abuse".to_string(),
+            count: 10,
+            first_seen: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            risk_score: 90.0,
+        };
+        monitor
+            .record_suspicious_activity("user-1".to_string(), activity2)
+            .await;
+
+        let retrieved = monitor.get_suspicious_activity("user-1").await.unwrap();
+        assert_eq!(retrieved.activity_type, "token_abuse");
+        assert_eq!(retrieved.count, 10);
     }
 }

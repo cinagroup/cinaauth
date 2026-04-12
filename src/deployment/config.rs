@@ -461,10 +461,12 @@ impl ConfigManager {
 impl Default for AppConfig {
     fn default() -> Self {
         use ring::rand::{SecureRandom, SystemRandom};
+        // SAFETY: CSPRNG failure at initialization is terminal; the framework
+        // cannot operate without entropy.
         let rng = SystemRandom::new();
         let mut bytes = [0u8; 32];
         rng.fill(&mut bytes)
-            .expect("System CSPRNG unavailable; cannot initialise AppConfig JWT secret");
+            .expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
         let jwt_secret = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
             s.push_str(&format!("{b:02x}"));
             s
@@ -567,6 +569,8 @@ mod tests {
 
     #[test]
     fn test_load_from_env() {
+        // SAFETY: This test is not run concurrently with other env-var tests;
+        // env mutations are restored at the end of the test.
         unsafe {
             std::env::set_var("SERVER_HOST", "0.0.0.0");
             std::env::set_var("SERVER_PORT", "9090");
@@ -581,8 +585,8 @@ mod tests {
         assert_eq!(manager.config.server.host, "0.0.0.0");
         assert_eq!(manager.config.server.port, 9090);
 
+        // SAFETY: Restoring env vars set above; same serialization guarantees.
         unsafe {
-            std::env::remove_var("SERVER_HOST");
             std::env::remove_var("SERVER_PORT");
             std::env::remove_var("JWT_SECRET");
         }

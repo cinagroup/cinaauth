@@ -146,6 +146,20 @@ pub struct SecureSessionConfig {
 }
 
 impl Default for SecureSessionConfig {
+    /// Returns a balanced default suitable for most web applications.
+    ///
+    /// | Field | Value | Rationale |
+    /// |---|---|---|
+    /// | `max_lifetime` | 8 h | Covers a working day without forcing re-login |
+    /// | `idle_timeout` | 30 min | OWASP recommendation for general web apps |
+    /// | `max_concurrent_sessions` | 3 | Desktop + phone + tablet |
+    /// | `rotation_interval` | 1 h | Limits window for session-fixation |
+    /// | `require_secure_transport` | `true` | Always enforce HTTPS |
+    /// | `enable_device_fingerprinting` | `true` | Detect session hijacking |
+    /// | `max_risk_score` | 70 | Permit moderate anomalies |
+    /// | `validate_ip_address` | `true` | Catch session theft across IPs |
+    /// | `max_ip_changes` | 3 | Allow mobile network handoffs |
+    /// | `enable_geolocation` | `false` | Requires external MaxMind DB |
     fn default() -> Self {
         Self {
             max_lifetime: Duration::from_secs(8 * 3600), // 8 hours
@@ -158,6 +172,55 @@ impl Default for SecureSessionConfig {
             validate_ip_address: true,
             max_ip_changes: 3,
             enable_geolocation: false, // Requires external service
+        }
+    }
+}
+
+impl SecureSessionConfig {
+    /// Preset for high-security environments (finance, healthcare, government).
+    ///
+    /// Tighter timeouts, single-device enforcement, aggressive anomaly detection.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let manager = SecureSessionManager::new(SecureSessionConfig::for_high_security());
+    /// ```
+    pub fn for_high_security() -> Self {
+        Self {
+            max_lifetime: Duration::from_secs(2 * 3600), // 2 hours
+            idle_timeout: Duration::from_secs(10 * 60),  // 10 minutes
+            max_concurrent_sessions: 1,
+            rotation_interval: Duration::from_secs(15 * 60), // 15 minutes
+            require_secure_transport: true,
+            enable_device_fingerprinting: true,
+            max_risk_score: 40,
+            validate_ip_address: true,
+            max_ip_changes: 1,
+            enable_geolocation: true,
+        }
+    }
+
+    /// Preset for mobile / native-app sessions.
+    ///
+    /// Longer lifetimes and more lenient IP-change limits to cope with
+    /// cellular hand-offs, while still requiring secure transport.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let manager = SecureSessionManager::new(SecureSessionConfig::for_mobile());
+    /// ```
+    pub fn for_mobile() -> Self {
+        Self {
+            max_lifetime: Duration::from_secs(30 * 24 * 3600), // 30 days
+            idle_timeout: Duration::from_secs(7 * 24 * 3600),  // 7 days
+            max_concurrent_sessions: 5,
+            rotation_interval: Duration::from_secs(24 * 3600), // 24 hours
+            require_secure_transport: true,
+            enable_device_fingerprinting: true,
+            max_risk_score: 80,
+            validate_ip_address: false,
+            max_ip_changes: 50,
+            enable_geolocation: false,
         }
     }
 }
@@ -288,7 +351,11 @@ impl SecureSessionManager {
         }
     }
 
-    /// Update session activity and validate security
+    /// Update session activity and validate security.
+    ///
+    /// NOTE: DashMap's `get_mut` provides per-shard locking, serializing concurrent
+    /// access to the same session. This prevents TOCTOU race conditions on session
+    /// state checks and updates.
     pub fn update_session_activity(
         &self,
         session_id: &str,
@@ -298,6 +365,21 @@ impl SecureSessionManager {
         if let Some(mut session_entry) = self.active_sessions.get_mut(session_id) {
             let session = session_entry.value_mut();
             let now = SystemTime::now();
+
+            // Reject updates on terminal session states
+            match session.state {
+                SessionState::Active | SessionState::RequiresRotation => {}
+                SessionState::RequiresMfa => {
+                    return Err(AuthError::validation(
+                        "Session requires MFA verification before activity is allowed".to_string(),
+                    ));
+                }
+                _ => {
+                    return Err(AuthError::validation(
+                        "Session is no longer active".to_string(),
+                    ));
+                }
+            }
 
             // Check idle timeout
             if now
@@ -587,11 +669,13 @@ impl SecureSessionManager {
         score.min(100)
     }
 
-    /// Update risk score based on session activity
+    /// Update risk score based on session activity with decay for cleared conditions
     fn calculate_risk_score_update(&self, session: &SecureSession) -> u8 {
-        let mut score = session.risk_score;
+        // Start from a base score rather than the accumulated score to avoid
+        // monotonic increase. Recalculate from current flags each time.
+        let mut score: u8 = 0;
 
-        // Security flag penalties
+        // Security flag penalties (only applied when the flag is currently set)
         if session.security_flags.suspicious_location {
             score = score.saturating_add(20);
         }
@@ -599,7 +683,15 @@ impl SecureSessionManager {
             score = score.saturating_add(25);
         }
         if session.security_flags.new_device {
-            score = score.saturating_add(15);
+            // Apply time-based decay: new_device risk decreases over session lifetime.
+            // After 30 minutes of consistent activity, halve the penalty.
+            let age_secs = session
+                .last_accessed
+                .duration_since(session.created_at)
+                .unwrap_or_default()
+                .as_secs();
+            let penalty = if age_secs > 1800 { 7 } else { 15 };
+            score = score.saturating_add(penalty);
         }
         if session.security_flags.unusual_hours {
             score = score.saturating_add(10);
@@ -618,16 +710,45 @@ impl SecureSessionManager {
             score = score.saturating_add(10);
         }
 
+        // Velocity check: rapid rotations suggest token theft.
+        // If session has been rotated multiple times within a short window,
+        // increase risk proportionally.
+        if session.rotation_count > 1 {
+            let age_secs = session
+                .last_accessed
+                .duration_since(session.created_at)
+                .unwrap_or_default()
+                .as_secs()
+                .max(1); // avoid division by zero
+            let rotations_per_minute =
+                (session.rotation_count as u64).saturating_mul(60) / age_secs;
+            if rotations_per_minute > 5 {
+                score = score.saturating_add(20);
+            } else if rotations_per_minute > 2 {
+                score = score.saturating_add(10);
+            }
+        }
+
         score.min(100)
     }
 
-    /// Check if IP address is private/internal
+    /// Check if IP address is private/internal (RFC 1918 + loopback)
     fn is_private_ip(&self, ip: &str) -> bool {
-        ip.starts_with("192.168.")
-            || ip.starts_with("10.")
-            || ip.starts_with("172.")
-            || ip == "127.0.0.1"
-            || ip == "::1"
+        if ip == "127.0.0.1" || ip == "::1" {
+            return true;
+        }
+        if ip.starts_with("192.168.") || ip.starts_with("10.") {
+            return true;
+        }
+        // RFC 1918: 172.16.0.0 – 172.31.255.255
+        if let Some(rest) = ip.strip_prefix("172.") {
+            if let Some(second_octet_str) = rest.split('.').next() {
+                if let Ok(second_octet) = second_octet_str.parse::<u8>() {
+                    return (16..=31).contains(&second_octet);
+                }
+            }
+        }
+        false
     }
 }
 
@@ -761,5 +882,30 @@ mod tests {
         let cleaned = manager.cleanup_expired_sessions().unwrap();
         assert_eq!(cleaned, 1);
         assert!(manager.get_session(&session.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_for_high_security_preset() {
+        let config = SecureSessionConfig::for_high_security();
+        assert_eq!(config.max_lifetime, Duration::from_secs(2 * 3600));
+        assert_eq!(config.idle_timeout, Duration::from_secs(10 * 60));
+        assert_eq!(config.max_concurrent_sessions, 1);
+        assert_eq!(config.max_risk_score, 40);
+        assert!(config.enable_geolocation);
+        // Should still create a working manager
+        let manager = SecureSessionManager::new(config);
+        let session = manager.create_session("u1", "10.0.0.1", "UA", None, true).unwrap();
+        assert_eq!(session.user_id, "u1");
+    }
+
+    #[test]
+    fn test_for_mobile_preset() {
+        let config = SecureSessionConfig::for_mobile();
+        assert_eq!(config.max_lifetime, Duration::from_secs(30 * 24 * 3600));
+        assert_eq!(config.max_concurrent_sessions, 5);
+        assert!(!config.validate_ip_address);
+        let manager = SecureSessionManager::new(config);
+        let session = manager.create_session("u2", "10.0.0.2", "iOS", None, true).unwrap();
+        assert_eq!(session.user_id, "u2");
     }
 }

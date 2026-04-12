@@ -7,7 +7,7 @@ If you are looking to deploy the standalone server binary, see [DEPLOYMENT_GUIDE
 
 ## Prerequisites
 
-- Rust 1.85+ with Cargo
+- Rust 1.88+ with Cargo
 - An async runtime — the examples use [Tokio](https://tokio.rs)
 - A database — PostgreSQL is the recommended default storage backend
 
@@ -31,7 +31,7 @@ To opt out of specific subsystems:
 auth-framework = { version = "0.5.0-rc18", default-features = false, features = ["enhanced-rbac", "postgres-storage", "axum-integration"] }
 ```
 
-See [docs/DEPRECATION_PLAN.md](../DEPRECATION_PLAN.md) for the full feature flag reference.
+See [Cargo.toml](../../Cargo.toml) for the full feature flag reference.
 
 ---
 
@@ -83,7 +83,7 @@ auth.users().update_password("alice", "n3wP@ss!").await?;
 auth.users().update_roles(&user_id, &["editor".to_string()]).await?;
 
 // Enable / disable
-auth.users().set_active(&user_id, false).await?;
+auth.users().set_status(&user_id, UserStatus::Inactive).await?;
 
 // Delete
 auth.users().delete("alice").await?;
@@ -257,5 +257,5 @@ let prometheus_text = auth.monitoring().prometheus_metrics().await?;
 - [Security Configuration Guide](security-configuration.md)
 - [Custom Storage Implementation](custom-storage-implementation.md)
 - [Feature Flags Reference (Cargo.toml)](../../Cargo.toml) — see the `[features]` section
-- [Deprecation and Consolidation Plan](../DEPRECATION_PLAN.md)
+- [Project Roadmap](../ROADMAP.md)
 - [Administrator Setup Guide](administrator-setup.md)

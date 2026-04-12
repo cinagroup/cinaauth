@@ -25,7 +25,7 @@ impl TokenExchangeManagerFactory {
             jwt_secret: jwt_secret.to_string(),
             ..SecureJwtConfig::default()
         };
-        let jwt_validator = SecureJwtValidator::new(config);
+        let jwt_validator = SecureJwtValidator::new(config)?;
         Ok(TokenExchangeManager::new(jwt_validator))
     }
 

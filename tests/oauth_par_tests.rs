@@ -9,10 +9,8 @@ use std::sync::Arc;
 
 /// Helper to create a test AuthFramework instance
 async fn create_test_framework() -> Arc<AuthFramework> {
-    // Set JWT secret for testing (unsafe required for env::set_var in newer Rust)
-    unsafe {
-        std::env::set_var("JWT_SECRET", "test_secret_key_for_par_tests_1234567890");
-    }
+    let _env = auth_framework::testing::test_infrastructure::TestEnvironmentGuard::new()
+        .with_jwt_secret("test_secret_key_for_par_tests_1234567890");
 
     let config = AuthConfig::default();
     let mut auth = AuthFramework::new(config);

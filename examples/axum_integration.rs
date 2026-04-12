@@ -187,7 +187,7 @@ async fn login_handler(
 
     match auth
         .tokens()
-        .create(&user_id, vec!["read".into(), "write".into()], "jwt", None)
+        .create(&user_id, &["read", "write"], "jwt", None)
         .await
     {
         Ok(token) => {

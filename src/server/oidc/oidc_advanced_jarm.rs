@@ -148,6 +148,127 @@ impl Default for AdvancedJarmConfig {
     }
 }
 
+impl AdvancedJarmConfig {
+    /// Create a builder starting from the default configuration.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use auth_framework::server::oidc::oidc_advanced_jarm::AdvancedJarmConfig;
+    ///
+    /// let config = AdvancedJarmConfig::builder()
+    ///     .jarm_issuer("https://auth.example.com")
+    ///     .enable_jwe_encryption(true)
+    ///     .build();
+    /// ```
+    pub fn builder() -> AdvancedJarmConfigBuilder {
+        AdvancedJarmConfigBuilder {
+            inner: Self::default(),
+        }
+    }
+}
+
+/// Builder for [`AdvancedJarmConfig`].
+pub struct AdvancedJarmConfigBuilder {
+    inner: AdvancedJarmConfig,
+}
+
+impl AdvancedJarmConfigBuilder {
+    /// Set supported signing algorithms.
+    pub fn supported_algorithms(mut self, algos: Vec<Algorithm>) -> Self {
+        self.inner.supported_algorithms = algos;
+        self
+    }
+
+    /// Set default token expiry.
+    pub fn default_token_expiry(mut self, expiry: Duration) -> Self {
+        self.inner.default_token_expiry = expiry;
+        self
+    }
+
+    /// Set whether JWE encryption is enabled.
+    pub fn enable_jwe_encryption(mut self, enable: bool) -> Self {
+        self.inner.enable_jwe_encryption = enable;
+        self
+    }
+
+    /// Set supported delivery modes.
+    pub fn supported_delivery_modes(mut self, modes: Vec<JarmDeliveryMode>) -> Self {
+        self.inner.supported_delivery_modes = modes;
+        self
+    }
+
+    /// Set whether custom claims are allowed.
+    pub fn enable_custom_claims(mut self, enable: bool) -> Self {
+        self.inner.enable_custom_claims = enable;
+        self
+    }
+
+    /// Set maximum custom claims count.
+    pub fn max_custom_claims(mut self, max: usize) -> Self {
+        self.inner.max_custom_claims = max;
+        self
+    }
+
+    /// Set whether response validation is enabled.
+    pub fn enable_response_validation(mut self, enable: bool) -> Self {
+        self.inner.enable_response_validation = enable;
+        self
+    }
+
+    /// Set the JARM issuer URI.
+    pub fn jarm_issuer(mut self, issuer: impl Into<String>) -> Self {
+        self.inner.jarm_issuer = issuer.into();
+        self
+    }
+
+    /// Set whether audit logging is enabled.
+    pub fn enable_audit_logging(mut self, enable: bool) -> Self {
+        self.inner.enable_audit_logging = enable;
+        self
+    }
+
+    /// Set the JWE content encryption algorithm.
+    pub fn jwe_content_encryption(mut self, enc: impl Into<String>) -> Self {
+        self.inner.jwe_content_encryption = Some(enc.into());
+        self
+    }
+
+    /// Set the JWE key management algorithm.
+    pub fn jwe_algorithm(mut self, alg: impl Into<String>) -> Self {
+        self.inner.jwe_algorithm = Some(alg.into());
+        self
+    }
+
+    /// Set the server's RSA private key (PEM).
+    pub fn rsa_private_key_pem(mut self, pem: impl Into<String>) -> Self {
+        self.inner.rsa_private_key_pem = Some(pem.into());
+        self
+    }
+
+    /// Set the server's RSA public key (PEM).
+    pub fn rsa_public_key_pem(mut self, pem: impl Into<String>) -> Self {
+        self.inner.rsa_public_key_pem = Some(pem.into());
+        self
+    }
+
+    /// Set the recipient's RSA public key (PEM).
+    pub fn jwe_recipient_public_key_pem(mut self, pem: impl Into<String>) -> Self {
+        self.inner.jwe_recipient_public_key_pem = Some(pem.into());
+        self
+    }
+
+    /// Set the recipient's RSA private key (PEM).
+    pub fn jwe_recipient_private_key_pem(mut self, pem: impl Into<String>) -> Self {
+        self.inner.jwe_recipient_private_key_pem = Some(pem.into());
+        self
+    }
+
+    /// Build the [`AdvancedJarmConfig`].
+    pub fn build(self) -> AdvancedJarmConfig {
+        self.inner
+    }
+}
+
 /// JARM delivery modes
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum JarmDeliveryMode {
@@ -211,8 +332,8 @@ impl AdvancedJarmManager {
             })
         }
 
-        // Each arm returns (encoding_key, decoding_key, validator_jwt_secret).
-        let (encoding_key, decoding_key, validator_jwt_secret) = match (private_pem, public_pem) {
+        // Each arm returns (encoding_key, decoding_key, validator_jwt_secret, validator_rsa_public_key_pem).
+        let (encoding_key, decoding_key, validator_jwt_secret, rsa_pub_pem) = match (private_pem, public_pem) {
             (Some(priv_pem), Some(pub_pem)) => {
                 match (
                     EncodingKey::from_rsa_pem(priv_pem.as_bytes()),
@@ -224,7 +345,7 @@ impl AdvancedJarmManager {
                         // otherwise generate a fresh random value per instance.
                         let secret = std::env::var("JARM_JWT_SECRET")
                             .unwrap_or_else(|_| make_validator_secret());
-                        (enc, dec, secret)
+                        (enc, dec, secret, Some(pub_pem))
                     }
                     (Err(e), _) | (_, Err(e)) => {
                         warn!(
@@ -234,9 +355,10 @@ impl AdvancedJarmManager {
                             e
                         );
                         (
-                            EncodingKey::from_secret(b"test_key_for_development_only"),
-                            DecodingKey::from_secret(b"test_key_for_development_only"),
-                            "test_key_for_development_only".to_string(),
+                            EncodingKey::from_secret(b"test_key_for_development_only_123456"),
+                            DecodingKey::from_secret(b"test_key_for_development_only_123456"),
+                            "test_key_for_development_only_123456".to_string(),
+                            None,
                         )
                     }
                 }
@@ -254,9 +376,10 @@ impl AdvancedJarmManager {
                          to production."
                 );
                 (
-                    EncodingKey::from_secret(b"test_key_for_development_only"),
-                    DecodingKey::from_secret(b"test_key_for_development_only"),
-                    "test_key_for_development_only".to_string(),
+                    EncodingKey::from_secret(b"test_key_for_development_only_123456"),
+                    DecodingKey::from_secret(b"test_key_for_development_only_123456"),
+                    "test_key_for_development_only_123456".to_string(),
+                    None,
                 )
             }
         };
@@ -318,11 +441,17 @@ impl AdvancedJarmManager {
             },
             require_secure_transport: true,
             jwt_secret: validator_jwt_secret,
+            rsa_public_key_pem: rsa_pub_pem,
+            ec_public_key_pem: None,
+            ed_public_key_pem: None,
         };
 
         Self {
             config,
-            jwt_validator: Arc::new(SecureJwtValidator::new(jwt_config)),
+            jwt_validator: Arc::new(SecureJwtValidator::new(jwt_config).unwrap_or_else(|e| {
+                tracing::error!("Failed to initialize SecureJwtValidator for JARM: {e}");
+                panic!("SecureJwtValidator init failed");
+            })),
             encoding_key,
             decoding_key,
             http_client: {
@@ -1096,11 +1225,10 @@ mod tests {
     #[tokio::test]
     async fn test_jarm_response_creation() {
         // Create config with HMAC algorithm for testing
-        let config = AdvancedJarmConfig {
-            supported_algorithms: vec![Algorithm::HS256], // Use HMAC for testing
-            enable_response_validation: false,            // Disable validation for testing
-            ..Default::default()
-        };
+        let config = AdvancedJarmConfig::builder()
+            .supported_algorithms(vec![Algorithm::HS256]) // Use HMAC for testing
+            .enable_response_validation(false) // Disable validation for testing
+            .build();
         let manager = AdvancedJarmManager::new(config);
 
         let auth_response = AuthorizationResponse {
@@ -1127,10 +1255,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_custom_claims_validation() {
-        let config = AdvancedJarmConfig {
-            max_custom_claims: 2,
-            ..Default::default()
-        };
+        let config = AdvancedJarmConfig::builder()
+            .max_custom_claims(2)
+            .supported_algorithms(vec![Algorithm::HS256])
+            .build();
         let manager = AdvancedJarmManager::new(config);
 
         let auth_response = AuthorizationResponse {
@@ -1180,14 +1308,13 @@ mod tests {
             .to_public_key_pem(LineEnding::LF)
             .expect("public key PEM serialisation failed");
 
-        let config = AdvancedJarmConfig {
-            supported_algorithms: vec![Algorithm::HS256],
-            enable_jwe_encryption: true,
-            enable_response_validation: false,
-            jwe_recipient_public_key_pem: Some(pub_pem),
-            jwe_recipient_private_key_pem: Some(priv_pem),
-            ..Default::default()
-        };
+        let config = AdvancedJarmConfig::builder()
+            .supported_algorithms(vec![Algorithm::HS256])
+            .enable_jwe_encryption(true)
+            .enable_response_validation(false)
+            .jwe_recipient_public_key_pem(pub_pem)
+            .jwe_recipient_private_key_pem(priv_pem)
+            .build();
         let manager = AdvancedJarmManager::new(config);
 
         assert!(
@@ -1242,7 +1369,9 @@ mod tests {
 
     #[test]
     fn test_form_post_html_generation() {
-        let config = AdvancedJarmConfig::default();
+        let config = AdvancedJarmConfig::builder()
+            .supported_algorithms(vec![Algorithm::HS256])
+            .build();
         let manager = AdvancedJarmManager::new(config);
 
         let html = manager.generate_form_post_html(
@@ -1257,11 +1386,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_delivery_mode_validation() {
-        let config = AdvancedJarmConfig {
-            supported_delivery_modes: vec![JarmDeliveryMode::Query],
-            supported_algorithms: vec![Algorithm::HS256], // Use HMAC for testing
-            ..Default::default()
-        };
+        let config = AdvancedJarmConfig::builder()
+            .supported_delivery_modes(vec![JarmDeliveryMode::Query])
+            .supported_algorithms(vec![Algorithm::HS256]) // Use HMAC for testing
+            .build();
         let manager = AdvancedJarmManager::new(config);
 
         let auth_response = AuthorizationResponse {

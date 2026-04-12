@@ -3,7 +3,8 @@
 //! This module provides dashboard components for visualizing
 //! RBAC analytics data and system performance metrics.
 //!
-//! > **Status: Active** — Integrated with AuthStorage for metrics persistence and retrieval.
+//! > **Status:** Dashboard widgets currently surface the metrics that can be
+//! > derived from stored analytics events and snapshots.
 
 use super::{AnalyticsError, TimeRange};
 use crate::storage::AuthStorage;
@@ -266,7 +267,6 @@ pub struct Dashboard {
 /// Dashboard manager
 pub struct DashboardManager {
     config: DashboardConfig,
-    #[allow(dead_code)]
     storage: Arc<dyn AuthStorage>,
     dashboards: HashMap<String, Dashboard>,
 }
@@ -556,7 +556,7 @@ impl DashboardManager {
             data: vec![DataPoint {
                 timestamp: None,
                 label: Some("Checks".to_string()),
-                value: if total > 0 { total as f64 } else { 120.0 },
+                value: if total > 0 { total as f64 } else { 0.0 }, // 0.0 = no data available
                 metadata: HashMap::new(),
             }],
             color: Some("#4ecdc4".to_string()),
@@ -592,7 +592,7 @@ impl DashboardManager {
         let score = if total > 0 {
             100.0 - ((violations as f64 / total as f64) * 100.0)
         } else {
-            92.5
+            100.0 // No events = no violations = fully compliant
         };
         Ok(vec![ChartSeries {
             name: "Compliance Score".to_string(),
@@ -612,12 +612,40 @@ impl DashboardManager {
         _metric_type: &str,
         _time_range: &TimeRange,
     ) -> Result<Vec<ChartSeries>, AnalyticsError> {
+        // Query actual performance data from analytics events
+        let keys = self
+            .storage
+            .list_kv_keys("analytics_event_")
+            .await
+            .unwrap_or_default();
+
+        let mut total_duration_ms = 0.0_f64;
+        let mut count = 0_u64;
+
+        for key in &keys {
+            if let Ok(Some(data)) = self.storage.get_kv(key).await {
+                if let Ok(event) = serde_json::from_slice::<crate::analytics::AnalyticsEvent>(&data)
+                {
+                    if let Some(dur) = event.duration_ms {
+                        total_duration_ms += dur as f64;
+                        count += 1;
+                    }
+                }
+            }
+        }
+
+        let avg_ms = if count > 0 {
+            total_duration_ms / count as f64
+        } else {
+            0.0 // No performance data available
+        };
+
         Ok(vec![ChartSeries {
             name: "Response Time".to_string(),
             data: vec![DataPoint {
                 timestamp: None,
                 label: None,
-                value: 15.5,
+                value: avg_ms,
                 metadata: HashMap::new(),
             }],
             color: Some("#96ceb4".to_string()),
@@ -627,21 +655,86 @@ impl DashboardManager {
 
     async fn get_event_count_series(
         &self,
-        _event_type: Option<&str>,
+        event_type: Option<&str>,
         _filters: &HashMap<String, String>,
         _time_range: &TimeRange,
     ) -> Result<Vec<ChartSeries>, AnalyticsError> {
-        // Querying actual data from AuthStorage KV
-        Ok(vec![])
+        let keys = self
+            .storage
+            .list_kv_keys("analytics_event_")
+            .await
+            .unwrap_or_default();
+        let mut count = 0u64;
+        for key in &keys {
+            if let Ok(Some(data)) = self.storage.get_kv(key).await {
+                if let Ok(event) = serde_json::from_slice::<crate::analytics::AnalyticsEvent>(&data)
+                {
+                    let matches = match event_type {
+                        Some(et) => format!("{:?}", event.event_type) == et,
+                        None => true,
+                    };
+                    if matches {
+                        count += 1;
+                    }
+                }
+            }
+        }
+        Ok(vec![ChartSeries {
+            name: event_type.unwrap_or("All Events").to_string(),
+            data: vec![DataPoint {
+                timestamp: None,
+                label: Some("Count".to_string()),
+                value: count as f64,
+                metadata: HashMap::new(),
+            }],
+            color: Some("#ffa726".to_string()),
+            series_type: None,
+        }])
     }
 
     async fn get_custom_series(
         &self,
-        _query: &str,
+        query: &str,
         _parameters: &HashMap<String, String>,
         _time_range: &TimeRange,
     ) -> Result<Vec<ChartSeries>, AnalyticsError> {
-        Ok(vec![])
+        // Execute the custom query against stored analytics events
+        let keys = self
+            .storage
+            .list_kv_keys("analytics_event_")
+            .await
+            .unwrap_or_default();
+        let mut count = 0u64;
+        for key in &keys {
+            if let Ok(Some(data)) = self.storage.get_kv(key).await {
+                if let Ok(event) = serde_json::from_slice::<crate::analytics::AnalyticsEvent>(&data)
+                {
+                    // Match events whose action or resource contains the query string
+                    let matches = event
+                        .action
+                        .as_deref()
+                        .is_some_and(|a| a.contains(query))
+                        || event
+                            .resource
+                            .as_deref()
+                            .is_some_and(|r| r.contains(query));
+                    if matches {
+                        count += 1;
+                    }
+                }
+            }
+        }
+        Ok(vec![ChartSeries {
+            name: format!("Custom: {}", query),
+            data: vec![DataPoint {
+                timestamp: None,
+                label: Some(query.to_string()),
+                value: count as f64,
+                metadata: HashMap::new(),
+            }],
+            color: Some("#ab47bc".to_string()),
+            series_type: None,
+        }])
     }
 
     fn calculate_widget_summary(&self, series: &[ChartSeries]) -> WidgetSummary {
@@ -715,16 +808,20 @@ mod tests {
     #[tokio::test]
     async fn test_dashboard_manager_creation() {
         let config = DashboardConfig::default();
-        let manager =
-            DashboardManager::new(config, crate::storage::memory::MemoryStorage::new_arc());
+        let manager = DashboardManager::new(
+            config,
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
+        );
         assert_eq!(manager.dashboards.len(), 0);
     }
 
     #[tokio::test]
     async fn test_create_rbac_overview_dashboard() {
         let config = DashboardConfig::default();
-        let mut manager =
-            DashboardManager::new(config, crate::storage::memory::MemoryStorage::new_arc());
+        let mut manager = DashboardManager::new(
+            config,
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
+        );
 
         let dashboard_id = manager.create_rbac_overview_dashboard().await.unwrap();
         assert!(!dashboard_id.is_empty());
@@ -737,8 +834,10 @@ mod tests {
     #[test]
     fn test_alert_status_checking() {
         let config = DashboardConfig::default();
-        let manager =
-            DashboardManager::new(config, crate::storage::memory::MemoryStorage::new_arc());
+        let manager = DashboardManager::new(
+            config,
+            std::sync::Arc::new(crate::storage::MemoryStorage::new()),
+        );
 
         let summary = WidgetSummary {
             total: 100.0,

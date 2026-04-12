@@ -122,7 +122,7 @@ impl MutualTlsManager {
         // Check if it's a CA certificate
         if !cert
             .basic_constraints()
-            .map(|bc| bc.unwrap().value.ca)
+            .map(|bc| bc.map(|b| b.value.ca).unwrap_or(false))
             .unwrap_or(false)
         {
             return Err(AuthError::auth_method(

@@ -40,18 +40,18 @@ impl TokenToProfile for OAuthTokenResponse {
             .bearer_auth(&self.access_token)
             .send()
             .await
-            .map_err(|e| AuthError::NetworkError(format!("Failed to fetch user profile: {}", e)))?;
+            .map_err(|e| AuthError::internal(format!("Failed to fetch user profile: {}", e)))?;
 
         let status = response.status();
         if !status.is_success() {
-            return Err(AuthError::NetworkError(format!(
+            return Err(AuthError::internal(format!(
                 "Failed to fetch user profile. Status code: {}",
                 status
             )));
         }
 
         let json_response = response.json::<Value>().await.map_err(|e| {
-            AuthError::ParseError(format!("Failed to parse user profile response: {}", e))
+            AuthError::internal(format!("Failed to parse user profile response: {}", e))
         })?;
 
         provider.extract_profile(provider, json_response)

@@ -10,6 +10,13 @@ use tracing::{debug, info, warn};
 pub type UserInfo = crate::auth::UserInfo;
 
 /// Result of a successful credential verification via [`UserManager::verify_login_credentials`].
+///
+/// # Example
+/// ```rust,ignore
+/// if let Some(result) = mgr.verify_login_credentials("alice", "pass").await? {
+///     println!("user_id={}, mfa={}", result.user_id, result.mfa_enabled);
+/// }
+/// ```
 pub struct CredentialCheckResult {
     /// The verified user's ID.
     pub user_id: String,
@@ -17,18 +24,35 @@ pub struct CredentialCheckResult {
     pub mfa_enabled: bool,
 }
 
-/// User manager for handling user operations
+/// User manager for handling user operations.
+///
+/// # Example
+/// ```rust,ignore
+/// use auth_framework::auth_modular::UserManager;
+/// let um = UserManager::new(storage.clone());
+/// let uid = um.register_user("alice", "alice@example.com", "Str0ng!Pass").await?;
+/// ```
 pub struct UserManager {
     storage: Arc<dyn AuthStorage>,
 }
 
 impl UserManager {
-    /// Create a new user manager
+    /// Create a new user manager.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let um = UserManager::new(storage.clone());
+    /// ```
     pub fn new(storage: Arc<dyn AuthStorage>) -> Self {
         Self { storage }
     }
 
-    /// Create API key for a user
+    /// Create API key for a user.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let key = um.create_api_key("user-1", Some(Duration::from_secs(86400))).await?;
+    /// ```
     pub async fn create_api_key(
         &self,
         user_id: &str,
@@ -55,7 +79,13 @@ impl UserManager {
         Ok(api_key)
     }
 
-    /// Validate API key and return user information
+    /// Validate API key and return user information.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let info = um.validate_api_key("ak_abc123").await?;
+    /// println!("user: {}", info.username);
+    /// ```
     pub async fn validate_api_key(&self, api_key: &str) -> Result<UserInfo> {
         debug!("Validating API key");
 
@@ -81,9 +111,10 @@ impl UserManager {
                     username: format!("api_user_{}", user_id),
                     email: None,
                     name: None,
-                    roles: vec!["api_user".to_string()],
+                    roles: vec!["api_user".to_string()].into(),
                     active: true,
-                    attributes: HashMap::new(),
+                    email_verified: false,
+                    attributes: crate::types::UserAttributes::empty(),
                 })
             } else {
                 Err(AuthError::token("Invalid API key format"))
@@ -93,7 +124,12 @@ impl UserManager {
         }
     }
 
-    /// Revoke API key
+    /// Revoke API key.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// um.revoke_api_key("ak_abc123").await?;
+    /// ```
     pub async fn revoke_api_key(&self, api_key: &str) -> Result<()> {
         debug!("Revoking API key");
 
@@ -107,7 +143,13 @@ impl UserManager {
         }
     }
 
-    /// Validate username format
+    /// Validate username format.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// assert!(um.validate_username("alice").await?);
+    /// assert!(!um.validate_username("").await?);
+    /// ```
     pub async fn validate_username(&self, username: &str) -> Result<bool> {
         debug!("Validating username format: '{}'", username);
 
@@ -120,7 +162,12 @@ impl UserManager {
         Ok(is_valid)
     }
 
-    /// Validate display name format
+    /// Validate display name format.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// assert!(um.validate_display_name("Alice B.").await?);
+    /// ```
     pub async fn validate_display_name(&self, display_name: &str) -> Result<bool> {
         debug!("Validating display name format");
 
@@ -134,6 +181,12 @@ impl UserManager {
     /// Validate password strength using security policy.
     ///
     /// Requires Strong or VeryStrong to protect production deployments.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// assert!(um.validate_password_strength("C0mpl3x!Pa$$word").await?);
+    /// assert!(!um.validate_password_strength("weak").await?);
+    /// ```
     pub async fn validate_password_strength(&self, password: &str) -> Result<bool> {
         debug!("Validating password strength");
         let strength = crate::utils::password::check_password_strength(password);
@@ -153,6 +206,12 @@ impl UserManager {
     /// Combines a character whitelist with pattern checks for common injection
     /// vectors. Rejects HTML tags, null bytes, path traversal sequences,
     /// template injection markers, and dangerous URI schemes.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// assert!(um.validate_user_input("hello world").await?);
+    /// assert!(!um.validate_user_input("<script>alert(1)</script>").await?);
+    /// ```
     pub async fn validate_user_input(&self, input: &str) -> Result<bool> {
         debug!("Validating user input");
 
@@ -203,7 +262,13 @@ impl UserManager {
         Ok(true)
     }
 
-    /// Get user information by ID
+    /// Get user information by ID.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let info = um.get_user_info("user-1").await?;
+    /// println!("username: {}", info.username);
+    /// ```
     pub async fn get_user_info(&self, user_id: &str) -> Result<UserInfo> {
         debug!("Getting user info for '{}'", user_id);
 
@@ -222,18 +287,65 @@ impl UserManager {
                     .map(|arr| {
                         arr.iter()
                             .filter_map(|v| v.as_str().map(String::from))
-                            .collect()
+                            .collect::<Vec<_>>()
                     })
-                    .unwrap_or_else(|| vec!["user".to_string()]),
+                    .unwrap_or_else(|| vec!["user".to_string()])
+                    .into(),
                 active: user_data["active"].as_bool().unwrap_or(true),
-                attributes: HashMap::new(),
+                email_verified: user_data["email_verified"].as_bool().unwrap_or(false),
+                attributes: crate::types::UserAttributes::empty(),
             })
         } else {
             Err(AuthError::validation(format!("User '{user_id}' not found")))
         }
     }
 
-    /// Check if user exists
+    /// List users from the canonical user index.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let users = um.list_users(Some(10), Some(0), true).await?;
+    /// for u in &users { println!("{}", u.username); }
+    /// ```
+    pub async fn list_users(
+        &self,
+        limit: Option<usize>,
+        offset: Option<usize>,
+        active_only: bool,
+    ) -> Result<Vec<UserInfo>> {
+        let bytes = self.storage.get_kv("users:index").await?;
+        let user_ids: Vec<String> = match bytes {
+            Some(bytes) => serde_json::from_slice(&bytes)
+                .map_err(|e| AuthError::internal(format!("Failed to parse user index: {e}")))?,
+            None => return Ok(Vec::new()),
+        };
+
+        let skip = offset.unwrap_or(0);
+        let take = limit.unwrap_or(usize::MAX);
+        let mut users = Vec::new();
+
+        for user_id in user_ids.into_iter().skip(skip) {
+            let user = self.get_user_info(&user_id).await?;
+            if active_only && !user.active {
+                continue;
+            }
+            users.push(user);
+            if users.len() >= take {
+                break;
+            }
+        }
+
+        Ok(users)
+    }
+
+    /// Check if user exists.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// if um.user_exists("user-1").await? {
+    ///     println!("user found");
+    /// }
+    /// ```
     pub async fn user_exists(&self, user_id: &str) -> Result<bool> {
         debug!("Checking if user '{}' exists", user_id);
 
@@ -250,6 +362,12 @@ impl UserManager {
     // ────────────────────────────────────────────────────────────────────────
 
     /// Register a new user, creating all required storage records.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let uid = um.register_user("alice", "alice@example.com", "Str0ng!Pass").await?;
+    /// println!("registered user: {}", uid);
+    /// ```
     pub async fn register_user(
         &self,
         username: &str,
@@ -280,6 +398,7 @@ impl UserManager {
             "password_hash": password_hash,
             "roles": ["user"],
             "active": true,
+            "email_verified": false,
             "created_at": chrono::Utc::now().to_rfc3339(),
         });
 
@@ -303,7 +422,9 @@ impl UserManager {
         };
         ids.push(user_id.clone());
         if let Ok(idx_json) = serde_json::to_vec(&ids) {
-            let _ = self.storage.store_kv(index_key, &idx_json, None).await;
+            if let Err(e) = self.storage.store_kv(index_key, &idx_json, None).await {
+                warn!("Failed to update user index during registration: {}", e);
+            }
         }
 
         // Store Argon2 credentials record for authenticate_password_builtin.
@@ -322,16 +443,24 @@ impl UserManager {
             "password_hash": creds_hash,
             "created_at": chrono::Utc::now().to_rfc3339(),
         });
-        let _ = self
+        if let Err(e) = self
             .storage
             .store_kv(&creds_key, creds_data.to_string().as_bytes(), None)
-            .await;
+            .await
+        {
+            warn!("Failed to store credentials for user '{}': {}", username, e);
+        }
 
         info!("User '{}' registered successfully", username);
         Ok(user_id)
     }
 
     /// Delete a user and all associated storage records.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// um.delete_user("alice").await?;
+    /// ```
     pub async fn delete_user(&self, username: &str) -> Result<()> {
         debug!("Deleting user: {}", username);
 
@@ -352,10 +481,13 @@ impl UserManager {
             && let Ok(user_data) = serde_json::from_str::<serde_json::Value>(&user_json_str)
             && let Some(email) = user_data.get("email").and_then(|v| v.as_str())
         {
-            let _ = self
+            if let Err(e) = self
                 .storage
                 .delete_kv(&format!("user:email:{}", email))
-                .await;
+                .await
+            {
+                warn!("Failed to delete email index for user '{}': {}", username, e);
+            }
         }
 
         // Remove from global index.
@@ -364,30 +496,61 @@ impl UserManager {
             let mut ids: Vec<String> = serde_json::from_slice(&bytes).unwrap_or_default();
             ids.retain(|id| id != &user_id);
             if let Ok(idx_json) = serde_json::to_vec(&ids) {
-                let _ = self.storage.store_kv(index_key, &idx_json, None).await;
+                if let Err(e) = self.storage.store_kv(index_key, &idx_json, None).await {
+                    warn!("Failed to update user index during deletion of '{}': {}", username, e);
+                }
             }
         }
 
-        let _ = self.storage.delete_kv(&user_key).await;
-        let _ = self.storage.delete_kv(&username_key).await;
-        let _ = self
+        if let Err(e) = self.storage.delete_kv(&user_key).await {
+            warn!("Failed to delete user record for '{}': {}", username, e);
+        }
+        if let Err(e) = self.storage.delete_kv(&username_key).await {
+            warn!("Failed to delete username index for '{}': {}", username, e);
+        }
+        if let Err(e) = self
             .storage
             .delete_kv(&format!("user:credentials:{}", username))
-            .await;
-        let _ = self
+            .await
+        {
+            warn!("Failed to delete credentials for '{}': {}", username, e);
+        }
+        if let Err(e) = self
             .storage
             .delete_kv(&format!("user:{}:totp_secret", user_id))
-            .await;
-        let _ = self
+            .await
+        {
+            warn!("Failed to delete TOTP secret for '{}': {}", username, e);
+        }
+        if let Err(e) = self
             .storage
             .delete_kv(&format!("user:{}:backup_codes", user_id))
-            .await;
+            .await
+        {
+            warn!("Failed to delete backup codes for '{}': {}", username, e);
+        }
 
         info!("User '{}' deleted successfully", username);
         Ok(())
     }
 
+    /// Delete a user by canonical user ID.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// um.delete_user_by_id("user-1").await?;
+    /// ```
+    pub async fn delete_user_by_id(&self, user_id: &str) -> Result<()> {
+        let username = self.get_username_by_id(user_id).await?;
+        self.delete_user(&username).await
+    }
+
     /// Update the roles assigned to a user.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// um.update_user_roles("user-1", &["admin".into(), "editor".into()]).await?;
+    /// ```
     pub async fn update_user_roles(&self, user_id: &str, roles: &[String]) -> Result<()> {
         let user_key = format!("user:{}", user_id);
         let bytes = self
@@ -407,6 +570,11 @@ impl UserManager {
     }
 
     /// Enable or disable a user account.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// um.set_user_active("user-1", false).await?; // disable
+    /// ```
     pub async fn set_user_active(&self, user_id: &str, active: bool) -> Result<()> {
         let user_key = format!("user:{}", user_id);
         let bytes = self
@@ -425,7 +593,59 @@ impl UserManager {
         Ok(())
     }
 
+    /// Update the email address stored on a user.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// um.update_user_email("user-1", "new@example.com").await?;
+    /// ```
+    pub async fn update_user_email(&self, user_id: &str, email: &str) -> Result<()> {
+        let user_key = format!("user:{}", user_id);
+        let bytes = self
+            .storage
+            .get_kv(&user_key)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        let mut user_data: serde_json::Value =
+            serde_json::from_slice(&bytes).map_err(|e| AuthError::crypto(format!("{e}")))?;
+
+        let new_email_key = format!("user:email:{}", email);
+        if let Some(existing_user_id) = self.storage.get_kv(&new_email_key).await? {
+            let existing_user_id = String::from_utf8(existing_user_id)
+                .map_err(|e| AuthError::crypto(format!("Invalid user ID format: {e}")))?;
+            if existing_user_id != user_id {
+                return Err(AuthError::validation("Email already exists".to_string()));
+            }
+        }
+
+        if let Some(old_email) = user_data.get("email").and_then(|value| value.as_str())
+            && old_email != email
+        {
+            self.storage
+                .delete_kv(&format!("user:email:{}", old_email))
+                .await?;
+        }
+
+        user_data["email"] = serde_json::json!(email);
+        user_data["updated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
+
+        self.storage
+            .store_kv(&user_key, user_data.to_string().as_bytes(), None)
+            .await?;
+        self.storage
+            .store_kv(&new_email_key, user_id.as_bytes(), None)
+            .await?;
+
+        Ok(())
+    }
+
     /// Verify a user's password against the stored bcrypt hash.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let ok = um.verify_user_password("user-1", "secret").await?;
+    /// assert!(ok);
+    /// ```
     pub async fn verify_user_password(&self, user_id: &str, password: &str) -> Result<bool> {
         let user_key = format!("user:{}", user_id);
         let bytes = self
@@ -443,6 +663,11 @@ impl UserManager {
     }
 
     /// Resolve a user_id to its username.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let name = um.get_username_by_id("user-1").await?;
+    /// ```
     pub async fn get_username_by_id(&self, user_id: &str) -> Result<String> {
         let user_key = format!("user:{}", user_id);
         let bytes = self
@@ -459,6 +684,13 @@ impl UserManager {
     }
 
     /// Check whether a username is already taken.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// if um.username_exists("alice").await? {
+    ///     println!("taken");
+    /// }
+    /// ```
     pub async fn username_exists(&self, username: &str) -> Result<bool> {
         Ok(self
             .storage
@@ -468,6 +700,13 @@ impl UserManager {
     }
 
     /// Check whether an email address is already registered.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// if um.email_exists("a@b.com").await? {
+    ///     println!("already registered");
+    /// }
+    /// ```
     pub async fn email_exists(&self, email: &str) -> Result<bool> {
         Ok(self
             .storage
@@ -477,6 +716,12 @@ impl UserManager {
     }
 
     /// Fetch raw user data by username.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let data = um.get_user_by_username("alice").await?;
+    /// println!("email: {:?}", data.get("email"));
+    /// ```
     pub async fn get_user_by_username(
         &self,
         username: &str,
@@ -510,6 +755,12 @@ impl UserManager {
     }
 
     /// Get a sanitised user profile (no password hash) for display/API.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let profile = um.get_user_profile("user-1").await?;
+    /// println!("email: {:?}", profile.email);
+    /// ```
     pub async fn get_user_profile(
         &self,
         user_id: &str,
@@ -551,8 +802,13 @@ impl UserManager {
         Err(AuthError::UserNotFound)
     }
 
-    /// Update a user's password (bcrypt for storage + Argon2 for login credentials).
     /// Get a user's roles/scopes from storage, returning `["user"]` as fallback.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let roles = um.get_user_roles("user-1").await?;
+    /// assert!(roles.contains(&"user".to_string()));
+    /// ```
     pub async fn get_user_roles(&self, user_id: &str) -> Result<Vec<String>> {
         let user_key = format!("user:{}", user_id);
         if let Ok(Some(data)) = self.storage.get_kv(&user_key).await
@@ -576,6 +832,14 @@ impl UserManager {
     /// verification is always executed when the username is not found, so
     /// callers cannot distinguish missing users from wrong passwords via timing.
     /// Returns `Ok(Some(result))` on success.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// match um.verify_login_credentials("alice", "password123").await? {
+    ///     Some(cred) => println!("user_id={}, mfa={}", cred.user_id, cred.mfa_enabled),
+    ///     None => println!("invalid credentials"),
+    /// }
+    /// ```
     pub async fn verify_login_credentials(
         &self,
         username: &str,
@@ -641,6 +905,12 @@ impl UserManager {
         }))
     }
 
+    /// Update a user's password by username.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// um.update_user_password("alice", "N3wStr0ng!Pass").await?;
+    /// ```
     pub async fn update_user_password(&self, username: &str, new_password: &str) -> Result<()> {
         debug!("Updating password for user: {}", username);
 
@@ -691,5 +961,657 @@ impl UserManager {
 
         info!("Password updated for user: {}", username);
         Ok(())
+    }
+
+    /// Update a user password by canonical user ID.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// um.update_user_password_by_id("user-1", "N3wStr0ng!Pass").await?;
+    /// ```
+    pub async fn update_user_password_by_id(
+        &self,
+        user_id: &str,
+        new_password: &str,
+    ) -> Result<()> {
+        let username = self.get_username_by_id(user_id).await?;
+        self.update_user_password(&username, new_password).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::MemoryStorage;
+
+    fn make_manager() -> UserManager {
+        UserManager::new(Arc::new(MemoryStorage::new()))
+    }
+
+    // ── register_user ───────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_register_user_success() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("alice", "alice@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(id.starts_with("user"));
+    }
+
+    #[tokio::test]
+    async fn test_register_user_duplicate_username() {
+        let mgr = make_manager();
+        mgr.register_user("bob", "bob@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let err = mgr
+            .register_user("bob", "bob2@example.com", "StrongP@ss1!")
+            .await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_register_user_duplicate_email() {
+        let mgr = make_manager();
+        mgr.register_user("carol", "dup@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let err = mgr
+            .register_user("carol2", "dup@example.com", "StrongP@ss1!")
+            .await;
+        assert!(err.is_err());
+    }
+
+    // ── get_user_info ───────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_user_info_success() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("dave", "dave@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let info = mgr.get_user_info(&id).await.unwrap();
+        assert_eq!(info.username, "dave");
+        assert!(info.active);
+    }
+
+    #[tokio::test]
+    async fn test_get_user_info_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.get_user_info("nonexistent").await.is_err());
+    }
+
+    // ── user_exists ─────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_user_exists_true() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("eve", "eve@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(mgr.user_exists(&id).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_user_exists_false() {
+        let mgr = make_manager();
+        assert!(!mgr.user_exists("nobody").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_user_exists_empty_id() {
+        let mgr = make_manager();
+        assert!(!mgr.user_exists("").await.unwrap());
+    }
+
+    // ── delete_user ─────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_delete_user_success() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("frank", "frank@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.delete_user("frank").await.unwrap();
+        assert!(!mgr.user_exists(&id).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_delete_user_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.delete_user("ghost").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_user_by_id() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("gina", "gina@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.delete_user_by_id(&id).await.unwrap();
+        assert!(!mgr.user_exists(&id).await.unwrap());
+    }
+
+    // ── list_users ──────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_list_users_empty() {
+        let mgr = make_manager();
+        let users = mgr.list_users(None, None, false).await.unwrap();
+        assert!(users.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_users_with_limit_and_offset() {
+        let mgr = make_manager();
+        mgr.register_user("u1", "u1@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.register_user("u2", "u2@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.register_user("u3", "u3@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let page = mgr.list_users(Some(1), Some(1), false).await.unwrap();
+        assert_eq!(page.len(), 1);
+    }
+
+    // ── verify_user_password ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_verify_password_correct() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("hank", "hank@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(mgr.verify_user_password(&id, "StrongP@ss1!").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_verify_password_incorrect() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("ivan", "ivan@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(!mgr.verify_user_password(&id, "wrong").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_verify_password_user_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.verify_user_password("ghost", "x").await.is_err());
+    }
+
+    // ── update_user_password ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_update_password() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("jack", "jack@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.update_user_password("jack", "NewStr0ng!Pass")
+            .await
+            .unwrap();
+        assert!(
+            mgr.verify_user_password(&id, "NewStr0ng!Pass")
+                .await
+                .unwrap()
+        );
+        assert!(!mgr.verify_user_password(&id, "StrongP@ss1!").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_update_password_user_not_found() {
+        let mgr = make_manager();
+        assert!(
+            mgr.update_user_password("ghost", "NewStr0ng!Pass")
+                .await
+                .is_err()
+        );
+    }
+
+    // ── update_user_roles ───────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_update_user_roles() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("kate", "kate@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.update_user_roles(&id, &["admin".into(), "user".into()])
+            .await
+            .unwrap();
+        let info = mgr.get_user_info(&id).await.unwrap();
+        assert!(info.roles.contains(&"admin".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_update_user_roles_not_found() {
+        let mgr = make_manager();
+        assert!(
+            mgr.update_user_roles("ghost", &["admin".into()])
+                .await
+                .is_err()
+        );
+    }
+
+    // ── set_user_active ─────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_set_user_active_disable() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("leon", "leon@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.set_user_active(&id, false).await.unwrap();
+        let info = mgr.get_user_info(&id).await.unwrap();
+        assert!(!info.active);
+    }
+
+    #[tokio::test]
+    async fn test_set_user_active_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.set_user_active("ghost", false).await.is_err());
+    }
+
+    // ── update_user_email ───────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_update_user_email() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("mary", "mary@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.update_user_email(&id, "mary_new@example.com")
+            .await
+            .unwrap();
+        let info = mgr.get_user_info(&id).await.unwrap();
+        assert_eq!(info.email.as_deref(), Some("mary_new@example.com"));
+    }
+
+    #[tokio::test]
+    async fn test_update_user_email_already_taken() {
+        let mgr = make_manager();
+        mgr.register_user("n1", "taken@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let id2 = mgr
+            .register_user("n2", "n2@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(
+            mgr.update_user_email(&id2, "taken@example.com")
+                .await
+                .is_err()
+        );
+    }
+
+    // ── API key operations ──────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_create_and_validate_api_key() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("oscar", "oscar@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let key = mgr.create_api_key(&id, None).await.unwrap();
+        assert!(key.starts_with("ak_"));
+        let info = mgr.validate_api_key(&key).await.unwrap();
+        assert_eq!(info.id, id);
+    }
+
+    #[tokio::test]
+    async fn test_validate_api_key_invalid() {
+        let mgr = make_manager();
+        assert!(mgr.validate_api_key("bad_key").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_revoke_api_key() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("pat", "pat@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let key = mgr.create_api_key(&id, None).await.unwrap();
+        mgr.revoke_api_key(&key).await.unwrap();
+        assert!(mgr.validate_api_key(&key).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_revoke_api_key_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.revoke_api_key("nonexistent").await.is_err());
+    }
+
+    // ── validate_username ───────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_validate_username_valid() {
+        let mgr = make_manager();
+        assert!(mgr.validate_username("good_user-1").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_validate_username_too_short() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_username("ab").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_validate_username_special_chars() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_username("user@name").await.unwrap());
+    }
+
+    // ── validate_display_name ───────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_validate_display_name_valid() {
+        let mgr = make_manager();
+        assert!(mgr.validate_display_name("Alice Bob").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_validate_display_name_empty() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_display_name("").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_validate_display_name_only_whitespace() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_display_name("   ").await.unwrap());
+    }
+
+    // ── validate_password_strength ──────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_validate_password_strong() {
+        let mgr = make_manager();
+        assert!(
+            mgr.validate_password_strength("C0mpl3x!P@ssw0rd")
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_validate_password_weak() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_password_strength("123").await.unwrap());
+    }
+
+    // ── validate_user_input ─────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_validate_user_input_clean() {
+        let mgr = make_manager();
+        assert!(mgr.validate_user_input("Hello World 123").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_validate_user_input_html_tags() {
+        let mgr = make_manager();
+        assert!(
+            !mgr.validate_user_input("<script>alert(1)</script>")
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_validate_user_input_sql_injection() {
+        let mgr = make_manager();
+        assert!(
+            !mgr.validate_user_input("'; drop table users--")
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_validate_user_input_template_injection() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_user_input("${evil}").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_validate_user_input_path_traversal() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_user_input("../../etc/passwd").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_validate_user_input_javascript_uri() {
+        let mgr = make_manager();
+        assert!(
+            !mgr.validate_user_input("javascript:alert(1)")
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_validate_user_input_empty() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_user_input("").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_validate_user_input_encoded_tags() {
+        let mgr = make_manager();
+        assert!(!mgr.validate_user_input("%3cscript%3e").await.unwrap());
+    }
+
+    // ── username_exists / email_exists ───────────────────────────────────
+
+    #[tokio::test]
+    async fn test_username_exists() {
+        let mgr = make_manager();
+        mgr.register_user("quinn", "quinn@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(mgr.username_exists("quinn").await.unwrap());
+        assert!(!mgr.username_exists("noone").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_email_exists() {
+        let mgr = make_manager();
+        mgr.register_user("ross", "ross@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(mgr.email_exists("ross@example.com").await.unwrap());
+        assert!(!mgr.email_exists("nobody@example.com").await.unwrap());
+    }
+
+    // ── get_user_by_username ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_user_by_username() {
+        let mgr = make_manager();
+        mgr.register_user("sam", "sam@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let data = mgr.get_user_by_username("sam").await.unwrap();
+        assert_eq!(data["username"].as_str(), Some("sam"));
+    }
+
+    #[tokio::test]
+    async fn test_get_user_by_username_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.get_user_by_username("ghost").await.is_err());
+    }
+
+    // ── get_user_profile ────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_user_profile() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("tina", "tina@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let profile = mgr.get_user_profile(&id).await.unwrap();
+        assert_eq!(profile.username.as_deref(), Some("tina"));
+        assert_eq!(profile.email.as_deref(), Some("tina@example.com"));
+        // password_hash should NOT be in additional_data
+        assert!(!profile.additional_data.contains_key("password_hash"));
+    }
+
+    #[tokio::test]
+    async fn test_get_user_profile_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.get_user_profile("ghost").await.is_err());
+    }
+
+    // ── get_user_roles ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_user_roles_default() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("uma", "uma@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let roles = mgr.get_user_roles(&id).await.unwrap();
+        assert!(roles.contains(&"user".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_get_user_roles_not_found_returns_default() {
+        let mgr = make_manager();
+        let roles = mgr.get_user_roles("ghost").await.unwrap();
+        assert_eq!(roles, vec!["user".to_string()]);
+    }
+
+    // ── verify_login_credentials ────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_verify_login_credentials_success() {
+        let mgr = make_manager();
+        mgr.register_user("vera", "vera@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let result = mgr
+            .verify_login_credentials("vera", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(result.is_some());
+        assert!(!result.unwrap().mfa_enabled);
+    }
+
+    #[tokio::test]
+    async fn test_verify_login_credentials_wrong_password() {
+        let mgr = make_manager();
+        mgr.register_user("wanda", "wanda@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let result = mgr
+            .verify_login_credentials("wanda", "wrong")
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_verify_login_credentials_unknown_user() {
+        let mgr = make_manager();
+        let result = mgr
+            .verify_login_credentials("ghost", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_verify_login_credentials_empty_inputs() {
+        let mgr = make_manager();
+        assert!(
+            mgr.verify_login_credentials("", "pass")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            mgr.verify_login_credentials("user", "")
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_verify_login_credentials_deactivated() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("xena", "xena@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.set_user_active(&id, false).await.unwrap();
+        let result = mgr
+            .verify_login_credentials("xena", "StrongP@ss1!")
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    // ── get_username_by_id ──────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_username_by_id() {
+        let mgr = make_manager();
+        let id = mgr
+            .register_user("yara", "yara@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let username = mgr.get_username_by_id(&id).await.unwrap();
+        assert_eq!(username, "yara");
+    }
+
+    #[tokio::test]
+    async fn test_get_username_by_id_not_found() {
+        let mgr = make_manager();
+        assert!(mgr.get_username_by_id("ghost").await.is_err());
+    }
+
+    // ── list_users active_only filter ───────────────────────────────────
+
+    #[tokio::test]
+    async fn test_list_users_active_only() {
+        let mgr = make_manager();
+        let id1 = mgr
+            .register_user("active1", "active1@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        let id2 = mgr
+            .register_user("inactive1", "inactive1@example.com", "StrongP@ss1!")
+            .await
+            .unwrap();
+        mgr.set_user_active(&id2, false).await.unwrap();
+
+        let all = mgr.list_users(None, None, false).await.unwrap();
+        let active = mgr.list_users(None, None, true).await.unwrap();
+        assert!(all.len() > active.len());
+        assert!(active.iter().all(|u| u.active));
+        // The inactive user should still be in the "all" list
+        assert!(all.iter().any(|u| u.id == id1));
+        assert!(all.iter().any(|u| u.id == id2));
     }
 }

@@ -45,10 +45,10 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! # let dpop_proof: String = todo!();
-//! # let access_token: String = todo!();
+//! # let dpop_proof: String = unimplemented!();
+//! # let access_token: String = unimplemented!();
 //! # let request: () = ();
-//! let jwt_validator = SecureJwtValidator::new(SecureJwtConfig::default());
+//! let jwt_validator = SecureJwtValidator::new(SecureJwtConfig::default())?;
 //!
 //! // DPoP for token binding
 //! let dpop_manager = DpopManager::new(jwt_validator);
@@ -61,9 +61,9 @@
 //! ).await?;
 //!
 //! // FAPI compliance validation
-//! # let config: auth_framework::server::security::fapi::FapiConfig = todo!();
+//! # let config: auth_framework::server::security::fapi::FapiConfig = unimplemented!();
 //! // FapiManager requires dpop_manager, mtls_manager, par_manager, private_key_jwt_manager, and jwt_validator
-//! # let fapi_manager: auth_framework::server::security::FapiManager = todo!();
+//! # let fapi_manager: auth_framework::server::security::FapiManager = unimplemented!();
 //! # Ok(())
 //! # }
 //! ```

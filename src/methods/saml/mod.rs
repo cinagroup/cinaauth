@@ -16,7 +16,6 @@ use crate::methods::{AuthMethod, MethodResult};
 use crate::tokens::{AuthToken, TokenManager};
 use async_trait::async_trait;
 use base64::Engine;
-use chrono::{DateTime, Utc};
 use quick_xml::de::from_str;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -86,7 +85,7 @@ pub struct SamlIdpMetadata {
 }
 
 /// SAML assertion data after validation — the parsed/authenticated result
-/// returned by [`SamlAuthMethod`]. Distinct from [`crate::saml_assertions::SamlAssertion`],
+/// returned by [`SamlAuthMethod`]. Distinct from [`crate::protocols::saml_assertions::SamlAssertion`],
 /// which is the full SAML 2.0 domain object model used by WS-Security.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidatedSamlAssertion {
@@ -203,10 +202,12 @@ impl SamlAuthMethod {
     #[cfg(feature = "saml")]
     fn validate_xml_signature(&self, xml: &str, certificate: &[u8]) -> Result<bool> {
         if !self.config.validate_xml_signature {
-            tracing::warn!(
-                "XML signature validation is disabled - this is INSECURE for production!"
+            tracing::error!(
+                "XML signature validation is disabled; rejecting SAML assertion instead of failing open"
             );
-            return Ok(true);
+            return Err(AuthError::validation(
+                "XML signature validation cannot be disabled for SAML authentication",
+            ));
         }
 
         tracing::debug!("Performing production-grade XML signature validation");
@@ -272,20 +273,34 @@ impl SamlAuthMethod {
         // Validate issue instant if present
         if let Some(issue_instant) = &assertion.issue_instant {
             let issue_time = self.parse_timestamp(issue_instant)?;
-            let now = SystemTime::now();
-            let five_minutes_ago = now - Duration::from_secs(5 * 60);
-            let five_minutes_future = now + Duration::from_secs(5 * 60);
-
-            // Check if assertion is too old or too far in the future
-            if issue_time < five_minutes_ago {
-                return Err(AuthError::validation("SAML assertion is too old"));
-            }
-            if issue_time > five_minutes_future {
-                return Err(AuthError::validation("SAML assertion is from the future"));
-            }
+            self.validate_assertion_time_constraints(issue_time, None, None)?;
         }
 
         Ok(())
+    }
+
+    fn decode_saml_xml(&self, saml_response: &str) -> Result<String> {
+        if saml_response.starts_with('<') {
+            return Ok(saml_response.to_string());
+        }
+
+        String::from_utf8(
+            base64::engine::general_purpose::STANDARD
+                .decode(saml_response)
+                .map_err(|e| AuthError::validation(format!("Invalid base64: {}", e)))?,
+        )
+        .map_err(|e| AuthError::validation(format!("Invalid UTF-8: {}", e)))
+    }
+
+    fn lookup_idp_certificate(&self, issuer: &str) -> Result<Vec<u8>> {
+        let idp_metadata = self
+            .identity_providers
+            .get(issuer)
+            .ok_or_else(|| AuthError::validation(format!("Unknown issuer: {}", issuer)))?;
+
+        base64::engine::general_purpose::STANDARD
+            .decode(&idp_metadata.certificate)
+            .map_err(|e| AuthError::validation(format!("Invalid certificate encoding: {}", e)))
     }
 
     /// Comprehensive SAML response validation using all available fields
@@ -293,15 +308,30 @@ impl SamlAuthMethod {
         &self,
         saml_response: &str,
     ) -> Result<ValidatedSamlAssertion> {
-        // First try to parse as structured XML using quick-xml
-        if let Ok(parsed_response) = from_str::<SamlResponse>(saml_response) {
-            return self
-                .validate_structured_saml_response(parsed_response)
-                .await;
+        let decoded_response = self.decode_saml_xml(saml_response)?;
+        let parsed_response: SamlResponse = from_str(&decoded_response).map_err(|e| {
+            AuthError::validation(format!("Failed to parse SAML response XML: {}", e))
+        })?;
+
+        let issuer = parsed_response
+            .issuer
+            .as_ref()
+            .map(|issuer| issuer.value.as_str())
+            .or_else(|| {
+                parsed_response
+                    .assertions
+                    .as_ref()
+                    .and_then(|assertions| assertions.first())
+                    .map(|assertion| assertion.issuer.value.as_str())
+            })
+            .ok_or_else(|| AuthError::validation("No issuer found in SAML response"))?;
+
+        let cert_bytes = self.lookup_idp_certificate(issuer)?;
+        if !self.validate_xml_signature(&decoded_response, &cert_bytes)? {
+            return Err(AuthError::validation("XML signature validation failed"));
         }
 
-        // Fall back to the existing validation method
-        self.validate_saml_response(saml_response).await
+        self.validate_structured_saml_response(parsed_response).await
     }
 
     /// Validate structured SAML response with comprehensive security checks
@@ -309,274 +339,98 @@ impl SamlAuthMethod {
         &self,
         response: SamlResponse,
     ) -> Result<ValidatedSamlAssertion> {
-        // Validate response-level issuer if present
-        if let Some(response_issuer) = &response.issuer {
-            let issuer = &response_issuer.value;
-
-            // Verify this is a known IdP
-            let _idp_metadata = self
-                .identity_providers
-                .get(issuer)
-                .ok_or_else(|| AuthError::validation(format!("Unknown issuer: {}", issuer)))?;
-
-            // Validate assertions
-            if let Some(assertions) = &response.assertions {
-                if assertions.is_empty() {
-                    return Err(AuthError::validation(
-                        "No assertions found in SAML response",
-                    ));
-                }
-
-                // Process the first assertion (typically there's only one)
-                let assertion = &assertions[0];
-
-                // Validate assertion security
-                self.validate_assertion_security(assertion, issuer)?;
-
-                // Extract subject
-                let subject = assertion
-                    .subject
+        let issuer = response
+            .issuer
+            .as_ref()
+            .map(|response_issuer| response_issuer.value.clone())
+            .or_else(|| {
+                response
+                    .assertions
                     .as_ref()
-                    .ok_or_else(|| AuthError::validation("No subject found in SAML assertion"))?;
+                    .and_then(|assertions| assertions.first())
+                    .map(|assertion| assertion.issuer.value.clone())
+            })
+            .ok_or_else(|| AuthError::validation("No issuer found in SAML response"))?;
 
-                let user_id = subject
-                    .name_id
-                    .as_ref()
-                    .ok_or_else(|| AuthError::validation("No NameID found in SAML subject"))?
-                    .value
-                    .clone();
+        let _idp_metadata = self
+            .identity_providers
+            .get(&issuer)
+            .ok_or_else(|| AuthError::validation(format!("Unknown issuer: {}", issuer)))?;
 
-                // Extract attributes
-                let mut attributes = HashMap::new();
-                if let Some(attr_statements) = &assertion.attribute_statements {
-                    for statement in attr_statements {
-                        for attr in &statement.attributes {
-                            let attribute_values: Vec<String> =
-                                attr.values.iter().map(|v| v.value.clone()).collect();
-                            attributes.insert(attr.name.clone(), attribute_values);
-                        }
-                    }
-                }
-
-                // Extract timing information
-                let issue_instant = assertion
-                    .issue_instant
-                    .as_ref()
-                    .and_then(|ts| self.parse_timestamp(ts).ok())
-                    .unwrap_or_else(SystemTime::now);
-
-                let (not_before, not_on_or_after) = if let Some(conditions) = &assertion.conditions
-                {
-                    let not_before = conditions
-                        .not_before
-                        .as_ref()
-                        .and_then(|ts| self.parse_timestamp(ts).ok());
-                    let not_on_or_after = conditions
-                        .not_on_or_after
-                        .as_ref()
-                        .and_then(|ts| self.parse_timestamp(ts).ok());
-                    (not_before, not_on_or_after)
-                } else {
-                    (None, None)
-                };
-
-                // Extract session index from AuthnStatement
-                let session_index = assertion
-                    .authn_statements
-                    .as_ref()
-                    .and_then(|statements| statements.first())
-                    .and_then(|stmt| stmt.session_index.clone());
-
-                // Create validated assertion
-                return Ok(ValidatedSamlAssertion {
-                    subject: user_id,
-                    attributes,
-                    issuer: issuer.clone(),
-                    issue_instant,
-                    not_before,
-                    not_on_or_after,
-                    session_index,
-                });
-            } else {
-                return Err(AuthError::validation(
-                    "No assertions found in SAML response",
-                ));
-            }
+        let assertions = response
+            .assertions
+            .as_ref()
+            .ok_or_else(|| AuthError::validation("No assertions found in SAML response"))?;
+        if assertions.is_empty() {
+            return Err(AuthError::validation("No assertions found in SAML response"));
         }
 
-        Err(AuthError::validation("Invalid SAML response structure"))
-    }
+        let assertion = &assertions[0];
+        self.validate_assertion_security(assertion, &issuer)?;
 
-    /// Parse and validate SAML assertion from XML
-    fn parse_saml_assertion(
-        &self,
-        assertion_xml: &str,
-        issuer: &str,
-    ) -> Result<ValidatedSamlAssertion> {
-        // Parse the XML assertion using quick-xml
-        let assertion: SamlAssertionXml = from_str(assertion_xml)
-            .map_err(|e| AuthError::validation(format!("Failed to parse SAML assertion: {}", e)))?;
-
-        // Validate issuer matches
-        if assertion.issuer.value != issuer {
-            return Err(AuthError::validation("Assertion issuer mismatch"));
-        }
-
-        // Extract subject
         let subject = assertion
             .subject
             .as_ref()
-            .and_then(|s| s.name_id.as_ref())
-            .map(|n| n.value.clone())
-            .ok_or_else(|| AuthError::validation("No subject found in assertion"))?;
+            .ok_or_else(|| AuthError::validation("No subject found in SAML assertion"))?;
 
-        // Extract attributes
+        let user_id = subject
+            .name_id
+            .as_ref()
+            .ok_or_else(|| AuthError::validation("No NameID found in SAML subject"))?
+            .value
+            .clone();
+
         let mut attributes = HashMap::new();
-        if let Some(attribute_statements) = &assertion.attribute_statements {
-            for statement in attribute_statements {
-                for attribute in &statement.attributes {
-                    let name = attribute.name.clone();
-                    let values: Vec<String> =
-                        attribute.values.iter().map(|v| v.value.clone()).collect();
-                    attributes.insert(name, values);
+        if let Some(attr_statements) = &assertion.attribute_statements {
+            for statement in attr_statements {
+                for attr in &statement.attributes {
+                    let attribute_values: Vec<String> =
+                        attr.values.iter().map(|v| v.value.clone()).collect();
+                    attributes.insert(attr.name.clone(), attribute_values);
                 }
             }
         }
 
-        // Parse issue instant from SAML assertion with full RFC 3339/ISO 8601 support
-        let issue_instant = self
-            .parse_saml_time_attribute(assertion_xml, "IssueInstant")?
+        let issue_instant = assertion
+            .issue_instant
+            .as_ref()
+            .map(|ts| self.parse_timestamp(ts))
+            .transpose()?
             .unwrap_or_else(SystemTime::now);
 
-        // Extract and validate time constraints for security
-        let not_before = self.parse_saml_time_attribute(assertion_xml, "NotBefore")?;
-        let not_on_or_after = self.parse_saml_time_attribute(assertion_xml, "NotOnOrAfter")?;
+        let (not_before, not_on_or_after) = if let Some(conditions) = &assertion.conditions {
+            let not_before = conditions
+                .not_before
+                .as_ref()
+                .map(|ts| self.parse_timestamp(ts))
+                .transpose()?;
+            let not_on_or_after = conditions
+                .not_on_or_after
+                .as_ref()
+                .map(|ts| self.parse_timestamp(ts))
+                .transpose()?;
+            (not_before, not_on_or_after)
+        } else {
+            (None, None)
+        };
 
-        // Extract session index
         let session_index = assertion
             .authn_statements
             .as_ref()
             .and_then(|statements| statements.first())
-            .and_then(|statement| statement.session_index.clone());
+            .and_then(|stmt| stmt.session_index.clone());
 
-        // Validate assertion time constraints for security
         self.validate_assertion_time_constraints(issue_instant, not_before, not_on_or_after)?;
 
         Ok(ValidatedSamlAssertion {
-            subject,
+            subject: user_id,
             attributes,
-            issuer: issuer.to_string(),
+            issuer,
             issue_instant,
             not_before,
             not_on_or_after,
             session_index,
         })
-    }
-
-    /// Validate SAML response with basic signature verification
-    async fn validate_saml_response(&self, saml_response: &str) -> Result<ValidatedSamlAssertion> {
-        // Decode base64 if needed
-        let decoded_response = if saml_response.starts_with('<') {
-            saml_response.to_string()
-        } else {
-            String::from_utf8(
-                base64::engine::general_purpose::STANDARD
-                    .decode(saml_response)
-                    .map_err(|e| AuthError::validation(format!("Invalid base64: {}", e)))?,
-            )
-            .map_err(|e| AuthError::validation(format!("Invalid UTF-8: {}", e)))?
-        };
-
-        // Simple XML parsing to extract basic elements
-        // For production, use a proper SAML library
-
-        // Extract issuer from the response
-        let issuer = if let Some(start) = decoded_response.find("<saml:Issuer>") {
-            if let Some(end) = decoded_response.find("</saml:Issuer>") {
-                decoded_response[start + 14..end].to_string()
-            } else {
-                return Err(AuthError::validation("Invalid issuer format"));
-            }
-        } else if let Some(start) = decoded_response.find("<Issuer>") {
-            if let Some(end) = decoded_response.find("</Issuer>") {
-                decoded_response[start + 8..end].to_string()
-            } else {
-                return Err(AuthError::validation("Invalid issuer format"));
-            }
-        } else {
-            return Err(AuthError::validation("No issuer found"));
-        };
-
-        // Get the IdP metadata
-        let idp_metadata = self
-            .identity_providers
-            .get(&issuer)
-            .ok_or_else(|| AuthError::validation(format!("Unknown issuer: {}", issuer)))?;
-
-        // Decode certificate
-        let cert_bytes = base64::engine::general_purpose::STANDARD
-            .decode(&idp_metadata.certificate)
-            .map_err(|e| AuthError::validation(format!("Invalid certificate encoding: {}", e)))?;
-
-        // Validate XML signature (basic)
-        if !self.validate_xml_signature(&decoded_response, &cert_bytes)? {
-            return Err(AuthError::validation("XML signature validation failed"));
-        }
-
-        // Parse assertion from the response
-        self.parse_saml_assertion(&decoded_response, &issuer)
-    }
-
-    /// Parse SAML time attribute with production-grade RFC 3339/ISO 8601 support
-    fn parse_saml_time_attribute(
-        &self,
-        xml: &str,
-        attribute_name: &str,
-    ) -> Result<Option<SystemTime>> {
-        // Look for time attributes in various SAML formats
-        let patterns = [
-            format!("{}=\"", attribute_name),
-            format!("{}='", attribute_name),
-        ];
-
-        for pattern in &patterns {
-            if let Some(start) = xml.find(pattern) {
-                let start_pos = start + pattern.len();
-                if let Some(end_pos) = xml[start_pos..].find(['"', '\'']) {
-                    let time_str = &xml[start_pos..start_pos + end_pos];
-
-                    // Try parsing as RFC 3339 (ISO 8601) format
-                    if let Ok(dt) = time_str.parse::<DateTime<Utc>>() {
-                        return Ok(Some(dt.into()));
-                    }
-
-                    // Try parsing as alternative SAML date format (without timezone)
-                    if let Ok(dt) =
-                        chrono::NaiveDateTime::parse_from_str(time_str, "%Y-%m-%dT%H:%M:%S")
-                    {
-                        return Ok(Some(
-                            DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc).into(),
-                        ));
-                    }
-
-                    // Try parsing with microseconds
-                    if let Ok(dt) =
-                        chrono::NaiveDateTime::parse_from_str(time_str, "%Y-%m-%dT%H:%M:%S%.f")
-                    {
-                        return Ok(Some(
-                            DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc).into(),
-                        ));
-                    }
-
-                    return Err(AuthError::validation(format!(
-                        "Invalid SAML time format for {}: {}",
-                        attribute_name, time_str
-                    )));
-                }
-            }
-        }
-
-        Ok(None)
     }
 
     /// Validate SAML assertion time constraints for security
@@ -587,22 +441,30 @@ impl SamlAuthMethod {
         not_on_or_after: Option<SystemTime>,
     ) -> Result<()> {
         let now = SystemTime::now();
+        let skew = Duration::from_secs(self.config.clock_skew_seconds);
+        let max_assertion_age = Duration::from_secs(self.config.max_assertion_age);
 
         // Check if assertion is too old (prevent replay attacks)
         if let Ok(elapsed) = now.duration_since(issue_instant) {
-            if elapsed > Duration::from_secs(300) {
-                // 5 minutes max age
+            if elapsed > max_assertion_age + skew {
                 return Err(AuthError::validation(
                     "SAML assertion is too old - potential replay attack",
                 ));
             }
-        } else {
+        } else if issue_instant
+            .duration_since(now)
+            .unwrap_or_default()
+            > skew
+        {
             return Err(AuthError::validation("SAML assertion issued in the future"));
         }
 
         // Validate not_before constraint
         if let Some(not_before_time) = not_before
-            && now < not_before_time
+            && not_before_time
+                .duration_since(now)
+                .unwrap_or_default()
+                > skew
         {
             return Err(AuthError::validation(
                 "SAML assertion is not yet valid (before NotBefore time)",
@@ -611,7 +473,7 @@ impl SamlAuthMethod {
 
         // Validate not_on_or_after constraint
         if let Some(not_after_time) = not_on_or_after
-            && now >= not_after_time
+            && now.duration_since(not_after_time).unwrap_or_default() >= skew
         {
             return Err(AuthError::validation(
                 "SAML assertion has expired (after NotOnOrAfter time)",
@@ -755,6 +617,7 @@ impl Default for SamlAuthMethod {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
 
     #[tokio::test]
     async fn test_saml_method_creation() {
@@ -878,12 +741,86 @@ mod tests {
     #[test]
     fn test_saml_conditions_internal() {
         // SamlConditions is an internal XML-parsing type; the public SAML 2.0 domain
-        // type is crate::saml_assertions::SamlConditions
+        // type is crate::protocols::saml_assertions::SamlConditions
         let conditions = SamlConditions {
             not_before: Some("2024-01-01T00:00:00Z".to_string()),
             not_on_or_after: Some("2024-12-31T23:59:59Z".to_string()),
         };
         assert!(conditions.not_before.is_some());
         assert!(conditions.not_on_or_after.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_validate_structured_saml_response_uses_assertion_issuer() {
+        let token_manager =
+            TokenManager::new_hmac(b"test-secret-key", "test-issuer", "test-audience");
+        let mut saml = SamlAuthMethod::new(token_manager, SamlConfig::default());
+        saml.add_identity_provider(SamlIdpMetadata {
+            entity_id: "https://idp.example.com".to_string(),
+            certificate: base64::engine::general_purpose::STANDARD.encode(b"test-cert"),
+            sso_url: "https://idp.example.com/sso".to_string(),
+            slo_url: None,
+        });
+
+        let response = SamlResponse {
+            issuer: None,
+            assertions: Some(vec![SamlAssertionXml {
+                issuer: SamlIssuer {
+                    value: "https://idp.example.com".to_string(),
+                },
+                subject: Some(SamlSubject {
+                    name_id: Some(SamlNameId {
+                        value: "user-123".to_string(),
+                    }),
+                }),
+                attribute_statements: Some(vec![SamlAttributeStatement {
+                    attributes: vec![SamlAttribute {
+                        name: "Role".to_string(),
+                        values: vec![SamlAttributeValue {
+                            value: "admin".to_string(),
+                        }],
+                    }],
+                }]),
+                authn_statements: Some(vec![SamlAuthnStatement {
+                    session_index: Some("session-1".to_string()),
+                }]),
+                conditions: Some(SamlConditions {
+                    not_before: None,
+                    not_on_or_after: None,
+                }),
+                issue_instant: Some(Utc::now().to_rfc3339()),
+            }]),
+        };
+
+        let validated = saml.validate_structured_saml_response(response).await.unwrap();
+
+        assert_eq!(validated.subject, "user-123");
+        assert_eq!(validated.issuer, "https://idp.example.com");
+        assert_eq!(validated.attributes["Role"], vec!["admin".to_string()]);
+        assert_eq!(validated.session_index.as_deref(), Some("session-1"));
+    }
+
+    #[cfg(feature = "saml")]
+    #[test]
+    fn test_validate_xml_signature_rejects_disabled_validation() {
+        let token_manager =
+            TokenManager::new_hmac(b"test-secret-key", "test-issuer", "test-audience");
+        let saml = SamlAuthMethod::new(
+            token_manager,
+            SamlConfig {
+                validate_xml_signature: false,
+                ..SamlConfig::default()
+            },
+        );
+
+        let result = saml.validate_xml_signature("<Response />", b"certificate-bytes");
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("cannot be disabled")
+        );
     }
 }

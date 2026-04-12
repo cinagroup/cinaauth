@@ -341,9 +341,9 @@ impl MonitoringSystem {
     /// Initialize Prometheus integration
     async fn initialize_prometheus(&self) -> Result<(), MonitoringError> {
         // Configure Prometheus scraping
-        println!(
-            "Initializing Prometheus at {}",
-            self.config.prometheus.endpoint
+        tracing::info!(
+            endpoint = %self.config.prometheus.endpoint,
+            "Initializing Prometheus"
         );
         Ok(())
     }
@@ -360,9 +360,9 @@ impl MonitoringSystem {
     /// Initialize AlertManager integration
     async fn initialize_alertmanager(&self) -> Result<(), MonitoringError> {
         // Configure alert routing
-        println!(
-            "Initializing AlertManager at {}",
-            self.config.alertmanager.endpoint
+        tracing::info!(
+            endpoint = %self.config.alertmanager.endpoint,
+            "Initializing AlertManager"
         );
         Ok(())
     }
@@ -557,7 +557,7 @@ impl MonitoringSystem {
     /// Send alert notification
     async fn send_alert(&self, alert: &Alert) -> Result<(), MonitoringError> {
         // Send to AlertManager
-        println!("ALERT: {} - {}", alert.rule_name, alert.message);
+        tracing::warn!(rule = %alert.rule_name, message = %alert.message, "ALERT triggered");
 
         // Send to configured receivers
         for receiver in &self.config.alertmanager.receivers {
@@ -569,7 +569,7 @@ impl MonitoringSystem {
 
     /// Send alert resolution notification
     async fn send_alert_resolution(&self, alert: &Alert) -> Result<(), MonitoringError> {
-        println!("ALERT RESOLVED: {} - {}", alert.rule_name, alert.message);
+        tracing::info!(rule = %alert.rule_name, message = %alert.message, "ALERT resolved");
         Ok(())
     }
 
@@ -636,7 +636,7 @@ impl MonitoringSystem {
     /// Provision Grafana dashboards
     async fn provision_grafana_dashboards(&self) -> Result<(), MonitoringError> {
         for dashboard in &self.config.dashboards {
-            println!("Provisioning Grafana dashboard: {}", dashboard.title);
+            tracing::info!(title = %dashboard.title, "Provisioning Grafana dashboard");
         }
         Ok(())
     }

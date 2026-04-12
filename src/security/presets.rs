@@ -684,3 +684,149 @@ impl std::fmt::Display for SecuritySeverity {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_development_preset_config() {
+        let config = SecurityPreset::Development.to_config();
+        assert_eq!(config.min_password_length, 6);
+        assert!(!config.require_password_complexity);
+        assert!(!config.secure_cookies);
+        assert!(!config.csrf_protection);
+    }
+
+    #[test]
+    fn test_balanced_preset_config() {
+        let config = SecurityPreset::Balanced.to_config();
+        assert_eq!(config.min_password_length, 8);
+        assert!(config.require_password_complexity);
+        assert!(config.secure_cookies);
+        assert!(config.csrf_protection);
+    }
+
+    #[test]
+    fn test_high_security_preset_config() {
+        let config = SecurityPreset::HighSecurity.to_config();
+        assert_eq!(config.min_password_length, 12);
+        assert!(config.secure_cookies);
+        assert!(config.csrf_protection);
+        assert!(matches!(config.cookie_same_site, CookieSameSite::Strict));
+    }
+
+    #[test]
+    fn test_paranoid_preset_config() {
+        let config = SecurityPreset::Paranoid.to_config();
+        assert_eq!(config.min_password_length, 16);
+        assert!(config.csrf_protection);
+        assert_eq!(config.session_timeout, minutes(30));
+    }
+
+    #[test]
+    fn test_presets_have_increasing_password_length() {
+        let dev = SecurityPreset::Development.to_config().min_password_length;
+        let bal = SecurityPreset::Balanced.to_config().min_password_length;
+        let high = SecurityPreset::HighSecurity.to_config().min_password_length;
+        let paranoid = SecurityPreset::Paranoid.to_config().min_password_length;
+        assert!(dev < bal);
+        assert!(bal < high);
+        assert!(high < paranoid);
+    }
+
+    #[test]
+    fn test_presets_have_decreasing_session_timeout() {
+        let dev = SecurityPreset::Development.to_config().session_timeout;
+        let bal = SecurityPreset::Balanced.to_config().session_timeout;
+        let high = SecurityPreset::HighSecurity.to_config().session_timeout;
+        let paranoid = SecurityPreset::Paranoid.to_config().session_timeout;
+        assert!(dev > bal);
+        assert!(bal > high);
+        assert!(high > paranoid);
+    }
+
+    #[test]
+    fn test_rate_limit_configs_are_valid() {
+        for preset in [
+            SecurityPreset::Development,
+            SecurityPreset::Balanced,
+            SecurityPreset::HighSecurity,
+            SecurityPreset::Paranoid,
+        ] {
+            let rl = preset.to_rate_limit_config();
+            assert!(rl.max_requests > 0);
+            assert!(!rl.window.is_zero());
+        }
+    }
+
+    #[test]
+    fn test_audit_configs_are_valid() {
+        for preset in [
+            SecurityPreset::Development,
+            SecurityPreset::Balanced,
+            SecurityPreset::HighSecurity,
+            SecurityPreset::Paranoid,
+        ] {
+            let ac = preset.to_audit_config();
+            // All presets produce a valid config; HighSecurity+ enable logging
+            if matches!(preset, SecurityPreset::HighSecurity | SecurityPreset::Paranoid) {
+                assert!(ac.enabled);
+            }
+        }
+    }
+
+    #[test]
+    fn test_security_recommendations_non_empty() {
+        for preset in [
+            SecurityPreset::Development,
+            SecurityPreset::Balanced,
+            SecurityPreset::HighSecurity,
+            SecurityPreset::Paranoid,
+        ] {
+            let recs = preset.get_security_recommendations();
+            assert!(!recs.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_audit_report_production_ready() {
+        let report = SecurityAuditReport {
+            preset: SecurityPreset::Balanced,
+            status: SecurityAuditStatus::Passed,
+            issues: vec![],
+            critical_count: 0,
+            error_count: 0,
+            warning_count: 0,
+            recommendations: vec![],
+        };
+        assert!(report.is_production_ready());
+    }
+
+    #[test]
+    fn test_audit_report_not_production_ready_on_critical() {
+        let report = SecurityAuditReport {
+            preset: SecurityPreset::HighSecurity,
+            status: SecurityAuditStatus::Critical,
+            issues: vec![SecurityIssue {
+                severity: SecuritySeverity::Critical,
+                component: "test".into(),
+                description: "fail".into(),
+                suggestion: "fix".into(),
+                blocks_production: true,
+            }],
+            critical_count: 1,
+            error_count: 0,
+            warning_count: 0,
+            recommendations: vec![],
+        };
+        assert!(!report.is_production_ready());
+        assert_eq!(report.get_blocking_issues().len(), 1);
+    }
+
+    #[test]
+    fn test_severity_display() {
+        assert_eq!(format!("{}", SecuritySeverity::Critical), "CRITICAL");
+        assert_eq!(format!("{}", SecuritySeverity::Warning), "WARNING");
+    }
+}

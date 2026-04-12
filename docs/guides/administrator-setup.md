@@ -130,21 +130,35 @@ metadata:
   namespace: auth-framework
 data:
   auth-config.toml: |
-    [server]
-    host = "0.0.0.0"
-    port = 8080
-    tls_port = 8443
+    [database]
+    url = "${DATABASE_URL}"
+    max_connections = 20
+    min_connections = 5
+    connect_timeout_seconds = 30
+
+    [redis]
+    url = "${REDIS_URL}"
+    pool_size = 10
+
+    [jwt]
+    secret_key = "${JWT_SECRET}"
+    issuer = "auth-framework"
+    audience = "api"
+    access_token_ttl_seconds = 3600
+    refresh_token_ttl_seconds = 604800
 
     [security]
-    require_https = true
-    jwt_expiry = "1h"
-
-    [storage]
-    type = "postgresql"
+    password_min_length = 12
+    password_require_special_chars = true
+    rate_limit_requests_per_minute = 60
+    session_timeout_hours = 24
+    max_concurrent_sessions = 5
+    require_mfa = false
 
     [logging]
     level = "info"
-    format = "json"
+    audit_enabled = true
+    audit_storage = "database"
 
 ---
 # secret.yaml
@@ -281,49 +295,35 @@ spec:
 Create `/app/config/auth-config.toml`:
 
 ```toml
-[server]
-host = "0.0.0.0"
-port = 8080
-tls_port = 8443
-max_connections = 1000
-request_timeout = "30s"
-keepalive_timeout = "75s"
-
-[security]
-jwt_secret = "${JWT_SECRET}"
-jwt_expiry = "15m"
-refresh_token_expiry = "7d"
-require_https = true
-require_mfa = false
-password_policy = "strong"
-session_timeout = "24h"
-max_login_attempts = 5
-lockout_duration = "15m"
-
-[storage]
-type = "postgresql"
+[database]
 url = "${DATABASE_URL}"
 max_connections = 20
 min_connections = 5
-connection_timeout = "30s"
-idle_timeout = "10m"
+connect_timeout_seconds = 30
 
-[cache]
-type = "redis"
+[redis]
 url = "${REDIS_URL}"
-default_ttl = "5m"
-max_memory_mb = 256
+pool_size = 10
 
-[rate_limiting]
-enabled = true
-requests_per_minute = 60
-burst_limit = 10
-cleanup_interval = "1m"
+[jwt]
+secret_key = "${JWT_SECRET}"
+issuer = "auth-framework"
+audience = "api"
+access_token_ttl_seconds = 900
+refresh_token_ttl_seconds = 604800
+
+[security]
+password_min_length = 12
+password_require_special_chars = true
+rate_limit_requests_per_minute = 60
+session_timeout_hours = 24
+max_concurrent_sessions = 5
+require_mfa = false
 
 [logging]
 level = "info"
-format = "json"
-output = "stdout"
+audit_enabled = true
+audit_storage = "database"
 log_requests = true
 log_security_events = true
 
@@ -338,7 +338,7 @@ enabled = true
 allowed_origins = ["https://yourapp.com"]
 allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 allowed_headers = ["Authorization", "Content-Type"]
-max_age = 3600
+max_age_secs = 3600
 
 [tls]
 cert_file = "/app/certs/server.crt"
@@ -897,7 +897,7 @@ authframework hard nproc 32768
 
 ### Common Issues
 
-**Issue: Service fails to start**
+#### Issue: Service fails to start
 
 ```bash
 # Check service status
@@ -910,7 +910,7 @@ sudo journalctl -u auth-framework -f
 auth-framework --config /app/config/auth-config.toml --validate
 ```
 
-**Issue: Database connection failures**
+#### Issue: Database connection failures
 
 ```bash
 # Test database connection
@@ -920,7 +920,7 @@ psql -h localhost -U auth_user -d authframework -c "SELECT 1;"
 sudo tail -f /var/log/postgresql/postgresql-*.log
 ```
 
-**Issue: High memory usage**
+#### Issue: High memory usage
 
 ```bash
 # Monitor memory usage
@@ -944,10 +944,10 @@ Monitor key performance metrics:
 ## Support and Resources
 
 - **Documentation**: [docs.authframework.dev](https://docs.authframework.dev)
-- **GitHub**: [github.com/authframework/auth-framework](https://github.com/authframework/auth-framework)
+- **GitHub**: [github.com/ciresnave/auth-framework](https://github.com/ciresnave/auth-framework)
 - **Community**: [Discord](https://discord.gg/authframework)
 - **Enterprise Support**: [enterprise@authframework.dev](mailto:enterprise@authframework.dev)
 
 ---
 
-*AuthFramework v0.4.0 - THE premier authentication and authorization solution*
+AuthFramework v0.5.0-rc18 - THE premier authentication and authorization solution

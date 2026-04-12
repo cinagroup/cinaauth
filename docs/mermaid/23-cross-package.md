@@ -8,9 +8,9 @@
 | Type | Status | Canonical location | Resolution |
 | --- | --- | --- | --- |
 | `UserProfile` | RESOLVED | `src/providers.rs` | Renamed to `ProviderProfile`; all callers updated (auth.rs, integrations, tokens, profile_utils, tests) |
-| `TokenRequest` | RESOLVED | `src/oauth2_server.rs` | `client_id: Option<String>` with `#[serde(default)]`; `api/oauth2.rs` re-exports via `pub use` |
-| `TokenResponse` | RESOLVED | `src/oauth2_server.rs` | `api/oauth2.rs` re-exports canonical type via `pub use` |
-| `AuthorizationRequest` | RESOLVED | `src/oauth2_server.rs` | `api::AuthorizeRequest` is a `pub use` alias for `oauth2_server::AuthorizationRequest` |
+| `TokenRequest` | RESOLVED | `src/server/oauth/oauth2_server.rs` | `client_id: Option<String>` with `#[serde(default)]`; `api/oauth2.rs` re-exports via `pub use` |
+| `TokenResponse` | RESOLVED | `src/server/oauth/oauth2_server.rs` | `api/oauth2.rs` re-exports canonical type via `pub use` |
+| `AuthorizationRequest` | RESOLVED | `src/server/oauth/oauth2_server.rs` | `api::AuthorizeRequest` is a `pub use` alias for `oauth2_server::AuthorizationRequest` |
 | `ClientType` | RESOLVED | `src/client.rs` | Canonical enum extracted; re-exported by `server::mod`, `server::core::client_registry`, `lib.rs` |
 | `ClientConfig` | RESOLVED | `src/client.rs` | Full struct extracted; `server::core::client_registry` uses `pub use crate::client` |
 | `SessionState` | RESOLVED | `src/session/manager.rs` | Merged `RequiresRotation`/`HighRisk` variants in; `security::secure_session` imports from session |

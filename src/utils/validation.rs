@@ -12,6 +12,7 @@ use std::sync::OnceLock;
 // on every request wastes CPU and could be exploited for minor Denial-of-Service.
 static USERNAME_RE: OnceLock<Regex> = OnceLock::new();
 static EMAIL_RE: OnceLock<Regex> = OnceLock::new();
+static API_KEY_RE: OnceLock<Regex> = OnceLock::new();
 
 /// Enhanced password validation configuration
 #[derive(Debug, Clone)]
@@ -67,6 +68,134 @@ impl Default for PasswordPolicy {
             banned_passwords,
             min_entropy: 3.0,
         }
+    }
+}
+
+impl PasswordPolicy {
+    /// NIST SP 800-63B compliant policy.
+    ///
+    /// Follows modern NIST guidance: no arbitrary composition rules,
+    /// focus on length and entropy. Banned password list still applies.
+    ///
+    /// ```rust
+    /// use auth_framework::utils::validation::PasswordPolicy;
+    /// let policy = PasswordPolicy::nist_800_63b();
+    /// assert_eq!(policy.min_length, 8);
+    /// assert!(!policy.require_special);
+    /// ```
+    pub fn nist_800_63b() -> Self {
+        Self {
+            require_uppercase: false,
+            require_lowercase: false,
+            require_digit: false,
+            require_special: false,
+            ..Default::default()
+        }
+    }
+
+    /// High-security policy with strict composition requirements.
+    ///
+    /// Suitable for admin accounts and sensitive systems.
+    ///
+    /// ```rust
+    /// use auth_framework::utils::validation::PasswordPolicy;
+    /// let policy = PasswordPolicy::high_security();
+    /// assert_eq!(policy.min_length, 12);
+    /// assert!(policy.require_special);
+    /// ```
+    pub fn high_security() -> Self {
+        Self {
+            min_length: 12,
+            min_entropy: 4.0,
+            ..Default::default()
+        }
+    }
+
+    /// Add custom banned passwords on top of the existing list.
+    ///
+    /// Words are lowercased before insertion.
+    pub fn with_banned_words(mut self, words: &[&str]) -> Self {
+        for word in words {
+            self.banned_passwords.insert(word.to_lowercase());
+        }
+        self
+    }
+
+    /// Create a builder starting from the default policy.
+    pub fn builder() -> PasswordPolicyBuilder {
+        PasswordPolicyBuilder {
+            policy: PasswordPolicy::default(),
+        }
+    }
+}
+
+/// Fluent builder for [`PasswordPolicy`].
+///
+/// # Example
+///
+/// ```rust
+/// use auth_framework::utils::validation::PasswordPolicy;
+///
+/// let policy = PasswordPolicy::builder()
+///     .min_length(10)
+///     .require_special(false)
+///     .min_entropy(3.5)
+///     .build();
+///
+/// assert_eq!(policy.min_length, 10);
+/// assert!(!policy.require_special);
+/// ```
+#[derive(Debug, Clone)]
+pub struct PasswordPolicyBuilder {
+    policy: PasswordPolicy,
+}
+
+impl PasswordPolicyBuilder {
+    /// Set minimum password length.
+    pub fn min_length(mut self, len: usize) -> Self {
+        self.policy.min_length = len;
+        self
+    }
+
+    /// Set maximum password length.
+    pub fn max_length(mut self, len: usize) -> Self {
+        self.policy.max_length = len;
+        self
+    }
+
+    /// Whether to require at least one uppercase letter.
+    pub fn require_uppercase(mut self, require: bool) -> Self {
+        self.policy.require_uppercase = require;
+        self
+    }
+
+    /// Whether to require at least one lowercase letter.
+    pub fn require_lowercase(mut self, require: bool) -> Self {
+        self.policy.require_lowercase = require;
+        self
+    }
+
+    /// Whether to require at least one digit.
+    pub fn require_digit(mut self, require: bool) -> Self {
+        self.policy.require_digit = require;
+        self
+    }
+
+    /// Whether to require at least one special character.
+    pub fn require_special(mut self, require: bool) -> Self {
+        self.policy.require_special = require;
+        self
+    }
+
+    /// Set the minimum entropy threshold.
+    pub fn min_entropy(mut self, entropy: f64) -> Self {
+        self.policy.min_entropy = entropy;
+        self
+    }
+
+    /// Consume the builder and produce the policy.
+    pub fn build(self) -> PasswordPolicy {
+        self.policy
     }
 }
 
@@ -128,6 +257,16 @@ pub fn validate_password_enhanced(password: &str, policy: &PasswordPolicy) -> Re
         )));
     }
 
+    // Detect sequential character patterns (e.g. "abc", "123", "cba", "321")
+    // and keyboard walks (e.g. "qwerty", "asdf") that Shannon entropy misses
+    // because each character is unique.
+    if has_sequential_patterns(password) {
+        return Err(AuthError::validation(
+            "Password contains sequential or keyboard-pattern characters that are easily guessed"
+                .to_string(),
+        ));
+    }
+
     Ok(())
 }
 
@@ -153,6 +292,58 @@ fn calculate_password_entropy(password: &str) -> f64 {
     }
 
     entropy
+}
+
+/// Detect passwords dominated by sequential runs, keyboard walks, or repeated characters.
+///
+/// Returns `true` when more than half of the password's characters participate
+/// in a sequential run of 3+ or match a common keyboard walk pattern.
+fn has_sequential_patterns(password: &str) -> bool {
+    if password.len() < 6 {
+        return false; // too short for pattern detection to be meaningful
+    }
+
+    // Common keyboard walk sequences (lowercase)
+    const KEYBOARD_ROWS: &[&str] = &["qwertyuiop", "asdfghjkl", "zxcvbnm", "1234567890"];
+
+    let lower = password.to_lowercase();
+
+    // Count characters that are part of a 3+ ascending/descending codepoint run
+    let chars: Vec<char> = lower.chars().collect();
+    let mut sequential_count: usize = 0;
+    let mut run = 1usize;
+    for i in 1..chars.len() {
+        let diff = chars[i] as i32 - chars[i - 1] as i32;
+        if diff == 1 || diff == -1 {
+            run += 1;
+        } else {
+            if run >= 3 {
+                sequential_count += run;
+            }
+            run = 1;
+        }
+    }
+    if run >= 3 {
+        sequential_count += run;
+    }
+
+    // Also count characters that belong to a keyboard-walk substring of length >= 4
+    let mut walk_count: usize = 0;
+    for row in KEYBOARD_ROWS {
+        let rev: String = row.chars().rev().collect();
+        for window_len in (4..=lower.len()).rev() {
+            for start in 0..=lower.len().saturating_sub(window_len) {
+                let slice = &lower[start..start + window_len];
+                if row.contains(slice) || rev.contains(slice) {
+                    walk_count = walk_count.max(window_len);
+                }
+            }
+        }
+    }
+
+    let dominated = sequential_count.max(walk_count);
+    // If more than half the password is sequential/walk characters, reject
+    dominated * 2 > password.len()
 }
 
 /// Validate username format
@@ -238,7 +429,8 @@ pub fn validate_api_key(api_key: &str) -> Result<()> {
     }
 
     // API key should be alphanumeric
-    let api_key_regex = Regex::new(r"^[a-zA-Z0-9]+$").unwrap();
+    let api_key_regex =
+        API_KEY_RE.get_or_init(|| Regex::new(r"^[a-zA-Z0-9]+$").expect("valid api key regex"));
     if !api_key_regex.is_match(api_key) {
         return Err(AuthError::validation(
             "API key can only contain letters and numbers".to_string(),
@@ -353,5 +545,50 @@ mod tests {
         assert!(validate_email("invalid.email").is_err()); // No @
         assert!(validate_email("@domain.com").is_err()); // No local part
         assert!(validate_email("test@").is_err()); // No domain
+    }
+
+    #[test]
+    fn test_password_policy_nist_preset() {
+        let policy = PasswordPolicy::nist_800_63b();
+        assert_eq!(policy.min_length, 8);
+        assert!(!policy.require_uppercase);
+        assert!(!policy.require_lowercase);
+        assert!(!policy.require_digit);
+        assert!(!policy.require_special);
+        // NIST doesn't require composition rules, so a long lowercase-only password should pass
+        assert!(validate_password_enhanced("alongpasswordthatisonly lowercase", &policy).is_ok());
+    }
+
+    #[test]
+    fn test_password_policy_high_security_preset() {
+        let policy = PasswordPolicy::high_security();
+        assert_eq!(policy.min_length, 12);
+        assert!(policy.require_uppercase);
+        assert!(policy.require_special);
+        assert!(policy.min_entropy > 3.0);
+    }
+
+    #[test]
+    fn test_password_policy_builder() {
+        let policy = PasswordPolicy::builder()
+            .min_length(10)
+            .require_special(false)
+            .min_entropy(3.5)
+            .build();
+        assert_eq!(policy.min_length, 10);
+        assert!(!policy.require_special);
+        assert_eq!(policy.min_entropy, 3.5);
+        // Other defaults should remain
+        assert!(policy.require_uppercase);
+        assert!(policy.require_digit);
+    }
+
+    #[test]
+    fn test_password_policy_with_banned_words() {
+        let policy = PasswordPolicy::default().with_banned_words(&["CompanyName", "SecretWord"]);
+        assert!(policy.banned_passwords.contains("companyname"));
+        assert!(policy.banned_passwords.contains("secretword"));
+        // Original banned passwords should still be present
+        assert!(policy.banned_passwords.contains("password"));
     }
 }

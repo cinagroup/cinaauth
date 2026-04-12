@@ -1,60 +1,40 @@
 # Administrative Endpoints
-# System administration and management (requires admin role)
-# All admin endpoints are under /api/v1/admin
 
 users:
     get:
         tags:
             - Admin
-        summary: List all users (admin)
-        description: |
-            Get paginated list of all users in the system. Supports filtering by status, 
-            role, email verification, and MFA status. Includes full user details.
+        summary: List users
         operationId: listUsers
         security:
             - bearerAuth: []
         parameters:
             - $ref: "../components/parameters.yaml#/PageParam"
             - $ref: "../components/parameters.yaml#/LimitParam"
-            - $ref: "../components/parameters.yaml#/SortParam"
-            - name: status
-              in: query
-              description: Filter by account status
-              schema:
-                  type: string
-                  enum: [active, suspended, locked, deleted]
-              example: "active"
-            - name: role
-              in: query
-              description: Filter by role name
-              schema:
-                  type: string
-              example: "admin"
-            - name: mfa_enabled
-              in: query
-              description: Filter by MFA status
-              schema:
-                  type: boolean
-              example: true
-            - name: email_verified
-              in: query
-              description: Filter by email verification status
-              schema:
-                  type: boolean
-              example: true
             - name: search
               in: query
-              description: Search by username or email
               schema:
                   type: string
-              example: "john"
+            - name: role
+              in: query
+              schema:
+                  type: string
+            - name: active
+              in: query
+              schema:
+                  type: boolean
         responses:
             "200":
-                description: List of users
+                description: Users retrieved successfully
                 content:
                     application/json:
                         schema:
-                            $ref: "../schemas/users.yaml#/UserListResponse"
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/users.yaml#/UserListResponse"
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
             "403":
@@ -63,10 +43,7 @@ users:
     post:
         tags:
             - Admin
-        summary: Create new user (admin)
-        description: |
-            Create a new user account with specified roles and settings. Optionally send 
-            welcome email with account setup instructions.
+        summary: Create a user
         operationId: createUser
         security:
             - bearerAuth: []
@@ -77,7 +54,7 @@ users:
                     schema:
                         $ref: "../schemas/users.yaml#/CreateUserRequest"
         responses:
-            "201":
+            "200":
                 description: User created successfully
                 content:
                     application/json:
@@ -87,127 +64,19 @@ users:
                                 - type: object
                                   properties:
                                       data:
-                                          $ref: "../schemas/users.yaml#/UserProfile"
+                                          $ref: "../schemas/users.yaml#/UserListItem"
             "400":
                 $ref: "../components/responses.yaml#/BadRequest"
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
             "403":
                 $ref: "../components/responses.yaml#/Forbidden"
-            "409":
-                description: Username or email already exists
-                content:
-                    application/json:
-                        schema:
-                            $ref: "../components/responses.yaml#/Conflict"
 
 userById:
-    get:
-        tags:
-            - Admin
-        summary: Get user details (admin)
-        description: Get complete details of a specific user including roles, sessions, and audit trail
-        operationId: getUser
-        security:
-            - bearerAuth: []
-        parameters:
-            - name: user_id
-              in: path
-              required: true
-              description: User identifier
-              schema:
-                  type: string
-                  format: uuid
-              example: "123e4567-e89b-12d3-a456-426614174000"
-        responses:
-            "200":
-                description: User details
-                content:
-                    application/json:
-                        schema:
-                            allOf:
-                                - $ref: "../schemas/common.yaml#/ApiResponse"
-                                - type: object
-                                  properties:
-                                      data:
-                                          allOf:
-                                              - $ref: "../schemas/users.yaml#/UserProfile"
-                                              - type: object
-                                                properties:
-                                                    active_sessions:
-                                                        type: integer
-                                                        description: Number of active sessions
-                                                        example: 3
-                                                    failed_login_attempts:
-                                                        type: integer
-                                                        description: Recent failed login attempts
-                                                        example: 0
-                                                    last_password_change:
-                                                        type: string
-                                                        format: date-time
-                                                        description: Last password change timestamp
-                                                        example: "2024-01-15T10:20:30Z"
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
-            "403":
-                $ref: "../components/responses.yaml#/Forbidden"
-            "404":
-                $ref: "../components/responses.yaml#/NotFound"
-
-    patch:
-        tags:
-            - Admin
-        summary: Update user (admin)
-        description: |
-            Update user account details including email, roles, and account status.
-            Can be used to suspend, lock, or reactivate accounts.
-        operationId: updateUser
-        security:
-            - bearerAuth: []
-        parameters:
-            - name: user_id
-              in: path
-              required: true
-              description: User identifier
-              schema:
-                  type: string
-                  format: uuid
-              example: "123e4567-e89b-12d3-a456-426614174000"
-        requestBody:
-            required: true
-            content:
-                application/json:
-                    schema:
-                        $ref: "../schemas/users.yaml#/UpdateUserRequest"
-        responses:
-            "200":
-                description: User updated successfully
-                content:
-                    application/json:
-                        schema:
-                            allOf:
-                                - $ref: "../schemas/common.yaml#/ApiResponse"
-                                - type: object
-                                  properties:
-                                      data:
-                                          $ref: "../schemas/users.yaml#/UserProfile"
-            "400":
-                $ref: "../components/responses.yaml#/BadRequest"
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
-            "403":
-                $ref: "../components/responses.yaml#/Forbidden"
-            "404":
-                $ref: "../components/responses.yaml#/NotFound"
-
     delete:
         tags:
             - Admin
-        summary: Delete user (admin)
-        description: |
-            Delete user account. This action is irreversible. Optionally perform soft delete 
-            (mark as deleted) or hard delete (permanent removal). All user sessions are 
-            immediately terminated.
+        summary: Delete a user
         operationId: deleteUser
         security:
             - bearerAuth: []
@@ -215,20 +84,100 @@ userById:
             - name: user_id
               in: path
               required: true
-              description: User identifier
               schema:
                   type: string
-                  format: uuid
-              example: "123e4567-e89b-12d3-a456-426614174000"
-            - name: hard_delete
-              in: query
-              description: Perform permanent deletion (cannot be undone)
-              schema:
-                  type: boolean
-                  default: false
+              example: "user_123"
         responses:
             "200":
                 description: User deleted successfully
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiResponse"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+            "403":
+                $ref: "../components/responses.yaml#/Forbidden"
+            "404":
+                $ref: "../components/responses.yaml#/NotFound"
+
+userRoles:
+    put:
+        tags:
+            - Admin
+        summary: Replace a user's roles
+        operationId: updateUserRoles
+        security:
+            - bearerAuth: []
+        parameters:
+            - name: user_id
+              in: path
+              required: true
+              schema:
+                  type: string
+              example: "user_123"
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/users.yaml#/UpdateUserRolesRequest"
+        responses:
+            "200":
+                description: User roles updated successfully
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiResponse"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+            "403":
+                $ref: "../components/responses.yaml#/Forbidden"
+
+activateUser:
+    put:
+        tags:
+            - Admin
+        summary: Activate or deactivate a user
+        operationId: activateUser
+        security:
+            - bearerAuth: []
+        parameters:
+            - name: user_id
+              in: path
+              required: true
+              schema:
+                  type: string
+              example: "user_123"
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/users.yaml#/ActivateUserRequest"
+        responses:
+            "200":
+                description: User activation state updated successfully
+                content:
+                    application/json:
+                        schema:
+                            $ref: "../schemas/common.yaml#/ApiResponse"
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+            "403":
+                $ref: "../components/responses.yaml#/Forbidden"
+
+stats:
+    get:
+        tags:
+            - Admin
+        summary: Get system statistics
+        operationId: getSystemStats
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: System statistics returned successfully
                 content:
                     application/json:
                         schema:
@@ -239,34 +188,79 @@ userById:
                                       data:
                                           type: object
                                           properties:
-                                              message:
-                                                  type: string
-                                                  example: "User deleted successfully"
-                                              sessions_terminated:
+                                              total_users:
                                                   type: integer
-                                                  description: Number of active sessions terminated
-                                                  example: 2
+                                              active_sessions:
+                                                  type: integer
+                                              total_tokens:
+                                                  type: integer
+                                              failed_logins_24h:
+                                                  type: integer
+                                              system_uptime:
+                                                  type: string
+                                              memory_usage:
+                                                  type: string
+                                              cpu_usage:
+                                                  type: string
+                                          required:
+                                              - total_users
+                                              - active_sessions
+                                              - total_tokens
+                                              - failed_logins_24h
+                                              - system_uptime
+                                              - memory_usage
+                                              - cpu_usage
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
             "403":
                 $ref: "../components/responses.yaml#/Forbidden"
-            "404":
-                $ref: "../components/responses.yaml#/NotFound"
 
-stats:
+auditLogs:
     get:
         tags:
             - Admin
-        summary: Get system statistics (admin)
-        description: |
-            Get comprehensive system-wide statistics including users, sessions, OAuth, 
-            RBAC, security metrics, and system health. Useful for monitoring dashboards.
-        operationId: getSystemStats
+        summary: Query audit logs
+        operationId: getAuditLogs
         security:
             - bearerAuth: []
+        parameters:
+            - $ref: "../components/parameters.yaml#/PageParam"
+            - $ref: "../components/parameters.yaml#/LimitParam"
+            - name: user_id
+              in: query
+              schema:
+                  type: string
+            - name: action
+              in: query
+              schema:
+                  type: string
+            - name: start_date
+              in: query
+              schema:
+                  type: string
+            - name: end_date
+              in: query
+              schema:
+                  type: string
+            - name: risk_level
+              in: query
+              schema:
+                  type: string
+            - name: outcome
+              in: query
+              schema:
+                  type: string
+            - name: correlation_id
+              in: query
+              schema:
+                  type: string
+            - name: ip_address
+              in: query
+              schema:
+                  type: string
         responses:
             "200":
-                description: System statistics
+                description: Audit logs returned successfully
                 content:
                     application/json:
                         schema:
@@ -275,62 +269,86 @@ stats:
                                 - type: object
                                   properties:
                                       data:
-                                          $ref: "../schemas/admin.yaml#/SystemStats"
+                                          type: object
+                                          properties:
+                                              logs:
+                                                  type: array
+                                                  items:
+                                                      type: object
+                                                      properties:
+                                                          id:
+                                                              type: string
+                                                          timestamp:
+                                                              type: string
+                                                          user_id:
+                                                              type: string
+                                                          action:
+                                                              type: string
+                                                          resource:
+                                                              type: string
+                                                          ip_address:
+                                                              type: string
+                                                          user_agent:
+                                                              type: string
+                                                          result:
+                                                              type: string
+                                                          risk_level:
+                                                              type: string
+                                                          outcome:
+                                                              type: string
+                                                          correlation_id:
+                                                              type: string
+                                                              nullable: true
+                                              pagination:
+                                                  $ref: "../schemas/common.yaml#/Pagination"
+                                          required:
+                                              - logs
+                                              - pagination
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
             "403":
                 $ref: "../components/responses.yaml#/Forbidden"
 
-events:
+auditLogStats:
     get:
         tags:
             - Admin
-        summary: Get system event logs (admin)
-        description: |
-            Retrieve paginated system event logs. Includes authentication events, security 
-            alerts, system errors, and audit trail. Supports filtering by level, category, 
-            and date range.
-        operationId: getSystemEvents
+        summary: Get audit-log summary statistics
+        operationId: getAuditLogStats
         security:
             - bearerAuth: []
-        parameters:
-            - $ref: "../components/parameters.yaml#/PageParam"
-            - $ref: "../components/parameters.yaml#/LimitParam"
-            - name: level
-              in: query
-              description: Filter by event severity level
-              schema:
-                  type: string
-                  enum: [debug, info, warning, error, critical]
-              example: "error"
-            - name: category
-              in: query
-              description: Filter by event category
-              schema:
-                  type: string
-                  enum: [authentication, authorization, system, security, audit]
-              example: "security"
-            - name: start_date
-              in: query
-              description: Filter events after this date (ISO 8601)
-              schema:
-                  type: string
-                  format: date-time
-              example: "2024-01-01T00:00:00Z"
-            - name: end_date
-              in: query
-              description: Filter events before this date (ISO 8601)
-              schema:
-                  type: string
-                  format: date-time
-              example: "2024-01-31T23:59:59Z"
         responses:
             "200":
-                description: System event logs
+                description: Audit-log statistics returned successfully
                 content:
                     application/json:
                         schema:
-                            $ref: "../schemas/admin.yaml#/SystemEventLogResponse"
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              total_events_24h:
+                                                  type: integer
+                                              failed_logins_24h:
+                                                  type: integer
+                                              successful_logins_24h:
+                                                  type: integer
+                                              high_risk_events_24h:
+                                                  type: integer
+                                              unique_users_24h:
+                                                  type: integer
+                                              security_alerts_24h:
+                                                  type: integer
+                                          required:
+                                              - total_events_24h
+                                              - failed_logins_24h
+                                              - successful_logins_24h
+                                              - high_risk_events_24h
+                                              - unique_users_24h
+                                              - security_alerts_24h
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
             "403":
@@ -340,55 +358,13 @@ config:
     get:
         tags:
             - Admin
-        summary: Get system configuration (admin)
-        description: Get current system configuration settings (sensitive values redacted)
-        operationId: getSystemConfig
+        summary: Read runtime-mutable configuration
+        operationId: getAdminConfig
         security:
             - bearerAuth: []
         responses:
             "200":
-                description: System configuration
-                content:
-                    application/json:
-                        schema:
-                            allOf:
-                                - $ref: "../schemas/common.yaml#/ApiResponse"
-                                - type: object
-                                  properties:
-                                      data:
-                                          type: object
-                                          description: Configuration settings (structure varies)
-                                          example:
-                                              auth:
-                                                  session_timeout: 3600
-                                                  max_failed_attempts: 5
-                                              security:
-                                                  require_mfa: false
-                                                  password_min_length: 12
-            "401":
-                $ref: "../components/responses.yaml#/Unauthorized"
-            "403":
-                $ref: "../components/responses.yaml#/Forbidden"
-
-    patch:
-        tags:
-            - Admin
-        summary: Update system configuration (admin)
-        description: |
-            Update system configuration settings. Changes take effect immediately.
-            This action is logged with justification.
-        operationId: updateSystemConfig
-        security:
-            - bearerAuth: []
-        requestBody:
-            required: true
-            content:
-                application/json:
-                    schema:
-                        $ref: "../schemas/admin.yaml#/ConfigurationUpdate"
-        responses:
-            "200":
-                description: Configuration updated successfully
+                description: Runtime configuration returned successfully
                 content:
                     application/json:
                         schema:
@@ -399,32 +375,50 @@ config:
                                       data:
                                           type: object
                                           properties:
-                                              message:
-                                                  type: string
-                                                  example: "Configuration updated successfully"
-                                              setting:
-                                                  type: string
-                                                  example: "auth.session_timeout"
-                                              old_value:
-                                                  example: 3600
-                                              new_value:
-                                                  example: 7200
-            "400":
-                $ref: "../components/responses.yaml#/BadRequest"
+                                              token_lifetime_secs:
+                                                  type: integer
+                                              refresh_token_lifetime_secs:
+                                                  type: integer
+                                              enable_multi_factor:
+                                                  type: boolean
+                                              rate_limiting_enabled:
+                                                  type: boolean
+                                              rate_limit_max_requests:
+                                                  type: integer
+                                              rate_limit_window_secs:
+                                                  type: integer
+                                              rate_limit_burst:
+                                                  type: integer
+                                              min_password_length:
+                                                  type: integer
+                                              require_password_complexity:
+                                                  type: boolean
+                                              secure_cookies:
+                                                  type: boolean
+                                              csrf_protection:
+                                                  type: boolean
+                                              session_timeout_secs:
+                                                  type: integer
+                                              audit_enabled:
+                                                  type: boolean
+                                              audit_log_success:
+                                                  type: boolean
+                                              audit_log_failures:
+                                                  type: boolean
+                                              audit_log_permissions:
+                                                  type: boolean
+                                              audit_log_tokens:
+                                                  type: boolean
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
             "403":
                 $ref: "../components/responses.yaml#/Forbidden"
 
-backup:
-    post:
+    put:
         tags:
             - Admin
-        summary: Create system backup (admin)
-        description: |
-            Create encrypted backup of system data including users, roles, OAuth clients, 
-            and configurations. Returns temporary download URL. Backups expire after 24 hours.
-        operationId: createBackup
+        summary: Partially update runtime-mutable configuration
+        operationId: updateAdminConfig
         security:
             - bearerAuth: []
         requestBody:
@@ -432,10 +426,46 @@ backup:
             content:
                 application/json:
                     schema:
-                        $ref: "../schemas/admin.yaml#/BackupRequest"
+                        type: object
+                        additionalProperties: false
+                        properties:
+                            token_lifetime_secs:
+                                type: integer
+                            refresh_token_lifetime_secs:
+                                type: integer
+                            enable_multi_factor:
+                                type: boolean
+                            rate_limiting_enabled:
+                                type: boolean
+                            rate_limit_max_requests:
+                                type: integer
+                            rate_limit_window_secs:
+                                type: integer
+                            rate_limit_burst:
+                                type: integer
+                            min_password_length:
+                                type: integer
+                            require_password_complexity:
+                                type: boolean
+                            secure_cookies:
+                                type: boolean
+                            csrf_protection:
+                                type: boolean
+                            session_timeout_secs:
+                                type: integer
+                            audit_enabled:
+                                type: boolean
+                            audit_log_success:
+                                type: boolean
+                            audit_log_failures:
+                                type: boolean
+                            audit_log_permissions:
+                                type: boolean
+                            audit_log_tokens:
+                                type: boolean
         responses:
             "200":
-                description: Backup created successfully
+                description: Runtime configuration updated successfully
                 content:
                     application/json:
                         schema:
@@ -444,16 +474,10 @@ backup:
                                 - type: object
                                   properties:
                                       data:
-                                          $ref: "../schemas/admin.yaml#/BackupResponse"
+                                          type: object
             "400":
                 $ref: "../components/responses.yaml#/BadRequest"
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
             "403":
                 $ref: "../components/responses.yaml#/Forbidden"
-            "500":
-                description: Backup creation failed
-                content:
-                    application/json:
-                        schema:
-                            $ref: "../components/responses.yaml#/InternalServerError"

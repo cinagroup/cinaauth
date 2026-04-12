@@ -3,7 +3,7 @@
 //! Authentication, authorization, rate limiting, and other middleware
 
 use crate::api::{ApiResponse, ApiState};
-use crate::distributed_rate_limiting::RateLimitResult;
+use crate::distributed::rate_limiting::RateLimitResult;
 use axum::{
     extract::Request,
     http::StatusCode,
@@ -12,7 +12,18 @@ use axum::{
 };
 use std::time::{Duration, Instant};
 
-/// Rate limiting middleware backed by [`crate::distributed_rate_limiting::DistributedRateLimiter`].
+/// Sanitize a header value for safe inclusion in log output.
+/// Strips control characters (except space) and truncates to 200 chars
+/// to prevent log injection and log flooding.
+fn sanitize_header_for_log(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| !c.is_control() || *c == ' ')
+        .take(200)
+        .collect()
+}
+
+/// Rate limiting middleware backed by [`crate::distributed::rate_limiting::DistributedRateLimiter`].
 ///
 /// Uses the client IP address (from `X-Forwarded-For`, then `X-Real-IP`, falling back to
 /// `"unknown"`) as the rate-limiting key.  Returns **429 Too Many Requests** when the limit
@@ -103,9 +114,14 @@ pub async fn rate_limit_middleware_with_state(
             Err(response)
         }
         Err(e) => {
-            // Fail open: log the error and allow the request to proceed.
-            tracing::error!(error = %e, "Rate limiter error — allowing request");
-            Ok(next.run(request).await)
+            tracing::error!(error = %e, "Rate limiter error — rejecting request");
+            let mut response = ApiResponse::<()>::error(
+                "RATE_LIMIT_UNAVAILABLE",
+                "Rate limiting is temporarily unavailable; request rejected to protect the service",
+            )
+            .into_response();
+            *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
+            Err(response)
         }
     }
 }
@@ -114,23 +130,33 @@ pub async fn rate_limit_middleware_with_state(
 // inappropriate for an authentication service.  Use tower-http's `CorsLayer`
 // with a configured `AllowOrigin` list instead.
 
-/// Logging middleware
+/// Log every incoming HTTP request with method, URI, client IP, and user-agent.
+///
+/// Elapsed time is logged on the response path.
+///
+/// # Example
+/// ```rust,ignore
+/// let app = Router::new()
+///     .layer(axum::middleware::from_fn(logging_middleware));
+/// ```
 pub async fn logging_middleware(request: Request, next: Next) -> Response {
     let start = Instant::now();
     let method = request.method().clone();
     let uri = request.uri().clone();
     let headers = request.headers().clone();
 
-    // Extract user agent and IP for logging
+    // Extract user agent and IP for logging, sanitized to prevent log injection
     let user_agent = headers
         .get("user-agent")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("unknown");
+    let user_agent = sanitize_header_for_log(user_agent);
 
     let forwarded_for = headers
         .get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("unknown");
+    let forwarded_for = sanitize_header_for_log(forwarded_for);
 
     tracing::info!(
         "Request started: {} {} from {} ({})",
@@ -208,7 +234,17 @@ pub async fn timeout_middleware(request: Request, next: Next) -> Result<Response
     }
 }
 
-/// Permission check helper
+/// Check whether `auth_token` carries the given permission.
+///
+/// Supports exact matches, a wildcard `"*"`, and prefix wildcards such as
+/// `"read:*"` (matches `"read:users"`, `"read:settings"`, etc.).
+///
+/// # Example
+/// ```rust,ignore
+/// if check_permission(&token, "users:write") {
+///     // allow the operation
+/// }
+/// ```
 pub fn check_permission(auth_token: &crate::tokens::AuthToken, required_permission: &str) -> bool {
     auth_token.permissions.iter().any(|perm| {
         perm == required_permission
@@ -217,8 +253,113 @@ pub fn check_permission(auth_token: &crate::tokens::AuthToken, required_permissi
     })
 }
 
-/// Role check helper
+/// Check whether `auth_token` carries the given role.
+///
+/// The `"admin"` role implicitly matches every role.
+///
+/// # Example
+/// ```rust,ignore
+/// if check_role(&token, "moderator") {
+///     // allow moderation actions
+/// }
+/// ```
 pub fn check_role(auth_token: &crate::tokens::AuthToken, required_role: &str) -> bool {
     auth_token.roles.contains(&required_role.to_string())
         || auth_token.roles.contains(&"admin".to_string()) // Admin has all roles
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tokens::{AuthToken, TokenMetadata};
+
+    fn make_token(permissions: Vec<&str>, roles: Vec<&str>) -> AuthToken {
+        AuthToken {
+            token_id: "tid".into(),
+            user_id: "uid".into(),
+            access_token: "at".into(),
+            token_type: Some("Bearer".into()),
+            subject: Some("uid".into()),
+            issuer: Some("iss".into()),
+            refresh_token: None,
+            issued_at: chrono::Utc::now(),
+            expires_at: chrono::Utc::now(),
+            scopes: vec![].into(),
+            auth_method: "jwt".into(),
+            client_id: None,
+            user_profile: None,
+            permissions: permissions
+                .into_iter()
+                .map(String::from)
+                .collect::<Vec<_>>()
+                .into(),
+            roles: roles
+                .into_iter()
+                .map(String::from)
+                .collect::<Vec<_>>()
+                .into(),
+            metadata: TokenMetadata::default(),
+        }
+    }
+
+    // ── check_permission ────────────────────────────────────────────────
+
+    #[test]
+    fn test_check_permission_exact_match() {
+        let token = make_token(vec!["users:read"], vec![]);
+        assert!(check_permission(&token, "users:read"));
+    }
+
+    #[test]
+    fn test_check_permission_no_match() {
+        let token = make_token(vec!["users:read"], vec![]);
+        assert!(!check_permission(&token, "users:write"));
+    }
+
+    #[test]
+    fn test_check_permission_wildcard_all() {
+        let token = make_token(vec!["*"], vec![]);
+        assert!(check_permission(&token, "anything:at:all"));
+    }
+
+    #[test]
+    fn test_check_permission_wildcard_prefix() {
+        let token = make_token(vec!["users:*"], vec![]);
+        assert!(check_permission(&token, "users:read"));
+        assert!(check_permission(&token, "users:write"));
+        assert!(!check_permission(&token, "admin:read"));
+    }
+
+    #[test]
+    fn test_check_permission_empty() {
+        let token = make_token(vec![], vec![]);
+        assert!(!check_permission(&token, "anything"));
+    }
+
+    // ── check_role ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_check_role_exact_match() {
+        let token = make_token(vec![], vec!["editor"]);
+        assert!(check_role(&token, "editor"));
+    }
+
+    #[test]
+    fn test_check_role_no_match() {
+        let token = make_token(vec![], vec!["editor"]);
+        assert!(!check_role(&token, "moderator"));
+    }
+
+    #[test]
+    fn test_check_role_admin_has_all_roles() {
+        let token = make_token(vec![], vec!["admin"]);
+        assert!(check_role(&token, "anything"));
+        assert!(check_role(&token, "editor"));
+    }
+
+    #[test]
+    fn test_check_role_empty() {
+        let token = make_token(vec![], vec![]);
+        assert!(!check_role(&token, "user"));
+    }
 }

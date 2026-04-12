@@ -257,8 +257,8 @@ impl IPSecurityUtils {
         } else {
             // Real MaxMind GeoIP2 integration for accurate geolocation
             Self::lookup_maxmind_coordinates(ip).or_else(|| {
-                // Default fallback coordinates (NYC)
-                Some((40.7128, -74.0060))
+                // Unknown location fallback — (0,0) means "no data"
+                Some((0.0, 0.0))
             })
         }
     }

@@ -125,6 +125,242 @@ impl Default for OidcConfig {
     }
 }
 
+impl OidcConfig {
+    /// Create a new builder for `OidcConfig`, starting from defaults.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use auth_framework::server::oidc::core::OidcConfig;
+    /// use std::time::Duration;
+    ///
+    /// let config = OidcConfig::builder()
+    ///     .issuer("https://id.example.com")
+    ///     .id_token_expiry(Duration::from_secs(1800))
+    ///     .build();
+    /// ```
+    pub fn builder() -> OidcConfigBuilder {
+        OidcConfigBuilder::default()
+    }
+}
+
+/// A builder for [`OidcConfig`].
+///
+/// Obtain via [`OidcConfig::builder()`]. All fields start with sensible
+/// defaults; override only what you need.
+#[derive(Debug, Clone)]
+pub struct OidcConfigBuilder {
+    config: OidcConfig,
+}
+
+impl Default for OidcConfigBuilder {
+    fn default() -> Self {
+        Self {
+            config: OidcConfig::default(),
+        }
+    }
+}
+
+impl OidcConfigBuilder {
+    /// Set the issuer identifier (must be an HTTPS URL in production).
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .issuer("https://auth.example.com")
+    ///     .build();
+    /// ```
+    pub fn issuer(mut self, issuer: impl Into<String>) -> Self {
+        self.config.issuer = issuer.into();
+        self
+    }
+
+    /// Set the underlying OAuth 2.0 configuration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .oauth2_config(OAuth2Config::default())
+    ///     .build();
+    /// ```
+    pub fn oauth2_config(mut self, config: crate::oauth2_server::OAuth2Config) -> Self {
+        self.config.oauth2_config = config;
+        self
+    }
+
+    /// Set the JWK Set URI.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .jwks_uri("https://auth.example.com/.well-known/jwks.json")
+    ///     .build();
+    /// ```
+    pub fn jwks_uri(mut self, uri: impl Into<String>) -> Self {
+        self.config.jwks_uri = uri.into();
+        self
+    }
+
+    /// Set the UserInfo endpoint URI.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .userinfo_endpoint("https://auth.example.com/userinfo")
+    ///     .build();
+    /// ```
+    pub fn userinfo_endpoint(mut self, uri: impl Into<String>) -> Self {
+        self.config.userinfo_endpoint = uri.into();
+        self
+    }
+
+    /// Set the supported response types.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .response_types_supported(vec!["code".into(), "id_token".into()])
+    ///     .build();
+    /// ```
+    pub fn response_types_supported(mut self, types: Vec<String>) -> Self {
+        self.config.response_types_supported = types;
+        self
+    }
+
+    /// Set the supported subject identifier types.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .subject_types_supported(vec![SubjectType::Public])
+    ///     .build();
+    /// ```
+    pub fn subject_types_supported(mut self, types: Vec<SubjectType>) -> Self {
+        self.config.subject_types_supported = types;
+        self
+    }
+
+    /// Set the supported ID token signing algorithms.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .id_token_signing_alg_values_supported(vec![Algorithm::RS256])
+    ///     .build();
+    /// ```
+    pub fn id_token_signing_alg_values_supported(mut self, algs: Vec<Algorithm>) -> Self {
+        self.config.id_token_signing_alg_values_supported = algs;
+        self
+    }
+
+    /// Set the supported scopes.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .scopes_supported(vec!["openid".into(), "profile".into(), "email".into()])
+    ///     .build();
+    /// ```
+    pub fn scopes_supported(mut self, scopes: Vec<String>) -> Self {
+        self.config.scopes_supported = scopes;
+        self
+    }
+
+    /// Set the supported claims.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .claims_supported(vec!["sub".into(), "name".into(), "email".into()])
+    ///     .build();
+    /// ```
+    pub fn claims_supported(mut self, claims: Vec<String>) -> Self {
+        self.config.claims_supported = claims;
+        self
+    }
+
+    /// Set whether the claims parameter is supported.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .claims_parameter_supported(true)
+    ///     .build();
+    /// ```
+    pub fn claims_parameter_supported(mut self, supported: bool) -> Self {
+        self.config.claims_parameter_supported = supported;
+        self
+    }
+
+    /// Set whether the request parameter is supported.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .request_parameter_supported(true)
+    ///     .build();
+    /// ```
+    pub fn request_parameter_supported(mut self, supported: bool) -> Self {
+        self.config.request_parameter_supported = supported;
+        self
+    }
+
+    /// Set whether the request_uri parameter is supported.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .request_uri_parameter_supported(false)
+    ///     .build();
+    /// ```
+    pub fn request_uri_parameter_supported(mut self, supported: bool) -> Self {
+        self.config.request_uri_parameter_supported = supported;
+        self
+    }
+
+    /// Set the ID token expiration duration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use std::time::Duration;
+    /// let config = OidcConfigBuilder::default()
+    ///     .id_token_expiry(Duration::from_secs(3600))
+    ///     .build();
+    /// ```
+    pub fn id_token_expiry(mut self, expiry: Duration) -> Self {
+        self.config.id_token_expiry = expiry;
+        self
+    }
+
+    /// Set the maximum age for authentication.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use std::time::Duration;
+    /// let config = OidcConfigBuilder::default()
+    ///     .max_age_supported(Duration::from_secs(86400))
+    ///     .build();
+    /// ```
+    pub fn max_age_supported(mut self, max_age: Duration) -> Self {
+        self.config.max_age_supported = Some(max_age);
+        self
+    }
+
+    /// Build the [`OidcConfig`].
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = OidcConfigBuilder::default()
+    ///     .issuer("https://auth.example.com")
+    ///     .scopes_supported(vec!["openid".into(), "profile".into()])
+    ///     .id_token_expiry(Duration::from_secs(3600))
+    ///     .build();
+    /// ```
+    pub fn build(self) -> OidcConfig {
+        self.config
+    }
+}
+
 /// Subject identifier types
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -208,7 +444,6 @@ impl<S: ?Sized + AuthStorage> OidcProvider<S> {
             ]),
             grant_types_supported: Some(vec![
                 "authorization_code".to_string(),
-                "implicit".to_string(),
                 "refresh_token".to_string(),
                 "client_credentials".to_string(),
             ]),
@@ -229,25 +464,77 @@ impl<S: ?Sized + AuthStorage> OidcProvider<S> {
                 "client_secret_post".to_string(),
                 "client_secret_jwt".to_string(),
                 "private_key_jwt".to_string(),
-                "none".to_string(),
             ]),
             claims_supported: Some(self.config.claims_supported.clone()),
             claims_parameter_supported: Some(self.config.claims_parameter_supported),
             request_parameter_supported: Some(self.config.request_parameter_supported),
             request_uri_parameter_supported: Some(self.config.request_uri_parameter_supported),
-            code_challenge_methods_supported: Some(vec!["S256".to_string(), "plain".to_string()]),
+            code_challenge_methods_supported: Some(vec!["S256".to_string()]),
         })
     }
+}
 
-    /// Create an ID token
-    pub async fn create_id_token(
-        &self,
-        subject: &str,
-        client_id: &str,
-        nonce: Option<&str>,
-        auth_time: Option<SystemTime>,
-        claims: Option<&HashMap<String, Value>>,
-    ) -> Result<String> {
+/// Request parameters for creating an ID token.
+///
+/// Use [`IdTokenRequest::new`] to construct with the required `subject` and
+/// `client_id`, then chain optional setters for `nonce`, `auth_time`, and
+/// extra `claims`.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// # use auth_framework::server::oidc::core::IdTokenRequest;
+/// let request = IdTokenRequest::new("user123", "client456")
+///     .with_nonce("abc");
+/// ```
+#[derive(Debug, Clone, Default)]
+pub struct IdTokenRequest<'a> {
+    pub subject: &'a str,
+    pub client_id: &'a str,
+    pub nonce: Option<&'a str>,
+    pub auth_time: Option<SystemTime>,
+    pub claims: Option<&'a HashMap<String, Value>>,
+}
+
+impl<'a> IdTokenRequest<'a> {
+    /// Create a new ID token request with required subject and client_id.
+    pub fn new(subject: &'a str, client_id: &'a str) -> Self {
+        Self {
+            subject,
+            client_id,
+            nonce: None,
+            auth_time: None,
+            claims: None,
+        }
+    }
+
+    /// Set the nonce value for replay protection.
+    pub fn with_nonce(mut self, nonce: &'a str) -> Self {
+        self.nonce = Some(nonce);
+        self
+    }
+
+    /// Set the authentication time.
+    pub fn with_auth_time(mut self, auth_time: SystemTime) -> Self {
+        self.auth_time = Some(auth_time);
+        self
+    }
+
+    /// Set additional claims to include in the ID token.
+    pub fn with_claims(mut self, claims: &'a HashMap<String, Value>) -> Self {
+        self.claims = Some(claims);
+        self
+    }
+}
+
+impl<S: AuthStorage + ?Sized> OidcProvider<S> {
+    /// Create an ID token from a request.
+    pub async fn create_id_token(&self, request: IdTokenRequest<'_>) -> Result<String> {
+        let subject = request.subject;
+        let client_id = request.client_id;
+        let nonce = request.nonce;
+        let auth_time = request.auth_time;
+        let claims = request.claims;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|e| AuthError::auth_method("oidc", format!("Time error: {}", e)))?
@@ -305,6 +592,23 @@ impl<S: ?Sized + AuthStorage> OidcProvider<S> {
             ));
         }
 
+        // SEC-H2: Require state parameter (CSRF protection per OAuth 2.0 §10.12)
+        match &request.state {
+            None => {
+                return Err(AuthError::auth_method(
+                    "oidc",
+                    "Missing required 'state' parameter",
+                ));
+            }
+            Some(s) if s.is_empty() => {
+                return Err(AuthError::auth_method(
+                    "oidc",
+                    "The 'state' parameter must not be empty",
+                ));
+            }
+            _ => {}
+        }
+
         // Validate response_type
         if !self
             .config
@@ -317,12 +621,26 @@ impl<S: ?Sized + AuthStorage> OidcProvider<S> {
             ));
         }
 
+        // SEC-M8: Block implicit grant response types (OAuth 2.1 compliance).
+        // Response types containing "token" without "code" are implicit grants.
+        {
+            let rt = &request.response_type;
+            if rt.split_whitespace().any(|part| part == "token")
+                && !rt.split_whitespace().any(|part| part == "code")
+            {
+                return Err(AuthError::auth_method(
+                    "oidc",
+                    "Implicit grant (response_type containing 'token' without 'code') is not permitted",
+                ));
+            }
+        }
+
         // Validate client_id
         if request.client_id.is_empty() {
             return Err(AuthError::auth_method("oidc", "Missing client_id"));
         }
 
-        // Check client exists in registry
+        // Check client exists in registry and validate redirect_uri + scopes
         if let Some(client_registry) = &self.client_registry {
             if client_registry
                 .get_client(&request.client_id)
@@ -342,10 +660,36 @@ impl<S: ?Sized + AuthStorage> OidcProvider<S> {
                     "Invalid redirect_uri for client",
                 ));
             }
+
+            // SEC-M4: Validate requested scopes against client's authorized scopes
+            for scope in request.scope.split_whitespace() {
+                if !client_registry
+                    .validate_scope(&request.client_id, scope)
+                    .await?
+                {
+                    return Err(AuthError::auth_method(
+                        "oidc",
+                        format!("Client is not authorized for scope '{}'", scope),
+                    ));
+                }
+            }
         } else {
-            // Fallback validation when no client registry available
-            if request.redirect_uri.is_empty() {
-                return Err(AuthError::auth_method("oidc", "Missing redirect_uri"));
+            // SEC-H3: Without a client registry, we cannot verify the redirect_uri
+            // belongs to a legitimate client. Reject all requests to prevent open
+            // redirect attacks.
+            return Err(AuthError::auth_method(
+                "oidc",
+                "Client registry is required for authorization requests",
+            ));
+        }
+
+        // SEC-M4: Validate all requested scopes against server's supported scopes
+        for scope in request.scope.split_whitespace() {
+            if !self.config.scopes_supported.contains(&scope.to_string()) {
+                return Err(AuthError::auth_method(
+                    "oidc",
+                    format!("Unsupported scope '{}'", scope),
+                ));
             }
         }
 
@@ -505,20 +849,20 @@ impl<S: ?Sized + AuthStorage> OidcProvider<S> {
                     .collect(),
             })
         } else {
-            // Return minimal user info if no stored profile found
+            // Return minimal user info with only the subject claim when no stored profile exists
             Ok(UserInfo {
                 sub: subject.clone(),
-                name: Some("John Doe".to_string()),
-                given_name: Some("John".to_string()),
-                family_name: Some("Doe".to_string()),
+                name: None,
+                given_name: None,
+                family_name: None,
                 middle_name: None,
                 nickname: None,
                 preferred_username: Some(subject.clone()),
                 profile: None,
-                picture: Some("https://example.com/avatar.jpg".to_string()),
+                picture: None,
                 website: None,
-                email: Some("john.doe@example.com".to_string()),
-                email_verified: Some(true),
+                email: None,
+                email_verified: None,
                 gender: None,
                 birthdate: None,
                 zoneinfo: None,
@@ -628,60 +972,59 @@ impl<S: ?Sized + AuthStorage> OidcProvider<S> {
                 Ok(is_registered)
             }
             Err(_) => {
-                // Fallback: Allow only safe patterns when client lookup fails
-                let is_safe_fallback = uri.starts_with("http://localhost")
-                    || uri.starts_with("http://127.0.0.1")
-                    || (uri.starts_with("https://") && !uri.contains("..") && !uri.contains("@"));
-
-                if !is_safe_fallback {
-                    tracing::error!("Rejected potentially unsafe redirect URI: {}", uri);
-                }
-
-                Ok(is_safe_fallback)
+                // When client lookup fails, reject all redirect URIs to prevent
+                // open-redirect attacks. Even loopback URIs are rejected here because
+                // `http://localhost.evil.com` would match a naive prefix check.
+                tracing::error!(
+                    "Rejected redirect URI — client lookup failed for {}: {}",
+                    client_id,
+                    uri
+                );
+                Ok(false)
             }
         }
     }
 
     /// Get registered post-logout redirect URIs for a client
     async fn get_client_registered_post_logout_uris(&self, client_id: &str) -> Result<Vec<String>> {
-        // In production: Look up client from storage
-        // For now: Return safe default URIs for development
-        match client_id {
-            "test_client" => Ok(vec![
-                "https://example.com/logout".to_string(),
-                "http://localhost:8080/logout".to_string(),
-            ]),
-            _ => {
-                // Return empty list to force validation failure for unknown clients
-                // This ensures no redirect URI is accepted without proper registration
-                Ok(Vec::new())
+        // Look up post-logout redirect URIs from client registry storage
+        if let Some(client_registry) = &self.client_registry {
+            if let Some(client) = client_registry.get_client(client_id).await? {
+                // Post-logout redirect URIs are stored in client metadata
+                if let Some(uris) = client.metadata.get("post_logout_redirect_uris") {
+                    if let Some(arr) = uris.as_array() {
+                        return Ok(arr
+                            .iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect());
+                    }
+                }
             }
         }
+        // Unknown client or no registry — return empty list so all redirect URIs
+        // are rejected, preventing open-redirect attacks.
+        Ok(Vec::new())
     }
 
     /// Generate JWK Set for the .well-known/jwks.json endpoint
     pub fn generate_jwks(&self) -> Result<JwkSet> {
-        // Generate JWK based on the TokenManager's algorithm
-        // For production, we would extract actual key components from the TokenManager
-        // For now, we'll generate a proper structure based on common key types
+        let keys = self
+            .token_manager
+            .export_public_jwks()?
+            .into_iter()
+            .map(|key| Jwk {
+                kty: "RSA".to_string(),
+                use_: Some("sig".to_string()),
+                key_ops: Some(vec!["verify".to_string()]),
+                alg: Some(algorithm_to_string(&key.algorithm)),
+                kid: Some(key.kid),
+                n: key.n,
+                e: key.e,
+                additional_params: HashMap::new(),
+            })
+            .collect();
 
-        let jwk = Jwk {
-            kty: "RSA".to_string(),
-            use_: Some("sig".to_string()),
-            key_ops: Some(vec!["verify".to_string()]),
-            alg: Some("RS256".to_string()),
-            kid: Some(format!("rsa-key-{}", chrono::Utc::now().timestamp())),
-            // These would be actual modulus and exponent from RSA public key
-            n: "sRJjz2xJOzqz1nFXKmjE3sXiZhG8s_jZo2_5Z3XJ8aYzEd7Z8GlVMmF6kWzT8k7sRJjz2xJOzqz1nFXKmjE3sXiZhG8s_jZo2_5Z3XJ8aYzEd7Z8GlVMmF6kWzT8k7sRJjz2xJOzqz1nFXKmjE3sXiZhG8s_jZo2_5Z3XJ8aYzEd7Z8GlVMmF6kWzT8k".to_string(),
-            e: "AQAB".to_string(),
-            additional_params: {
-                let mut params = HashMap::new();
-                params.insert("x5t".to_string(), serde_json::Value::String("example-thumbprint".to_string()));
-                params
-            },
-        };
-
-        Ok(JwkSet { keys: vec![jwk] })
+        Ok(JwkSet { keys })
     }
 }
 
@@ -703,6 +1046,115 @@ pub struct OidcAuthorizationRequest {
     pub claims: Option<String>,
     pub request: Option<String>,
     pub request_uri: Option<String>,
+}
+
+impl OidcAuthorizationRequest {
+    /// Create a builder with the required `client_id` and `redirect_uri`.
+    ///
+    /// Defaults: `response_type = "code"`, `scope = "openid"`.
+    pub fn builder(
+        client_id: impl Into<String>,
+        redirect_uri: impl Into<String>,
+    ) -> OidcAuthorizationRequestBuilder {
+        OidcAuthorizationRequestBuilder::new(client_id, redirect_uri)
+    }
+}
+
+/// Fluent builder for [`OidcAuthorizationRequest`].
+///
+/// # Example
+///
+/// ```rust
+/// use auth_framework::server::oidc::core::OidcAuthorizationRequest;
+///
+/// let req = OidcAuthorizationRequest::builder("my-client", "https://app.example/callback")
+///     .scope("openid profile email")
+///     .state("random_state")
+///     .nonce("random_nonce")
+///     .build();
+///
+/// assert_eq!(req.client_id, "my-client");
+/// assert_eq!(req.scope, "openid profile email");
+/// ```
+pub struct OidcAuthorizationRequestBuilder {
+    req: OidcAuthorizationRequest,
+}
+
+impl OidcAuthorizationRequestBuilder {
+    fn new(client_id: impl Into<String>, redirect_uri: impl Into<String>) -> Self {
+        Self {
+            req: OidcAuthorizationRequest {
+                response_type: "code".to_string(),
+                client_id: client_id.into(),
+                redirect_uri: redirect_uri.into(),
+                scope: "openid".to_string(),
+                state: None,
+                nonce: None,
+                max_age: None,
+                ui_locales: None,
+                claims_locales: None,
+                id_token_hint: None,
+                login_hint: None,
+                acr_values: None,
+                claims: None,
+                request: None,
+                request_uri: None,
+            },
+        }
+    }
+
+    /// Set the OAuth2 response type (default: `"code"`).
+    pub fn response_type(mut self, rt: impl Into<String>) -> Self {
+        self.req.response_type = rt.into();
+        self
+    }
+
+    /// Set the requested scopes (default: `"openid"`).
+    pub fn scope(mut self, scope: impl Into<String>) -> Self {
+        self.req.scope = scope.into();
+        self
+    }
+
+    /// Set the state parameter for CSRF protection.
+    pub fn state(mut self, state: impl Into<String>) -> Self {
+        self.req.state = Some(state.into());
+        self
+    }
+
+    /// Set the nonce for ID token replay protection.
+    pub fn nonce(mut self, nonce: impl Into<String>) -> Self {
+        self.req.nonce = Some(nonce.into());
+        self
+    }
+
+    /// Set the maximum authentication age in seconds.
+    pub fn max_age(mut self, seconds: u64) -> Self {
+        self.req.max_age = Some(seconds);
+        self
+    }
+
+    /// Provide a login hint (e.g. email or username).
+    pub fn login_hint(mut self, hint: impl Into<String>) -> Self {
+        self.req.login_hint = Some(hint.into());
+        self
+    }
+
+    /// Set the id_token_hint for session management.
+    pub fn id_token_hint(mut self, hint: impl Into<String>) -> Self {
+        self.req.id_token_hint = Some(hint.into());
+        self
+    }
+
+    /// Set the ACR values.
+    pub fn acr_values(mut self, values: impl Into<String>) -> Self {
+        self.req.acr_values = Some(values.into());
+        self
+    }
+
+    /// Consume the builder and produce the request.
+    pub fn build(self) -> OidcAuthorizationRequest {
+        self.req
+    }
 }
 
 /// Authorization validation result
@@ -902,9 +1354,38 @@ mod tests {
         ));
         let storage = Arc::new(MemoryStorage::new());
 
-        OidcProvider::new(config, token_manager, storage)
+        // Register a test client so that the fail-closed client registry check passes
+        let client_registry = Arc::new(
+            crate::server::core::client_registry::ClientRegistry::new(
+                storage.clone() as Arc<dyn crate::storage::AuthStorage>
+            )
             .await
-            .unwrap()
+            .unwrap(),
+        );
+        let test_client = crate::client::ClientConfig {
+            client_id: "test_client".to_string(),
+            client_secret: Some("test_secret".to_string()),
+            client_type: crate::client::ClientType::Confidential,
+            redirect_uris: vec!["https://client.example.com/callback".to_string()].into(),
+            authorized_scopes: vec![
+                "openid".to_string(),
+                "profile".to_string(),
+                "email".to_string(),
+            ]
+            .into(),
+            authorized_grant_types: vec!["authorization_code".to_string()].into(),
+            authorized_response_types: vec!["code".to_string()].into(),
+            client_name: Some("Test Client".to_string()),
+            client_description: None,
+            metadata: std::collections::HashMap::new(),
+        };
+        client_registry.register_client(test_client).await.unwrap();
+
+        let mut provider = OidcProvider::new(config, token_manager, storage)
+            .await
+            .unwrap();
+        provider.set_client_registry(client_registry);
+        provider
     }
 
     #[tokio::test]
@@ -1008,13 +1489,13 @@ mod tests {
             Value::String("john@example.com".to_string()),
         );
 
+        use crate::server::oidc::core::IdTokenRequest;
         let id_token = provider
             .create_id_token(
-                "user123",
-                "client456",
-                Some("nonce789"),
-                Some(auth_time),
-                Some(&claims),
+                IdTokenRequest::new("user123", "client456")
+                    .with_nonce("nonce789")
+                    .with_auth_time(auth_time)
+                    .with_claims(&claims),
             )
             .await
             .unwrap();
@@ -1028,9 +1509,7 @@ mod tests {
         let provider = create_test_oidc_provider().await;
         let jwks = provider.generate_jwks().unwrap();
 
-        assert!(!jwks.keys.is_empty());
-        assert_eq!(jwks.keys[0].kty, "RSA");
-        assert_eq!(jwks.keys[0].alg, Some("RS256".to_string()));
+        assert!(jwks.keys.is_empty());
     }
 
     #[tokio::test]

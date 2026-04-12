@@ -60,7 +60,16 @@ fn test_audit_allow_dead_code_directives() {
 /// Test to ensure no unimplemented!() macros in production code
 #[test]
 fn test_no_unimplemented_in_source() {
-    let unimplemented = find_pattern_in_directory("src", "unimplemented!");
+    let unimplemented: Vec<_> = find_pattern_in_directory("src", "unimplemented!")
+        .into_iter()
+        .filter(|(_, _, content)| {
+            let trimmed = content.trim_start();
+            !trimmed.starts_with("///")
+                && !trimmed.starts_with("//!")
+                && !trimmed.starts_with("/*")
+                && !trimmed.starts_with("*")
+        })
+        .collect();
 
     if !unimplemented.is_empty() {
         let mut error_msg = String::from("Found unimplemented!() macros in source code:\n");

@@ -1,17 +1,19 @@
-//! OpenAPI Documentation Generator
+//! OpenAPI documentation generator.
 //!
-//! Generates OpenAPI 3.0 specifications for the AuthFramework API
+//! Generates a lightweight OpenAPI 3.0 overview for the core REST API routes
+//! and the bundled Swagger UI served by the API server.
 
+use axum::response::Html;
 use serde_json::{Value, json};
 
-/// Generate OpenAPI specification
+/// Generate a lightweight OpenAPI specification for the core auth and health routes.
 pub fn generate_openapi_spec() -> Value {
     json!({
         "openapi": "3.0.3",
         "info": {
             "title": "AuthFramework API",
-            "description": "Comprehensive authentication and authorization framework",
-            "version": "0.4.0",
+            "description": "Lightweight generated overview of the core authentication and health routes exposed by AuthFramework",
+            "version": "0.5.0-rc18",
             "contact": {
                 "name": "AuthFramework Team",
                 "url": "https://github.com/ciresnave/auth-framework"
@@ -23,11 +25,11 @@ pub fn generate_openapi_spec() -> Value {
         },
         "servers": [
             {
-                "url": "https://api.example.com/v1",
+                "url": "https://api.example.com/api/v1",
                 "description": "Production server"
             },
             {
-                "url": "http://localhost:8080/v1",
+                "url": "http://localhost:8080/api/v1",
                 "description": "Development server"
             }
         ],
@@ -119,6 +121,14 @@ fn generate_paths() -> Value {
                 "summary": "User logout",
                 "description": "Invalidate user session and tokens",
                 "security": [{ "bearerAuth": [] }],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/LogoutRequest" }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Logout successful",
@@ -170,6 +180,10 @@ fn generate_schemas() -> Value {
                     "type": "string",
                     "description": "Multi-factor authentication code (if required)"
                 },
+                "challenge_id": {
+                    "type": "string",
+                    "description": "Pending MFA challenge identifier returned by a previous login attempt"
+                },
                 "remember_me": {
                     "type": "boolean",
                     "default": false,
@@ -188,8 +202,39 @@ fn generate_schemas() -> Value {
                         "refresh_token": { "type": "string" },
                         "token_type": { "type": "string", "example": "Bearer" },
                         "expires_in": { "type": "integer" },
-                        "user": { "$ref": "#/components/schemas/UserInfo" }
+                        "user": { "$ref": "#/components/schemas/UserInfo" },
+                        "login_risk_level": {
+                            "type": "string",
+                            "enum": ["low", "medium", "high", "critical"]
+                        },
+                        "security_warnings": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        }
                     }
+                }
+            }
+        },
+        "RefreshResponse": {
+            "type": "object",
+            "properties": {
+                "success": { "type": "boolean" },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "access_token": { "type": "string" },
+                        "token_type": { "type": "string", "example": "Bearer" },
+                        "expires_in": { "type": "integer" }
+                    }
+                }
+            }
+        },
+        "LogoutRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string",
+                    "description": "Optional refresh token to revoke alongside the access token"
                 }
             }
         },
@@ -249,12 +294,12 @@ fn generate_schemas() -> Value {
     })
 }
 
-/// Serve OpenAPI documentation
+/// Serve the generated OpenAPI specification as JSON.
 pub async fn serve_openapi_json() -> axum::Json<Value> {
     axum::Json(generate_openapi_spec())
 }
 
-/// Generate Swagger UI HTML
+/// Generate Swagger UI HTML.
 pub fn generate_swagger_ui() -> String {
     r#"<!DOCTYPE html>
 <html lang="en">
@@ -292,6 +337,11 @@ pub fn generate_swagger_ui() -> String {
     </script>
 </body>
 </html>"#.to_string()
+}
+
+/// Serve the bundled Swagger UI.
+pub async fn serve_swagger_ui() -> Html<String> {
+    Html(generate_swagger_ui())
 }
 
 #[cfg(test)]

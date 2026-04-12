@@ -175,7 +175,10 @@ impl<T> AuthStorage for EncryptedStorage<T>
 where
     T: AuthStorage + Send + Sync,
 {
-    // Token methods with encryption
+    // Token methods — delegate to inner storage for index maintenance.
+    // Encryption is applied at the KV layer, which all token-related lookups
+    // ultimately use. Storing a separate encrypted_token:* KV blob would create
+    // redundant data that is never read back.
     async fn store_token(&self, token: &AuthToken) -> Result<()> {
         self.inner.store_token(token).await
     }
@@ -200,7 +203,8 @@ where
         self.inner.list_user_tokens(user_id).await
     }
 
-    // Session methods with encryption
+    // Session methods — delegate to inner storage.
+    // Encryption is applied at the KV layer.
     async fn store_session(&self, session_id: &str, data: &SessionData) -> Result<()> {
         self.inner.store_session(session_id, data).await
     }

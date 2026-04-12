@@ -5,8 +5,14 @@ use std::env;
 use std::ffi::OsString;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-/// Environment variable isolation for tests
-/// This ensures tests cannot interfere with each other or the host system
+/// Environment variable isolation for tests.
+///
+/// # Example
+/// ```rust,ignore
+/// let mut env = TestEnvironment::new();
+/// env.set_var("MY_VAR", "value");
+/// // Variable is restored on drop.
+/// ```
 pub struct TestEnvironment {
     original_vars: HashMap<String, Option<OsString>>,
     test_vars: HashMap<String, String>,
@@ -19,7 +25,12 @@ impl Default for TestEnvironment {
 }
 
 impl TestEnvironment {
-    /// Create a new isolated test environment
+    /// Create a new isolated test environment.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let env = TestEnvironment::new();
+    /// ```
     pub fn new() -> Self {
         Self {
             original_vars: HashMap::new(),
@@ -27,7 +38,13 @@ impl TestEnvironment {
         }
     }
 
-    /// Set an environment variable for this test only
+    /// Set an environment variable for this test only.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mut env = TestEnvironment::new();
+    /// env.set_var("DATABASE_URL", "postgres://localhost/test");
+    /// ```
     pub fn set_var(&mut self, key: &str, value: &str) {
         // Store original value for restoration
         if !self.original_vars.contains_key(key) {
@@ -36,24 +53,41 @@ impl TestEnvironment {
 
         // Set the test value
         self.test_vars.insert(key.to_string(), value.to_string());
+        // SAFETY: Callers must hold the ENV_LOCK (via TestEnvironmentGuard) to
+        // serialize all env-var mutations, preventing data races with other threads.
         unsafe {
             env::set_var(key, value);
         }
     }
 
-    /// Set the standard JWT_SECRET for tests
+    /// Set the standard JWT_SECRET for tests.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let env = TestEnvironment::new().with_jwt_secret("test-secret");
+    /// ```
     pub fn with_jwt_secret(mut self, secret: &str) -> Self {
         self.set_var("JWT_SECRET", secret);
         self
     }
 
-    /// Set database URL for integration tests
+    /// Set database URL for integration tests.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let env = TestEnvironment::new().with_database_url("postgres://localhost/test");
+    /// ```
     pub fn with_database_url(mut self, url: &str) -> Self {
         self.set_var("DATABASE_URL", url);
         self
     }
 
-    /// Set Redis URL for session tests
+    /// Set Redis URL for session tests.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let env = TestEnvironment::new().with_redis_url("redis://localhost");
+    /// ```
     pub fn with_redis_url(mut self, url: &str) -> Self {
         self.set_var("REDIS_URL", url);
         self
@@ -64,6 +98,8 @@ impl Drop for TestEnvironment {
     /// Restore all environment variables to their original state
     fn drop(&mut self) {
         for (key, original_value) in &self.original_vars {
+            // SAFETY: Callers hold the ENV_LOCK (via TestEnvironmentGuard) which
+            // serializes all env-var mutations, preventing data races.
             unsafe {
                 match original_value {
                     Some(value) => env::set_var(key, value),
@@ -84,7 +120,11 @@ static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 /// so parallel test threads cannot race each other when setting/restoring
 /// `JWT_SECRET`, `RUST_TEST`, etc.
 ///
-/// Usage: `let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");`
+/// # Example
+/// ```rust,ignore
+/// let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
+/// // Environment is restored when `_env` is dropped.
+/// ```
 pub struct TestEnvironmentGuard {
     /// Env-var state saved for restoration on drop. Drops FIRST (declaration order).
     _env: TestEnvironment,
@@ -235,7 +275,13 @@ pub mod test_data {
     use chrono::Utc;
     use ring::rand::{SecureRandom, SystemRandom};
 
-    /// Generate cryptographically secure test data
+    /// Generate cryptographically secure test data.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let token = test_data::secure_test_token("user-1");
+    /// assert_eq!(token.user_id, "user-1");
+    /// ```
     pub fn secure_test_token(user_id: &str) -> AuthToken {
         let rng = SystemRandom::new();
         let mut token_bytes = [0u8; 32];
@@ -255,17 +301,23 @@ pub mod test_data {
             refresh_token: None,
             issued_at: Utc::now(),
             expires_at: Utc::now() + chrono::Duration::seconds(3600),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             auth_method: "test".to_string(),
             client_id: Some("test-client".to_string()),
             user_profile: None,
-            permissions: vec!["read:all".to_string(), "write:all".to_string()],
-            roles: vec!["test_user".to_string()],
+            permissions: vec!["read:all".to_string(), "write:all".to_string()].into(),
+            roles: vec!["test_user".to_string()].into(),
             metadata: crate::tokens::TokenMetadata::default(),
         }
     }
 
-    /// Generate secure test session
+    /// Generate secure test session.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let session = test_data::secure_test_session("user-1");
+    /// assert_eq!(session.user_id, "user-1");
+    /// ```
     pub fn secure_test_session(user_id: &str) -> SessionData {
         let rng = SystemRandom::new();
         let mut session_bytes = [0u8; 32];
@@ -286,7 +338,13 @@ pub mod test_data {
         }
     }
 
-    /// Generate secure random string for testing
+    /// Generate secure random string for testing.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let s = test_data::secure_random_string(16);
+    /// assert_eq!(s.len(), 32); // hex-encoded, so 2x input length
+    /// ```
     pub fn secure_random_string(length: usize) -> String {
         let rng = SystemRandom::new();
         let mut bytes = vec![0u8; length];
@@ -364,6 +422,7 @@ mod tests {
         const TEST_KEY: &str = "AUTH_FW_GUARD_ISOLATION_TEST_ONLY";
 
         // Ensure the var is absent before we start
+        // SAFETY: This test runs in isolation; no concurrent env-var access.
         unsafe { env::remove_var(TEST_KEY) };
         assert!(
             env::var(TEST_KEY).is_err(),

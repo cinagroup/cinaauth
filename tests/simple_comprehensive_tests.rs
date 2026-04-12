@@ -84,31 +84,98 @@ mod authentication_tests {
     async fn test_jwt_authentication() {
         let framework = setup_framework().await;
 
-        let credential = Credential::jwt("fake.jwt.token");
+        let jwt = framework
+            .token_manager()
+            .create_jwt_token("jwt-user", vec!["read".to_string()], None)
+            .unwrap();
+        let credential = Credential::jwt(jwt);
         let result = framework.authenticate("jwt", credential).await;
 
         assert!(result.is_ok(), "JWT authentication should not error");
 
         match result.unwrap() {
-            AuthResult::Success(_) | AuthResult::Failure(_) | AuthResult::MfaRequired(_) => {
-                // All outcomes are acceptable for a fake token
+            AuthResult::Success(token) => {
+                assert_eq!(token.user_id, "jwt-user");
+                assert_eq!(token.auth_method, "jwt");
+                assert!(token.has_scope("read"));
             }
+            AuthResult::Failure(reason) => panic!("JWT authentication should succeed: {reason}"),
+            AuthResult::MfaRequired(_) => panic!("JWT authentication should not require MFA"),
         }
     }
 
     #[tokio::test]
     async fn test_api_key_authentication() {
         let framework = setup_framework().await;
+        let user_id = framework
+            .register_user("apiuser", "apiuser@example.com", "StrongPassword123!")
+            .await
+            .unwrap();
+        let api_key = framework.create_api_key(&user_id, None).await.unwrap();
 
-        let credential = Credential::api_key("test_api_key_123");
+        let credential = Credential::api_key(api_key);
         let result = framework.authenticate("api_key", credential).await;
 
         assert!(result.is_ok(), "API key authentication should not error");
 
         match result.unwrap() {
-            AuthResult::Success(_) | AuthResult::Failure(_) | AuthResult::MfaRequired(_) => {
-                // All outcomes are acceptable for a test key
+            AuthResult::Success(token) => {
+                assert_eq!(token.user_id, user_id);
+                assert_eq!(token.auth_method, "api_key");
             }
+            AuthResult::Failure(reason) => {
+                panic!("API key authentication should succeed: {reason}")
+            }
+            AuthResult::MfaRequired(_) => panic!("API key authentication should not require MFA"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_oauth2_authorization_code_returns_explicit_failure() {
+        let framework = setup_framework().await;
+
+        let result = framework
+            .authenticate("oauth2", Credential::oauth_code("auth-code"))
+            .await
+            .unwrap();
+
+        match result {
+            AuthResult::Failure(reason) => {
+                assert!(reason.contains("must be exchanged through an OAuth provider"));
+            }
+            _ => panic!("OAuth2 authorization code flow should fail closed with guidance"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_invalid_jwt_returns_failure() {
+        let framework = setup_framework().await;
+
+        let result = framework
+            .authenticate("jwt", Credential::jwt("not-a-real-jwt"))
+            .await
+            .unwrap();
+
+        match result {
+            AuthResult::Failure(reason) => assert!(!reason.is_empty()),
+            _ => panic!("Invalid JWT should return authentication failure"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_invalid_api_key_returns_failure() {
+        let framework = setup_framework().await;
+
+        let result = framework
+            .authenticate("api_key", Credential::api_key("akinvalid"))
+            .await
+            .unwrap();
+
+        match result {
+            AuthResult::Failure(reason) => {
+                assert!(reason.contains("Token error") || reason.contains("Invalid API key"));
+            }
+            _ => panic!("Invalid API key should return authentication failure"),
         }
     }
 
@@ -153,11 +220,13 @@ mod authentication_tests {
         let credential = Credential::jwt("");
         let result = framework.authenticate("jwt", credential).await;
         assert!(result.is_ok(), "Empty JWT should be handled gracefully");
+        assert!(matches!(result.unwrap(), AuthResult::Failure(_)));
 
         // Test empty API key
         let credential = Credential::api_key("");
         let result = framework.authenticate("api_key", credential).await;
         assert!(result.is_ok(), "Empty API key should be handled gracefully");
+        assert!(matches!(result.unwrap(), AuthResult::Failure(_)));
     }
 }
 
@@ -191,7 +260,7 @@ mod token_tests {
 
         let token = result.unwrap();
         assert_eq!(token.user_id, "test_user");
-        assert_eq!(token.scopes, vec!["read", "write"]);
+        assert_eq!(token.scopes, auth_framework::types::Scopes(vec!["read".to_string(), "write".to_string()]));
         assert_eq!(token.auth_method, "jwt");
     }
 

@@ -449,12 +449,12 @@ mod tests {
             refresh_token: None,
             issued_at: Utc::now(),
             expires_at: Utc::now() + Duration::hours(1),
-            scopes: vec!["read".to_string(), "write".to_string()],
+            scopes: vec!["read".to_string(), "write".to_string()].into(),
             auth_method: "test".to_string(),
             client_id: None,
             user_profile: None,
-            permissions: vec!["test:read".to_string(), "test:write".to_string()],
-            roles: vec!["user".to_string()],
+            permissions: vec!["test:read".to_string(), "test:write".to_string()].into(),
+            roles: vec!["user".to_string()].into(),
             metadata: Default::default(),
         }
     }

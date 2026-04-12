@@ -98,7 +98,15 @@ pub enum Credential {
 }
 
 impl Credential {
-    /// Create password credentials
+    /// Create password credentials.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use auth_framework::authentication::credentials::Credential;
+    /// let cred = Credential::password("alice", "s3cret!");
+    /// assert_eq!(cred.credential_type(), "password");
+    /// ```
     pub fn password(username: impl Into<String>, password: impl Into<String>) -> Self {
         Self::Password {
             username: username.into(),
@@ -106,7 +114,10 @@ impl Credential {
         }
     }
 
-    /// Create OAuth authorization code credentials
+    /// Create OAuth authorization code credentials.
+    ///
+    /// Start with the authorization code only; attach optional fields like
+    /// `redirect_uri` via the `OAuth` variant's public fields.
     pub fn oauth_code(authorization_code: impl Into<String>) -> Self {
         Self::OAuth {
             authorization_code: authorization_code.into(),
@@ -116,7 +127,9 @@ impl Credential {
         }
     }
 
-    /// Create OAuth authorization code credentials with PKCE
+    /// Create OAuth authorization code credentials with PKCE.
+    ///
+    /// Includes a code verifier for the Proof Key for Code Exchange flow.
     pub fn oauth_code_with_pkce(
         authorization_code: impl Into<String>,
         code_verifier: impl Into<String>,
@@ -136,7 +149,11 @@ impl Credential {
         }
     }
 
-    /// Create device code credentials for device flow
+    /// Create device code credentials for device flow.
+    ///
+    /// Starts a device authorization grant with just the device code and
+    /// client ID.  Optional fields (`user_code`, `verification_uri`, etc.)
+    /// are available on the `DeviceCode` variant.
     pub fn device_code(device_code: impl Into<String>, client_id: impl Into<String>) -> Self {
         Self::DeviceCode {
             device_code: device_code.into(),
@@ -178,7 +195,21 @@ impl Credential {
         }
     }
 
-    /// Create custom credentials
+    /// Create custom credentials with arbitrary key-value data.
+    ///
+    /// The `method` string identifies the custom auth method, while
+    /// `data` carries method-specific fields.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use auth_framework::authentication::credentials::Credential;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut data = HashMap::new();
+    /// data.insert("hardware_token".into(), "ABC123".into());
+    /// let cred = Credential::custom("hardware", data);
+    /// ```
     pub fn custom(method: impl Into<String>, data: HashMap<String, String>) -> Self {
         Self::Custom {
             method: method.into(),
@@ -186,7 +217,8 @@ impl Credential {
         }
     }
 
-    /// Create MFA credentials
+    /// Create MFA credentials that wrap a primary credential with a
+    /// second-factor code and challenge identifier.
     pub fn mfa(
         primary_credential: Credential,
         mfa_code: impl Into<String>,
@@ -199,7 +231,10 @@ impl Credential {
         }
     }
 
-    /// Create certificate credentials
+    /// Create certificate credentials from raw DER-encoded bytes.
+    ///
+    /// For certificates already verified by TLS, consider
+    /// [`client_cert_from_tls`](Self::client_cert_from_tls) instead.
     pub fn certificate(
         certificate: Vec<u8>,
         private_key: Vec<u8>,
@@ -326,61 +361,72 @@ impl Credential {
 }
 
 /// Additional credential metadata that can be attached to any credential type.
+///
+/// Use the builder methods to construct metadata fluently:
+///
+/// ```rust
+/// # use auth_framework::authentication::credentials::CredentialMetadata;
+/// let meta = CredentialMetadata::new()
+///     .client_id("my-app")
+///     .client_ip("10.0.0.1")
+///     .scope("read")
+///     .scope("write");
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CredentialMetadata {
-    /// Client identifier (for OAuth flows)
+    /// Client identifier (for OAuth flows).
     pub client_id: Option<String>,
 
-    /// Requested scopes
+    /// Requested scopes (e.g. `["read", "write"]`).
     pub scopes: Vec<String>,
 
-    /// User agent string
+    /// User-Agent string from the HTTP request, if available.
     pub user_agent: Option<String>,
 
-    /// IP address of the client
+    /// IP address of the authenticating client, if available.
     pub client_ip: Option<String>,
 
-    /// Additional custom metadata
+    /// Additional custom metadata key-value pairs.
     pub custom: HashMap<String, String>,
 }
 
 impl CredentialMetadata {
-    /// Create new credential metadata
+    /// Create empty credential metadata.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Set the client ID
+    /// Set the OAuth client identifier.
     pub fn client_id(mut self, client_id: impl Into<String>) -> Self {
         self.client_id = Some(client_id.into());
         self
     }
 
-    /// Add a scope
+    /// Append a single scope to the requested scopes.
     pub fn scope(mut self, scope: impl Into<String>) -> Self {
         self.scopes.push(scope.into());
         self
     }
 
-    /// Set multiple scopes
+    /// Replace the requested scopes with the given list.
     pub fn scopes(mut self, scopes: Vec<String>) -> Self {
         self.scopes = scopes;
         self
     }
 
-    /// Set the user agent
+    /// Set the User-Agent header value from the HTTP request.
     pub fn user_agent(mut self, user_agent: impl Into<String>) -> Self {
         self.user_agent = Some(user_agent.into());
         self
     }
 
-    /// Set the client IP
+    /// Set the IP address of the authenticating client.
     pub fn client_ip(mut self, client_ip: impl Into<String>) -> Self {
         self.client_ip = Some(client_ip.into());
         self
     }
 
-    /// Add custom metadata
+    /// Add a custom metadata key-value pair.
     pub fn custom(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.custom.insert(key.into(), value.into());
         self

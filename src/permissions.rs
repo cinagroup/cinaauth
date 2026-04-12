@@ -1,3 +1,16 @@
+//! Permission and role-based access control (RBAC / ABAC).
+//!
+//! Core types for the authorization subsystem:
+//!
+//! - [`Permission`] — An `(action, resource)` pair representing a capability.
+//! - [`Role`] — A named set of permissions with optional inheritance.
+//! - [`UserPermissions`] — Resolved permissions for a single user.
+//! - [`PermissionChecker`] — Evaluates access decisions, including ABAC
+//!   policies and delegation chains.
+//!
+//! For the async, storage-backed authorization API see
+//! [`AuthorizationOperations`](crate::auth::AuthorizationOperations).
+
 /// Attribute-Based Access Control (ABAC) policy.
 ///
 /// Associates a set of attribute rules with the permissions they grant.
@@ -15,6 +28,58 @@ pub struct AbacRule {
     pub permission: Permission,
 }
 
+impl AbacPolicy {
+    /// Create a new empty ABAC policy.
+    pub fn new() -> Self {
+        Self {
+            attributes: HashMap::new(),
+            rules: Vec::new(),
+        }
+    }
+
+    /// Add an attribute to the policy.
+    pub fn with_attribute(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.attributes.insert(key.into(), value);
+        self
+    }
+
+    /// Add multiple attributes to the policy.
+    pub fn with_attributes<I, K>(mut self, attributes: I) -> Self
+    where
+        I: IntoIterator<Item = (K, serde_json::Value)>,
+        K: Into<String>,
+    {
+        for (key, value) in attributes {
+            self.attributes.insert(key.into(), value);
+        }
+        self
+    }
+
+    /// Add a rule to the policy.
+    pub fn with_rule(
+        mut self,
+        attribute: impl Into<String>,
+        expected_value: serde_json::Value,
+        permission: Permission,
+    ) -> Self {
+        self.rules.push(AbacRule {
+            attribute: attribute.into(),
+            expected_value,
+            permission,
+        });
+        self
+    }
+
+    /// Add multiple rules to the policy.
+    pub fn with_rules<I>(mut self, rules: I) -> Self
+    where
+        I: IntoIterator<Item = AbacRule>,
+    {
+        self.rules.extend(rules);
+        self
+    }
+}
+
 /// Permission delegation record.
 ///
 /// Represents a delegator granting a subset of their permissions to a delegatee,
@@ -27,8 +92,60 @@ pub struct Delegation {
     pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+impl Delegation {
+    /// Create a new delegation with required fields.
+    pub fn new(delegator: impl Into<String>, delegatee: impl Into<String>) -> Self {
+        Self {
+            delegator: delegator.into(),
+            delegatee: delegatee.into(),
+            permissions: HashSet::new(),
+            expires_at: None,
+        }
+    }
+
+    /// Add permissions to the delegation.
+    pub fn with_permissions<I>(mut self, permissions: I) -> Self
+    where
+        I: IntoIterator<Item = Permission>,
+    {
+        self.permissions.extend(permissions);
+        self
+    }
+
+    /// Add a single permission to the delegation.
+    pub fn with_permission(mut self, permission: Permission) -> Self {
+        self.permissions.insert(permission);
+        self
+    }
+
+    /// Set the expiration time for the delegation.
+    pub fn with_expiry(mut self, expires_at: chrono::DateTime<chrono::Utc>) -> Self {
+        self.expires_at = Some(expires_at);
+        self
+    }
+
+    /// Set the delegation to never expire.
+    pub fn permanent(mut self) -> Self {
+        self.expires_at = None;
+        self
+    }
+}
+
 impl PermissionChecker {
     /// Check permission for a user with ABAC and delegation support.
+    ///
+    /// This is the low-level API with positional parameters.  For a more
+    /// readable alternative, use [`check_advanced`](Self::check_advanced)
+    /// with an [`AdvancedPermissionCheck`] builder.
+    ///
+    /// # Arguments
+    ///
+    /// * `user_id` — the user to check
+    /// * `permission` — the required permission
+    /// * `user_attributes` — runtime attributes for ABAC evaluation
+    /// * `abac_policy` — optional ABAC policy
+    /// * `delegations` — optional active delegations
+    /// * `role_resolver` — closure that resolves role names to definitions
     pub fn check_advanced_permission(
         &self,
         user_id: &str,
@@ -100,10 +217,106 @@ impl PermissionChecker {
         false
     }
 }
+
+/// Builder for constructing an advanced permission check with ABAC policies,
+/// delegations, and role resolution.
+///
+/// Wraps the six parameters of
+/// [`PermissionChecker::check_advanced_permission`] into a self-documenting
+/// builder so callers don't need to remember parameter order.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use auth_framework::permissions::*;
+///
+/// let granted = checker.check_advanced(
+///     AdvancedPermissionCheck::new("user_123", &permission, &role_resolver)
+///         .user_attributes(&attrs)
+///         .abac_policy(&policy)
+///         .delegations(&delegations),
+/// );
+/// ```
+pub struct AdvancedPermissionCheck<'a> {
+    user_id: &'a str,
+    permission: &'a Permission,
+    user_attributes: Option<&'a HashMap<String, serde_json::Value>>,
+    abac_policy: Option<&'a AbacPolicy>,
+    delegations: Option<&'a [Delegation]>,
+    role_resolver: &'a dyn Fn(&str) -> Option<Role>,
+}
+
+impl<'a> AdvancedPermissionCheck<'a> {
+    /// Start building an advanced permission check with the required fields.
+    pub fn new(
+        user_id: &'a str,
+        permission: &'a Permission,
+        role_resolver: &'a dyn Fn(&str) -> Option<Role>,
+    ) -> Self {
+        Self {
+            user_id,
+            permission,
+            user_attributes: None,
+            abac_policy: None,
+            delegations: None,
+            role_resolver,
+        }
+    }
+
+    /// Provide user attributes for ABAC evaluation.
+    pub fn user_attributes(mut self, attrs: &'a HashMap<String, serde_json::Value>) -> Self {
+        self.user_attributes = Some(attrs);
+        self
+    }
+
+    /// Provide an ABAC policy to evaluate against.
+    pub fn abac_policy(mut self, policy: &'a AbacPolicy) -> Self {
+        self.abac_policy = Some(policy);
+        self
+    }
+
+    /// Provide active delegations to consider.
+    pub fn delegations(mut self, delegations: &'a [Delegation]) -> Self {
+        self.delegations = Some(delegations);
+        self
+    }
+}
+
+impl PermissionChecker {
+    /// Check permission using an [`AdvancedPermissionCheck`] builder.
+    ///
+    /// This is the recommended entry point when combining RBAC, ABAC, and
+    /// delegation checks — it avoids the six positional parameters of the
+    /// legacy [`check_advanced_permission`](Self::check_advanced_permission).
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let allowed = checker.check_advanced(
+    ///     AdvancedPermissionCheck::new("user_1", &perm, &resolver)
+    ///         .user_attributes(&attrs)
+    ///         .abac_policy(&policy),
+    /// );
+    /// ```
+    pub fn check_advanced(&self, check: AdvancedPermissionCheck<'_>) -> bool {
+        static EMPTY: std::sync::LazyLock<HashMap<String, serde_json::Value>> =
+            std::sync::LazyLock::new(HashMap::new);
+        self.check_advanced_permission(
+            check.user_id,
+            check.permission,
+            check.user_attributes.unwrap_or(&EMPTY),
+            check.abac_policy,
+            check.delegations,
+            check.role_resolver,
+        )
+    }
+}
 /// Permission and role-based access control system.
 use crate::errors::{PermissionError, Result};
 use crate::tokens::AuthToken;
+use chrono;
 use serde::{Deserialize, Serialize};
+use serde_json;
 use std::collections::{HashMap, HashSet};
 
 /// Represents a permission with action and resource.
@@ -314,6 +527,37 @@ impl Role {
         self
     }
 
+    /// Add parent roles to the role.
+    pub fn with_parent_roles<I, S>(mut self, parent_roles: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for parent_role in parent_roles {
+            self.parent_roles.insert(parent_role.into());
+        }
+        self
+    }
+
+    /// Add metadata to the role.
+    pub fn with_metadata<I, K, V>(mut self, metadata: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: Into<String>,
+        V: Into<String>,
+    {
+        for (key, value) in metadata {
+            self.metadata.insert(key.into(), value.into());
+        }
+        self
+    }
+
+    /// Set the active status of the role.
+    pub fn with_active(mut self, active: bool) -> Self {
+        self.active = active;
+        self
+    }
+
     /// Remove a permission from the role.
     pub fn remove_permission(&mut self, permission: &Permission) {
         self.permissions.remove(permission);
@@ -349,6 +593,23 @@ impl Role {
     /// Activate or deactivate the role.
     pub fn set_active(&mut self, active: bool) {
         self.active = active;
+    }
+}
+
+impl PermissionChecker {
+    /// Remove all runtime roles, assignments, and cached permission state.
+    pub fn clear(&mut self) {
+        self.roles.clear();
+        self.user_permissions.clear();
+        self.resource_hierarchy.clear();
+    }
+
+    /// Return the currently assigned role names for a user.
+    pub fn get_user_roles(&self, user_id: &str) -> Vec<String> {
+        self.user_permissions
+            .get(user_id)
+            .map(|permissions| permissions.roles.iter().cloned().collect())
+            .unwrap_or_default()
     }
 }
 
@@ -472,6 +733,11 @@ impl PermissionChecker {
     /// Get a role by name.
     pub fn get_role(&self, role_name: &str) -> Option<&Role> {
         self.roles.get(role_name)
+    }
+
+    /// Return all defined roles.
+    pub fn list_roles(&self) -> Vec<Role> {
+        self.roles.values().cloned().collect()
     }
 
     /// Set user permissions.

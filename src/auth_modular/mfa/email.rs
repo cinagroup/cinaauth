@@ -3,10 +3,11 @@
 use crate::errors::{AuthError, Result};
 use crate::storage::AuthStorage;
 use serde::{Deserialize, Serialize};
+use subtle::ConstantTimeEq;
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 /// Email provider configuration for production email sending
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,11 +23,16 @@ pub struct EmailProviderConfig {
 }
 
 /// Supported email providers
+///
+/// `AwsSes` requires the `aws-sdk-ses` crate (not compiled in by default).
+/// When selected without the dependency, `send_email_via_provider` returns a
+/// descriptive error at runtime.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EmailProvider {
     /// SendGrid email service
     SendGrid,
-    /// Amazon Simple Email Service
+    /// Amazon Simple Email Service.
+    /// Requires the `aws-sdk-ses` crate (not included by default).
     AwsSes,
     /// SMTP server
     Smtp,
@@ -186,8 +192,8 @@ impl EmailManager {
                 return Ok(false);
             }
 
-            // Verify against stored code
-            let is_valid = stored_code == code;
+            // Verify against stored code (constant-time to prevent timing attacks)
+            let is_valid: bool = stored_code.as_bytes().ct_eq(code.as_bytes()).into();
 
             if is_valid {
                 // Remove the code after successful verification to prevent reuse
@@ -322,52 +328,164 @@ impl EmailManager {
         }
     }
 
-    /// Send email via AWS SES
+    /// Send email via AWS SES using the SendEmail REST API (v2)
     async fn send_via_aws_ses(&self, to_email: &str, subject: &str, body: &str) -> Result<()> {
         if let ProviderConfig::AwsSes {
             region,
-            access_key_id: _,
-            secret_access_key: _,
+            access_key_id,
+            secret_access_key,
         } = &self.email_config.provider_config
         {
-            // Note: In production, use the AWS SDK for Rust (aws-sdk-ses)
-            // For now, implement basic SES API call via REST
-            warn!("AWS SES integration requires aws-sdk-ses dependency");
-            warn!("Using development fallback for AWS SES");
+            let from_email = &self.email_config.from_email;
+            let from_name = self
+                .email_config
+                .from_name
+                .as_deref()
+                .unwrap_or("AuthFramework");
 
-            info!("📧 [AWS SES DEV] Email would be sent:");
-            info!("   Region: {}", region);
-            info!("   To: {}", to_email);
-            info!("   Subject: {}", subject);
-            info!("   Body: {}", body);
+            let host = format!("email.{}.amazonaws.com", region);
+            let url = format!("https://{}/v2/email/outbound-emails", host);
+            let now = chrono::Utc::now();
+            let date_stamp = now.format("%Y%m%d").to_string();
+            let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
 
-            Ok(())
+            let payload = serde_json::json!({
+                "Content": {
+                    "Simple": {
+                        "Subject": { "Data": subject, "Charset": "UTF-8" },
+                        "Body": { "Text": { "Data": body, "Charset": "UTF-8" } }
+                    }
+                },
+                "Destination": {
+                    "ToAddresses": [to_email]
+                },
+                "FromEmailAddress": format!("{} <{}>", from_name, from_email)
+            });
+            let payload_bytes = serde_json::to_vec(&payload).map_err(|e| {
+                AuthError::internal(format!("SES payload serialization failed: {}", e))
+            })?;
+
+            // AWS Signature Version 4
+            let payload_hash = ses_sha256_hex(&payload_bytes);
+            let canonical_headers = format!(
+                "content-type:application/json\nhost:{}\nx-amz-date:{}\n",
+                host, amz_date
+            );
+            let signed_headers = "content-type;host;x-amz-date";
+            let canonical_request = format!(
+                "POST\n/v2/email/outbound-emails\n\n{}\n{}\n{}",
+                canonical_headers, signed_headers, payload_hash
+            );
+
+            let credential_scope = format!("{}/{}/ses/aws4_request", date_stamp, region);
+            let string_to_sign = format!(
+                "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+                amz_date,
+                credential_scope,
+                ses_sha256_hex(canonical_request.as_bytes())
+            );
+
+            let signing_key =
+                ses_sigv4_key(secret_access_key.as_bytes(), &date_stamp, region, "ses");
+            let signature = ses_hmac_sha256_hex(&signing_key, string_to_sign.as_bytes());
+
+            let authorization = format!(
+                "AWS4-HMAC-SHA256 Credential={}/{}, SignedHeaders={}, Signature={}",
+                access_key_id, credential_scope, signed_headers, signature
+            );
+
+            let client = reqwest::Client::new();
+            let resp = client
+                .post(&url)
+                .header("Content-Type", "application/json")
+                .header("x-amz-date", &amz_date)
+                .header("Authorization", &authorization)
+                .body(payload_bytes)
+                .send()
+                .await
+                .map_err(|e| AuthError::internal(format!("AWS SES request failed: {}", e)))?;
+
+            let status = resp.status();
+            if status.is_success() {
+                debug!("AWS SES email sent successfully to {}", to_email);
+                Ok(())
+            } else {
+                let error_text = resp.text().await.unwrap_or_default();
+                Err(AuthError::internal(format!(
+                    "AWS SES error ({}): {}",
+                    status, error_text
+                )))
+            }
         } else {
             Err(AuthError::internal("Invalid AWS SES configuration"))
         }
     }
 
-    /// Send email via SMTP
+    /// Send email via SMTP using lettre
     async fn send_via_smtp(&self, to_email: &str, subject: &str, body: &str) -> Result<()> {
         if let ProviderConfig::Smtp {
             host,
             port,
-            username: _,
-            password: _,
+            username,
+            password,
             use_tls,
         } = &self.email_config.provider_config
         {
-            // Note: In production, use lettre crate for SMTP
-            warn!("SMTP integration requires lettre dependency");
-            warn!("Using development fallback for SMTP");
+            use lettre::{
+                Message, SmtpTransport, Transport, transport::smtp::authentication::Credentials,
+            };
 
-            info!("📧 [SMTP DEV] Email would be sent:");
-            info!("   Host: {}:{}", host, port);
-            info!("   TLS: {}", use_tls);
-            info!("   To: {}", to_email);
-            info!("   Subject: {}", subject);
-            info!("   Body: {}", body);
+            let from_address = self.email_config.from_email.clone();
+            let from_name = self
+                .email_config
+                .from_name
+                .clone()
+                .unwrap_or_else(|| "AuthFramework".to_string());
 
+            let email = Message::builder()
+                .from(
+                    format!("{} <{}>", from_name, from_address)
+                        .parse()
+                        .map_err(|e| AuthError::internal(format!("Invalid from address: {}", e)))?,
+                )
+                .to(to_email
+                    .parse()
+                    .map_err(|e| AuthError::internal(format!("Invalid to address: {}", e)))?)
+                .subject(subject)
+                .body(body.to_string())
+                .map_err(|e| AuthError::internal(format!("Failed to build email: {}", e)))?;
+
+            let creds = Credentials::new(username.clone(), password.clone());
+
+            let host = host.clone();
+            let port = *port;
+            let use_tls = *use_tls;
+
+            // lettre's SmtpTransport is sync; run in a blocking task to avoid
+            // blocking the async runtime.
+            let result = tokio::task::spawn_blocking(move || {
+                let transport = if use_tls {
+                    SmtpTransport::relay(&host)
+                        .map_err(|e| AuthError::internal(format!("SMTP relay error: {}", e)))?
+                        .port(port)
+                        .credentials(creds)
+                        .build()
+                } else {
+                    SmtpTransport::builder_dangerous(&host)
+                        .port(port)
+                        .credentials(creds)
+                        .build()
+                };
+
+                transport
+                    .send(&email)
+                    .map_err(|e| AuthError::internal(format!("SMTP send failed: {}", e)))
+            })
+            .await
+            .map_err(|e| AuthError::internal(format!("SMTP task join error: {}", e)))?;
+
+            result?;
+            debug!("SMTP email sent successfully to {}", to_email);
             Ok(())
         } else {
             Err(AuthError::internal("Invalid SMTP configuration"))
@@ -376,7 +494,7 @@ impl EmailManager {
 
     /// Check if user has email configured
     pub async fn has_email(&self, user_id: &str) -> Result<bool> {
-        let email_key = format!("email:{}", user_id);
+        let email_key = format!("user:{}:email", user_id);
         match self.storage.get_kv(&email_key).await {
             Ok(Some(_)) => Ok(true),
             Ok(None) => Ok(false),
@@ -404,4 +522,29 @@ impl EmailManager {
 
         Ok(code)
     }
+}
+
+// ── AWS SigV4 helpers for SES ───────────────────────────────────────────────
+
+fn ses_sha256_hex(data: &[u8]) -> String {
+    use ring::digest;
+    let d = digest::digest(&digest::SHA256, data);
+    hex::encode(d.as_ref())
+}
+
+fn ses_hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
+    use ring::hmac;
+    let s_key = hmac::Key::new(hmac::HMAC_SHA256, key);
+    hmac::sign(&s_key, data).as_ref().to_vec()
+}
+
+fn ses_hmac_sha256_hex(key: &[u8], data: &[u8]) -> String {
+    hex::encode(ses_hmac_sha256(key, data))
+}
+
+fn ses_sigv4_key(secret: &[u8], date_stamp: &str, region: &str, service: &str) -> Vec<u8> {
+    let k_date = ses_hmac_sha256(&[b"AWS4", secret].concat(), date_stamp.as_bytes());
+    let k_region = ses_hmac_sha256(&k_date, region.as_bytes());
+    let k_service = ses_hmac_sha256(&k_region, service.as_bytes());
+    ses_hmac_sha256(&k_service, b"aws4_request")
 }

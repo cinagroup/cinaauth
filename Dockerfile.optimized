@@ -96,8 +96,8 @@ LABEL org.opencontainers.image.description="Production-ready authentication and 
 LABEL org.opencontainers.image.version="0.4.0"
 LABEL org.opencontainers.image.vendor="AuthFramework Team"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.documentation="https://github.com/auth-framework/auth-framework"
-LABEL org.opencontainers.image.source="https://github.com/auth-framework/auth-framework"
+LABEL org.opencontainers.image.documentation="https://github.com/ciresnave/auth-framework"
+LABEL org.opencontainers.image.source="https://github.com/ciresnave/auth-framework"
 
 # Expose default port (should be configurable via environment)
 EXPOSE 8080

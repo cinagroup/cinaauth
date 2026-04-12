@@ -555,12 +555,21 @@ impl EventSourcingManager {
         let events = self.get_events(aggregate_id, None).await;
 
         if let Some(latest_event) = events.last() {
-            // Create aggregated snapshot (simplified)
+            let first_version = events.first().map(|e| e.event_version).unwrap_or(0);
             let snapshot = EventSnapshot {
                 aggregate_id: aggregate_id.to_string(),
                 version: latest_event.event_version,
                 timestamp: SystemTime::now(),
-                data: serde_json::json!({}), // Would contain aggregated state
+                data: serde_json::json!({
+                    "event_count": events.len(),
+                    "first_version": first_version,
+                    "latest_version": latest_event.event_version,
+                    "last_event_timestamp": latest_event.timestamp
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0),
+                    "last_event_type": &latest_event.event_type,
+                }),
             };
 
             let mut snapshots = self.snapshots.write().await;
@@ -795,12 +804,34 @@ impl ConfigHotReloadManager {
 }
 
 impl Default for ConfigHotReloadManager {
+    /// Creates a default `ConfigHotReloadManager` using a synchronous blocking call.
+    ///
+    /// # Panics
+    /// Panics if called from within an async runtime (e.g. inside a Tokio task),
+    /// because `block_on` cannot nest. Prefer calling `ConfigHotReloadManager::new()`
+    /// directly in async contexts.
     fn default() -> Self {
-        futures::executor::block_on(async {
-            Self::new("config.json")
-                .await
-                .expect("Failed to create config manager")
-        })
+        // Use tokio::runtime::Handle to detect if we're already in an async context.
+        // If so, use spawn_blocking to avoid the block_on deadlock.
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            std::thread::scope(|s| {
+                s.spawn(|| {
+                    handle.block_on(async {
+                        Self::new("config.json")
+                            .await
+                            .expect("Failed to create config manager")
+                    })
+                })
+                .join()
+                .expect("ConfigHotReloadManager default thread panicked")
+            })
+        } else {
+            futures::executor::block_on(async {
+                Self::new("config.json")
+                    .await
+                    .expect("Failed to create config manager")
+            })
+        }
     }
 }
 

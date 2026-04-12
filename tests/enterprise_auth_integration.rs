@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod tests {
-    use auth_framework::{
+    use auth_framework::protocols::{
         saml_assertions::{SamlAssertionBuilder, SamlAssertionValidator, SamlNameId, SamlSubject},
         ws_security::{PasswordType, WsSecurityClient, WsSecurityConfig},
         ws_trust::{
@@ -156,7 +156,7 @@ mod tests {
                 key_size: None,
                 existing_token: None,
                 auth_context: None,
-            })
+            }, "admin@enterprise.com", Some("admin_pass"))
             .unwrap();
 
         // Verify complete SOAP request

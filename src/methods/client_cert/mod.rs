@@ -37,6 +37,8 @@
 //! - **PC/SC card reader access**: use a PKCS#11 middleware library at the transport
 //!   layer (e.g. OpenSC).
 
+use std::collections::HashSet;
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use crate::{
@@ -150,7 +152,7 @@ pub struct CertIdentity {
 /// use auth_framework::methods::client_cert::{ClientCertAuthMethod, ClientCertConfig};
 /// use auth_framework::authentication::credentials::Credential;
 ///
-/// # let cert_der: Vec<u8> = todo!();
+/// # let cert_der: Vec<u8> = unimplemented!();
 /// let method = ClientCertAuthMethod::new(ClientCertConfig::new());
 ///
 /// // `cert_der` comes from your HTTP framework's peer certificate extraction.
@@ -425,6 +427,184 @@ fn fmt_ip(bytes: &[u8]) -> String {
             parts.join(":")
         }
         _ => format!("{:?}", bytes),
+    }
+}
+
+// ── Certificate Pinning ───────────────────────────────────────────────────────
+
+/// Certificate fingerprint for pinning.
+///
+/// Stores the SHA-256 hash of a DER-encoded certificate for pin comparison.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CertPin {
+    /// SHA-256 fingerprint as a lowercase hex string.
+    pub sha256_hex: String,
+}
+
+impl CertPin {
+    /// Compute a pin from DER-encoded certificate bytes.
+    pub fn from_der(cert_der: &[u8]) -> Self {
+        use sha2::{Digest, Sha256};
+        let digest = Sha256::digest(cert_der);
+        Self {
+            sha256_hex: hex::encode(digest),
+        }
+    }
+
+    /// Create a pin from a known hex fingerprint.
+    pub fn from_hex(hex_fingerprint: impl Into<String>) -> Self {
+        Self {
+            sha256_hex: hex_fingerprint.into().to_lowercase(),
+        }
+    }
+}
+
+/// A certificate pin store for enforcing certificate pinning.
+///
+/// When pinning is enabled, only certificates whose SHA-256 fingerprint
+/// appears in this store are accepted.
+#[derive(Debug, Clone, Default)]
+pub struct CertPinStore {
+    pins: Arc<std::sync::RwLock<HashSet<String>>>,
+}
+
+impl CertPinStore {
+    /// Create a new empty pin store.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a pin by SHA-256 hex fingerprint.
+    pub fn add(&self, pin: &CertPin) {
+        self.pins.write().unwrap().insert(pin.sha256_hex.clone());
+    }
+
+    /// Remove a pin.
+    pub fn remove(&self, pin: &CertPin) -> bool {
+        self.pins.write().unwrap().remove(&pin.sha256_hex)
+    }
+
+    /// Check if a certificate (DER) matches any pinned fingerprint.
+    pub fn is_pinned(&self, cert_der: &[u8]) -> bool {
+        let pin = CertPin::from_der(cert_der);
+        self.pins.read().unwrap().contains(&pin.sha256_hex)
+    }
+
+    /// Number of stored pins.
+    pub fn count(&self) -> usize {
+        self.pins.read().unwrap().len()
+    }
+}
+
+// ── Revocation Checking ───────────────────────────────────────────────────────
+
+/// Revocation check result.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RevocationStatus {
+    /// Certificate is known to be good (not revoked).
+    Good,
+    /// Certificate has been revoked.
+    Revoked {
+        /// RFC 5280 CRLReason (optional).
+        reason: Option<String>,
+    },
+    /// Revocation status is unknown (e.g., responder unavailable).
+    Unknown,
+}
+
+/// An in-memory CRL (Certificate Revocation List) store.
+///
+/// For production deployments, the TLS layer should handle CRL/OCSP. This
+/// provides an application-layer defence-in-depth check against known-revoked
+/// serial numbers.
+#[derive(Debug, Clone, Default)]
+pub struct CrlStore {
+    /// Revoked certificate serial numbers (hex-encoded), keyed by issuer DN.
+    revoked: Arc<std::sync::RwLock<std::collections::HashMap<String, HashSet<String>>>>,
+}
+
+impl CrlStore {
+    /// Create a new empty CRL store.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Mark a certificate serial number as revoked for a given issuer DN.
+    pub fn add_revoked(&self, issuer_dn: &str, serial_hex: &str) {
+        self.revoked
+            .write()
+            .unwrap()
+            .entry(issuer_dn.to_string())
+            .or_default()
+            .insert(serial_hex.to_lowercase());
+    }
+
+    /// Check if a certificate (by issuer DN and serial hex) is revoked.
+    pub fn check(&self, issuer_dn: &str, serial_hex: &str) -> RevocationStatus {
+        let store = self.revoked.read().unwrap();
+        if let Some(serials) = store.get(issuer_dn) {
+            if serials.contains(&serial_hex.to_lowercase()) {
+                return RevocationStatus::Revoked { reason: None };
+            }
+        }
+        RevocationStatus::Good
+    }
+
+    /// Check a DER-encoded certificate against the CRL store.
+    pub fn check_der(&self, cert_der: &[u8]) -> RevocationStatus {
+        use x509_parser::prelude::*;
+        let Ok((_, cert)) = X509Certificate::from_der(cert_der) else {
+            return RevocationStatus::Unknown;
+        };
+        let issuer = cert.issuer().to_string();
+        let serial = cert.raw_serial_as_string().to_lowercase();
+        self.check(&issuer, &serial)
+    }
+
+    /// Total count of revoked serial numbers across all issuers.
+    pub fn revoked_count(&self) -> usize {
+        self.revoked
+            .read()
+            .unwrap()
+            .values()
+            .map(|s| s.len())
+            .sum()
+    }
+
+    /// Remove all entries for an issuer.
+    pub fn clear_issuer(&self, issuer_dn: &str) {
+        self.revoked.write().unwrap().remove(issuer_dn);
+    }
+}
+
+// ── Certificate-Bound Access Tokens (RFC 8705) ───────────────────────────────
+
+/// Computes a certificate thumbprint for use in RFC 8705 certificate-bound
+/// access tokens (mTLS client certificate binding).
+///
+/// Returns the base64url-encoded SHA-256 hash of the DER-encoded certificate,
+/// suitable for the `x5t#S256` confirmation claim in JWT access tokens.
+pub fn cert_thumbprint_s256(cert_der: &[u8]) -> String {
+    use base64::Engine;
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(cert_der);
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(digest)
+}
+
+/// Verify that a presented certificate matches the `x5t#S256` thumbprint
+/// bound to an access token (RFC 8705 §3).
+pub fn verify_cert_binding(cert_der: &[u8], expected_thumbprint: &str) -> Result<()> {
+    let actual = cert_thumbprint_s256(cert_der);
+    if actual == expected_thumbprint {
+        Ok(())
+    } else {
+        Err(AuthError::InvalidCredential {
+            credential_type: "certificate".to_string(),
+            message: format!(
+                "Certificate thumbprint mismatch: token bound to '{}', presented cert has '{}'",
+                expected_thumbprint, actual
+            ),
+        })
     }
 }
 
@@ -765,5 +945,133 @@ mod tests {
             .unwrap();
         // Self-signed: issuer == subject
         assert_eq!(id.issuer_dn, id.subject_dn);
+    }
+
+    // ── Certificate Pinning ─────────────────────────────────────
+
+    #[test]
+    fn test_cert_pin_from_der() {
+        let der = valid_cert("pin-test");
+        let pin = CertPin::from_der(&der);
+        assert_eq!(pin.sha256_hex.len(), 64); // SHA-256 hex = 64 chars
+    }
+
+    #[test]
+    fn test_cert_pin_deterministic() {
+        let der = vec![0x30, 0x82, 0x01, 0x00];
+        let p1 = CertPin::from_der(&der);
+        let p2 = CertPin::from_der(&der);
+        assert_eq!(p1, p2);
+    }
+
+    #[test]
+    fn test_cert_pin_from_hex() {
+        let pin = CertPin::from_hex("AABB");
+        assert_eq!(pin.sha256_hex, "aabb"); // lowercase
+    }
+
+    #[test]
+    fn test_cert_pin_store_add_and_check() {
+        let store = CertPinStore::new();
+        let der = valid_cert("pinned");
+        let pin = CertPin::from_der(&der);
+        store.add(&pin);
+        assert_eq!(store.count(), 1);
+        assert!(store.is_pinned(&der));
+        assert!(!store.is_pinned(&valid_cert("not-pinned")));
+    }
+
+    #[test]
+    fn test_cert_pin_store_remove() {
+        let store = CertPinStore::new();
+        let der = valid_cert("removable");
+        let pin = CertPin::from_der(&der);
+        store.add(&pin);
+        assert!(store.remove(&pin));
+        assert!(!store.is_pinned(&der));
+        assert_eq!(store.count(), 0);
+    }
+
+    // ── CRL Store ───────────────────────────────────────────────
+
+    #[test]
+    fn test_crl_store_add_and_check() {
+        let store = CrlStore::new();
+        store.add_revoked("CN=TestCA", "0a1b2c");
+        assert_eq!(
+            store.check("CN=TestCA", "0a1b2c"),
+            RevocationStatus::Revoked { reason: None }
+        );
+        assert_eq!(store.check("CN=TestCA", "ffffff"), RevocationStatus::Good);
+        assert_eq!(store.check("CN=OtherCA", "0a1b2c"), RevocationStatus::Good);
+    }
+
+    #[test]
+    fn test_crl_store_case_insensitive_serial() {
+        let store = CrlStore::new();
+        store.add_revoked("CN=CA", "aAbBcC");
+        assert_eq!(
+            store.check("CN=CA", "AABBCC"),
+            RevocationStatus::Revoked { reason: None }
+        );
+    }
+
+    #[test]
+    fn test_crl_store_check_der() {
+        let store = CrlStore::new();
+        let der = valid_cert("crl-test");
+        // Without any revocations → Good
+        assert_eq!(store.check_der(&der), RevocationStatus::Good);
+    }
+
+    #[test]
+    fn test_crl_store_revoked_count() {
+        let store = CrlStore::new();
+        store.add_revoked("CN=CA1", "01");
+        store.add_revoked("CN=CA1", "02");
+        store.add_revoked("CN=CA2", "01");
+        assert_eq!(store.revoked_count(), 3);
+    }
+
+    #[test]
+    fn test_crl_store_clear_issuer() {
+        let store = CrlStore::new();
+        store.add_revoked("CN=CA", "01");
+        store.add_revoked("CN=CA", "02");
+        store.clear_issuer("CN=CA");
+        assert_eq!(store.revoked_count(), 0);
+    }
+
+    // ── RFC 8705 Certificate-Bound Tokens ───────────────────────
+
+    #[test]
+    fn test_cert_thumbprint_s256() {
+        let der = valid_cert("rfc8705");
+        let thumbprint = cert_thumbprint_s256(&der);
+        // base64url-encoded SHA-256 = 43 chars
+        assert_eq!(thumbprint.len(), 43);
+    }
+
+    #[test]
+    fn test_cert_thumbprint_deterministic() {
+        let der = vec![0x30, 0x82, 0x00, 0x01];
+        let t1 = cert_thumbprint_s256(&der);
+        let t2 = cert_thumbprint_s256(&der);
+        assert_eq!(t1, t2);
+    }
+
+    #[test]
+    fn test_verify_cert_binding_success() {
+        let der = valid_cert("bound");
+        let thumbprint = cert_thumbprint_s256(&der);
+        assert!(verify_cert_binding(&der, &thumbprint).is_ok());
+    }
+
+    #[test]
+    fn test_verify_cert_binding_mismatch() {
+        let der = valid_cert("bound");
+        let err = verify_cert_binding(&der, "wrong-thumbprint").unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("mismatch"), "expected 'mismatch' in: {msg}");
     }
 }

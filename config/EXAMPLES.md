@@ -299,7 +299,8 @@ algorithm = "HS256"
 
     #[test]
     fn test_environment_variable_override() {
-        std::env::set_var("AUTH_JWT_SECRET_KEY", "env-secret");
+        // SAFETY: Single-threaded test; no concurrent env access.
+        unsafe { std::env::set_var("AUTH_JWT_SECRET_KEY", "env-secret"); }
 
         let config = AuthFrameworkConfigManager::builder()
             .with_env_prefix("AUTH")
@@ -307,7 +308,8 @@ algorithm = "HS256"
             .unwrap();
 
         assert_eq!(config.jwt.secret_key, "env-secret");
-        std::env::remove_var("AUTH_JWT_SECRET_KEY");
+        // SAFETY: Single-threaded test; no concurrent env access.
+        unsafe { std::env::remove_var("AUTH_JWT_SECRET_KEY"); }
     }
 
     #[test]

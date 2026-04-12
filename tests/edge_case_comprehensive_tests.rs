@@ -185,6 +185,11 @@ mod authentication_edge_cases {
         // Authentication during various states should be handled gracefully
         let result = framework.authenticate("password", credential).await;
         assert!(result.is_ok());
+        // No registered users → Failure variant
+        match result.unwrap() {
+            auth_framework::AuthResult::Failure(_) => {}
+            other => panic!("Expected Failure for unknown user, got {:?}", other),
+        }
     }
 
     #[tokio::test]
@@ -551,6 +556,11 @@ mod error_handling_tests {
         let valid_credential = Credential::password("valid_user", "valid_password");
         let result1 = framework.authenticate("password", valid_credential).await;
         assert!(result1.is_ok());
+        // No registered users → should be a Failure variant
+        match result1.unwrap() {
+            auth_framework::AuthResult::Failure(_) => {}
+            other => panic!("Expected Failure for unknown user, got {:?}", other),
+        }
 
         // Test with invalid method (should fail gracefully)
         let credential = Credential::password("user", "password");
@@ -563,6 +573,10 @@ mod error_handling_tests {
         let valid_credential2 = Credential::password("another_user", "another_password");
         let result3 = framework.authenticate("password", valid_credential2).await;
         assert!(result3.is_ok());
+        match result3.unwrap() {
+            auth_framework::AuthResult::Failure(_) => {}
+            other => panic!("Expected Failure for unknown user, got {:?}", other),
+        }
     }
 }
 

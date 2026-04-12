@@ -2,11 +2,12 @@
 
 use crate::errors::{AuthError, Result};
 use crate::storage::AuthStorage;
-use rand::RngExt;
+use ring::rand::SecureRandom;
+use subtle::ConstantTimeEq;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 /// SMSKit configuration for AuthFramework
@@ -40,10 +41,16 @@ impl Default for SmsKitConfig {
 }
 
 /// Supported SMSKit providers
+///
+/// `Plivo` and `AwsSns` require the `smskit` feature flag and their respective
+/// SDK crates (`sms-plivo`, `sms-aws-sns`). When selected without the feature
+/// enabled, `send_sms_with_fallback` returns a descriptive error at runtime.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SmsKitProvider {
     Twilio,
+    /// Requires `smskit` feature and `sms-plivo` crate.
     Plivo,
+    /// Requires `smskit` feature and `sms-aws-sns` crate.
     AwsSns,
     Development,
 }
@@ -227,7 +234,11 @@ impl SmsKitManager {
             challenge_id
         );
 
-        let code = format!("{:06}", rand::rng().random_range(0..1000000));
+        let rng = ring::rand::SystemRandom::new();
+        let mut buf = [0u8; 4];
+        rng.fill(&mut buf).expect("system RNG failure");
+        let val = u32::from_le_bytes(buf) % 1_000_000;
+        let code = format!("{:06}", val);
 
         let sms_key = format!("smskit_challenge:{}:code", challenge_id);
         self.storage
@@ -259,7 +270,7 @@ impl SmsKitManager {
         let sms_key = format!("smskit_challenge:{}:code", challenge_id);
         if let Some(stored_code_data) = self.storage.get_kv(&sms_key).await? {
             let stored_code = std::str::from_utf8(&stored_code_data).unwrap_or("");
-            let is_valid = stored_code == code;
+            let is_valid: bool = stored_code.as_bytes().ct_eq(code.as_bytes()).into();
 
             if is_valid {
                 let _ = self.storage.delete_kv(&sms_key).await;
@@ -307,31 +318,187 @@ impl SmsKitManager {
     }
 
     async fn send_sms_with_fallback(&self, phone_number: &str, message: &str) -> Result<String> {
-        match &self.config.provider {
-            SmsKitProvider::Twilio => {
-                info!("📱 [SMSKit Twilio] SMS would be sent to: {}", phone_number);
-            }
-            SmsKitProvider::Plivo => {
-                info!("📱 [SMSKit Plivo] SMS would be sent to: {}", phone_number);
-            }
-            SmsKitProvider::AwsSns => {
-                info!("📱 [SMSKit AWS SNS] SMS would be sent to: {}", phone_number);
-            }
+        let result = match &self.config.provider {
+            SmsKitProvider::Twilio => self.send_via_twilio(phone_number, message).await,
+            SmsKitProvider::Plivo => self.send_via_plivo(phone_number, message).await,
+            SmsKitProvider::AwsSns => self.send_via_aws_sns(phone_number, message).await,
             SmsKitProvider::Development => {
-                info!(
-                    "📱 [SMSKit Development] SMS would be sent to: {}",
-                    phone_number
-                );
+                info!("📱 [SMSKit Development] SMS sent to: {}", phone_number);
                 info!("   Message: {}", message);
+                Ok(format!("dev_msg_{}", chrono::Utc::now().timestamp()))
+            }
+        };
+
+        // On failure, try fallback provider if configured
+        match result {
+            Ok(msg_id) => Ok(msg_id),
+            Err(primary_err) => {
+                if let Some(fallback_provider) = &self.config.fallback_provider {
+                    warn!(
+                        "Primary SMS provider failed ({}), trying fallback: {:?}",
+                        primary_err, fallback_provider
+                    );
+                    match fallback_provider {
+                        SmsKitProvider::Development => {
+                            info!(
+                                "📱 [SMSKit Development Fallback] SMS sent to: {}",
+                                phone_number
+                            );
+                            info!("   Message: {}", message);
+                            Ok(format!(
+                                "dev_fallback_msg_{}",
+                                chrono::Utc::now().timestamp()
+                            ))
+                        }
+                        _ => Err(primary_err),
+                    }
+                } else {
+                    Err(primary_err)
+                }
             }
         }
+    }
 
-        if let Some(fallback_provider) = &self.config.fallback_provider {
-            info!("   Fallback provider configured: {:?}", fallback_provider);
-        }
+    /// Send SMS via Twilio using sms-twilio crate
+    #[cfg(feature = "smskit")]
+    async fn send_via_twilio(&self, phone_number: &str, message: &str) -> Result<String> {
+        use sms_core::SmsClient;
 
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        Ok(format!("smskit_msg_{}", chrono::Utc::now().timestamp()))
+        let (client, from_number) = if let SmsKitProviderConfig::Twilio {
+            account_sid,
+            auth_token,
+            from_number,
+            ..
+        } = &self.config.config
+        {
+            if account_sid.is_empty() || auth_token.is_empty() || from_number.is_empty() {
+                return Err(AuthError::internal("Twilio credentials are incomplete"));
+            }
+            (
+                sms_twilio::TwilioClient::new(account_sid, auth_token),
+                from_number.clone(),
+            )
+        } else {
+            let from_number = std::env::var("TWILIO_FROM_NUMBER").map_err(|_| {
+                AuthError::internal("Twilio from number not configured: set TWILIO_FROM_NUMBER")
+            })?;
+            let c = sms_twilio::TwilioClient::from_env()
+                .map_err(|e| AuthError::internal(format!("Twilio env config failed: {}", e)))?;
+            (c, from_number)
+        };
+
+        let request = sms_core::SendRequest {
+            to: phone_number,
+            from: &from_number,
+            text: message,
+        };
+
+        let response = client
+            .send(request)
+            .await
+            .map_err(|e| AuthError::internal(format!("Twilio SMS send failed: {}", e)))?;
+
+        debug!("Twilio SMS sent successfully, ID: {}", response.id);
+        Ok(response.id)
+    }
+
+    #[cfg(not(feature = "smskit"))]
+    async fn send_via_twilio(&self, _phone_number: &str, _message: &str) -> Result<String> {
+        Err(AuthError::internal(
+            "Twilio SMS requires the 'smskit' feature flag to be enabled",
+        ))
+    }
+
+    /// Send SMS via Plivo using sms-plivo crate
+    #[cfg(feature = "smskit")]
+    async fn send_via_plivo(&self, phone_number: &str, message: &str) -> Result<String> {
+        use sms_core::SmsClient;
+
+        let (client, from_number) = if let SmsKitProviderConfig::Plivo {
+            auth_id,
+            auth_token,
+            from_number,
+            ..
+        } = &self.config.config
+        {
+            if auth_id.is_empty() || auth_token.is_empty() || from_number.is_empty() {
+                return Err(AuthError::internal("Plivo credentials are incomplete"));
+            }
+            (
+                sms_plivo::PlivoClient::new(auth_id, auth_token),
+                from_number.clone(),
+            )
+        } else {
+            let from_number = std::env::var("PLIVO_FROM_NUMBER").map_err(|_| {
+                AuthError::internal("Plivo from number not configured: set PLIVO_FROM_NUMBER")
+            })?;
+            let c = sms_plivo::PlivoClient::from_env()
+                .map_err(|e| AuthError::internal(format!("Plivo env config failed: {}", e)))?;
+            (c, from_number)
+        };
+
+        let request = sms_core::SendRequest {
+            to: phone_number,
+            from: &from_number,
+            text: message,
+        };
+
+        let response = client
+            .send(request)
+            .await
+            .map_err(|e| AuthError::internal(format!("Plivo SMS send failed: {}", e)))?;
+
+        debug!("Plivo SMS sent successfully, ID: {}", response.id);
+        Ok(response.id)
+    }
+
+    #[cfg(not(feature = "smskit"))]
+    async fn send_via_plivo(&self, _phone_number: &str, _message: &str) -> Result<String> {
+        Err(AuthError::internal(
+            "Plivo SMS requires the 'smskit' feature flag to be enabled",
+        ))
+    }
+
+    /// Send SMS via AWS SNS using sms-aws-sns crate
+    #[cfg(feature = "smskit")]
+    async fn send_via_aws_sns(&self, phone_number: &str, message: &str) -> Result<String> {
+        use sms_core::SmsClient;
+
+        let client = if let SmsKitProviderConfig::AwsSns {
+            region,
+            access_key_id,
+            secret_access_key,
+        } = &self.config.config
+        {
+            if access_key_id.is_empty() || secret_access_key.is_empty() {
+                return Err(AuthError::internal("AWS credentials are incomplete"));
+            }
+            sms_aws_sns::AwsSnsClient::new(region, access_key_id, secret_access_key)
+        } else {
+            sms_aws_sns::AwsSnsClient::from_env()
+                .map_err(|e| AuthError::internal(format!("AWS SNS env config failed: {}", e)))?
+        };
+
+        let request = sms_core::SendRequest {
+            to: phone_number,
+            from: "",
+            text: message,
+        };
+
+        let response = client
+            .send(request)
+            .await
+            .map_err(|e| AuthError::internal(format!("AWS SNS SMS send failed: {}", e)))?;
+
+        debug!("AWS SNS SMS sent successfully, ID: {}", response.id);
+        Ok(response.id)
+    }
+
+    #[cfg(not(feature = "smskit"))]
+    async fn send_via_aws_sns(&self, _phone_number: &str, _message: &str) -> Result<String> {
+        Err(AuthError::internal(
+            "AWS SNS SMS requires the 'smskit' feature flag to be enabled",
+        ))
     }
 
     async fn update_rate_limits(&self, user_id: &str) -> Result<()> {

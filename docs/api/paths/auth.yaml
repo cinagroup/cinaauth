@@ -1,15 +1,40 @@
-# Authentication Endpoints
-# User authentication, token management, and session control
-# All authentication endpoints are under /api/v1/auth
+# Authentication and Account Verification Endpoints
+
+register:
+    post:
+        tags:
+            - Authentication
+        summary: Register a new user
+        operationId: register
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/auth.yaml#/RegisterRequest"
+        responses:
+            "200":
+                description: Registration completed successfully
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          $ref: "../schemas/auth.yaml#/RegisterResponse"
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+            "409":
+                $ref: "../components/responses.yaml#/Conflict"
 
 login:
     post:
         tags:
             - Authentication
-        summary: User login
-        description: |
-            Authenticate user with username/password and return access and refresh tokens.
-            Supports optional MFA verification and "remember me" functionality.
+        summary: Log in with username and password
+        description: Submit challenge_id and mfa_code together to complete a pending login MFA challenge on the same endpoint.
         operationId: login
         requestBody:
             required: true
@@ -17,22 +42,9 @@ login:
                 application/json:
                     schema:
                         $ref: "../schemas/auth.yaml#/LoginRequest"
-                    examples:
-                        basic:
-                            summary: Basic login
-                            value:
-                                username: "user@example.com"
-                                password: "SecurePassword123!"
-                                remember_me: false
-                        withMFA:
-                            summary: Login with MFA
-                            value:
-                                username: "user@example.com"
-                                password: "SecurePassword123!"
-                                mfa_code: "123456"
         responses:
             "200":
-                description: Login successful
+                description: Login completed successfully
                 content:
                     application/json:
                         schema:
@@ -53,10 +65,8 @@ refresh:
     post:
         tags:
             - Authentication
-        summary: Refresh access token
-        description: |
-            Use a valid refresh token to obtain a new access token without re-authentication.
-            The refresh token remains valid unless explicitly revoked.
+        summary: Rotate a refresh token
+        description: The refresh handler issues a new access token and a new refresh token.
         operationId: refreshToken
         requestBody:
             required: true
@@ -66,7 +76,7 @@ refresh:
                         $ref: "../schemas/auth.yaml#/RefreshTokenRequest"
         responses:
             "200":
-                description: Token refreshed successfully
+                description: Token refresh completed successfully
                 content:
                     application/json:
                         schema:
@@ -79,50 +89,37 @@ refresh:
             "400":
                 $ref: "../components/responses.yaml#/BadRequest"
             "401":
-                description: Invalid or expired refresh token
-                content:
-                    application/json:
-                        schema:
-                            $ref: "../schemas/common.yaml#/ApiError"
+                $ref: "../components/responses.yaml#/Unauthorized"
 
 logout:
     post:
         tags:
             - Authentication
-        summary: User logout
-        description: |
-            Invalidate current session and revoke access and refresh tokens.
-            Requires valid access token in Authorization header.
+        summary: Log out and revoke the current access token
         operationId: logout
         security:
             - bearerAuth: []
+        requestBody:
+            required: false
+            content:
+                application/json:
+                    schema:
+                        $ref: "../schemas/auth.yaml#/LogoutRequest"
         responses:
             "200":
-                description: Logout successful
+                description: Logout completed successfully
                 content:
                     application/json:
                         schema:
-                            allOf:
-                                - $ref: "../schemas/common.yaml#/ApiResponse"
-                                - type: object
-                                  properties:
-                                      data:
-                                          type: object
-                                          properties:
-                                              message:
-                                                  type: string
-                                                  example: "Successfully logged out"
+                            $ref: "../schemas/common.yaml#/ApiResponse"
             "401":
                 $ref: "../components/responses.yaml#/Unauthorized"
 
 validate:
-    post:
+    get:
         tags:
             - Authentication
-        summary: Validate access token
-        description: |
-            Validate an access token and return associated user information.
-            Use this endpoint to verify token validity and fetch current user context.
+        summary: Validate the current access token
         operationId: validateToken
         security:
             - bearerAuth: []
@@ -139,8 +136,187 @@ validate:
                                       data:
                                           $ref: "../schemas/auth.yaml#/TokenValidationResponse"
             "401":
-                description: Invalid or expired token
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+providers:
+    get:
+        tags:
+            - Authentication
+        summary: List configured OAuth login providers
+        operationId: listProviders
+        responses:
+            "200":
+                description: Provider list returned successfully
                 content:
                     application/json:
                         schema:
-                            $ref: "../schemas/common.yaml#/ApiError"
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: array
+                                          items:
+                                              type: object
+                                              properties:
+                                                  name:
+                                                      type: string
+                                                  display_name:
+                                                      type: string
+                                                  auth_url:
+                                                      type: string
+                                              required:
+                                                  - name
+                                                  - display_name
+                                                  - auth_url
+
+apiKeys:
+    post:
+        tags:
+            - Authentication
+        summary: Create an API key for the authenticated user
+        operationId: createApiKey
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: API key created successfully
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              api_key:
+                                                  type: string
+                                              token_type:
+                                                  type: string
+                                                  example: "ApiKey"
+                                          required:
+                                              - api_key
+                                              - token_type
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+verifyEmailSend:
+    post:
+        tags:
+            - Authentication
+        summary: Generate an email verification token for the authenticated user
+        operationId: sendVerificationEmail
+        security:
+            - bearerAuth: []
+        responses:
+            "200":
+                description: Verification token generated or already verified state returned
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              sent:
+                                                  type: boolean
+                                              verification_token:
+                                                  type: string
+                                              message:
+                                                  type: string
+                                          required:
+                                              - sent
+                                              - verification_token
+                                              - message
+            "401":
+                $ref: "../components/responses.yaml#/Unauthorized"
+
+verifyEmail:
+    post:
+        tags:
+            - Authentication
+        summary: Confirm ownership of an email address
+        operationId: verifyEmail
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            token:
+                                type: string
+                        required:
+                            - token
+        responses:
+            "200":
+                description: Email address verified successfully
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              verified:
+                                                  type: boolean
+                                              user_id:
+                                                  type: string
+                                              message:
+                                                  type: string
+                                          required:
+                                              - verified
+                                              - user_id
+                                              - message
+            "400":
+                $ref: "../components/responses.yaml#/BadRequest"
+
+resendVerification:
+    post:
+        tags:
+            - Authentication
+        summary: Generate a new verification token for an email address
+        operationId: resendVerification
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            email:
+                                type: string
+                                format: email
+                        required:
+                            - email
+        responses:
+            "200":
+                description: Generic resend-verification response returned
+                content:
+                    application/json:
+                        schema:
+                            allOf:
+                                - $ref: "../schemas/common.yaml#/ApiResponse"
+                                - type: object
+                                  properties:
+                                      data:
+                                          type: object
+                                          properties:
+                                              sent:
+                                                  type: boolean
+                                              verification_token:
+                                                  type: string
+                                              message:
+                                                  type: string
+                                          required:
+                                              - sent
+                                              - verification_token
+                                              - message

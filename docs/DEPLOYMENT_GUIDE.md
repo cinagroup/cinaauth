@@ -165,7 +165,7 @@ export RUST_LOG="info"
 curl -O https://raw.githubusercontent.com/ciresnave/auth-framework/main/docker-compose.yml
 ```
 
-2. **Create environment file (.env):**
+1. **Create environment file (.env):**
 
 ```bash
 cat > .env << EOF
@@ -183,7 +183,7 @@ SECRET_KEY=$(openssl rand -base64 32)
 EOF
 ```
 
-3. **Start services:**
+1. **Start services:**
 
 ```bash
 # Start core services
@@ -199,7 +199,7 @@ docker compose --profile admin up -d
 docker compose --profile monitoring --profile admin up -d
 ```
 
-4. **Check status:**
+1. **Check status:**
 
 ```bash
 docker compose ps
@@ -270,7 +270,7 @@ WantedBy=multi-user.target
 EOF
 ```
 
-2. **Enable and start:**
+1. **Enable and start:**
 
 ```bash
 sudo systemctl daemon-reload
@@ -279,7 +279,7 @@ sudo systemctl start authframework
 sudo systemctl status authframework
 ```
 
-3. **View logs:**
+1. **View logs:**
 
 ```bash
 sudo journalctl -u authframework -f
@@ -316,7 +316,7 @@ cat > ~/Library/LaunchAgents/com.authframework.server.plist << EOF
 EOF
 ```
 
-2. **Load and start:**
+1. **Load and start:**
 
 ```bash
 launchctl load ~/Library/LaunchAgents/com.authframework.server.plist
@@ -549,11 +549,12 @@ After installation:
 
 You now have AuthFramework running! Access the API documentation at:
 
-- <http://localhost:8080/api/docs> (when server is running)
+- <http://localhost:8080/docs> (Swagger UI when the API server is running)
+- <http://localhost:8080/api/openapi.json> (OpenAPI JSON)
 
 For SDK examples, see:
 
 - JavaScript/TypeScript: `sdks/javascript/`
-- Python: `sdks/python/` (coming soon)
+- Python: `sdks/python/`
 - Go: `sdks/go/` (coming soon)
 - Java: `sdks/java/` (coming soon)

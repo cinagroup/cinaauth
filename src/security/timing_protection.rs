@@ -5,7 +5,7 @@
 //! could exploit timing differences to extract sensitive information.
 
 use crate::errors::Result;
-use rand::RngExt;
+use ring::rand::SecureRandom;
 use std::time::Duration;
 use subtle::ConstantTimeEq;
 
@@ -47,7 +47,11 @@ pub fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
 /// to determine success/failure patterns or extract sensitive information.
 pub async fn random_delay(base_delay_ms: u64, max_random_ms: u64) {
     let base_delay = Duration::from_millis(base_delay_ms);
-    let random_delay = Duration::from_millis(rand::rng().random_range(0..max_random_ms));
+    let rng = ring::rand::SystemRandom::new();
+    let mut buf = [0u8; 8];
+    rng.fill(&mut buf).expect("system RNG failure");
+    let random_ms = u64::from_le_bytes(buf) % max_random_ms;
+    let random_delay = Duration::from_millis(random_ms);
     let total_delay = base_delay + random_delay;
 
     tokio::time::sleep(total_delay).await;

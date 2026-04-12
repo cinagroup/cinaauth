@@ -17,32 +17,44 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use subtle::ConstantTimeEq as _;
 
-/// MFA setup response
+/// Response returned after initiating MFA setup.
+///
+/// The client must render the `qr_code` (or display `secret`) to the user and
+/// prompt for a TOTP code to complete enrollment via the verify endpoint.
 #[derive(Debug, Serialize)]
 pub struct MfaSetupResponse {
+    /// `otpauth://` URI suitable for a QR code.
     pub qr_code: String,
+    /// Base32-encoded TOTP shared secret (for manual entry).
     pub secret: String,
+    /// One-time recovery codes — store securely; shown only once.
     pub backup_codes: Vec<String>,
 }
 
-/// MFA verify request
+/// Request payload for the TOTP verification step.
 #[derive(Debug, Deserialize)]
 pub struct MfaVerifyRequest {
+    /// Six-digit TOTP code from the authenticator app.
     pub totp_code: String,
 }
 
-/// MFA disable request
+/// Request payload to disable MFA (requires proof of identity).
 #[derive(Debug, Deserialize)]
 pub struct MfaDisableRequest {
+    /// Account password for re-authentication.
     pub password: String,
+    /// A valid TOTP code confirming the user still controls the authenticator.
     pub totp_code: String,
 }
 
-/// MFA status response
+/// Current MFA enrollment status for the authenticated user.
 #[derive(Debug, Serialize)]
 pub struct MfaStatusResponse {
+    /// `true` when MFA is fully enrolled and enforced.
     pub enabled: bool,
+    /// Active MFA methods (e.g. `["totp"]`).
     pub methods: Vec<String>,
+    /// Number of unused one-time backup codes remaining.
     pub backup_codes_remaining: u32,
 }
 
@@ -102,7 +114,7 @@ fn verify_totp_code(provided: &str, secret_bytes: &[u8], now: u64) -> bool {
 // Endpoint handlers
 // ---------------------------------------------------------------------------
 
-/// POST /mfa/setup
+/// `POST /mfa/setup` — initiate MFA enrollment.
 ///
 /// Generates a new TOTP secret and ten backup codes, stores them as *pending*
 /// (TTL 10 min), and returns:
@@ -173,7 +185,7 @@ pub async fn setup_mfa(
     }
 }
 
-/// POST /mfa/verify
+/// `POST /mfa/verify` — complete MFA enrollment.
 ///
 /// Verifies a TOTP code against the *pending* secret created by `/mfa/setup`.
 /// On success the pending secret is promoted to the active secret, backup-code
@@ -246,16 +258,24 @@ pub async fn verify_mfa(
                         format!("mfa_pending_backup_codes:{}", auth_token.user_id);
                     if let Ok(Some(data)) = storage.get_kv(&pending_backup_key).await {
                         let active_backup_key = format!("mfa_backup_codes:{}", auth_token.user_id);
-                        let _ = storage.store_kv(&active_backup_key, &data, None).await;
-                        let _ = storage.delete_kv(&pending_backup_key).await;
+                        if let Err(e) = storage.store_kv(&active_backup_key, &data, None).await {
+                            tracing::warn!("Failed to promote MFA backup codes for user {}: {}", auth_token.user_id, e);
+                        }
+                        if let Err(e) = storage.delete_kv(&pending_backup_key).await {
+                            tracing::warn!("Failed to clean up pending MFA backup codes for user {}: {}", auth_token.user_id, e);
+                        }
                     }
 
                     // Clean up pending secret.
-                    let _ = storage.delete_kv(&pending_key).await;
+                    if let Err(e) = storage.delete_kv(&pending_key).await {
+                        tracing::warn!("Failed to clean up pending MFA secret for user {}: {}", auth_token.user_id, e);
+                    }
 
                     // Set the enabled flag.
                     let flag_key = format!("mfa_enabled:{}", auth_token.user_id);
-                    let _ = storage.store_kv(&flag_key, b"true", None).await;
+                    if let Err(e) = storage.store_kv(&flag_key, b"true", None).await {
+                        tracing::warn!("Failed to set MFA enabled flag for user {}: {}", auth_token.user_id, e);
+                    }
 
                     tracing::info!("MFA enabled for user: {}", auth_token.user_id);
                     ApiResponse::<()>::ok_with_message("MFA enabled successfully")
@@ -267,7 +287,7 @@ pub async fn verify_mfa(
     }
 }
 
-/// POST /mfa/disable
+/// `POST /mfa/disable` — remove MFA from the authenticated account.
 ///
 /// Disables MFA for the authenticated user after verifying their password and
 /// a valid TOTP code.  All MFA storage keys are deleted.
@@ -340,9 +360,15 @@ pub async fn disable_mfa(
                     let backup_key = format!("mfa_backup_codes:{}", auth_token.user_id);
                     let flag_key = format!("mfa_enabled:{}", auth_token.user_id);
 
-                    let _ = storage.delete_kv(&active_key).await;
-                    let _ = storage.delete_kv(&backup_key).await;
-                    let _ = storage.delete_kv(&flag_key).await;
+                    if let Err(e) = storage.delete_kv(&active_key).await {
+                        tracing::warn!("Failed to delete MFA secret for user {}: {}", auth_token.user_id, e);
+                    }
+                    if let Err(e) = storage.delete_kv(&backup_key).await {
+                        tracing::warn!("Failed to delete MFA backup codes for user {}: {}", auth_token.user_id, e);
+                    }
+                    if let Err(e) = storage.delete_kv(&flag_key).await {
+                        tracing::warn!("Failed to delete MFA enabled flag for user {}: {}", auth_token.user_id, e);
+                    }
 
                     tracing::info!("MFA disabled for user: {}", auth_token.user_id);
                     ApiResponse::<()>::ok_with_message("MFA disabled successfully")
@@ -354,8 +380,7 @@ pub async fn disable_mfa(
     }
 }
 
-/// GET /mfa/status
-/// Get MFA status for current user
+/// `GET /mfa/status` — query the current MFA enrollment state.
 pub async fn get_mfa_status(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -386,7 +411,7 @@ pub async fn get_mfa_status(
     }
 }
 
-/// POST /mfa/regenerate-backup-codes
+/// `POST /mfa/regenerate-backup-codes` — replace all backup codes.
 ///
 /// Replaces all existing backup codes with a fresh set.  MFA must be enabled.
 /// The new plaintext codes are returned **once** and are not stored.
@@ -440,16 +465,18 @@ pub async fn regenerate_backup_codes(
     }
 }
 
-/// POST /mfa/verify-backup-code
+/// `POST /mfa/verify-backup-code` — authenticate with a one-time backup code.
 ///
 /// Verifies a backup code for the authenticated user and consumes it (one-time
 /// use).  This can be used in lieu of a TOTP code when the user has lost
 /// access to their authenticator app.
 #[derive(Debug, Deserialize)]
 pub struct BackupCodeVerifyRequest {
+    /// The plaintext backup code to verify.
     pub backup_code: String,
 }
 
+/// Handler for `POST /mfa/verify-backup-code`.
 pub async fn verify_backup_code(
     State(state): State<ApiState>,
     headers: HeaderMap,

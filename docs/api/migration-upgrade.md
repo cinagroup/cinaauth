@@ -13,9 +13,9 @@ This guide provides comprehensive instructions for migrating to AuthFramework fr
 5. [Data Migration Tools](#data-migration-tools)
 6. [Breaking Changes Guide](#breaking-changes-guide)
 7. [Rollback Procedures](#rollback-procedures)
-8. [Testing Migration](#testing-migration)
-9. [Production Migration](#production-migration)
-10. [Post-Migration Validation](#post-migration-validation)
+8. Testing Migration
+9. Production Migration
+10. Post-Migration Validation
 
 ## Migration Overview
 
@@ -363,36 +363,39 @@ impl V03ToV04Upgrade {
         // Load old configuration
         let old_config = self.load_v03_config().await?;
 
-        // Convert to new format
-        let new_config = AuthFrameworkConfig {
-            version: "0.4.0".to_string(),
-            server: ServerConfig {
-                host: old_config.server.host,
-                port: old_config.server.port,
-                tls: old_config.server.tls,
-                // New security settings
-                security: SecurityConfig {
-                    jwt_algorithm: JwtAlgorithm::RS256, // Upgraded from HS256
-                    token_ttl: old_config.auth.token_ttl,
-                    refresh_token_ttl: old_config.auth.refresh_token_ttl,
-                    // New security features in 0.4.x
-                    require_mfa: false, // Default to backward compatibility
-                    password_policy: PasswordPolicy::default(),
-                    rate_limiting: RateLimitingConfig::default(),
-                },
+        // Convert to the current application/runtime configuration model.
+        let new_app_config = AppConfig {
+            database: old_config.database,
+            redis: old_config.redis,
+            jwt: JwtConfig {
+                secret_key: old_config.auth.jwt_secret,
+                issuer: old_config.auth.issuer,
+                audience: old_config.auth.audience,
+                access_token_ttl_seconds: old_config.auth.token_ttl,
+                refresh_token_ttl_seconds: old_config.auth.refresh_token_ttl,
             },
-            database: old_config.database, // Compatible
-            redis: old_config.redis,       // Compatible
-            // New sections in 0.4.x
-            monitoring: MonitoringConfig::default(),
-            audit: AuditConfig::default(),
+            oauth: old_config.oauth,
+            security: SecuritySettings {
+                password_min_length: 12,
+                password_require_special_chars: true,
+                rate_limit_requests_per_minute: 60,
+                session_timeout_hours: 24,
+                max_concurrent_sessions: 5,
+                require_mfa: false,
+            },
+            logging: LoggingConfig {
+                level: "info".to_string(),
+                audit_enabled: true,
+                audit_storage: "database".to_string(),
+            },
         };
 
-        // Validate new configuration
-        new_config.validate()?;
+        // Validate the runtime AuthConfig derived from the application config.
+        let new_auth_config = new_app_config.to_auth_config();
+        new_auth_config.validate()?;
 
-        // Save new configuration
-        self.save_config(&new_config).await?;
+        // Save the new configuration.
+        self.save_config(&new_app_config).await?;
 
         Ok(())
     }
@@ -933,4 +936,4 @@ echo "Emergency backup available at: $EMERGENCY_BACKUP"
 
 ---
 
-*AuthFramework v0.4.0 - Migration and Upgrade Documentation*
+AuthFramework v0.5.0-rc18 - Migration and Upgrade Documentation

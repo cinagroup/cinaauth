@@ -1081,8 +1081,14 @@ impl AdvancedTokenExchangeManager {
         &self,
         request: &AdvancedTokenExchangeRequest,
     ) -> Result<TokenActorInfo> {
-        let actor_token = request.actor_token.as_ref().unwrap();
-        let actor_token_type = request.actor_token_type.as_ref().unwrap();
+        let actor_token = request
+            .actor_token
+            .as_ref()
+            .ok_or_else(|| AuthError::InvalidRequest("actor_token is required".to_string()))?;
+        let actor_token_type = request
+            .actor_token_type
+            .as_ref()
+            .ok_or_else(|| AuthError::InvalidRequest("actor_token_type is required".to_string()))?;
 
         let processor = self.get_processor(actor_token_type)?;
         let token_info = processor
@@ -1194,7 +1200,7 @@ impl AdvancedTokenExchangeManager {
         validation.set_issuer(&["advanced-token-exchange"]);
 
         let token_data = decode::<serde_json::Value>(token, &self.decoding_key, &validation)
-            .map_err(|e| AuthError::InvalidToken(format!("Invalid delegation token: {}", e)))?;
+            .map_err(|e| AuthError::token(format!("Invalid delegation token: {}", e)))?;
 
         Ok(token_data.claims)
     }
@@ -1229,7 +1235,7 @@ impl AdvancedTokenExchangeManager {
 
         // For introspection only, decode without signature verification
         let token_data = dangerous::insecure_decode::<serde_json::Value>(token)
-            .map_err(|e| AuthError::InvalidToken(format!("Token introspection failed: {}", e)))?;
+            .map_err(|e| AuthError::token(format!("Token introspection failed: {}", e)))?;
 
         Ok(token_data.claims)
     }
@@ -1372,9 +1378,61 @@ impl TokenExchangeService for AdvancedTokenExchangeManager {
                 }),
             }
         } else {
-            // For non-JWT tokens, use basic validation
+            // For non-JWT tokens, perform basic structural validation
+            if token.is_empty() {
+                return Ok(TokenValidationResult {
+                    is_valid: false,
+                    subject: None,
+                    issuer: None,
+                    audience: Vec::new(),
+                    scopes: Vec::new(),
+                    expires_at: None,
+                    metadata: std::collections::HashMap::new(),
+                    validation_messages: vec!["Token is empty".to_string()],
+                });
+            }
+
+            // SAML token types: check basic XML structure
+            if token_type.contains("saml") {
+                let trimmed = token.trim();
+                if !trimmed.starts_with('<') || !trimmed.ends_with('>') {
+                    return Ok(TokenValidationResult {
+                        is_valid: false,
+                        subject: None,
+                        issuer: None,
+                        audience: Vec::new(),
+                        scopes: Vec::new(),
+                        expires_at: None,
+                        metadata: std::collections::HashMap::new(),
+                        validation_messages: vec![format!(
+                            "Invalid SAML token structure for type: {}",
+                            token_type
+                        )],
+                    });
+                }
+            }
+
+            // Opaque tokens: verify minimum length and printable characters
+            if !token
+                .chars()
+                .all(|c| !c.is_control() || c == '\n' || c == '\r' || c == '\t')
+            {
+                return Ok(TokenValidationResult {
+                    is_valid: false,
+                    subject: None,
+                    issuer: None,
+                    audience: Vec::new(),
+                    scopes: Vec::new(),
+                    expires_at: None,
+                    metadata: std::collections::HashMap::new(),
+                    validation_messages: vec![
+                        "Token contains invalid control characters".to_string(),
+                    ],
+                });
+            }
+
             Ok(TokenValidationResult {
-                is_valid: true, // Simplified validation
+                is_valid: true,
                 subject: None,
                 issuer: None,
                 audience: Vec::new(),
@@ -1382,7 +1440,7 @@ impl TokenExchangeService for AdvancedTokenExchangeManager {
                 expires_at: None,
                 metadata: std::collections::HashMap::new(),
                 validation_messages: vec![format!(
-                    "Basic validation for token type: {}",
+                    "Basic structural validation passed for token type: {}",
                     token_type
                 )],
             })

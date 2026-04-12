@@ -87,6 +87,106 @@ pub struct RegistrationRequest {
     pub claims: Option<String>,
 }
 
+impl RegistrationRequest {
+    /// Create a new builder for a RegistrationRequest.
+    pub fn builder(
+        client_id: impl Into<String>,
+        redirect_uri: impl Into<String>,
+        scope: impl Into<String>,
+        response_type: impl Into<String>,
+    ) -> RegistrationRequestBuilder {
+        RegistrationRequestBuilder {
+            client_id: client_id.into(),
+            redirect_uri: redirect_uri.into(),
+            scope: scope.into(),
+            response_type: response_type.into(),
+            state: None,
+            nonce: None,
+            prompt: None,
+            login_hint: None,
+            ui_locales: None,
+            registration_metadata: None,
+            claims: None,
+        }
+    }
+}
+
+/// Builder for RegistrationRequest
+pub struct RegistrationRequestBuilder {
+    client_id: String,
+    redirect_uri: String,
+    scope: String,
+    response_type: String,
+    state: Option<String>,
+    nonce: Option<String>,
+    prompt: Option<String>,
+    login_hint: Option<String>,
+    ui_locales: Option<String>,
+    registration_metadata: Option<String>,
+    claims: Option<String>,
+}
+
+impl RegistrationRequestBuilder {
+    /// Set the state parameter
+    pub fn state(mut self, state: impl Into<String>) -> Self {
+        self.state = Some(state.into());
+        self
+    }
+
+    /// Set the nonce parameter
+    pub fn nonce(mut self, nonce: impl Into<String>) -> Self {
+        self.nonce = Some(nonce.into());
+        self
+    }
+
+    /// Set the prompt parameter
+    pub fn prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.prompt = Some(prompt.into());
+        self
+    }
+
+    /// Set the login hint
+    pub fn login_hint(mut self, login_hint: impl Into<String>) -> Self {
+        self.login_hint = Some(login_hint.into());
+        self
+    }
+
+    /// Set UI locales
+    pub fn ui_locales(mut self, ui_locales: impl Into<String>) -> Self {
+        self.ui_locales = Some(ui_locales.into());
+        self
+    }
+
+    /// Set registration metadata
+    pub fn registration_metadata(mut self, registration_metadata: impl Into<String>) -> Self {
+        self.registration_metadata = Some(registration_metadata.into());
+        self
+    }
+
+    /// Set claims to collect
+    pub fn claims(mut self, claims: impl Into<String>) -> Self {
+        self.claims = Some(claims.into());
+        self
+    }
+
+    /// Build the request
+    pub fn build(self) -> RegistrationRequest {
+        RegistrationRequest {
+            client_id: self.client_id,
+            redirect_uri: self.redirect_uri,
+            scope: self.scope,
+            response_type: self.response_type,
+            state: self.state,
+            nonce: self.nonce,
+            prompt: self.prompt,
+            login_hint: self.login_hint,
+            ui_locales: self.ui_locales,
+            registration_metadata: self.registration_metadata,
+            claims: self.claims,
+        }
+    }
+}
+
 /// User registration data
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RegistrationData {
@@ -122,6 +222,65 @@ pub struct RegistrationData {
     pub completed: bool,
     /// Creation timestamp
     pub created_at: u64,
+}
+
+impl RegistrationData {
+    /// Create a new RegistrationData instance.
+    pub fn new(registration_id: impl Into<String>) -> Self {
+        use std::time::SystemTime;
+        Self {
+            registration_id: registration_id.into(),
+            email: None,
+            phone_number: None,
+            given_name: None,
+            family_name: None,
+            name: None,
+            preferred_username: None,
+            picture: None,
+            website: None,
+            gender: None,
+            birthdate: None,
+            zoneinfo: None,
+            locale: None,
+            custom_fields: HashMap::new(),
+            completed: false,
+            created_at: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+        }
+    }
+
+    /// Set the user's email.
+    pub fn with_email(mut self, email: impl Into<String>) -> Self {
+        self.email = Some(email.into());
+        self
+    }
+
+    /// Set the user's phone number.
+    pub fn with_phone_number(mut self, phone_number: impl Into<String>) -> Self {
+        self.phone_number = Some(phone_number.into());
+        self
+    }
+
+    /// Set the full name.
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Set the given and family name.
+    pub fn with_names(mut self, given: impl Into<String>, family: impl Into<String>) -> Self {
+        self.given_name = Some(given.into());
+        self.family_name = Some(family.into());
+        self
+    }
+
+    /// Mark the registration as completed.
+    pub fn mark_completed(mut self) -> Self {
+        self.completed = true;
+        self
+    }
 }
 
 /// Registration completion response
@@ -213,24 +372,16 @@ impl RegistrationManager {
         }
     }
 
-    /// Create new registration manager with storage backend for user persistence
-    pub fn with_storage(config: RegistrationConfig, storage: Arc<dyn AuthStorage>) -> Self {
-        Self {
-            config,
-            error_manager: OidcErrorManager::default(),
-            registration_sessions: HashMap::new(),
-            storage: Some(storage),
-        }
+    /// Set an optional storage backend for user persistence (chainable).
+    pub fn storage(mut self, storage: Arc<dyn AuthStorage>) -> Self {
+        self.storage = Some(storage);
+        self
     }
 
-    /// Create new registration manager with custom error manager
-    pub fn with_error_manager(config: RegistrationConfig, error_manager: OidcErrorManager) -> Self {
-        Self {
-            config,
-            error_manager,
-            registration_sessions: HashMap::new(),
-            storage: None,
-        }
+    /// Set a custom OidcErrorManager (chainable).
+    pub fn error_manager(mut self, error_manager: OidcErrorManager) -> Self {
+        self.error_manager = error_manager;
+        self
     }
 
     /// Create OIDC error response for registration not enabled
@@ -276,7 +427,7 @@ impl RegistrationManager {
         let mut additional_details = HashMap::new();
         additional_details.insert(
             "missing_fields".to_string(),
-            serde_json::to_value(missing_fields.clone()).unwrap(),
+            serde_json::to_value(missing_fields.clone()).unwrap_or_default(),
         );
 
         self.error_manager.create_error_response(
@@ -412,16 +563,14 @@ impl RegistrationManager {
         registration_id: &str,
         updates: HashMap<String, serde_json::Value>,
     ) -> Result<()> {
-        // Check if registration exists first
-        if !self.registration_sessions.contains_key(registration_id) {
+        // Check if registration exists and get mutable reference
+        let Some(registration) = self.registration_sessions.get_mut(registration_id) else {
             let error_response = self.create_session_not_found_error(None);
             return Err(AuthError::validation(format!(
                 "Session error: {}",
                 error_response.error_description.unwrap_or_default()
             )));
-        }
-
-        let registration = self.registration_sessions.get_mut(registration_id).unwrap(); // Safe because we checked above
+        };
 
         // Check session timeout
         let now = std::time::SystemTime::now()
@@ -466,16 +615,14 @@ impl RegistrationManager {
 
     /// Validate registration data completeness
     pub fn validate_registration_data(&self, registration_id: &str) -> Result<Vec<String>> {
-        // Check if registration exists first
-        if !self.registration_sessions.contains_key(registration_id) {
+        // Check if registration exists
+        let Some(registration) = self.registration_sessions.get(registration_id) else {
             let error_response = self.create_session_not_found_error(None);
             return Err(AuthError::validation(format!(
                 "Session error: {}",
                 error_response.error_description.unwrap_or_default()
             )));
-        }
-
-        let registration = self.registration_sessions.get(registration_id).unwrap(); // Safe because we checked above
+        };
 
         let mut missing_fields = Vec::new();
 
@@ -518,14 +665,14 @@ impl RegistrationManager {
 
     /// Complete user registration and create user account
     ///
-    /// When a storage backend has been provided via [`RegistrationManager::with_storage`],
+    /// When a storage backend has been provided via [`RegistrationManager::storage`],
     /// the newly registered user is persisted to storage using the same key layout as
     /// `AuthFramework::register_user` so that downstream endpoints (e.g. `userinfo`) can
     /// retrieve the profile immediately after registration.
     ///
     /// If no storage backend is configured the session is still consumed and an
     /// authorisation code is issued, but the user is **not** persisted — callers must
-    /// wire in storage via `with_storage` before this path is production-ready.
+    /// wire in storage via `.storage()` before this path is production-ready.
     pub async fn complete_registration(
         &mut self,
         registration_id: &str,
@@ -533,16 +680,14 @@ impl RegistrationManager {
         // Validate registration data using error manager
         self.validate_registration_completeness(registration_id, None)?;
 
-        // Check if registration exists first
-        if !self.registration_sessions.contains_key(registration_id) {
+        // Check if registration exists and remove it
+        let Some(mut registration) = self.registration_sessions.remove(registration_id) else {
             let error_response = self.create_session_not_found_error(None);
             return Err(AuthError::validation(format!(
                 "Session error: {}",
                 error_response.error_description.unwrap_or_default()
             )));
-        }
-
-        let mut registration = self.registration_sessions.remove(registration_id).unwrap(); // Safe because we checked above
+        };
 
         // Generate new user subject identifier
         let sub = crate::utils::string::generate_id(Some("user"));
@@ -629,7 +774,7 @@ impl RegistrationManager {
             warn!(
                 "OIDC user registration for sub '{}' completed the session but did NOT persist \
                  the user to storage. Provide a storage backend via \
-                 RegistrationManager::with_storage() to enable user persistence.",
+                 RegistrationManager::storage() to enable user persistence.",
                 sub
             );
         }
@@ -652,16 +797,14 @@ impl RegistrationManager {
 
     /// Generate registration form HTML
     pub fn generate_registration_form(&self, registration_id: &str) -> Result<String> {
-        // Check if registration exists first
-        if !self.registration_sessions.contains_key(registration_id) {
+        // Check if registration exists
+        let Some(registration) = self.registration_sessions.get(registration_id) else {
             let error_response = self.create_session_not_found_error(None);
             return Err(AuthError::validation(format!(
                 "Session error: {}",
                 error_response.error_description.unwrap_or_default()
             )));
-        }
-
-        let registration = self.registration_sessions.get(registration_id).unwrap(); // Safe because we checked above
+        };
 
         let mut form = format!(
             r#"<!DOCTYPE html>
@@ -808,6 +951,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_registration_request_builder() {
+        let req = RegistrationRequest::builder("client_123", "https://app/cb", "openid", "code")
+            .prompt("create")
+            .login_hint("user@example.com")
+            .ui_locales("fr-FR")
+            .build();
+
+        assert_eq!(req.client_id, "client_123");
+        assert_eq!(req.prompt, Some("create".to_string()));
+        assert_eq!(req.login_hint, Some("user@example.com".to_string()));
+        assert_eq!(req.ui_locales, Some("fr-FR".to_string()));
+    }
+
+    #[test]
+    fn test_registration_data_builder() {
+        let data = RegistrationData::new("reg_123")
+            .with_email("user@example.com")
+            .with_names("John", "Doe")
+            .mark_completed();
+
+        assert_eq!(data.registration_id, "reg_123");
+        assert_eq!(data.email, Some("user@example.com".to_string()));
+        assert_eq!(data.given_name, Some("John".to_string()));
+        assert_eq!(data.family_name, Some("Doe".to_string()));
+        assert!(data.completed);
+    }
+
+    #[test]
     fn test_error_manager_integration() {
         let mut manager = RegistrationManager::new(RegistrationConfig::default());
 
@@ -910,10 +1081,8 @@ mod tests {
             OidcErrorCode::RegistrationRequired,
         );
 
-        let manager = RegistrationManager::with_error_manager(
-            RegistrationConfig::default(),
-            custom_error_manager,
-        );
+        let manager = RegistrationManager::new(RegistrationConfig::default())
+            .error_manager(custom_error_manager);
 
         // Test error manager is properly set
         assert!(

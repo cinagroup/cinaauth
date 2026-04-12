@@ -141,10 +141,9 @@ async fn test_device_fingerprinting_integration() {
 #[tokio::test]
 #[cfg(any(feature = "cli", feature = "postgres-storage"))]
 async fn test_database_migration_integration() {
-    println!("🔍 Testing Database Migration Integration");
+    println!("🔍 Testing Database Migration Contract");
 
-    // Note: This test requires postgres features enabled
-    // For now, test the migration structure and methods without actual DB
+    // This validates the public migration contract without needing a live database.
     use auth_framework::migrations::MigrationManager;
 
     // Test migration creation
@@ -167,9 +166,90 @@ async fn test_database_migration_integration() {
         "Migration SQL should contain the provided SQL"
     );
 
-    println!(
-        "✅ Database Migration Integration Test: PASSED (Structure only - requires postgres for full test)"
+    println!("✅ Database migration contract validated");
+}
+
+#[tokio::test]
+async fn test_oidc_rp_initiated_logout_integration() {
+    println!("🔍 Testing OIDC RP-Initiated Logout Integration");
+
+    use auth_framework::server::{
+        ClientLogoutConfig, RpInitiatedLogoutConfig, RpInitiatedLogoutManager,
+        RpInitiatedLogoutRequest, SessionManager,
+    };
+    use auth_framework::server::oidc::oidc_session_management::SessionManagementConfig;
+    use std::collections::HashMap;
+
+    let mut session_manager = SessionManager::new(SessionManagementConfig::default());
+    let current_session = session_manager
+        .create_session(
+            "user-1".to_string(),
+            "dashboard".to_string(),
+            HashMap::new(),
+        )
+        .unwrap();
+    let sibling_session = session_manager
+        .create_session(
+            "user-1".to_string(),
+            "reports".to_string(),
+            HashMap::new(),
+        )
+        .unwrap();
+
+    let mut manager =
+        RpInitiatedLogoutManager::new(RpInitiatedLogoutConfig::default(), session_manager);
+    manager
+        .register_client_config(ClientLogoutConfig {
+            client_id: "dashboard".to_string(),
+            post_logout_redirect_uris: vec![
+                "https://dashboard.example.com/logout-complete".to_string(),
+            ],
+            frontchannel_logout_uri: Some(
+                "https://dashboard.example.com/frontchannel-logout".to_string(),
+            ),
+            backchannel_logout_uri: None,
+        })
+        .unwrap();
+    manager
+        .register_client_config(ClientLogoutConfig {
+            client_id: "reports".to_string(),
+            post_logout_redirect_uris: vec![
+                "https://reports.example.com/logout-complete".to_string(),
+            ],
+            frontchannel_logout_uri: Some(
+                "https://reports.example.com/frontchannel-logout".to_string(),
+            ),
+            backchannel_logout_uri: Some(
+                "https://reports.example.com/backchannel-logout".to_string(),
+            ),
+        })
+        .unwrap();
+
+    let response = manager
+        .process_logout(RpInitiatedLogoutRequest {
+            client_id: "dashboard".to_string(),
+            sub: "user-1".to_string(),
+            session_id: Some(current_session.session_id.clone()),
+            id_token_hint: Some("id-token".to_string()),
+            post_logout_redirect_uri: Some(
+                "https://dashboard.example.com/logout-complete".to_string(),
+            ),
+            state: Some("opaque-state".to_string()),
+        })
+        .unwrap();
+
+    assert!(response.success);
+    assert_eq!(response.ended_sessions.len(), 2);
+    assert!(response.ended_sessions.contains(&current_session.session_id));
+    assert!(response.ended_sessions.contains(&sibling_session.session_id));
+    assert_eq!(response.logout_notifications.len(), 1);
+    assert_eq!(response.logout_notifications[0].client_id, "reports");
+    assert_eq!(
+        response.post_logout_redirect_uri.as_deref(),
+        Some("https://dashboard.example.com/logout-complete")
     );
+
+    println!("✅ OIDC RP-initiated logout integration working");
 }
 
 #[tokio::test]
@@ -202,7 +282,7 @@ async fn test_all_integrations_comprehensive() {
 #[tokio::test]
 #[allow(dead_code)]
 async fn test_comprehensive_integration() {
-    println!("🔍 Testing Comprehensive Integration of All Systems");
+    println!("🔍 Testing Core Integration Surface");
 
     // 1. Test resource hierarchy system
     let mut permissions = PermissionChecker::new();
@@ -252,17 +332,13 @@ async fn test_comprehensive_integration() {
 
     println!("   ✅ Device fingerprinting working");
 
-    // 3. Test database migration system - SKIPPED (migrations not implemented)
-    println!("   ⚠️  Database migrations test skipped - not implemented");
-
-    println!("✅ Comprehensive Integration Test: ALL SYSTEMS INTEGRATED");
+    println!("✅ Core integration surface validated");
 
     // Summary of integration validation
     println!("\n📊 Integration Validation Summary:");
     println!("   ✅ Resource Hierarchy: Hierarchical permission checking active");
     println!("   ✅ Device Fingerprinting: Fingerprint generation active");
-    println!("   ✅ Database Migrations: Migration construction active");
-    println!("   ✅ No Dead Code: All previously unused components now integrated");
+    println!("   ✅ Integration scope: Core runtime integrations exercised in-process");
 }
 
 // Test to verify basic integration functionality - SIMPLIFIED VERSION
@@ -295,9 +371,9 @@ async fn test_no_dead_code_in_integrations() {
     assert!(metadata.ip_address.is_some());
     assert!(metadata.user_agent.is_some());
 
-    // Note: Complex SessionManager and AuditLogger integration tests are skipped
-    // due to MemoryStorage not implementing required SessionStorage and AuditStorage traits
-    println!("   ⚠️  Complex trait-bound integration tests skipped - MemoryStorage constraints");
+    println!(
+        "   ℹ️  This smoke test focuses on in-process integrations that do not require storage-backed trait implementations"
+    );
 
     println!("   ✅ Basic integration functionality working");
 }

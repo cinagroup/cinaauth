@@ -1,244 +1,253 @@
 # User Management Schemas
-# Data structures for user profiles and account management
 
 UserProfile:
     type: object
-    description: Complete user profile information
+    description: Full profile payload returned by /users/profile and /users/{user_id}/profile
     properties:
         id:
             type: string
-            format: uuid
             description: Unique user identifier
-            example: "123e4567-e89b-12d3-a456-426614174000"
+            example: "user_123"
         username:
             type: string
-            description: Username
             example: "user@example.com"
         email:
             type: string
             format: email
-            description: User email address
             example: "user@example.com"
         first_name:
             type: string
             nullable: true
-            description: User's first name
-            example: "John"
+            example: "Jane"
         last_name:
             type: string
             nullable: true
-            description: User's last name
             example: "Doe"
-        phone:
-            type: string
-            nullable: true
-            description: Phone number
-            example: "+1234567890"
-        timezone:
-            type: string
-            nullable: true
-            description: User's timezone
-            example: "America/New_York"
-        locale:
-            type: string
-            nullable: true
-            description: User's locale preference
-            example: "en-US"
-        avatar_url:
-            type: string
-            format: uri
-            nullable: true
-            description: URL to user's avatar image
-            example: "https://example.com/avatars/user123.jpg"
         roles:
             type: array
-            description: User roles
             items:
                 type: string
-            example: ["user", "developer"]
+            example: ["user"]
+        permissions:
+            type: array
+            items:
+                type: string
+            example: ["profile:read", "profile:write"]
         mfa_enabled:
             type: boolean
-            description: Whether MFA is enabled
-            example: false
+            example: true
         email_verified:
             type: boolean
-            description: Whether email has been verified
             example: true
-        account_status:
-            type: string
-            enum: [active, suspended, locked, deleted]
-            description: Current account status
-            example: "active"
         created_at:
             type: string
             format: date-time
-            description: Account creation timestamp
-            example: "2024-01-20T15:30:45Z"
+            example: "2026-01-20T15:30:45Z"
         updated_at:
             type: string
             format: date-time
-            description: Last profile update timestamp
-            example: "2024-01-20T15:30:45Z"
-        last_login:
-            type: string
-            format: date-time
-            nullable: true
-            description: Last login timestamp
-            example: "2024-01-20T15:30:45Z"
+            example: "2026-01-20T15:45:10Z"
     required:
         - id
         - username
         - email
+        - roles
+        - permissions
         - mfa_enabled
         - email_verified
-        - account_status
         - created_at
         - updated_at
 
 UpdateProfileRequest:
     type: object
-    description: User profile update request
+    description: Request body for PUT /users/profile
     properties:
         first_name:
             type: string
             nullable: true
-            description: User's first name
-            example: "John"
+            example: "Jane"
         last_name:
             type: string
             nullable: true
-            description: User's last name
             example: "Doe"
-        phone:
+        email:
             type: string
+            format: email
             nullable: true
-            description: Phone number
-            example: "+1234567890"
-        timezone:
-            type: string
-            nullable: true
-            description: User's timezone
-            example: "America/New_York"
-        locale:
-            type: string
-            nullable: true
-            description: User's locale preference
-            example: "en-US"
-        avatar_url:
-            type: string
-            format: uri
-            nullable: true
-            description: URL to user's avatar image
-            example: "https://example.com/avatars/user123.jpg"
+            example: "jane.doe@example.com"
 
 ChangePasswordRequest:
     type: object
-    description: Password change request
+    description: Request body for POST /users/change-password
     properties:
         current_password:
             type: string
             format: password
-            description: Current password for verification
             example: "CurrentPassword123!"
         new_password:
             type: string
             format: password
-            description: New password (must meet complexity requirements)
             example: "NewSecurePassword123!"
     required:
         - current_password
         - new_password
 
-CreateUserRequest:
+SessionInfo:
     type: object
-    description: Request to create a new user account (admin only)
+    description: One active session entry returned by /users/sessions
     properties:
+        id:
+            type: string
+            example: "session_123"
+        device:
+            type: string
+            example: "Mozilla/5.0 (...)"
+        location:
+            type: string
+            example: ""
+        ip_address:
+            type: string
+            example: "203.0.113.10"
+        created_at:
+            type: string
+            format: date-time
+            example: "2026-01-20T15:30:45Z"
+        last_active:
+            type: string
+            format: date-time
+            example: "2026-01-20T15:45:10Z"
+        is_current:
+            type: boolean
+            example: false
+    required:
+        - id
+        - device
+        - location
+        - ip_address
+        - created_at
+        - last_active
+        - is_current
+
+UserListItem:
+    type: object
+    description: One admin user-list entry
+    properties:
+        id:
+            type: string
+            example: "user_123"
         username:
             type: string
-            description: Username (must be unique)
-            example: "newuser@example.com"
+            example: "user@example.com"
         email:
             type: string
             format: email
-            description: Email address (must be unique)
-            example: "newuser@example.com"
-        password:
-            type: string
-            format: password
-            description: Initial password
-            example: "SecurePassword123!"
+            example: "user@example.com"
         roles:
             type: array
-            description: Initial roles to assign
             items:
                 type: string
             example: ["user"]
-            default: ["user"]
-        first_name:
-            type: string
-            nullable: true
-            description: User's first name
-            example: "Jane"
-        last_name:
-            type: string
-            nullable: true
-            description: User's last name
-            example: "Smith"
-        email_verified:
+        active:
             type: boolean
-            description: Whether to mark email as pre-verified
-            default: false
-        send_welcome_email:
-            type: boolean
-            description: Whether to send welcome email with setup instructions
-            default: true
+            example: true
+        created_at:
+            type: string
+            format: date-time
+            example: "2026-01-20T15:30:45Z"
+        last_login:
+            type: string
+            format: date-time
+            nullable: true
+            description: Present only when the stored user JSON includes a last_login value
     required:
+        - id
         - username
         - email
-        - password
+        - roles
+        - active
+        - created_at
 
-UpdateUserRequest:
+UserListResponse:
     type: object
-    description: Admin request to update user account
     properties:
+        users:
+            type: array
+            items:
+                $ref: "#/UserListItem"
+        pagination:
+            type: object
+            properties:
+                page:
+                    type: integer
+                limit:
+                    type: integer
+                total:
+                    type: integer
+                pages:
+                    type: integer
+            required:
+                - page
+                - limit
+                - total
+                - pages
+    required:
+        - users
+        - pagination
+
+CreateUserRequest:
+    type: object
+    description: Request body for POST /admin/users
+    properties:
+        username:
+            type: string
+            example: "newuser"
+        password:
+            type: string
+            format: password
+            example: "SecurePassword123!"
         email:
             type: string
             format: email
-            description: New email address
-            example: "newemail@example.com"
+            example: "newuser@example.com"
         first_name:
             type: string
             nullable: true
-            example: "Jane"
+            example: "New"
         last_name:
             type: string
             nullable: true
-            example: "Smith"
+            example: "User"
         roles:
             type: array
-            description: New roles (replaces existing)
             items:
                 type: string
-            example: ["user", "moderator"]
-        account_status:
-            type: string
-            enum: [active, suspended, locked]
-            description: Account status
-            example: "active"
-        email_verified:
+            example: ["user"]
+        active:
             type: boolean
-            description: Email verification status
-            example: true
+            default: true
+    required:
+        - username
+        - password
+        - email
 
-UserListResponse:
-    allOf:
-        - $ref: "./common.yaml#/PaginatedResponse"
-        - type: object
-          properties:
-              data:
-                  type: object
-                  properties:
-                      items:
-                          type: array
-                          items:
-                              $ref: "#/UserProfile"
+UpdateUserRolesRequest:
+    type: object
+    description: Request body for PUT /admin/users/{user_id}/roles
+    properties:
+        roles:
+            type: array
+            items:
+                type: string
+            example: ["admin", "user"]
+    required:
+        - roles
+
+ActivateUserRequest:
+    type: object
+    description: Request body for PUT /admin/users/{user_id}/activate
+    properties:
+        active:
+            type: boolean
+            example: false
+    required:
+        - active

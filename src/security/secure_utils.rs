@@ -55,19 +55,30 @@ pub struct SecureComparison;
 
 impl SecureComparison {
     /// Constant-time string comparison
+    ///
+    /// To avoid leaking length information via timing, this pads both inputs
+    /// to the same length before comparing, then checks the original lengths.
     pub fn constant_time_eq(a: &str, b: &str) -> bool {
-        if a.len() != b.len() {
-            return false;
-        }
-        a.as_bytes().ct_eq(b.as_bytes()).into()
+        Self::secure_string_compare(a, b)
     }
 
     /// Constant-time byte comparison
+    ///
+    /// Pads both slices to equal length to avoid leaking length via timing.
     pub fn constant_time_eq_bytes(a: &[u8], b: &[u8]) -> bool {
-        if a.len() != b.len() {
-            return false;
-        }
-        a.ct_eq(b).into()
+        let max_len = a.len().max(b.len()).min(1024);
+        let mut a_padded = vec![0u8; max_len];
+        let mut b_padded = vec![0u8; max_len];
+
+        a_padded[..a.len().min(max_len)].copy_from_slice(&a[..a.len().min(max_len)]);
+        b_padded[..b.len().min(max_len)].copy_from_slice(&b[..b.len().min(max_len)]);
+
+        let result = a_padded.ct_eq(&b_padded).into() && a.len() == b.len();
+
+        a_padded.zeroize();
+        b_padded.zeroize();
+
+        result
     }
 
     /// Compare strings with timing attack protection

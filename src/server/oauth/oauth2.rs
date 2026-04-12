@@ -145,7 +145,7 @@ mod tests {
         let client_config = ClientConfig {
             client_id: "test_client".to_string(),
             client_type: ClientType::Public,
-            redirect_uris: vec!["https://example.com/callback".to_string()],
+            redirect_uris: vec!["https://example.com/callback".to_string()].into(),
             ..Default::default()
         };
 

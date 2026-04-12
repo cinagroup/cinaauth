@@ -142,7 +142,7 @@ impl ContextBuilder {
 
         AuthorizationContext {
             user_id: auth_token.user_id.clone(),
-            roles: auth_token.roles.clone(),
+            roles: auth_token.roles.to_vec(),
             session_id: auth_token.metadata.session_id.clone(),
 
             method: request.method().to_string(),
@@ -454,7 +454,9 @@ impl ContextBuilder {
                     && key.starts_with("ctx_")
                 {
                     attributes.insert(
-                        key.strip_prefix("ctx_").unwrap().to_string(),
+                        key.strip_prefix("ctx_")
+                            .expect("guarded by starts_with check")
+                            .to_string(),
                         urlencoding::decode(value).unwrap_or_default().to_string(),
                     );
                 }

@@ -640,12 +640,12 @@ mod pooled_defaults {
             refresh_token: None,
             issued_at: chrono::Utc::now(),
             expires_at: chrono::Utc::now(),
-            scopes: Vec::new(),
+            scopes: Vec::new().into(),
             auth_method: String::new(),
             client_id: None,
             user_profile: None,
-            permissions: Vec::new(),
-            roles: Vec::new(),
+            permissions: Vec::new().into(),
+            roles: Vec::new().into(),
             metadata: TokenMetadata::default(),
         }
     }
@@ -680,12 +680,12 @@ mod tests {
             refresh_token: None,
             issued_at: chrono::Utc::now(),
             expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-            scopes: vec!["read".to_string()],
+            scopes: vec!["read".to_string()].into(),
             auth_method: "password".to_string(),
             client_id: Some("test-client".to_string()),
             user_profile: None,
-            permissions: vec!["read:data".to_string()],
-            roles: vec!["user".to_string()],
+            permissions: vec!["read:data".to_string()].into(),
+            roles: vec!["user".to_string()].into(),
             metadata: TokenMetadata::default(),
         }
     }

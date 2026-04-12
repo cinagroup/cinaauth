@@ -11,17 +11,22 @@ use axum::{
 use serde::Serialize;
 use std::collections::HashMap;
 
-/// Health check response
+/// Basic health check response.
 #[derive(Debug, Serialize)]
 pub struct HealthResponse {
+    /// Overall status: `"healthy"` or `"degraded"`.
     pub status: String,
+    /// ISO-8601 timestamp of the check.
     pub timestamp: String,
+    /// Per-service status summary.
     pub services: HashMap<String, String>,
+    /// Crate version.
     pub version: String,
+    /// Human-readable server uptime (e.g. `"3h 12m"`).
     pub uptime: String,
 }
 
-/// Detailed health check response
+/// Extended health check response including per-service latency and system resource usage.
 #[derive(Debug, Serialize)]
 pub struct DetailedHealthResponse {
     pub status: String,
@@ -32,18 +37,21 @@ pub struct DetailedHealthResponse {
     pub uptime: String,
 }
 
-/// Service health details
+/// Per-service health details.
 #[derive(Debug, Serialize)]
 pub struct ServiceHealth {
+    /// `"healthy"`, `"degraded"`, or `"unhealthy"`.
     pub status: String,
+    /// Round-trip check latency in milliseconds.
     pub response_time_ms: u64,
+    /// ISO-8601 timestamp of the last probe.
     pub last_check: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     pub details: HashMap<String, serde_json::Value>,
 }
 
-/// System health information
+/// Aggregate system resource usage.
 #[derive(Debug, Serialize)]
 pub struct SystemHealth {
     pub memory_usage: MemoryInfo,
@@ -52,7 +60,7 @@ pub struct SystemHealth {
     pub network: NetworkInfo,
 }
 
-/// Memory usage information
+/// Process memory usage.
 #[derive(Debug, Serialize)]
 pub struct MemoryInfo {
     pub total_mb: u64,
@@ -61,7 +69,7 @@ pub struct MemoryInfo {
     pub usage_percent: f64,
 }
 
-/// Disk usage information
+/// Disk usage statistics.
 #[derive(Debug, Serialize)]
 pub struct DiskInfo {
     pub total_gb: u64,
@@ -70,7 +78,7 @@ pub struct DiskInfo {
     pub usage_percent: f64,
 }
 
-/// Network information
+/// Network traffic counters.
 #[derive(Debug, Serialize)]
 pub struct NetworkInfo {
     pub requests_per_minute: u64,
@@ -79,14 +87,14 @@ pub struct NetworkInfo {
     pub bytes_received: u64,
 }
 
-/// Metrics response (Prometheus format)
+/// Container for exported Prometheus-style metrics.
 #[derive(Debug, Serialize)]
 pub struct MetricsResponse {
     pub metrics: Vec<Metric>,
     pub timestamp: String,
 }
 
-/// Individual metric
+/// A single labeled metric.
 #[derive(Debug, Serialize)]
 pub struct Metric {
     pub name: String,
@@ -96,8 +104,7 @@ pub struct Metric {
     pub metric_type: String,
 }
 
-/// GET /health
-/// Basic health check endpoint
+/// `GET /health` — lightweight health check returning overall status and per-service summary.
 pub async fn health_check(State(state): State<ApiState>) -> ApiResponse<HealthResponse> {
     let mut services = std::collections::HashMap::new();
     let mut overall_healthy = true;
@@ -145,8 +152,7 @@ pub async fn health_check(State(state): State<ApiState>) -> ApiResponse<HealthRe
     ApiResponse::success(health)
 }
 
-/// GET /health/detailed
-/// Detailed health check with service metrics
+/// `GET /health/detailed` — extended health check with latency measurements and system resource usage.
 pub async fn detailed_health_check(
     State(state): State<ApiState>,
 ) -> ApiResponse<DetailedHealthResponse> {
@@ -241,8 +247,7 @@ pub async fn detailed_health_check(
     ApiResponse::success(health)
 }
 
-/// GET /metrics
-/// Prometheus metrics endpoint
+/// `GET /metrics` — export metrics in Prometheus text exposition format.
 pub async fn metrics(State(state): State<ApiState>) -> impl IntoResponse {
     let metrics_text = state.auth_framework.export_prometheus_metrics().await;
 
@@ -253,8 +258,7 @@ pub async fn metrics(State(state): State<ApiState>) -> impl IntoResponse {
         .expect("infallible: String body is always valid")
 }
 
-/// GET /readiness
-/// Kubernetes readiness probe endpoint
+/// `GET /readiness` — Kubernetes readiness probe (200 when able to serve traffic).
 pub async fn readiness_check(State(state): State<ApiState>) -> impl IntoResponse {
     // Check if the auth framework is ready to accept traffic by trying to get stats.
     // A successful stats call confirms storage, token manager, and core services are up.
@@ -267,8 +271,7 @@ pub async fn readiness_check(State(state): State<ApiState>) -> impl IntoResponse
     }
 }
 
-/// GET /liveness
-/// Kubernetes liveness probe endpoint
+/// `GET /liveness` — Kubernetes liveness probe (200 if the async runtime is responsive).
 pub async fn liveness_check(State(state): State<ApiState>) -> impl IntoResponse {
     // Verify the service can perform a basic operation — completing the await on
     // get_performance_metrics confirms the async runtime is not deadlocked.
@@ -289,11 +292,14 @@ async fn check_auth_framework_health(
             response_time_ms: start.elapsed().as_millis() as u64,
             error: None,
         },
-        Err(e) => ServiceHealthResult {
-            status: "unhealthy".to_string(),
-            response_time_ms: start.elapsed().as_millis() as u64,
-            error: Some(format!("Framework error: {}", e)),
-        },
+        Err(e) => {
+            tracing::warn!(error = %e, "Health check: framework error");
+            ServiceHealthResult {
+                status: "unhealthy".to_string(),
+                response_time_ms: start.elapsed().as_millis() as u64,
+                error: Some("Service check failed".to_string()),
+            }
+        }
     }
 }
 
@@ -310,11 +316,14 @@ async fn check_storage_health(
             response_time_ms: start.elapsed().as_millis() as u64,
             error: None,
         },
-        Err(e) => ServiceHealthResult {
-            status: "unhealthy".to_string(),
-            response_time_ms: start.elapsed().as_millis() as u64,
-            error: Some(format!("Storage error: {}", e)),
-        },
+        Err(e) => {
+            tracing::warn!(error = %e, "Health check: storage error");
+            ServiceHealthResult {
+                status: "unhealthy".to_string(),
+                response_time_ms: start.elapsed().as_millis() as u64,
+                error: Some("Service check failed".to_string()),
+            }
+        }
     }
 }
 
@@ -339,18 +348,24 @@ async fn check_token_manager_health(
                     response_time_ms: start.elapsed().as_millis() as u64,
                     error: None,
                 },
-                Err(e) => ServiceHealthResult {
-                    status: "unhealthy".to_string(),
-                    response_time_ms: start.elapsed().as_millis() as u64,
-                    error: Some(format!("Token validation error: {}", e)),
-                },
+                Err(e) => {
+                    tracing::warn!(error = %e, "Health check: token validation error");
+                    ServiceHealthResult {
+                        status: "unhealthy".to_string(),
+                        response_time_ms: start.elapsed().as_millis() as u64,
+                        error: Some("Service check failed".to_string()),
+                    }
+                }
             }
         }
-        Err(e) => ServiceHealthResult {
-            status: "unhealthy".to_string(),
-            response_time_ms: start.elapsed().as_millis() as u64,
-            error: Some(format!("Token creation error: {}", e)),
-        },
+        Err(e) => {
+            tracing::warn!(error = %e, "Health check: token creation error");
+            ServiceHealthResult {
+                status: "unhealthy".to_string(),
+                response_time_ms: start.elapsed().as_millis() as u64,
+                error: Some("Service check failed".to_string()),
+            }
+        }
     }
 }
 

@@ -31,6 +31,13 @@ use tui_input::{Input, backend::crossterm::EventHandler};
 #[cfg(feature = "tui")]
 type TuiTerminal = Terminal<CrosstermBackend<Stderr>>;
 
+/// Active tab in the TUI.
+///
+/// # Example
+/// ```rust,ignore
+/// let tab = Tab::Dashboard;
+/// assert_eq!(tab.title(), "Dashboard");
+/// ```
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -67,6 +74,12 @@ impl Tab {
     }
 }
 
+/// Main TUI application state.
+///
+/// # Example
+/// ```rust,ignore
+/// let app = TuiApp::new(state, /* readonly */ false);
+/// ```
 #[cfg(feature = "tui")]
 pub struct TuiApp {
     state: AppState, // Now properly used for real-time data access
@@ -85,6 +98,12 @@ pub struct TuiApp {
     server_logs: Vec<LogEntry>,
 }
 
+/// User representation in the TUI.
+///
+/// # Example
+/// ```rust,ignore
+/// let user = User { id: "1".into(), email: "a@b.com".into(), active: true, created: "today".into(), last_login: None };
+/// ```
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone)]
 pub struct User {
@@ -95,6 +114,12 @@ pub struct User {
     pub last_login: Option<String>,
 }
 
+/// Security event representation in the TUI.
+///
+/// # Example
+/// ```rust,ignore
+/// let evt = SecurityEvent { timestamp: "now".into(), event_type: "login".into(), user: None, details: "".into(), severity: "low".into() };
+/// ```
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone)]
 pub struct SecurityEvent {
@@ -105,6 +130,12 @@ pub struct SecurityEvent {
     pub severity: String,
 }
 
+/// Log entry representation in the TUI.
+///
+/// # Example
+/// ```rust,ignore
+/// let entry = LogEntry { timestamp: "now".into(), level: "INFO".into(), component: "auth".into(), message: "ok".into() };
+/// ```
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone)]
 pub struct LogEntry {
@@ -114,6 +145,12 @@ pub struct LogEntry {
     pub message: String,
 }
 
+/// Launch the TUI administration interface.
+///
+/// # Example
+/// ```rust,ignore
+/// run_tui(state, /* readonly */ false).await?;
+/// ```
 #[cfg(feature = "tui")]
 pub async fn run_tui(state: AppState, readonly: bool) -> Result<()> {
     // Setup terminal
@@ -146,6 +183,12 @@ pub async fn run_tui(state: AppState, readonly: bool) -> Result<()> {
 
 #[cfg(feature = "tui")]
 impl TuiApp {
+    /// Create a new TUI application.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let app = TuiApp::new(state, false);
+    /// ```
     pub fn new(state: AppState, readonly: bool) -> Self {
         Self {
             state,
@@ -276,10 +319,18 @@ async fn handle_key_event(
         match key.code {
             KeyCode::Enter => {
                 // Process input
-                let input_value = app.input.value();
+                let input_value = app.input.value().to_string();
                 if !input_value.is_empty() {
-                    // Handle the input based on context
-                    // In a real implementation, this would update configuration or perform actions
+                    // Handle config value updates
+                    if app.current_tab == Tab::Configuration {
+                        if let Some(ref config_key) = app.selected_config_key {
+                            tracing::info!(
+                                key = %config_key,
+                                value = %input_value,
+                                "Config edit requested via TUI (in-memory only, does not persist)"
+                            );
+                        }
+                    }
                 }
                 app.show_input_dialog = false;
                 app.input.reset();
@@ -661,19 +712,47 @@ fn render_servers(f: &mut Frame, area: Rect, _app: &TuiApp) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    // Server Status
+    // Server Status — gather real system metrics via sysinfo.
+    let mut sys = sysinfo::System::new();
+    sys.refresh_memory();
+    sys.refresh_cpu_all();
+
+    let cpu_pct = sys.global_cpu_usage();
+    let mem_total = sys.total_memory();
+    let mem_used = sys.used_memory();
+    let mem_total_mb = mem_total / (1024 * 1024);
+    let mem_used_mb = mem_used / (1024 * 1024);
+    let mem_pct = if mem_total > 0 {
+        ((mem_used as f64 / mem_total as f64) * 100.0) as u16
+    } else {
+        0
+    };
+
+    let disks = sysinfo::Disks::new_with_refreshed_list();
+    let (mut disk_total, mut disk_used) = (0u64, 0u64);
+    for disk in disks.list() {
+        disk_total += disk.total_space();
+        disk_used += disk.total_space() - disk.available_space();
+    }
+    let disk_total_gb = disk_total / (1024 * 1024 * 1024);
+    let disk_used_gb = disk_used / (1024 * 1024 * 1024);
+    let disk_pct = if disk_total > 0 {
+        ((disk_used as f64 / disk_total as f64) * 100.0) as u16
+    } else {
+        0
+    };
+
     let server_info = [
-        "Web Server: Running on port 8080",
-        "Auth Service: Active",
-        "Database: Connected (PostgreSQL)",
-        "Redis Cache: Connected",
-        "Threat Intel: Active",
-        "",
-        "Resource Usage:",
-        "  CPU: 15% (2 cores)",
-        "  Memory: 256MB / 2GB",
-        "  Disk: 2.1GB used",
-        "  Network: 1.2MB/s in, 800KB/s out",
+        "Web Server: Running on port 8080".to_string(),
+        "Auth Service: Active".to_string(),
+        "Database: Connected (PostgreSQL)".to_string(),
+        "Redis Cache: Connected".to_string(),
+        "Threat Intel: Active".to_string(),
+        String::new(),
+        "Resource Usage:".to_string(),
+        format!("  CPU: {:.0}%", cpu_pct),
+        format!("  Memory: {}MB / {}MB", mem_used_mb, mem_total_mb),
+        format!("  Disk: {}GB / {}GB", disk_used_gb, disk_total_gb),
     ];
 
     let server_paragraph = Paragraph::new(server_info.join("\n"))
@@ -686,7 +765,7 @@ fn render_servers(f: &mut Frame, area: Rect, _app: &TuiApp) {
 
     f.render_widget(server_paragraph, chunks[0]);
 
-    // Performance Metrics (simplified)
+    // Performance Metrics from real system data
     let perf_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -699,19 +778,19 @@ fn render_servers(f: &mut Frame, area: Rect, _app: &TuiApp) {
     let cpu_gauge = Gauge::default()
         .block(Block::default().title("CPU Usage").borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Green))
-        .percent(15);
+        .percent(cpu_pct.min(100.0) as u16);
     f.render_widget(cpu_gauge, perf_chunks[0]);
 
     let memory_gauge = Gauge::default()
         .block(Block::default().title("Memory Usage").borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Blue))
-        .percent(25);
+        .percent(mem_pct.min(100));
     f.render_widget(memory_gauge, perf_chunks[1]);
 
     let disk_gauge = Gauge::default()
         .block(Block::default().title("Disk Usage").borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Yellow))
-        .percent(42);
+        .percent(disk_pct.min(100));
     f.render_widget(disk_gauge, perf_chunks[2]);
 }
 

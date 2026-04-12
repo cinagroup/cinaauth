@@ -10,41 +10,53 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-/// User profile information
+/// Full user profile returned by the `/users/profile` and `/users/:id` endpoints.
 #[derive(Debug, Serialize)]
 pub struct UserProfile {
+    /// Unique user identifier.
     pub id: String,
     pub username: String,
     pub email: String,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
-    pub roles: Vec<String>,
-    pub permissions: Vec<String>,
+    /// Role names assigned to this user.
+    pub roles: crate::types::Roles,
+    /// Effective permissions derived from roles and direct grants.
+    pub permissions: crate::types::Permissions,
+    /// Whether multi-factor authentication is enrolled.
     pub mfa_enabled: bool,
+    /// Whether the user's email address has been verified.
+    pub email_verified: bool,
+    /// ISO-8601 creation timestamp.
     pub created_at: String,
+    /// ISO-8601 last-modification timestamp.
     pub updated_at: String,
 }
 
-/// Update profile request
+/// Profile update request. Only the supplied fields are modified.
 #[derive(Debug, Deserialize)]
 pub struct UpdateProfileRequest {
     #[serde(default)]
     pub first_name: Option<String>,
     #[serde(default)]
     pub last_name: Option<String>,
+    /// New email address (must not already be registered to another user).
     #[serde(default)]
     pub email: Option<String>,
 }
 
-/// Change password request
+/// Password change request.
+///
+/// Both fields are required.  The server will verify `current_password` before
+/// applying the change, and will validate `new_password` against the same
+/// complexity rules used during registration.
 #[derive(Debug, Deserialize)]
 pub struct ChangePasswordRequest {
     pub current_password: String,
     pub new_password: String,
 }
 
-/// GET /users/profile
-/// Get current user profile
+/// `GET /users/profile` — fetch the authenticated user's own profile.
 pub async fn get_profile(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -90,6 +102,7 @@ pub async fn get_profile(
                                 roles: auth_token.roles,
                                 permissions: auth_token.permissions,
                                 mfa_enabled,
+                                email_verified: user_profile.email_verified.unwrap_or(false),
                                 created_at: user_profile
                                     .additional_data
                                     .get("created_at")
@@ -128,8 +141,7 @@ pub async fn get_profile(
     }
 }
 
-/// PUT /users/profile
-/// Update user profile
+/// `PUT /users/profile` — update the authenticated user's profile fields.
 pub async fn update_profile(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -242,6 +254,7 @@ pub async fn update_profile(
                             &auth_token.user_id,
                         )
                         .await,
+                        email_verified: user_json["email_verified"].as_bool().unwrap_or(false),
                         created_at: stored_created_at,
                         updated_at: user_json["updated_at"].as_str().unwrap_or("").to_string(),
                     };
@@ -255,8 +268,9 @@ pub async fn update_profile(
     }
 }
 
-/// POST /users/change-password
-/// Change user password
+/// `POST /users/change-password` — change the authenticated user's password.
+///
+/// The current password must be verified before the new one is accepted.
 pub async fn change_password(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -269,6 +283,17 @@ pub async fn change_password(
     // Enforce the same password complexity requirements as registration.
     if let Err(e) = crate::utils::validation::validate_password(&req.new_password) {
         return ApiResponse::validation_error_typed(format!("{e}"));
+    }
+
+    // Check new password against known data breaches (HIBP k-anonymity API)
+    match crate::utils::breach_check::is_password_breached(&req.new_password).await {
+        Ok(true) => {
+            return ApiResponse::validation_error(
+                "This password has appeared in a known data breach. Please choose a different password.",
+            );
+        }
+        Ok(false) => {}
+        Err(_) => {} // HIBP API unreachable; fail open
     }
 
     match extract_bearer_token(&headers) {
@@ -321,8 +346,7 @@ pub async fn change_password(
     }
 }
 
-/// GET /users/{user_id}/profile
-/// Get specific user profile (admin only)
+/// `GET /users/{user_id}/profile` — fetch another user's profile (admin only).
 pub async fn get_user_profile(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -397,12 +421,15 @@ pub async fn get_user_profile(
                                 email: user_profile.email.unwrap_or_default(),
                                 first_name,
                                 last_name,
-                                roles: profile_roles,
-                                permissions: profile_permissions,
+                                roles: profile_roles.into(),
+                                permissions: profile_permissions.into(),
                                 mfa_enabled: user_profile
                                     .additional_data
                                     .get("mfa_enabled")
                                     .and_then(|v| v.as_bool())
+                                    .unwrap_or(false),
+                                email_verified: user_kv_json["email_verified"]
+                                    .as_bool()
                                     .unwrap_or(false),
                                 created_at: user_profile
                                     .additional_data
@@ -437,8 +464,7 @@ pub async fn get_user_profile(
     }
 }
 
-/// GET /users/sessions
-/// Get user's active sessions
+/// `GET /users/sessions` — list the authenticated user's active sessions.
 pub async fn get_sessions(
     State(state): State<ApiState>,
     headers: HeaderMap,
@@ -475,20 +501,29 @@ pub async fn get_sessions(
     }
 }
 
-/// Session information
+/// Summary of an active browser/device session.
 #[derive(Debug, Serialize)]
 pub struct SessionInfo {
+    /// Unique session identifier.
     pub id: String,
+    /// User-Agent string from the session’s originating request.
     pub device: String,
+    /// Approximate geo-location derived from the client IP (may be empty).
     pub location: String,
+    /// Client IP address recorded at session creation.
     pub ip_address: String,
+    /// ISO-8601 timestamp of session creation.
     pub created_at: String,
+    /// ISO-8601 timestamp of the most recent request in this session.
     pub last_active: String,
+    /// `true` if this session belongs to the current request.
     pub is_current: bool,
 }
 
-/// DELETE /users/sessions/{session_id}
-/// Revoke a specific session
+/// `DELETE /users/sessions/{session_id}` — revoke a specific session.
+///
+/// Only the session owner can revoke it; attempting to revoke another user's
+/// session returns `FORBIDDEN`.
 pub async fn revoke_session(
     State(state): State<ApiState>,
     headers: HeaderMap,

@@ -1126,7 +1126,7 @@ package "audit" #E8F5E9 {
 }
 
 ' =============================================================================
-' PACKAGE: oauth2_domain (src/oauth2_server.rs + src/oauth2_enhanced_storage.rs)
+' PACKAGE: oauth2_domain (src/server/oauth/oauth2_server.rs + src/server/oauth/oauth2_enhanced_storage.rs)
 ' =============================================================================
 package "oauth2_domain\n(standalone server layer)" #FFF3E0 {
 
@@ -1668,8 +1668,7 @@ package "api_layer" #E0F7FA {
   class ApiServerConfig {
     + host: String
     + port: u16
-    + enable_cors: bool
-    + allowed_origins: Vec<String>
+    + cors: CorsConfig
     + max_body_size: usize
     + enable_tracing: bool
   }

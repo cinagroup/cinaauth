@@ -8,6 +8,7 @@ use auth_framework::{
     methods::{AuthMethodEnum, JwtMethod},
     permissions::{Permission, PermissionChecker},
     storage::memory::InMemoryStorage,
+    testing::test_infrastructure::TestEnvironmentGuard,
 };
 use std::time::Duration;
 
@@ -15,13 +16,9 @@ use std::time::Duration;
 async fn test_basic_auth_framework_integration() {
     println!("🔍 Testing Basic Auth Framework Integration");
 
-    // Set JWT secret for testing
-    unsafe {
-        std::env::set_var(
-            "JWT_SECRET",
-            "test-secret-key-for-integration-testing-at-least-32-chars-long",
-        );
-    }
+    // Set JWT secret for testing via serialized guard
+    let _env = TestEnvironmentGuard::new()
+        .with_jwt_secret("test-secret-key-for-integration-testing-at-least-32-chars-long");
 
     // Create auth configuration
     let config = AuthConfig::new()
@@ -154,13 +151,9 @@ async fn test_memory_storage_basic_operations() {
 async fn test_jwt_token_lifecycle() {
     println!("🔍 Testing JWT Token Lifecycle");
 
-    // Set JWT secret for testing
-    unsafe {
-        std::env::set_var(
-            "JWT_SECRET",
-            "lifecycle-secret-key-for-integration-testing-at-least-32-chars-long",
-        );
-    }
+    // Set JWT secret for testing via serialized guard
+    let _env = TestEnvironmentGuard::new()
+        .with_jwt_secret("lifecycle-secret-key-for-integration-testing-at-least-32-chars-long");
 
     // Create auth configuration
     let config = AuthConfig::new()
@@ -207,7 +200,7 @@ async fn test_jwt_token_lifecycle() {
     assert_eq!(token.user_id, "lifecycle_user", "User ID should match");
     assert_eq!(
         token.scopes,
-        vec!["test".to_string()],
+        auth_framework::types::Scopes::new(vec!["test".to_string()]),
         "Scopes should match"
     );
 

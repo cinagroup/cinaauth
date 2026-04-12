@@ -10,6 +10,9 @@
 //! - **Response Security**: JWS response signing
 //! - **Advanced Client Authentication**: Enhanced mTLS and private key JWT
 //! - **Threat Protection**: JARM, DPoP, PAR mandatory
+//! - **Compliance Validation**: Automated FAPI 2.0 requirement checking
+//! - **Sender-Constrained Tokens**: Resource server validation of token binding
+//! - **Rich Authorization Requests**: RFC 9396 fine-grained authorization
 //! - **Enhanced Logging**: Detailed audit trails
 //!
 //! # FAPI 2.0 Requirements
@@ -93,6 +96,11 @@ pub struct FapiConfig {
 
     /// Enhanced audit logging
     pub enhanced_audit: bool,
+
+    /// Whether the config is running in degraded mode (HMAC placeholder keys
+    /// instead of the required RSA keys). FAPI operations MUST reject requests
+    /// when this flag is true.
+    pub is_degraded: bool,
 }
 
 impl std::fmt::Debug for FapiConfig {
@@ -112,7 +120,139 @@ impl std::fmt::Debug for FapiConfig {
             .field("require_par", &self.require_par)
             .field("enable_jarm", &self.enable_jarm)
             .field("enhanced_audit", &self.enhanced_audit)
+            .field("is_degraded", &self.is_degraded)
             .finish()
+    }
+}
+
+impl FapiConfig {
+    /// Create a new FAPI 2.0 configuration builder.
+    ///
+    /// The builder enforces strict FAPI 2.0 compliance by default (DPoP, mTLS, PAR, JARM enabled).
+    pub fn builder(
+        issuer: impl Into<String>,
+        private_key: EncodingKey,
+        public_key: DecodingKey,
+    ) -> FapiConfigBuilder {
+        FapiConfigBuilder {
+            issuer: issuer.into(),
+            request_signing_algorithm: Algorithm::PS256,
+            response_signing_algorithm: Algorithm::PS256,
+            private_key,
+            public_key,
+            max_request_age: 60,
+            require_dpop: true,
+            require_mtls: true,
+            require_par: true,
+            enable_jarm: true,
+            enhanced_audit: true,
+            is_degraded: false,
+        }
+    }
+
+    /// Load configuration from environment variables.
+    #[deprecated(since = "0.5.0", note = "use FapiConfig::from_env() instead")]
+    pub fn load_from_env() -> Self {
+        Self::from_env()
+    }
+
+    /// Create a FAPI configuration from standard environment variables.
+    ///
+    /// Reads `FAPI_ISSUER`, `FAPI_PRIVATE_KEY_PATH`, and `FAPI_PUBLIC_KEY_PATH`.
+    pub fn from_env() -> Self {
+        Self::default()
+    }
+}
+
+/// Builder for FAPI 2.0 Configuration
+pub struct FapiConfigBuilder {
+    issuer: String,
+    request_signing_algorithm: Algorithm,
+    response_signing_algorithm: Algorithm,
+    private_key: EncodingKey,
+    public_key: DecodingKey,
+    max_request_age: i64,
+    require_dpop: bool,
+    require_mtls: bool,
+    require_par: bool,
+    enable_jarm: bool,
+    enhanced_audit: bool,
+    is_degraded: bool,
+}
+
+impl FapiConfigBuilder {
+    /// Set the request signing algorithm (default: PS256).
+    ///
+    /// FAPI 2.0 requires PS256 or ES256.
+    pub fn request_signing_algorithm(mut self, alg: Algorithm) -> Self {
+        self.request_signing_algorithm = alg;
+        self
+    }
+
+    /// Set the response signing algorithm (default: PS256).
+    pub fn response_signing_algorithm(mut self, alg: Algorithm) -> Self {
+        self.response_signing_algorithm = alg;
+        self
+    }
+
+    /// Set the maximum allowed age for request objects in seconds (default: 60).
+    pub fn max_request_age(mut self, age: i64) -> Self {
+        self.max_request_age = age;
+        self
+    }
+
+    /// Set whether DPoP is required (default: true).
+    pub fn require_dpop(mut self, require: bool) -> Self {
+        self.require_dpop = require;
+        self
+    }
+
+    /// Set whether mTLS is required (default: true).
+    pub fn require_mtls(mut self, require: bool) -> Self {
+        self.require_mtls = require;
+        self
+    }
+
+    /// Set whether PAR is required (default: true).
+    pub fn require_par(mut self, require: bool) -> Self {
+        self.require_par = require;
+        self
+    }
+
+    /// Enable or disable JARM (default: true).
+    pub fn enable_jarm(mut self, enable: bool) -> Self {
+        self.enable_jarm = enable;
+        self
+    }
+
+    /// Enable or disable enhanced audit logging (default: true).
+    pub fn enhanced_audit(mut self, enable: bool) -> Self {
+        self.enhanced_audit = enable;
+        self
+    }
+
+    /// Mark this configuration as degraded (for testing/development only).
+    pub fn degraded(mut self) -> Self {
+        self.is_degraded = true;
+        self
+    }
+
+    /// Build the FapiConfig.
+    pub fn build(self) -> FapiConfig {
+        FapiConfig {
+            issuer: self.issuer,
+            request_signing_algorithm: self.request_signing_algorithm,
+            response_signing_algorithm: self.response_signing_algorithm,
+            private_key: self.private_key,
+            public_key: self.public_key,
+            max_request_age: self.max_request_age,
+            require_dpop: self.require_dpop,
+            require_mtls: self.require_mtls,
+            require_par: self.require_par,
+            enable_jarm: self.enable_jarm,
+            enhanced_audit: self.enhanced_audit,
+            is_degraded: self.is_degraded,
+        }
     }
 }
 
@@ -148,6 +288,102 @@ pub struct FapiSession {
 
     /// Session metadata
     pub metadata: HashMap<String, Value>,
+}
+
+impl FapiSession {
+    /// Create a new builder for a FAPI 2.0 Session.
+    pub fn builder(
+        session_id: impl Into<String>,
+        client_id: impl Into<String>,
+        user_id: impl Into<String>,
+        expires_in: Duration,
+    ) -> FapiSessionBuilder {
+        let now = Utc::now();
+        FapiSessionBuilder {
+            session_id: session_id.into(),
+            client_id: client_id.into(),
+            user_id: user_id.into(),
+            created_at: now,
+            expires_at: now + expires_in,
+            dpop_proof: None,
+            cert_thumbprint: None,
+            request_jti: None,
+            scopes: Vec::new(),
+            metadata: HashMap::new(),
+        }
+    }
+}
+
+/// Builder for FAPI 2.0 Session
+pub struct FapiSessionBuilder {
+    session_id: String,
+    client_id: String,
+    user_id: String,
+    created_at: DateTime<Utc>,
+    expires_at: DateTime<Utc>,
+    dpop_proof: Option<String>,
+    cert_thumbprint: Option<String>,
+    request_jti: Option<String>,
+    scopes: Vec<String>,
+    metadata: HashMap<String, Value>,
+}
+
+impl FapiSessionBuilder {
+    /// Set the DPoP proof token.
+    pub fn dpop_proof(mut self, proof: impl Into<String>) -> Self {
+        self.dpop_proof = Some(proof.into());
+        self
+    }
+
+    /// Set the client certificate thumbprint for mTLS.
+    pub fn cert_thumbprint(mut self, thumbprint: impl Into<String>) -> Self {
+        self.cert_thumbprint = Some(thumbprint.into());
+        self
+    }
+
+    /// Set the request object JTI to prevent replay.
+    pub fn request_jti(mut self, jti: impl Into<String>) -> Self {
+        self.request_jti = Some(jti.into());
+        self
+    }
+
+    /// Add an authorized scope.
+    pub fn add_scope(mut self, scope: impl Into<String>) -> Self {
+        self.scopes.push(scope.into());
+        self
+    }
+
+    /// Add multiple authorized scopes.
+    pub fn add_scopes<I, S>(mut self, scopes: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.scopes.extend(scopes.into_iter().map(Into::into));
+        self
+    }
+
+    /// Add custom metadata to the session.
+    pub fn add_metadata(mut self, key: impl Into<String>, value: Value) -> Self {
+        self.metadata.insert(key.into(), value);
+        self
+    }
+
+    /// Build the FapiSession.
+    pub fn build(self) -> FapiSession {
+        FapiSession {
+            session_id: self.session_id,
+            client_id: self.client_id,
+            user_id: self.user_id,
+            created_at: self.created_at,
+            expires_at: self.expires_at,
+            dpop_proof: self.dpop_proof,
+            cert_thumbprint: self.cert_thumbprint,
+            request_jti: self.request_jti,
+            scopes: self.scopes,
+            metadata: self.metadata,
+        }
+    }
 }
 
 /// FAPI 2.0 Request Object Claims
@@ -300,7 +536,7 @@ impl FapiManager {
                 );
 
                 // Convert PAR request to FAPI request object
-                // This is a simplified conversion - in production you'd have a proper mapping
+                let nonce = par_request.additional_params.get("nonce").cloned();
                 FapiRequestObject {
                     iss: par_request.client_id.clone(),
                     aud: self.config.issuer.clone(),
@@ -313,7 +549,7 @@ impl FapiManager {
                     redirect_uri: par_request.redirect_uri,
                     scope: par_request.scope.unwrap_or_default(),
                     state: par_request.state,
-                    nonce: None, // Would extract from additional_params if present
+                    nonce,
                     code_challenge: par_request.code_challenge,
                     code_challenge_method: par_request.code_challenge_method,
                     additional_claims: par_request
@@ -341,14 +577,9 @@ impl FapiManager {
 
         // Validate mTLS if required
         if self.config.require_mtls {
-            if client_cert.is_none() {
-                return Err(AuthError::auth_method(
-                    "mtls",
-                    "mTLS certificate required for FAPI 2.0",
-                ));
-            }
-
-            let cert = client_cert.unwrap();
+            let cert = client_cert.ok_or_else(|| {
+                AuthError::auth_method("mtls", "mTLS certificate required for FAPI 2.0")
+            })?;
             let cert_bytes = cert.as_bytes(); // Convert to bytes for validation
             self.mtls_manager
                 .validate_client_certificate(cert_bytes, &claims.client_id)
@@ -357,14 +588,9 @@ impl FapiManager {
 
         // Validate DPoP if required
         if self.config.require_dpop {
-            if dpop_proof.is_none() {
-                return Err(AuthError::auth_method(
-                    "dpop",
-                    "DPoP proof required for FAPI 2.0",
-                ));
-            }
-
-            let proof = dpop_proof.unwrap();
+            let proof = dpop_proof.ok_or_else(|| {
+                AuthError::auth_method("dpop", "DPoP proof required for FAPI 2.0")
+            })?;
             self.dpop_manager
                 .validate_dpop_proof(
                     proof,
@@ -395,7 +621,7 @@ impl FapiManager {
             Ok(secure_claims) => {
                 // Decode JWT header to get algorithm
                 let header = jsonwebtoken::decode_header(request_object).map_err(|e| {
-                    AuthError::InvalidToken(format!("Invalid request object header: {}", e))
+                    AuthError::token(format!("Invalid request object header: {}", e))
                 })?;
 
                 // Validate algorithm requirement for FAPI
@@ -403,7 +629,7 @@ impl FapiManager {
                     header.alg,
                     Algorithm::RS256 | Algorithm::PS256 | Algorithm::ES256
                 ) {
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "Request object must use RS256, PS256, or ES256".to_string(),
                     ));
                 }
@@ -421,7 +647,7 @@ impl FapiManager {
                     &validation,
                 )
                 .map_err(|e| {
-                    AuthError::InvalidToken(format!("Request object validation failed: {}", e))
+                    AuthError::token(format!("Request object validation failed: {}", e))
                 })?;
 
                 let fapi_claims = token_data.claims;
@@ -429,21 +655,21 @@ impl FapiManager {
                 // Use the validated secure claims for enhanced security checks
                 // Ensure the subject matches between secure validation and FAPI claims
                 if secure_claims.sub != fapi_claims.client_id {
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "Subject mismatch between secure validation and FAPI claims".to_string(),
                     ));
                 }
 
                 // Use secure claims issuer for additional validation
                 if secure_claims.iss != fapi_claims.iss {
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "Issuer mismatch between secure validation and FAPI claims".to_string(),
                     ));
                 }
 
                 // Validate expiry consistency
                 if secure_claims.exp != fapi_claims.exp {
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "Expiry mismatch between secure validation and FAPI claims".to_string(),
                     ));
                 }
@@ -453,26 +679,24 @@ impl FapiManager {
 
                 // Check request object age
                 if now - fapi_claims.iat > self.config.max_request_age {
-                    return Err(AuthError::InvalidToken(
-                        "Request object too old".to_string(),
-                    ));
+                    return Err(AuthError::token("Request object too old".to_string()));
                 }
 
                 // Validate required claims
                 if fapi_claims.client_id.is_empty() {
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "client_id required in request object".to_string(),
                     ));
                 }
 
                 if fapi_claims.redirect_uri.is_empty() {
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "redirect_uri required in request object".to_string(),
                     ));
                 }
 
                 if fapi_claims.response_type.is_empty() {
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "response_type required in request object".to_string(),
                     ));
                 }
@@ -486,7 +710,7 @@ impl FapiManager {
             }
             Err(e) => {
                 tracing::error!("SecureJwtValidator failed for FAPI request object: {}", e);
-                Err(AuthError::InvalidToken(format!(
+                Err(AuthError::token(format!(
                     "Enhanced JWT validation failed: {}",
                     e
                 )))
@@ -596,14 +820,9 @@ impl FapiManager {
 
         // Validate DPoP if required
         if self.config.require_dpop {
-            if dpop_proof.is_none() {
-                return Err(AuthError::auth_method(
-                    "dpop",
-                    "DPoP proof required for FAPI 2.0 token request",
-                ));
-            }
-
-            let proof = dpop_proof.unwrap();
+            let proof = dpop_proof.ok_or_else(|| {
+                AuthError::auth_method("dpop", "DPoP proof required for FAPI 2.0 token request")
+            })?;
             self.dpop_manager
                 .validate_dpop_proof(
                     proof,
@@ -699,7 +918,7 @@ impl FapiManager {
             refresh_token: Some(refresh_token),
             scope: Some(scopes.join(" ")),
             id_token: None, // ID token generated by OIDC layer when openid scope present
-            cnf: if cnf.as_object().unwrap().is_empty() {
+            cnf: if cnf.as_object().map_or(true, |o| o.is_empty()) {
                 None
             } else {
                 Some(cnf)
@@ -742,7 +961,7 @@ impl FapiManager {
             cnf["jkt"] = Value::String(jkt.clone());
         }
 
-        if !cnf.as_object().unwrap().is_empty() {
+        if !cnf.as_object().map_or(true, |o| o.is_empty()) {
             claims["cnf"] = cnf;
         }
 
@@ -903,6 +1122,272 @@ impl FapiManager {
         );
         Ok(cert_hash)
     }
+
+    /// Validate FAPI 2.0 compliance of the current configuration.
+    ///
+    /// Returns a list of compliance violations. An empty list means the
+    /// configuration is fully FAPI 2.0 compliant.
+    pub fn check_compliance(&self) -> Vec<FapiComplianceViolation> {
+        let mut violations = Vec::new();
+
+        if self.config.is_degraded {
+            violations.push(FapiComplianceViolation {
+                requirement: "crypto-keys".to_string(),
+                severity: FapiViolationSeverity::Critical,
+                message: "RSA key pair not properly configured; all FAPI operations will fail"
+                    .to_string(),
+            });
+        }
+
+        if !self.config.require_par {
+            violations.push(FapiComplianceViolation {
+                requirement: "par".to_string(),
+                severity: FapiViolationSeverity::Critical,
+                message: "FAPI 2.0 Security Profile requires Pushed Authorization Requests"
+                    .to_string(),
+            });
+        }
+
+        if !self.config.require_dpop {
+            violations.push(FapiComplianceViolation {
+                requirement: "sender-constraint".to_string(),
+                severity: FapiViolationSeverity::Warning,
+                message: "DPoP is recommended for sender-constrained tokens".to_string(),
+            });
+        }
+
+        if !self.config.require_mtls {
+            violations.push(FapiComplianceViolation {
+                requirement: "sender-constraint".to_string(),
+                severity: FapiViolationSeverity::Warning,
+                message: "mTLS is recommended for client authentication and token binding"
+                    .to_string(),
+            });
+        }
+
+        if !self.config.require_dpop && !self.config.require_mtls {
+            violations.push(FapiComplianceViolation {
+                requirement: "sender-constraint".to_string(),
+                severity: FapiViolationSeverity::Critical,
+                message:
+                    "FAPI 2.0 requires at least one sender-constraining mechanism (DPoP or mTLS)"
+                        .to_string(),
+            });
+        }
+
+        if !self.config.enable_jarm {
+            violations.push(FapiComplianceViolation {
+                requirement: "jarm".to_string(),
+                severity: FapiViolationSeverity::Warning,
+                message: "JARM is recommended for authorization response integrity".to_string(),
+            });
+        }
+
+        if !self.config.enhanced_audit {
+            violations.push(FapiComplianceViolation {
+                requirement: "audit".to_string(),
+                severity: FapiViolationSeverity::Warning,
+                message: "Enhanced audit logging is recommended for FAPI compliance".to_string(),
+            });
+        }
+
+        if !matches!(
+            self.config.request_signing_algorithm,
+            Algorithm::RS256 | Algorithm::PS256 | Algorithm::ES256
+        ) {
+            violations.push(FapiComplianceViolation {
+                requirement: "algorithm".to_string(),
+                severity: FapiViolationSeverity::Critical,
+                message: "Request signing must use RS256, PS256, or ES256".to_string(),
+            });
+        }
+
+        if self.config.max_request_age > 600 {
+            violations.push(FapiComplianceViolation {
+                requirement: "request-lifetime".to_string(),
+                severity: FapiViolationSeverity::Warning,
+                message: "Max request age exceeds recommended 10 minutes".to_string(),
+            });
+        }
+
+        violations
+    }
+
+    /// Returns true if the configuration is fully FAPI 2.0 compliant (no critical violations).
+    pub fn is_compliant(&self) -> bool {
+        !self
+            .check_compliance()
+            .iter()
+            .any(|v| matches!(v.severity, FapiViolationSeverity::Critical))
+    }
+
+    /// Validate a sender-constrained access token at a resource server.
+    ///
+    /// Verifies that the token's `cnf` claim matches the presented proof
+    /// (DPoP proof JKT or mTLS certificate thumbprint).
+    pub async fn validate_sender_constrained_token(
+        &self,
+        access_token: &str,
+        dpop_proof: Option<&str>,
+        client_cert: Option<&str>,
+        http_method: &str,
+        http_uri: &str,
+    ) -> Result<serde_json::Value> {
+        // Validate the token's signature and standard claims via SecureJwtValidator
+        let token_data = self
+            .jwt_validator
+            .validate_token(access_token, &self.config.public_key)?;
+
+        // Decode the raw JWT payload to access the cnf claim which is not in SecureJwtClaims
+        let header = jsonwebtoken::decode_header(access_token)
+            .map_err(|e| AuthError::token(format!("Invalid token header: {}", e)))?;
+        let mut validation = Validation::new(header.alg);
+        validation.set_audience(&[&self.config.issuer]);
+        validation.validate_exp = true;
+        let raw_claims = jsonwebtoken::decode::<serde_json::Value>(
+            access_token,
+            &self.config.public_key,
+            &validation,
+        )
+        .map_err(|e| AuthError::token(format!("Token decode failed: {}", e)))?;
+
+        // Extract cnf claim from the raw payload
+        let cnf = raw_claims.claims.get("cnf").ok_or_else(|| {
+            AuthError::token("Token is not sender-constrained (missing cnf claim)".to_string())
+        })?;
+
+        // Validate DPoP binding if cnf contains jkt
+        if let Some(expected_jkt) = cnf.get("jkt").and_then(|v| v.as_str()) {
+            let proof = dpop_proof.ok_or_else(|| {
+                AuthError::token(
+                    "Token is DPoP-bound but no DPoP proof header provided".to_string(),
+                )
+            })?;
+            self.dpop_manager
+                .validate_dpop_proof(proof, http_method, http_uri, None, Some(expected_jkt))
+                .await?;
+        }
+
+        // Validate mTLS certificate binding if cnf contains x5t#S256
+        if let Some(expected_thumbprint) = cnf.get("x5t#S256").and_then(|v| v.as_str()) {
+            let cert = client_cert.ok_or_else(|| {
+                AuthError::token(
+                    "Token is certificate-bound but no client certificate provided".to_string(),
+                )
+            })?;
+            // Compute SHA-256 thumbprint of presented certificate
+            use base64::Engine;
+            use sha2::{Digest, Sha256};
+            let presented_thumbprint = base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .encode(Sha256::digest(cert.as_bytes()));
+            if !bool::from(subtle::ConstantTimeEq::ct_eq(
+                presented_thumbprint.as_bytes(),
+                expected_thumbprint.as_bytes(),
+            )) {
+                return Err(AuthError::token(
+                    "Certificate thumbprint does not match token binding".to_string(),
+                ));
+            }
+        }
+
+        // Return the validated token claims
+        Ok(serde_json::json!({
+            "sub": token_data.sub,
+            "iss": token_data.iss,
+            "exp": token_data.exp,
+            "scope": token_data.scope,
+        }))
+    }
+
+    /// Validate a Rich Authorization Request (RFC 9396) authorization_details parameter.
+    pub fn validate_authorization_details(
+        &self,
+        authorization_details: &[AuthorizationDetail],
+    ) -> Result<()> {
+        if authorization_details.is_empty() {
+            return Err(AuthError::InvalidRequest(
+                "authorization_details must not be empty".to_string(),
+            ));
+        }
+
+        for (i, detail) in authorization_details.iter().enumerate() {
+            if detail.r#type.is_empty() {
+                return Err(AuthError::InvalidRequest(format!(
+                    "authorization_details[{}]: type is required",
+                    i
+                )));
+            }
+
+            // Validate locations if present
+            for location in &detail.locations {
+                if !location.starts_with("https://") {
+                    return Err(AuthError::InvalidRequest(format!(
+                        "authorization_details[{}]: location must use HTTPS: {}",
+                        i, location
+                    )));
+                }
+            }
+
+            // Validate actions are non-empty strings
+            for action in &detail.actions {
+                if action.is_empty() {
+                    return Err(AuthError::InvalidRequest(format!(
+                        "authorization_details[{}]: empty action not allowed",
+                        i
+                    )));
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// FAPI 2.0 compliance violation
+#[derive(Debug, Clone)]
+pub struct FapiComplianceViolation {
+    /// Which FAPI requirement is violated
+    pub requirement: String,
+    /// Severity of the violation
+    pub severity: FapiViolationSeverity,
+    /// Human-readable description
+    pub message: String,
+}
+
+/// Severity of a compliance violation
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FapiViolationSeverity {
+    /// Must be fixed for FAPI 2.0 compliance
+    Critical,
+    /// Recommended but not strictly required
+    Warning,
+}
+
+/// Rich Authorization Request detail (RFC 9396)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthorizationDetail {
+    /// Type of authorization (e.g. "payment_initiation", "account_information")
+    pub r#type: String,
+
+    /// Resource server locations this authorization applies to
+    #[serde(default)]
+    pub locations: Vec<String>,
+
+    /// Permitted actions (e.g. "read", "write", "execute")
+    #[serde(default)]
+    pub actions: Vec<String>,
+
+    /// Data types the client wants to access
+    #[serde(default)]
+    pub datatypes: Vec<String>,
+
+    /// Unique identifier for the authorization detail
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub identifier: Option<String>,
+
+    /// Additional fields specific to the authorization type
+    #[serde(flatten)]
+    pub additional_fields: HashMap<String, Value>,
 }
 
 impl Default for FapiConfig {
@@ -911,7 +1396,11 @@ impl Default for FapiConfig {
         let issuer =
             std::env::var("FAPI_ISSUER").unwrap_or_else(|_| "https://auth.example.com".to_string());
 
-        // Load private key from environment or generate temporary key for development
+        let mut is_degraded = false;
+
+        // Load private key from environment — FAPI *requires* asymmetric keys.
+        // There is intentionally no insecure fallback; callers must either set
+        // FAPI_PRIVATE_KEY_PATH or construct FapiConfig manually.
         let private_key = if let Ok(key_path) = std::env::var("FAPI_PRIVATE_KEY_PATH") {
             std::fs::read(&key_path)
                 .map_err(|e| tracing::warn!("Failed to load private key from {}: {}", key_path, e))
@@ -919,9 +1408,67 @@ impl Default for FapiConfig {
                     EncodingKey::from_rsa_pem(&bytes)
                         .map_err(|e| tracing::warn!("Invalid RSA key format: {}", e))
                 })
-                .unwrap_or_else(|_| EncodingKey::from_secret(b"dev_fallback_secret"))
+                .unwrap_or_else(|_| {
+                    tracing::error!(
+                        "SECURITY CRITICAL: FAPI_PRIVATE_KEY_PATH is set but the key could not \
+                         be loaded. FAPI REQUIRES an RSA private key for request/response signing. \
+                         Using an ephemeral HMAC placeholder — ALL FAPI OPERATIONS WILL BE REJECTED \
+                         until a valid RSA key is provided. Set FAPI_PRIVATE_KEY_PATH to a valid \
+                         PEM-encoded RSA private key file."
+                    );
+                    is_degraded = true;
+                    use ring::rand::{SecureRandom, SystemRandom};
+                    let rng = SystemRandom::new();
+                    let mut bytes = [0u8; 32];
+                    rng.fill(&mut bytes).expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+                    EncodingKey::from_secret(&bytes)
+                })
         } else {
-            EncodingKey::from_secret(b"dev_fallback_secret")
+            tracing::error!(
+                "SECURITY CRITICAL: FAPI_PRIVATE_KEY_PATH not set. FAPI REQUIRES an RSA \
+                 private key for request and response signing. Using an ephemeral HMAC \
+                 placeholder — ALL FAPI OPERATIONS WILL BE REJECTED until a valid RSA key \
+                 is provided. Set FAPI_PRIVATE_KEY_PATH to a PEM-encoded RSA private key file."
+            );
+            is_degraded = true;
+            use ring::rand::{SecureRandom, SystemRandom};
+            let rng = SystemRandom::new();
+            let mut bytes = [0u8; 32];
+            rng.fill(&mut bytes).expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+            EncodingKey::from_secret(&bytes)
+        };
+
+        // Same treatment for the public key.
+        let public_key = if let Ok(key_path) = std::env::var("FAPI_PUBLIC_KEY_PATH") {
+            std::fs::read(&key_path)
+                .map_err(|e| tracing::warn!("Failed to load public key from {}: {}", key_path, e))
+                .and_then(|bytes| {
+                    DecodingKey::from_rsa_pem(&bytes)
+                        .map_err(|e| tracing::warn!("Invalid RSA public key format: {}", e))
+                })
+                .unwrap_or_else(|_| {
+                    tracing::error!(
+                        "SECURITY CRITICAL: FAPI_PUBLIC_KEY_PATH is set but the key could not \
+                         be loaded. FAPI verification will not work correctly."
+                    );
+                    is_degraded = true;
+                    use ring::rand::{SecureRandom, SystemRandom};
+                    let rng = SystemRandom::new();
+                    let mut secret = [0u8; 32];
+                    rng.fill(&mut secret).expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+                    DecodingKey::from_secret(&secret)
+                })
+        } else {
+            tracing::error!(
+                "SECURITY CRITICAL: FAPI_PUBLIC_KEY_PATH not set. FAPI verification will \
+                 not work correctly. Set FAPI_PUBLIC_KEY_PATH to a PEM-encoded RSA public key file."
+            );
+            is_degraded = true;
+            use ring::rand::{SecureRandom, SystemRandom};
+            let rng = SystemRandom::new();
+            let mut secret = [0u8; 32];
+            rng.fill(&mut secret).expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+            DecodingKey::from_secret(&secret)
         };
 
         Self {
@@ -929,13 +1476,14 @@ impl Default for FapiConfig {
             request_signing_algorithm: Algorithm::RS256,
             response_signing_algorithm: Algorithm::RS256,
             private_key,
-            public_key: DecodingKey::from_secret(b"dev_secret"),
+            public_key,
             max_request_age: 300, // 5 minutes
             require_dpop: true,
             require_mtls: true,
             require_par: true,
             enable_jarm: true,
             enhanced_audit: true,
+            is_degraded,
         }
     }
 }
@@ -943,6 +1491,47 @@ impl Default for FapiConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_fapi_config_builder() {
+        use ring::rand::{SecureRandom, SystemRandom};
+        let rng = SystemRandom::new();
+        let mut bytes = [0u8; 32];
+        rng.fill(&mut bytes).unwrap();
+        let private_key = EncodingKey::from_secret(&bytes);
+        let public_key = DecodingKey::from_secret(&bytes);
+
+        let config = FapiConfig::builder("https://fapi.example.com", private_key, public_key)
+            .request_signing_algorithm(Algorithm::ES256)
+            .max_request_age(120)
+            .require_dpop(false)
+            .degraded()
+            .build();
+
+        assert_eq!(config.issuer, "https://fapi.example.com");
+        assert_eq!(config.request_signing_algorithm, Algorithm::ES256);
+        assert_eq!(config.max_request_age, 120);
+        assert!(!config.require_dpop);
+        assert!(config.require_mtls); // default is true
+        assert!(config.is_degraded);
+    }
+
+    #[test]
+    fn test_fapi_session_builder() {
+        let session = FapiSession::builder("sess_123", "client_456", "user_789", Duration::try_hours(1).unwrap())
+            .dpop_proof("proof_abc")
+            .add_scope("openid")
+            .add_scopes(vec!["profile", "email"])
+            .add_metadata("custom_flag", json!(true))
+            .build();
+
+        assert_eq!(session.session_id, "sess_123");
+        assert_eq!(session.client_id, "client_456");
+        assert_eq!(session.user_id, "user_789");
+        assert_eq!(session.dpop_proof.as_deref(), Some("proof_abc"));
+        assert_eq!(session.scopes, vec!["openid", "profile", "email"]);
+        assert_eq!(session.metadata["custom_flag"], true);
+    }
 
     #[tokio::test]
     async fn test_fapi_manager_creation() {

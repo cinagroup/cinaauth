@@ -44,7 +44,9 @@ services:
       JWT_EXPIRATION: 3600
       
       # Security Configuration
-      CORS_ALLOWED_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      # Configure CORS through the mounted application config file or your own
+      # entrypoint wrapper; AuthFramework does not provide a built-in
+      # CORS environment-variable loader for ApiServerConfig.
       RATE_LIMIT_REQUESTS_PER_MINUTE: 100
       
       # Logging
@@ -70,7 +72,9 @@ Create a `.env` file:
 # .env
 DB_PASSWORD=your_secure_database_password
 JWT_SECRET=your-super-secret-jwt-key-minimum-32-characters-long
-CORS_ORIGINS=http://localhost:3000,https://your-frontend.com
+DATABASE_URL=postgresql://auth_user:${DB_PASSWORD}@postgres:5432/auth_framework
+JWT_ISSUER=auth-framework
+JWT_AUDIENCE=api
 ```
 
 ### Database Initialization
@@ -505,6 +509,7 @@ gunzip -c /backups/authframework_backup_20250930_120000.sql.gz | \
 ### Common Issues
 
 **Database Connection Failures:**
+
 ```bash
 # Check PostgreSQL status
 docker-compose logs postgres
@@ -514,6 +519,7 @@ docker exec -it postgres psql -U authuser -d authframework
 ```
 
 **Performance Issues:**
+
 ```bash
 # Monitor resource usage
 docker stats
@@ -524,6 +530,7 @@ docker exec -it postgres psql -U authuser -d authframework \
 ```
 
 **Container Crashes:**
+
 ```bash
 # Check container logs
 docker-compose logs --tail=100 authframework

@@ -230,12 +230,12 @@ impl JwtBestPracticesValidator {
     pub fn validate_token_format(&self, token: &str) -> Result<()> {
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {
-            return Err(AuthError::InvalidToken("Invalid JWT format".to_string()));
+            return Err(AuthError::token("Invalid JWT format".to_string()));
         }
 
         // Check for excessive size (potential DoS)
         if token.len() > 8192 {
-            return Err(AuthError::InvalidToken("Token too large".to_string()));
+            return Err(AuthError::token("Token too large".to_string()));
         }
 
         Ok(())
@@ -245,7 +245,7 @@ impl JwtBestPracticesValidator {
     pub fn validate_algorithm(&self, algorithm: &Algorithm) -> Result<()> {
         // Check if algorithm is forbidden
         if self.config.forbidden_algorithms.contains(algorithm) {
-            return Err(AuthError::InvalidToken(format!(
+            return Err(AuthError::token(format!(
                 "Forbidden algorithm: {:?}",
                 algorithm
             )));
@@ -253,7 +253,7 @@ impl JwtBestPracticesValidator {
 
         // Check if algorithm is allowed
         if !self.config.allowed_algorithms.contains(algorithm) {
-            return Err(AuthError::InvalidToken(format!(
+            return Err(AuthError::token(format!(
                 "Algorithm not allowed: {:?}",
                 algorithm
             )));
@@ -264,19 +264,17 @@ impl JwtBestPracticesValidator {
         match self.config.security_level {
             SecurityLevel::Minimum => {
                 if strength < CryptoStrength::Acceptable {
-                    return Err(AuthError::InvalidToken("Algorithm too weak".to_string()));
+                    return Err(AuthError::token("Algorithm too weak".to_string()));
                 }
             }
             SecurityLevel::Recommended => {
                 if strength < CryptoStrength::Strong {
-                    return Err(AuthError::InvalidToken(
-                        "Algorithm not recommended".to_string(),
-                    ));
+                    return Err(AuthError::token("Algorithm not recommended".to_string()));
                 }
             }
             SecurityLevel::Maximum => {
                 if strength < CryptoStrength::High {
-                    return Err(AuthError::InvalidToken(
+                    return Err(AuthError::token(
                         "Algorithm insufficient for maximum security".to_string(),
                     ));
                 }
@@ -292,43 +290,35 @@ impl JwtBestPracticesValidator {
 
         // Validate expiration
         if claims.exp <= now {
-            return Err(AuthError::InvalidToken("Token has expired".to_string()));
+            return Err(AuthError::token("Token has expired".to_string()));
         }
 
         // Validate not before
         if let Some(nbf) = claims.nbf
             && nbf > now + self.config.clock_skew
         {
-            return Err(AuthError::InvalidToken(
-                "Token is not yet valid".to_string(),
-            ));
+            return Err(AuthError::token("Token is not yet valid".to_string()));
         }
 
         // Validate issued at
         if claims.iat > now + self.config.clock_skew {
-            return Err(AuthError::InvalidToken(
-                "Token issued in the future".to_string(),
-            ));
+            return Err(AuthError::token("Token issued in the future".to_string()));
         }
 
         // Validate lifetime
         let lifetime = claims.exp - claims.iat;
         if lifetime > self.config.max_lifetime {
-            return Err(AuthError::InvalidToken(
-                "Token lifetime too long".to_string(),
-            ));
+            return Err(AuthError::token("Token lifetime too long".to_string()));
         }
         if lifetime < self.config.min_lifetime {
-            return Err(AuthError::InvalidToken(
-                "Token lifetime too short".to_string(),
-            ));
+            return Err(AuthError::token("Token lifetime too short".to_string()));
         }
 
         // Validate issuer
         if !self.config.required_issuers.is_empty()
             && !self.config.required_issuers.contains(&claims.iss)
         {
-            return Err(AuthError::InvalidToken("Invalid issuer".to_string()));
+            return Err(AuthError::token("Invalid issuer".to_string()));
         }
 
         // Validate audience
@@ -338,14 +328,14 @@ impl JwtBestPracticesValidator {
                 .iter()
                 .any(|aud| self.config.required_audiences.contains(aud));
             if !has_valid_audience {
-                return Err(AuthError::InvalidToken("Invalid audience".to_string()));
+                return Err(AuthError::token("Invalid audience".to_string()));
             }
         }
 
         // Validate JWT ID for replay protection
         if self.config.require_jwt_id {
             if self.used_jtis.contains(&claims.jti) {
-                return Err(AuthError::InvalidToken("Token replay detected".to_string()));
+                return Err(AuthError::token("Token replay detected".to_string()));
             }
             self.used_jtis.insert(claims.jti.clone());
         }

@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 
-/// A AbacPermission represents a specific action that can be performed on a resource
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// An AbacPermission represents a specific action that can be performed on a resource
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AbacPermission {
     /// The resource being accessed (e.g., "users", "documents", "api")
     pub resource: String,
@@ -20,7 +20,15 @@ pub struct AbacPermission {
     /// Optional conditions for the AbacPermission
     pub conditions: Option<AccessCondition>,
     /// Optional resource-specific attributes (as key-value pairs)
-    pub attributes: Vec<(String, String)>,
+    pub attributes: HashMap<String, String>,
+}
+
+impl std::hash::Hash for AbacPermission {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.resource.hash(state);
+        self.action.hash(state);
+        self.conditions.hash(state);
+    }
 }
 
 impl AbacPermission {
@@ -30,7 +38,7 @@ impl AbacPermission {
             resource: resource.into(),
             action: action.into(),
             conditions: None,
-            attributes: Vec::new(),
+            attributes: HashMap::new(),
         }
     }
 
@@ -42,7 +50,7 @@ impl AbacPermission {
 
     /// Add an attribute to this AbacPermission
     pub fn with_attribute(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.attributes.push((key.into(), value.into()));
+        self.attributes.insert(key.into(), value.into());
         self
     }
 
@@ -72,7 +80,7 @@ pub enum AccessCondition {
         timezone: String,
     },
     /// Location-based access
-    IpWhitelist(Vec<String>),
+    IpWhitelist(crate::types::IpList),
     /// User attribute condition
     UserAttribute {
         attribute: String,
@@ -159,7 +167,7 @@ fn compare_values(left: &str, right: &str, operator: &ComparisonOperator) -> boo
     }
 }
 
-/// A AbacRole groups permissions and can be assigned to users
+/// An AbacRole groups permissions and can be assigned to users
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbacRole {
     /// Unique AbacRole identifier
@@ -196,25 +204,25 @@ impl AbacRole {
         }
     }
 
-    /// Add a AbacPermission to this AbacRole
+    /// Adds a permission to this role. Updates the `updated_at` timestamp.
     pub fn add_permission(&mut self, permission: AbacPermission) {
         self.permissions.insert(permission);
         self.updated_at = SystemTime::now();
     }
 
-    /// Remove a AbacPermission from this AbacRole
+    /// Removes a permission from this role. Updates the `updated_at` timestamp.
     pub fn remove_permission(&mut self, permission: &AbacPermission) {
         self.permissions.remove(permission);
         self.updated_at = SystemTime::now();
     }
 
-    /// Add a parent AbacRole
+    /// Adds a parent role by ID, enabling permission inheritance.
     pub fn add_parent_role(&mut self, role_id: impl Into<String>) {
         self.parent_roles.insert(role_id.into());
         self.updated_at = SystemTime::now();
     }
 
-    /// Check if this AbacRole has a specific AbacPermission
+    /// Checks whether this role grants the given `permission` under `context`.
     pub fn has_permission(&self, permission: &AbacPermission, context: &AccessContext) -> bool {
         self.permissions
             .iter()
@@ -242,7 +250,10 @@ pub struct AccessContext {
 }
 
 impl AccessContext {
-    /// Create a new access context
+    /// Creates a new context for the given user with defaults for all other fields.
+    ///
+    /// Use the `with_*` builder methods to attach resource info, IP address,
+    /// or custom attributes before passing the context to an authorization check.
     pub fn new(user_id: impl Into<String>) -> Self {
         Self {
             user_id: user_id.into(),
@@ -255,19 +266,19 @@ impl AccessContext {
         }
     }
 
-    /// Add user attribute
+    /// Attaches a user attribute (e.g. `"department"`, `"clearance_level"`).
     pub fn with_user_attribute(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.user_attributes.insert(key.into(), value.into());
         self
     }
 
-    /// Set resource information
+    /// Sets the resource being accessed.
     pub fn with_resource(mut self, resource_id: impl Into<String>) -> Self {
         self.resource_id = Some(resource_id.into());
         self
     }
 
-    /// Add resource attribute
+    /// Attaches a resource attribute (e.g. `"classification"`, `"owner"`).
     pub fn with_resource_attribute(
         mut self,
         key: impl Into<String>,
@@ -277,7 +288,7 @@ impl AccessContext {
         self
     }
 
-    /// Set IP address
+    /// Sets the originating IP address for location-based access control.
     pub fn with_ip_address(mut self, ip: impl Into<String>) -> Self {
         self.ip_address = Some(ip.into());
         self
@@ -315,25 +326,25 @@ pub struct AuthorizationResult {
 /// Authorization storage trait
 #[async_trait]
 pub trait AuthorizationStorage: Send + Sync {
-    /// Store a AbacRole
+    /// Store an AbacRole
     async fn store_role(&self, role: &AbacRole) -> Result<()>;
 
-    /// Get a AbacRole by ID
+    /// Get an AbacRole by ID
     async fn get_role(&self, role_id: &str) -> Result<Option<AbacRole>>;
 
-    /// Update a AbacRole
+    /// Update an AbacRole
     async fn update_role(&self, role: &AbacRole) -> Result<()>;
 
-    /// Delete a AbacRole
+    /// Delete an AbacRole
     async fn delete_role(&self, role_id: &str) -> Result<()>;
 
     /// List all roles
     async fn list_roles(&self) -> Result<Vec<AbacRole>>;
 
-    /// Assign a AbacRole to a user
+    /// Assign an AbacRole to a user
     async fn assign_role(&self, user_role: &UserRole) -> Result<()>;
 
-    /// Remove a AbacRole from a user
+    /// Remove an AbacRole from a user
     async fn remove_role(&self, user_id: &str, role_id: &str) -> Result<()>;
 
     /// Get user's roles
@@ -409,7 +420,7 @@ impl<S: AuthorizationStorage> AuthorizationEngine<S> {
         })
     }
 
-    /// Get all permissions for a AbacRole (including inherited permissions)
+    /// Get all permissions for an AbacRole (including inherited permissions)
     async fn get_role_permissions(&self, role_id: &str) -> Result<Vec<AbacPermission>> {
         let mut all_permissions = Vec::new();
         let mut visited_roles = HashSet::new();
@@ -499,7 +510,7 @@ impl<S: AuthorizationStorage> AuthorizationEngine<S> {
         Ok(())
     }
 
-    /// Assign a AbacRole to a user
+    /// Assign an AbacRole to a user
     pub async fn assign_role(&self, user_id: &str, role_id: &str, assigned_by: &str) -> Result<()> {
         // Verify AbacRole exists
         if self.storage.get_role(role_id).await?.is_none() {

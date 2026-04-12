@@ -8,9 +8,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 
-/// Base configuration trait that all server configs can implement
+/// Base configuration trait that all server configs must implement.
 pub trait ServerConfig {
-    /// Validate the configuration
+    /// Validate the configuration.
+    ///
+    /// Implementors **must** override this method to perform meaningful validation.
+    /// The default returns `Ok(())` only for backward compatibility with existing
+    /// implementors; new types should always provide a real check.
     fn validate(&self) -> Result<()> {
         Ok(())
     }
@@ -58,6 +62,10 @@ pub struct SecurityConfig {
     pub cert_validation: CertificateValidation,
     /// Whether to verify certificates (legacy compatibility)
     pub verify_certificates: bool,
+    /// Accept invalid TLS certificates on outbound connections.
+    /// Default: `false`. Only enable for development/testing — never in production.
+    #[serde(default)]
+    pub accept_invalid_certs: bool,
 }
 
 impl Default for SecurityConfig {
@@ -72,6 +80,7 @@ impl Default for SecurityConfig {
             ],
             cert_validation: CertificateValidation::Full,
             verify_certificates: true,
+            accept_invalid_certs: false,
         }
     }
 }
@@ -185,13 +194,13 @@ pub mod validation {
     /// Validate URL format
     pub fn validate_url(url: &str) -> Result<()> {
         if url.is_empty() {
-            return Err(crate::errors::AuthError::ConfigurationError(
+            return Err(crate::errors::AuthError::config(
                 "URL cannot be empty".to_string(),
             ));
         }
 
         if !url.starts_with("http://") && !url.starts_with("https://") {
-            return Err(crate::errors::AuthError::ConfigurationError(format!(
+            return Err(crate::errors::AuthError::config(format!(
                 "Invalid URL format: {}",
                 url
             )));
@@ -203,7 +212,7 @@ pub mod validation {
     /// Validate duration is positive
     pub fn validate_positive_duration(duration: &Duration, field_name: &str) -> Result<()> {
         if duration.is_zero() {
-            return Err(crate::errors::AuthError::ConfigurationError(format!(
+            return Err(crate::errors::AuthError::config(format!(
                 "{} must be greater than zero",
                 field_name
             )));
@@ -214,7 +223,7 @@ pub mod validation {
     /// Validate port number
     pub fn validate_port(port: u16) -> Result<()> {
         if port == 0 {
-            return Err(crate::errors::AuthError::ConfigurationError(
+            return Err(crate::errors::AuthError::config(
                 "Port cannot be zero".to_string(),
             ));
         }
@@ -224,11 +233,120 @@ pub mod validation {
     /// Validate required field is not empty
     pub fn validate_required_field(value: &str, field_name: &str) -> Result<()> {
         if value.trim().is_empty() {
-            return Err(crate::errors::AuthError::ConfigurationError(format!(
+            return Err(crate::errors::AuthError::config(format!(
                 "{} is required and cannot be empty",
                 field_name
             )));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_timeout_config_default() {
+        let tc = TimeoutConfig::default();
+        assert_eq!(tc.connect_timeout, Duration::from_secs(30));
+        assert_eq!(tc.read_timeout, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn test_security_config_default() {
+        let sc = SecurityConfig::default();
+        assert!(sc.enable_tls);
+        assert!(sc.verify_certificates);
+    }
+
+    #[test]
+    fn test_retry_config_default() {
+        let rc = RetryConfig::default();
+        assert!(rc.max_attempts > 0);
+    }
+
+    #[test]
+    fn test_logging_config_default() {
+        let lc = LoggingConfig::default();
+        assert!(!lc.debug);
+        assert!(!lc.log_bodies);
+        assert!(!lc.log_sensitive);
+        assert!(lc.max_log_size > 0);
+    }
+
+    #[test]
+    fn test_endpoint_config_new() {
+        let ec = EndpointConfig::new("https://api.example.com");
+        assert_eq!(ec.base_url, "https://api.example.com");
+        assert!(ec.api_version.is_none());
+    }
+
+    #[test]
+    fn test_endpoint_config_with_header() {
+        let ec = EndpointConfig::new("https://api.example.com")
+            .with_header("Authorization", "Bearer xxx");
+        assert_eq!(ec.headers.get("Authorization").unwrap(), "Bearer xxx");
+    }
+
+    #[test]
+    fn test_endpoint_config_with_api_version() {
+        let ec = EndpointConfig::new("https://api.example.com").with_api_version("2024-01-01");
+        assert_eq!(ec.api_version.as_deref(), Some("2024-01-01"));
+    }
+
+    #[test]
+    fn test_validate_url_valid() {
+        assert!(validation::validate_url("https://example.com").is_ok());
+    }
+
+    #[test]
+    fn test_validate_url_empty() {
+        assert!(validation::validate_url("").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_no_scheme() {
+        assert!(validation::validate_url("example.com").is_err());
+    }
+
+    #[test]
+    fn test_validate_positive_duration() {
+        assert!(validation::validate_positive_duration(&Duration::from_secs(1), "timeout").is_ok());
+    }
+
+    #[test]
+    fn test_validate_zero_duration() {
+        assert!(validation::validate_positive_duration(&Duration::ZERO, "timeout").is_err());
+    }
+
+    #[test]
+    fn test_validate_port() {
+        assert!(validation::validate_port(8080).is_ok());
+        assert!(validation::validate_port(0).is_err());
+    }
+
+    #[test]
+    fn test_validate_required_field() {
+        assert!(validation::validate_required_field("value", "name").is_ok());
+        assert!(validation::validate_required_field("", "name").is_err());
+        assert!(validation::validate_required_field("  ", "name").is_err());
+    }
+
+    #[test]
+    fn test_security_config_accept_invalid_certs_defaults_false() {
+        let sc = SecurityConfig::default();
+        assert!(
+            !sc.accept_invalid_certs,
+            "accept_invalid_certs must default to false"
+        );
+    }
+
+    #[test]
+    fn test_security_config_accept_invalid_certs_deserialization_default() {
+        // A JSON object missing accept_invalid_certs should deserialize to false
+        let json = r#"{"enable_tls":true,"min_tls_version":"1.2","cipher_suites":[],"cert_validation":"Full","verify_certificates":true}"#;
+        let sc: SecurityConfig = serde_json::from_str(json).unwrap();
+        assert!(!sc.accept_invalid_certs);
     }
 }

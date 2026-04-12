@@ -275,18 +275,29 @@ impl FrontChannelLogoutManager {
         &self,
         iframe_urls: &[(String, String, Option<u64>)],
     ) -> String {
+        /// HTML-escape a string for safe insertion into HTML attributes/content
+        fn html_escape(s: &str) -> String {
+            s.replace('&', "&amp;")
+                .replace('"', "&quot;")
+                .replace('\'', "&#x27;")
+                .replace('<', "&lt;")
+                .replace('>', "&gt;")
+        }
+
         let mut iframes_html = String::new();
         let mut timeout_scripts = String::new();
 
         for (i, (client_id, url, custom_timeout)) in iframe_urls.iter().enumerate() {
             let timeout = custom_timeout.unwrap_or(self.config.iframe_timeout_ms);
+            let escaped_url = html_escape(url);
+            let escaped_client_id = html_escape(client_id);
 
             iframes_html.push_str(&format!(
                 r#"        <iframe id="fc_logout_{}" src="{}" width="{}" height="{}" style="display:none; visibility:hidden;"
                 onload="handleIframeLoad('{}')"
                 onerror="handleIframeError('{}')"></iframe>
 "#,
-                i, url, self.config.iframe_width, self.config.iframe_height, client_id, client_id
+                i, escaped_url, self.config.iframe_width, self.config.iframe_height, escaped_client_id, escaped_client_id
             ));
 
             // Add timeout for each iframe

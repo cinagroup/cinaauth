@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, json};
 use std::collections::HashMap;
 use tracing::{debug, error};
+use url::Url;
 use uuid::Uuid;
 
 /// Token introspection request (RFC 7662)
@@ -369,6 +370,17 @@ pub async fn pushed_authorization_request(
     Form(req): Form<PARRequest>,
 ) -> (StatusCode, Json<PARResponse>) {
     debug!("Processing PAR request for client_id={}", req.client_id);
+
+    // Validate redirect_uri is a well-formed URL before accepting it
+    if Url::parse(&req.redirect_uri).is_err() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(PARResponse {
+                request_uri: String::new(),
+                expires_in: 0,
+            }),
+        );
+    }
 
     // Generate a unique request URI per RFC 9126 §2.2
     let request_id = Uuid::new_v4().to_string();

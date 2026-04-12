@@ -43,6 +43,46 @@ pub struct Session {
     pub last_activity: ActivityInfo,
 }
 
+impl Session {
+    /// Create a new active session for the given user with sensible defaults.
+    ///
+    /// Sets `created_at` / `last_accessed` to *now*, `state` to [`SessionState::Active`],
+    /// and all optional fields to empty / default values.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use auth_framework::session::Session;
+    /// use std::time::{Duration, SystemTime};
+    ///
+    /// let session = Session::new("user-123", Duration::from_secs(3600));
+    /// assert_eq!(session.user_id, "user-123");
+    /// assert_eq!(session.state, SessionState::Active);
+    /// ```
+    pub fn new(user_id: impl Into<String>, lifetime: Duration) -> Self {
+        let now = SystemTime::now();
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            user_id: user_id.into(),
+            created_at: now,
+            last_accessed: now,
+            expires_at: now + lifetime,
+            state: SessionState::Active,
+            device_info: DeviceInfo::unknown(),
+            security_metadata: SecurityMetadata::default(),
+            data: HashMap::new(),
+            mfa_verified: false,
+            cached_permissions: None,
+            last_activity: ActivityInfo {
+                endpoint: None,
+                action: None,
+                request_metadata: None,
+                timestamp: now,
+            },
+        }
+    }
+}
+
 /// Session state
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SessionState {
@@ -85,6 +125,25 @@ pub struct DeviceInfo {
     pub ip_address: Option<String>,
 }
 
+impl DeviceInfo {
+    /// A placeholder for when device info is unknown.
+    pub fn unknown() -> Self {
+        Self {
+            fingerprint: String::new(),
+            device_type: "unknown".into(),
+            operating_system: None,
+            browser: None,
+            screen_resolution: None,
+            timezone: None,
+            language: None,
+            is_trusted: false,
+            device_name: None,
+            is_mobile: false,
+            ip_address: None,
+        }
+    }
+}
+
 /// Security metadata for sessions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityMetadata {
@@ -106,6 +165,22 @@ pub struct SecurityMetadata {
     pub ip_changed: bool,
     /// Number of failed authentication attempts
     pub failed_auth_attempts: u32,
+}
+
+impl Default for SecurityMetadata {
+    fn default() -> Self {
+        Self {
+            creation_ip: String::new(),
+            current_ip: String::new(),
+            creation_location: None,
+            current_location: None,
+            security_flags: Vec::new(),
+            risk_score: 0,
+            location_changed: false,
+            ip_changed: false,
+            failed_auth_attempts: 0,
+        }
+    }
 }
 
 /// Security flags for sessions
@@ -162,6 +237,242 @@ pub struct SessionConfig {
 }
 
 /// Session security policy
+
+impl SessionConfig {
+    /// Create a new builder for SessionConfig
+    pub fn builder() -> SessionConfigBuilder {
+        SessionConfigBuilder::default()
+    }
+}
+
+/// A builder for SessionConfig
+pub struct SessionConfigBuilder {
+    config: SessionConfig,
+}
+
+impl Default for SessionConfigBuilder {
+    fn default() -> Self {
+        Self {
+            config: SessionConfig::default(),
+        }
+    }
+}
+
+impl SessionConfigBuilder {
+    /// Set the default session duration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use std::time::Duration;
+    /// let config = SessionConfigBuilder::default()
+    ///     .default_duration(Duration::from_secs(3600))
+    ///     .build();
+    /// ```
+    pub fn default_duration(mut self, duration: std::time::Duration) -> Self {
+        self.config.default_duration = duration;
+        self
+    }
+
+    /// Set the maximum session duration.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::default()
+    ///     .max_duration(Duration::from_secs(86400))
+    ///     .build();
+    /// ```
+    pub fn max_duration(mut self, duration: std::time::Duration) -> Self {
+        self.config.max_duration = duration;
+        self
+    }
+
+    /// Set the session idle timeout.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::default()
+    ///     .idle_timeout(Duration::from_secs(900))
+    ///     .build();
+    /// ```
+    pub fn idle_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.config.idle_timeout = timeout;
+        self
+    }
+
+    /// Set whether to rotate session IDs on privilege escalation.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::default()
+    ///     .rotate_on_privilege_escalation(true)
+    ///     .build();
+    /// ```
+    pub fn rotate_on_privilege_escalation(mut self, rotate: bool) -> Self {
+        self.config.rotate_on_privilege_escalation = rotate;
+        self
+    }
+
+    /// Set whether to rotate session IDs periodically.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::default()
+    ///     .rotate_periodically(true)
+    ///     .rotation_interval(Duration::from_secs(3600))
+    ///     .build();
+    /// ```
+    pub fn rotate_periodically(mut self, rotate: bool) -> Self {
+        self.config.rotate_periodically = rotate;
+        self
+    }
+
+    /// Set the rotation interval.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::default()
+    ///     .rotate_periodically(true)
+    ///     .rotation_interval(Duration::from_secs(1800))
+    ///     .build();
+    /// ```
+    pub fn rotation_interval(mut self, interval: std::time::Duration) -> Self {
+        self.config.rotation_interval = interval;
+        self
+    }
+
+    /// Set the maximum concurrent sessions per user.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::default()
+    ///     .max_concurrent_sessions(5)
+    ///     .build();
+    /// ```
+    pub fn max_concurrent_sessions(mut self, max: u32) -> Self {
+        self.config.max_concurrent_sessions = Some(max);
+        self
+    }
+
+    /// Set the list of allowed countries (ISO 3166-1 alpha-2 codes).
+    ///
+    /// Only meaningful when `enforce_geographic_restrictions` is enabled
+    /// (e.g. via [`for_high_security()`](Self::for_high_security)).
+    pub fn allowed_countries(mut self, countries: Vec<String>) -> Self {
+        self.config.allowed_countries = countries;
+        self
+    }
+
+    /// Preset for typical web applications.
+    ///
+    /// 1-hour default sessions, 24-hour max, 30-minute idle, 5 concurrent.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::for_web_app().build();
+    /// ```
+    pub fn for_web_app() -> Self {
+        Self {
+            config: SessionConfig {
+                default_duration: Duration::from_secs(3600),     // 1 hour
+                max_duration: Duration::from_secs(86400),        // 24 hours
+                idle_timeout: Duration::from_secs(1800),         // 30 minutes
+                rotate_on_privilege_escalation: true,
+                rotate_periodically: true,
+                rotation_interval: Duration::from_secs(1800),    // 30 minutes
+                max_concurrent_sessions: Some(5),
+                track_device_fingerprints: true,
+                enforce_geographic_restrictions: false,
+                allowed_countries: vec![],
+                security_policy: SessionSecurityPolicy::default(),
+            },
+        }
+    }
+
+    /// Preset for stateless API services.
+    ///
+    /// Short-lived sessions (15-min default, 1-hour max, 10-min idle),
+    /// no rotation, no fingerprinting — optimised for machine-to-machine
+    /// or single-page-app API calls.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::for_api_service().build();
+    /// ```
+    pub fn for_api_service() -> Self {
+        Self {
+            config: SessionConfig {
+                default_duration: Duration::from_secs(900),      // 15 minutes
+                max_duration: Duration::from_secs(3600),         // 1 hour
+                idle_timeout: Duration::from_secs(600),          // 10 minutes
+                rotate_on_privilege_escalation: true,
+                rotate_periodically: false,
+                rotation_interval: Duration::from_secs(3600),
+                max_concurrent_sessions: None,                   // unlimited
+                track_device_fingerprints: false,
+                enforce_geographic_restrictions: false,
+                allowed_countries: vec![],
+                security_policy: SessionSecurityPolicy {
+                    require_mfa_for_new_devices: false,
+                    require_reauth_for_sensitive_ops: false,
+                    reauth_timeout: Duration::from_secs(300),
+                    max_risk_score: 90,
+                    auto_suspend_suspicious: false,
+                    verify_location_changes: false,
+                    limit_concurrent_sessions: false,
+                },
+            },
+        }
+    }
+
+    /// Preset for high-security environments (finance, healthcare).
+    ///
+    /// 30-minute sessions, 5-minute idle, aggressive rotation, single
+    /// concurrent session, MFA enforced on every new device.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::for_high_security().build();
+    /// ```
+    pub fn for_high_security() -> Self {
+        Self {
+            config: SessionConfig {
+                default_duration: Duration::from_secs(1800),     // 30 minutes
+                max_duration: Duration::from_secs(7200),         // 2 hours
+                idle_timeout: Duration::from_secs(300),          // 5 minutes
+                rotate_on_privilege_escalation: true,
+                rotate_periodically: true,
+                rotation_interval: Duration::from_secs(900),     // 15 minutes
+                max_concurrent_sessions: Some(1),
+                track_device_fingerprints: true,
+                enforce_geographic_restrictions: true,
+                allowed_countries: vec![],                       // caller must set
+                security_policy: SessionSecurityPolicy {
+                    require_mfa_for_new_devices: true,
+                    require_reauth_for_sensitive_ops: true,
+                    reauth_timeout: Duration::from_secs(120),   // 2 minutes
+                    max_risk_score: 40,
+                    auto_suspend_suspicious: true,
+                    verify_location_changes: true,
+                    limit_concurrent_sessions: true,
+                },
+            },
+        }
+    }
+
+    /// Build the [`SessionConfig`].
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = SessionConfigBuilder::default()
+    ///     .default_duration(Duration::from_secs(7200))
+    ///     .max_concurrent_sessions(3)
+    ///     .build();
+    /// ```
+    pub fn build(self) -> SessionConfig {
+        self.config
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionSecurityPolicy {
     /// Require MFA for new devices
@@ -222,7 +533,10 @@ pub struct SessionManager<S: SessionStorage, A: AuditStorage> {
 }
 
 impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
-    /// Create a new session manager
+    /// Create a new session manager.
+    ///
+    /// The `storage` backend persists session data, `config` specifies lifetimes
+    /// and security policies, and `audit_logger` records session lifecycle events.
     pub fn new(storage: S, config: SessionConfig, audit_logger: AuditLogger<A>) -> Self {
         // Initialize automated threat intelligence if enabled
         let threat_intel_manager = if std::env::var("THREAT_INTEL_ENABLED")
@@ -367,29 +681,24 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
 
         // Log session creation
         self.audit_logger
-            .log_event(crate::audit::AuditEvent {
-                id: String::new(),
-                event_type: crate::audit::AuditEventType::LoginSuccess,
-                timestamp: now,
-                user_id: Some(user_id.to_string()),
-                session_id: Some(session_id),
-                outcome: crate::audit::EventOutcome::Success,
-                risk_level: if risk_score > 70 {
+            .log_event({
+                let mut ev = crate::audit::AuditEvent::builder(
+                    crate::audit::AuditEventType::LoginSuccess,
+                    "Session created",
+                )
+                .user_id(user_id)
+                .outcome(crate::audit::EventOutcome::Success)
+                .risk_level(if risk_score > 70 {
                     crate::audit::RiskLevel::High
                 } else {
                     crate::audit::RiskLevel::Low
-                },
-                description: "Session created".to_string(),
-                details: HashMap::new(),
-                request_metadata: metadata,
-                resource: None,
-                actor: crate::audit::ActorInfo {
-                    actor_type: "user".to_string(),
-                    actor_id: user_id.to_string(),
-                    actor_name: None,
-                    roles: vec![],
-                },
-                correlation_id: None,
+                })
+                .request_metadata(metadata)
+                .with_actor("user", user_id)
+                .build();
+                ev.session_id = Some(session_id);
+                ev.timestamp = now;
+                ev
             })
             .await?;
 
@@ -408,6 +717,15 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
         };
 
         let now = SystemTime::now();
+
+        // Check absolute maximum session lifetime
+        if let Ok(age) = now.duration_since(session.created_at) {
+            if age > self.config.max_duration {
+                session.state = SessionState::Expired;
+                self.storage.update_session(&session).await?;
+                return Ok(None);
+            }
+        }
 
         // Check if session is expired
         if session.expires_at <= now {
@@ -511,26 +829,17 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
 
             // Log session revocation
             self.audit_logger
-                .log_event(crate::audit::AuditEvent {
-                    id: String::new(),
-                    event_type: crate::audit::AuditEventType::Logout,
-                    timestamp: SystemTime::now(),
-                    user_id: Some(session.user_id),
-                    session_id: Some(session_id.to_string()),
-                    outcome: crate::audit::EventOutcome::Success,
-                    risk_level: crate::audit::RiskLevel::Low,
-                    description: "Session revoked".to_string(),
-                    details: HashMap::new(),
-                    request_metadata: crate::audit::RequestMetadata::default(),
-                    resource: None,
-                    actor: crate::audit::ActorInfo {
-                        actor_type: "system".to_string(),
-                        actor_id: "session_manager".to_string(),
-                        actor_name: None,
-                        roles: vec![],
-                    },
-                    correlation_id: None,
-                })
+                .log_event(
+                    crate::audit::AuditEvent::builder(
+                        crate::audit::AuditEventType::Logout,
+                        "Session revoked",
+                    )
+                    .user_id(session.user_id)
+                    .session_id(session_id)
+                    .outcome(crate::audit::EventOutcome::Success)
+                    .with_actor("system", "session_manager")
+                    .build(),
+                )
                 .await?;
         }
         Ok(())
@@ -552,7 +861,14 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
         Ok(revoked_count)
     }
 
-    /// Get user sessions with filtering
+    /// List sessions for a user.
+    ///
+    /// When `include_inactive` is `false`, only [`SessionState::Active`]
+    /// sessions are returned.
+    ///
+    /// Prefer [`list_user_sessions`](Self::list_user_sessions) with a
+    /// [`SessionFilter`](crate::auth_operations::SessionFilter) for
+    /// self-documenting call sites.
     pub async fn get_user_sessions(
         &self,
         user_id: &str,
@@ -567,17 +883,33 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
         Ok(sessions)
     }
 
-    /// Clean up expired sessions
+    /// List sessions for a user with a typed [`SessionFilter`](crate::auth_operations::SessionFilter).
+    ///
+    /// ```rust,ignore
+    /// use auth_framework::auth_operations::SessionFilter;
+    ///
+    /// let active = mgr.list_user_sessions(user_id, SessionFilter::ActiveOnly).await?;
+    /// ```
+    pub async fn list_user_sessions(
+        &self,
+        user_id: &str,
+        filter: crate::auth_operations::SessionFilter,
+    ) -> Result<Vec<Session>> {
+        self.get_user_sessions(user_id, filter.include_inactive())
+            .await
+    }
+
+    /// Remove all expired sessions from storage and return how many were cleaned up.
     pub async fn cleanup_expired_sessions(&self) -> Result<u32> {
         self.storage.cleanup_expired_sessions().await
     }
 
-    /// Generate device fingerprint for given request metadata
+    /// Compute a device fingerprint from the request metadata (IP, User-Agent, etc.).
     pub fn generate_device_fingerprint(&self, metadata: &RequestMetadata) -> String {
         self.fingerprint_generator.generate_fingerprint(metadata)
     }
 
-    /// Validate device fingerprint against session
+    /// Check whether `metadata` produces a fingerprint matching the session's stored value.
     pub fn validate_device_fingerprint(
         &self,
         session: &Session,
@@ -603,26 +935,19 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
             details.insert("suspension_reason".to_string(), reason.to_string());
 
             self.audit_logger
-                .log_event(crate::audit::AuditEvent {
-                    id: String::new(),
-                    event_type: crate::audit::AuditEventType::AccountLocked,
-                    timestamp: SystemTime::now(),
-                    user_id: Some(session.user_id),
-                    session_id: Some(session_id.to_string()),
-                    outcome: crate::audit::EventOutcome::Success,
-                    risk_level: crate::audit::RiskLevel::High,
-                    description: format!("Session suspended: {}", reason),
-                    details,
-                    request_metadata: crate::audit::RequestMetadata::default(),
-                    resource: None,
-                    actor: crate::audit::ActorInfo {
-                        actor_type: "system".to_string(),
-                        actor_id: "security_monitor".to_string(),
-                        actor_name: None,
-                        roles: vec![],
-                    },
-                    correlation_id: None,
-                })
+                .log_event(
+                    crate::audit::AuditEvent::builder(
+                        crate::audit::AuditEventType::AccountLocked,
+                        format!("Session suspended: {}", reason),
+                    )
+                    .user_id(session.user_id)
+                    .session_id(session_id)
+                    .outcome(crate::audit::EventOutcome::Success)
+                    .risk_level(crate::audit::RiskLevel::High)
+                    .details(details)
+                    .with_actor("system", "security_monitor")
+                    .build(),
+                )
                 .await?;
         }
         Ok(())
@@ -669,7 +994,10 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
     }
 }
 
-/// Device fingerprint generator
+/// Generates device fingerprints for session tracking and anomaly detection.
+///
+/// Fingerprints are derived from user-agent strings and other request metadata
+/// to identify returning devices without storing sensitive client information.
 pub struct DeviceFingerprintGenerator;
 
 impl Default for DeviceFingerprintGenerator {
@@ -901,7 +1229,11 @@ impl DeviceFingerprintGenerator {
     }
 }
 
-/// Risk calculator for sessions
+/// Calculates session risk scores based on device, location, and behavioral factors.
+///
+/// Risk scores range from 0 (no risk) to 100 (maximum risk) and are used by
+/// [`SessionSecurityPolicy`] to trigger automatic session suspension or
+/// step-up authentication.
 pub struct RiskCalculator;
 
 impl Default for RiskCalculator {
@@ -1416,5 +1748,35 @@ mod tests {
 
         let risk = calculator.calculate_risk(&device_info, &metadata, &history, None);
         assert!(risk >= 20); // Should have at least 20 for untrusted device
+    }
+
+    #[test]
+    fn test_session_config_builder_for_web_app() {
+        let config = SessionConfigBuilder::for_web_app().build();
+        assert_eq!(config.default_duration, Duration::from_secs(3600));
+        assert_eq!(config.max_duration, Duration::from_secs(86400));
+        assert_eq!(config.max_concurrent_sessions, Some(5));
+        assert!(config.track_device_fingerprints);
+    }
+
+    #[test]
+    fn test_session_config_builder_for_api_service() {
+        let config = SessionConfigBuilder::for_api_service().build();
+        assert_eq!(config.default_duration, Duration::from_secs(900));
+        assert!(config.max_concurrent_sessions.is_none());
+        assert!(!config.track_device_fingerprints);
+        assert!(!config.rotate_periodically);
+    }
+
+    #[test]
+    fn test_session_config_builder_for_high_security() {
+        let config = SessionConfigBuilder::for_high_security()
+            .allowed_countries(vec!["US".into()])
+            .build();
+        assert_eq!(config.default_duration, Duration::from_secs(1800));
+        assert_eq!(config.max_concurrent_sessions, Some(1));
+        assert!(config.enforce_geographic_restrictions);
+        assert_eq!(config.allowed_countries, vec!["US".to_string()]);
+        assert!(config.security_policy.require_mfa_for_new_devices);
     }
 }

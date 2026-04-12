@@ -174,9 +174,9 @@ impl CommonJwtClaims {
 /// use auth_framework::server::core::common_jwt::{JwtManager, JwtConfig, CommonJwtClaims};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let private_key_bytes: &[u8] = todo!();
-/// # let public_key_bytes: &[u8] = todo!();
-/// # let expiration_time: i64 = todo!();
+/// # let private_key_bytes: &[u8] = unimplemented!();
+/// # let public_key_bytes: &[u8] = unimplemented!();
+/// # let expiration_time: i64 = unimplemented!();
 /// // Create JWT manager with RSA keys
 /// let config = JwtConfig::with_rsa_keys(
 ///     private_key_bytes,
@@ -423,7 +423,7 @@ impl JwtManager {
 }
 
 /// JWT utilities for token introspection and manipulation
-pub mod utils {
+pub(crate) mod utils {
     use super::*;
 
     /// Extract claims from JWT without verification (for inspection only)
@@ -435,7 +435,8 @@ pub mod utils {
     /// - Non-security-critical token analysis
     ///
     /// Never use for authentication or authorization decisions!
-    pub fn extract_claims_unsafe(token: &str) -> Result<serde_json::Value> {
+    #[allow(dead_code)]
+    pub(crate) fn extract_claims_unsafe(token: &str) -> Result<serde_json::Value> {
         common_validation::jwt::extract_claims_unsafe(token)
     }
 
@@ -445,7 +446,8 @@ pub mod utils {
     /// This function checks expiration without validating the JWT signature.
     /// Only use for preliminary checks - always validate the token fully
     /// before making security decisions!
-    pub fn is_token_expired(token: &str) -> Result<bool> {
+    #[allow(dead_code)]
+    pub(crate) fn is_token_expired(token: &str) -> Result<bool> {
         let claims = extract_claims_unsafe(token)?;
 
         let now = SystemTime::now()
@@ -465,7 +467,8 @@ pub mod utils {
     /// # Security Warning
     /// This function extracts expiration time without validating the JWT signature.
     /// Only use for inspection - validate the token before trusting the data!
-    pub fn get_token_expiration(token: &str) -> Result<Option<i64>> {
+    #[allow(dead_code)]
+    pub(crate) fn get_token_expiration(token: &str) -> Result<Option<i64>> {
         let claims = extract_claims_unsafe(token)?;
         Ok(claims.get("exp").and_then(|v| v.as_i64()))
     }
@@ -475,7 +478,8 @@ pub mod utils {
     /// # Security Warning
     /// This function extracts the subject without validating the JWT signature.
     /// Only use for inspection - validate the token before trusting the data!
-    pub fn get_token_subject(token: &str) -> Result<Option<String>> {
+    #[allow(dead_code)]
+    pub(crate) fn get_token_subject(token: &str) -> Result<Option<String>> {
         let claims = extract_claims_unsafe(token)?;
         Ok(claims.get("sub").and_then(|v| v.as_str()).map(String::from))
     }
@@ -485,7 +489,8 @@ pub mod utils {
     /// # Security Warning
     /// This function extracts scopes without validating the JWT signature.
     /// Only use for inspection - validate the token before trusting the data!
-    pub fn get_token_scopes(token: &str) -> Result<Vec<String>> {
+    #[allow(dead_code)]
+    pub(crate) fn get_token_scopes(token: &str) -> Result<Vec<String>> {
         let claims = extract_claims_unsafe(token)?;
 
         if let Some(scope_str) = claims.get("scope").and_then(|v| v.as_str()) {
@@ -499,5 +504,195 @@ pub mod utils {
         } else {
             Ok(vec![])
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_manager() -> JwtManager {
+        let config = JwtConfig::with_symmetric_key(
+            b"a-test-secret-key-with-enough-bytes-for-hmac",
+            "https://test-issuer.example.com".into(),
+        );
+        JwtManager::new(config)
+    }
+
+    // ── JwtConfig ───────────────────────────────────────────────────────
+
+    #[test]
+    fn test_jwt_config_symmetric() {
+        let config = JwtConfig::with_symmetric_key(b"secret", "iss".into());
+        assert_eq!(config.issuer, "iss");
+        assert_eq!(config.default_expiration, 3600);
+    }
+
+    #[test]
+    fn test_jwt_config_with_audience() {
+        let config =
+            JwtConfig::with_symmetric_key(b"secret", "iss".into()).with_audience("aud1".into());
+        assert_eq!(config.audiences, vec!["aud1"]);
+    }
+
+    #[test]
+    fn test_jwt_config_with_expiration() {
+        let config = JwtConfig::with_symmetric_key(b"secret", "iss".into()).with_expiration(7200);
+        assert_eq!(config.default_expiration, 7200);
+    }
+
+    // ── CommonJwtClaims ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_claims_new() {
+        let claims = CommonJwtClaims::new(
+            "issuer".into(),
+            "subject".into(),
+            vec!["aud".into()],
+            9999999999,
+        );
+        assert_eq!(claims.iss, "issuer");
+        assert_eq!(claims.sub, "subject");
+        assert!(claims.iat > 0);
+    }
+
+    #[test]
+    fn test_claims_with_custom_claim() {
+        let claims = CommonJwtClaims::new("iss".into(), "sub".into(), vec![], 9999999999)
+            .with_custom_claim("role".to_string(), serde_json::json!("admin"));
+        assert_eq!(claims.custom.get("role").unwrap(), "admin");
+    }
+
+    #[test]
+    fn test_claims_with_jti() {
+        let claims = CommonJwtClaims::new("iss".into(), "sub".into(), vec![], 9999999999)
+            .with_jti("test-jti-value".into());
+        assert!(claims.jti.is_some());
+    }
+
+    // ── JwtManager create/verify ────────────────────────────────────────
+
+    #[test]
+    fn test_create_and_verify_token() {
+        let mgr = make_manager();
+        let claims = CommonJwtClaims::new(
+            "https://test-issuer.example.com".into(),
+            "user_123".into(),
+            vec![],
+            (SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                + 3600) as i64,
+        );
+        let token = mgr.create_token(&claims).unwrap();
+        let verified = mgr.verify_token(&token).unwrap();
+        assert_eq!(verified.sub, "user_123");
+    }
+
+    #[test]
+    fn test_verify_invalid_token() {
+        let mgr = make_manager();
+        assert!(mgr.verify_token("not.a.valid.jwt").is_err());
+    }
+
+    #[test]
+    fn test_verify_wrong_key() {
+        let mgr1 = make_manager();
+        let mgr2 = JwtManager::new(JwtConfig::with_symmetric_key(
+            b"different-key-entirely-for-testing",
+            "https://test-issuer.example.com".into(),
+        ));
+        let claims = CommonJwtClaims::new(
+            "https://test-issuer.example.com".into(),
+            "user".into(),
+            vec![],
+            (SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                + 3600) as i64,
+        );
+        let token = mgr1.create_token(&claims).unwrap();
+        assert!(mgr2.verify_token(&token).is_err());
+    }
+
+    // ── Specialized token creation ──────────────────────────────────────
+
+    #[test]
+    fn test_create_access_token() {
+        let mgr = make_manager();
+        let token = mgr
+            .create_access_token(
+                "user_1".into(),
+                vec!["read".into()],
+                Some("client_1".into()),
+            )
+            .unwrap();
+        let claims = mgr.verify_token(&token).unwrap();
+        assert_eq!(claims.sub, "user_1");
+        assert!(claims.custom.contains_key("scope"));
+    }
+
+    #[test]
+    fn test_create_refresh_token() {
+        let mgr = make_manager();
+        let token = mgr
+            .create_refresh_token("user_2".into(), "client_2".into())
+            .unwrap();
+        let claims = mgr.verify_token(&token).unwrap();
+        assert_eq!(claims.sub, "user_2");
+        assert_eq!(
+            claims.custom.get("token_type").unwrap(),
+            &serde_json::json!("refresh_token")
+        );
+    }
+
+    #[test]
+    fn test_create_id_token() {
+        let mgr = make_manager();
+        let user_info = HashMap::from([
+            ("name".into(), serde_json::json!("Test User")),
+            ("email".into(), serde_json::json!("test@example.com")),
+        ]);
+        let token = mgr
+            .create_id_token("user_3".into(), Some("nonce_123".into()), None, user_info)
+            .unwrap();
+        let claims = mgr.verify_token(&token).unwrap();
+        assert_eq!(claims.sub, "user_3");
+        assert_eq!(claims.custom.get("nonce").unwrap(), "nonce_123");
+        assert_eq!(
+            claims.custom.get("token_type").unwrap(),
+            &serde_json::json!("id_token")
+        );
+    }
+
+    // ── Utils ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_claims_unsafe_works() {
+        let mgr = make_manager();
+        let claims = CommonJwtClaims::new(
+            "https://test-issuer.example.com".into(),
+            "peek_user".into(),
+            vec![],
+            (SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                + 3600) as i64,
+        );
+        let token = mgr.create_token(&claims).unwrap();
+        let extracted = utils::extract_claims_unsafe(&token).unwrap();
+        assert_eq!(extracted["sub"], "peek_user");
+    }
+
+    #[test]
+    fn test_is_token_expired_not_expired() {
+        let mgr = make_manager();
+        let token = mgr
+            .create_access_token("user".into(), vec![], None)
+            .unwrap();
+        assert!(!utils::is_token_expired(&token).unwrap());
     }
 }

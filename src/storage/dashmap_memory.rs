@@ -46,7 +46,8 @@ struct TimestampedValue {
 impl TimestampedToken {
     fn new(token: AuthToken, ttl: Option<Duration>) -> Self {
         let now = chrono::Utc::now();
-        let expires_at = ttl.map(|d| now + chrono::Duration::from_std(d).unwrap());
+        let expires_at =
+            ttl.map(|d| now + chrono::Duration::from_std(d).unwrap_or(chrono::Duration::hours(1)));
 
         Self {
             token,
@@ -78,7 +79,8 @@ impl TimestampedSession {
 impl TimestampedValue {
     fn new(data: Vec<u8>, ttl: Option<Duration>) -> Self {
         let now = chrono::Utc::now();
-        let expires_at = ttl.map(|d| now + chrono::Duration::from_std(d).unwrap());
+        let expires_at =
+            ttl.map(|d| now + chrono::Duration::from_std(d).unwrap_or(chrono::Duration::hours(1)));
 
         Self {
             data,
@@ -161,46 +163,36 @@ impl DashMapMemoryStorage {
         details.insert("resource_type".to_string(), resource_type.to_string());
         details.insert("resource_id".to_string(), resource_id.to_string());
 
-        AuditEvent {
-            id: uuid::Uuid::new_v4().to_string(),
-            event_type: event_type.clone(),
-            timestamp: std::time::SystemTime::now(),
-            user_id: Some(user_id.to_string()),
-            session_id: None,
-            outcome,
-            risk_level: match &event_type {
-                AuditEventType::TokenRevoked | AuditEventType::TokenExpired => RiskLevel::Medium,
-                AuditEventType::SuspiciousActivity => RiskLevel::High,
-                _ => RiskLevel::Low,
-            },
-            description: format!(
-                "{:?} operation on {} {}",
-                event_type, resource_type, resource_id
-            ),
-            details,
-            request_metadata: RequestMetadata {
-                ip_address: None,
-                user_agent: None,
-                request_id: None,
-                endpoint: Some("storage".to_string()),
-                http_method: None,
-                geolocation: None,
-                device_info: None,
-            },
-            resource: Some(ResourceInfo {
-                resource_type: resource_type.to_string(),
-                resource_id: resource_id.to_string(),
-                resource_name: None,
-                attributes: std::collections::HashMap::new(),
-            }),
-            actor: ActorInfo {
-                actor_type: "storage_system".to_string(),
-                actor_id: user_id.to_string(),
-                actor_name: Some(user_id.to_string()),
-                roles: vec!["storage_user".to_string()],
-            },
-            correlation_id: None,
-        }
+        let risk_level = match &event_type {
+            AuditEventType::TokenRevoked | AuditEventType::TokenExpired => RiskLevel::Medium,
+            AuditEventType::SuspiciousActivity => RiskLevel::High,
+            _ => RiskLevel::Low,
+        };
+
+        AuditEvent::builder(
+            event_type.clone(),
+            format!("{:?} operation on {} {}", event_type, resource_type, resource_id),
+        )
+        .user_id(user_id)
+        .outcome(outcome)
+        .risk_level(risk_level)
+        .details(details)
+        .request_metadata(
+            RequestMetadata::new().with_endpoint("storage"),
+        )
+        .resource(ResourceInfo {
+            resource_type: resource_type.to_string(),
+            resource_id: resource_id.to_string(),
+            resource_name: None,
+            attributes: std::collections::HashMap::new(),
+        })
+        .actor(ActorInfo {
+            actor_type: "storage_system".to_string(),
+            actor_id: user_id.to_string(),
+            actor_name: Some(user_id.to_string()),
+            roles: vec!["storage_user".to_string()],
+        })
+        .build()
     }
 
     /// Log storage operation with lifecycle information
@@ -836,7 +828,11 @@ impl AuthStorage for DashMapMemoryStorage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testing::test_infrastructure::TestEnvironmentGuard, tokens::TokenMetadata};
+    use crate::{
+        testing::test_infrastructure::TestEnvironmentGuard,
+        tokens::TokenMetadata,
+        types::{Permissions, Roles, Scopes},
+    };
     use std::collections::HashMap;
     use tokio::task::JoinSet;
 
@@ -855,12 +851,12 @@ mod tests {
             refresh_token: None,
             issued_at: chrono::Utc::now(),
             expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-            scopes: vec!["read".to_string()],
+            scopes: Scopes::new(vec!["read".to_string()]),
             auth_method: "password".to_string(),
             client_id: Some("test-client".to_string()),
             user_profile: None,
-            permissions: vec!["read:data".to_string()],
-            roles: vec!["user".to_string()],
+            permissions: Permissions::new(vec!["read:data".to_string()]),
+            roles: Roles::new(vec!["user".to_string()]),
             metadata: TokenMetadata::default(),
         };
 
@@ -971,12 +967,12 @@ mod tests {
                         refresh_token: None,
                         issued_at: chrono::Utc::now(),
                         expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-                        scopes: vec!["read".to_string()],
+                        scopes: Scopes::new(vec!["read".to_string()]),
                         auth_method: "password".to_string(),
                         client_id: Some("test-client".to_string()),
                         user_profile: None,
-                        permissions: vec!["read:data".to_string()],
-                        roles: vec!["user".to_string()],
+                        permissions: Permissions::new(vec!["read:data".to_string()]),
+                        roles: Roles::new(vec!["user".to_string()]),
                         metadata: TokenMetadata::default(),
                     };
 

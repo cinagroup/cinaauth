@@ -35,17 +35,13 @@
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Initialize RAR manager
-//! let config = RarConfig {
-//!     max_authorization_details: 50,
-//!     supported_types: vec![
-//!         "file_access".to_string(),
-//!         "api_access".to_string(),
-//!         "database_access".to_string(),
-//!     ],
-//!     require_explicit_consent: true,
-//!     ..Default::default()
-//! };
+//! // Initialize RAR manager — chainable builder
+//! let config = RarConfig::empty()
+//!     .with_type("file_access", &["read", "write", "delete"])
+//!     .with_type("api_access", &["read", "write", "execute"])
+//!     .with_type("database_access", &["select", "insert", "update", "delete"])
+//!     .max_details(50)
+//!     .resource_discovery(true);
 //!
 //! let session_manager = Arc::new(SessionManager::new(Default::default()));
 //! let rar_manager = RarManager::new(config, session_manager);
@@ -157,6 +153,55 @@ impl Default for RarConfig {
             validation_rules: Vec::new(),
             type_action_mapping,
         }
+    }
+}
+
+impl RarConfig {
+    /// Create a minimal configuration with no pre-registered types.
+    ///
+    /// Useful when the default file/api/database types are not relevant
+    /// and you want to register only your own types via [`with_type`](Self::with_type).
+    pub fn empty() -> Self {
+        Self {
+            supported_types: Vec::new(),
+            type_action_mapping: HashMap::new(),
+            ..Default::default()
+        }
+    }
+
+    /// Register (or replace) a supported type and its allowed actions (chainable).
+    ///
+    /// The type name is also added to `supported_types` if not already present.
+    ///
+    /// ```rust,no_run
+    /// use auth_framework::server::oauth::rich_authorization_requests::RarConfig;
+    ///
+    /// let config = RarConfig::empty()
+    ///     .with_type("file_access", &["read", "write", "delete"])
+    ///     .with_type("payment", &["initiate", "confirm"]);
+    /// ```
+    pub fn with_type(mut self, type_name: &str, actions: &[&str]) -> Self {
+        let name = type_name.to_string();
+        if !self.supported_types.contains(&name) {
+            self.supported_types.push(name.clone());
+        }
+        self.type_action_mapping.insert(
+            name,
+            actions.iter().map(|a| a.to_string()).collect(),
+        );
+        self
+    }
+
+    /// Set the maximum number of authorization details per request (chainable).
+    pub fn max_details(mut self, max: usize) -> Self {
+        self.max_authorization_details = max;
+        self
+    }
+
+    /// Enable or disable resource discovery (chainable).
+    pub fn resource_discovery(mut self, enabled: bool) -> Self {
+        self.enable_resource_discovery = enabled;
+        self
     }
 }
 
@@ -811,12 +856,12 @@ impl RarManager {
         for required_field in &rule.required_fields {
             match required_field.as_str() {
                 "actions" => {
-                    if detail.actions.is_none() || detail.actions.as_ref().unwrap().is_empty() {
+                    if detail.actions.as_ref().map_or(true, |a| a.is_empty()) {
                         errors.push(format!("Required field '{}' is missing", required_field));
                     }
                 }
                 "locations" => {
-                    if detail.locations.is_none() || detail.locations.as_ref().unwrap().is_empty() {
+                    if detail.locations.as_ref().map_or(true, |l| l.is_empty()) {
                         errors.push(format!("Required field '{}' is missing", required_field));
                     }
                 }
@@ -1201,7 +1246,7 @@ impl RarManager {
                 "Session activity timestamp: {} for RAR session: {}",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs(),
                 session_id
             );
@@ -1258,7 +1303,7 @@ impl RarManager {
                 "rar_linked_at".to_string(),
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs()
                     .to_string(),
             );
@@ -1611,5 +1656,38 @@ mod tests {
                 .contains(&"file_access:write".to_string())
         );
         Ok(())
+    }
+
+    #[test]
+    fn test_rar_config_empty() {
+        let config = RarConfig::empty();
+        assert!(config.supported_types.is_empty());
+        assert!(config.type_action_mapping.is_empty());
+        assert!(config.require_explicit_consent);
+    }
+
+    #[test]
+    fn test_rar_config_with_type_chainable() {
+        let config = RarConfig::empty()
+            .with_type("payment", &["initiate", "confirm"])
+            .with_type("file_access", &["read", "write"]);
+
+        assert_eq!(config.supported_types.len(), 2);
+        assert!(config.supported_types.contains(&"payment".to_string()));
+        assert!(config.supported_types.contains(&"file_access".to_string()));
+        assert_eq!(
+            config.type_action_mapping["payment"],
+            vec!["initiate".to_string(), "confirm".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_rar_config_max_details_and_discovery() {
+        let config = RarConfig::default()
+            .max_details(50)
+            .resource_discovery(true);
+
+        assert_eq!(config.max_authorization_details, 50);
+        assert!(config.enable_resource_discovery);
     }
 }

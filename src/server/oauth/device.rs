@@ -86,6 +86,11 @@ pub struct StoredDeviceAuthorization {
 
     /// Last poll time (for slow_down error)
     pub last_poll: Option<SystemTime>,
+
+    /// Number of times the client has been told to slow down (RFC 8628 §3.5).
+    /// Each slow_down increases the required interval by 5 seconds.
+    #[serde(default)]
+    pub slow_down_count: u32,
 }
 
 /// Device authorization status
@@ -161,6 +166,22 @@ impl DeviceAuthManager {
         }
     }
 
+    /// Set the default expiration time for device codes (chainable).
+    ///
+    /// Default: 600 seconds (10 minutes, per RFC 8628 recommendation).
+    pub fn expiration(mut self, expiration: Duration) -> Self {
+        self.default_expiration = expiration;
+        self
+    }
+
+    /// Set the minimum polling interval (chainable).
+    ///
+    /// Default: 5 seconds.
+    pub fn interval(mut self, interval: Duration) -> Self {
+        self.min_interval = interval;
+        self
+    }
+
     /// Initiate device authorization flow
     pub async fn create_authorization(
         &self,
@@ -188,6 +209,7 @@ impl DeviceAuthManager {
             created_at: now,
             expires_at,
             last_poll: None,
+            slow_down_count: 0,
         };
 
         // Store in persistent backend with TTL
@@ -269,10 +291,30 @@ impl DeviceAuthManager {
             return Err(AuthError::auth_method("device_auth", "Device code expired"));
         }
 
-        // Check for slow_down (polling too frequently)
+        // Check for slow_down (polling too frequently) — RFC 8628 §3.5
+        // The required interval increases by 5 seconds each time the client
+        // polls too fast, implementing exponential backoff.
+        let effective_interval = self.min_interval
+            + Duration::from_secs(5 * u64::from(stored.slow_down_count));
         if let Some(last_poll) = stored.last_poll {
             let elapsed = now.duration_since(last_poll).unwrap_or(Duration::ZERO);
-            if elapsed < self.min_interval {
+            if elapsed < effective_interval {
+                stored.slow_down_count += 1;
+                // Persist the updated slow_down_count
+                stored.last_poll = Some(now);
+                let serialized = serde_json::to_string(&stored).map_err(|e| {
+                    AuthError::internal(format!("Failed to serialize device auth: {}", e))
+                })?;
+                self.storage
+                    .store_kv(
+                        &device_key,
+                        serialized.as_bytes(),
+                        Some(self.default_expiration),
+                    )
+                    .await
+                    .ok();
+                let mut authorizations = self.authorizations.write().await;
+                authorizations.insert(device_code.to_string(), stored);
                 return Err(AuthError::auth_method("device_auth", "slow_down"));
             }
         }
@@ -626,5 +668,22 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.to_string().contains("expired"));
+    }
+
+    #[tokio::test]
+    async fn test_chainable_expiration_and_interval() {
+        let storage = Arc::new(MemoryStorage::new());
+        let manager = DeviceAuthManager::new(storage, "https://example.com/device".to_string())
+            .expiration(Duration::from_secs(300))
+            .interval(Duration::from_secs(10));
+
+        let request = DeviceAuthorizationRequest {
+            client_id: "test_client".to_string(),
+            scope: None,
+        };
+
+        let response = manager.create_authorization(request).await.unwrap();
+        assert_eq!(response.expires_in, 300);
+        assert_eq!(response.interval, 10);
     }
 }

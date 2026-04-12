@@ -17,7 +17,9 @@ pub use advanced_token_exchange::{
     AdvancedTokenExchangeConfig, AdvancedTokenExchangeManager, AdvancedTokenExchangeRequest,
     TokenExchangePolicy as AdvancedTokenExchangePolicy,
 };
-pub use core::{TokenExchangeManager, TokenExchangePolicy, TokenExchangeRequest};
+pub use core::{
+    TokenExchangeManager, TokenExchangePolicy, TokenExchangeRequest, TokenExchangeResponse,
+};
 pub use token_exchange_common::*;
 pub use token_exchange_factory::*;
 pub use token_introspection::*;

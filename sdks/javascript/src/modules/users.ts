@@ -23,7 +23,7 @@ export class UsersModule extends BaseClient {
    * Update current user's profile
    */
   async updateProfile(request: UpdateProfileRequest, options?: RequestOptions): Promise<UserProfile> {
-    const response = await this.patch<UserProfile>('/users/profile', request, options);
+    const response = await this.put<UserProfile>('/users/profile', request, options);
     return response.data;
   }
 
@@ -31,6 +31,6 @@ export class UsersModule extends BaseClient {
    * Change current user's password
    */
   async changePassword(request: ChangePasswordRequest, options?: RequestOptions): Promise<void> {
-    await this.post<void>('/users/password', request, options);
+    await this.post<void>('/users/change-password', request, options);
   }
 }

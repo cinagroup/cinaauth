@@ -1,134 +1,194 @@
 # Health Schemas
-# Data structures for health check and monitoring endpoints
 
 HealthStatus:
     type: object
-    description: Basic health check response
+    description: Payload returned in ApiResponse.data by GET /health.
     properties:
         status:
             type: string
-            enum: [healthy, unhealthy, degraded]
-            description: Overall service health status
+            enum:
+                - healthy
+                - degraded
             example: "healthy"
         timestamp:
             type: string
             format: date-time
-            description: Timestamp of health check
-            example: "2024-01-20T15:30:45Z"
+            example: "2026-01-20T15:30:45Z"
+        services:
+            type: object
+            additionalProperties:
+                type: string
+            example:
+                auth_framework: "healthy"
+                storage: "healthy"
+                token_manager: "healthy"
+                memory: "healthy"
+        version:
+            type: string
+            example: "0.5.0-rc18"
+        uptime:
+            type: string
+            example: "3h 12m 4s"
     required:
         - status
         - timestamp
+        - services
+        - version
+        - uptime
 
 ReadinessStatus:
-    type: object
-    description: Service readiness check response
-    properties:
-        ready:
-            type: boolean
-            description: Whether the service is ready to accept requests
-            example: true
-        checks:
-            type: object
-            description: Individual readiness checks
-            properties:
-                database:
-                    type: boolean
-                    example: true
-                cache:
-                    type: boolean
-                    example: true
-                dependencies:
-                    type: boolean
-                    example: true
-        timestamp:
-            type: string
-            format: date-time
-            example: "2024-01-20T15:30:45Z"
-    required:
-        - ready
-        - checks
-        - timestamp
+    type: string
+    description: GET /readiness currently returns plain-text "Ready" or "Not Ready", not a JSON object.
+    example: "Ready"
 
 LivenessStatus:
-    type: object
-    description: Service liveness check response
-    properties:
-        alive:
-            type: boolean
-            description: Whether the service is alive
-            example: true
-        timestamp:
-            type: string
-            format: date-time
-            example: "2024-01-20T15:30:45Z"
-    required:
-        - alive
-        - timestamp
+    type: string
+    description: GET /liveness currently returns plain-text "Alive".
+    example: "Alive"
 
 DetailedHealthStatus:
     type: object
-    description: Detailed health status with dependency information
+    description: Payload returned in ApiResponse.data by GET /health/detailed.
     properties:
         status:
             type: string
-            enum: [healthy, unhealthy, degraded]
-            description: Overall service health status
+            enum:
+                - healthy
+                - degraded
             example: "healthy"
-        services:
-            type: object
-            description: Health status of individual service dependencies
-            properties:
-                database:
-                    $ref: "#/ServiceHealth"
-                cache:
-                    $ref: "#/ServiceHealth"
-                storage:
-                    $ref: "#/ServiceHealth"
-        uptime:
-            type: integer
-            description: Service uptime in seconds
-            example: 86400
-            minimum: 0
-        version:
-            type: string
-            description: Service version
-            example: "1.0.0"
         timestamp:
             type: string
             format: date-time
-            example: "2024-01-20T15:30:45Z"
+            example: "2026-01-20T15:30:45Z"
+        services:
+            type: object
+            additionalProperties:
+                $ref: "#/ServiceHealth"
+        system:
+            $ref: "#/SystemHealth"
+        version:
+            type: string
+            example: "0.5.0-rc18"
+        uptime:
+            type: string
+            example: "3h 12m 4s"
     required:
         - status
-        - services
-        - uptime
-        - version
         - timestamp
+        - services
+        - system
+        - version
+        - uptime
 
 ServiceHealth:
     type: object
-    description: Health status of an individual service dependency
+    description: Per-service health details in GET /health/detailed.
     properties:
         status:
             type: string
-            enum: [healthy, unhealthy, degraded]
-            description: Service health status
+            enum:
+                - healthy
+                - degraded
+                - unhealthy
             example: "healthy"
-        response_time:
-            type: number
-            description: Response time in milliseconds
-            example: 12.5
+        response_time_ms:
+            type: integer
             minimum: 0
+            example: 5
         last_check:
             type: string
             format: date-time
-            description: Timestamp of last health check
-            example: "2024-01-20T15:30:45Z"
+            example: "2026-01-20T15:30:45Z"
         error:
             type: string
             nullable: true
-            description: Error message if service is unhealthy
             example: null
+        details:
+            type: object
+            additionalProperties: true
     required:
         - status
-        - response_time
+        - response_time_ms
         - last_check
+        - details
+
+SystemHealth:
+    type: object
+    properties:
+        memory_usage:
+            $ref: "#/MemoryInfo"
+        cpu_usage:
+            type: number
+            example: 12.5
+        disk_usage:
+            $ref: "#/DiskInfo"
+        network:
+            $ref: "#/NetworkInfo"
+    required:
+        - memory_usage
+        - cpu_usage
+        - disk_usage
+        - network
+
+MemoryInfo:
+    type: object
+    properties:
+        total_mb:
+            type: integer
+            example: 16384
+        used_mb:
+            type: integer
+            example: 8192
+        free_mb:
+            type: integer
+            example: 8192
+        usage_percent:
+            type: number
+            example: 50.0
+    required:
+        - total_mb
+        - used_mb
+        - free_mb
+        - usage_percent
+
+DiskInfo:
+    type: object
+    properties:
+        total_gb:
+            type: integer
+            example: 512
+        used_gb:
+            type: integer
+            example: 128
+        free_gb:
+            type: integer
+            example: 384
+        usage_percent:
+            type: number
+            example: 25.0
+    required:
+        - total_gb
+        - used_gb
+        - free_gb
+        - usage_percent
+
+NetworkInfo:
+    type: object
+    properties:
+        requests_per_minute:
+            type: integer
+            example: 42
+        active_connections:
+            type: integer
+            example: 8
+        bytes_sent:
+            type: integer
+            example: 102400
+        bytes_received:
+            type: integer
+            example: 204800
+    required:
+        - requests_per_minute
+        - active_connections
+        - bytes_sent
+        - bytes_received

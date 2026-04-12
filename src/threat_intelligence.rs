@@ -203,6 +203,46 @@ impl Default for ThreatIntelConfig {
 }
 
 impl ThreatIntelConfig {
+    /// All feeds disabled, no automatic updates.
+    ///
+    /// Use this when threat intelligence is not needed or when running
+    /// in an air-gapped environment.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = ThreatIntelConfig::disabled();
+    /// ```
+    pub fn disabled() -> Self {
+        Self {
+            auto_update_enabled: false,
+            update_interval_seconds: 0,
+            feeds_directory: PathBuf::from("./threat-feeds"),
+            feeds: HashMap::new(),
+            download_timeout_seconds: 30,
+        }
+    }
+
+    /// Aggressive update schedule — every 5 minutes, 10-second download timeout.
+    ///
+    /// Pre-configures popular free feeds (Tor exits, Spamhaus DROP,
+    /// Emerging Threats) all enabled.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let config = ThreatIntelConfig::aggressive();
+    /// ```
+    pub fn aggressive() -> Self {
+        let mut base = Self::default();
+        base.auto_update_enabled = true;
+        base.update_interval_seconds = 300; // 5 minutes
+        base.download_timeout_seconds = 10;
+        // Enable all pre-configured feeds
+        for feed in base.feeds.values_mut() {
+            feed.enabled = true;
+        }
+        base
+    }
+
     /// Create configuration from environment variables and config file
     pub fn from_env_and_config() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Try to load from config file first
@@ -447,18 +487,19 @@ impl ThreatFeedManager {
             && let Some(feed) = config.feeds.get_mut("virustotal_malicious")
         {
             feed.api_key = Some(api_key);
-            feed.headers
-                .insert("X-Apikey".to_string(), feed.api_key.clone().unwrap());
+            feed.headers.insert(
+                "X-Apikey".to_string(),
+                feed.api_key.clone().expect("set to Some on previous line"),
+            );
         }
 
         if let Ok(license_key) = std::env::var("MAXMIND_LICENSE_KEY")
             && let Some(feed) = config.feeds.get_mut("maxmind_proxy_detection")
         {
-            feed.api_key = Some(license_key.clone());
-            feed.url = format!(
-                "{}?edition_id=GeoIP2-Anonymous-IP&license_key={}&suffix=tar.gz",
-                feed.url, license_key
-            );
+            feed.api_key = Some(license_key);
+            // Edition and suffix are appended as query params at download time,
+            // keeping the license key out of the stored URL string.
+            feed.url = format!("{}?edition_id=GeoIP2-Anonymous-IP&suffix=tar.gz", feed.url);
         }
 
         config
@@ -573,6 +614,8 @@ impl ThreatFeedManager {
             request = request.header(key, value);
         }
 
+        let mut request_url = feed_config.url.clone();
+
         // Add API key as header or query param based on service
         if let Some(api_key) = &feed_config.api_key {
             match feed_name {
@@ -580,7 +623,20 @@ impl ThreatFeedManager {
                     request = request.header("X-Apikey", api_key);
                 }
                 name if name.contains("maxmind") => {
-                    // API key already in URL for MaxMind
+                    // Append the license key at request time only so that
+                    // the stored URL (logged, serialised) never contains it.
+                    let sep = if request_url.contains('?') { '&' } else { '?' };
+                    request_url = format!(
+                        "{}{}license_key={}",
+                        request_url,
+                        sep,
+                        urlencoding::encode(api_key)
+                    );
+                    request = client.get(&request_url);
+                    // Re-attach headers after rebuilding request
+                    for (key, value) in &feed_config.headers {
+                        request = request.header(key, value);
+                    }
                 }
                 _ => {
                     // Generic API key header
@@ -648,7 +704,7 @@ impl ThreatFeedManager {
         }
     }
 
-    /// Extract tar.gz archives
+    /// Extract tar.gz archives with path traversal protection
     async fn extract_tar_gz(
         content: &[u8],
         output_path: &Path,
@@ -664,7 +720,36 @@ impl ThreatFeedManager {
         tokio::task::spawn_blocking(move || -> Result<(), String> {
             let decoder = flate2::read::GzDecoder::new(content.as_slice());
             let mut archive = tar::Archive::new(decoder);
-            archive.unpack(&dest).map_err(|e| e.to_string())
+            let canonical_dest = dest.canonicalize().map_err(|e| e.to_string())?;
+
+            for entry in archive.entries().map_err(|e| e.to_string())? {
+                let mut entry = entry.map_err(|e| e.to_string())?;
+                let path = entry.path().map_err(|e| e.to_string())?;
+
+                // Reject absolute paths and path traversal sequences
+                if path.is_absolute()
+                    || path
+                        .components()
+                        .any(|c| matches!(c, std::path::Component::ParentDir))
+                {
+                    return Err(format!(
+                        "Zip Slip: archive entry has unsafe path: {}",
+                        path.display()
+                    ));
+                }
+
+                let target = canonical_dest.join(&path);
+                // Verify the resolved path stays within the destination
+                if !target.starts_with(&canonical_dest) {
+                    return Err(format!(
+                        "Zip Slip: entry escapes destination: {}",
+                        path.display()
+                    ));
+                }
+
+                entry.unpack(&target).map_err(|e| e.to_string())?;
+            }
+            Ok(())
         })
         .await
         .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?
@@ -673,7 +758,7 @@ impl ThreatFeedManager {
         Ok(())
     }
 
-    /// Extract ZIP archives
+    /// Extract ZIP archives with path traversal protection
     async fn extract_zip(
         content: &[u8],
         output_path: &Path,
@@ -690,7 +775,33 @@ impl ThreatFeedManager {
             use std::io::Cursor;
             let cursor = Cursor::new(content);
             let mut archive = zip::ZipArchive::new(cursor).map_err(|e| e.to_string())?;
-            archive.extract(&dest).map_err(|e| e.to_string())
+            let canonical_dest = dest.canonicalize().map_err(|e| e.to_string())?;
+
+            for i in 0..archive.len() {
+                let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+                let name = file
+                    .enclosed_name()
+                    .ok_or_else(|| format!("Zip Slip: entry {} has unsafe path", file.name()))?;
+
+                let target = canonical_dest.join(&name);
+                if !target.starts_with(&canonical_dest) {
+                    return Err(format!(
+                        "Zip Slip: entry escapes destination: {}",
+                        name.display()
+                    ));
+                }
+
+                if file.is_dir() {
+                    std::fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+                } else {
+                    if let Some(parent) = target.parent() {
+                        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                    }
+                    let mut out = std::fs::File::create(&target).map_err(|e| e.to_string())?;
+                    std::io::copy(&mut file, &mut out).map_err(|e| e.to_string())?;
+                }
+            }
+            Ok(())
         })
         .await
         .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?

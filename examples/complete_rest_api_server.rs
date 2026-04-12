@@ -37,8 +37,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_config = ApiServerConfig {
         host: "127.0.0.1".to_string(),
         port: 8080,
-        enable_cors: true,
-        allowed_origins: vec!["http://localhost:3000".to_string()],
+        cors: auth_framework::CorsConfig {
+            enabled: true,
+            allowed_origins: vec!["http://localhost:3000".to_string()],
+            ..auth_framework::CorsConfig::default()
+        },
         max_body_size: 1024 * 1024, // 1MB
         enable_tracing: true,
     };
@@ -49,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("📊 API Server Configuration:");
     info!("   Host: {}", api_server.config().host);
     info!("   Port: {}", api_server.config().port);
-    info!("   CORS: {}", api_server.config().enable_cors);
+    info!("   CORS: {}", api_server.config().enable_cors());
     info!(
         "   Max Body Size: {} bytes",
         api_server.config().max_body_size

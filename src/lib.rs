@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let user_id = auth.users().register("alice", "alice@example.com", "s3cr3t!").await?;
 
     // Issue a token via the grouped token accessor.
-    let token = auth.tokens().create(&user_id, vec!["read".into()], "jwt", None).await?;
+    let token = auth.tokens().create(&user_id, &["read"], "jwt", None).await?;
 
     // Validate and authorize.
     if auth.tokens().validate(&token).await? {
@@ -85,7 +85,7 @@ into each capability area.
 - Monitor authentication events for suspicious activity
 - Follow the principle of least privilege for permissions
 
-See the [Security Policy](https://github.com/yourusername/auth-framework/blob/main/SECURITY.md)
+See the [Security Policy](https://github.com/ciresnave/auth-framework/blob/main/SECURITY.md)
 for comprehensive security guidelines.
 */
 
@@ -97,75 +97,206 @@ pub mod api;
 #[cfg(feature = "admin-binary")]
 pub mod admin;
 
+// ────────────────────────────────────────────────────────────────────────────
+// Core framework modules
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Primary authentication framework — start here.
+///
+/// Contains [`AuthFramework`], the main entry point for most applications.
+/// Access grouped operations via [`AuthFramework::users`], [`AuthFramework::tokens`],
+/// [`AuthFramework::sessions`], etc.
 pub mod auth;
-pub mod auth_modular; // Advanced component-oriented authentication framework
-pub mod auth_operations; // Grouped operation facades over AuthFramework
-pub mod authentication; // Supporting auth data types and submodules
-pub mod distributed; // Distributed session store abstraction
+
+/// Advanced component-oriented framework.
+///
+/// Use [`ModularAuthFramework`](auth_modular::AuthFramework) only when you need
+/// direct access to individual manager instances (user, session, MFA) for custom
+/// composition. Most applications should use [`auth::AuthFramework`] instead.
+pub mod auth_modular;
+
+/// Grouped operation facades over [`AuthFramework`].
+///
+/// Light reference wrappers (e.g. [`UserOperations`], [`TokenOperations`]) returned
+/// by the accessor methods on `AuthFramework`. Not usually imported directly —
+/// use `auth.users()`, `auth.tokens()`, etc.
+pub mod auth_operations;
+
+/// Supporting authentication data types.
+///
+/// Credentials, metadata, and MFA primitives used as inputs to the core
+/// framework. Import specific types rather than the module wildcard.
+pub mod authentication;
+
+/// Domain-specific newtypes (`Roles`, `Scopes`, `Permissions`, etc.).
+pub mod types;
+
+/// Error types and the crate-wide [`Result`](errors::Result) alias.
 pub mod errors;
+
+/// Authentication method implementations (JWT, OAuth2, API keys, passwords, SAML).
 pub mod methods;
+
+/// Permission and role definitions for access control.
 pub mod permissions;
-pub mod profile_utils;
+
+/// Token creation, validation, rotation, and JWKS support.
+pub mod tokens;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Configuration
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Configuration types and management.
+///
+/// - [`AuthConfig`](config::AuthConfig) — main config struct (use [`AuthConfig::new()`]
+///   for fluent setters or [`AuthConfig::builder()`] for the full builder).
+/// - [`ConfigManager`](config::ConfigManager) — layered config from files + env.
+/// - [`AppConfig`](config::AppConfig) — simple app-owned config values.
+pub mod config;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Storage & persistence
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Storage backends and the [`AuthStorage`](storage::AuthStorage) trait.
+///
+/// See the trait documentation for available backends (Memory, PostgreSQL,
+/// MySQL, Redis, SQLite, Encrypted) and guidance on writing custom backends.
+pub mod storage;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Security
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Audit logging of authentication and authorization events.
+pub mod audit;
+
+/// Role-based and attribute-based access control (RBAC/ABAC).
+pub mod authorization;
+#[cfg(feature = "role-system")]
+pub mod authorization_enhanced;
+/// Security utilities: rate limiting, DoS protection, IP blocking, and JWT hardening.
+pub mod security;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Session & distributed state
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Session lifecycle, device fingerprinting, and risk scoring.
+pub mod session;
+
+/// Distributed authentication: cross-node token validation and cluster coordination.
+pub mod distributed;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Server-side protocol implementations
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Server-side OAuth 2.0 / OIDC / FAPI protocol implementations.
+pub mod server;
+
+// oauth2_server and oauth2_enhanced_storage now live under server::oauth.
+pub use server::oauth::oauth2_enhanced_storage;
+pub use server::oauth::oauth2_server;
+
+/// OAuth 2.0 client type definitions (RFC 6749 §2.1).
+pub mod client;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Integrations, providers & transport
+// ────────────────────────────────────────────────────────────────────────────
+
+/// OAuth 2.0 provider configuration and PKCE helpers.
 pub mod providers;
-pub mod tenant; // Multi-tenant support for native multi-tenant deployments
+
+/// Helpers for extracting user profiles from tokens and provider responses.
+pub mod profile_utils;
+
+/// Multi-tenant support for native multi-tenant deployments.
+pub mod tenant;
+
+/// User context and session enrichment.
+pub mod user_context;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Monitoring, analytics & operations
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Monitoring, health checks, and performance metrics.
+pub mod monitoring;
+
+/// Analytics collection and reporting.
+pub mod analytics;
+
+/// Deployment, scaling, and infrastructure management.
+pub mod deployment;
+
+/// Threat intelligence feeds and IP reputation services.
+pub mod threat_intelligence;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Migration & maintenance
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Schema migration utilities for role-system v1.0 integration.
+pub mod migration;
+
+/// SQL migration scripts for database backends.
+pub mod migrations;
+
+/// Backup, restore, and reset utilities.
+pub mod maintenance;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Developer tools
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Ergonomic builders and prelude for better developer experience.
+pub mod builders;
+
+/// Convenience re-exports for common types — `use auth_framework::prelude::*`.
+pub mod prelude;
+
+/// Internal utility functions.
+pub mod utils;
+
+/// Test helpers and mock implementations for downstream testing.
+pub mod testing;
+
+/// Protocol-level types shared across OAuth, OIDC, and SAML flows.
+pub mod protocols;
+
+/// Command-line interface utilities.
+pub mod cli;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Feature-gated optional modules
+// ────────────────────────────────────────────────────────────────────────────
+
+#[cfg(feature = "enhanced-observability")]
+pub mod observability;
+
+#[cfg(feature = "event-sourcing")]
+pub mod architecture;
 
 // SDK generation for multiple languages
 #[cfg(feature = "enhanced-rbac")]
 pub mod sdks;
 
-pub mod server;
-pub mod storage;
-pub mod testing; // Reorganized testing modules
-pub mod threat_intelligence; // Automated threat intelligence feed management
-pub mod tokens;
-pub mod utils;
-
-// Migration utilities for role-system v1.0 integration
-pub mod migration;
-
-// Analytics and monitoring for RBAC systems
-pub mod analytics;
-
-// Production deployment automation and monitoring
-pub mod deployment;
-
-// User context and session management
-pub mod user_context;
-
-// Enhanced OAuth2 storage with proper validation
-pub mod oauth2_enhanced_storage;
-
-// Canonical OAuth 2.0 client type definitions (RFC 6749 §2.1)
-pub mod client;
-
-// OAuth2 server implementation
-// Secure OAuth2 server implementation
-pub mod oauth2_server;
-
-// Consolidated security modules
-pub mod audit;
-pub mod authorization;
-#[cfg(feature = "role-system")]
-pub mod authorization_enhanced;
-pub mod distributed_rate_limiting; // Advanced distributed rate limiting
-pub mod security;
-pub mod session; // Reorganized session modules
-
-// Configuration management
-pub mod config;
-
-// Monitoring and metrics collection
-pub mod monitoring;
-
-// Enhanced observability
-#[cfg(feature = "enhanced-observability")]
-pub mod observability;
-
-// Architecture enhancements
-#[cfg(feature = "event-sourcing")]
-pub mod architecture;
-
+// ────────────────────────────────────────────────────────────────────────────
 // Web framework integrations
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Ready-made middleware and extractors for popular web frameworks.
+///
+/// Enable the appropriate feature flag to pull in the integration you need:
+///
+/// | Feature | Module |
+/// |---------|--------|
+/// | `axum-integration` | [`integrations::axum`] |
+/// | `actix-integration` | [`integrations::actix_web`] |
+/// | `warp-integration` | [`integrations::warp`] |
 pub mod integrations {
     #[cfg(feature = "axum-integration")]
     pub mod axum;
@@ -177,34 +308,34 @@ pub mod integrations {
     pub mod warp;
 }
 
-// Database migrations
-pub mod migrations;
-
-// CLI tools
-pub mod cli;
-
-// Ergonomic builders and prelude for better developer experience
-pub mod builders;
-pub mod prelude;
-
-// WS-Security 1.1 and SAML 2.0 support
-pub mod saml_assertions;
-pub mod ws_security;
-pub mod ws_trust;
+// ────────────────────────────────────────────────────────────────────────────
+// Re-exports — public API surface
+// ────────────────────────────────────────────────────────────────────────────
 
 // Re-exports - Main modular auth framework components
 pub use crate::auth::{
     AdminOperations, AuditOperations, AuthFramework, AuthResult, AuthStats,
-    AuthorizationOperations, MfaOperations, MonitoringOperations, SessionOperations,
-    TokenOperations, UserInfo, UserInfo as CoreUserInfo, UserOperations,
+    AuthorizationOperations, MaintenanceOperations, MfaOperations, MonitoringOperations,
+    SessionOperations, TokenOperations, UserInfo, UserOperations,
 };
+
+/// Deprecated alias — use [`UserInfo`] directly.
+#[deprecated(
+    since = "0.5.0",
+    note = "Use `UserInfo` directly — the `Core` prefix is redundant"
+)]
+pub type CoreUserInfo = UserInfo;
 pub use crate::auth_modular::AuthFramework as ModularAuthFramework;
+pub use crate::maintenance::{
+    BackupReport, MaintenanceSnapshot, MigrationFileReport, ResetReport, RestoreReport,
+    SnapshotManifest,
+};
 pub use authentication::credentials::Credential;
 pub use config::app_config::ConfigBuilder as AppConfigBuilder;
 pub use config::config_manager::{
     AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder, ConfigManager,
 };
-pub use config::{AuthConfig, app_config::AppConfig};
+pub use config::{AuthConfig, AuthConfigBuilder, CorsConfig, app_config::AppConfig};
 pub use errors::{AuthError, Result};
 pub use methods::{
     ApiKeyMethod, AuthMethod, JwtMethod, MethodResult, OAuth2Method, PasswordMethod,
@@ -228,14 +359,20 @@ pub use providers::{
 };
 pub use tokens::AuthToken;
 
-// WS-Security 1.1 and WS-Trust — advanced SOAP-era protocol support.
-// Hidden from root docs; access via `auth_framework::ws_security` / `ws_trust`.
+// WS-Security 1.1 and WS-Trust — enterprise XML security protocols.
+// Hidden from root docs; access via `auth_framework::protocols::ws_security` / `ws_trust`.
 #[doc(hidden)]
-pub use ws_security::{UsernameToken, WsSecurityClient, WsSecurityConfig, WsSecurityHeader};
+pub use protocols::ws_security::{
+    UsernameToken, WsSecurityClient, WsSecurityConfig, WsSecurityHeader,
+};
 #[doc(hidden)]
-pub use ws_trust::RequestSecurityToken;
+pub use protocols::ws_trust::RequestSecurityToken;
 
-// Server-side authentication and authorization - Now working!
+// Server-side OIDC types.
+//
+// Note: the OIDC spec defines its own `UserInfo` struct (the /userinfo endpoint
+// response). It is re-exported here as `OidcUserInfo` to avoid collision with
+// the framework-level [`UserInfo`] (the internal user record).
 pub use server::oidc::{
     Address, AuthorizationValidationResult, IdTokenClaims, Jwk, JwkSet, LogoutResponse,
     OidcAuthorizationRequest, OidcConfig, OidcDiscoveryDocument, OidcProvider, SubjectType,
@@ -256,6 +393,11 @@ pub use server::oidc::oidc_frontchannel_logout::{
     FailedNotification, FrontChannelLogoutConfig, FrontChannelLogoutManager,
     FrontChannelLogoutRequest, FrontChannelLogoutResponse, RpFrontChannelConfig,
 };
+#[doc(hidden)]
+pub use server::oidc::oidc_rp_initiated_logout::{
+    ClientLogoutConfig, LogoutNotificationTarget, RpInitiatedLogoutConfig,
+    RpInitiatedLogoutManager, RpInitiatedLogoutRequest, RpInitiatedLogoutResponse,
+};
 
 // OAuth2 server types and configurations
 pub use oauth2_server::{
@@ -264,7 +406,7 @@ pub use oauth2_server::{
 };
 
 // Server configuration types — ClientType and ClientConfig come from the canonical `client` module.
-pub use client::{ClientConfig, ClientType};
+pub use client::{ClientConfig, ClientConfigBuilder, ClientType};
 pub use server::{ClientRegistrationRequest, WorkingServerConfig};
 
 /// Deprecated alias for [`ClientRegistrationRequest`].
@@ -325,11 +467,11 @@ pub use monitoring::{
 pub use auth::SessionCoordinationStats;
 
 // Re-export testing utilities when available
-#[cfg(any(test, feature = "testing"))]
+#[cfg(test)]
 pub use testing::{MockAuthMethod, MockStorage}; // Removed helpers temporarily
 
 // Re-export test infrastructure for bulletproof testing
-#[cfg(any(test, feature = "testing"))]
+#[cfg(test)]
 pub use testing::{
     test_infrastructure::{TestEnvironmentGuard, test_data},
     utilities::*,

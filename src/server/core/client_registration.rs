@@ -78,6 +78,186 @@ pub struct ClientRegistrationRequest {
     pub additional_metadata: HashMap<String, Value>,
 }
 
+impl ClientRegistrationRequest {
+    /// Create a builder for a client registration request using a primary redirect URI.
+    pub fn builder(redirect_uri: impl Into<String>) -> ClientRegistrationRequestBuilder {
+        ClientRegistrationRequestBuilder {
+            redirect_uris: Some(vec![redirect_uri.into()]),
+            token_endpoint_auth_method: None,
+            grant_types: None,
+            response_types: None,
+            client_name: None,
+            client_uri: None,
+            logo_uri: None,
+            scope: None,
+            contacts: None,
+            tos_uri: None,
+            policy_uri: None,
+            jwks_uri: None,
+            jwks: None,
+            software_id: None,
+            software_version: None,
+            additional_metadata: HashMap::new(),
+        }
+    }
+}
+
+/// Builder for RFC 7591 client registration requests.
+pub struct ClientRegistrationRequestBuilder {
+    redirect_uris: Option<Vec<String>>,
+    token_endpoint_auth_method: Option<String>,
+    grant_types: Option<Vec<String>>,
+    response_types: Option<Vec<String>>,
+    client_name: Option<String>,
+    client_uri: Option<String>,
+    logo_uri: Option<String>,
+    scope: Option<String>,
+    contacts: Option<Vec<String>>,
+    tos_uri: Option<String>,
+    policy_uri: Option<String>,
+    jwks_uri: Option<String>,
+    jwks: Option<Value>,
+    software_id: Option<String>,
+    software_version: Option<String>,
+    additional_metadata: HashMap<String, Value>,
+}
+
+impl ClientRegistrationRequestBuilder {
+    /// Replace the redirect URI set.
+    pub fn redirect_uris<I, S>(mut self, redirect_uris: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.redirect_uris = Some(redirect_uris.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Set the token endpoint authentication method.
+    pub fn auth_method(mut self, method: impl Into<String>) -> Self {
+        self.token_endpoint_auth_method = Some(method.into());
+        self
+    }
+
+    /// Configure a public client.
+    pub fn public_client(self) -> Self {
+        self.auth_method("none")
+    }
+
+    /// Set the grant types.
+    pub fn grant_types<I, S>(mut self, grant_types: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.grant_types = Some(grant_types.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Set the response types.
+    pub fn response_types<I, S>(mut self, response_types: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.response_types = Some(response_types.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Set a human-readable client name.
+    pub fn client_name(mut self, client_name: impl Into<String>) -> Self {
+        self.client_name = Some(client_name.into());
+        self
+    }
+
+    /// Set common client metadata URLs.
+    pub fn client_uri(mut self, client_uri: impl Into<String>) -> Self {
+        self.client_uri = Some(client_uri.into());
+        self
+    }
+
+    /// Set the logo URI.
+    pub fn logo_uri(mut self, logo_uri: impl Into<String>) -> Self {
+        self.logo_uri = Some(logo_uri.into());
+        self
+    }
+
+    /// Set the requested scope string.
+    pub fn scope(mut self, scope: impl Into<String>) -> Self {
+        self.scope = Some(scope.into());
+        self
+    }
+
+    /// Set contact email addresses.
+    pub fn contacts<I, S>(mut self, contacts: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.contacts = Some(contacts.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Set the terms-of-service URI.
+    pub fn tos_uri(mut self, tos_uri: impl Into<String>) -> Self {
+        self.tos_uri = Some(tos_uri.into());
+        self
+    }
+
+    /// Set the privacy-policy URI.
+    pub fn policy_uri(mut self, policy_uri: impl Into<String>) -> Self {
+        self.policy_uri = Some(policy_uri.into());
+        self
+    }
+
+    /// Set the JWKS URI.
+    pub fn jwks_uri(mut self, jwks_uri: impl Into<String>) -> Self {
+        self.jwks_uri = Some(jwks_uri.into());
+        self
+    }
+
+    /// Set an inline JWKS value.
+    pub fn jwks(mut self, jwks: Value) -> Self {
+        self.jwks = Some(jwks);
+        self
+    }
+
+    /// Set the software metadata.
+    pub fn software(mut self, software_id: impl Into<String>, software_version: impl Into<String>) -> Self {
+        self.software_id = Some(software_id.into());
+        self.software_version = Some(software_version.into());
+        self
+    }
+
+    /// Add a custom metadata field.
+    pub fn metadata(mut self, key: impl Into<String>, value: Value) -> Self {
+        self.additional_metadata.insert(key.into(), value);
+        self
+    }
+
+    /// Build the client registration request.
+    pub fn build(self) -> ClientRegistrationRequest {
+        ClientRegistrationRequest {
+            redirect_uris: self.redirect_uris,
+            token_endpoint_auth_method: self.token_endpoint_auth_method,
+            grant_types: self.grant_types,
+            response_types: self.response_types,
+            client_name: self.client_name,
+            client_uri: self.client_uri,
+            logo_uri: self.logo_uri,
+            scope: self.scope,
+            contacts: self.contacts,
+            tos_uri: self.tos_uri,
+            policy_uri: self.policy_uri,
+            jwks_uri: self.jwks_uri,
+            jwks: self.jwks,
+            software_id: self.software_id,
+            software_version: self.software_version,
+            additional_metadata: self.additional_metadata,
+        }
+    }
+}
+
 /// Client registration response as defined in RFC 7591
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientRegistrationResponse {
@@ -256,8 +436,10 @@ pub struct ClientRegistrationManager {
 impl ClientRegistrationManager {
     /// Create a new client registration manager
     pub fn new(config: ClientRegistrationConfig, storage: Arc<dyn AuthStorage>) -> Self {
-        let quota =
-            governor::Quota::per_hour(std::num::NonZeroU32::new(config.rate_limit_per_ip).unwrap());
+        let quota = governor::Quota::per_hour(
+            std::num::NonZeroU32::new(config.rate_limit_per_ip.max(1))
+                .expect("clamped to at least 1"),
+        );
         let rate_limiter = Arc::new(governor::RateLimiter::direct(quota));
 
         Self {
@@ -524,13 +706,27 @@ impl ClientRegistrationManager {
 
     /// Verify registration access token
     fn verify_registration_token(&self, client: &RegisteredClient, token: &str) -> Result<bool> {
+        use subtle::ConstantTimeEq;
         let token_hash = self.hash_secret(token)?;
-        Ok(client.registration_access_token_hash == token_hash)
+        Ok(client.registration_access_token_hash.as_bytes().ct_eq(token_hash.as_bytes()).into())
     }
 
-    /// Validate URI
+    /// Validate URI — only HTTPS is allowed, with an exception for localhost
+    /// HTTP during development. Rejects dangerous schemes like `javascript:`,
+    /// `data:`, `file:`, etc.
     fn is_valid_uri(&self, uri: &str) -> bool {
-        url::Url::parse(uri).is_ok()
+        let parsed = match url::Url::parse(uri) {
+            Ok(u) => u,
+            Err(_) => return false,
+        };
+        match parsed.scheme() {
+            "https" => true,
+            "http" => {
+                // Allow plain HTTP only for loopback addresses (development)
+                matches!(parsed.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"))
+            }
+            _ => false,
+        }
     }
 
     /// Store client in storage
@@ -605,24 +801,22 @@ mod tests {
         let config = ClientRegistrationConfig::default();
         let manager = ClientRegistrationManager::new(config, storage);
 
-        let request = ClientRegistrationRequest {
-            redirect_uris: Some(vec!["https://client.example.com/callback".to_string()]),
-            token_endpoint_auth_method: Some("client_secret_basic".to_string()),
-            grant_types: Some(vec!["authorization_code".to_string()]),
-            response_types: Some(vec!["code".to_string()]),
-            client_name: Some("Test Client".to_string()),
-            client_uri: Some("https://client.example.com".to_string()),
-            logo_uri: Some("https://client.example.com/logo.png".to_string()),
-            scope: Some("read write".to_string()),
-            contacts: Some(vec!["admin@client.example.com".to_string()]),
-            tos_uri: Some("https://client.example.com/tos".to_string()),
-            policy_uri: Some("https://client.example.com/privacy".to_string()),
-            jwks_uri: Some("https://client.example.com/jwks".to_string()),
-            jwks: None,
-            software_id: Some("test-client".to_string()),
-            software_version: Some("1.0.0".to_string()),
-            additional_metadata: HashMap::new(),
-        };
+        let request = ClientRegistrationRequest::builder(
+            "https://client.example.com/callback",
+        )
+        .auth_method("client_secret_basic")
+        .grant_types(["authorization_code"])
+        .response_types(["code"])
+        .client_name("Test Client")
+        .client_uri("https://client.example.com")
+        .logo_uri("https://client.example.com/logo.png")
+        .scope("read write")
+        .contacts(["admin@client.example.com"])
+        .tos_uri("https://client.example.com/tos")
+        .policy_uri("https://client.example.com/privacy")
+        .jwks_uri("https://client.example.com/jwks")
+        .software("test-client", "1.0.0")
+        .build();
 
         let response = manager
             .register_client(request.clone(), None)
@@ -645,24 +839,15 @@ mod tests {
         let config = ClientRegistrationConfig::default();
         let manager = ClientRegistrationManager::new(config, storage);
 
-        let request = ClientRegistrationRequest {
-            redirect_uris: Some(vec!["https://client.example.com/callback".to_string()]),
-            token_endpoint_auth_method: Some("none".to_string()),
-            grant_types: Some(vec!["authorization_code".to_string()]),
-            response_types: Some(vec!["code".to_string()]),
-            client_name: Some("Public Client".to_string()),
-            client_uri: None,
-            logo_uri: None,
-            scope: Some("read".to_string()),
-            contacts: None,
-            tos_uri: None,
-            policy_uri: None,
-            jwks_uri: None,
-            jwks: None,
-            software_id: None,
-            software_version: None,
-            additional_metadata: HashMap::new(),
-        };
+        let request = ClientRegistrationRequest::builder(
+            "https://client.example.com/callback",
+        )
+        .public_client()
+        .grant_types(["authorization_code"])
+        .response_types(["code"])
+        .client_name("Public Client")
+        .scope("read")
+        .build();
 
         let response = manager.register_client(request, None).await.unwrap();
 
@@ -670,5 +855,27 @@ mod tests {
         assert!(response.client_secret.is_none()); // Public client should not have secret
         assert!(!response.registration_access_token.is_empty());
         assert_eq!(response.client_name, Some("Public Client".to_string()));
+    }
+
+    #[test]
+    fn test_client_registration_request_builder() {
+        let request = ClientRegistrationRequest::builder("https://client.example.com/callback")
+            .redirect_uris([
+                "https://client.example.com/callback",
+                "https://client.example.com/alt",
+            ])
+            .auth_method("private_key_jwt")
+            .grant_types(["authorization_code", "refresh_token"])
+            .response_types(["code"])
+            .client_name("Builder Client")
+            .metadata("tenant", serde_json::json!("acme"))
+            .build();
+
+        assert_eq!(request.redirect_uris.as_ref().map(Vec::len), Some(2));
+        assert_eq!(
+            request.token_endpoint_auth_method.as_deref(),
+            Some("private_key_jwt")
+        );
+        assert_eq!(request.additional_metadata["tenant"], "acme");
     }
 }
