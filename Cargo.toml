@@ -261,13 +261,13 @@
   zip    = "2"
 
   # Email delivery for alert notifications
-    lettre = { version = "0.11", default-features = false, features = [
-      "builder",
-      "hostname",
-      "pool",
-      "smtp-transport",
-      "tokio1-rustls-tls",
-    ] }
+  lettre = { version = "0.11", default-features = false, features = [
+    "builder",
+    "hostname",
+    "pool",
+    "smtp-transport",
+    "tokio1-rustls-tls",
+  ] }
 
   # Missing dependencies for 100% completion
   ldap3                 = { version = "0.12.1", optional = true }
