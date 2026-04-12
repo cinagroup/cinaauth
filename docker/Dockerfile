@@ -1,5 +1,5 @@
 # Build stage
-FROM --platform=$BUILDPLATFORM rust:1.83-alpine AS builder
+FROM --platform=$BUILDPLATFORM rust:1.88-alpine AS builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -9,7 +9,6 @@ ARG FEATURES=admin-binary,api-server,postgres-storage
 RUN apk add --no-cache \
     musl-dev \
     postgresql-dev \
-    openssl-dev \
     pkgconfig \
     git
 
@@ -45,7 +44,6 @@ FROM alpine:3.19
 RUN apk add --no-cache \
     ca-certificates \
     libgcc \
-    libssl3 \
     postgresql-client \
     curl
 

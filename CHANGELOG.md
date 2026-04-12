@@ -75,6 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Analytics compliance, performance, and trend reporting now return only values derived from stored analytics events and leave unsupported telemetry at zero/default values instead of fabricating counts.
 - Release documentation now reflects the current `v0.5.0-rc18` validation pass instead of stale `v0.4.0`/`rc1` markers and hard-coded historical pass counts.
 
+### Fixed
+
+- Release builds now use `lettre`'s Rustls SMTP transport and a Rust 1.88 Docker builder image, restoring the musl binary and container release jobs that were failing on OpenSSL detection and Edition 2024 manifest parsing.
+
 ## [0.5.0-rc18] - 2026-03-15
 
 ### :lock: Security Fixes (audit cycle 24)
