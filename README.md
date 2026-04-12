@@ -69,7 +69,7 @@ This split exists to support both simple app integration and advanced compositio
 
 Historical release notes below include the test counts and quality metrics reported at the time of each release candidate. The current authoritative test status lives in `docs/development/TESTING_RESULTS.md` and the CI workflow.
 
-**v0.5.0-rc18** - Security Hardening & Comprehensive Audit:
+**v0.5.0-rc19** - Security Hardening & Comprehensive Audit:
 
 - **🔒 WebAuthn credential endpoints secured** - List/delete credential endpoints now require authentication with owner-only authorization
 - **🔒 JWT validation hardened** - Removed dangerous `verify_signature` parameter; signature verification is now always enforced
@@ -321,7 +321,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc18"
+auth-framework = "0.5.0-rc19"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -1011,7 +1011,7 @@ The framework provides comprehensive testing utilities to make testing your auth
 
 ```toml
 [dev-dependencies]
-auth-framework = { version = "0.5.0-rc18", features = ["testing"] }
+auth-framework = { version = "0.5.0-rc19", features = ["testing"] }
 ```
 
 ```rust
@@ -1270,7 +1270,7 @@ Helper utilities for integrating with CLI frameworks:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc18"
+auth-framework = "0.5.0-rc19"
 clap = "4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```

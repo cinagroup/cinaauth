@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rc19] - 2026-04-12
+
 ### Added
 
 - Added `OidcErrorCode` `Display` and `FromStr` implementations for symmetric string ↔ enum conversion; refactored `OidcErrorManager::resolve_error_code()` to delegate to `FromStr`, eliminating a 24-arm match duplicate.
@@ -73,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Admin CLI security commands now use live session, token, and audit data for session inspection, audit-log display, threat reporting, and forced logout; threat-intelligence feed updates now fail explicitly instead of simulating success.
 - SAML SP endpoints now require an explicit `saml_sp:config` and no longer fall back to placeholder `auth.example.com` values or fabricate `@example.com` identities in assertions.
 - Analytics compliance, performance, and trend reporting now return only values derived from stored analytics events and leave unsupported telemetry at zero/default values instead of fabricating counts.
-- Release documentation now reflects the current `v0.5.0-rc18` validation pass instead of stale `v0.4.0`/`rc1` markers and hard-coded historical pass counts.
+- Release documentation now reflects the current `v0.5.0-rc19` validation pass instead of stale `v0.4.0`/`rc1` markers and hard-coded historical pass counts.
 
 ### Fixed
 

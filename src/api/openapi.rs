@@ -13,7 +13,7 @@ pub fn generate_openapi_spec() -> Value {
         "info": {
             "title": "AuthFramework API",
             "description": "Lightweight generated overview of the core authentication and health routes exposed by AuthFramework",
-            "version": "0.5.0-rc18",
+            "version": "0.5.0-rc19",
             "contact": {
                 "name": "AuthFramework Team",
                 "url": "https://github.com/ciresnave/auth-framework"

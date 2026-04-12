@@ -20,7 +20,7 @@ assignees: ''
 
 ## Environment
 
-- **auth-framework version**: <!-- e.g. 0.5.0-rc18 -->
+- **auth-framework version**: <!-- e.g. 0.5.0-rc19 -->
 - **Rust version** (`rustc --version`): <!-- e.g. rustc 1.88.0 -->
 - **Features enabled**: <!-- e.g. default -->
 
