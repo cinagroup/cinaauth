@@ -26,10 +26,12 @@ WORKDIR /app
 
 # Cache dependencies
 COPY Cargo.toml Cargo.lock ./
+COPY benches ./benches
+COPY examples ./examples
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN TARGET=$(cat /target.txt) && \
     cargo build --release --target $TARGET --features $FEATURES
-RUN rm -rf src
+RUN rm -rf src examples benches
 
 # Build application
 COPY . .

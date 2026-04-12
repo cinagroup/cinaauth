@@ -577,47 +577,52 @@ pub async fn handle_saml_slo_response(
     State(_state): State<ApiState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Json<ApiResponse<()>> {
-    let saml_response = match params.get("SAMLResponse") {
-        Some(response) => response,
-        None => {
-            return Json(ApiResponse::validation_error(
-                "Missing SAMLResponse parameter",
-            ));
-        }
-    };
+    #[cfg(not(feature = "saml"))]
+    {
+        let _ = params;
+        return Json(ApiResponse::error_typed(
+            "SAML_SIGNATURE_UNAVAILABLE",
+            "SAML logout response validation is not available; the server must be compiled with the 'saml' feature",
+        ));
+    }
 
-    // Decode and validate SLO response (simplified)
-    let response_xml = match base64::engine::general_purpose::STANDARD.decode(saml_response) {
-        Ok(decoded) => match String::from_utf8(decoded) {
-            Ok(xml) => xml,
+    #[cfg(feature = "saml")]
+    {
+        let saml_response = match params.get("SAMLResponse") {
+            Some(response) => response,
+            None => {
+                return Json(ApiResponse::validation_error(
+                    "Missing SAMLResponse parameter",
+                ));
+            }
+        };
+
+        // Decode and validate SLO response.
+        let response_xml = match base64::engine::general_purpose::STANDARD.decode(saml_response) {
+            Ok(decoded) => match String::from_utf8(decoded) {
+                Ok(xml) => xml,
+                Err(e) => {
+                    return Json(ApiResponse::validation_error(format!(
+                        "Invalid SLO response UTF-8: {}",
+                        e
+                    )));
+                }
+            },
             Err(e) => {
                 return Json(ApiResponse::validation_error(format!(
-                    "Invalid SLO response UTF-8: {}",
+                    "Invalid SLO response encoding: {}",
                     e
                 )));
             }
-        },
-        Err(e) => {
-            return Json(ApiResponse::validation_error(format!(
-                "Invalid SLO response encoding: {}",
-                e
-            )));
-        }
-    };
+        };
 
-    // Validate SAML status using proper XML parsing.
-    #[cfg(feature = "saml")]
-    let slo_success = xml_extract_status_code(&response_xml)
-        .map(|code| code == "urn:oasis:names:tc:SAML:2.0:status:Success")
-        .unwrap_or(false);
-    #[cfg(not(feature = "saml"))]
-    let slo_success = false;
+        let slo_success = xml_extract_status_code(&response_xml)
+            .map(|code| code == "urn:oasis:names:tc:SAML:2.0:status:Success")
+            .unwrap_or(false);
 
-    if slo_success {
-        // Invalidate the user's session associated with this SAML exchange.
-        // The SAML response should carry the NameID that maps to our user.
-        #[cfg(feature = "saml")]
-        {
+        if slo_success {
+            // Invalidate the user's session associated with this SAML exchange.
+            // The SAML response should carry the NameID that maps to our user.
             if let Some(name_id) = xml_extract_name_id(&response_xml) {
                 // Look up user by email (NameID) and invalidate their sessions.
                 if let Ok(Some(uid_bytes)) = _state
@@ -636,23 +641,23 @@ pub async fn handle_saml_slo_response(
                     tracing::info!(user_id = %user_id, "SAML SLO: invalidated sessions");
                 }
             }
-        }
 
-        // Handle RelayState redirect if provided
-        if let Some(relay_state) = params.get("RelayState") {
-            if !relay_state.is_empty() {
-                tracing::debug!(relay_state = %relay_state, "SAML SLO: RelayState provided");
+            // Handle RelayState redirect if provided
+            if let Some(relay_state) = params.get("RelayState") {
+                if !relay_state.is_empty() {
+                    tracing::debug!(relay_state = %relay_state, "SAML SLO: RelayState provided");
+                }
             }
-        }
 
-        Json(ApiResponse::<()>::ok_with_message(
-            "SAML logout completed successfully",
-        ))
-    } else {
-        Json(ApiResponse::error(
-            "SAML_LOGOUT_FAILED",
-            "SAML logout failed",
-        ))
+            Json(ApiResponse::<()>::ok_with_message(
+                "SAML logout completed successfully",
+            ))
+        } else {
+            Json(ApiResponse::error(
+                "SAML_LOGOUT_FAILED",
+                "SAML logout failed",
+            ))
+        }
     }
 }
 

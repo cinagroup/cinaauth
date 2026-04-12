@@ -1,0 +1,11 @@
+.git
+target
+**/target
+*.profraw
+build_*.txt
+check_*.txt
+cargo_check_*.txt
+clippy_*.txt
+release_test_output*.txt
+full_release_test_output.txt
+err*.txt
