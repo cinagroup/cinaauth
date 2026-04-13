@@ -107,7 +107,7 @@ services:
       - db_password
       - redis_password
       - jwt_secret
-    command: ["auth-framework-cli", "db", "migrate"]
+    command: ["auth-framework-admin", "db", "migrate"]
     deploy:
       resources:
         limits:

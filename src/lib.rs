@@ -333,7 +333,8 @@ pub use crate::maintenance::{
 pub use authentication::credentials::Credential;
 pub use config::app_config::ConfigBuilder as AppConfigBuilder;
 pub use config::config_manager::{
-    AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder, ConfigManager,
+    ApiServerSettings, AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder,
+    ConfigManager,
 };
 pub use config::{AuthConfig, AuthConfigBuilder, CorsConfig, app_config::AppConfig};
 pub use errors::{AuthError, Result};

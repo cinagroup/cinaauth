@@ -1072,6 +1072,7 @@ mod tests {
 
         let settings = AuthFrameworkSettings {
             auth: auth_config.clone(),
+            api_server: None,
             threat_intelligence: None,
             session: None,
             custom: std::collections::HashMap::new(),

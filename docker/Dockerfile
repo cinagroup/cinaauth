@@ -3,7 +3,7 @@ FROM --platform=$BUILDPLATFORM rust:1.88-alpine AS builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
-ARG FEATURES=admin-binary,api-server,postgres-storage
+ARG FEATURES=api-server,postgres-storage
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -28,9 +28,13 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY benches ./benches
 COPY examples ./examples
-RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN mkdir -p src/bin && \
+    echo "pub fn docker_cache_marker() {}" > src/lib.rs && \
+    echo "fn main() {}" > src/bin/server.rs && \
+    echo "fn main() {}" > src/bin/admin.rs && \
+    echo "fn main() {}" > src/bin/test_oauth2.rs
 RUN TARGET=$(cat /target.txt) && \
-    cargo build --release --target $TARGET --features $FEATURES
+    cargo build --release --target $TARGET --features $FEATURES --bin auth-framework
 RUN rm -rf src examples benches
 
 # Build application

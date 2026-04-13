@@ -94,13 +94,13 @@ cargo test --lib maintenance_admin_cli_smoke_test_roundtrip --features "admin-bi
 
 ## Release Binary Usage
 
-The shipped `auth-framework` binary now exposes maintenance commands through the admin CLI surface in `src/bin/admin.rs` and `src/admin/cli.rs`.
+The shipped `auth-framework-admin` binary exposes maintenance commands through the admin CLI surface in `src/bin/admin.rs` and `src/admin/cli.rs`.
 
 Example forms:
 
 ```powershell
-cargo run --bin auth-framework --features "admin-binary sqlite-storage" -- cli maintenance backup snapshot.json
-cargo run --bin auth-framework --features "admin-binary sqlite-storage" -- cli maintenance reset --confirm
-cargo run --bin auth-framework --features "admin-binary sqlite-storage" -- cli maintenance restore snapshot.json --confirm
-cargo run --bin auth-framework --features "admin-binary sqlite-storage" -- cli maintenance create-migration add_audit_table
+cargo run --bin auth-framework-admin --features "admin-binary sqlite-storage" -- cli maintenance backup snapshot.json
+cargo run --bin auth-framework-admin --features "admin-binary sqlite-storage" -- cli maintenance reset --confirm
+cargo run --bin auth-framework-admin --features "admin-binary sqlite-storage" -- cli maintenance restore snapshot.json --confirm
+cargo run --bin auth-framework-admin --features "admin-binary sqlite-storage" -- cli maintenance create-migration add_audit_table
 ```

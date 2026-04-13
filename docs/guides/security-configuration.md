@@ -680,19 +680,19 @@ USER_ID=$1
 INCIDENT_ID=$2
 
 # 1. Immediately disable account
-auth-framework-cli users disable --user-id $USER_ID --reason "Security incident $INCIDENT_ID"
+auth-framework-admin users disable --user-id $USER_ID --reason "Security incident $INCIDENT_ID"
 
 # 2. Invalidate all sessions
-auth-framework-cli sessions revoke-all --user-id $USER_ID
+auth-framework-admin sessions revoke-all --user-id $USER_ID
 
 # 3. Reset password
-auth-framework-cli users reset-password --user-id $USER_ID --force
+auth-framework-admin users reset-password --user-id $USER_ID --force
 
 # 4. Enable MFA requirement
-auth-framework-cli users require-mfa --user-id $USER_ID
+auth-framework-admin users require-mfa --user-id $USER_ID
 
 # 5. Log incident
-auth-framework-cli incidents log --type "compromised-account" --user-id $USER_ID --incident-id $INCIDENT_ID
+auth-framework-admin incidents log --type "compromised-account" --user-id $USER_ID --incident-id $INCIDENT_ID
 
 # 6. Notify security team
 curl -X POST https://alerts.yourdomain.com/api/incidents \
@@ -710,13 +710,13 @@ IP_ADDRESS=$1
 INCIDENT_ID=$2
 
 # 1. Block IP address
-auth-framework-cli ip-filter block --ip $IP_ADDRESS --duration "24h" --reason "Suspicious activity $INCIDENT_ID"
+auth-framework-admin ip-filter block --ip $IP_ADDRESS --duration "24h" --reason "Suspicious activity $INCIDENT_ID"
 
 # 2. Analyze recent requests
-auth-framework-cli logs query --ip $IP_ADDRESS --since "1h" --format json > /tmp/suspicious-activity-$INCIDENT_ID.json
+auth-framework-admin logs query --ip $IP_ADDRESS --since "1h" --format json > /tmp/suspicious-activity-$INCIDENT_ID.json
 
 # 3. Check for affected users
-auth-framework-cli users list-by-ip --ip $IP_ADDRESS --since "1h" > /tmp/affected-users-$INCIDENT_ID.txt
+auth-framework-admin users list-by-ip --ip $IP_ADDRESS --since "1h" > /tmp/affected-users-$INCIDENT_ID.txt
 
 # 4. Notify security team with details
 curl -X POST https://alerts.yourdomain.com/api/incidents \
@@ -736,19 +736,19 @@ curl -X POST https://alerts.yourdomain.com/api/incidents \
 # /opt/security/daily-tasks.sh
 
 # Check for security alerts
-auth-framework-cli security alerts --since "24h"
+auth-framework-admin security alerts --since "24h"
 
 # Verify backup integrity
-auth-framework-cli backup verify --date "yesterday"
+auth-framework-admin backup verify --date "yesterday"
 
 # Check failed login attempts
-auth-framework-cli logs failed-logins --since "24h" | grep -c "FAILED" > /tmp/failed-logins.count
+auth-framework-admin logs failed-logins --since "24h" | grep -c "FAILED" > /tmp/failed-logins.count
 
 # Monitor suspicious IPs
-auth-framework-cli ip-analysis suspicious --since "24h"
+auth-framework-admin ip-analysis suspicious --since "24h"
 
 # Generate daily security report
-auth-framework-cli reports security --type daily --output /reports/security-daily-$(date +%Y%m%d).json
+auth-framework-admin reports security --type daily --output /reports/security-daily-$(date +%Y%m%d).json
 ```
 
 #### Weekly Tasks
@@ -758,19 +758,19 @@ auth-framework-cli reports security --type daily --output /reports/security-dail
 # /opt/security/weekly-tasks.sh
 
 # Update threat intelligence
-auth-framework-cli threat-intel update
+auth-framework-admin threat-intel update
 
 # Review user permissions
-auth-framework-cli audit permissions --output /reports/permissions-audit-$(date +%Y%m%d).json
+auth-framework-admin audit permissions --output /reports/permissions-audit-$(date +%Y%m%d).json
 
 # Check for unused accounts
-auth-framework-cli users inactive --days 90
+auth-framework-admin users inactive --days 90
 
 # Review security configuration
-auth-framework-cli config audit --output /reports/config-audit-$(date +%Y%m%d).json
+auth-framework-admin config audit --output /reports/config-audit-$(date +%Y%m%d).json
 
 # Generate weekly security metrics
-auth-framework-cli reports security --type weekly --output /reports/security-weekly-$(date +%Y%m%d).json
+auth-framework-admin reports security --type weekly --output /reports/security-weekly-$(date +%Y%m%d).json
 ```
 
 #### Monthly Tasks
@@ -780,19 +780,19 @@ auth-framework-cli reports security --type weekly --output /reports/security-wee
 # /opt/security/monthly-tasks.sh
 
 # Review and rotate API keys
-auth-framework-cli api-keys rotate --older-than "30d"
+auth-framework-admin api-keys rotate --older-than "30d"
 
 # Update security policies
-auth-framework-cli policies review --output /reports/policy-review-$(date +%Y%m%d).json
+auth-framework-admin policies review --output /reports/policy-review-$(date +%Y%m%d).json
 
 # Conduct access review
-auth-framework-cli audit access-review --output /reports/access-review-$(date +%Y%m%d).json
+auth-framework-admin audit access-review --output /reports/access-review-$(date +%Y%m%d).json
 
 # Update security documentation
-auth-framework-cli docs security-update
+auth-framework-admin docs security-update
 
 # Generate monthly compliance report
-auth-framework-cli reports compliance --type monthly --output /reports/compliance-$(date +%Y%m%d).json
+auth-framework-admin reports compliance --type monthly --output /reports/compliance-$(date +%Y%m%d).json
 ```
 
 ## Security Checklist
@@ -870,4 +870,4 @@ auth-framework-cli reports compliance --type monthly --output /reports/complianc
 
 ---
 
-AuthFramework v0.5.0-rc19 - THE premier authentication and authorization solution
+AuthFramework v0.5.0-rc20 - THE premier authentication and authorization solution

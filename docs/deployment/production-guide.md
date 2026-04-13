@@ -1,4 +1,4 @@
-# AuthFramework v0.5.0-rc19 - Production Deployment Guide
+# AuthFramework v0.5.0-rc20 - Production Deployment Guide
 
 ## Prerequisites
 
@@ -512,7 +512,7 @@ openssl s_client -connect auth.yourdomain.com:443 -servername auth.yourdomain.co
 ```bash
 # Enable debug logging
 docker-compose -f docker-compose.production.yml \
-  exec auth-server sh -c 'RUST_LOG=debug /usr/local/bin/auth-framework-cli server'
+  exec auth-server sh -c 'RUST_LOG=debug /usr/local/bin/auth-framework'
 ```
 
 ## Maintenance

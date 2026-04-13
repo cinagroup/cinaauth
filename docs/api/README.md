@@ -35,7 +35,7 @@ This directory documents the REST API surface mounted by `ApiServer`.
 ## Running the API Server
 
 ```bash
-cargo run --example complete_rest_api_server --features api-server
+cargo run --bin auth-framework --features api-server,postgres-storage
 ```
 
 With the example server running locally, the main entry points are:
@@ -64,7 +64,7 @@ curl http://localhost:8080/api/v1/health
       "token_manager": "healthy",
       "memory": "healthy"
     },
-    "version": "0.5.0-rc19",
+    "version": "0.5.0-rc20",
     "uptime": "0h 12m 03s"
   }
 }

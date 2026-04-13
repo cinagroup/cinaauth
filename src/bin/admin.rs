@@ -13,7 +13,7 @@ use auth_framework::{
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "auth-framework")]
+#[command(name = "auth-framework-admin")]
 #[command(about = "Auth Framework Administration - CLI, TUI, and Web GUI")]
 #[command(version)]
 pub struct Args {

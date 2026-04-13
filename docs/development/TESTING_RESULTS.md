@@ -1,6 +1,6 @@
-# 🧪 Comprehensive Testing Results - v0.5.0-rc19
+# 🧪 Comprehensive Testing Results - v0.5.0-rc20
 
-**Date**: March 20, 2026
+**Date**: April 13, 2026
 **Status**: ✅ **Historical rc18 validation snapshot retained with targeted remediation reruns added**
 **Validation Note**: This document preserves the broader rc18 scoped-test snapshot and now also records the targeted Rust tests rerun during the current remediation pass.
 
@@ -8,7 +8,7 @@
 
 ## 📊 Executive Summary
 
-AuthFramework v0.5.0-rc18 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed SAML and analytics paths were revalidated with targeted Rust test commands.
+AuthFramework v0.5.0-rc20 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed SAML, Docker release, and standalone server paths were revalidated with targeted Rust commands.
 
 ```text
 +-------------------------------------------------------------+
@@ -480,7 +480,7 @@ jobs:
 
 ## ✅ Conclusion
 
-### AuthFramework v0.5.0-rc19 Validation: In Progress
+### AuthFramework v0.5.0-rc20 Validation: In Progress
 
 ### Summary
 
@@ -495,10 +495,10 @@ jobs:
 1. Re-run `cargo test --all-features`
 2. Reconfirm rustdoc and clippy status
 3. Complete final release cleanup review
-4. Tag and publish v0.5.0-rc19 once the full suite is green
+4. Tag and publish v0.5.0-rc20 once the full suite is green
 
 ---
 
-*Last Updated: April 12, 2026*  
-*Test Suite Version: v0.5.0-rc19*  
+*Last Updated: April 13, 2026*  
+*Test Suite Version: v0.5.0-rc20*  
 *Status: ⚠️ Final release sign-off pending full-suite rerun*

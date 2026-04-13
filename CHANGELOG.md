@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rc20] - 2026-04-13
+
+### Changed
+
+- Made `auth-framework` the standalone REST API server binary and moved the admin entrypoint to `auth-framework-admin`, so release artifacts and Docker images now target the primary product surface instead of the admin tool.
+- The GitHub Release workflow now publishes `auth-framework-admin` as a separate archive alongside the primary server artifacts for every supported target.
+
+### Added
+
+- Added first-class `api_server` layered configuration settings for the standalone server binary, including bind host, port, request body limit, and request tracing controls.
+
 ## [0.5.0-rc19] - 2026-04-12
 
 ### Added

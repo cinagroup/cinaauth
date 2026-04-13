@@ -30,6 +30,8 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 **That's it!** Server running at `http://localhost:8080` 🎉
 
+The `auth-framework` executable now starts the standalone REST API server directly. Build the separate admin tool as `auth-framework-admin` with the `admin-binary` feature when you need the operational UI and CLI.
+
 📖 [Full Deployment Guide](docs/DEPLOYMENT_GUIDE.md) • 🐳 [Docker Deployment](docker-compose.yml) • 🛠️ [Configuration Guide](docs/DEPLOYMENT_GUIDE.md#configuration) • 🧰 [Maintenance Operations Guide](docs/guides/maintenance-operations.md)
 
 📚 [Feature Flags Guide](FEATURE_FLAGS.md) • [Supported Protocols](PROTOCOLS.md)
@@ -69,13 +71,12 @@ This split exists to support both simple app integration and advanced compositio
 
 Historical release notes below include the test counts and quality metrics reported at the time of each release candidate. The current authoritative test status lives in `docs/development/TESTING_RESULTS.md` and the CI workflow.
 
-**v0.5.0-rc19** - Security Hardening & Comprehensive Audit:
+**v0.5.0-rc20** - Standalone Server Release Alignment:
 
-- **🔒 WebAuthn credential endpoints secured** - List/delete credential endpoints now require authentication with owner-only authorization
-- **🔒 JWT validation hardened** - Removed dangerous `verify_signature` parameter; signature verification is now always enforced
-- **🔒 Content-Security-Policy header added** - Complete security headers suite now includes CSP
-- **🛡️ Production panic prevention** - Replaced all `unwrap()`/`expect()` on mutex/RwLock operations with graceful fallback handling
-- **🐛 SAML integration tests guarded** - Added `#[cfg(feature = "saml")]` to SAML-specific tests
+- **🚀 Canonical server binary defined** - `auth-framework` now starts the production REST API server directly instead of pointing at the admin surface
+- **🧰 Separate admin release assets** - GitHub Releases now publish `auth-framework-admin` archives separately for each supported platform
+- **⚙️ Standalone server config added** - Layered configuration now includes an `api_server` section for host, port, body size, and tracing controls
+- **🐳 Release Docker path corrected** - Docker and release builds now target the server binary and matching production feature set
 
 **Previous: v0.5.0-rc6** - Storage Backend Correctness (audit cycle 13):
 
@@ -321,7 +322,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc19"
+auth-framework = "0.5.0-rc20"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -1011,7 +1012,7 @@ The framework provides comprehensive testing utilities to make testing your auth
 
 ```toml
 [dev-dependencies]
-auth-framework = { version = "0.5.0-rc19", features = ["testing"] }
+auth-framework = { version = "0.5.0-rc20", features = ["testing"] }
 ```
 
 ```rust
@@ -1270,7 +1271,7 @@ Helper utilities for integrating with CLI frameworks:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc19"
+auth-framework = "0.5.0-rc20"
 clap = "4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```

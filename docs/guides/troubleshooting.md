@@ -433,7 +433,7 @@ psql -h localhost -U auth_user -d authframework -c \
 
    ```bash
    # Reset user password
-   auth-framework-cli users reset-password --email test@example.com --password newpassword123
+   auth-framework-admin users reset-password --email test@example.com --password newpassword123
 
    # Or via SQL
    psql -h localhost -U auth_user -d authframework -c \
@@ -444,10 +444,10 @@ psql -h localhost -U auth_user -d authframework -c \
 
    ```bash
    # Check for locked accounts
-   auth-framework-cli users list --status locked
+   auth-framework-admin users list --status locked
 
    # Unlock account
-   auth-framework-cli users unlock --email test@example.com
+   auth-framework-admin users unlock --email test@example.com
 
    # Or via SQL
    psql -h localhost -U auth_user -d authframework -c \
@@ -656,7 +656,7 @@ done
 
    ```bash
    # Clean up expired sessions
-   auth-framework-cli sessions cleanup --expired
+   auth-framework-admin sessions cleanup --expired
 
    # Configure automatic cleanup
    [security.session]
@@ -1175,7 +1175,7 @@ auth-framework --generate-config > new-config.toml
 curl -s http://localhost:9090/metrics | grep auth_
 
 # List active sessions
-auth-framework-cli sessions list --active
+auth-framework-admin sessions list --active
 ```
 
 ### Getting Help
@@ -1195,4 +1195,4 @@ When reporting issues, please include:
 
 ---
 
-AuthFramework v0.5.0-rc19 - THE premier authentication and authorization solution
+AuthFramework v0.5.0-rc20 - THE premier authentication and authorization solution

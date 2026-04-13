@@ -58,10 +58,15 @@
   readme        = "README.md"
   repository    = "https://github.com/ciresnave/auth-framework"
   rust-version  = "1.88"
-  version       = "0.5.0-rc19"
+  version       = "0.5.0-rc20"
 
 [[bin]]
   name              = "auth-framework"
+  path              = "src/bin/server.rs"
+  required-features = ["api-server"]
+
+[[bin]]
+  name              = "auth-framework-admin"
   path              = "src/bin/admin.rs"
   required-features = ["admin-binary"]
 

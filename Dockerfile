@@ -1,5 +1,5 @@
 # Auth Framework Production Deployment
-FROM rust:1.75-slim as builder
+FROM rust:1.88-slim as builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -12,22 +12,23 @@ WORKDIR /app
 
 # Copy Cargo files first for better caching
 COPY Cargo.toml Cargo.lock ./
+COPY examples ./examples
+COPY benches ./benches
 
-# Create a dummy main.rs to cache dependencies
-RUN mkdir src && \
-    echo "fn main() {}" > src/main.rs && \
-    echo '[lib]\nname = "auth_framework"\npath = "src/lib.rs"' >> Cargo.toml
+# Create dummy source files to cache dependencies
+RUN mkdir -p src/bin && \
+    echo "pub fn docker_cache_marker() {}" > src/lib.rs && \
+    echo "fn main() {}" > src/bin/admin.rs
 
 # Build dependencies
-RUN cargo build --release && \
+RUN cargo build --release --features admin-binary --bin auth-framework-admin && \
     rm -rf src target/release/deps/auth_framework*
 
 # Copy source code
 COPY src ./src
-COPY examples ./examples
 
 # Build the actual application
-RUN cargo build --release
+RUN cargo build --release --features admin-binary --bin auth-framework-admin
 
 # Runtime image
 FROM debian:bookworm-slim
@@ -45,7 +46,7 @@ RUN groupadd -r auth && useradd -r -g auth auth
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /app/target/release/auth-framework-cli /usr/local/bin/
+COPY --from=builder /app/target/release/auth-framework-admin /usr/local/bin/
 COPY --from=builder /app/src/migrations /app/migrations
 
 # Create directories and set permissions
@@ -56,10 +57,10 @@ USER auth
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD auth-framework-cli system health || exit 1
+    CMD auth-framework-admin system health || exit 1
 
 # Default command
-CMD ["auth-framework-cli", "system", "status"]
+CMD ["auth-framework-admin", "system", "status"]
 
 # Labels
 LABEL maintainer="Auth Framework Team"

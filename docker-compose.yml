@@ -49,7 +49,7 @@ services:
     volumes:
       - ./config:/app/config:ro
       - ./logs:/app/logs
-    command: ["auth-framework-cli", "db", "migrate"]
+    command: ["auth-framework-admin", "db", "migrate"]
 
   # Example web server using the framework
   auth-server:

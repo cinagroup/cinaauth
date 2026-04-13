@@ -23,31 +23,37 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             name: auth-framework-linux-x86_64
+            admin_name: auth-framework-admin-linux-x86_64
             ext: tar.gz
             cross: false
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             name: auth-framework-linux-x86_64-musl
+            admin_name: auth-framework-admin-linux-x86_64-musl
             ext: tar.gz
             cross: true
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             name: auth-framework-linux-aarch64
+            admin_name: auth-framework-admin-linux-aarch64
             ext: tar.gz
             cross: true
           - target: x86_64-apple-darwin
             os: macos-latest
             name: auth-framework-macos-x86_64
+            admin_name: auth-framework-admin-macos-x86_64
             ext: tar.gz
             cross: false
           - target: aarch64-apple-darwin
             os: macos-latest
             name: auth-framework-macos-aarch64
+            admin_name: auth-framework-admin-macos-aarch64
             ext: tar.gz
             cross: false
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             name: auth-framework-windows-x86_64
+            admin_name: auth-framework-admin-windows-x86_64
             ext: zip
             cross: false
 
@@ -75,27 +81,45 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build binary
+      - name: Build binaries
         shell: bash
         run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }} --features admin-binary,api-server,postgres-storage --bin auth-framework
-          else
-            cargo build --release --target ${{ matrix.target }} --features admin-binary,api-server,postgres-storage --bin auth-framework
-          fi
+          build_release_binary() {
+            local features="$1"
+            local bin_name="$2"
 
-      - name: Archive binary
+            if [ "${{ matrix.cross }}" = "true" ]; then
+              cross build --release --target ${{ matrix.target }} --features "$features" --bin "$bin_name"
+            else
+              cargo build --release --target ${{ matrix.target }} --features "$features" --bin "$bin_name"
+            fi
+          }
+
+          build_release_binary "api-server,postgres-storage" "auth-framework"
+          build_release_binary "admin-binary" "auth-framework-admin"
+
+      - name: Archive binaries
         shell: bash
         run: |
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp target/${{ matrix.target }}/release/auth-framework.exe ${{ matrix.name }}.exe
-            7z a ${{ matrix.name }}.${{ matrix.ext }} ${{ matrix.name }}.exe README.md LICENSE-MIT LICENSE-APACHE
-            certutil -hashfile ${{ matrix.name }}.${{ matrix.ext }} SHA256 > ${{ matrix.name }}.${{ matrix.ext }}.sha256
-          else
-            cp target/${{ matrix.target }}/release/auth-framework ${{ matrix.name }}
-            tar czf ${{ matrix.name }}.${{ matrix.ext }} ${{ matrix.name }} README.md LICENSE-MIT LICENSE-APACHE
-            shasum -a 256 ${{ matrix.name }}.${{ matrix.ext }} > ${{ matrix.name }}.${{ matrix.ext }}.sha256
-          fi
+          archive_binary() {
+            local bin_name="$1"
+            local asset_name="$2"
+
+            if [ "${{ matrix.os }}" = "windows-latest" ]; then
+              cp target/${{ matrix.target }}/release/${bin_name}.exe ${asset_name}.exe
+              7z a ${asset_name}.${{ matrix.ext }} ${asset_name}.exe README.md LICENSE-MIT LICENSE-APACHE
+              certutil -hashfile ${asset_name}.${{ matrix.ext }} SHA256 > ${asset_name}.${{ matrix.ext }}.sha256
+              rm -f ${asset_name}.exe
+            else
+              cp target/${{ matrix.target }}/release/${bin_name} ${asset_name}
+              tar czf ${asset_name}.${{ matrix.ext }} ${asset_name} README.md LICENSE-MIT LICENSE-APACHE
+              shasum -a 256 ${asset_name}.${{ matrix.ext }} > ${asset_name}.${{ matrix.ext }}.sha256
+              rm -f ${asset_name}
+            fi
+          }
+
+          archive_binary auth-framework ${{ matrix.name }}
+          archive_binary auth-framework-admin ${{ matrix.admin_name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -104,6 +128,8 @@ jobs:
           path: |
             ${{ matrix.name }}.${{ matrix.ext }}
             ${{ matrix.name }}.${{ matrix.ext }}.sha256
+            ${{ matrix.admin_name }}.${{ matrix.ext }}
+            ${{ matrix.admin_name }}.${{ matrix.ext }}.sha256
           retention-days: 1
 
   build-docker:

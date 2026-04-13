@@ -6,8 +6,8 @@ pub mod config_manager;
 // Re-export for easy access
 pub use app_config::{AppConfig, ConfigBuilder as AppConfigBuilder};
 pub use config_manager::{
-    AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder, ConfigIntegration, ConfigManager,
-    SessionCookieSettings, SessionSettings,
+    ApiServerSettings, AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder,
+    ConfigIntegration, ConfigManager, SessionCookieSettings, SessionSettings,
 };
 
 use crate::errors::{AuthError, Result};
@@ -17,6 +17,7 @@ use std::time::Duration;
 
 /// Main configuration for the authentication framework.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AuthConfig {
     /// Default token lifetime
     pub token_lifetime: Duration,
@@ -115,6 +116,7 @@ pub enum StorageConfig {
 /// window.  Use [`RateLimitConfig::new`] for quick construction or
 /// [`Default::default()`] for sensible production defaults (100 req/min).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct RateLimitConfig {
     /// Enable rate limiting
     pub enabled: bool,
@@ -141,6 +143,7 @@ pub struct RateLimitConfig {
 /// For anything in between, start from [`Default::default()`] and
 /// override individual fields.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SecurityConfig {
     /// Minimum password length
     pub min_password_length: usize,
@@ -222,6 +225,7 @@ pub enum CookieSameSite {
 /// (API server, admin GUI, warp/axum helpers). Individual integrations may
 /// further restrict (but never relax) these settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CorsConfig {
     /// Whether CORS headers are emitted at all.
     pub enabled: bool,
@@ -293,6 +297,7 @@ impl CorsConfig {
 /// Controls which authentication events are recorded and where the
 /// records are stored.  Enabled by default with [`AuditStorage::Tracing`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AuditConfig {
     /// Enable audit logging
     pub enabled: bool,

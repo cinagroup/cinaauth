@@ -58,10 +58,15 @@ pub enum ConfigSource {
 
 /// Settings that can be used by parent applications to configure auth-framework
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct AuthFrameworkSettings {
     /// Main auth framework configuration
     #[serde(flatten)]
     pub auth: super::AuthConfig,
+
+    /// Standalone REST API server runtime settings
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_server: Option<ApiServerSettings>,
 
     /// Threat intelligence configuration
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -76,8 +81,26 @@ pub struct AuthFrameworkSettings {
     pub custom: HashMap<String, serde_json::Value>,
 }
 
+/// Standalone REST API server runtime settings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ApiServerSettings {
+    /// Address to bind the standalone server to.
+    pub host: String,
+
+    /// TCP port to bind the standalone server to.
+    pub port: u16,
+
+    /// Maximum allowed request body size in bytes.
+    pub max_body_size: usize,
+
+    /// Whether structured request tracing is enabled.
+    pub enable_tracing: bool,
+}
+
 /// Session-specific configuration settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SessionSettings {
     /// Maximum number of concurrent sessions per user
     pub max_concurrent_sessions: Option<u32>,
@@ -94,6 +117,7 @@ pub struct SessionSettings {
 
 /// Session cookie configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SessionCookieSettings {
     /// Cookie name
     pub name: Option<String>,
@@ -470,6 +494,17 @@ impl Default for ConfigManager {
     }
 }
 
+impl Default for ApiServerSettings {
+    fn default() -> Self {
+        Self {
+            host: "0.0.0.0".to_string(),
+            port: 8080,
+            max_body_size: 1024 * 1024,
+            enable_tracing: true,
+        }
+    }
+}
+
 impl Default for SessionSettings {
     fn default() -> Self {
         Self {
@@ -533,6 +568,30 @@ mod tests {
         let config = ConfigManager::for_application("myapp").expect("Failed to create app config");
 
         assert_eq!(config.env_prefix(), "MYAPP_AUTH_FRAMEWORK");
+    }
+
+    #[test]
+    fn test_partial_settings_file_uses_defaults() {
+        use std::io::Write;
+
+        let mut file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
+        writeln!(file, "issuer = \"example-issuer\"").expect("Failed to write issuer");
+        writeln!(file, "[api_server]").expect("Failed to write api_server header");
+        writeln!(file, "port = 9091").expect("Failed to write port");
+
+        let config = ConfigBuilder::new()
+            .without_defaults()
+            .add_file(file.path(), true)
+            .build()
+            .expect("Failed to build config");
+
+        let settings = config
+            .get_auth_settings()
+            .expect("Failed to deserialize settings");
+
+        assert_eq!(settings.auth.issuer, "example-issuer");
+        assert_eq!(settings.auth.audience, "api");
+        assert_eq!(settings.api_server.expect("Missing api_server").port, 9091);
     }
 
     #[test]
