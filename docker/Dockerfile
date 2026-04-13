@@ -1,8 +1,7 @@
 # Build stage
-FROM --platform=$BUILDPLATFORM rust:1.88-alpine AS builder
+FROM --platform=$TARGETPLATFORM rust:1.88-alpine AS builder
 
 ARG TARGETPLATFORM
-ARG BUILDPLATFORM
 ARG FEATURES=api-server,postgres-storage
 
 # Install build dependencies
@@ -12,7 +11,7 @@ RUN apk add --no-cache \
     pkgconfig \
     git
 
-# Set up cross-compilation
+# Resolve the Rust target for the current Buildx target platform.
 RUN case "$TARGETPLATFORM" in \
     "linux/amd64") echo "x86_64-unknown-linux-musl" > /target.txt ;; \
     "linux/arm64") echo "aarch64-unknown-linux-musl" > /target.txt ;; \

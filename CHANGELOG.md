@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rc21] - 2026-04-13
+
+### Changed
+
+- The Release workflow now installs QEMU before Buildx so the multi-arch Docker job can execute `linux/arm64` stages instead of failing with `exec format error` on non-native images.
+- The release Dockerfile now builds on the target platform during multi-arch image creation, avoiding the missing `aarch64-linux-musl-gcc` path that broke the rc20 `aws-lc-sys` arm64 build.
+
 ## [0.5.0-rc20] - 2026-04-13
 
 ### Changed

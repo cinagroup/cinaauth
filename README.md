@@ -71,12 +71,12 @@ This split exists to support both simple app integration and advanced compositio
 
 Historical release notes below include the test counts and quality metrics reported at the time of each release candidate. The current authoritative test status lives in `docs/development/TESTING_RESULTS.md` and the CI workflow.
 
-**v0.5.0-rc20** - Standalone Server Release Alignment:
+**v0.5.0-rc21** - Docker Release Repair:
 
-- **🚀 Canonical server binary defined** - `auth-framework` now starts the production REST API server directly instead of pointing at the admin surface
-- **🧰 Separate admin release assets** - GitHub Releases now publish `auth-framework-admin` archives separately for each supported platform
-- **⚙️ Standalone server config added** - Layered configuration now includes an `api_server` section for host, port, body size, and tracing controls
-- **🐳 Release Docker path corrected** - Docker and release builds now target the server binary and matching production feature set
+- **🐳 Arm64 release images fixed** - The multi-arch Docker release path now executes `linux/arm64` stages with QEMU-enabled target-native builders instead of failing on missing musl cross-compilers
+- **🧰 Separate admin release assets retained** - GitHub Releases continue to publish `auth-framework-admin` archives separately for each supported platform
+- **🚀 Canonical server binary retained** - `auth-framework` remains the production REST API server entrypoint, with the admin surface shipped separately as `auth-framework-admin`
+- **⚙️ Standalone server config retained** - Layered configuration still exposes the `api_server` section for host, port, body size, and tracing controls
 
 **Previous: v0.5.0-rc6** - Storage Backend Correctness (audit cycle 13):
 
@@ -322,7 +322,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc20"
+auth-framework = "0.5.0-rc21"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -1012,7 +1012,7 @@ The framework provides comprehensive testing utilities to make testing your auth
 
 ```toml
 [dev-dependencies]
-auth-framework = { version = "0.5.0-rc20", features = ["testing"] }
+auth-framework = { version = "0.5.0-rc21", features = ["testing"] }
 ```
 
 ```rust
@@ -1271,7 +1271,7 @@ Helper utilities for integrating with CLI frameworks:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc20"
+auth-framework = "0.5.0-rc21"
 clap = "4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
