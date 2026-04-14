@@ -1,14 +1,14 @@
-# 🧪 Comprehensive Testing Results - v0.5.0-rc23
+# 🧪 Comprehensive Testing Results - v0.5.0-rc24
 
 **Date**: April 14, 2026
-**Status**: ✅ **Historical rc18 validation snapshot retained with targeted remediation and Docker release smoke validation added**
-**Validation Note**: This document preserves the broader rc18 scoped-test snapshot and now also records the targeted Rust reruns and Docker build smoke validation executed during the current remediation pass.
+**Status**: ✅ **Historical rc18 validation snapshot retained with targeted remediation, Docker release smoke validation, and release-publication remediation added**
+**Validation Note**: This document preserves the broader rc18 scoped-test snapshot and now also records the targeted Rust reruns, Docker build smoke validation, and release-publication workflow remediation executed during the current pass.
 
 ---
 
 ## 📊 Executive Summary
 
-AuthFramework v0.5.0-rc23 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed Docker release, container build, and standalone server paths were revalidated with targeted Rust commands and Docker smoke builds.
+AuthFramework v0.5.0-rc24 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed Docker release, release-publication, container build, and standalone server paths were revalidated with targeted Rust commands and Docker smoke builds.
 
 ```text
 +-------------------------------------------------------------+
@@ -482,7 +482,7 @@ jobs:
 
 ## ✅ Conclusion
 
-### AuthFramework v0.5.0-rc23 Validation: Targeted Release Prep Complete
+### AuthFramework v0.5.0-rc24 Validation: Targeted Release Prep Complete
 
 ### Summary
 
@@ -490,12 +490,13 @@ jobs:
 - **Targeted remediation reruns passed for SAML and analytics paths**
 - **Release Docker packaging path validated with a staged-binary runtime smoke build**
 - **Canonical `cargo-chef` planner stage validated successfully in the source-build Dockerfile**
+- **Release publication workflow no longer depends on the obsolete `orhun/git-cliff-action@v3` container path**
 - **A fresh full `cargo test --all-features` rerun is still recommended before stable release sign-off**
 - **Historical completion-report links were removed because those archived files are no longer present in the repository**
 
 ### Next Steps
 
-1. Tag and publish v0.5.0-rc23
+1. Tag and publish v0.5.0-rc24
 2. Monitor the native multi-arch Docker release workflow to completion
 3. Verify the published release assets and merged Docker manifest
 4. Re-run `cargo test --all-features` before any non-RC promotion
@@ -503,5 +504,5 @@ jobs:
 ---
 
 *Last Updated: April 14, 2026*  
-*Test Suite Version: v0.5.0-rc23*  
+*Test Suite Version: v0.5.0-rc24*  
 *Status: ✅ Targeted release-prep validation complete; full-suite rerun still recommended before stable promotion*

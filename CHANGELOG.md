@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rc24] - 2026-04-14
+
+### Fixed
+
+- `publish-release` now derives release notes directly from the committed `CHANGELOG.md` instead of building `orhun/git-cliff-action@v3`, avoiding the Debian buster-based action image failure that blocked rc23 publication.
+
 ## [0.5.0-rc23] - 2026-04-14
 
 ### Fixed

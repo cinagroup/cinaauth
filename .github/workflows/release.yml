@@ -335,14 +335,21 @@ jobs:
             echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Generate changelog
-        uses: orhun/git-cliff-action@v3
-        id: git-cliff
-        with:
-          config: cliff.toml
-          args: --verbose
-        env:
-          OUTPUT: CHANGELOG.md
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          version="${{ steps.get_version.outputs.version }}"
+          version="${version#v}"
+
+          awk -v version="$version" '
+            $0 ~ "^## \\[" version "\\]" { capture = 1 }
+            capture && $0 ~ "^## \\[" && $0 !~ "^## \\[" version "\\]" { exit }
+            capture { print }
+          ' CHANGELOG.md > release-notes.md
+
+          if [ ! -s release-notes.md ]; then
+            cp CHANGELOG.md release-notes.md
+          fi
 
       - name: Download all binary artifacts
         uses: actions/download-artifact@v4
@@ -356,7 +363,7 @@ jobs:
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: AuthFramework ${{ steps.get_version.outputs.version }}
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           draft: false
           fail_on_unmatched_files: false
           files: release-assets/**/*

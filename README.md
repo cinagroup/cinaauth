@@ -71,12 +71,11 @@ This split exists to support both simple app integration and advanced compositio
 
 Historical release notes below include the test counts and quality metrics reported at the time of each release candidate. The current authoritative test status lives in `docs/development/TESTING_RESULTS.md` and the CI workflow.
 
-**v0.5.0-rc23** - Native Arm64 Musl Release Fix:
+**v0.5.0-rc24** - Release Publication Repair:
 
-- **🐳 Release images now use prebuilt musl binaries** - The GitHub Release workflow packages prebuilt `auth-framework` musl server artifacts into per-arch runtime images instead of compiling Rust inside Docker publish jobs
-- **🦾 Native arm64 musl build fixed** - The `aarch64-unknown-linux-musl` release path now uses native `cargo` plus host `musl-gcc` on `ubuntu-24.04-arm`, avoiding the `cross` image `exec format error` that blocked rc22
-- **⚡ Docker source builds now use cargo-chef** - The canonical Dockerfile now uses a version-normalized `cargo-chef` planner so release bumps do not unnecessarily invalidate dependency layers
-- **🧰 Docker flows are now split by purpose** - `docker/Dockerfile` packages prebuilt release binaries for publishing, while the root `Dockerfile` remains the source-build path for CI and deploy jobs
+- **📝 Release notes now come from the committed changelog** - The release workflow extracts the current version section directly from `CHANGELOG.md` instead of trying to build the obsolete `orhun/git-cliff-action@v3` container
+- **🐳 Prebuilt-musl Docker publishing retained** - The rc23 split runtime-image path remains in place, so release images still package prebuilt `auth-framework` musl binaries rather than compiling Rust in Docker publish jobs
+- **🦾 Native arm64 musl release path retained** - The `aarch64-unknown-linux-musl` release build continues to use native `cargo` plus host `musl-gcc` on `ubuntu-24.04-arm`
 
 **Previous: v0.5.0-rc6** - Storage Backend Correctness (audit cycle 13):
 
@@ -322,7 +321,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc23"
+auth-framework = "0.5.0-rc24"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -1012,7 +1011,7 @@ The framework provides comprehensive testing utilities to make testing your auth
 
 ```toml
 [dev-dependencies]
-auth-framework = { version = "0.5.0-rc23", features = ["testing"] }
+auth-framework = { version = "0.5.0-rc24", features = ["testing"] }
 ```
 
 ```rust
@@ -1271,7 +1270,7 @@ Helper utilities for integrating with CLI frameworks:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc23"
+auth-framework = "0.5.0-rc24"
 clap = "4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
