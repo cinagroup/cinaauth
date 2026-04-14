@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rc22] - 2026-04-14
+
+### Changed
+
+- The Release workflow now publishes Docker images from prebuilt `x86_64-unknown-linux-musl` and `aarch64-unknown-linux-musl` server artifacts, so release image publication no longer recompiles Rust inside Docker.
+- Linux `aarch64` GNU and musl release binaries now build on native `ubuntu-24.04-arm` runners instead of relying on QEMU for the heavy arm64 compilation path.
+- The canonical source-build Dockerfile now uses `cargo-chef` with a version-normalized dependency recipe so rc version bumps do not invalidate dependency-cache layers when the dependency graph is unchanged.
+- CI and deploy Docker flows now use the canonical root Dockerfile, and the stale `Dockerfile.optimized` path has been removed.
+
 ## [0.5.0-rc21] - 2026-04-13
 
 ### Changed

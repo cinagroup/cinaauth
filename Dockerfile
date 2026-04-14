@@ -1,68 +1,87 @@
-# Auth Framework Production Deployment
-FROM rust:1.88-slim as builder
+# syntax=docker/dockerfile:1.7
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
+FROM rust:1.88-slim AS chef
+
+ARG APP_FEATURES=api-server,postgres-storage
+
+ENV CARGO_TERM_COLOR=never \
+    CARGO_NET_RETRY=10 \
+    CARGO_HTTP_TIMEOUT=600
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    binutils \
+    ca-certificates \
+    curl \
     libpq-dev \
+    libssl-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install cargo-chef --locked
 
 WORKDIR /app
 
-# Copy Cargo files first for better caching
-COPY Cargo.toml Cargo.lock ./
-COPY examples ./examples
-COPY benches ./benches
+FROM chef AS planner
 
-# Create dummy source files to cache dependencies
-RUN mkdir -p src/bin && \
-    echo "pub fn docker_cache_marker() {}" > src/lib.rs && \
-    echo "fn main() {}" > src/bin/admin.rs
+COPY . .
 
-# Build dependencies
-RUN cargo build --release --features admin-binary --bin auth-framework-admin && \
-    rm -rf src target/release/deps/auth_framework*
+# Normalize the crate version so release bumps do not invalidate the cached
+# dependency recipe when the dependency graph itself is unchanged.
+RUN awk 'BEGIN { in_package=0 } \
+    /^\[package\]/ { in_package=1; print; next } \
+    /^\[/ { in_package=0; print; next } \
+    { if (in_package && $1 == "version") sub(/=.*/, "= \"0.0.0\""); print }' \
+    Cargo.toml > Cargo.toml.cargo-chef && \
+    mv Cargo.toml.cargo-chef Cargo.toml && \
+    cargo chef prepare --recipe-path recipe.json
 
-# Copy source code
-COPY src ./src
+FROM chef AS builder
 
-# Build the actual application
-RUN cargo build --release --features admin-binary --bin auth-framework-admin
+ARG APP_FEATURES=api-server,postgres-storage
 
-# Runtime image
-FROM debian:bookworm-slim
+COPY --from=planner /app/recipe.json recipe.json
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN cargo chef cook --release --locked --recipe-path recipe.json --features "$APP_FEATURES" --bin auth-framework
+
+COPY . .
+
+RUN cargo build --release --locked --features "$APP_FEATURES" --bin auth-framework && \
+    strip target/release/auth-framework
+
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     libpq5 \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN groupadd -r auth && useradd -r -g auth auth
+RUN groupadd -r -g 1000 authfw && \
+    useradd -r -g authfw -u 1000 -m -d /app authfw
 
 WORKDIR /app
 
-# Copy binary from builder
-COPY --from=builder /app/target/release/auth-framework-admin /usr/local/bin/
-COPY --from=builder /app/src/migrations /app/migrations
-
-# Create directories and set permissions
 RUN mkdir -p /app/config /app/logs && \
-    chown -R auth:auth /app
+    chown -R authfw:authfw /app
 
-USER auth
+COPY --from=builder /app/target/release/auth-framework /usr/local/bin/auth-framework
+COPY --chown=authfw:authfw config/ ./config/
 
-# Health check
+USER authfw
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD auth-framework-admin system health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
-# Default command
-CMD ["auth-framework-admin", "system", "status"]
+CMD ["auth-framework"]
 
-# Labels
-LABEL maintainer="Auth Framework Team"
-LABEL version="1.0.0"
-LABEL description="Production-ready authentication and authorization framework"
+EXPOSE 8080
+
+FROM builder AS testing
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+CMD ["cargo", "test", "--all-features", "--release"]

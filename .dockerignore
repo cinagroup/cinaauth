@@ -9,3 +9,7 @@ clippy_*.txt
 release_test_output*.txt
 full_release_test_output.txt
 err*.txt
+docker/.release-binary/
+build-docker-*/
+build-docker-*.zip
+docker-build-arm64*.log

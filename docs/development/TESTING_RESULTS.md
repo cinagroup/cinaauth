@@ -1,14 +1,14 @@
-# 🧪 Comprehensive Testing Results - v0.5.0-rc21
+# 🧪 Comprehensive Testing Results - v0.5.0-rc22
 
-**Date**: April 13, 2026
-**Status**: ✅ **Historical rc18 validation snapshot retained with targeted remediation reruns added**
-**Validation Note**: This document preserves the broader rc18 scoped-test snapshot and now also records the targeted Rust tests rerun during the current remediation pass.
+**Date**: April 14, 2026
+**Status**: ✅ **Historical rc18 validation snapshot retained with targeted remediation and Docker release smoke validation added**
+**Validation Note**: This document preserves the broader rc18 scoped-test snapshot and now also records the targeted Rust reruns and Docker build smoke validation executed during the current remediation pass.
 
 ---
 
 ## 📊 Executive Summary
 
-AuthFramework v0.5.0-rc21 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed SAML, Docker release, and standalone server paths were revalidated with targeted Rust commands.
+AuthFramework v0.5.0-rc22 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed Docker release, container build, and standalone server paths were revalidated with targeted Rust commands and Docker smoke builds.
 
 ```text
 +-------------------------------------------------------------+
@@ -37,6 +37,8 @@ AuthFramework v0.5.0-rc21 retains the broader scoped rc18 validation snapshot be
 
 - `cargo test --test webauthn_saml_api_tests --features saml`
 - `cargo test --lib analytics::compliance::tests::test_check_compliance_returns_metrics --features admin-binary`
+- `docker build -f docker/Dockerfile -t authframework-runtime-smoke docker`
+- `docker build -f Dockerfile --target planner -t authframework-planner-smoke .`
 
 ---
 
@@ -480,25 +482,26 @@ jobs:
 
 ## ✅ Conclusion
 
-### AuthFramework v0.5.0-rc21 Validation: In Progress
+### AuthFramework v0.5.0-rc22 Validation: Targeted Release Prep Complete
 
 ### Summary
 
 - **810 tests passed in the recorded rc18 scoped validation snapshot**
 - **Targeted remediation reruns passed for SAML and analytics paths**
-- **Security remediation coverage was rechecked with focused commands in the current pass**
-- **A fresh full `cargo test --all-features` rerun is still required for final release sign-off**
+- **Release Docker packaging path validated with a staged-binary runtime smoke build**
+- **Canonical `cargo-chef` planner stage validated successfully in the source-build Dockerfile**
+- **A fresh full `cargo test --all-features` rerun is still recommended before stable release sign-off**
 - **Historical completion-report links were removed because those archived files are no longer present in the repository**
 
 ### Next Steps
 
-1. Re-run `cargo test --all-features`
-2. Reconfirm rustdoc and clippy status
-3. Complete final release cleanup review
-4. Tag and publish v0.5.0-rc21 once the full suite is green
+1. Tag and publish v0.5.0-rc22
+2. Monitor the native multi-arch Docker release workflow to completion
+3. Verify the published release assets and merged Docker manifest
+4. Re-run `cargo test --all-features` before any non-RC promotion
 
 ---
 
-*Last Updated: April 13, 2026*  
-*Test Suite Version: v0.5.0-rc21*  
-*Status: ⚠️ Final release sign-off pending full-suite rerun*
+*Last Updated: April 14, 2026*  
+*Test Suite Version: v0.5.0-rc22*  
+*Status: ✅ Targeted release-prep validation complete; full-suite rerun still recommended before stable promotion*

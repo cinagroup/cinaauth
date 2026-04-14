@@ -1,0 +1,5 @@
+*
+!.dockerignore
+!Dockerfile
+!.release-binary/
+!.release-binary/auth-framework

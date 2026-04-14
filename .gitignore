@@ -8,6 +8,7 @@
 
 # Development backup directories
 backup-*/
+docker/.release-binary/
 
 # IDE / editor files
 .vscode/

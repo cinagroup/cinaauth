@@ -936,4 +936,4 @@ echo "Emergency backup available at: $EMERGENCY_BACKUP"
 
 ---
 
-AuthFramework v0.5.0-rc21 - Migration and Upgrade Documentation
+AuthFramework v0.5.0-rc22 - Migration and Upgrade Documentation

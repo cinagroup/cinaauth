@@ -17,7 +17,7 @@ If you are looking to deploy the standalone server binary, see [DEPLOYMENT_GUIDE
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc21"
+auth-framework = "0.5.0-rc22"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -28,7 +28,7 @@ To opt out of specific subsystems:
 
 ```toml
 # Axum-only, no OIDC
-auth-framework = { version = "0.5.0-rc21", default-features = false, features = ["enhanced-rbac", "postgres-storage", "axum-integration"] }
+auth-framework = { version = "0.5.0-rc22", default-features = false, features = ["enhanced-rbac", "postgres-storage", "axum-integration"] }
 ```
 
 See [Cargo.toml](../../Cargo.toml) for the full feature flag reference.

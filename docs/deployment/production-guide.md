@@ -1,4 +1,4 @@
-# AuthFramework v0.5.0-rc21 - Production Deployment Guide
+# AuthFramework v0.5.0-rc22 - Production Deployment Guide
 
 ## Prerequisites
 
