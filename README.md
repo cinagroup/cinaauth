@@ -71,10 +71,10 @@ This split exists to support both simple app integration and advanced compositio
 
 Historical release notes below include the test counts and quality metrics reported at the time of each release candidate. The current authoritative test status lives in `docs/development/TESTING_RESULTS.md` and the CI workflow.
 
-**v0.5.0-rc22** - Native Docker Release Packaging:
+**v0.5.0-rc23** - Native Arm64 Musl Release Fix:
 
 - **🐳 Release images now use prebuilt musl binaries** - The GitHub Release workflow packages prebuilt `auth-framework` musl server artifacts into per-arch runtime images instead of compiling Rust inside Docker publish jobs
-- **🦾 Native arm64 release path added** - Linux `aarch64` GNU and musl artifacts now build on native `ubuntu-24.04-arm` runners, removing QEMU from the heavy arm64 compile path during release publication
+- **🦾 Native arm64 musl build fixed** - The `aarch64-unknown-linux-musl` release path now uses native `cargo` plus host `musl-gcc` on `ubuntu-24.04-arm`, avoiding the `cross` image `exec format error` that blocked rc22
 - **⚡ Docker source builds now use cargo-chef** - The canonical Dockerfile now uses a version-normalized `cargo-chef` planner so release bumps do not unnecessarily invalidate dependency layers
 - **🧰 Docker flows are now split by purpose** - `docker/Dockerfile` packages prebuilt release binaries for publishing, while the root `Dockerfile` remains the source-build path for CI and deploy jobs
 
@@ -322,7 +322,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc22"
+auth-framework = "0.5.0-rc23"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -1012,7 +1012,7 @@ The framework provides comprehensive testing utilities to make testing your auth
 
 ```toml
 [dev-dependencies]
-auth-framework = { version = "0.5.0-rc22", features = ["testing"] }
+auth-framework = { version = "0.5.0-rc23", features = ["testing"] }
 ```
 
 ```rust
@@ -1271,7 +1271,7 @@ Helper utilities for integrating with CLI frameworks:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc22"
+auth-framework = "0.5.0-rc23"
 clap = "4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```

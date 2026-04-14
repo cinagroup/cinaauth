@@ -26,42 +26,49 @@ jobs:
             admin_name: auth-framework-admin-linux-x86_64
             ext: tar.gz
             cross: false
+            native_musl: false
           - target: x86_64-unknown-linux-musl
             runner: ubuntu-latest
             name: auth-framework-linux-x86_64-musl
             admin_name: auth-framework-admin-linux-x86_64-musl
             ext: tar.gz
             cross: true
+            native_musl: false
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm
             name: auth-framework-linux-aarch64
             admin_name: auth-framework-admin-linux-aarch64
             ext: tar.gz
             cross: false
+            native_musl: false
           - target: aarch64-unknown-linux-musl
             runner: ubuntu-24.04-arm
             name: auth-framework-linux-aarch64-musl
             admin_name: auth-framework-admin-linux-aarch64-musl
             ext: tar.gz
-            cross: true
+            cross: false
+            native_musl: true
           - target: x86_64-apple-darwin
             runner: macos-latest
             name: auth-framework-macos-x86_64
             admin_name: auth-framework-admin-macos-x86_64
             ext: tar.gz
             cross: false
+            native_musl: false
           - target: aarch64-apple-darwin
             runner: macos-latest
             name: auth-framework-macos-aarch64
             admin_name: auth-framework-admin-macos-aarch64
             ext: tar.gz
             cross: false
+            native_musl: false
           - target: x86_64-pc-windows-msvc
             runner: windows-latest
             name: auth-framework-windows-x86_64
             admin_name: auth-framework-admin-windows-x86_64
             ext: zip
             cross: false
+            native_musl: false
 
     runs-on: ${{ matrix.runner }}
 
@@ -77,6 +84,12 @@ jobs:
       - name: Install cross
         if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Install native musl toolchain
+        if: matrix.native_musl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools pkg-config libssl-dev libpq-dev
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -94,7 +107,13 @@ jobs:
             local features="$1"
             local bin_name="$2"
 
-            if [ "${{ matrix.cross }}" = "true" ]; then
+            if [ "${{ matrix.native_musl }}" = "true" ]; then
+              CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc \
+              CC_aarch64_unknown_linux_musl=musl-gcc \
+              AR_aarch64_unknown_linux_musl=ar \
+              PKG_CONFIG_ALLOW_CROSS=1 \
+              cargo build --release --target ${{ matrix.target }} --features "$features" --bin "$bin_name"
+            elif [ "${{ matrix.cross }}" = "true" ]; then
               cross build --release --target ${{ matrix.target }} --features "$features" --bin "$bin_name"
             else
               cargo build --release --target ${{ matrix.target }} --features "$features" --bin "$bin_name"

@@ -1,4 +1,4 @@
-# 🧪 Comprehensive Testing Results - v0.5.0-rc22
+# 🧪 Comprehensive Testing Results - v0.5.0-rc23
 
 **Date**: April 14, 2026
 **Status**: ✅ **Historical rc18 validation snapshot retained with targeted remediation and Docker release smoke validation added**
@@ -8,7 +8,7 @@
 
 ## 📊 Executive Summary
 
-AuthFramework v0.5.0-rc22 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed Docker release, container build, and standalone server paths were revalidated with targeted Rust commands and Docker smoke builds.
+AuthFramework v0.5.0-rc23 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed Docker release, container build, and standalone server paths were revalidated with targeted Rust commands and Docker smoke builds.
 
 ```text
 +-------------------------------------------------------------+
@@ -482,7 +482,7 @@ jobs:
 
 ## ✅ Conclusion
 
-### AuthFramework v0.5.0-rc22 Validation: Targeted Release Prep Complete
+### AuthFramework v0.5.0-rc23 Validation: Targeted Release Prep Complete
 
 ### Summary
 
@@ -495,7 +495,7 @@ jobs:
 
 ### Next Steps
 
-1. Tag and publish v0.5.0-rc22
+1. Tag and publish v0.5.0-rc23
 2. Monitor the native multi-arch Docker release workflow to completion
 3. Verify the published release assets and merged Docker manifest
 4. Re-run `cargo test --all-features` before any non-RC promotion
@@ -503,5 +503,5 @@ jobs:
 ---
 
 *Last Updated: April 14, 2026*  
-*Test Suite Version: v0.5.0-rc22*  
+*Test Suite Version: v0.5.0-rc23*  
 *Status: ✅ Targeted release-prep validation complete; full-suite rerun still recommended before stable promotion*

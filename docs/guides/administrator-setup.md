@@ -950,4 +950,4 @@ Monitor key performance metrics:
 
 ---
 
-AuthFramework v0.5.0-rc22 - THE premier authentication and authorization solution
+AuthFramework v0.5.0-rc23 - THE premier authentication and authorization solution

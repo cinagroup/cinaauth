@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rc23] - 2026-04-14
+
+### Fixed
+
+- Native `aarch64-unknown-linux-musl` release builds now use `cargo` with the host `musl-gcc` toolchain on `ubuntu-24.04-arm` instead of invoking `cross`, fixing the `exec /usr/bin/sh: exec format error` failure that blocked rc22.
+
 ## [0.5.0-rc22] - 2026-04-14
 
 ### Changed
