@@ -1,5 +1,5 @@
-import { HIDE_METADATA } from "better-auth";
-import { APIError, createAuthEndpoint } from "better-auth/api";
+import { HIDE_METADATA } from "cinaauth";
+import { APIError, createAuthEndpoint } from "cinaauth/api";
 import * as z from "zod";
 
 export const expoAuthorizationProxy = createAuthEndpoint(
@@ -17,7 +17,7 @@ export const expoAuthorizationProxy = createAuthEndpoint(
 
 		// This endpoint sets an OAuth state cookie and redirects, so the target
 		// must be an external provider authorization endpoint. Reject malformed
-		// or non-https targets and any same-origin Better Auth URL: a same-origin
+		// or non-https targets and any same-origin CinaAuth URL: a same-origin
 		// target would allow a state cookie to be planted and a
 		// login-CSRF / session-fixation flow through the auth domain.
 		// FIXME(next): bind the redirect to a server-generated, signed proxy

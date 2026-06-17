@@ -1,16 +1,16 @@
-# Better Auth i18n Plugin
+﻿# CinaAuth i18n Plugin
 
-Internationalization plugin for [Better Auth](https://www.better-auth.com) — translate error messages and UI strings.
+Internationalization plugin for [CinaAuth](https://www.cinagroup.com) — translate error messages and UI strings.
 
 ## Installation
 
 ```bash
-npm install @better-auth/i18n
+npm install @cinaauth/i18n
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/plugins/i18n](https://www.better-auth.com/docs/plugins/i18n).
+For full documentation, visit [cinagroup.com/docs/plugins/i18n](https://www.cinagroup.com/docs/plugins/i18n).
 
 ## License
 

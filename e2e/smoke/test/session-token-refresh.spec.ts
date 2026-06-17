@@ -1,12 +1,12 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { GoogleProfile } from "@better-auth/core/social-providers";
-import { betterAuth } from "better-auth";
-import { signJWT } from "better-auth/crypto";
+import type { GoogleProfile } from "@cinaauth/core/social-providers";
+import { CinaAuth } from "cinaauth";
+import { signJWT } from "cinaauth/crypto";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 
-const DEFAULT_SECRET = "better-auth-secret-123456789";
+const DEFAULT_SECRET = "cinaauth-secret-123456789";
 
 const mswServer = setupServer(
 	http.post("https://oauth2.googleapis.com/token", async () => {
@@ -46,7 +46,7 @@ const mswServer = setupServer(
  * and account_data cookies but NOT the session_token cookie — causing
  * forced logout at exactly expiresIn.
  *
- * @see https://github.com/better-auth/better-auth/issues/7994
+ * @see https://github.com/cinagroup/cinaauth/issues/7994
  */
 describe("session_token cookie refresh in stateless mode", () => {
 	it("should extend session_token cookie expiry when refreshCache triggers", async (t) => {
@@ -65,7 +65,7 @@ describe("session_token cookie refresh in stateless mode", () => {
 		const expiresIn = 60 * 5; // 5 minutes
 		const cookieCacheMaxAge = 60 * 5; // 5 minutes
 
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			database: undefined,
 			baseURL: "http://localhost:3000",
 			secret: DEFAULT_SECRET,
@@ -129,7 +129,7 @@ describe("session_token cookie refresh in stateless mode", () => {
 			mergeCookies(cookies, h);
 		}
 		assert.ok(
-			cookies.has("better-auth.session_token"),
+			cookies.has("cinaauth.session_token"),
 			"callback should set session_token cookie",
 		);
 
@@ -168,7 +168,7 @@ describe("session_token cookie refresh in stateless mode", () => {
 			.getSetCookie()
 			.flatMap(parseSetCookieEntries);
 		const sessionTokenEntry = refreshedCookies.find(
-			(c) => c.name === "better-auth.session_token",
+			(c) => c.name === "cinaauth.session_token",
 		);
 
 		assert.ok(

@@ -1,17 +1,17 @@
 import type {
 	AuthContext,
-	BetterAuthOptions,
-	BetterAuthPlugin,
-} from "@better-auth/core";
+	CinaAuthOptions,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
 
-import type { BetterAuthPluginDBSchema } from "@better-auth/core/db";
+import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
 import type {
 	ExtractPluginField,
 	InferPluginFieldFromTuple,
 	UnionToIntersection,
 } from "./helper";
 
-export type InferOptionSchema<S extends BetterAuthPluginDBSchema> =
+export type InferOptionSchema<S extends CinaAuthPluginDBSchema> =
 	S extends Record<string, { fields: infer Fields }>
 		? {
 				[K in keyof S]?: {
@@ -25,19 +25,19 @@ export type InferOptionSchema<S extends BetterAuthPluginDBSchema> =
 			}
 		: never;
 
-export type InferPluginErrorCodes<O extends BetterAuthOptions> =
+export type InferPluginErrorCodes<O extends CinaAuthOptions> =
 	O["plugins"] extends readonly [unknown, ...unknown[]]
 		? InferPluginFieldFromTuple<O["plugins"], "$ERROR_CODES">
 		: O["plugins"] extends Array<infer P>
 			? UnionToIntersection<ExtractPluginField<P, "$ERROR_CODES">>
 			: {};
 
-export type InferPluginIDs<O extends BetterAuthOptions> =
+export type InferPluginIDs<O extends CinaAuthOptions> =
 	O["plugins"] extends Array<infer P>
-		? UnionToIntersection<P extends BetterAuthPlugin ? P["id"] : never>
+		? UnionToIntersection<P extends CinaAuthPlugin ? P["id"] : never>
 		: never;
 
-type ExtractInitContext<P extends BetterAuthPlugin> = P["init"] extends (
+type ExtractInitContext<P extends CinaAuthPlugin> = P["init"] extends (
 	...args: any[]
 ) => infer R
 	? Awaited<R> extends { context?: infer C }
@@ -47,9 +47,9 @@ type ExtractInitContext<P extends BetterAuthPlugin> = P["init"] extends (
 		: {}
 	: {};
 
-export type InferPluginContext<O extends BetterAuthOptions> =
+export type InferPluginContext<O extends CinaAuthOptions> =
 	O["plugins"] extends Array<infer P>
 		? UnionToIntersection<
-				P extends BetterAuthPlugin ? ExtractInitContext<P> : {}
+				P extends CinaAuthPlugin ? ExtractInitContext<P> : {}
 			>
 		: {};

@@ -1,7 +1,7 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { kyselyAdapter } from "@better-auth/kysely-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
-import { getMigrations } from "better-auth/db/migration";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import { kyselyAdapter } from "@cinaauth/kysely-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
+import { getMigrations } from "cinaauth/db/migration";
 import { Kysely, MssqlDialect } from "kysely";
 import * as Tarn from "tarn";
 import * as Tedious from "tedious";
@@ -39,12 +39,12 @@ const createConnectionFactory = (database: string) => () =>
 		server: "localhost",
 	});
 
-// Create better_auth database if it doesn't exist
-// We need to connect to 'master' database first since 'better_auth' may not exist yet
+// Create cinaauth database if it doesn't exist
+// We need to connect to 'master' database first since 'cinaauth' may not exist yet
 const ensureDatabaseExists = async () => {
 	try {
-		// console.log("Ensuring better_auth database exists...");
-		// Create a temporary connection to 'master' database to create 'better_auth'
+		// console.log("Ensuring cinaauth database exists...");
+		// Create a temporary connection to 'master' database to create 'cinaauth'
 		const masterDialect = new MssqlDialect({
 			tarn: {
 				...Tarn,
@@ -69,14 +69,14 @@ const ensureDatabaseExists = async () => {
 
 		await masterDB.getExecutor().executeQuery({
 			sql: `
-				IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'better_auth')
+				IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'cinaauth')
 				BEGIN
-					CREATE DATABASE better_auth;
-					PRINT 'Database better_auth created successfully';
+					CREATE DATABASE cinaauth;
+					PRINT 'Database cinaauth created successfully';
 				END
 				ELSE
 				BEGIN
-					PRINT 'Database better_auth already exists';
+					PRINT 'Database cinaauth already exists';
 				END
 			`,
 			parameters: [],
@@ -92,7 +92,7 @@ const ensureDatabaseExists = async () => {
 	}
 };
 
-// Create dialect for better_auth database (after ensuring it exists)
+// Create dialect for cinaauth database (after ensuring it exists)
 const dialect = new MssqlDialect({
 	tarn: {
 		...Tarn,
@@ -103,7 +103,7 @@ const dialect = new MssqlDialect({
 	},
 	tedious: {
 		...Tedious,
-		connectionFactory: createConnectionFactory("better_auth"),
+		connectionFactory: createConnectionFactory("cinaauth"),
 		TYPES: {
 			...Tedious.TYPES,
 			DateTime: Tedious.TYPES.DateTime2,
@@ -185,10 +185,10 @@ const query = async (sql: string, timeoutMs: number = 30000) => {
 	const actualTimeout = isCI ? Math.max(timeoutMs, 60000) : timeoutMs; // Minimum 60s timeout in CI
 
 	try {
-		// Ensure we're using the better_auth database for queries
+		// Ensure we're using the cinaauth database for queries
 		const sqlWithContext = sql.includes("USE ")
 			? sql
-			: `USE better_auth; ${sql}`;
+			: `USE cinaauth; ${sql}`;
 
 		const result = (await Promise.race([
 			kyselyDB.getExecutor().executeQuery({
@@ -313,13 +313,13 @@ const { execute } = await testAdapter({
 			debugLogs: { isRunningAdapterTests: true },
 		});
 	},
-	async runMigrations(betterAuthOptions) {
+	async runMigrations(CinaAuthOptions) {
 		console.log(`Starting MSSQL migrations`);
 		await resetDB();
 		console.log(`Finished resetting MSSQL database`);
-		const opts = Object.assign(betterAuthOptions, {
+		const opts = Object.assign(CinaAuthOptions, {
 			database: { db: kyselyDB, type: "mssql" },
-		} satisfies BetterAuthOptions);
+		} satisfies CinaAuthOptions);
 		console.log(`Running MSSQL migrations`);
 		const { runMigrations, compileMigrations } = await getMigrations(opts);
 		const CI =

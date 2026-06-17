@@ -1,4 +1,4 @@
----
+﻿---
 title: Have I Been Pwned
 description: A plugin to check if a password has been compromised
 ---
@@ -10,10 +10,10 @@ The Have I Been Pwned plugin helps protect user accounts by preventing the use o
 ### Add the plugin to your **auth** config
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { haveIBeenPwned } from "better-auth/plugins" // [!code highlight]
+import { CinaAuth } from "cinaauth"
+import { haveIBeenPwned } from "cinaauth/plugins" // [!code highlight]
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         haveIBeenPwned() // [!code highlight]
     ]
@@ -38,10 +38,10 @@ When a user attempts to create an account or update their password with a compro
 Enable or disable password checks against the HIBP database. Useful for skipping checks in development or testing without removing the plugin. Defaults to `true`.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { haveIBeenPwned } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { haveIBeenPwned } from "cinaauth/plugins"
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         haveIBeenPwned({
             enabled: process.env.NODE_ENV === 'production' // [!code highlight]
@@ -55,10 +55,10 @@ const auth = betterAuth({
 Customize the error message shown when a compromised password is detected.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { haveIBeenPwned } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { haveIBeenPwned } from "cinaauth/plugins"
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         haveIBeenPwned({
             customPasswordCompromisedMessage: "Please choose a more secure password." // [!code highlight]

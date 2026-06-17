@@ -1,9 +1,9 @@
 import { APIError as BaseAPIError } from "better-call/error";
 
-export class BetterAuthError extends Error {
+export class CinaAuthError extends Error {
 	constructor(message: string, options?: { cause?: unknown | undefined }) {
 		super(message, options);
-		this.name = "BetterAuthError";
+		this.name = "CinaAuthError";
 		this.message = message;
 		this.stack = "";
 	}

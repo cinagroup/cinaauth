@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ArrowUpFromLine, CreditCard, RefreshCcw } from "lucide-react";
 import { useId, useState } from "react";
@@ -263,7 +263,7 @@ function ChangePlanDialog(props: {
 							onClick={() => {
 								if (selectedPlan === "enterprise") {
 									window.open(
-										"https://www.better-auth.com/enterprise",
+										"https://www.cinagroup.com/enterprise",
 										"_blank",
 									);
 									return;

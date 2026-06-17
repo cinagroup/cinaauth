@@ -1,4 +1,4 @@
-import { createAuthClient } from "better-auth/react";
+﻿import { createAuthClient } from "cinaauth/react";
 
 export const authClient = createAuthClient();
 

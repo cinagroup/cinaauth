@@ -1,15 +1,15 @@
-import { electron } from "@better-auth/electron";
-import { dash, sendEmail, sentinel } from "@better-auth/infra";
-import { oauthProvider } from "@better-auth/oauth-provider";
-import { passkey } from "@better-auth/passkey";
-import { scim } from "@better-auth/scim";
-import { sso } from "@better-auth/sso";
-import { stripe } from "@better-auth/stripe";
+﻿import { electron } from "@cinaauth/electron";
+import { dash, sendEmail, sentinel } from "./infra";
+import { oauthProvider } from "@cinaauth/oauth-provider";
+import { passkey } from "@cinaauth/passkey";
+import { scim } from "@cinaauth/scim";
+import { sso } from "@cinaauth/sso";
+import { stripe } from "@cinaauth/stripe";
 import { LibsqlDialect } from "@libsql/kysely-libsql";
-import type { BetterAuthOptions } from "better-auth";
-import { APIError, betterAuth } from "better-auth";
-import { nextCookies } from "better-auth/next-js";
-import type { Organization } from "better-auth/plugins";
+import type { CinaAuthOptions } from "cinaauth";
+import { APIError, CinaAuth } from "cinaauth";
+import { nextCookies } from "cinaauth/next-js";
+import type { Organization } from "cinaauth/plugins";
 import {
 	admin,
 	bearer,
@@ -23,7 +23,7 @@ import {
 	openAPI,
 	organization,
 	twoFactor,
-} from "better-auth/plugins";
+} from "cinaauth/plugins";
 import { MysqlDialect } from "kysely";
 import { createPool } from "mysql2/promise";
 import { Stripe } from "stripe";
@@ -52,7 +52,7 @@ if (!dialect) {
 }
 
 const authOptions = {
-	appName: "Better Auth Demo",
+	appName: "CinaAuth Demo",
 	database: {
 		dialect,
 		type: "sqlite",
@@ -67,7 +67,7 @@ const authOptions = {
 					verificationUrl: url,
 					userEmail: user.email,
 					userName: user.name,
-					appName: "Better Auth Demo",
+					appName: "CinaAuth Demo",
 					expirationMinutes: "10",
 					verificationCode: "",
 				},
@@ -158,7 +158,7 @@ const authOptions = {
 						inviteLink:
 							process.env.NODE_ENV === "development"
 								? `http://localhost:3000/accept-invitation/${data.id}`
-								: `${process.env.BETTER_AUTH_URL || "https://demo.better-auth.com"}/accept-invitation/${data.id}`,
+								: `${process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com"}/accept-invitation/${data.id}`,
 					},
 				});
 			},
@@ -174,7 +174,7 @@ const authOptions = {
 							otpCode: otp,
 							userEmail: user.email,
 							userName: user.name,
-							appName: "Better Auth Demo",
+							appName: "CinaAuth Demo",
 						},
 					});
 				},
@@ -187,7 +187,7 @@ const authOptions = {
 		multiSession(),
 		oAuthProxy({
 			productionURL:
-				process.env.BETTER_AUTH_URL || "https://demo.better-auth.com",
+				process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com",
 		}),
 		nextCookies(),
 		oneTap(),
@@ -349,7 +349,7 @@ const authOptions = {
 		lastLoginMethod(),
 		jwt({
 			jwt: {
-				issuer: process.env.BETTER_AUTH_URL,
+				issuer: process.env.CINAAUTH_URL,
 			},
 		}),
 		oauthProvider({
@@ -365,8 +365,8 @@ const authOptions = {
 				"read:organization",
 			],
 			validAudiences: [
-				process.env.BETTER_AUTH_URL || "https://demo.better-auth.com",
-				(process.env.BETTER_AUTH_URL || "https://demo.better-auth.com") +
+				process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com",
+				(process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com") +
 					"/api/mcp",
 			],
 			selectAccount: {
@@ -379,7 +379,7 @@ const authOptions = {
 			customAccessTokenClaims({ referenceId, scopes }) {
 				if (referenceId && scopes.includes("read:organization")) {
 					const baseUrl =
-						process.env.BETTER_AUTH_URL || "https://demo.better-auth.com";
+						process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com";
 					return {
 						[`${baseUrl}/org`]: referenceId,
 					};
@@ -438,15 +438,15 @@ const authOptions = {
 		electron(),
 	],
 	trustedOrigins: [
-		"https://*.better-auth.com",
-		"https://better-auth-demo-*-better-auth.vercel.app",
-		"better-auth://",
-		"com.better-auth.demo:/",
+		"https://*.cinagroup.com",
+		"https://cinaauth-demo-*.vercel.app",
+		"cinaauth://",
+		"com.cinaauth.demo:/",
 		"https://appleid.apple.com",
 	],
-} satisfies BetterAuthOptions;
+} satisfies CinaAuthOptions;
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	...authOptions,
 	plugins: [
 		...(authOptions.plugins ?? []),

@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import { createAuthClient } from "../../client";
 import { parseSetCookieHeader } from "../../cookies";
 import { getTestInstance } from "../../test-utils/test-instance";
-import type { BetterAuthOptions } from "../../types";
+import type { CinaAuthOptions } from "../../types";
 import { inferAdditionalFields } from "../additional-fields/client";
 import { admin } from "../admin";
 import { adminClient } from "../admin/client";
@@ -14,7 +14,7 @@ import { customSessionClient } from "./client";
 describe("Custom Session Plugin Tests", async () => {
 	const options = {
 		plugins: [admin(), multiSession()],
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 	const { auth, signInWithTestUser, customFetchImpl, cookieSetter } =
 		await getTestInstance({
 			session: {
@@ -76,8 +76,8 @@ describe("Custom Session Plugin Tests", async () => {
 					// to ensure browsers correctly parse individual cookie attributes
 					expect(setCookies.length).toBeGreaterThanOrEqual(2);
 					const joined = setCookies.join("; ");
-					expect(joined).toContain("better-auth.session_token");
-					expect(joined).toContain("better-auth.session_data");
+					expect(joined).toContain("cinaauth.session_token");
+					expect(joined).toContain("cinaauth.session_data");
 				},
 			},
 		});
@@ -87,7 +87,7 @@ describe("Custom Session Plugin Tests", async () => {
 		const { headers } = await signInWithTestUser();
 		const signedInCookie = headers.get("cookie");
 		const signedInSessionToken = signedInCookie?.match(
-			/better-auth\.session_token=([^;]+)/,
+			/cinaauth\.session_token=([^;]+)/,
 		)?.[1];
 		expect(signedInSessionToken).toBeDefined();
 
@@ -99,7 +99,7 @@ describe("Custom Session Plugin Tests", async () => {
 					const setCookies = context.response.headers.getSetCookie();
 					for (const cookieStr of setCookies) {
 						const parsed = parseSetCookieHeader(cookieStr);
-						const token = parsed.get("better-auth.session_token")?.value;
+						const token = parsed.get("cinaauth.session_token")?.value;
 						if (token) {
 							refreshedSessionToken = token;
 							break;
@@ -182,10 +182,10 @@ describe("Custom Session Plugin Tests", async () => {
 					// and the session_token could inherit the short Max-Age from
 					// session_data, causing premature session expiry.
 					const tokenCookie = setCookies.find((c) =>
-						c.includes("better-auth.session_token"),
+						c.includes("cinaauth.session_token"),
 					);
 					const dataCookie = setCookies.find((c) =>
-						c.includes("better-auth.session_data"),
+						c.includes("cinaauth.session_data"),
 					);
 					expect(tokenCookie).toBeDefined();
 					expect(dataCookie).toBeDefined();
@@ -215,7 +215,7 @@ describe("Custom Session Plugin Tests", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9195
+	 * @see https://github.com/cinagroup/cinaauth/issues/9195
 	 */
 	it("should accept disableRefresh as a query string without validation error", async () => {
 		const { headers } = await signInWithTestUser();
@@ -243,11 +243,11 @@ describe("Custom Session Plugin Tests", async () => {
 							.map((p) => p.trim().split("=")[0]!.toLowerCase());
 						// Only the first segment is the cookie name=value; the rest are
 						// attributes (max-age, path, httponly, samesite, etc.)
-						// None of those attributes should be another "better-auth." cookie
-						const betterAuthEntries = cookieNames.filter((n) =>
-							n.startsWith("better-auth."),
+						// None of those attributes should be another "cinaauth." cookie
+						const CinaAuthEntries = cookieNames.filter((n) =>
+							n.startsWith("cinaauth."),
 						);
-						expect(betterAuthEntries).toHaveLength(1);
+						expect(CinaAuthEntries).toHaveLength(1);
 					}
 				},
 			},
@@ -255,7 +255,7 @@ describe("Custom Session Plugin Tests", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9231
+	 * @see https://github.com/cinagroup/cinaauth/issues/9231
 	 */
 	it("should preserve partitioned cookie attributes during get-session refresh", async () => {
 		const {
@@ -299,12 +299,12 @@ describe("Custom Session Plugin Tests", async () => {
 					const parsedCookies = refreshedCookies.flatMap((cookieString) =>
 						Array.from(parseSetCookieHeader(cookieString).entries()),
 					);
-					const betterAuthCookies = parsedCookies.filter(([name]) =>
-						name.startsWith("better-auth."),
+					const CinaAuthCookies = parsedCookies.filter(([name]) =>
+						name.startsWith("cinaauth."),
 					);
 
-					expect(betterAuthCookies.length).toBeGreaterThan(0);
-					for (const [, attributes] of betterAuthCookies) {
+					expect(CinaAuthCookies.length).toBeGreaterThan(0);
+					for (const [, attributes] of CinaAuthCookies) {
 						expect(attributes.partitioned).toBe(true);
 					}
 				},

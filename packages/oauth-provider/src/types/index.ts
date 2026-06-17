@@ -1,5 +1,5 @@
-import type { GenericEndpointContext, LiteralString } from "@better-auth/core";
-import type { InferOptionSchema, Session, User } from "better-auth/types";
+import type { GenericEndpointContext, LiteralString } from "@cinaauth/core";
+import type { InferOptionSchema, Session, User } from "cinaauth/types";
 import type { JWTPayload } from "jose";
 import type { schema } from "../schema";
 import type { Awaitable } from "./helpers";
@@ -758,7 +758,7 @@ export interface OAuthAuthorizationQuery {
 	 *
 	 * Recommended for clients, but optional for the authorization server.
 	 *
-	 * Note: Better Auth stores the state in a database instead of a cookie. - This is to minimize
+	 * Note: CinaAuth stores the state in a database instead of a cookie. - This is to minimize
 	 * the complication with native apps and other clients that may not have access to cookies.
 	 */
 	state?: string;
@@ -782,7 +782,7 @@ export interface OAuthAuthorizationQuery {
 	 * then French (without a region designation), followed by English (without a region
 	 * designation).
 	 *
-	 * Better Auth does not support this parameter yet. It'll not throw an error if it's provided,
+	 * CinaAuth does not support this parameter yet. It'll not throw an error if it's provided,
 	 *
 	 * 🏗️ currently not implemented
 	 */

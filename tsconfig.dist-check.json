@@ -1,4 +1,4 @@
-{
+﻿{
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "customConditions": [],
@@ -14,7 +14,7 @@
     "**/docs/**",
     "**/e2e/**",
     "**/test/**",
-    "packages/better-auth/src/**",
+    "packages/cinaauth/src/**",
     "packages/core/src/**",
     "packages/electron/src/**"
   ]

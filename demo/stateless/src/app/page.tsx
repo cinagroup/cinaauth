@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -33,7 +33,7 @@ export default function Home() {
 		<div className="min-h-screen flex items-center justify-center px-6 md:px-0">
 			<main className="flex flex-col gap-6 items-center justify-center max-w-2xl w-full">
 				<div className="flex flex-col gap-2 text-center">
-					<h1 className="font-bold text-4xl text-foreground">Better Auth.</h1>
+					<h1 className="font-bold text-4xl text-foreground">CinaAuth.</h1>
 					<p className="text-muted-foreground text-sm md:text-base">
 						Minimal demo showcasing{" "}
 						<span className="italic underline">

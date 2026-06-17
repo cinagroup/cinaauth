@@ -1,15 +1,15 @@
 import type {
-	BetterAuthClientPlugin,
+	CinaAuthClientPlugin,
 	ClientFetchOption,
 	ClientStore,
-} from "@better-auth/core";
-import type { Session, User } from "@better-auth/core/db";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+} from "@cinaauth/core";
+import type { Session, User } from "@cinaauth/core/db";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import {
 	parseSetCookieHeader,
 	SECURE_COOKIE_PREFIX,
 	stripSecureCookiePrefix,
-} from "better-auth/cookies";
+} from "cinaauth/cookies";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import { Platform } from "react-native";
@@ -30,17 +30,17 @@ interface ExpoClientOptions {
 	};
 	/**
 	 * Prefix for local storage keys (e.g., "my-app_cookie", "my-app_session_data")
-	 * @default "better-auth"
+	 * @default "cinaauth"
 	 */
 	storagePrefix?: string | undefined;
 	/**
-	 * Prefix(es) for server cookie names to filter (e.g., "better-auth.session_token")
-	 * This is used to identify which cookies belong to better-auth to prevent
+	 * Prefix(es) for server cookie names to filter (e.g., "cinaauth.session_token")
+	 * This is used to identify which cookies belong to cinaauth to prevent
 	 * infinite refetching when third-party cookies are set.
 	 * Can be a single string or an array of strings to match multiple prefixes.
-	 * @default "better-auth"
-	 * @example "better-auth"
-	 * @example ["better-auth", "my-app"]
+	 * @default "cinaauth"
+	 * @example "cinaauth"
+	 * @example ["cinaauth", "my-app"]
 	 */
 	cookiePrefix?: string | string[] | undefined;
 	disableCache?: boolean | undefined;
@@ -193,21 +193,21 @@ function hasSessionCookieChanged(
 }
 
 /**
- * Check if the Set-Cookie header contains better-auth cookies.
- * This prevents infinite refetching when non-better-auth cookies (like third-party cookies) change.
+ * Check if the Set-Cookie header contains cinaauth cookies.
+ * This prevents infinite refetching when non-cinaauth cookies (like third-party cookies) change.
  *
  * Supports multiple cookie naming patterns:
- * - Default: "better-auth.session_token", "better-auth-passkey", "__Secure-better-auth.session_token"
+ * - Default: "cinaauth.session_token", "cinaauth-passkey", "__Secure-cinaauth.session_token"
  * - Custom prefix: "myapp.session_token", "myapp-passkey", "__Secure-myapp.session_token"
  * - Custom full names: "my_custom_session_token", "custom_session_data"
  * - No prefix (cookiePrefix=""): matches any cookie with known suffixes
- * - Multiple prefixes: ["better-auth", "my-app"] matches cookies starting with any of the prefixes
+ * - Multiple prefixes: ["cinaauth", "my-app"] matches cookies starting with any of the prefixes
  *
  * @param setCookieHeader - The Set-Cookie header value
  * @param cookiePrefix - The cookie prefix(es) to check for. Can be a string, array of strings, or empty string.
- * @returns true if the header contains better-auth cookies, false otherwise
+ * @returns true if the header contains cinaauth cookies, false otherwise
  */
-export function hasBetterAuthCookies(
+export function hasCinaAuthCookies(
 	setCookieHeader: string,
 	cookiePrefix: string | string[],
 ): boolean {
@@ -215,7 +215,7 @@ export function hasBetterAuthCookies(
 	const cookieSuffixes = ["session_token", "session_data"];
 	const prefixes = Array.isArray(cookiePrefix) ? cookiePrefix : [cookiePrefix];
 
-	// Check if any cookie is a better-auth cookie
+	// Check if any cookie is a cinaauth cookie
 	for (const name of cookies.keys()) {
 		// Remove __Secure- prefix if present for comparison
 		const nameWithoutSecure = stripSecureCookiePrefix(name);
@@ -224,12 +224,12 @@ export function hasBetterAuthCookies(
 		for (const prefix of prefixes) {
 			if (prefix) {
 				// When prefix is provided, check if cookie starts with the prefix
-				// This matches all better-auth cookies including session cookies, passkey cookies, etc.
+				// This matches all cinaauth cookies including session cookies, passkey cookies, etc.
 				if (nameWithoutSecure.startsWith(prefix)) {
 					return true;
 				}
 			} else {
-				// When prefix is empty, check for common better-auth cookie patterns
+				// When prefix is empty, check for common cinaauth cookie patterns
 				for (const suffix of cookieSuffixes) {
 					if (nameWithoutSecure.endsWith(suffix)) {
 						return true;
@@ -245,7 +245,7 @@ export function hasBetterAuthCookies(
  * Expo secure store does not support colons in the keys.
  * This function replaces colons with underscores.
  *
- * @see https://github.com/better-auth/better-auth/issues/5426
+ * @see https://github.com/cinagroup/cinaauth/issues/5426
  *
  * @param name cookie name to be saved in the storage
  * @returns normalized cookie name
@@ -260,7 +260,7 @@ export function normalizeCookieName(name: string) {
  * so a larger value is split across keys here. Mirrors the server's
  * `chunkCookie`/`joinChunks` in `session-store.ts`; keep the two in sync.
  *
- * @see https://github.com/better-auth/better-auth/issues/9151
+ * @see https://github.com/cinagroup/cinaauth/issues/9151
  */
 const STORAGE_VALUE_LIMIT = 1800;
 
@@ -331,7 +331,7 @@ export function storageAdapter(storage: {
 				await storage.setItem(key, `${CHUNK_MARKER}${count}`);
 			} catch (error) {
 				console.error(
-					`[better-auth/expo] failed to persist "${key}" to storage`,
+					`[cinaauth/expo] failed to persist "${key}" to storage`,
 					error,
 				);
 			}
@@ -341,12 +341,12 @@ export function storageAdapter(storage: {
 
 export const expoClient = (opts: ExpoClientOptions) => {
 	let store: ClientStore | null = null;
-	const storagePrefix = opts?.storagePrefix || "better-auth";
+	const storagePrefix = opts?.storagePrefix || "cinaauth";
 	const cookieName = `${storagePrefix}_cookie`;
 	const localCacheName = `${storagePrefix}_session_data`;
 	const storage = storageAdapter(opts?.storage);
 	const isWeb = Platform.OS === "web";
-	const cookiePrefix = opts?.cookiePrefix || "better-auth";
+	const cookiePrefix = opts?.cookiePrefix || "cinaauth";
 	const clearSessionCache = async () => {
 		await storage.setItem(cookieName, "{}");
 		store?.atoms.session?.set({
@@ -422,9 +422,9 @@ export const expoClient = (opts: ExpoClientOptions) => {
 						if (isWeb) return;
 						const setCookie = context.response.headers.get("set-cookie");
 						if (setCookie) {
-							// Only process and notify if the Set-Cookie header contains better-auth cookies
+							// Only process and notify if the Set-Cookie header contains cinaauth cookies
 							// This prevents infinite refetching when other cookies (like Cloudflare's __cf_bm) are present
-							if (hasBetterAuthCookies(setCookie, cookiePrefix)) {
+							if (hasCinaAuthCookies(setCookie, cookiePrefix)) {
 								const prevCookie = storage.getItem(cookieName);
 								const toSetCookie = getSetCookie(
 									setCookie || "",
@@ -580,9 +580,9 @@ export const expoClient = (opts: ExpoClientOptions) => {
 				},
 			},
 		],
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
-export { parseSetCookieHeader } from "better-auth/cookies";
+export { parseSetCookieHeader } from "cinaauth/cookies";
 export * from "./focus-manager";
 export * from "./online-manager";

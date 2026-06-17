@@ -1,9 +1,9 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+} from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import { createHMAC } from "@better-auth/utils/hmac";
 import { createOTP } from "@better-auth/utils/otp";
 import * as z from "zod";
@@ -37,8 +37,8 @@ import type {
 
 export * from "./error-code";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"two-factor": {
 			creator: typeof twoFactor;
 		};
@@ -116,7 +116,7 @@ export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 			 * **client:**
 			 * `authClient.twoFactor.enable`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#api-method-two-factor-enable)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#api-method-two-factor-enable)
 			 */
 			enableTwoFactor: createAuthEndpoint(
 				"/two-factor/enable",
@@ -259,7 +259,7 @@ export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 			 * **client:**
 			 * `authClient.twoFactor.disable`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#api-method-two-factor-disable)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#api-method-two-factor-disable)
 			 */
 			disableTwoFactor: createAuthEndpoint(
 				"/two-factor/disable",
@@ -558,7 +558,7 @@ export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 			},
 		],
 		$ERROR_CODES: TWO_FACTOR_ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export * from "./client";

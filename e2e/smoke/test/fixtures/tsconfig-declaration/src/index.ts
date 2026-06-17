@@ -1,12 +1,12 @@
-import { oauthProvider } from "@better-auth/oauth-provider";
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
-import type { GoogleProfile, JoinConfig, JoinOption } from "better-auth/types";
+﻿import { oauthProvider } from "@cinaauth/oauth-provider";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
+import type { GoogleProfile, JoinConfig, JoinOption } from "cinaauth/types";
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9378
+ * @see https://github.com/cinagroup/cinaauth/issues/9378
  */
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [
 		organization({}),
 		oauthProvider({
@@ -56,7 +56,7 @@ auth.api
 	});
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/6876
+ * @see https://github.com/cinagroup/cinaauth/issues/6876
  */
 export type TypeExportRegression = {
 	profile: GoogleProfile;

@@ -1,13 +1,13 @@
-import { createAuthMiddleware } from "@better-auth/core/api";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import type { RequestEvent } from "@sveltejs/kit";
 import { parseSetCookieHeader, toCookieOptions } from "../cookies";
-import type { BetterAuthOptions, BetterAuthPlugin } from "../types";
+import type { CinaAuthOptions, CinaAuthPlugin } from "../types";
 import { PACKAGE_VERSION } from "../version";
 import { warnIfCookiePluginNotLast } from "./cookie-plugin-guard";
 
 export const toSvelteKitHandler = (auth: {
 	handler: (request: Request) => Response | Promise<Response>;
-	options: BetterAuthOptions;
+	options: CinaAuthOptions;
 }) => {
 	return (event: { request: Request }) => auth.handler(event.request);
 };
@@ -20,7 +20,7 @@ export const svelteKitHandler = async ({
 }: {
 	auth: {
 		handler: (request: Request) => Response | Promise<Response>;
-		options: BetterAuthOptions;
+		options: CinaAuthOptions;
 	};
 	event: RequestEvent;
 	resolve: (event: RequestEvent) => Response | Promise<Response>;
@@ -36,7 +36,7 @@ export const svelteKitHandler = async ({
 	return resolve(event);
 };
 
-export function isAuthPath(url: string, options: BetterAuthOptions) {
+export function isAuthPath(url: string, options: CinaAuthOptions) {
 	const _url = new URL(url);
 	const baseURLStr =
 		typeof options.baseURL === "string" ? options.baseURL : undefined;
@@ -100,5 +100,5 @@ export const sveltekitCookies = (
 				},
 			],
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

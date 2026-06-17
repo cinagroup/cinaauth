@@ -1,32 +1,32 @@
-{
+﻿{
   "$schema": "https://unpkg.com/@changesets/config@3.1.3/schema.json",
   "changelog": [
     "@changesets/changelog-github",
-    { "repo": "better-auth/better-auth" }
+    { "repo": "cinaauth/cinaauth" }
   ],
   "commit": false,
   "fixed": [
     [
-      "better-auth",
-      "@better-auth/core",
+      "cinaauth",
+      "@cinaauth/core",
       "auth",
-      "@better-auth/api-key",
-      "@better-auth/drizzle-adapter",
-      "@better-auth/electron",
-      "@better-auth/expo",
-      "@better-auth/i18n",
-      "@better-auth/kysely-adapter",
-      "@better-auth/memory-adapter",
-      "@better-auth/mongo-adapter",
-      "@better-auth/oauth-provider",
-      "@better-auth/passkey",
-      "@better-auth/prisma-adapter",
-      "@better-auth/redis-storage",
-      "@better-auth/scim",
-      "@better-auth/sso",
-      "@better-auth/stripe",
-      "@better-auth/telemetry",
-      "@better-auth/test-utils"
+      "@cinaauth/api-key",
+      "@cinaauth/drizzle-adapter",
+      "@cinaauth/electron",
+      "@cinaauth/expo",
+      "@cinaauth/i18n",
+      "@cinaauth/kysely-adapter",
+      "@cinaauth/memory-adapter",
+      "@cinaauth/mongo-adapter",
+      "@cinaauth/oauth-provider",
+      "@cinaauth/passkey",
+      "@cinaauth/prisma-adapter",
+      "@cinaauth/redis-storage",
+      "@cinaauth/scim",
+      "@cinaauth/sso",
+      "@cinaauth/stripe",
+      "@cinaauth/telemetry",
+      "@cinaauth/test-utils"
     ]
   ],
   "linked": [],

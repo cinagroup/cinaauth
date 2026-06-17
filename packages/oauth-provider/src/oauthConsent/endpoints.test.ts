@@ -1,9 +1,9 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { sessionMiddleware } from "better-auth/api";
-import { createAuthClient } from "better-auth/client";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { sessionMiddleware } from "cinaauth/api";
+import { createAuthClient } from "cinaauth/client";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import { beforeAll, describe, expect, it } from "vitest";
 import * as z from "zod";
 import { oauthProviderClient } from "../client";
@@ -59,7 +59,7 @@ describe("oauthConsent", async () => {
 						},
 					),
 				},
-			} satisfies BetterAuthPlugin,
+			} satisfies CinaAuthPlugin,
 		],
 	});
 	const { headers, user } = await signInWithTestUser();

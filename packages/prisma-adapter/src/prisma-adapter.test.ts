@@ -1,4 +1,4 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import { describe, expect, it, vi } from "vitest";
 import { prismaAdapter } from "./prisma-adapter";
 
@@ -6,7 +6,7 @@ describe("prisma-adapter", () => {
 	const createTestAdapter = (prisma: Record<string, unknown>) =>
 		prismaAdapter(prisma as never, {
 			provider: "sqlite",
-		})({} as BetterAuthOptions);
+		})({} as CinaAuthOptions);
 
 	// incrementOne mutates numeric counters; declare the fields it touches on an
 	// existing model so the factory's where/input transforms recognize them.
@@ -20,7 +20,7 @@ describe("prisma-adapter", () => {
 					lastRefill: { type: "number", required: false },
 				},
 			},
-		} as BetterAuthOptions);
+		} as CinaAuthOptions);
 
 	it("should create prisma adapter", () => {
 		const prisma = {
@@ -33,7 +33,7 @@ describe("prisma-adapter", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8365
+	 * @see https://github.com/cinagroup/cinaauth/issues/8365
 	 */
 	it("should fall back to updateMany for non-unique verification identifiers", async () => {
 		const update = vi.fn();
@@ -492,7 +492,7 @@ describe("prisma-adapter", () => {
 				provider: "sqlite",
 				transaction: true,
 			},
-		)({} as BetterAuthOptions);
+		)({} as CinaAuthOptions);
 
 		await adapter.transaction(async (trx) => {
 			await trx.consumeOne({

@@ -1,4 +1,4 @@
-import type { BetterAuthOptions, BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthOptions, CinaAuthPlugin } from "@cinaauth/core";
 import {
 	createGetAuthHeaders,
 	createGetCookies,
@@ -24,8 +24,8 @@ export type {
 
 import { PACKAGE_VERSION } from "../../version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"test-utils": {
 			creator: typeof testUtils;
 		};
@@ -33,7 +33,7 @@ declare module "@better-auth/core" {
 }
 
 /**
- * Test utilities plugin for Better Auth.
+ * Test utilities plugin for CinaAuth.
  *
  * Provides helpers for integration and E2E testing including:
  * - User/Organization factories (creates objects without DB writes)
@@ -52,10 +52,10 @@ declare module "@better-auth/core" {
  *
  * @example
  * ```ts
- * import { betterAuth } from "better-auth";
- * import { testUtils } from "better-auth/plugins";
+ * import { CinaAuth } from "cinaauth";
+ * import { testUtils } from "cinaauth/plugins";
  *
- * export const testAuth = betterAuth({
+ * export const testAuth = CinaAuth({
  *   plugins: [
  *     testUtils({ captureOTP: true }),
  *   ],
@@ -146,7 +146,7 @@ export const testUtils = (options: TestUtilsOptions = {}) => {
 								},
 							},
 						},
-					} satisfies BetterAuthOptions["databaseHooks"])
+					} satisfies CinaAuthOptions["databaseHooks"])
 				: null;
 
 			return {
@@ -157,5 +157,5 @@ export const testUtils = (options: TestUtilsOptions = {}) => {
 			};
 		},
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

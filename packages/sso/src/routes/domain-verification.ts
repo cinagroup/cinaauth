@@ -2,15 +2,15 @@ import {
 	APIError,
 	createAuthEndpoint,
 	sessionMiddleware,
-} from "better-auth/api";
-import { generateRandomString } from "better-auth/crypto";
+} from "cinaauth/api";
+import { generateRandomString } from "cinaauth/crypto";
 import * as z from "zod";
 import type { SSOOptions, SSOProvider } from "../types";
 import { getHostnameFromDomain } from "../utils";
 import { checkProviderAccess } from "./providers";
 
 const DNS_LABEL_MAX_LENGTH = 63;
-const DEFAULT_TOKEN_PREFIX = "better-auth-token";
+const DEFAULT_TOKEN_PREFIX = "cinaauth-token";
 
 const domainVerificationBodySchema = z.object({
 	providerId: z.string(),

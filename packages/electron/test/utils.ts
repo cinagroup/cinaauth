@@ -1,12 +1,12 @@
 /// <reference types="electron" />
 
 import { base64Url } from "@better-auth/utils/base64";
-import type { BetterAuthOptions } from "better-auth";
-import { betterAuth } from "better-auth";
-import type { FetchEsque } from "better-auth/client";
-import { createAuthClient } from "better-auth/client";
-import { getMigrations } from "better-auth/db/migration";
-import { oAuthProxy } from "better-auth/plugins";
+import type { CinaAuthOptions } from "cinaauth";
+import { CinaAuth } from "cinaauth";
+import type { FetchEsque } from "cinaauth/client";
+import { createAuthClient } from "cinaauth/client";
+import { getMigrations } from "cinaauth/db/migration";
+import { oAuthProxy } from "cinaauth/plugins";
 import Database from "better-sqlite3";
 import { afterAll, afterEach, beforeAll, test, vi } from "vitest";
 import { electronClient } from "../src/client";
@@ -48,7 +48,7 @@ export const it = test.extend<{
 	},
 });
 
-function getTestInstance(overrideOpts?: BetterAuthOptions) {
+function getTestInstance(overrideOpts?: CinaAuthOptions) {
 	const storage = new Map<string, any>();
 	const options = {
 		signInURL: "http://localhost:3000/sign-in",
@@ -65,7 +65,7 @@ function getTestInstance(overrideOpts?: BetterAuthOptions) {
 		},
 	} satisfies ElectronClientOptions;
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		baseURL: "http://localhost:3000",
 		database: new Database(":memory:"),
 		emailAndPassword: {
@@ -113,7 +113,7 @@ function getTestInstance(overrideOpts?: BetterAuthOptions) {
 	};
 }
 
-export function testUtils(overrideOpts?: BetterAuthOptions) {
+export function testUtils(overrideOpts?: CinaAuthOptions) {
 	const testInstance = getTestInstance(overrideOpts);
 
 	beforeAll(async () => {

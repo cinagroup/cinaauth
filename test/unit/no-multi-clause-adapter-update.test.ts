@@ -1,4 +1,4 @@
-import { globSync, readFileSync } from "node:fs";
+﻿import { globSync, readFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  * This test fails if any consumer calls `adapter.update` with a statically
  * multi-clause `where` array, so the pattern cannot silently return.
  *
- * @see https://github.com/better-auth/better-auth/issues/10082
+ * @see https://github.com/cinagroup/cinaauth/issues/10082
  */
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -28,7 +28,7 @@ const EXCLUDED = [
 	/\/packages\/[^/]*-adapter\//,
 	/\/packages\/test-utils\//,
 	/\/packages\/core\/src\/db\/adapter\/factory\.ts$/,
-	/\/packages\/better-auth\/src\/db\/with-hooks\.ts$/,
+	/\/packages\/cinaauth\/src\/db\/with-hooks\.ts$/,
 	/\.test\.ts$/,
 	/\.d\.ts$/,
 ];

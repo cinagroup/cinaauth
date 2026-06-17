@@ -1,6 +1,6 @@
-import { kyselyAdapter } from "@better-auth/kysely-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
-import { getMigrations } from "better-auth/db/migration";
+﻿import { kyselyAdapter } from "@cinaauth/kysely-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
+import { getMigrations } from "cinaauth/db/migration";
 import { Kysely, MysqlDialect } from "kysely";
 import { createPool } from "mysql2/promise";
 import { assert } from "vitest";
@@ -15,7 +15,7 @@ import {
 } from "../adapter-factory";
 
 const mysqlDB = createPool({
-	uri: "mysql://user:password@localhost:3307/better_auth",
+	uri: "mysql://user:password@localhost:3307/cinaauth",
 	timezone: "Z",
 });
 
@@ -29,19 +29,19 @@ const { execute } = await testAdapter({
 			type: "mysql",
 			debugLogs: { isRunningAdapterTests: true },
 		}),
-	async runMigrations(betterAuthOptions) {
-		await mysqlDB.query("DROP DATABASE IF EXISTS better_auth");
-		await mysqlDB.query("CREATE DATABASE better_auth");
-		await mysqlDB.query("USE better_auth");
-		const opts = Object.assign(betterAuthOptions, { database: mysqlDB });
+	async runMigrations(CinaAuthOptions) {
+		await mysqlDB.query("DROP DATABASE IF EXISTS cinaauth");
+		await mysqlDB.query("CREATE DATABASE cinaauth");
+		await mysqlDB.query("USE cinaauth");
+		const opts = Object.assign(CinaAuthOptions, { database: mysqlDB });
 		const { runMigrations } = await getMigrations(opts);
 		await runMigrations();
 
 		// ensure migrations were run successfully
 		const [tables_result] = (await mysqlDB.query("SHOW TABLES")) as unknown as [
-			{ Tables_in_better_auth: string }[],
+			{ Tables_in_cinaauth: string }[],
 		];
-		const tables = tables_result.map((table) => table.Tables_in_better_auth);
+		const tables = tables_result.map((table) => table.Tables_in_cinaauth);
 		assert(tables.length > 0, "No tables found");
 	},
 	prefixTests: "mysql",

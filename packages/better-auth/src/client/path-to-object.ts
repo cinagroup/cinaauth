@@ -1,7 +1,7 @@
 import type {
-	BetterAuthClientOptions,
+	CinaAuthClientOptions,
 	ClientFetchOption,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import type { BetterFetchResponse } from "@better-fetch/fetch";
 import type { Endpoint, InputContext, StandardSchemaV1 } from "better-call";
 import type {
@@ -35,7 +35,7 @@ type ReplaceTopLevelField<
 
 type ReplaceAuthUserAndSession<
 	Data,
-	ClientOpts extends BetterAuthClientOptions,
+	ClientOpts extends CinaAuthClientOptions,
 > = ReplaceTopLevelField<
 	ReplaceTopLevelField<Data, "user", InferUserFromClient<ClientOpts>>,
 	"session",
@@ -57,7 +57,7 @@ type MergeCustomSessionField<
 
 type MergeCustomSessionWithInferred<
 	R,
-	ClientOpts extends BetterAuthClientOptions,
+	ClientOpts extends CinaAuthClientOptions,
 > = R extends object
 	? Omit<R, "user" | "session"> &
 			MergeCustomSessionField<R, "user", InferUserFromClient<ClientOpts>> &
@@ -66,7 +66,7 @@ type MergeCustomSessionWithInferred<
 
 type RefineAuthResponse<
 	Data,
-	ClientOpts extends BetterAuthClientOptions,
+	ClientOpts extends CinaAuthClientOptions,
 > = Data extends { token: unknown } | { redirect: unknown }
 	? // Only auth-like responses should get client-side user/session type refinement.
 		ReplaceAuthUserAndSession<Data, ClientOpts>
@@ -87,7 +87,7 @@ export type PathToObject<
 		: never;
 
 export type InferSignUpEmailCtx<
-	ClientOpts extends BetterAuthClientOptions,
+	ClientOpts extends CinaAuthClientOptions,
 	FetchOptions extends ClientFetchOption,
 > = {
 	email: string;
@@ -99,7 +99,7 @@ export type InferSignUpEmailCtx<
 } & UnionToIntersection<InferAdditionalFromClient<ClientOpts, "user", "input">>;
 
 export type InferUserUpdateCtx<
-	ClientOpts extends BetterAuthClientOptions,
+	ClientOpts extends CinaAuthClientOptions,
 	FetchOptions extends ClientFetchOption,
 > = {
 	image?: (string | null) | undefined;
@@ -110,7 +110,7 @@ export type InferUserUpdateCtx<
 >;
 
 export type InferSessionUpdateCtx<
-	ClientOpts extends BetterAuthClientOptions,
+	ClientOpts extends CinaAuthClientOptions,
 	FetchOptions extends ClientFetchOption,
 > = {
 	fetchOptions?: FetchOptions | undefined;
@@ -150,7 +150,7 @@ export type InferCtx<
 
 export type MergeRoutes<T> = UnionToIntersection<T>;
 
-export type InferRoute<API, COpts extends BetterAuthClientOptions> =
+export type InferRoute<API, COpts extends CinaAuthClientOptions> =
 	API extends Record<string, infer T>
 		? T extends Endpoint
 			? T["options"]["metadata"] extends
@@ -238,7 +238,7 @@ export type InferRoute<API, COpts extends BetterAuthClientOptions> =
 
 export type InferRoutes<
 	API extends Record<string, unknown>,
-	ClientOpts extends BetterAuthClientOptions,
+	ClientOpts extends CinaAuthClientOptions,
 > = MergeRoutes<InferRoute<API, ClientOpts>>;
 
 export type ProxyRequest = {

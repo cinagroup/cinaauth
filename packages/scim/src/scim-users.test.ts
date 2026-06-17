@@ -1,9 +1,9 @@
-import { sso } from "@better-auth/sso";
-import { betterAuth } from "better-auth";
-import { memoryAdapter } from "better-auth/adapters/memory";
-import { createAuthClient } from "better-auth/client";
-import { setCookieToHeader } from "better-auth/cookies";
-import { bearer, organization } from "better-auth/plugins";
+import { sso } from "@cinaauth/sso";
+import { CinaAuth } from "cinaauth";
+import { memoryAdapter } from "cinaauth/adapters/memory";
+import { createAuthClient } from "cinaauth/client";
+import { setCookieToHeader } from "cinaauth/cookies";
+import { bearer, organization } from "cinaauth/plugins";
 import { describe, expect, it } from "vitest";
 import { scim } from ".";
 import { scimClient } from "./client";
@@ -28,7 +28,7 @@ const createTestInstance = (scimOptions?: SCIMOptions) => {
 	};
 	const memory = memoryAdapter(data);
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {
@@ -657,7 +657,7 @@ describe("SCIM", () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-2vg6-77g8-24mp
+		 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-2vg6-77g8-24mp
 		 */
 		it("should clear secondary storage sessions when deleting a user via SCIM", async () => {
 			const store = new Map<string, string>();
@@ -684,7 +684,7 @@ describe("SCIM", () => {
 			};
 			const memory = memoryAdapter(data);
 
-			const auth = betterAuth({
+			const auth = CinaAuth({
 				database: memory,
 				baseURL: "http://localhost:3000",
 				emailAndPassword: { enabled: true },
@@ -786,7 +786,7 @@ describe("SCIM", () => {
 				headers: { authorization: `Bearer ${scimToken}` },
 			});
 
-			// The global Better Auth user must NOT be deleted by an org-scoped token.
+			// The global CinaAuth user must NOT be deleted by an org-scoped token.
 			const userAfter = await ctx.adapter.findOne({
 				model: "user",
 				where: [{ field: "id", value: created.id }],
@@ -837,7 +837,7 @@ describe("SCIM", () => {
 			};
 			const memory = memoryAdapter(data);
 
-			const auth = betterAuth({
+			const auth = CinaAuth({
 				database: memory,
 				baseURL: "http://localhost:3000",
 				emailAndPassword: { enabled: true },

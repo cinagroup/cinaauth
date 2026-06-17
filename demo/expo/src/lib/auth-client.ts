@@ -1,5 +1,5 @@
-import { expoClient } from "@better-auth/expo/client";
-import { createAuthClient } from "better-auth/client";
+﻿import { expoClient } from "@cinaauth/expo/client";
+import { createAuthClient } from "cinaauth/client";
 import * as SecureStore from "expo-secure-store";
 
 export const authClient = createAuthClient({
@@ -7,7 +7,7 @@ export const authClient = createAuthClient({
 	disableDefaultFetchPlugins: true,
 	plugins: [
 		expoClient({
-			scheme: "better-auth",
+			scheme: "cinaauth",
 			storage: SecureStore,
 		}),
 	],

@@ -1,8 +1,8 @@
-import { BASE_ERROR_CODES } from "@better-auth/core/error";
+import { BASE_ERROR_CODES } from "@cinaauth/core/error";
 import type {
 	CognitoProfile,
 	GoogleProfile,
-} from "@better-auth/core/social-providers";
+} from "@cinaauth/core/social-providers";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import type { MockInstance } from "vitest";
@@ -17,7 +17,7 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { betterAuth } from "../../auth/minimal";
+import { CinaAuth } from "../../auth/minimal";
 import { parseSetCookieHeader } from "../../cookies";
 import { signJWT, symmetricDecodeJWT } from "../../crypto";
 import { genericOAuth } from "../../plugins/generic-oauth";
@@ -128,7 +128,7 @@ describe("account", async () => {
 						);
 						headers.set(
 							"cookie",
-							`better-auth.state=${cookies.get("better-auth.state")?.value}`,
+							`cinaauth.state=${cookies.get("cinaauth.state")?.value}`,
 						);
 					},
 				},
@@ -201,7 +201,7 @@ describe("account", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8345
+	 * @see https://github.com/cinagroup/cinaauth/issues/8345
 	 */
 	it("should get account info using provider accountId (not internal id)", async () => {
 		const { runWithUser: runWithClient2 } = await signInWithTestUser();
@@ -234,7 +234,7 @@ describe("account", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8350
+	 * @see https://github.com/cinagroup/cinaauth/issues/8350
 	 */
 	it("should get account info server-side using userId without session headers", async () => {
 		const { auth, client, cookieSetter } = await getTestInstance({
@@ -296,7 +296,7 @@ describe("account", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9502
+	 * @see https://github.com/cinagroup/cinaauth/issues/9502
 	 */
 	it("should resolve account info from the current user's accounts when provider account IDs collide", async () => {
 		const { auth, signInWithTestUser, client } = await getTestInstance({
@@ -441,7 +441,7 @@ describe("account", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9502
+	 * @see https://github.com/cinagroup/cinaauth/issues/9502
 	 */
 	it("should disambiguate by providerId on the server-side userId path without a session", async () => {
 		const { auth } = await getTestInstance({
@@ -504,7 +504,7 @@ describe("account", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9502
+	 * @see https://github.com/cinagroup/cinaauth/issues/9502
 	 */
 	it("should not find an account when providerId matches none of the user's accounts", async () => {
 		const { auth, signInWithTestUser, client } = await getTestInstance({
@@ -597,7 +597,7 @@ describe("account", async () => {
 						);
 						headers.set(
 							"cookie",
-							`better-auth.state=${cookies.get("better-auth.state")?.value}`,
+							`cinaauth.state=${cookies.get("cinaauth.state")?.value}`,
 						);
 					},
 				},
@@ -663,7 +663,7 @@ describe("account", async () => {
 						);
 						headers.set(
 							"cookie",
-							`better-auth.state=${cookies.get("better-auth.state")?.value}`,
+							`cinaauth.state=${cookies.get("cinaauth.state")?.value}`,
 						);
 					},
 				},
@@ -1436,7 +1436,7 @@ describe("account", async () => {
 			symmetricDecodeJWT(
 				refreshedAccountCookie!,
 				ctx.secret,
-				"better-auth-account",
+				"cinaauth-account",
 			),
 		).resolves.toMatchObject({
 			idToken: newIdToken,
@@ -1456,7 +1456,7 @@ describe("account", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8562
+	 * @see https://github.com/cinagroup/cinaauth/issues/8562
 	 */
 	it("should preserve the Cognito refresh token when getAccessToken auto-refresh receives no replacement", async () => {
 		const cognitoDomain = "test.auth.us-east-1.amazoncognito.com";
@@ -1592,7 +1592,7 @@ describe("account", async () => {
 			symmetricDecodeJWT(
 				refreshedAccountCookie!,
 				authContext.secret,
-				"better-auth-account",
+				"cinaauth-account",
 			),
 		).resolves.toMatchObject({
 			accessToken: "refreshed-cognito-access-token",
@@ -1623,7 +1623,7 @@ describe("account", async () => {
 
 	it("should NOT chunk account data cookies when exceeding 4KB", async () => {
 		const { client, cookieSetter } = await getTestInstance({
-			secret: "better-auth.secret",
+			secret: "cinaauth.secret",
 			account: {
 				storeAccountCookie: true,
 			},
@@ -1708,7 +1708,7 @@ describe("account", async () => {
 
 	it("should chunk account data cookies when exceeding 4KB", async () => {
 		const { client, cookieSetter } = await getTestInstance({
-			secret: "better-auth.secret",
+			secret: "cinaauth.secret",
 			account: {
 				storeAccountCookie: true,
 				additionalFields: {
@@ -1794,7 +1794,7 @@ describe("account", async () => {
 
 	it("should encrypt account cookie payload", async () => {
 		const { auth, client, cookieSetter } = await getTestInstance({
-			secret: "better-auth.secret",
+			secret: "cinaauth.secret",
 			account: {
 				storeAccountCookie: true,
 			},
@@ -1842,12 +1842,12 @@ describe("account", async () => {
 				expect(setCookie).toBeDefined();
 
 				const parsed = parseSetCookieHeader(setCookie!);
-				const accountData = parsed.get("better-auth.account_data")?.value;
+				const accountData = parsed.get("cinaauth.account_data")?.value;
 
 				expect(accountData).toBeDefined();
 				expect(accountData!.startsWith("ey")).toBe(true);
 				await expect(
-					symmetricDecodeJWT(accountData!, ctx.secret, "better-auth-account"),
+					symmetricDecodeJWT(accountData!, ctx.secret, "cinaauth-account"),
 				).resolves.toMatchObject({
 					accessToken: "test",
 					refreshToken: "test",
@@ -2250,7 +2250,7 @@ describe("account resolution in stateless mode", async () => {
 	beforeEach(() => server.use(...idpHandlers));
 
 	const makeStatelessAuth = () =>
-		betterAuth({
+		CinaAuth({
 			secret: STATELESS_SECRET,
 			baseURL: "http://localhost:3000",
 			trustedOrigins: ["http://localhost:3000"],
@@ -2359,7 +2359,7 @@ describe("account resolution in stateless mode", async () => {
 	};
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9978
+	 * @see https://github.com/cinagroup/cinaauth/issues/9978
 	 */
 	it("resolves getAccessToken with a valid account cookie whose userId differs from the session user", async () => {
 		const { mixed, sessionUserId } = await signInOnTwoInstances();
@@ -2373,7 +2373,7 @@ describe("account resolution in stateless mode", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9978
+	 * @see https://github.com/cinagroup/cinaauth/issues/9978
 	 */
 	it("resolves accountInfo with a valid account cookie whose userId differs from the session user", async () => {
 		const { mixed, sessionUserId } = await signInOnTwoInstances();
@@ -2389,7 +2389,7 @@ describe("account resolution in stateless mode", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9978
+	 * @see https://github.com/cinagroup/cinaauth/issues/9978
 	 */
 	it("refreshes a valid account cookie whose userId differs from the session user", async () => {
 		const { mixed, sessionUserId } = await signInOnTwoInstances();
@@ -2404,7 +2404,7 @@ describe("account resolution in stateless mode", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9978
+	 * @see https://github.com/cinagroup/cinaauth/issues/9978
 	 */
 	it("preserves a valid mismatched account cookie during stateless session refresh", async () => {
 		const { accountCookieName, mixed } = await signInOnTwoInstances();

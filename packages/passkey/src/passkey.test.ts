@@ -1,7 +1,7 @@
-import { APIError } from "@better-auth/core/error";
-import type { Verification } from "better-auth";
-import { createAuthClient } from "better-auth/client";
-import { getTestInstance } from "better-auth/test";
+import { APIError } from "@cinaauth/core/error";
+import type { Verification } from "cinaauth";
+import { createAuthClient } from "cinaauth/client";
+import { getTestInstance } from "cinaauth/test";
 import {
 	afterEach,
 	assert,
@@ -96,7 +96,7 @@ describe("passkey", async () => {
 			onResponse(context: { response: Response }) {
 				const setCookie = context.response.headers.get("Set-Cookie");
 				expect(setCookie).toBeDefined();
-				expect(setCookie).toContain("better-auth-passkey");
+				expect(setCookie).toContain("cinaauth-passkey");
 			},
 		});
 	});
@@ -440,7 +440,7 @@ describe("passkey", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-4vcf-q4xf-f48m
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-4vcf-q4xf-f48m
 	 */
 	it("should not allow deleting another user's passkey", async () => {
 		const { user: userA } = await signInWithTestUser();
@@ -491,7 +491,7 @@ describe("passkey", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-4vcf-q4xf-f48m
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-4vcf-q4xf-f48m
 	 */
 	it("should not allow updating another user's passkey", async () => {
 		const { user: userA } = await signInWithTestUser();

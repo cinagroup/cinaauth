@@ -1,5 +1,5 @@
 import * as z from "zod";
-import type { BetterAuthOptions, Prettify } from "../../types";
+import type { CinaAuthOptions, Prettify } from "../../types";
 import type {
 	InferDBFieldsFromOptions,
 	InferDBFieldsFromPlugins,
@@ -19,11 +19,11 @@ export const userSchema = coreSchema.extend({
 export type BaseUser = z.infer<typeof userSchema>;
 
 /**
- * User schema type used by better-auth, note that it's possible that user could have additional fields
+ * User schema type used by cinaauth, note that it's possible that user could have additional fields
  */
 export type User<
-	DBOptions extends BetterAuthOptions["user"] = BetterAuthOptions["user"],
-	Plugins extends BetterAuthOptions["plugins"] = BetterAuthOptions["plugins"],
+	DBOptions extends CinaAuthOptions["user"] = CinaAuthOptions["user"],
+	Plugins extends CinaAuthOptions["plugins"] = CinaAuthOptions["plugins"],
 > = Prettify<
 	BaseUser &
 		InferDBFieldsFromOptions<DBOptions> &

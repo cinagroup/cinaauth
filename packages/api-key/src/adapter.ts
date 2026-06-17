@@ -1,7 +1,7 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import type { SecondaryStorage } from "@better-auth/core/db";
-import { mapConcurrent } from "@better-auth/core/utils/async";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import type { SecondaryStorage } from "@cinaauth/core/db";
+import { mapConcurrent } from "@cinaauth/core/utils/async";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import type { PredefinedApiKeyOptions } from "./routes";
 import type { ApiKey } from "./types";
 

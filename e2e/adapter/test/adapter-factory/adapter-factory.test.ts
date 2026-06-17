@@ -1,14 +1,14 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { User } from "@better-auth/core/db";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import type { User } from "@cinaauth/core/db";
 import type {
 	AdapterFactoryConfig,
 	AdapterFactoryCustomizeAdapterCreator,
 	CleanedWhere,
 	DBAdapter,
 	Where,
-} from "@better-auth/core/db/adapter";
-import { createAdapterFactory } from "@better-auth/core/db/adapter";
-import { betterAuth } from "better-auth";
+} from "@cinaauth/core/db/adapter";
+import { createAdapterFactory } from "@cinaauth/core/db/adapter";
+import { CinaAuth } from "cinaauth";
 import { describe, expect, test } from "vitest";
 
 /*
@@ -22,7 +22,7 @@ The rest are just edge cases.
 
 */
 
-async function createTestAdapter<Options extends BetterAuthOptions>(
+async function createTestAdapter<Options extends CinaAuthOptions>(
 	props: {
 		config?: Partial<AdapterFactoryConfig>;
 		options?: Options;
@@ -126,7 +126,7 @@ async function createTestAdapter<Options extends BetterAuthOptions>(
 			};
 		},
 	});
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		...options,
 		database: testAdapter,
 	});
@@ -146,7 +146,7 @@ describe("Create Adapter Helper", async () => {
 		expect(adapter.id).toBe(adapterId);
 	});
 
-	test("Should use the id generator if passed into the betterAuth config", async () => {
+	test("Should use the id generator if passed into the CinaAuth config", async () => {
 		const adapter = await createTestAdapter({
 			config: {
 				debugLogs: {},

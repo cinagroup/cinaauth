@@ -1,12 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import { CamelCasePlugin, Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { betterAuth } from "../auth/full";
+import { CinaAuth } from "../auth/full";
 import { getMigrations } from "./get-migration";
 
-const CONNECTION_STRING = "postgres://user:password@localhost:5433/better_auth";
+const CONNECTION_STRING = "postgres://user:password@localhost:5433/cinaauth";
 // Check if PostgreSQL is available
 let isPostgresAvailable = false;
 try {
@@ -67,7 +67,7 @@ describe.runIf(isPostgresAvailable)(
 
 		it("should detect custom schema from search_path", async () => {
 			// Use Pool with search_path option
-			const config: BetterAuthOptions = {
+			const config: CinaAuthOptions = {
 				database: customSchemaPool,
 				emailAndPassword: {
 					enabled: true,
@@ -91,7 +91,7 @@ describe.runIf(isPostgresAvailable)(
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/7926
+		 * @see https://github.com/cinagroup/cinaauth/issues/7926
 		 */
 		it("should detect custom schema with CamelCasePlugin enabled", async () => {
 			// Create a user table in the custom schema so it should be detected as existing
@@ -108,7 +108,7 @@ describe.runIf(isPostgresAvailable)(
 			`);
 
 			try {
-				const config: BetterAuthOptions = {
+				const config: CinaAuthOptions = {
 					database: {
 						db: customSchemaKysely,
 						type: "postgres",
@@ -141,7 +141,7 @@ describe.runIf(isPostgresAvailable)(
 		it("should not be affected by tables in public schema when using custom schema", async () => {
 			// Even though there's a 'user' table in public schema,
 			// when we use custom schema, migrations should create a new user table
-			const config: BetterAuthOptions = {
+			const config: CinaAuthOptions = {
 				database: customSchemaPool,
 				emailAndPassword: {
 					enabled: true,
@@ -176,7 +176,7 @@ describe.runIf(isPostgresAvailable)(
 			);
 		`);
 
-			const config: BetterAuthOptions = {
+			const config: CinaAuthOptions = {
 				database: publicPool,
 				emailAndPassword: {
 					enabled: true,
@@ -205,7 +205,7 @@ describe.runIf(isPostgresAvailable)(
 			);
 			await customSchemaPool.query(`CREATE SCHEMA ${customSchema}`);
 
-			const config: BetterAuthOptions = {
+			const config: CinaAuthOptions = {
 				database: customSchemaPool,
 				emailAndPassword: {
 					enabled: true,
@@ -258,7 +258,7 @@ describe.runIf(isPostgresAvailable)(
 		});
 
 		it("should use uuid for id when `advanced.database.generateId` is set to 'uuid'", async () => {
-			const config: BetterAuthOptions = {
+			const config: CinaAuthOptions = {
 				database: schemaPool,
 				emailAndPassword: {
 					enabled: true,
@@ -272,7 +272,7 @@ describe.runIf(isPostgresAvailable)(
 			const { runMigrations, compileMigrations } = await getMigrations(config);
 			await runMigrations();
 			await compileMigrations();
-			const auth = betterAuth(config);
+			const auth = CinaAuth(config);
 
 			const user = await auth.api.signUpEmail({
 				body: {
@@ -318,7 +318,7 @@ describe.runIf(isPostgresAvailable)(
 		});
 
 		it("should use GENERATED ALWAYS AS IDENTITY instead of SERIAL when `advanced.database.generateId` is set to 'serial'", async () => {
-			const config: BetterAuthOptions = {
+			const config: CinaAuthOptions = {
 				database: schemaPool,
 				emailAndPassword: {
 					enabled: true,
@@ -369,7 +369,7 @@ describe.runIf(isPostgresAvailable)("PostgreSQL Column Additions", () => {
 	});
 
 	it("should update default tables with plugin schema fields", async () => {
-		const config: BetterAuthOptions = {
+		const config: CinaAuthOptions = {
 			database: schemaPool,
 			emailAndPassword: {
 				enabled: true,
@@ -424,10 +424,10 @@ describe.runIf(isPostgresAvailable)("PostgreSQL Column Additions", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8536
+	 * @see https://github.com/cinagroup/cinaauth/issues/8536
 	 */
 	it("should generate valid PostgreSQL CREATE INDEX syntax for indexed columns added to existing tables", async () => {
-		const config: BetterAuthOptions = {
+		const config: CinaAuthOptions = {
 			database: schemaPool,
 			emailAndPassword: {
 				enabled: true,
@@ -463,11 +463,11 @@ describe.runIf(isPostgresAvailable)("PostgreSQL Column Additions", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8536
+ * @see https://github.com/cinagroup/cinaauth/issues/8536
  */
 describe("index generation for columns added to existing tables", () => {
 	it("should use CREATE INDEX when adding indexed columns to existing SQLite tables", async () => {
-		const config: BetterAuthOptions = {
+		const config: CinaAuthOptions = {
 			database: new DatabaseSync(":memory:"),
 			emailAndPassword: {
 				enabled: true,
@@ -502,10 +502,10 @@ describe("index generation for columns added to existing tables", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9689
+	 * @see https://github.com/cinagroup/cinaauth/issues/9689
 	 */
 	it("should execute runMigrations without error when adding indexed columns to existing tables", async () => {
-		const config: BetterAuthOptions = {
+		const config: CinaAuthOptions = {
 			database: new DatabaseSync(":memory:"),
 			emailAndPassword: {
 				enabled: true,
@@ -537,10 +537,10 @@ describe("index generation for columns added to existing tables", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9689
+	 * @see https://github.com/cinagroup/cinaauth/issues/9689
 	 */
 	it("should execute runMigrations when adding a new table with indexed columns to an existing database", async () => {
-		const config: BetterAuthOptions = {
+		const config: CinaAuthOptions = {
 			database: new DatabaseSync(":memory:"),
 			emailAndPassword: {
 				enabled: true,
@@ -590,12 +590,12 @@ describe("index generation for columns added to existing tables", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9689
+	 * @see https://github.com/cinagroup/cinaauth/issues/9689
 	 */
 	it("should execute runMigrations when upgrading an existing table with new indexed columns (simulates 1.4.x -> latest)", async () => {
 		const db = new DatabaseSync(":memory:");
 
-		const baseConfig: BetterAuthOptions = {
+		const baseConfig: CinaAuthOptions = {
 			database: db,
 			emailAndPassword: {
 				enabled: true,
@@ -632,7 +632,7 @@ describe("index generation for columns added to existing tables", () => {
 		const initial = await getMigrations(baseConfig);
 		await initial.runMigrations();
 
-		const upgradedConfig: BetterAuthOptions = {
+		const upgradedConfig: CinaAuthOptions = {
 			database: db,
 			emailAndPassword: {
 				enabled: true,

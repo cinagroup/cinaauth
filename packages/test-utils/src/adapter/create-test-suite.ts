@@ -1,21 +1,21 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
 import type {
 	Account,
 	Session,
 	User,
 	Verification,
-} from "@better-auth/core/db";
-import { getAuthTables } from "@better-auth/core/db";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
+} from "@cinaauth/core/db";
+import { getAuthTables } from "@cinaauth/core/db";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import {
 	createAdapterFactory,
 	deepmerge,
 	initGetDefaultModelName,
-} from "@better-auth/core/db/adapter";
-import { TTY_COLORS } from "@better-auth/core/env";
-import { generateId } from "@better-auth/core/utils/id";
-import type { Auth } from "better-auth";
-import { betterAuth } from "better-auth";
+} from "@cinaauth/core/db/adapter";
+import { TTY_COLORS } from "@cinaauth/core/env";
+import { generateId } from "@cinaauth/core/utils/id";
+import type { Auth } from "cinaauth";
+import { CinaAuth } from "cinaauth";
 import { test } from "vitest";
 import type { Logger } from "./test-adapter";
 
@@ -31,7 +31,7 @@ export type TestEntry =
 			};
 	  }) => Promise<void>)
 	| {
-			migrateBetterAuth?: BetterAuthOptions;
+			migrateCinaAuth?: CinaAuthOptions;
 			test: (context: {
 				readonly skip: {
 					(note?: string | undefined): never;
@@ -41,7 +41,7 @@ export type TestEntry =
 	  };
 
 /**
- * Deep equality comparison for BetterAuthOptions.
+ * Deep equality comparison for CinaAuthOptions.
  * Handles nested objects, arrays, and primitive values.
  */
 function deepEqual(a: any, b: any): boolean {
@@ -169,9 +169,9 @@ export const createTestSuite = <
 >(
 	suiteName: string,
 	config: {
-		defaultBetterAuthOptions?: BetterAuthOptions | undefined;
+		defaultCinaAuthOptions?: CinaAuthOptions | undefined;
 		/**
-		 * Helpful if the default better auth options require migrations to be run.
+		 * Helpful if the default CinaAuth options require migrations to be run.
 		 */
 		alwaysMigrate?: boolean | undefined;
 		prefixTests?: string | undefined;
@@ -191,11 +191,11 @@ export const createTestSuite = <
 			 * A hard cleanup function that will delete all rows from the database.
 			 */
 			hardCleanup: () => Promise<void>;
-			modifyBetterAuthOptions: (
-				options: BetterAuthOptions,
+			modifyCinaAuthOptions: (
+				options: CinaAuthOptions,
 				shouldRunMigrations: boolean,
-			) => Promise<BetterAuthOptions>;
-			getBetterAuthOptions: () => BetterAuthOptions;
+			) => Promise<CinaAuthOptions>;
+			getCinaAuthOptions: () => CinaAuthOptions;
 			sortModels: (
 				models: Array<
 					Record<string, any> & {
@@ -212,7 +212,7 @@ export const createTestSuite = <
 			transformIdOutput?: (id: any) => string | undefined;
 			/**
 			 * Some adapters may change the ID type, this function allows you to pass the entire model
-			 * data and it will return the correct better-auth-expected transformed data.
+			 * data and it will return the correct cinaauth-expected transformed data.
 			 *
 			 * Eg:
 			 * MongoDB uses ObjectId for IDs, but it's possible the user can disable that option in the adapter config.
@@ -237,13 +237,13 @@ export const createTestSuite = <
 			| undefined,
 	) => {
 		return async (helpers: {
-			adapter: () => Promise<DBAdapter<BetterAuthOptions>>;
+			adapter: () => Promise<DBAdapter<CinaAuthOptions>>;
 			log: Logger;
 			adapterDisplayName: string;
-			getBetterAuthOptions: () => BetterAuthOptions;
-			modifyBetterAuthOptions: (
-				options: BetterAuthOptions,
-			) => Promise<BetterAuthOptions>;
+			getCinaAuthOptions: () => CinaAuthOptions;
+			modifyCinaAuthOptions: (
+				options: CinaAuthOptions,
+			) => Promise<CinaAuthOptions>;
 			cleanup: () => Promise<void>;
 			runMigrations: () => Promise<void>;
 			prefixTests?: string | undefined;
@@ -255,13 +255,13 @@ export const createTestSuite = <
 
 			let adapter = await helpers.adapter();
 			const wrapperAdapter = (
-				resolvedOptions?: BetterAuthOptions | undefined,
+				resolvedOptions?: CinaAuthOptions | undefined,
 			) => {
 				const options =
 					resolvedOptions ??
 					deepmerge(
-						config?.defaultBetterAuthOptions || {},
-						helpers.getBetterAuthOptions(),
+						config?.defaultCinaAuthOptions || {},
+						helpers.getCinaAuthOptions(),
 					);
 				const adapterConfig = {
 					adapterId: helpers.adapterDisplayName,
@@ -272,8 +272,8 @@ export const createTestSuite = <
 					disableTransformJoin: true,
 				};
 				const adapterCreator = (
-					options: BetterAuthOptions,
-				): DBAdapter<BetterAuthOptions> =>
+					options: CinaAuthOptions,
+				): DBAdapter<CinaAuthOptions> =>
 					createAdapterFactory({
 						config: {
 							...adapterConfig,
@@ -319,7 +319,7 @@ export const createTestSuite = <
 								},
 								consumeOne: async <T>(
 									args: Parameters<
-										DBAdapter<BetterAuthOptions>["consumeOne"]
+										DBAdapter<CinaAuthOptions>["consumeOne"]
 									>[0],
 								) => {
 									adapter = await helpers.adapter();
@@ -327,7 +327,7 @@ export const createTestSuite = <
 								},
 								incrementOne: async <T>(
 									args: Parameters<
-										DBAdapter<BetterAuthOptions>["incrementOne"]
+										DBAdapter<CinaAuthOptions>["incrementOne"]
 									>[0],
 								) => {
 									adapter = await helpers.adapter();
@@ -368,7 +368,7 @@ export const createTestSuite = <
 				adapter = await helpers.adapter();
 				for (const model of Object.keys(createdRows)) {
 					for (const row of createdRows[model]!) {
-						const schema = getAuthTables(helpers.getBetterAuthOptions());
+						const schema = getAuthTables(helpers.getCinaAuthOptions());
 						const getDefaultModelName = initGetDefaultModelName({
 							schema,
 							usePlural: adapter.options?.adapterConfig.usePlural,
@@ -395,8 +395,8 @@ export const createTestSuite = <
 				}
 			};
 
-			// Track current applied BetterAuth options state
-			let currentAppliedOptions: BetterAuthOptions | null = null;
+			// Track current applied CinaAuth options state
+			let currentAppliedOptions: CinaAuthOptions | null = null;
 
 			// Statistics tracking
 			const stats: TestSuiteStats = {
@@ -409,15 +409,15 @@ export const createTestSuite = <
 			};
 
 			/**
-			 * Apply BetterAuth options and run migrations if needed.
+			 * Apply CinaAuth options and run migrations if needed.
 			 * Tracks migration statistics.
 			 */
 			const applyOptionsAndMigrate = async (
-				options: BetterAuthOptions | Partial<BetterAuthOptions>,
+				options: CinaAuthOptions | Partial<CinaAuthOptions>,
 				forceMigrate: boolean = false,
-			): Promise<BetterAuthOptions> => {
+			): Promise<CinaAuthOptions> => {
 				const finalOptions = deepmerge(
-					config?.defaultBetterAuthOptions || {},
+					config?.defaultCinaAuthOptions || {},
 					options || {},
 				);
 
@@ -426,7 +426,7 @@ export const createTestSuite = <
 
 				if (optionsChanged || forceMigrate) {
 					adapter = await helpers.adapter();
-					await helpers.modifyBetterAuthOptions(finalOptions);
+					await helpers.modifyCinaAuthOptions(finalOptions);
 
 					if (config.alwaysMigrate || forceMigrate) {
 						const migrationStart = performance.now();
@@ -613,8 +613,8 @@ export const createTestSuite = <
 				});
 			};
 
-			const modifyBetterAuthOptions = async (
-				opts: BetterAuthOptions,
+			const modifyCinaAuthOptions = async (
+				opts: CinaAuthOptions,
 				shouldRunMigrations: boolean,
 			) => {
 				return await applyOptionsAndMigrate(opts, shouldRunMigrations);
@@ -641,16 +641,16 @@ export const createTestSuite = <
 					getAuth: async () => {
 						adapter = await helpers.adapter();
 						const options = deepmerge(
-							config?.defaultBetterAuthOptions || {},
-							helpers.getBetterAuthOptions(),
+							config?.defaultCinaAuthOptions || {},
+							helpers.getCinaAuthOptions(),
 						);
-						const auth = betterAuth({
+						const auth = CinaAuth({
 							...options,
-							database: (options: BetterAuthOptions) => {
+							database: (options: CinaAuthOptions) => {
 								const adapter = wrapperAdapter(options);
 								return adapter;
 							},
-						} as BetterAuthOptions);
+						} as CinaAuthOptions);
 						return auth;
 					},
 					log: helpers.log,
@@ -658,8 +658,8 @@ export const createTestSuite = <
 					cleanup: cleanupCreatedRows,
 					hardCleanup: helpers.cleanup,
 					insertRandom,
-					modifyBetterAuthOptions,
-					getBetterAuthOptions: helpers.getBetterAuthOptions,
+					modifyCinaAuthOptions,
+					getCinaAuthOptions: helpers.getCinaAuthOptions,
 					sortModels,
 					tryCatch,
 					customIdGenerator: helpers.customIdGenerator,
@@ -677,9 +677,9 @@ export const createTestSuite = <
 				try {
 					await helpers.cleanup();
 				} catch {}
-				if (config.defaultBetterAuthOptions && !allDisabled) {
+				if (config.defaultCinaAuthOptions && !allDisabled) {
 					await applyOptionsAndMigrate(
-						config.defaultBetterAuthOptions,
+						config.defaultCinaAuthOptions,
 						config.alwaysMigrate,
 					);
 				}
@@ -697,31 +697,31 @@ export const createTestSuite = <
 						(condition: boolean, note?: string | undefined): void;
 					};
 				}) => Promise<void>;
-				migrateBetterAuth?: BetterAuthOptions;
+				migrateCinaAuth?: CinaAuthOptions;
 			} => {
 				if (typeof entry === "function") {
 					return { testFn: entry };
 				}
 				return {
 					testFn: entry.test,
-					migrateBetterAuth: entry.migrateBetterAuth,
+					migrateCinaAuth: entry.migrateCinaAuth,
 				};
 			};
 
 			// Convert test entries to array with migration info (moved before onFinish for access)
 			const testEntries = Object.entries(fullTests).map(([name, entry]) => {
-				const { testFn, migrateBetterAuth } = extractTestEntry(
+				const { testFn, migrateCinaAuth } = extractTestEntry(
 					entry as TestEntry,
 				);
-				return { name, testFn, migrateBetterAuth };
+				return { name, testFn, migrateCinaAuth };
 			});
 
 			/**
-			 * Group tests by their migrateBetterAuth options.
+			 * Group tests by their migrateCinaAuth options.
 			 * Tests with equal migration options are grouped together.
 			 */
 			type TestGroup = {
-				migrationOptions: BetterAuthOptions | null | undefined;
+				migrationOptions: CinaAuthOptions | null | undefined;
 				testIndices: number[];
 			};
 
@@ -730,7 +730,7 @@ export const createTestSuite = <
 				let currentGroup: TestGroup | null = null;
 
 				for (let i = 0; i < testEntries.length; i++) {
-					const { migrateBetterAuth } = testEntries[i]!;
+					const { migrateCinaAuth } = testEntries[i]!;
 					const isSkipped =
 						(allDisabled &&
 							options?.disableTests?.[testEntries[i]!.name] !== false) ||
@@ -743,7 +743,7 @@ export const createTestSuite = <
 							currentGroup = null;
 						}
 						groups.push({
-							migrationOptions: migrateBetterAuth,
+							migrationOptions: migrateCinaAuth,
 							testIndices: [i],
 						});
 						continue;
@@ -752,7 +752,7 @@ export const createTestSuite = <
 					// Check if this test belongs to the current group
 					if (
 						currentGroup &&
-						deepEqual(currentGroup.migrationOptions, migrateBetterAuth)
+						deepEqual(currentGroup.migrationOptions, migrateCinaAuth)
 					) {
 						currentGroup.testIndices.push(i);
 					} else {
@@ -761,7 +761,7 @@ export const createTestSuite = <
 							groups.push(currentGroup);
 						}
 						currentGroup = {
-							migrationOptions: migrateBetterAuth,
+							migrationOptions: migrateCinaAuth,
 							testIndices: [i],
 						};
 					}
@@ -831,11 +831,11 @@ export const createTestSuite = <
 			};
 
 			// Track the current group's migration options
-			let currentGroupMigrationOptions: BetterAuthOptions | null | undefined =
+			let currentGroupMigrationOptions: CinaAuthOptions | null | undefined =
 				null;
 
 			for (let i = 0; i < testEntries.length; i++) {
-				const { name: testName, testFn, migrateBetterAuth } = testEntries[i]!;
+				const { name: testName, testFn, migrateCinaAuth } = testEntries[i]!;
 
 				// Find which group this test belongs to
 				const testGroup = testGroups.find((group) =>
@@ -869,15 +869,15 @@ export const createTestSuite = <
 							if (shouldSkip) return;
 
 							const thisMigration = deepmerge(
-								config.defaultBetterAuthOptions || {},
-								migrateBetterAuth || {},
+								config.defaultCinaAuthOptions || {},
+								migrateCinaAuth || {},
 							);
 
 							// If this is the first test in a group, migrate to the group's options
 							if (isFirstInGroup && testGroup) {
 								const groupMigrationOptions = testGroup.migrationOptions;
 								const groupFinalOptions = deepmerge(
-									config.defaultBetterAuthOptions || {},
+									config.defaultCinaAuthOptions || {},
 									groupMigrationOptions || {},
 								);
 
@@ -894,10 +894,10 @@ export const createTestSuite = <
 							}
 							// If this test is not in a group or not first in group, check if migration is needed
 							else if (
-								!deepEqual(currentGroupMigrationOptions, migrateBetterAuth)
+								!deepEqual(currentGroupMigrationOptions, migrateCinaAuth)
 							) {
 								await applyOptionsAndMigrate(thisMigration, true);
-								currentGroupMigrationOptions = migrateBetterAuth;
+								currentGroupMigrationOptions = migrateCinaAuth;
 							}
 						})();
 

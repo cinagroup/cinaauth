@@ -1,13 +1,13 @@
 {
-  "name": "@better-auth/kysely-adapter",
+  "name": "@cinaauth/kysely-adapter",
   "version": "1.6.19",
-  "description": "Kysely adapter for Better Auth",
+  "description": "Kysely adapter for CinaAuth",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/adapters/kysely",
+  "homepage": "https://www.cinagroup.com/docs/adapters/kysely",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/kysely-adapter"
   },
   "keywords": [
@@ -15,7 +15,7 @@
     "kysely",
     "adapter",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -48,7 +48,7 @@
     }
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:",
     "kysely": "catalog:"
   },
@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250121.0",
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "@better-auth/utils": "catalog:",
     "kysely": "catalog:",
     "tsdown": "catalog:",

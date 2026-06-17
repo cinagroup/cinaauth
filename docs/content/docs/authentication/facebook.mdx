@@ -1,4 +1,4 @@
----
+﻿---
 title: Facebook
 description: Facebook provider setup and usage.
 ---
@@ -26,9 +26,9 @@ description: Facebook provider setup and usage.
     To configure the provider, you need to import the provider and pass it to the `socialProviders` option of the auth instance.
 
     ```ts title="auth.ts"  
-    import { betterAuth } from "better-auth"
+    import { CinaAuth } from "cinaauth"
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         socialProviders: {
             facebook: { // [!code highlight]
                 clientId: process.env.FACEBOOK_CLIENT_ID as string, // [!code highlight]
@@ -39,8 +39,8 @@ description: Facebook provider setup and usage.
     ```
 
     <Callout>
-      BetterAuth also supports Facebook Login for Business, all you need
-      to do is provide the `configId` as listed in **Facebook Login For Business > Configurations** alongside your `clientId` and `clientSecret`. Note that the app must be a Business app and, since BetterAuth expects to have an email address and account id, the configuration must be of the "User access token" type. "System-user access token" is not supported.
+      CinaAuth also supports Facebook Login for Business, all you need
+      to do is provide the `configId` as listed in **Facebook Login For Business > Configurations** alongside your `clientId` and `clientSecret`. Note that the app must be a Business app and, since CinaAuth expects to have an email address and account id, the configuration must be of the "User access token" type. "System-user access token" is not supported.
     </Callout>
 
     <Callout>
@@ -56,7 +56,7 @@ description: Facebook provider setup and usage.
     * `provider`: The provider to use. It should be set to `facebook`.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/auth-client"
+    import { createAuthClient } from "cinaauth/auth-client"
     const authClient = createAuthClient()
 
     const signIn = async () => {
@@ -75,7 +75,7 @@ description: Facebook provider setup and usage.
 By default, Facebook provides basic user information. If you need additional permissions, you can specify scopes in your auth configuration:
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
     socialProviders: {
         facebook: {
             clientId: process.env.FACEBOOK_CLIENT_ID as string,
@@ -104,7 +104,7 @@ This is useful when you have the ID Token from Facebook on the client-side and w
   If ID token is provided no redirection will happen, and the user will be signed in directly.
 </Callout>
 
-For limited login, you need to pass `idToken.token`, for only `accessToken` you need to pass `idToken.accessToken` and `idToken.token` together because of [#1183](https://github.com/better-auth/better-auth/issues/1183).
+For limited login, you need to pass `idToken.token`, for only `accessToken` you need to pass `idToken.accessToken` and `idToken.token` together because of [#1183](https://github.com/cinagroup/cinaauth/issues/1183).
 
 ```ts title="auth-client.ts"
 const data = await authClient.signIn.social({

@@ -1,4 +1,4 @@
-import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+﻿import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { File, Files, Folder } from "fumadocs-ui/components/files";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
@@ -53,8 +53,8 @@ export default async function Page({
 
 	// Upstream content always lives at docs/content/docs on each branch;
 	// `content/docs-beta` is only a local sync target, not in the repo tree.
-	const rawBase = `https://raw.githubusercontent.com/better-auth/better-auth/${version.branch}/docs/content/docs`;
-	const githubBase = `https://github.com/better-auth/better-auth/blob/${version.branch}/docs/content/docs`;
+	const rawBase = `https://raw.githubusercontent.com/cinaauth/cinaauth/${version.branch}/docs/content/docs`;
+	const githubBase = `https://github.com/cinagroup/cinaauth/blob/${version.branch}/docs/content/docs`;
 
 	// Keep every absolute /docs link scoped to the version being viewed.
 	const scope = (href: string | undefined) => scopeDocsHref(href, version);
@@ -69,8 +69,8 @@ export default async function Page({
 			}}
 			breadcrumb={{ enabled: false }}
 			editOnGithub={{
-				owner: "better-auth",
-				repo: "better-auth",
+				owner: "cinaauth",
+				repo: "cinaauth",
 				sha: version.branch,
 				path: `docs/content/docs/${page.path}`,
 			}}

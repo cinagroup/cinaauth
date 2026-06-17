@@ -1,10 +1,10 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { createTestSuite } from "@better-auth/test-utils/adapter";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import { createTestSuite } from "@cinaauth/test-utils/adapter";
 import { getNormalTestSuiteTests } from "../adapter-factory";
 
 export const DEFAULT_SCHEMA_REFERENCE = "internal";
 
-const DEFAULT_BETTER_AUTH_OPTIONS: BetterAuthOptions = {
+const DEFAULT_CINAAUTH_OPTIONS: CinaAuthOptions = {
 	user: {
 		modelName: `${DEFAULT_SCHEMA_REFERENCE}.users`,
 	},
@@ -23,7 +23,7 @@ const DEFAULT_BETTER_AUTH_OPTIONS: BetterAuthOptions = {
 export const schemaRefTestSuite = createTestSuite(
 	"schema-reference",
 	{
-		defaultBetterAuthOptions: DEFAULT_BETTER_AUTH_OPTIONS,
+		defaultCinaAuthOptions: DEFAULT_CINAAUTH_OPTIONS,
 		alwaysMigrate: true,
 		prefixTests: "schema-reference",
 	},
@@ -42,8 +42,8 @@ export const schemaRefTestSuite = createTestSuite(
 export const schemaRefJoinTestSuite = createTestSuite(
 	"schema-reference-join",
 	{
-		defaultBetterAuthOptions: {
-			...DEFAULT_BETTER_AUTH_OPTIONS,
+		defaultCinaAuthOptions: {
+			...DEFAULT_CINAAUTH_OPTIONS,
 			experimental: {
 				joins: true,
 			},

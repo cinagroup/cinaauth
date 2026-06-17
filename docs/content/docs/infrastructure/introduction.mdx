@@ -1,9 +1,9 @@
----
-title: Better Auth Infrastructure
-description: Enterprise-grade dashboard, security, and managed services for Better Auth.
+﻿---
+title: CinaAuth Infrastructure
+description: Enterprise-grade dashboard, security, and managed services for CinaAuth.
 ---
 
-Better Auth Infrastructure is a paid service that extends your authentication system with a management dashboard,
+CinaAuth Infrastructure is a paid service that extends your authentication system with a management dashboard,
 abuse protection, transactional messaging, and enterprise features - all without managing additional infrastructure.
 
 ## Key Features
@@ -21,11 +21,11 @@ abuse protection, transactional messaging, and enterprise features - all without
 You're one plugin away from getting started:
 
 ```ts
-import { betterAuth } from "better-auth";
-import { dash } from "@better-auth/infra";
-import { sentinel } from "@better-auth/infra";
+import { CinaAuth } from "cinaauth";
+import { dash } from "@cinaauth/infra";
+import { sentinel } from "@cinaauth/infra";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [dash()],
 });
 ```

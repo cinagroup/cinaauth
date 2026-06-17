@@ -1,4 +1,4 @@
-import { Link } from "lucide-react";
+﻿import { Link } from "lucide-react";
 import type { JSX, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -109,7 +109,7 @@ export const APIMethod = ({
 	isExternalOnly?: boolean;
 	/**
 	 * The `ts` codeblock which describes the API method.
-	 * I recommend checking other parts of the Better-Auth docs which is using this component to get an idea of how to
+	 * I recommend checking other parts of the CinaAuth docs which is using this component to get an idea of how to
 	 * write out the children.
 	 */
 	children: JSX.Element;
@@ -908,7 +908,7 @@ function createServerBody({
 	} else if (requireHeaders) {
 		fetchOptions += `\n    // ${
 			headersComment ||
-			"Pass the current request headers so Better Auth can read and set cookies."
+			"Pass the current request headers so CinaAuth can read and set cookies."
 		}\n    headers: await headers(),`;
 	}
 

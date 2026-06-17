@@ -1,7 +1,7 @@
-import type { LiteralString } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { whereOperators } from "@better-auth/core/db/adapter";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import type { LiteralString } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { whereOperators } from "@cinaauth/core/db/adapter";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
 import { getSessionFromCtx, sessionMiddleware } from "../../../api";
 import type { InferAdditionalFieldsFromPluginOptions } from "../../../db";

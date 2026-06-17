@@ -1,6 +1,6 @@
-import { execSync } from "node:child_process";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
+﻿import { execSync } from "node:child_process";
+import { drizzleAdapter } from "@cinaauth/drizzle-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2/promise";
 import { assert } from "vitest";
@@ -16,7 +16,7 @@ import {
 import { generateDrizzleSchema, resetGenerationCount } from "./generate-schema";
 
 const mysqlDB = createPool({
-	uri: "mysql://user:password@localhost:3306/better_auth",
+	uri: "mysql://user:password@localhost:3306/cinaauth",
 	timezone: "Z",
 });
 
@@ -29,20 +29,20 @@ const { execute } = await testAdapter({
 			provider: "mysql",
 		});
 	},
-	async runMigrations(betterAuthOptions) {
-		await mysqlDB.query("DROP DATABASE IF EXISTS better_auth");
-		await mysqlDB.query("CREATE DATABASE better_auth");
-		await mysqlDB.query("USE better_auth");
+	async runMigrations(CinaAuthOptions) {
+		await mysqlDB.query("DROP DATABASE IF EXISTS cinaauth");
+		await mysqlDB.query("CREATE DATABASE cinaauth");
+		await mysqlDB.query("USE cinaauth");
 
 		const { fileName } = await generateDrizzleSchema(
 			mysqlDB,
-			betterAuthOptions,
+			CinaAuthOptions,
 			"mysql",
 		);
 
-		const command = `npx drizzle-kit push --dialect=mysql --schema=${fileName}.ts --url=mysql://user:password@localhost:3306/better_auth`;
+		const command = `npx drizzle-kit push --dialect=mysql --schema=${fileName}.ts --url=mysql://user:password@localhost:3306/cinaauth`;
 		console.log(`Running: ${command}`);
-		console.log(`Options:`, betterAuthOptions);
+		console.log(`Options:`, CinaAuthOptions);
 		try {
 			// wait for the above console.log to be printed
 			await new Promise((resolve) => setTimeout(resolve, 10));
@@ -57,9 +57,9 @@ const { execute } = await testAdapter({
 
 		// ensure migrations were run successfully
 		const [tables_result] = (await mysqlDB.query("SHOW TABLES")) as unknown as [
-			{ Tables_in_better_auth: string }[],
+			{ Tables_in_cinaauth: string }[],
 		];
-		const tables = tables_result.map((table) => table.Tables_in_better_auth);
+		const tables = tables_result.map((table) => table.Tables_in_cinaauth);
 		assert(tables.length > 0, "No tables found");
 	},
 	prefixTests: "mysql",

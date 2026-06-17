@@ -40,12 +40,12 @@ describe("Init CLI - imports utility", () => {
 	it("should group imports by path", () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [createImport({ name: "username" })],
 				isNamedImport: false,
 			},
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [createImport({ name: "organization" })],
 				isNamedImport: false,
 			},
@@ -53,7 +53,7 @@ describe("Init CLI - imports utility", () => {
 		const result = groupImports(imports);
 		expect(result).toEqual([
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [
 					createImport({ name: "username" }),
 					createImport({ name: "organization" }),
@@ -66,17 +66,17 @@ describe("Init CLI - imports utility", () => {
 	it("should sort named imports to the end", async () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: createImport({ name: "test" }),
 				isNamedImport: true,
 			},
 			{
-				path: "better-auth",
-				imports: [createImport({ name: "betterAuth" })],
+				path: "cinaauth",
+				imports: [createImport({ name: "CinaAuth" })],
 				isNamedImport: false,
 			},
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [createImport({ name: "username" })],
 				isNamedImport: false,
 			},
@@ -84,9 +84,9 @@ describe("Init CLI - imports utility", () => {
 
 		const result = await getImportString(imports);
 		const expected = [
-			'import { betterAuth } from "better-auth";',
-			'import { username } from "better-auth/plugins";',
-			'import test from "better-auth/plugins";',
+			'import { CinaAuth } from "cinaauth";',
+			'import { username } from "cinaauth/plugins";',
+			'import test from "cinaauth/plugins";',
 		].join("\n");
 		expect(result).toEqual(expected);
 	});
@@ -94,17 +94,17 @@ describe("Init CLI - imports utility", () => {
 	it("should group imports except for named imports", () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [createImport({ name: "username" })],
 				isNamedImport: false,
 			},
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [createImport({ name: "organization" })],
 				isNamedImport: false,
 			},
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: createImport({ name: "test" }),
 				isNamedImport: true,
 			},
@@ -113,7 +113,7 @@ describe("Init CLI - imports utility", () => {
 		const result = groupImports(imports);
 		expect(result).toEqual([
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [
 					createImport({ name: "username" }),
 					createImport({ name: "organization" }),
@@ -121,7 +121,7 @@ describe("Init CLI - imports utility", () => {
 				isNamedImport: false,
 			},
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: createImport({ name: "test" }),
 				isNamedImport: true,
 			},
@@ -131,31 +131,31 @@ describe("Init CLI - imports utility", () => {
 	it("should get the import string", async () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [createImport({ name: "username" })],
 				isNamedImport: false,
 			},
 		] satisfies ImportGroup[];
 		const result = await getImportString(imports);
-		expect(result).toEqual('import { username } from "better-auth/plugins";');
+		expect(result).toEqual('import { username } from "cinaauth/plugins";');
 	});
 
 	it("should get the import string with named imports", async () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: createImport({ name: "username" }),
 				isNamedImport: true,
 			},
 		] satisfies ImportGroup[];
 		const result = await getImportString(imports);
-		expect(result).toEqual('import username from "better-auth/plugins";');
+		expect(result).toEqual('import username from "cinaauth/plugins";');
 	});
 
 	it("should get the import string with multiple imports", async () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [
 					createImport({ name: "username" }),
 					createImport({ name: "organization" }),
@@ -165,32 +165,32 @@ describe("Init CLI - imports utility", () => {
 		] satisfies ImportGroup[];
 		const result = await getImportString(imports);
 		expect(result).toEqual(
-			'import { username, organization } from "better-auth/plugins";',
+			'import { username, organization } from "cinaauth/plugins";',
 		);
 	});
 
 	it("should get the import string with multiple imports and named imports", async () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [createImport({ name: "username" })],
 				isNamedImport: false,
 			},
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [createImport({ name: "organization" })],
 				isNamedImport: false,
 			},
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: createImport({ name: "test" }),
 				isNamedImport: true,
 			},
 		] satisfies ImportGroup[];
 		const result = await getImportString(imports);
 		const expected = [
-			'import { username, organization } from "better-auth/plugins";',
-			'import test from "better-auth/plugins";',
+			'import { username, organization } from "cinaauth/plugins";',
+			'import test from "cinaauth/plugins";',
 		].join("\n");
 		expect(result).toEqual(expected);
 	});
@@ -198,7 +198,7 @@ describe("Init CLI - imports utility", () => {
 	it("should get the import string with multiple imports and named imports and multiple paths", async () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [
 					createImport({ name: "username" }),
 					createImport({ name: "organization" }),
@@ -206,15 +206,15 @@ describe("Init CLI - imports utility", () => {
 				isNamedImport: false,
 			},
 			{
-				path: "better-auth/client/plugins",
+				path: "cinaauth/client/plugins",
 				imports: createImport({ name: "usernameClient" }),
 				isNamedImport: true,
 			},
 		] satisfies ImportGroup[];
 		const result = await getImportString(imports);
 		const expected = [
-			'import { username, organization } from "better-auth/plugins";',
-			'import usernameClient from "better-auth/client/plugins";',
+			'import { username, organization } from "cinaauth/plugins";',
+			'import usernameClient from "cinaauth/client/plugins";',
 		].join("\n");
 		expect(result).toEqual(expected);
 	});
@@ -222,7 +222,7 @@ describe("Init CLI - imports utility", () => {
 	it("should get import string with alias and type", async () => {
 		const imports = [
 			{
-				path: "better-auth/plugins",
+				path: "cinaauth/plugins",
 				imports: [
 					createImport({ name: "username", alias: "User", asType: true }),
 					createImport({ name: "organization", alias: "Org" }),
@@ -237,7 +237,7 @@ describe("Init CLI - imports utility", () => {
 			"  type username as User,",
 			"  organization as Org,",
 			"  type Test,",
-			'} from "better-auth/plugins";',
+			'} from "cinaauth/plugins";',
 		].join("\n");
 		expect(result).toEqual(expected);
 	});

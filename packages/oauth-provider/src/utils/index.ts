@@ -1,5 +1,5 @@
-import type { AuthContext, GenericEndpointContext } from "@better-auth/core";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { AuthContext, GenericEndpointContext } from "@cinaauth/core";
+import { CinaAuthError } from "@cinaauth/core/error";
 import { base64, base64Url } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
 import {
@@ -7,8 +7,8 @@ import {
 	makeSignature,
 	symmetricDecrypt,
 	symmetricEncrypt,
-} from "better-auth/crypto";
-import type { jwt } from "better-auth/plugins";
+} from "cinaauth/crypto";
+import type { jwt } from "cinaauth/plugins";
 import { APIError } from "better-call";
 import type { oauthProvider } from "../oauth";
 import { canonicalizeOAuthQueryParams } from "../signed-query";
@@ -63,7 +63,7 @@ export const getOAuthProviderPlugin = (ctx: AuthContext) => {
 export const getJwtPlugin = (ctx: AuthContext) => {
 	const plugin = ctx.getPlugin("jwt") satisfies ReturnType<typeof jwt> | null;
 	if (!plugin) {
-		throw new BetterAuthError("jwt_config");
+		throw new CinaAuthError("jwt_config");
 	}
 	return plugin;
 };
@@ -224,7 +224,7 @@ export async function decryptStoredClientSecret(
 		return await storageMethod.decrypt(storedClientSecret);
 	}
 
-	throw new BetterAuthError(
+	throw new CinaAuthError(
 		`Unsupported decryption storageMethod type '${storageMethod}'`,
 	);
 }
@@ -301,7 +301,7 @@ async function verifyStoredClientSecret(
 		);
 	}
 
-	throw new BetterAuthError(
+	throw new CinaAuthError(
 		`Unsupported verify storageMethod type '${storageMethod}'`,
 	);
 }
@@ -332,7 +332,7 @@ export async function storeClientSecret(
 		return await storageMethod.encrypt(clientSecret);
 	}
 
-	throw new BetterAuthError(
+	throw new CinaAuthError(
 		`Unsupported storeClientSecret type '${storageMethod}'`,
 	);
 }
@@ -354,7 +354,7 @@ export async function storeToken(
 		return await storageMethod.hash(token, type);
 	}
 
-	throw new BetterAuthError(
+	throw new CinaAuthError(
 		`storeToken: unsupported storageMethod type '${storageMethod}'`,
 	);
 }
@@ -377,7 +377,7 @@ export async function getStoredToken(
 		return hashedToken;
 	}
 
-	throw new BetterAuthError(
+	throw new CinaAuthError(
 		`getStoredToken: unsupported storageMethod type '${storageMethod}'`,
 	);
 }
@@ -569,7 +569,7 @@ export function parsePrompt(prompt: string) {
 function getSectorIdentifier(client: SchemaClient<Scope[]>): string {
 	const uri = client.redirectUris?.[0];
 	if (!uri) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"Client has no redirect URIs for sector identifier",
 		);
 	}

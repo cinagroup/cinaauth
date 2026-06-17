@@ -1,16 +1,16 @@
-# Better Auth Prisma Adapter
+﻿# CinaAuth Prisma Adapter
 
-Prisma adapter for [Better Auth](https://www.better-auth.com).
+Prisma adapter for [CinaAuth](https://www.cinagroup.com).
 
 ## Installation
 
 ```bash
-npm install @better-auth/prisma-adapter
+npm install @cinaauth/prisma-adapter
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/adapters/prisma](https://www.better-auth.com/docs/adapters/prisma).
+For full documentation, visit [cinagroup.com/docs/adapters/prisma](https://www.cinagroup.com/docs/adapters/prisma).
 
 ## License
 

@@ -1,27 +1,27 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import {
 	getCurrentAdapter,
 	getCurrentAuthContext,
 	queueAfterTransactionHook,
-} from "@better-auth/core/context";
-import type { BaseModelNames } from "@better-auth/core/db";
-import type { DBAdapter, Where } from "@better-auth/core/db/adapter";
+} from "@cinaauth/core/context";
+import type { BaseModelNames } from "@cinaauth/core/db";
+import type { DBAdapter, Where } from "@cinaauth/core/db/adapter";
 import {
 	ATTR_CONTEXT,
 	ATTR_DB_COLLECTION_NAME,
 	ATTR_HOOK_TYPE,
 	withSpan,
-} from "@better-auth/core/instrumentation";
+} from "@cinaauth/core/instrumentation";
 
 export type DatabaseHooksEntry = {
 	source: string;
-	hooks: Exclude<BetterAuthOptions["databaseHooks"], undefined>;
+	hooks: Exclude<CinaAuthOptions["databaseHooks"], undefined>;
 };
 
 export function getWithHooks(
-	adapter: DBAdapter<BetterAuthOptions>,
+	adapter: DBAdapter<CinaAuthOptions>,
 	ctx: {
-		options: BetterAuthOptions;
+		options: CinaAuthOptions;
 		hooks: DatabaseHooksEntry[];
 	},
 ) {

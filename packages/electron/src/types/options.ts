@@ -23,7 +23,7 @@ export interface ElectronOptions extends ElectronSharedOptions {
 	/**
 	 * The prefix to use for cookies set by the plugin.
 	 *
-	 * @default "better-auth"
+	 * @default "cinaauth"
 	 */
 	cookiePrefix?: string | undefined;
 	/**

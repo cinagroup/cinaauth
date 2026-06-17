@@ -1,7 +1,7 @@
-import { runWithEndpointContext } from "@better-auth/core/context";
-import type { User } from "better-auth";
-import { organization } from "better-auth/plugins/organization";
-import { getTestInstance } from "better-auth/test";
+﻿import { runWithEndpointContext } from "@cinaauth/core/context";
+import type { User } from "cinaauth";
+import { organization } from "cinaauth/plugins/organization";
+import { getTestInstance } from "cinaauth/test";
 import type Stripe from "stripe";
 import { describe, expect, vi } from "vitest";
 import { stripe } from "../src";
@@ -809,7 +809,7 @@ describe("stripe customer", () => {
 		});
 	});
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7959
+	 * @see https://github.com/cinagroup/cinaauth/issues/7959
 	 */
 	describe("Search API fallback for unsupported regions", () => {
 		function mockStripeList(data: Partial<Stripe.Customer>[] = []) {

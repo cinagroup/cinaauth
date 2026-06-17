@@ -1,16 +1,16 @@
-import { DatabaseSync } from "node:sqlite";
+﻿import { DatabaseSync } from "node:sqlite";
 import type { TestContext } from "node:test";
 import { test } from "node:test";
-import type { GoogleProfile } from "@better-auth/core/social-providers";
-import { redisStorage } from "@better-auth/redis-storage";
-import { betterAuth } from "better-auth";
-import { signJWT } from "better-auth/crypto";
-import { getMigrations } from "better-auth/db/migration";
+import type { GoogleProfile } from "@cinaauth/core/social-providers";
+import { redisStorage } from "@cinaauth/redis-storage";
+import { CinaAuth } from "cinaauth";
+import { signJWT } from "cinaauth/crypto";
+import { getMigrations } from "cinaauth/db/migration";
 import { Redis } from "ioredis";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 
-const DEFAULT_SECRET = "better-auth-secret-123456789";
+const DEFAULT_SECRET = "cinaauth-secret-123456789";
 
 // Setup MSW server to proxy/mock network requests
 const mswServer = setupServer(
@@ -69,7 +69,7 @@ test("Redis secondary storage integration", async (t) => {
 	await t.test(
 		"should store session data in Redis after email signup",
 		async (t: TestContext) => {
-			const auth = betterAuth({
+			const auth = CinaAuth({
 				database: new DatabaseSync(":memory:"),
 				emailAndPassword: {
 					enabled: true,
@@ -108,7 +108,7 @@ test("Redis secondary storage integration", async (t) => {
 	await t.test(
 		"should have session id in Redis when `storeSessionInDatabase` is true",
 		async (t: TestContext) => {
-			const auth = betterAuth({
+			const auth = CinaAuth({
 				database: new DatabaseSync(":memory:"),
 				emailAndPassword: {
 					enabled: true,
@@ -150,7 +150,7 @@ test("Redis secondary storage integration", async (t) => {
 	await t.test(
 		"should store session data in Redis with stateless mode and Google OAuth",
 		async (t: TestContext) => {
-			const auth = betterAuth({
+			const auth = CinaAuth({
 				// do not set database, as we are using stateless mode
 				database: undefined,
 				secret: DEFAULT_SECRET,
@@ -239,7 +239,7 @@ test("Redis secondary storage integration", async (t) => {
 		async (t: TestContext) => {
 			const customAuthEndpoint = "http://localhost:8080/custom-oauth/authorize";
 
-			const auth = betterAuth({
+			const auth = CinaAuth({
 				// do not set database, as we are using stateless mode
 				database: undefined,
 				secret: DEFAULT_SECRET,

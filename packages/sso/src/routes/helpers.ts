@@ -1,4 +1,4 @@
-import type { DBAdapter } from "@better-auth/core/db/adapter";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import { saml } from "../samlify";
 import type { SAMLConfig, SSOOptions, SSOProvider } from "../types";
 import { normalizePem, safeJsonParse } from "../utils";

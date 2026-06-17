@@ -113,7 +113,7 @@ describe("verifyAccessToken", () => {
 	}
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9654
+	 * @see https://github.com/cinagroup/cinaauth/issues/9654
 	 */
 	it("should translate jose claim validation failures to unauthorized API errors", async () => {
 		const { publicJWK, privateKey, kid } = await createTestJWKS();
@@ -131,7 +131,7 @@ describe("verifyAccessToken", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9654
+	 * @see https://github.com/cinagroup/cinaauth/issues/9654
 	 */
 	it("should translate jose signature verification failures to unauthorized API errors", async () => {
 		const signingKey = await createTestJWKS();
@@ -155,7 +155,7 @@ describe("verifyAccessToken", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9654
+	 * @see https://github.com/cinagroup/cinaauth/issues/9654
 	 */
 	it("should translate jose no matching key failures to unauthorized API errors", async () => {
 		const signingKey = await createTestJWKS();
@@ -175,7 +175,7 @@ describe("verifyAccessToken", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9654
+	 * @see https://github.com/cinagroup/cinaauth/issues/9654
 	 */
 	it("should verify a JWS without kid using the fetched JWKS", async () => {
 		const { publicJWK, privateKey } = await createTestJWKS();
@@ -192,7 +192,7 @@ describe("verifyAccessToken", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9654
+	 * @see https://github.com/cinagroup/cinaauth/issues/9654
 	 */
 	it("should keep expired token failures as expired unauthorized API errors", async () => {
 		const { publicJWK, privateKey, kid } = await createTestJWKS();
@@ -559,7 +559,7 @@ describe("verifyAccessToken", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9654
+	 * @see https://github.com/cinagroup/cinaauth/issues/9654
 	 */
 	it("should leave JWKS infrastructure failures as jose errors", async () => {
 		vi.resetModules();

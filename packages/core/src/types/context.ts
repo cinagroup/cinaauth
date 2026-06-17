@@ -1,7 +1,7 @@
 import type { CookieOptions, EndpointContext } from "better-call";
 import type {
 	Account,
-	BetterAuthDBSchema,
+	CinaAuthDBSchema,
 	ModelNames,
 	SecondaryStorage,
 	Session,
@@ -11,21 +11,21 @@ import type {
 import type { DBAdapter, Where } from "../db/adapter";
 import type { createLogger } from "../env";
 import type { OAuthProvider } from "../oauth2";
-import type { BetterAuthCookie, BetterAuthCookies } from "./cookie";
+import type { CinaAuthCookie, CinaAuthCookies } from "./cookie";
 import type { Awaitable, LiteralString } from "./helper";
 import type {
-	BetterAuthOptions,
-	BetterAuthRateLimitOptions,
+	CinaAuthOptions,
+	CinaAuthRateLimitOptions,
 } from "./init-options";
-import type { BetterAuthPlugin } from "./plugin";
+import type { CinaAuthPlugin } from "./plugin";
 import type { SecretConfig } from "./secret";
 
 /**
  * @internal
  */
-type InferPluginID<O extends BetterAuthOptions> =
+type InferPluginID<O extends CinaAuthOptions> =
 	O["plugins"] extends Array<infer P>
-		? P extends BetterAuthPlugin
+		? P extends CinaAuthPlugin
 			? P["id"]
 			: never
 		: never;
@@ -34,11 +34,11 @@ type InferPluginID<O extends BetterAuthOptions> =
  * @internal
  */
 type InferPluginOptions<
-	O extends BetterAuthOptions,
-	ID extends BetterAuthPluginRegistryIdentifier | LiteralString,
+	O extends CinaAuthOptions,
+	ID extends CinaAuthPluginRegistryIdentifier | LiteralString,
 > =
 	O["plugins"] extends Array<infer P>
-		? P extends BetterAuthPlugin
+		? P extends CinaAuthPlugin
 			? P["id"] extends ID
 				? P extends { options: infer O }
 					? O
@@ -60,10 +60,10 @@ type InferPluginOptions<
  *   id: 'my-plugin',
  *   version: '1.0.0',
  *   options,
- * } satisfies BetterAuthPlugin);
+ * } satisfies CinaAuthPlugin);
  *
- * declare module "@better-auth/core" {
- *  interface BetterAuthPluginRegistry<AuthOptions, Options> {
+ * declare module "@cinaauth/core" {
+ *  interface CinaAuthPluginRegistry<AuthOptions, Options> {
  *    'my-plugin': {
  *      creator: Options extends MyPluginOptions ? typeof createMyPlugin<Options>: typeof createMyPlugin
  *    }
@@ -72,20 +72,20 @@ type InferPluginOptions<
  * ```
  */
 // biome-ignore lint/correctness/noUnusedVariables: Auth and Context is used in the declaration merging
-export interface BetterAuthPluginRegistry<AuthOptions, Options> {}
-export type BetterAuthPluginRegistryIdentifier = keyof BetterAuthPluginRegistry<
+export interface CinaAuthPluginRegistry<AuthOptions, Options> {}
+export type CinaAuthPluginRegistryIdentifier = keyof CinaAuthPluginRegistry<
 	unknown,
 	unknown
 >;
 
 export type GenericEndpointContext<
-	Options extends BetterAuthOptions = BetterAuthOptions,
+	Options extends CinaAuthOptions = CinaAuthOptions,
 > = EndpointContext<string, any> & {
 	context: AuthContext<Options>;
 };
 
 export interface InternalAdapter<
-	_Options extends BetterAuthOptions = BetterAuthOptions,
+	_Options extends CinaAuthOptions = CinaAuthOptions,
 > {
 	createOAuthUser(
 		user: Omit<User, "id" | "createdAt" | "updatedAt">,
@@ -265,29 +265,29 @@ export interface InternalAdapter<
 type CreateCookieGetterFn = (
 	cookieName: string,
 	overrideAttributes?: Partial<CookieOptions> | undefined,
-) => BetterAuthCookie;
+) => CinaAuthCookie;
 
-type CheckPasswordFn<Options extends BetterAuthOptions = BetterAuthOptions> = (
+type CheckPasswordFn<Options extends CinaAuthOptions = CinaAuthOptions> = (
 	userId: string,
 	ctx: GenericEndpointContext<Options>,
 ) => Promise<boolean>;
 
-export type PluginContext<Options extends BetterAuthOptions> = {
+export type PluginContext<Options extends CinaAuthOptions> = {
 	getPlugin: <
-		ID extends BetterAuthPluginRegistryIdentifier | LiteralString,
+		ID extends CinaAuthPluginRegistryIdentifier | LiteralString,
 		PluginOptions extends InferPluginOptions<Options, ID>,
 	>(
 		pluginId: ID,
 	) =>
-		| (ID extends BetterAuthPluginRegistryIdentifier
-				? BetterAuthPluginRegistry<Options, PluginOptions>[ID] extends {
+		| (ID extends CinaAuthPluginRegistryIdentifier
+				? CinaAuthPluginRegistry<Options, PluginOptions>[ID] extends {
 						creator: infer C;
 					}
 					? C extends (...args: any[]) => infer R
 						? R
 						: never
 					: never
-				: BetterAuthPlugin)
+				: CinaAuthPlugin)
 		| null;
 	/**
 	 * Checks if a plugin is enabled by its ID.
@@ -302,7 +302,7 @@ export type PluginContext<Options extends BetterAuthOptions> = {
 	 * }
 	 * ```
 	 */
-	hasPlugin: <ID extends BetterAuthPluginRegistryIdentifier | LiteralString>(
+	hasPlugin: <ID extends CinaAuthPluginRegistryIdentifier | LiteralString>(
 		pluginId: ID,
 	) => ID extends InferPluginID<Options> ? true : boolean;
 };
@@ -313,7 +313,7 @@ export type InfoContext = {
 	version: string;
 };
 
-export type AuthContext<Options extends BetterAuthOptions = BetterAuthOptions> =
+export type AuthContext<Options extends CinaAuthOptions = CinaAuthOptions> =
 	PluginContext<Options> &
 		InfoContext & {
 			options: Options;
@@ -369,7 +369,7 @@ export type AuthContext<Options extends BetterAuthOptions = BetterAuthOptions> =
 				} | null,
 			) => void;
 			socialProviders: OAuthProvider[];
-			authCookies: BetterAuthCookies;
+			authCookies: CinaAuthCookies;
 			logger: ReturnType<typeof createLogger>;
 			rateLimit: {
 				enabled: boolean;
@@ -377,7 +377,7 @@ export type AuthContext<Options extends BetterAuthOptions = BetterAuthOptions> =
 				max: number;
 				storage: "memory" | "database" | "secondary-storage";
 			} & Omit<
-				BetterAuthRateLimitOptions,
+				CinaAuthRateLimitOptions,
 				"enabled" | "window" | "max" | "storage"
 			>;
 			adapter: DBAdapter<Options>;
@@ -410,7 +410,7 @@ export type AuthContext<Options extends BetterAuthOptions = BetterAuthOptions> =
 				};
 				checkPassword: CheckPasswordFn<Options>;
 			};
-			tables: BetterAuthDBSchema;
+			tables: CinaAuthDBSchema;
 			runMigrations: () => Promise<void>;
 			publishTelemetry: (event: {
 				type: string;

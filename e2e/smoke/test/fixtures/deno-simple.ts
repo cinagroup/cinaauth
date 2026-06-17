@@ -1,10 +1,10 @@
-import { DatabaseSync } from "node:sqlite";
-import { betterAuth } from "better-auth";
-import { getMigrations } from "better-auth/db/migration";
+﻿import { DatabaseSync } from "node:sqlite";
+import { CinaAuth } from "cinaauth";
+import { getMigrations } from "cinaauth/db/migration";
 
 const database = new DatabaseSync(":memory:");
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: "http://localhost:4000",
 	database,
 	emailAndPassword: {

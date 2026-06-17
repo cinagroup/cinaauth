@@ -1,9 +1,9 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { APIError } from "@better-auth/core/error";
-import type { GenericEndpointContext, User } from "better-auth";
-import { HIDE_METADATA } from "better-auth";
-import { getSessionFromCtx, originCheck } from "better-auth/api";
-import type { Organization } from "better-auth/plugins/organization";
+﻿import { createAuthEndpoint } from "@cinaauth/core/api";
+import { APIError } from "@cinaauth/core/error";
+import type { GenericEndpointContext, User } from "cinaauth";
+import { HIDE_METADATA } from "cinaauth";
+import { getSessionFromCtx, originCheck } from "cinaauth/api";
+import type { Organization } from "cinaauth/plugins/organization";
 import { defu } from "defu";
 import type Stripe from "stripe";
 import type { Stripe as StripeType } from "stripe";
@@ -286,7 +286,7 @@ const upgradeSubscriptionBodySchema = z.object({
  * **client:**
  * `authClient.subscription.upgrade`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/stripe#api-method-subscription-upgrade)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/stripe#api-method-subscription-upgrade)
  */
 export const upgradeSubscription = (options: StripeOptions) => {
 	const client = options.stripeClient;
@@ -737,7 +737,7 @@ export const upgradeSubscription = (options: StripeOptions) => {
 					);
 					if (
 						existingSchedule &&
-						existingSchedule.metadata?.source === "@better-auth/stripe"
+						existingSchedule.metadata?.source === "@cinaauth/stripe"
 					) {
 						await client.subscriptionSchedules.release(existingSchedule.id);
 						if (dbSubscription) {
@@ -882,7 +882,7 @@ export const upgradeSubscription = (options: StripeOptions) => {
 
 					await client.subscriptionSchedules
 						.update(schedule.id, {
-							metadata: { source: "@better-auth/stripe" },
+							metadata: { source: "@cinaauth/stripe" },
 							end_behavior: "release",
 							phases: [
 								{
@@ -1283,7 +1283,7 @@ const cancelSubscriptionBodySchema = z.object({
  * **client:**
  * `authClient.subscription.cancel`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/stripe#api-method-subscription-cancel)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/stripe#api-method-subscription-cancel)
  */
 export const cancelSubscription = (options: StripeOptions) => {
 	const client = options.stripeClient;
@@ -1664,7 +1664,7 @@ const listActiveSubscriptionsQuerySchema = z.optional(
  * **client:**
  * `authClient.subscription.list`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/stripe#api-method-subscription-list)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/stripe#api-method-subscription-list)
  */
 export const listActiveSubscriptions = (options: StripeOptions) => {
 	const subscriptionOptions = options.subscription as SubscriptionOptions;

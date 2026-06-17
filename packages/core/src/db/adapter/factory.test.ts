@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runWithTransaction } from "../../context/transaction";
-import type { BetterAuthOptions } from "../../types";
+import type { CinaAuthOptions } from "../../types";
 import { createAdapterFactory } from "./factory";
 import type {
 	CleanedWhere,
@@ -30,12 +30,12 @@ function createTestAdapter({
 	transaction,
 }: {
 	adapter: CustomAdapter;
-	options?: BetterAuthOptions;
+	options?: CinaAuthOptions;
 	transaction?: <R>(
-		callback: (trx: DBTransactionAdapter<BetterAuthOptions>) => Promise<R>,
+		callback: (trx: DBTransactionAdapter<CinaAuthOptions>) => Promise<R>,
 	) => Promise<R>;
 }) {
-	return createAdapterFactory<BetterAuthOptions>({
+	return createAdapterFactory<CinaAuthOptions>({
 		config: {
 			adapterId: "test-adapter",
 			adapterName: "Test Adapter",
@@ -156,15 +156,15 @@ describe("createAdapterFactory consumeOne fallback", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9869
+	 * @see https://github.com/cinagroup/cinaauth/issues/9869
 	 */
 	it("reuses the active transaction for the fallback", async () => {
 		let transactionCalls = 0;
 		let isTransactionActive = false;
-		let adapter: DBAdapter<BetterAuthOptions> | null = null;
+		let adapter: DBAdapter<CinaAuthOptions> | null = null;
 
 		const transaction = async <R>(
-			callback: (trx: DBTransactionAdapter<BetterAuthOptions>) => Promise<R>,
+			callback: (trx: DBTransactionAdapter<CinaAuthOptions>) => Promise<R>,
 		): Promise<R> => {
 			transactionCalls += 1;
 			if (isTransactionActive) {

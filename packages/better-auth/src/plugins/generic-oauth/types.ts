@@ -1,6 +1,6 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import type { User } from "@better-auth/core/db";
-import type { OAuth2Tokens, OAuth2UserInfo } from "@better-auth/core/oauth2";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import type { User } from "@cinaauth/core/db";
+import type { OAuth2Tokens, OAuth2UserInfo } from "@cinaauth/core/oauth2";
 
 export interface GenericOAuthOptions {
 	/**

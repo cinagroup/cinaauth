@@ -1,18 +1,18 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
+﻿import type { IncomingMessage, ServerResponse } from "node:http";
 import { createServer } from "node:http";
 import { DatabaseSync } from "node:sqlite";
 import {
 	oauthProvider,
 	oauthProviderAuthServerMetadata,
-} from "@better-auth/oauth-provider";
-import type { BetterAuthOptions } from "better-auth";
-import { betterAuth } from "better-auth";
-import { getMigrations } from "better-auth/db/migration";
-import { toNodeHandler } from "better-auth/node";
-import { jwt } from "better-auth/plugins";
+} from "@cinaauth/oauth-provider";
+import type { CinaAuthOptions } from "cinaauth";
+import { CinaAuth } from "cinaauth";
+import { getMigrations } from "cinaauth/db/migration";
+import { toNodeHandler } from "cinaauth/node";
+import { jwt } from "cinaauth/plugins";
 
 type Extras = {
-	/** Register `@better-auth/oauth-provider` + `jwt` and expose the well-known metadata route. */
+	/** Register `@cinaauth/oauth-provider` + `jwt` and expose the well-known metadata route. */
 	oauthProvider?: boolean;
 	/** Skip `signUpEmail` during setup (required for dynamic configs without a usable fallback). */
 	disableTestUser?: boolean;
@@ -40,12 +40,12 @@ async function writeFetchResponse(
 
 export async function createAuthServer(
 	baseURL: string = "http://localhost:3000",
-	overrides?: Partial<BetterAuthOptions>,
+	overrides?: Partial<CinaAuthOptions>,
 	extras?: Extras,
 ) {
 	const database = new DatabaseSync(":memory:");
 
-	const plugins: NonNullable<BetterAuthOptions["plugins"]> =
+	const plugins: NonNullable<CinaAuthOptions["plugins"]> =
 		extras?.oauthProvider
 			? [
 					oauthProvider({
@@ -60,7 +60,7 @@ export async function createAuthServer(
 				]
 			: [];
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database,
 		baseURL,
 		emailAndPassword: {

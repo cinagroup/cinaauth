@@ -1,14 +1,14 @@
----
+﻿---
 title: oauth_provider_not_found
 description: The OAuth provider was not found.
 ---
 
 ## What is it?
 
-This error occurs when Better Auth cannot identify a provider for the callback path—either because the provider
+This error occurs when CinaAuth cannot identify a provider for the callback path—either because the provider
 segment is missing or because no provider with that id is configured.
 
-Better Auth expects the callback route to be shaped like `/api/auth/callback/<provider>`.
+CinaAuth expects the callback route to be shaped like `/api/auth/callback/<provider>`.
 If the `<provider>` segment is absent (e.g., request hits `/api/auth/callback`),
 we cannot determine which integration should handle the callback and the
 request is rejected.
@@ -32,7 +32,7 @@ request is rejected.
 
 ### Avoid manual access to the base callback route
 
-* Do not navigate to `/api/auth/callback` directly; always start OAuth via Better Auth APIs which generate
+* Do not navigate to `/api/auth/callback` directly; always start OAuth via CinaAuth APIs which generate
   the correct provider-specific callback URL.
 
 ## Debug locally

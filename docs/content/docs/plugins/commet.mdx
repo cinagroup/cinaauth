@@ -1,9 +1,9 @@
----
+﻿---
 title: Commet
-description: Better Auth Plugin for Billing and Subscriptions using Commet
+description: CinaAuth Plugin for Billing and Subscriptions using Commet
 ---
 
-[Commet](https://commet.co) is a Merchant of Record that handles subscriptions, usage-based billing, feature gating, taxes and global payments. This plugin integrates Commet with Better Auth, connecting your authentication layer to billing and feature access through a composable set of sub-plugins.
+[Commet](https://commet.co) is a Merchant of Record that handles subscriptions, usage-based billing, feature gating, taxes and global payments. This plugin integrates Commet with CinaAuth, connecting your authentication layer to billing and feature access through a composable set of sub-plugins.
 
 <Callout>
   This plugin is maintained by the Commet team. For bugs, issues or feature
@@ -24,7 +24,7 @@ description: Better Auth Plugin for Billing and Subscriptions using Commet
 ## Installation
 
 ```package-install
-better-auth @commet/better-auth @commet/node
+cinaauth @commet/cinaauth @commet/node
 ```
 
 ## Preparation
@@ -41,7 +41,7 @@ COMMET_API_KEY=ck_...
   option to configure.
 </Callout>
 
-### Configuring BetterAuth Server
+### Configuring CinaAuth Server
 
 The Commet plugin comes with a set of sub-plugins that add functionality to your stack. Add only the ones you need.
 
@@ -53,7 +53,7 @@ The Commet plugin comes with a set of sub-plugins that add functionality to your
 * Webhooks — Handle Commet webhooks with signature verification
 
 ```typescript title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import {
   commet,
   portal,
@@ -61,15 +61,15 @@ import {
   features,
   usage,
   seats,
-} from "@commet/better-auth";
+} from "@commet/cinaauth";
 import { Commet } from "@commet/node";
 
 const commetClient = new Commet({
   apiKey: process.env.COMMET_API_KEY!,
 });
 
-export const auth = betterAuth({
-  // ... Better Auth config
+export const auth = CinaAuth({
+  // ... CinaAuth config
   plugins: [
     commet({
       client: commetClient,
@@ -86,13 +86,13 @@ export const auth = betterAuth({
 });
 ```
 
-### Configuring BetterAuth Client
+### Configuring CinaAuth Client
 
-You will use the Better Auth client to interact with the Commet functionalities.
+You will use the CinaAuth client to interact with the Commet functionalities.
 
 ```typescript title="auth-client.ts"
-import { createAuthClient } from "better-auth/react";
-import { commetClient } from "@commet/better-auth/client";
+import { createAuthClient } from "cinaauth/react";
+import { commetClient } from "@commet/cinaauth/client";
 
 export const authClient = createAuthClient({
   plugins: [commetClient()],
@@ -127,14 +127,14 @@ commet({
 
 ### Customers
 
-When `createCustomerOnSignUp` is enabled, a Commet customer is automatically created when a new user signs up. The customer is created with its `id` set to the Better Auth user ID, so you don't need any mapping between your users and Commet customers.
+When `createCustomerOnSignUp` is enabled, a Commet customer is automatically created when a new user signs up. The customer is created with its `id` set to the CinaAuth user ID, so you don't need any mapping between your users and Commet customers.
 
 ## Portal Plugin
 
 Redirects customers to the Commet customer portal for self-service billing management.
 
 ```typescript title="auth.ts"
-import { commet, portal } from "@commet/better-auth";
+import { commet, portal } from "@commet/cinaauth";
 
 commet({
   client: commetClient,
@@ -157,7 +157,7 @@ await authClient.customer.portal();
 Get and cancel the authenticated user's subscription.
 
 ```typescript title="auth.ts"
-import { commet, subscriptions } from "@commet/better-auth";
+import { commet, subscriptions } from "@commet/cinaauth";
 
 commet({
   client: commetClient,
@@ -183,7 +183,7 @@ The `cancel` method accepts an optional `reason` and an `immediate` flag. By def
 Check feature access for the authenticated user. Supports boolean, metered and seat-based features.
 
 ```typescript title="auth.ts"
-import { commet, features } from "@commet/better-auth";
+import { commet, features } from "@commet/cinaauth";
 
 commet({
   client: commetClient,
@@ -212,7 +212,7 @@ const { data: canUse } = await authClient.features.canUse("api_calls");
 Track usage events for metered billing.
 
 ```typescript title="auth.ts"
-import { commet, usage } from "@commet/better-auth";
+import { commet, usage } from "@commet/cinaauth";
 
 commet({
   client: commetClient,
@@ -236,7 +236,7 @@ The authenticated user is automatically associated with the event. The `feature`
 Manage seat-based licenses for the authenticated user.
 
 ```typescript title="auth.ts"
-import { commet, seats } from "@commet/better-auth";
+import { commet, seats } from "@commet/cinaauth";
 
 commet({
   client: commetClient,
@@ -266,7 +266,7 @@ await authClient.seats.setAll({ admin: 2, member: 10, viewer: 50 });
 Handle Commet webhooks with signature verification. Webhooks are optional — you can always query the current state through the other sub-plugins.
 
 ```typescript title="auth.ts"
-import { commet, webhooks } from "@commet/better-auth";
+import { commet, webhooks } from "@commet/cinaauth";
 
 commet({
   client: commetClient,

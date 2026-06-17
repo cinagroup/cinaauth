@@ -1,6 +1,6 @@
-import { execSync } from "node:child_process";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
+﻿import { execSync } from "node:child_process";
+import { drizzleAdapter } from "@cinaauth/drizzle-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import {
@@ -15,7 +15,7 @@ import {
 import { generateDrizzleSchema, resetGenerationCount } from "./generate-schema";
 
 const pgDB = new Pool({
-	connectionString: "postgres://user:password@localhost:5432/better_auth",
+	connectionString: "postgres://user:password@localhost:5432/cinaauth",
 });
 
 const cleanupDatabase = async (shouldDestroy = false) => {
@@ -35,17 +35,17 @@ const { execute } = await testAdapter({
 			transaction: true,
 		});
 	},
-	async runMigrations(betterAuthOptions) {
+	async runMigrations(CinaAuthOptions) {
 		await cleanupDatabase();
 		const { fileName } = await generateDrizzleSchema(
 			pgDB,
-			betterAuthOptions,
+			CinaAuthOptions,
 			"pg",
 		);
 
-		const command = `npx drizzle-kit push --dialect=postgresql --schema=${fileName}.ts --url=postgres://user:password@localhost:5432/better_auth`;
+		const command = `npx drizzle-kit push --dialect=postgresql --schema=${fileName}.ts --url=postgres://user:password@localhost:5432/cinaauth`;
 		console.log(`Running: ${command}`);
-		console.log(`Options:`, betterAuthOptions);
+		console.log(`Options:`, CinaAuthOptions);
 		try {
 			// wait for the above console.log to be printed
 			await new Promise((resolve) => setTimeout(resolve, 10));

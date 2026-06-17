@@ -1,6 +1,6 @@
----
+﻿---
 title: SMS Service
-description: Better Auth Infrastructure provides a managed SMS service for sending OTP codes for phone verification and two-factor authentication. Send verification codes without managing SMS providers.
+description: CinaAuth Infrastructure provides a managed SMS service for sending OTP codes for phone verification and two-factor authentication. Send verification codes without managing SMS providers.
 ---
 
 ## Overview
@@ -19,10 +19,10 @@ The SMS service offers:
 
 ## Installation
 
-The SMS service is included in the `@better-auth/infra` package:
+The SMS service is included in the `@cinaauth/infra` package:
 
 ```ts
-import { sendSMS, createSMSSender } from "@better-auth/infra";
+import { sendSMS, createSMSSender } from "@cinaauth/infra";
 ```
 
 ## Quick Start
@@ -30,7 +30,7 @@ import { sendSMS, createSMSSender } from "@better-auth/infra";
 ### Send a Single SMS
 
 ```ts
-import { sendSMS } from "@better-auth/infra";
+import { sendSMS } from "@cinaauth/infra";
 
 await sendSMS({
   to: "+1234567890",
@@ -42,11 +42,11 @@ await sendSMS({
 ### Create a Reusable Sender
 
 ```ts
-import { createSMSSender } from "@better-auth/infra";
+import { createSMSSender } from "@cinaauth/infra";
 
 const smsSender = createSMSSender({
-  apiKey: process.env.BETTER_AUTH_API_KEY,
-  apiUrl: process.env.BETTER_AUTH_API_URL,
+  apiKey: process.env.CINAAUTH_API_KEY,
+  apiUrl: process.env.CINAAUTH_API_URL,
 });
 
 // Send multiple SMS messages
@@ -150,7 +150,7 @@ Phone numbers must be in E.164 format:
 
 ```ts
 interface SMSConfig {
-  apiKey?: string;   // Your Better Auth Infrastructure API key
+  apiKey?: string;   // Your CinaAuth Infrastructure API key
   apiUrl?: string;   // Custom API URL (optional)
 }
 ```
@@ -160,8 +160,8 @@ interface SMSConfig {
 The SMS service automatically reads from environment variables:
 
 ```dotenv
-BETTER_AUTH_API_KEY=your_api_key_here
-BETTER_AUTH_API_URL=https://api.betterauth.com  # Optional
+CINAAUTH_API_KEY=your_api_key_here
+CINAAUTH_API_URL=https://api.cinagroup.com  # Optional
 ```
 
 ## API Reference
@@ -237,7 +237,7 @@ const result = await sendSMS({
 if (!result.success) {
   switch (result.error) {
     case "API key not configured":
-      // Missing BETTER_AUTH_API_KEY
+      // Missing CINAAUTH_API_KEY
       break;
     case "Invalid phone number":
       // Phone number not in E.164 format
@@ -249,9 +249,9 @@ if (!result.success) {
 }
 ```
 
-## Integration with Better Auth
+## Integration with CinaAuth
 
-When using the `dash()` or `sentinel()` plugins with Better Auth's phone authentication, SMS messages are automatically sent for:
+When using the `dash()` or `sentinel()` plugins with CinaAuth's phone authentication, SMS messages are automatically sent for:
 
 * Phone number verification
 * Phone-based two-factor authentication
@@ -259,14 +259,14 @@ When using the `dash()` or `sentinel()` plugins with Better Auth's phone authent
 
 You don't need to call `sendSMS()` manually for these flows - the plugins handle it automatically.
 
-### Better Auth Phone Plugin Integration
+### CinaAuth Phone Plugin Integration
 
 ```ts
-import { betterAuth } from "better-auth";
-import { phoneNumber } from "better-auth/plugins";
-import { dash } from "@better-auth/infra";
+import { CinaAuth } from "cinaauth";
+import { phoneNumber } from "cinaauth/plugins";
+import { dash } from "@cinaauth/infra";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     phoneNumber({
       sendOTP: async ({ phoneNumber, code }) => {
@@ -280,7 +280,7 @@ export const auth = betterAuth({
       },
     }),
     dash({
-      apiKey: process.env.BETTER_AUTH_API_KEY,
+      apiKey: process.env.CINAAUTH_API_KEY,
     }),
   ],
 });

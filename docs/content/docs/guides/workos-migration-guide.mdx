@@ -1,18 +1,18 @@
----
-title: Migrating from WorkOS to Better Auth
-description: A step-by-step guide to transitioning from WorkOS to Better Auth.
+﻿---
+title: Migrating from WorkOS to CinaAuth
+description: A step-by-step guide to transitioning from WorkOS to CinaAuth.
 ---
 
-In this guide, we’ll walk through how to migrate a project from WorkOS to Better Auth, covering how to move a basic WorkOS setup integrated with a Next.js app and the key considerations to keep in mind.
+In this guide, we’ll walk through how to migrate a project from WorkOS to CinaAuth, covering how to move a basic WorkOS setup integrated with a Next.js app and the key considerations to keep in mind.
 
 ## Before we begin
 
-Before getting started, let’s review which WorkOS authentication features are fully or partially supported in Better Auth. If a feature you use in WorkOS is available via a plugin, you’ll need to configure it in the next step.
+Before getting started, let’s review which WorkOS authentication features are fully or partially supported in CinaAuth. If a feature you use in WorkOS is available via a plugin, you’ll need to configure it in the next step.
 
 <Accordions type="multiple">
   <Accordion title="🟢 Supported">
     <>
-      | from WorkOS            | to Better Auth                                                                                     |
+      | from WorkOS            | to CinaAuth                                                                                     |
       | ---------------------- | -------------------------------------------------------------------------------------------------- |
       | Single Sign-On         | Use the [SSO Plugin](/docs/plugins/sso).                                                           |
       | Email + Password       | Built-in support.                                                                                  |
@@ -36,7 +36,7 @@ Before getting started, let’s review which WorkOS authentication features are 
 
   <Accordion title="🟡 Partially supported">
     <>
-      | from WorkOS           | to Better Auth                                                                                                                                                   |
+      | from WorkOS           | to CinaAuth                                                                                                                                                   |
       | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
       | JIT Provisioning      | Partially supported via the [SSO Plugin](/docs/plugins/sso).                                                                                                     |
       | Invitations           | No ready-to-use dashboard is provided, but can be implemented using the [Admin Plugin](/docs/plugins/admin) + [Organization Plugin](/docs/plugins/organization). |
@@ -47,19 +47,19 @@ Before getting started, let’s review which WorkOS authentication features are 
 
 <Steps>
   <Step>
-    ## Create Better Auth Instance
+    ## Create CinaAuth Instance
 
-    First, set up Better Auth in your project. Follow the [installation guide](/docs/installation) to get started.
+    First, set up CinaAuth in your project. Follow the [installation guide](/docs/installation) to get started.
 
     ### Database
 
-    Better Auth supports various databases. Set up your preferred database. In this guide, we’ll use PostgreSQL with the default database adapter.
+    CinaAuth supports various databases. Set up your preferred database. In this guide, we’ll use PostgreSQL with the default database adapter.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       database: new Pool({ // [!code highlight]
         connectionString: process.env.DATABASE_URL, // [!code highlight]
       }), // [!code highlight]
@@ -71,10 +71,10 @@ Before getting started, let’s review which WorkOS authentication features are 
     Enable Email & Password authentication as shown below. Since WorkOS verifies each user’s email by default, this setup is similar to the default behavior. You can adjust it if needed. For more information, see the [email/password authentication documentation](/docs/authentication/email-password).
 
     ```ts
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       database: new Pool({
         connectionString: process.env.DATABASE_URL,
       }),
@@ -96,13 +96,13 @@ Before getting started, let’s review which WorkOS authentication features are 
 
     ### Social Providers (optional)
 
-    Set up the social providers you used in WorkOS as follows. Better Auth supports a wider range of providers, so you can add more if needed. Since WorkOS ensures emails are unique, configure `account.accountLinking` in Better Auth to ensure the same behavior.
+    Set up the social providers you used in WorkOS as follows. CinaAuth supports a wider range of providers, so you can add more if needed. Since WorkOS ensures emails are unique, configure `account.accountLinking` in CinaAuth to ensure the same behavior.
 
     ```ts
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       // ... other options
 
       socialProviders: { // [!code highlight]
@@ -125,13 +125,13 @@ Before getting started, let’s review which WorkOS authentication features are 
 
     {/* cspell:disable-next-line */}
 
-    You probably used metadata in WorkOS. To preserve that metadata and the user id from WorkOS (e.g., user\_01KBT4BMFF7ASGRDD0WZ6W63FF), extend the `user` schema as shown below. Better Auth provides a more flexible way to store user data. For more information, see the [extending the core schema documentation](/docs/concepts/database#extending-core-schema).
+    You probably used metadata in WorkOS. To preserve that metadata and the user id from WorkOS (e.g., user\_01KBT4BMFF7ASGRDD0WZ6W63FF), extend the `user` schema as shown below. CinaAuth provides a more flexible way to store user data. For more information, see the [extending the core schema documentation](/docs/concepts/database#extending-core-schema).
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       // ... other options
       
       user: { // [!code highlight]
@@ -148,14 +148,14 @@ Before getting started, let’s review which WorkOS authentication features are 
 
     ### Plugins
 
-    Refer to the [section](#before-we-begin) mapping WorkOS features to Better Auth. If a feature you used in WorkOS is available as a Better Auth plugin, add it to the plugin options. Better Auth provides a wider range of out-of-the-box features through plugins. For more information, see the [plugin documentation](/docs/concepts/plugins).
+    Refer to the [section](#before-we-begin) mapping WorkOS features to CinaAuth. If a feature you used in WorkOS is available as a CinaAuth plugin, add it to the plugin options. CinaAuth provides a wider range of out-of-the-box features through plugins. For more information, see the [plugin documentation](/docs/concepts/plugins).
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
-    import { haveIBeenPwned } from "better-auth/plugins/haveibeenpwned";
+    import { CinaAuth } from "cinaauth";
+    import { haveIBeenPwned } from "cinaauth/plugins/haveibeenpwned";
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       // ... other options
       
       plugins: [ // [!code highlight]
@@ -173,11 +173,11 @@ Before getting started, let’s review which WorkOS authentication features are 
   <Step>
     ## Generate Schema
 
-    Better Auth allows you to control your own database, and you can easily generate the appropriate schema for your auth instance using the CLI. For more information, see the [CLI documentation](/docs/concepts/cli).
+    CinaAuth allows you to control your own database, and you can easily generate the appropriate schema for your auth instance using the CLI. For more information, see the [CLI documentation](/docs/concepts/cli).
 
     ### Default database adapter
 
-    Run the `migrate` command to create the schema for your Better Auth instance in the database.
+    Run the `migrate` command to create the schema for your CinaAuth instance in the database.
 
     ```package-install
     npx auth migrate
@@ -464,7 +464,7 @@ Before getting started, let’s review which WorkOS authentication features are 
       **Notes**
 
       * When retrieving user data from WorkOS, you need to use their API, which is subject to rate limits. The example script includes a basic configuration, so adjust it as needed for your environment.
-      * This migration script covers the common cases of managing users with email+password and social login. For features like SSO or CLI Auth, which are provided as plugins in Better Auth, be sure to update the script based on the examples.
+      * This migration script covers the common cases of managing users with email+password and social login. For features like SSO or CLI Auth, which are provided as plugins in CinaAuth, be sure to update the script based on the examples.
     </Callout>
 
     ### Run Migration Script
@@ -479,10 +479,10 @@ Before getting started, let’s review which WorkOS authentication features are 
   <Step>
     ## Create Client Instance
 
-    This client instance includes a set of functions for interacting with the Better Auth server instance. For more information, see the [client documentation](/docs/concepts/client).
+    This client instance includes a set of functions for interacting with the CinaAuth server instance. For more information, see the [client documentation](/docs/concepts/client).
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/react";
+    import { createAuthClient } from "cinaauth/react";
 
     export const authClient = createAuthClient({
         plugins: [
@@ -495,11 +495,11 @@ Before getting started, let’s review which WorkOS authentication features are 
   <Step>
     ## Create API Route
 
-    In WorkOS, the auth API was provided as a managed service. With Better Auth, the auth API now lives directly within your application.
+    In WorkOS, the auth API was provided as a managed service. With CinaAuth, the auth API now lives directly within your application.
 
     ```ts title="/app/api/auth/[...all]/route.ts"
     import { auth } from "@/lib/auth";
-    import { toNextJsHandler } from "better-auth/next-js";
+    import { toNextJsHandler } from "cinaauth/next-js";
 
     export const { POST, GET } = toNextJsHandler(auth)
     ```
@@ -515,7 +515,7 @@ Before getting started, let’s review which WorkOS authentication features are 
     const signUpUrl = await getSignUpUrl();
     ```
 
-    In Better Auth, instead of fetching these values via an API, you can create the pages at your desired paths and use them directly.
+    In CinaAuth, instead of fetching these values via an API, you can create the pages at your desired paths and use them directly.
   </Step>
 
   <Step>
@@ -525,7 +525,7 @@ Before getting started, let’s review which WorkOS authentication features are 
 
     ### Middleware auth
 
-    WorkOS provides Proxy (Middleware) authentication. Better Auth doesn’t recommend protecting resources directly in middleware, so we don't provide dedicated helpers for that.
+    WorkOS provides Proxy (Middleware) authentication. CinaAuth doesn’t recommend protecting resources directly in middleware, so we don't provide dedicated helpers for that.
 
     ```ts title="proxy.ts / middleware.ts"
     import { authkitMiddleware } from '@workos-inc/authkit-nextjs';
@@ -540,7 +540,7 @@ Before getting started, let’s review which WorkOS authentication features are 
     export const config = { matcher: ['/', '/account/:page*'] };
     ```
 
-    In Better Auth, for convenience rather than resource protection, the proxy (middleware) can be used as follows. This is supported in Next.js 15+ with the Node.js runtime.
+    In CinaAuth, for convenience rather than resource protection, the proxy (middleware) can be used as follows. This is supported in Next.js 15+ with the Node.js runtime.
 
     ```ts title="proxy.ts"
     import { NextRequest, NextResponse } from "next/server";
@@ -568,11 +568,11 @@ Before getting started, let’s review which WorkOS authentication features are 
 
     ### Page based auth
 
-    In WorkOS, if resources were protected on each page, you can update the logic in Better Auth as follows.
+    In WorkOS, if resources were protected on each page, you can update the logic in CinaAuth as follows.
 
     #### Server-side
 
-    <Tabs items={["WorkOS", "Better Auth"]}>
+    <Tabs items={["WorkOS", "CinaAuth"]}>
       <Tab value="WorkOS">
         ```ts title="app/dashboard/page.tsx"
         import { withAuth } from "@workos-inc/authkit-nextjs";
@@ -589,7 +589,7 @@ Before getting started, let’s review which WorkOS authentication features are 
         ```
       </Tab>
 
-      <Tab value="Better Auth">
+      <Tab value="CinaAuth">
         ```ts title="app/dashboard/page.tsx"
         import { auth } from "@/lib/auth";
         import { headers } from "next/headers";
@@ -618,7 +618,7 @@ Before getting started, let’s review which WorkOS authentication features are 
 
     #### Client-side
 
-    <Tabs items={["WorkOS", "Better Auth"]}>
+    <Tabs items={["WorkOS", "CinaAuth"]}>
       <Tab value="WorkOS">
         ```ts title="app/dashboard/page.tsx"
         "use client";
@@ -642,7 +642,7 @@ Before getting started, let’s review which WorkOS authentication features are 
         ```
       </Tab>
 
-      <Tab value="Better Auth">
+      <Tab value="CinaAuth">
         ```ts title="app/dashboard/page.tsx"
         "use client";
 
@@ -672,7 +672,7 @@ Before getting started, let’s review which WorkOS authentication features are 
     </Tabs>
 
     <Callout type="info">
-      If options like `ensureSignedIn` were convenient in WorkOS, you can create a reusable helper like `ensureSession()` in Better Auth.
+      If options like `ensureSignedIn` were convenient in WorkOS, you can create a reusable helper like `ensureSession()` in CinaAuth.
     </Callout>
   </Step>
 
@@ -695,7 +695,7 @@ If you’ve been managing users with an email + password system, WorkOS does not
 
 <strong className="underline italic">Data syncing</strong>
 
-WorkOS is a managed service and keeps your data in sync with your server through APIs or Webhooks. With Better Auth, you fully own your authentication system and can manage data freely through the API. However, if you previously relied on Webhooks for synchronization, additional adjustments will be needed.
+WorkOS is a managed service and keeps your data in sync with your server through APIs or Webhooks. With CinaAuth, you fully own your authentication system and can manage data freely through the API. However, if you previously relied on Webhooks for synchronization, additional adjustments will be needed.
 
 <strong className="underline italic">Downtime</strong>
 
@@ -707,6 +707,6 @@ Existing active sessions will not be migrated. After the migration, users will n
 
 ## Wrapping Up
 
-Congratulations! You've successfully migrated from WorkOS to Better Auth. Better Auth offers greater flexibility and more features, so be sure to explore the [documentation](/docs) to unlock its full potential.
+Congratulations! You've successfully migrated from WorkOS to CinaAuth. CinaAuth offers greater flexibility and more features, so be sure to explore the [documentation](/docs) to unlock its full potential.
 
 If you need help with migration, join our [community](/community) or reach out for [Enterprise support](/enterprise).

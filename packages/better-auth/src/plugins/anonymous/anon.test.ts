@@ -1,4 +1,4 @@
-import type { GoogleProfile } from "@better-auth/core/social-providers";
+import type { GoogleProfile } from "@cinaauth/core/social-providers";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import {
@@ -156,7 +156,7 @@ describe("anonymous", async () => {
 
 	it("should call onLinkAccount when anonymous user verifies email", async () => {
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/9485
+		 * @see https://github.com/cinagroup/cinaauth/issues/9485
 		 */
 		const linkAccountFn = vi.fn();
 		let verificationToken = "";
@@ -450,19 +450,19 @@ describe("anonymous", async () => {
 				context: {
 					responseHeaders: new Headers({
 						"set-cookie":
-							"better-auth.session_token=new-token.value; Path=/; HttpOnly",
+							"cinaauth.session_token=new-token.value; Path=/; HttpOnly",
 					}),
 					authCookies: {
 						sessionToken: {
-							name: "better-auth.session_token",
+							name: "cinaauth.session_token",
 							options: {},
 						},
 						sessionData: {
-							name: "better-auth.session_data",
+							name: "cinaauth.session_data",
 							options: {},
 						},
 						dontRememberToken: {
-							name: "better-auth.dont_remember",
+							name: "cinaauth.dont_remember",
 							options: {},
 						},
 					},

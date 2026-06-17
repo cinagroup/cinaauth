@@ -1,4 +1,4 @@
-import { defineErrorCodes } from "@better-auth/core/utils/error-codes";
+import { defineErrorCodes } from "@cinaauth/core/utils/error-codes";
 
 export const OAUTH_POPUP_ERROR_CODES = defineErrorCodes({
 	POPUP_SIGN_IN_FAILED: "Popup sign-in failed",

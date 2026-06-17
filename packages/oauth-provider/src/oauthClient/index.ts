@@ -1,4 +1,4 @@
-import { createAuthEndpoint, sessionMiddleware } from "better-auth/api";
+import { createAuthEndpoint, sessionMiddleware } from "cinaauth/api";
 import * as z from "zod";
 import { publicSessionMiddleware } from "../middleware";
 import { createOAuthClientEndpoint } from "../register";

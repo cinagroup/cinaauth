@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
-import type { BetterAuthClientOptions, ClientStore } from "@better-auth/core";
-import type { User } from "@better-auth/core/db";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { CinaAuthClientOptions, ClientStore } from "@cinaauth/core";
+import type { User } from "@cinaauth/core/db";
+import { CinaAuthError } from "@cinaauth/core/error";
 import type { BetterFetch } from "@better-fetch/fetch";
 import electron from "electron";
 import { authenticate, requestAuth } from "./authenticate";
@@ -42,11 +42,11 @@ export function setupMain(
 	$store: ClientStore | null,
 	getCookie: () => string,
 	opts: ElectronClientOptions,
-	clientOptions: BetterAuthClientOptions | undefined,
+	clientOptions: CinaAuthClientOptions | undefined,
 	cfg?: SetupMainConfig | undefined,
 ) {
 	if (!isProcessType("browser")) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"setupMain can only be called in the main process.",
 		);
 	}
@@ -97,10 +97,10 @@ export async function handleDeepLink({
 	options: ElectronClientOptions;
 	url: string;
 	getWindow?: SetupMainConfig["getWindow"] | undefined;
-	clientOptions?: BetterAuthClientOptions | undefined;
+	clientOptions?: CinaAuthClientOptions | undefined;
 }) {
 	if (!isProcessType("browser")) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"`handleDeepLink` can only be called in the main process.",
 		);
 	}
@@ -150,7 +150,7 @@ function registerProtocolScheme(
 	$fetch: BetterFetch,
 	options: ElectronClientOptions,
 	getWindow: () => electron.BrowserWindow | null | undefined,
-	clientOptions: BetterAuthClientOptions | undefined,
+	clientOptions: CinaAuthClientOptions | undefined,
 ) {
 	const { scheme, privileges = {} } =
 		typeof options.protocol === "string"
@@ -254,7 +254,7 @@ function registerProtocolScheme(
 }
 
 function setupCSP(
-	clientOptions: BetterAuthClientOptions | undefined,
+	clientOptions: CinaAuthClientOptions | undefined,
 	options: ElectronClientOptions,
 ) {
 	app.whenReady().then(() => {
@@ -334,7 +334,7 @@ function setupBridges(
 		getWindow: () => electron.BrowserWindow | null | undefined;
 	},
 	opts: ElectronClientOptions,
-	clientOptions: BetterAuthClientOptions | undefined,
+	clientOptions: CinaAuthClientOptions | undefined,
 ) {
 	const prefix = getChannelPrefixWithDelimiter(opts.channelPrefix);
 
@@ -417,7 +417,7 @@ function setupUserImageProxy(
 		getCookie: () => string;
 	},
 	opts: ElectronClientOptions,
-	clientOptions: BetterAuthClientOptions | undefined,
+	clientOptions: CinaAuthClientOptions | undefined,
 ) {
 	const hasAdminPlugin =
 		clientOptions?.plugins?.some((plugin) => plugin.id === "admin") ?? false;

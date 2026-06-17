@@ -1,8 +1,8 @@
 import type {
-	BetterAuthClientPlugin,
-	BetterAuthPlugin,
-} from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
+	CinaAuthClientPlugin,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import { atom, computed } from "nanostores";
 import * as z from "zod";
 import { PACKAGE_VERSION } from "../version";
@@ -112,7 +112,7 @@ const serverPlugin = {
 			},
 		},
 	},
-} satisfies BetterAuthPlugin;
+} satisfies CinaAuthPlugin;
 
 export const testClientPlugin = () => {
 	const $test = atom(false);
@@ -156,7 +156,7 @@ export const testClientPlugin = () => {
 				signal: "$sessionSignal",
 			},
 		],
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 export const testClientPlugin2 = () => {
 	const $test2 = atom(false);
@@ -183,7 +183,7 @@ export const testClientPlugin2 = () => {
 				signal: "$sessionSignal",
 			},
 		],
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 /**
@@ -202,7 +202,7 @@ export const testDeepMergePluginA = () => {
 				},
 			};
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export const testDeepMergePluginB = () => {
@@ -216,5 +216,5 @@ export const testDeepMergePluginB = () => {
 				},
 			};
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

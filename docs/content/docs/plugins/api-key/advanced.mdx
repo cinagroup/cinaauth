@@ -1,11 +1,11 @@
----
+﻿---
 title: Advanced Features
 description: Advanced API Key features including sessions, multiple configurations, organization keys, storage modes, and more.
 ---
 
 ## Sessions from API keys
 
-Any time an endpoint in Better Auth is called that has a valid API key in the headers, you can automatically create a mock session to represent the user by enabling `enableSessionForAPIKeys` option.
+Any time an endpoint in CinaAuth is called that has a valid API key in the headers, you can automatically create a mock session to represent the user by enabling `enableSessionForAPIKeys` option.
 
 <Callout type="warn">
   This is generally not recommended, as it can lead to security issues if not used carefully. A leaked api key can be used to impersonate a user.
@@ -21,10 +21,10 @@ Any time an endpoint in Better Auth is called that has a valid API key in the he
 </Callout>
 
 ```ts
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       enableSessionForAPIKeys: true,
@@ -50,10 +50,10 @@ export const auth = betterAuth({
 The default header key is `x-api-key`, but this can be changed by setting the `apiKeyHeaders` option in the plugin options.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       apiKeyHeaders: ["x-api-key", "xyz-api-key"], // or you can pass just a string, eg: "x-api-key"
@@ -65,10 +65,10 @@ export const auth = betterAuth({
 Or optionally, you can pass a `customAPIKeyGetter` function to the plugin options, which will be called with the `HookEndpointContext`, and from there, you should return the API key, or `null` if the request is invalid.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       customAPIKeyGetter: (ctx) => {
@@ -96,10 +96,10 @@ This is useful when you need different types of API keys for different purposes,
 Pass an array of configuration objects to the `apiKey` plugin:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey([
       {
@@ -221,10 +221,10 @@ const secretKeys = await authClient.apiKey.list({
 You can also pass global options (like `schema`) as a second argument:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey(
       [
@@ -250,10 +250,10 @@ By default, API keys are owned by users. However, you can configure API keys to 
 Set `references: "organization"` in your configuration:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey([
       {
@@ -316,10 +316,10 @@ By default, **organization owners have full access** to all API key operations. 
 Here's how to configure roles with API key permissions:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { organization } from "better-auth/plugins"
-import { apiKey } from "@better-auth/api-key"
-import { createAccessControl } from "better-auth/plugins/access"
+import { CinaAuth } from "cinaauth"
+import { organization } from "cinaauth/plugins"
+import { apiKey } from "@cinaauth/api-key"
+import { createAccessControl } from "cinaauth/plugins/access"
 
 // Define your access control statements including apiKey
 const statements = {
@@ -343,7 +343,7 @@ const memberRole = ac.newRole({
   apiKey: ["read"], // [!code highlight]
 });
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       ac,
@@ -435,10 +435,10 @@ The API Key plugin supports multiple storage modes for flexible API key manageme
 Store API keys only in the database adapter. This is the default mode and requires no additional configuration.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       storage: "database", // Default, can be omitted
@@ -454,13 +454,13 @@ No fallback to database. Best for high-performance scenarios where all keys are 
 
 ```ts title="auth.ts"
 import { createClient } from "redis";
-import { betterAuth } from "better-auth";
-import { apiKey } from "@better-auth/api-key";
+import { CinaAuth } from "cinaauth";
+import { apiKey } from "@cinaauth/api-key";
 
 const redis = createClient();
 await redis.connect();
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   secondaryStorage: {
     get: async (key) => await redis.get(key),
     set: async (key, value, ttl) => {
@@ -494,13 +494,13 @@ Check secondary storage first, then fallback to database if not found.
 * Ensures consistency between both storage layers
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 import { createClient } from "redis";
 
 const redis = createClient();
 await redis.connect();
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   secondaryStorage: {
     get: async (key) => await redis.get(key),
     set: async (key, value, ttl) => {
@@ -523,10 +523,10 @@ export const auth = betterAuth({
 You can provide custom storage methods specifically for API keys, overriding the global `secondaryStorage` configuration:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       storage: "secondary-storage",
@@ -556,12 +556,12 @@ Every API key can have its own rate limit settings. The built-in rate-limiting a
 * When verifying an API key via the `/api-key/verify` endpoint
 * When using API keys for session creation (if `enableSessionForAPIKeys` is enabled), rate limiting applies to all endpoints that use the API key
 
-For other endpoints/methods that don't use API keys, you should utilize Better Auth's [built-in rate-limiting](/docs/concepts/rate-limit).
+For other endpoints/methods that don't use API keys, you should utilize CinaAuth's [built-in rate-limiting](/docs/concepts/rate-limit).
 
 <Callout type="warn">
   **Double Rate-Limit Increment**: If you manually verify an API key using `verifyApiKey()` and then fetch a session using `getSession()` with the same API key header, both operations will increment the rate limit counter, resulting in two increments for a single request. To avoid this, either:
 
-  * Use `enableSessionForAPIKeys: true` and let Better Auth handle session creation automatically (recommended)
+  * Use `enableSessionForAPIKeys: true` and let CinaAuth handle session creation automatically (recommended)
   * Or verify the API key once and reuse the validated result instead of calling both methods separately
 </Callout>
 
@@ -570,10 +570,10 @@ You can refer to the rate-limit default configurations below in the [API Key plu
 An example default value:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       rateLimit: {
@@ -663,10 +663,10 @@ You can customize the key generation and verification process straight from the 
 Here's an example:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       customKeyGenerator: (options: {
@@ -692,10 +692,10 @@ export const auth = betterAuth({
   If you're **not** using the `length` property provided by `customKeyGenerator`, you **must** set the `defaultKeyLength` property to how long generated keys will be.
 
   ```ts title="auth.ts"
-  import { betterAuth } from "better-auth"
-  import { apiKey } from "@better-auth/api-key"
+  import { CinaAuth } from "cinaauth"
+  import { apiKey } from "@cinaauth/api-key"
 
-  export const auth = betterAuth({
+  export const auth = CinaAuth({
     plugins: [
       apiKey({
         customKeyGenerator: () => {
@@ -719,10 +719,10 @@ We allow you to store metadata alongside your API keys. This is useful for stori
 To store metadata, make sure you haven't disabled the metadata feature in the plugin options.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       enableMetadata: true,

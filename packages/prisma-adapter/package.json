@@ -1,13 +1,13 @@
 {
-  "name": "@better-auth/prisma-adapter",
+  "name": "@cinaauth/prisma-adapter",
   "version": "1.6.19",
-  "description": "Prisma adapter for Better Auth",
+  "description": "Prisma adapter for CinaAuth",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/adapters/prisma",
+  "homepage": "https://www.cinagroup.com/docs/adapters/prisma",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/prisma-adapter"
   },
   "keywords": [
@@ -15,7 +15,7 @@
     "prisma",
     "adapter",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -43,7 +43,7 @@
     }
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:",
     "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0",
     "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0"
@@ -57,7 +57,7 @@
     }
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "@better-auth/utils": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

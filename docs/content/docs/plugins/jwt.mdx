@@ -1,4 +1,4 @@
----
+﻿---
 title: JWT
 description: Authenticate users with JWT tokens in services that can't use the session
 ---
@@ -16,10 +16,10 @@ The JWT plugin provides endpoints to retrieve a JWT token and a JWKS endpoint to
     ### Add the plugin to your **auth** config
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { jwt } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { jwt } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
             jwt(), // [!code highlight]
         ]
@@ -53,8 +53,8 @@ The JWT plugin provides endpoints to retrieve a JWT token and a JWKS endpoint to
     ### Add the client plugin to your auth client
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { jwtClient } from "better-auth/client/plugins" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client"
+    import { jwtClient } from "cinaauth/client/plugins" // [!code highlight]
 
     export const authClient = createAuthClient({
       plugins: [
@@ -217,9 +217,9 @@ const payload = await validateToken(token)
 If you are making your system oAuth compliant (such as when utilizing the OIDC or MCP plugins), you **MUST** disable the `/token` endpoint (oAuth equivalent `/oauth2/token`) and disable setting the jwt header (oAuth equivalent `/oauth2/userinfo`).
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-betterAuth({
+CinaAuth({
   disabledPaths: [
     "/token",
   ],
@@ -273,8 +273,8 @@ jwt({
 When using a custom `jwksPath` on the server, you **MUST** configure the client with the same path:
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
-import { jwtClient } from "better-auth/client/plugins"
+import { createAuthClient } from "cinaauth/client"
+import { jwtClient } from "cinaauth/client/plugins"
 
 export const authClient = createAuthClient({
   plugins: [

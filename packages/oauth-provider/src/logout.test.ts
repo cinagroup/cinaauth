@@ -1,12 +1,12 @@
 import {
 	createAuthorizationCodeRequest,
 	createAuthorizationURL,
-} from "@better-auth/core/oauth2";
-import { createAuthClient } from "better-auth/client";
-import { generateRandomString } from "better-auth/crypto";
-import { toNodeHandler } from "better-auth/node";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+} from "@cinaauth/core/oauth2";
+import { createAuthClient } from "cinaauth/client";
+import { generateRandomString } from "cinaauth/crypto";
+import { toNodeHandler } from "cinaauth/node";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import { decodeJwt } from "jose";
 import type { Listener } from "listhen";
 import { listen } from "listhen";

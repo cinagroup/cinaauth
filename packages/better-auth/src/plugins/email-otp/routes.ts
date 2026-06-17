@@ -1,7 +1,7 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { BASE_ERROR_CODES } from "@better-auth/core/error";
-import { deprecate } from "@better-auth/core/utils/deprecate";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { deprecate } from "@cinaauth/core/utils/deprecate";
 import * as z from "zod";
 import {
 	APIError,
@@ -89,7 +89,7 @@ const sendVerificationOTPBodySchema = z.object({
  * **client:**
  * `authClient.emailOtp.sendVerificationOtp`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/email-otp#api-method-email-otp-send-verification-otp)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/email-otp#api-method-email-otp-send-verification-otp)
  */
 export const sendVerificationOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint(
@@ -231,7 +231,7 @@ const getVerificationOTPBodySchema = z.object({
  * **server:**
  * `auth.api.getVerificationOTP`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/email-otp#api-method-email-otp-get-verification-otp)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/email-otp#api-method-email-otp-get-verification-otp)
  */
 export const getVerificationOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint.serverOnly(
@@ -329,7 +329,7 @@ const checkVerificationOTPBodySchema = z.object({
  * **server:**
  * `auth.api.checkVerificationOTP`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/email-otp#api-method-email-otp-check-verification-otp)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/email-otp#api-method-email-otp-check-verification-otp)
  */
 export const checkVerificationOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint(
@@ -431,7 +431,7 @@ const verifyEmailOTPBodySchema = z.object({
  * **client:**
  * `authClient.emailOtp.verifyEmail`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/email-otp#api-method-email-otp-verify-email)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/email-otp#api-method-email-otp-verify-email)
  */
 export const verifyEmailOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint(
@@ -600,7 +600,7 @@ const signInEmailOTPBodySchema = z
  * **client:**
  * `authClient.signIn.emailOtp`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/email-otp#api-method-sign-in-email-otp)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/email-otp#api-method-sign-in-email-otp)
  */
 export const signInEmailOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint(
@@ -714,7 +714,7 @@ const requestPasswordResetEmailOTPBodySchema = z.object({
  * **client:**
  * `authClient.emailOtp.requestPasswordReset`
  *
- * @see [Read our docs to learn more.](https://www.better-auth.com/docs/plugins/email-otp#reset-password-with-otp)
+ * @see [Read our docs to learn more.](https://www.cinagroup.com/docs/plugins/email-otp#reset-password-with-otp)
  */
 export const requestPasswordResetEmailOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint(
@@ -797,7 +797,7 @@ const forgetPasswordEmailOTPBodySchema = z.object({
  * `authClient.forgetPassword.emailOtp`
  *
  * @deprecated Use `/email-otp/request-password-reset` instead.
- * @see [Read our docs to learn more.](https://www.better-auth.com/docs/plugins/email-otp#reset-password-with-otp)
+ * @see [Read our docs to learn more.](https://www.cinagroup.com/docs/plugins/email-otp#reset-password-with-otp)
  */
 export const forgetPasswordEmailOTP = (opts: RequiredEmailOTPOptions) => {
 	const warnDeprecation = deprecate(
@@ -895,7 +895,7 @@ const resetPasswordEmailOTPBodySchema = z.object({
  * **client:**
  * `authClient.emailOtp.resetPassword`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/email-otp#api-method-email-otp-reset-password)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/email-otp#api-method-email-otp-reset-password)
  */
 export const resetPasswordEmailOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint(
@@ -1017,7 +1017,7 @@ const requestEmailChangeEmailOTPBodySchema = z.object({
  * **client:**
  * `authClient.emailOtp.requestEmailChange`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/email-otp#change-email-with-otp)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/email-otp#change-email-with-otp)
  */
 export const requestEmailChangeEmailOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint(
@@ -1153,7 +1153,7 @@ const changeEmailEmailOTPBodySchema = z.object({
  * **client:**
  * `authClient.emailOtp.changeEmail`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/email-otp#change-email-with-otp)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/email-otp#change-email-with-otp)
  */
 export const changeEmailEmailOTP = (opts: RequiredEmailOTPOptions) =>
 	createAuthEndpoint(

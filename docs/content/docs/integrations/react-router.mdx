@@ -1,9 +1,9 @@
----
+﻿---
 title: React Router v7 Integration
-description: Integrate Better Auth with React Router v7 (formerly Remix).
+description: Integrate CinaAuth with React Router v7 (formerly Remix).
 ---
 
-Better Auth can be easily integrated with React Router v7. This guide will show you how to integrate Better Auth with React Router v7.
+CinaAuth can be easily integrated with React Router v7. This guide will show you how to integrate CinaAuth with React Router v7.
 
 <Callout type="info">
   React Router v7 is the successor to Remix. If you're using Remix v2, the main difference is changing your imports from `@remix-run/*` to `react-router`. The APIs remain the same.
@@ -23,16 +23,16 @@ Create a file named `auth.server.ts` in one of these locations:
 
 You can also nest any of these folders under `app/` folder. (e.g. `app/lib/auth.server.ts`)
 
-And in this file, import Better Auth and create your instance.
+And in this file, import CinaAuth and create your instance.
 
 <Callout type="warn">
   Make sure to export the auth instance with the variable name `auth` or as a `default` export.
 </Callout>
 
 ```ts title="app/lib/auth.server.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     database: {
         provider: "postgres", //change this to your database provider
         url: process.env.DATABASE_URL, // path to your database or connection string
@@ -77,7 +77,7 @@ export async function action({ request }: ActionFunctionArgs) {
 ```
 
 <Callout type="info">
-  You can change the path on your better-auth configuration but it's recommended to keep it as `routes/api.auth.$.ts`
+  You can change the path on your cinaauth configuration but it's recommended to keep it as `routes/api.auth.$.ts`
 </Callout>
 
 ## Create a client
@@ -85,7 +85,7 @@ export async function action({ request }: ActionFunctionArgs) {
 Create a client instance. Here we are creating `auth-client.ts` file inside the `lib/` directory.
 
 ```ts title="app/lib/auth-client.ts"
-import { createAuthClient } from "better-auth/react" // make sure to import from better-auth/react
+import { createAuthClient } from "cinaauth/react" // make sure to import from cinaauth/react
 
 export const authClient = createAuthClient({
     //you can pass client configuration here

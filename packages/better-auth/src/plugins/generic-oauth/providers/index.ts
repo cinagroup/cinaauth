@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * import { betterAuth } from 'better-auth';
+ * import { CinaAuth } from 'cinaauth';
  * import {
  *  genericOAuth,
  *  auth0,
@@ -17,9 +17,9 @@
  *  okta,
  *  slack,
  *  patreon,
- * } from 'better-auth/plugins';
+ * } from 'cinaauth/plugins';
  *
- * export const auth = betterAuth({
+ * export const auth = CinaAuth({
  *   plugins: [
  *     genericOAuth({
  *       config: [

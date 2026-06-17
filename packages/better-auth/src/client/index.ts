@@ -1,8 +1,8 @@
 import type {
-	BetterAuthClientPlugin,
-	BetterAuthOptions,
-	BetterAuthPlugin,
-} from "@better-auth/core";
+	CinaAuthClientPlugin,
+	CinaAuthOptions,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../version";
 
 export * from "./broadcast-channel";
@@ -23,21 +23,21 @@ export * from "./session-refresh";
 export * from "./types";
 export * from "./vanilla";
 
-export const InferPlugin = <T extends BetterAuthPlugin>() => {
+export const InferPlugin = <T extends CinaAuthPlugin>() => {
 	return {
 		id: "infer-server-plugin",
 		version: PACKAGE_VERSION,
 		$InferServerPlugin: {} as T,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
-export function InferAuth<O extends { options: BetterAuthOptions }>() {
+export function InferAuth<O extends { options: CinaAuthOptions }>() {
 	return {} as O["options"];
 }
 
 //#region Necessary re-exports
-export type * from "@better-auth/core/db";
-export type { DBPrimitive } from "@better-auth/core/db";
+export type * from "@cinaauth/core/db";
+export type { DBPrimitive } from "@cinaauth/core/db";
 export type * from "@better-fetch/fetch";
 export type * from "nanostores";
 export type * from "../plugins/access";

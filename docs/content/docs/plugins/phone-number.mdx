@@ -1,4 +1,4 @@
----
+﻿---
 title: Phone Number
 description: Phone number plugin
 ---
@@ -12,10 +12,10 @@ The phone number plugin extends the authentication system by allowing users to s
     ### Add Plugin to the server
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { phoneNumber } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { phoneNumber } from "cinaauth/plugins" // [!code highlight]
 
-    const auth = betterAuth({
+    const auth = CinaAuth({
         plugins: [ 
             phoneNumber({  // [!code highlight]
                 sendOTP: ({ phoneNumber, code }, ctx) => { // [!code highlight]
@@ -53,8 +53,8 @@ The phone number plugin extends the authentication system by allowing users to s
     ### Add the client plugin
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { phoneNumberClient } from "better-auth/client/plugins" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client"
+    import { phoneNumberClient } from "cinaauth/client/plugins" // [!code highlight]
 
     const authClient = createAuthClient({
         plugins: [
@@ -115,10 +115,10 @@ After the OTP is sent, users can verify their phone number by providing the code
 To allow users to sign up using their phone number, you can pass `signUpOnVerification` option to your plugin configuration. It requires you to pass `getTempEmail` function to generate a temporary email for the user.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { phoneNumber } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth";
+import { phoneNumber } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         phoneNumber({
             sendOTP: ({ phoneNumber, code }, ctx) => {
@@ -286,10 +286,10 @@ The time in seconds after which the OTP code expires. Default is `300` seconds.
 A function that is called after the phone number is verified. It takes the phone number and the user object as the first argument and a request object as the second argument.
 
 ```ts
-import { betterAuth } from "better-auth";
-import { phoneNumber } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth";
+import { phoneNumber } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         phoneNumber({
             sendOTP: ({ phoneNumber, code }, ctx) => {
@@ -316,10 +316,10 @@ A custom function to validate the phone number. It takes the phone number as an 
 A custom function to verify the OTP code. When provided, this function will be used instead of the default internal verification logic. This is useful when you want to integrate with external SMS providers that handle OTP verification (e.g., Twilio Verify, AWS SNS). The function takes an object with `phoneNumber` and `code` properties and a request object, and returns a boolean or a promise that resolves to a boolean indicating whether the OTP is valid.
 
 ```ts
-import { betterAuth } from "better-auth";
-import { phoneNumber } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth";
+import { phoneNumber } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         phoneNumber({
             sendOTP: ({ phoneNumber, code }, ctx) => {

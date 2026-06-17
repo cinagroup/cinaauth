@@ -1,7 +1,7 @@
-import { APIError } from "better-auth/api";
-import { createAuthClient } from "better-auth/client";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+import { APIError } from "cinaauth/api";
+import { createAuthClient } from "cinaauth/client";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { oauthProviderClient } from "../client";
 import { oauthProvider } from "../oauth";
@@ -379,7 +379,7 @@ describe("oauthClient", async () => {
  * user cannot mint a client through registration, while the unauthenticated
  * public-client path stays open and never consults the hook.
  *
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-jmcv-4jfc-6qqj
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-jmcv-4jfc-6qqj
  */
 describe("oauthClient dynamic registration privileges", async () => {
 	const baseUrl = "http://localhost:3000";

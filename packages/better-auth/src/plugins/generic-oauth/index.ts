@@ -1,12 +1,12 @@
-import type { AuthContext, BetterAuthPlugin } from "@better-auth/core";
-import { APIError } from "@better-auth/core/error";
-import type { OAuth2Tokens, OAuthProvider } from "@better-auth/core/oauth2";
+import type { AuthContext, CinaAuthPlugin } from "@cinaauth/core";
+import { APIError } from "@cinaauth/core/error";
+import type { OAuth2Tokens, OAuthProvider } from "@cinaauth/core/oauth2";
 import {
 	applyDefaultAccessTokenExpiry,
 	createAuthorizationURL,
 	refreshAccessToken,
 	validateAuthorizationCode,
-} from "@better-auth/core/oauth2";
+} from "@cinaauth/core/oauth2";
 import { betterFetch } from "@better-fetch/fetch";
 import { PACKAGE_VERSION } from "../../version";
 import { GENERIC_OAUTH_ERROR_CODES } from "./error-codes";
@@ -28,8 +28,8 @@ function isNonEmptyOAuthId(
 export * from "./providers";
 export type { GenericOAuthConfig, GenericOAuthOptions } from "./types";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"generic-oauth": {
 			creator: typeof genericOAuth;
 		};
@@ -271,5 +271,5 @@ export const genericOAuth = (options: GenericOAuthOptions) => {
 		},
 		options,
 		$ERROR_CODES: GENERIC_OAUTH_ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

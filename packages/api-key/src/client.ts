@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import type { apiKey } from ".";
 import { API_KEY_ERROR_CODES } from "./error-codes";
 import { PACKAGE_VERSION } from "./version";
@@ -16,7 +16,7 @@ export const apiKeyClient = () => {
 			"/api-key/delete-all-expired-api-keys": "POST",
 		},
 		$ERROR_CODES: API_KEY_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export type ApiKeyClientPlugin = ReturnType<typeof apiKeyClient>;

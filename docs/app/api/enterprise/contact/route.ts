@@ -1,4 +1,4 @@
-import { Ratelimit } from "@upstash/ratelimit";
+﻿import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
 
 		const [internalResult, acknowledgementResult] = await Promise.all([
 			resend.emails.send({
-				from: "Enterprise Support <enterprise@better-auth.com>",
+				from: "Enterprise Support <enterprise@cinagroup.com>",
 				to: toEmail,
 				subject: `Enterprise Inquiry from ${fullName}`,
 				html: `
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
 				`,
 			}),
 			resend.emails.send({
-				from: "Ravi <ravi@better-auth.com>",
+				from: "Ravi <ravi@cinagroup.com>",
 				to: email,
 				cc: toEmail,
 				subject: "Re: Enterprise Inquiry",

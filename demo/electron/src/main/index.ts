@@ -1,4 +1,4 @@
-import { join } from "node:path";
+﻿import { join } from "node:path";
 import { electronApp, optimizer } from "@electron-toolkit/utils";
 import { app, BrowserWindow, shell } from "electron";
 import icon from "../../resources/icon.png?asset";
@@ -11,7 +11,7 @@ function createWindow(): void {
 		height: 670,
 		show: false,
 		autoHideMenuBar: true,
-		title: "Better Auth + Electron",
+		title: "CinaAuth + Electron",
 		icon,
 		webPreferences: {
 			preload: join(__dirname, "../preload/index.js"),
@@ -38,7 +38,7 @@ function createWindow(): void {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
 	// Set app user model id for windows
-	electronApp.setAppUserModelId("com.better-auth.demo");
+	electronApp.setAppUserModelId("com.cinaauth.demo");
 
 	// Default open or close DevTools by F12 in development
 	// and ignore CommandOrControl + R in production.

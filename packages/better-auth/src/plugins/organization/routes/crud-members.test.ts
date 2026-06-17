@@ -666,7 +666,7 @@ describe("activeMemberRole", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8595
+	 * @see https://github.com/cinagroup/cinaauth/issues/8595
 	 */
 	it("should clear active member role hook data after sign out", async () => {
 		const originalWindow = global.window;

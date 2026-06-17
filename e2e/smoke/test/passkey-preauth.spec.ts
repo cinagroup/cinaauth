@@ -1,11 +1,11 @@
-import assert from "node:assert";
+﻿import assert from "node:assert";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import { describe, it } from "node:test";
-import { passkey } from "@better-auth/passkey";
-import { betterAuth } from "better-auth";
-import { memoryAdapter } from "better-auth/adapters/memory";
-import { toNodeHandler } from "better-auth/node";
+import { passkey } from "@cinaauth/passkey";
+import { CinaAuth } from "cinaauth";
+import { memoryAdapter } from "cinaauth/adapters/memory";
+import { toNodeHandler } from "cinaauth/node";
 
 type PasskeyRegistrationOptionsPayload = {
 	user?: { name?: string; displayName?: string };
@@ -46,7 +46,7 @@ describe("(node) passkey pre-auth", () => {
 		const db: Record<string, any[]> = {
 			passkey: [],
 		};
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			baseURL: "http://localhost",
 			database: memoryAdapter(db),
 			trustedOrigins: ["http://localhost:*"],
@@ -119,6 +119,6 @@ describe("(node) passkey pre-auth", () => {
 		assert.equal(typeof payload.challenge, "string");
 
 		const setCookie = response.headers.get("set-cookie") || "";
-		assert.strictEqual(setCookie.includes("better-auth-passkey"), true);
+		assert.strictEqual(setCookie.includes("cinaauth-passkey"), true);
 	});
 });

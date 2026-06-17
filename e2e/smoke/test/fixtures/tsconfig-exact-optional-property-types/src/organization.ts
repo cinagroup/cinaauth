@@ -1,7 +1,7 @@
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+﻿import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [
 		organization({
 			requireEmailVerificationOnInvitation: true,
@@ -17,6 +17,6 @@ export const auth = betterAuth({
 	],
 });
 
-export const auth2 = betterAuth({
+export const auth2 = CinaAuth({
 	plugins: [organization({})],
 });

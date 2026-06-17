@@ -1,4 +1,4 @@
-import type { ElectronRequestAuthOptions } from "@better-auth/electron/client";
+import type { ElectronRequestAuthOptions } from "@cinaauth/electron/client";
 import { cn } from "@renderer/lib/utils";
 import { useState, useTransition } from "react";
 import { Button } from "./ui/button";

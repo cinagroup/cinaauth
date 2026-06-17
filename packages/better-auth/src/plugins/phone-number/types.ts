@@ -1,4 +1,4 @@
-import type { Awaitable, GenericEndpointContext } from "@better-auth/core";
+import type { Awaitable, GenericEndpointContext } from "@cinaauth/core";
 import type { User } from "../../types";
 import type { InferOptionSchema } from "../../types/plugins";
 import type { schema } from "./schema";

@@ -1,31 +1,31 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import { init } from "../context/init";
 import type { Auth } from "../types";
-import { createBetterAuth } from "./base";
+import { createCinaAuth } from "./base";
 
 /**
- * Better Auth initializer for full mode (with Kysely)
+ * CinaAuth initializer for full mode (with Kysely)
  *
  * @example
  * ```ts
- * import { betterAuth } from "better-auth";
+ * import { CinaAuth } from "cinaauth";
  *
- * const auth = betterAuth({
+ * const auth = CinaAuth({
  * 	database: new PostgresDialect({ connection: process.env.DATABASE_URL }),
  * });
  * ```
  *
- * For minimal mode (without Kysely), import from `better-auth/minimal` instead
+ * For minimal mode (without Kysely), import from `cinaauth/minimal` instead
  * @example
  * ```ts
- * import { betterAuth } from "better-auth/minimal";
+ * import { CinaAuth } from "cinaauth/minimal";
  *
- * const auth = betterAuth({
+ * const auth = CinaAuth({
  *	  database: drizzleAdapter(db, { provider: "pg" }),
  * });
  */
-export const betterAuth = <Options extends BetterAuthOptions>(
+export const CinaAuth = <Options extends CinaAuthOptions>(
 	options: Options & {},
 ): Auth<Options> => {
-	return createBetterAuth(options, init);
+	return createCinaAuth(options, init);
 };

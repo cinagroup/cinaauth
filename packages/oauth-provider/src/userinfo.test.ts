@@ -1,11 +1,11 @@
-import { createAuthClient } from "better-auth/client";
-import { generateRandomString } from "better-auth/crypto";
+import { createAuthClient } from "cinaauth/client";
+import { generateRandomString } from "cinaauth/crypto";
 import {
 	createAuthorizationCodeRequest,
 	createAuthorizationURL,
-} from "better-auth/oauth2";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+} from "cinaauth/oauth2";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import type { APIError } from "better-call";
 import { beforeAll, describe, expect, it } from "vitest";
 import { oauthProviderClient } from "./client";
@@ -217,7 +217,7 @@ describe("oauth userinfo", async () => {
 	 * Programmatic callers have no `ctx.request`, so userinfo must resolve the
 	 * bearer token from `ctx.headers` for both transports.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/8806
+	 * @see https://github.com/cinagroup/cinaauth/issues/8806
 	 */
 	it("should return userinfo via auth.api with headers only (no Request)", async () => {
 		const tokens = await getTokens();

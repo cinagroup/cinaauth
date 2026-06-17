@@ -1,5 +1,5 @@
-import type { BetterAuthPluginDBSchema } from "@better-auth/core/db";
-import { mergeSchema } from "better-auth/db";
+﻿import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
+import { mergeSchema } from "cinaauth/db";
 import type { StripeOptions } from "./types";
 
 export const subscriptions = {
@@ -72,7 +72,7 @@ export const subscriptions = {
 			},
 		},
 	},
-} satisfies BetterAuthPluginDBSchema;
+} satisfies CinaAuthPluginDBSchema;
 
 export const user = {
 	user: {
@@ -83,7 +83,7 @@ export const user = {
 			},
 		},
 	},
-} satisfies BetterAuthPluginDBSchema;
+} satisfies CinaAuthPluginDBSchema;
 
 export const organization = {
 	organization: {
@@ -94,7 +94,7 @@ export const organization = {
 			},
 		},
 	},
-} satisfies BetterAuthPluginDBSchema;
+} satisfies CinaAuthPluginDBSchema;
 
 type GetSchemaResult<O extends StripeOptions> = typeof user &
 	(O["subscription"] extends { enabled: true } ? typeof subscriptions : {}) &
@@ -103,7 +103,7 @@ type GetSchemaResult<O extends StripeOptions> = typeof user &
 export const getSchema = <O extends StripeOptions>(
 	options: O,
 ): GetSchemaResult<O> => {
-	let baseSchema: BetterAuthPluginDBSchema = {};
+	let baseSchema: CinaAuthPluginDBSchema = {};
 
 	if (options.subscription?.enabled) {
 		baseSchema = {

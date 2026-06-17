@@ -1,13 +1,13 @@
----
+﻿---
 title: CLI
-description: Learn about the Better Auth CLI commands for generating and migrating database schemas, initializing projects, generating secret keys, and gathering diagnostic info.
+description: Learn about the CinaAuth CLI commands for generating and migrating database schemas, initializing projects, generating secret keys, and gathering diagnostic info.
 ---
 
-Better Auth comes with a built-in CLI to help you manage the database schemas, initialize your project, generate a secret key for your application, and gather diagnostic information about your setup.
+CinaAuth comes with a built-in CLI to help you manage the database schemas, initialize your project, generate a secret key for your application, and gather diagnostic information about your setup.
 
 ## Generate
 
-The `generate` command creates the schema required by Better Auth. If you're using a database adapter like Prisma or Drizzle, this command will generate the right schema for your ORM. If you're using the built-in Kysely adapter, it will generate an SQL file you can run directly on your database.
+The `generate` command creates the schema required by CinaAuth. If you're using a database adapter like Prisma or Drizzle, this command will generate the right schema for your ORM. If you're using the built-in Kysely adapter, it will generate an SQL file you can run directly on your database.
 
 ```package-install title="Terminal"
 npx auth@latest generate
@@ -16,12 +16,12 @@ npx auth@latest generate
 ### Options
 
 * `--output` - Where to save the generated schema. For Prisma, it will be saved in prisma/schema.prisma. For Drizzle, it goes to schema.ts in your project root. For Kysely, it's an SQL file saved as schema.sql in your project root.
-* `--config` - The path to your Better Auth config file. By default, the CLI will search for an auth.ts file in **./**, **./utils**, **./lib**, or any of these directories under the `src` directory.
+* `--config` - The path to your CinaAuth config file. By default, the CLI will search for an auth.ts file in **./**, **./utils**, **./lib**, or any of these directories under the `src` directory.
 * `--yes` - Skip the confirmation prompt and generate the schema directly.
 
 ## Migrate
 
-The migrate command applies the Better Auth schema directly to your database. This is available if you're using the built-in Kysely adapter. For other adapters, you'll need to apply the schema using your ORM's migration tool.
+The migrate command applies the CinaAuth schema directly to your database. This is available if you're using the built-in Kysely adapter. For other adapters, you'll need to apply the schema using your ORM's migration tool.
 
 ```package-install title="Terminal"
 npx auth@latest migrate
@@ -29,7 +29,7 @@ npx auth@latest migrate
 
 ### Options
 
-* `--config` - The path to your Better Auth config file. By default, the CLI will search for an auth.ts file in **./**, **./utils**, **./lib**, or any of these directories under the `src` directory.
+* `--config` - The path to your CinaAuth config file. By default, the CLI will search for an auth.ts file in **./**, **./utils**, **./lib**, or any of these directories under the `src` directory.
 * `--yes` - Skip the confirmation prompt and apply the schema directly.
 
 <Callout type="info">
@@ -40,7 +40,7 @@ npx auth@latest migrate
 
 ## Init
 
-The `init` command allows you to initialize Better Auth in your project.
+The `init` command allows you to initialize CinaAuth in your project.
 
 ```package-install title="Terminal"
 npx auth@latest init
@@ -56,7 +56,7 @@ npx auth@latest init
 
 ## Info
 
-The `info` command provides diagnostic information about your Better Auth setup and environment. Useful for debugging and sharing when seeking support.
+The `info` command provides diagnostic information about your CinaAuth setup and environment. Useful for debugging and sharing when seeking support.
 
 ```package-install title="Terminal"
 npx auth@latest info
@@ -68,13 +68,13 @@ The command displays:
 
 * **System**: OS, CPU, memory, Node.js version
 * **Package Manager**: Detected manager and version
-* **Better Auth**: Version and configuration (sensitive data auto-redacted)
+* **CinaAuth**: Version and configuration (sensitive data auto-redacted)
 * **Frameworks**: Detected frameworks (Next.js, React, Vue, etc.)
 * **Databases**: Database clients and ORMs (Prisma, Drizzle, etc.)
 
 ### Options
 
-* `--config` - Path to your Better Auth config file
+* `--config` - Path to your CinaAuth config file
 * `--json` - Output as JSON for sharing or programmatic use
 
 ### Examples
@@ -94,7 +94,7 @@ Sensitive data like secrets, API keys, and database URLs are automatically repla
 
 ## Secret
 
-The CLI also provides a way to generate a secret key for your Better Auth instance.
+The CLI also provides a way to generate a secret key for your CinaAuth instance.
 
 ```package-install title="Terminal"
 npx auth@latest secret

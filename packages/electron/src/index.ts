@@ -3,13 +3,13 @@
 import type {
 	GenericEndpointContext,
 	HookEndpointContext,
-} from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
-import { APIError } from "@better-auth/core/error";
+} from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
+import { APIError } from "@cinaauth/core/error";
 import { base64Url } from "@better-auth/utils/base64";
-import type { BetterAuthPlugin } from "better-auth";
-import { safeJSONParse } from "better-auth";
-import { generateRandomString } from "better-auth/crypto";
+import type { CinaAuthPlugin } from "cinaauth";
+import { safeJSONParse } from "cinaauth";
+import { generateRandomString } from "cinaauth/crypto";
 import * as z from "zod";
 import { ELECTRON_ERROR_CODES } from "./error-codes";
 import {
@@ -20,8 +20,8 @@ import {
 import type { ElectronOptions } from "./types";
 import { PACKAGE_VERSION } from "./version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		electron: {
 			creator: typeof electron;
 		};
@@ -32,7 +32,7 @@ export const electron = (options?: ElectronOptions | undefined) => {
 	const opts = {
 		codeExpiresIn: 300, // 5 minutes
 		redirectCookieExpiresIn: 120, // 2 minutes
-		cookiePrefix: "better-auth",
+		cookiePrefix: "cinaauth",
 		clientID: "electron",
 		...(options || {}),
 	};
@@ -234,7 +234,7 @@ export const electron = (options?: ElectronOptions | undefined) => {
 		},
 		options: opts,
 		$ERROR_CODES: ELECTRON_ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export type * from "./types";

@@ -1,4 +1,4 @@
-import Footer from "@/components/landing/footer";
+﻿import Footer from "@/components/landing/footer";
 import { HalftoneBackground } from "@/components/landing/halftone-bg";
 
 export default function PricingLayout({
@@ -23,7 +23,7 @@ export default function PricingLayout({
 									</h1>
 									<p className="text-sm text-foreground/70 dark:text-foreground/50 leading-relaxed max-w-[260px]">
 										Connect to our infrastructure and power your self-hosted
-										Better Auth with a dashboard, audit logs, security, and
+										CinaAuth with a dashboard, audit logs, security, and
 										more.
 									</p>
 								</div>
@@ -65,7 +65,7 @@ export default function PricingLayout({
 									</h1>
 									<p className="text-sm text-foreground/70 dark:text-foreground/50 leading-relaxed">
 										Connect to our infrastructure and power your self-hosted
-										Better Auth with a dashboard, audit logs, security, and
+										CinaAuth with a dashboard, audit logs, security, and
 										more.
 									</p>
 								</div>

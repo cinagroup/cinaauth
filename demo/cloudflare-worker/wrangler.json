@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cinaauth-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cinaauth-db",
+      "database_id": "b5063da6-673d-41e3-93c7-e63b089aaf28",
+      "migrations_dir": "./drizzle"
+    }
+  ],
+  "vars": {
+    "CINAAUTH_URL": "https://auth.cinagroup.com"
+  },
+  "routes": [
+    {
+      "pattern": "auth.cinagroup.com/*",
+      "zone_name": "cinagroup.com"
+    }
+  ]
+}

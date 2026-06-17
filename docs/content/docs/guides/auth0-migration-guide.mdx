@@ -1,9 +1,9 @@
----
-title: Migrating from Auth0 to Better Auth
-description: A step-by-step guide to transitioning from Auth0 to Better Auth.
+﻿---
+title: Migrating from Auth0 to CinaAuth
+description: A step-by-step guide to transitioning from Auth0 to CinaAuth.
 ---
 
-In this guide, we'll walk through the steps to migrate a project from Auth0 to Better Auth — including email/password with proper hashing, social/external accounts, two-factor authentication, and more.
+In this guide, we'll walk through the steps to migrate a project from Auth0 to CinaAuth — including email/password with proper hashing, social/external accounts, two-factor authentication, and more.
 
 <Callout type="warn">
   This migration will invalidate all active sessions. This guide doesn't currently show you how to migrate Organizations but it should be possible with additional steps and the [Organization](/docs/plugins/organization) Plugin.
@@ -11,7 +11,7 @@ In this guide, we'll walk through the steps to migrate a project from Auth0 to B
 
 ## Before You Begin
 
-Before starting the migration process, set up Better Auth in your project. Follow the [installation guide](/docs/installation) to get started.
+Before starting the migration process, set up CinaAuth in your project. Follow the [installation guide](/docs/installation) to get started.
 
 <Steps>
   <Step>
@@ -28,7 +28,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
     ```ts title="auth.ts"
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -42,9 +42,9 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Enable the email and password in your auth config and implement your own logic for sending verification emails, reset password emails, etc.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -68,9 +68,9 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Add social providers you have enabled in your Auth0 project in your auth config.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -104,10 +104,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
     ```ts title="auth.ts"
     import { Pool } from "pg";
-    import { betterAuth } from "better-auth";
-    import { admin, twoFactor, username } from "better-auth/plugins";
+    import { CinaAuth } from "cinaauth";
+    import { admin, twoFactor, username } from "cinaauth/plugins";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -194,7 +194,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
     ```ts title="scripts/migrate-auth0.ts"
     import { ManagementClient } from 'auth0';
-    import { generateRandomString, symmetricEncrypt } from "better-auth/crypto";
+    import { generateRandomString, symmetricEncrypt } from "cinaauth/crypto";
     import { auth } from '@/lib/auth';
 
     const auth0Client = new ManagementClient({
@@ -244,11 +244,11 @@ Before starting the migration process, set up Better Auth in your project. Follo
         return encCodes;
     }
 
-    function mapAuth0RoleToBetterAuthRole(auth0Roles: string[]) {
+    function mapAuth0RoleToCinaAuthRole(auth0Roles: string[]) {
         if (typeof auth0Roles === 'string') return auth0Roles;
         if (Array.isArray(auth0Roles)) return auth0Roles.join(',');
     }
-    // helper function to migrate password from auth0 to better auth for custom hashes and algs
+    // helper function to migrate password from auth0 to CinaAuth for custom hashes and algs
     async function migratePassword(auth0User: any) {
         if (auth0User.password_hash) {
             if (auth0User.password_hash.startsWith('$2a$') || auth0User.password_hash.startsWith('$2b$')) {
@@ -411,7 +411,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
                                 id: org.id,
                                 user_id: member.user_id
                             });
-                            const role = mapAuth0RoleToBetterAuthRole(userRoles.data?.map(r => r.name) || []);
+                            const role = mapAuth0RoleToCinaAuthRole(userRoles.data?.map(r => r.name) || []);
                             await ctx.adapter.create({
                                 model: "member",
                                 data: {
@@ -489,7 +489,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
                         updatedAt: safeDateConversion(auth0User.updated_at),
                         ...(isAdminEnabled ? {
                             banned: auth0User.blocked || false,
-                            role: mapAuth0RoleToBetterAuthRole(auth0User.roles || []),
+                            role: mapAuth0RoleToCinaAuthRole(auth0User.roles || []),
                         } : {}),
 
                         ...(isUsernameEnabled ? {
@@ -560,7 +560,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
       1. Test the migration in a development environment first
       2. Monitor the migration process for any errors
-      3. Verify the migrated data in Better Auth before proceeding
+      3. Verify the migrated data in CinaAuth before proceeding
       4. Keep Auth0 installed and configured until the migration is complete
       5. The script handles bcrypt password hashes by default. For custom password hashing algorithms, you'll need to modify the `migratePassword` function
     </Callout>
@@ -569,7 +569,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Change password hashing algorithm
 
-    By default, Better Auth uses the `scrypt` algorithm to hash passwords. Since Auth0 uses `bcrypt`, you'll need to configure Better Auth to use bcrypt for password verification.
+    By default, CinaAuth uses the `scrypt` algorithm to hash passwords. Since Auth0 uses `bcrypt`, you'll need to configure CinaAuth to use bcrypt for password verification.
 
     First, install bcrypt:
 
@@ -581,10 +581,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Then update your auth configuration:
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import bcrypt from "bcrypt";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
        emailAndPassword: {
            password: {
                hash: async (password) => {
@@ -614,10 +614,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Update your components
 
-    Now that the data is migrated, update your components to use Better Auth. Here's an example for the sign-in component:
+    Now that the data is migrated, update your components to use CinaAuth. Here's an example for the sign-in component:
 
     ```tsx title="components/auth/sign-in.tsx"
-    import { authClient } from "better-auth/client";
+    import { authClient } from "cinaauth/client";
 
     export const SignIn = () => {
       const handleSignIn = async () => {
@@ -645,11 +645,11 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Update the middleware
 
-    Replace your Auth0 middleware with Better Auth's middleware:
+    Replace your Auth0 middleware with CinaAuth's middleware:
 
     ```ts title="middleware.ts"
     import { NextRequest, NextResponse } from "next/server";
-    import { getSessionCookie } from "better-auth/cookies";
+    import { getSessionCookie } from "cinaauth/cookies";
 
     export async function middleware(request: NextRequest) {
       const sessionCookie = getSessionCookie(request);
@@ -675,7 +675,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Remove Auth0 Dependencies
 
-    Once you've verified everything is working correctly with Better Auth, remove Auth0:
+    Once you've verified everything is working correctly with CinaAuth, remove Auth0:
 
     ```bash
     npm remove @auth0/auth0-react @auth0/auth0-spa-js @auth0/nextjs-auth0
@@ -691,7 +691,7 @@ The migration script handles bcrypt password hashes by default. If you're using 
 
 ### Role Mapping
 
-The script includes a basic role mapping function (`mapAuth0RoleToBetterAuthRole`). Customize this function based on your Auth0 roles and Better Auth role requirements.
+The script includes a basic role mapping function (`mapAuth0RoleToCinaAuthRole`). Customize this function based on your Auth0 roles and CinaAuth role requirements.
 
 ### Rate Limiting
 
@@ -699,6 +699,6 @@ The migration script includes pagination to handle large numbers of users. Adjus
 
 ## Wrapping Up
 
-Now! You've successfully migrated from Auth0 to Better Auth.
+Now! You've successfully migrated from Auth0 to CinaAuth.
 
-Better Auth offers greater flexibility and more features—be sure to explore the [documentation](/docs) to unlock its full potential.
+CinaAuth offers greater flexibility and more features—be sure to explore the [documentation](/docs) to unlock its full potential.

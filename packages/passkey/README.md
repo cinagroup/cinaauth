@@ -1,19 +1,19 @@
-# Better Auth Passkey Plugin
+﻿# CinaAuth Passkey Plugin
 
 ## Installation
 
 ```bash
 # Using npm
-npm install better-auth @better-auth/passkey
+npm install cinaauth @cinaauth/passkey
 
 # Using yarn
-yarn add better-auth @better-auth/passkey
+yarn add cinaauth @cinaauth/passkey
 
 # Using pnpm
-pnpm add better-auth @better-auth/passkey
+pnpm add cinaauth @cinaauth/passkey
 
 # Using bun
-bun add better-auth @better-auth/passkey
+bun add cinaauth @cinaauth/passkey
 ```
 
 ## Usage
@@ -21,10 +21,10 @@ bun add better-auth @better-auth/passkey
 ### Server
 
 ```typescript
-import { betterAuth } from 'better-auth';
-import { passkey } from '@better-auth/passkey';
+import { CinaAuth } from 'cinaauth';
+import { passkey } from '@cinaauth/passkey';
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     passkey({
       rpID: 'example.com',
@@ -37,8 +37,8 @@ export const auth = betterAuth({
 ### Client
 
 ```typescript
-import { createAuthClient } from 'better-auth/client';
-import { passkeyClient } from '@better-auth/passkey/client';
+import { createAuthClient } from 'cinaauth/client';
+import { passkeyClient } from '@cinaauth/passkey/client';
 
 export const authClient = createAuthClient({
   plugins: [passkeyClient()],
@@ -47,7 +47,7 @@ export const authClient = createAuthClient({
 
 ## Documentation
 
-For more information, visit the [Better Auth Passkey documentation](https://better-auth.com/docs/plugins/passkey).
+For more information, visit the [CinaAuth Passkey documentation](https://cinagroup.com/docs/plugins/passkey).
 
 ## License
 

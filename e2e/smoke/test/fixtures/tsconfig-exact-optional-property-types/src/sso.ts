@@ -1,6 +1,6 @@
-import { sso } from "@better-auth/sso";
-import { betterAuth } from "better-auth";
+﻿import { sso } from "@cinaauth/sso";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [sso()],
 });

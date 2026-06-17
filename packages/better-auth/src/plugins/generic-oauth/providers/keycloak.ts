@@ -13,9 +13,9 @@ export interface KeycloakOptions extends BaseOAuthProviderOptions {
  *
  * @example
  * ```ts
- * import { genericOAuth, keycloak } from "better-auth/plugins/generic-oauth";
+ * import { genericOAuth, keycloak } from "cinaauth/plugins/generic-oauth";
  *
- * export const auth = betterAuth({
+ * export const auth = CinaAuth({
  *   plugins: [
  *     genericOAuth({
  *       config: [

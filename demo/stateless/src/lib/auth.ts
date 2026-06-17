@@ -1,15 +1,15 @@
-import { betterAuth } from "better-auth/minimal";
+﻿import { CinaAuth } from "cinaauth/minimal";
 
 const baseURL: string | undefined =
 	process.env.VERCEL === "1"
 		? process.env.VERCEL_ENV === "production"
-			? process.env.BETTER_AUTH_URL
+			? process.env.CINAAUTH_URL
 			: process.env.VERCEL_ENV === "preview"
 				? `https://${process.env.VERCEL_URL}`
 				: undefined
 		: undefined;
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL,
 	socialProviders: {
 		github: {

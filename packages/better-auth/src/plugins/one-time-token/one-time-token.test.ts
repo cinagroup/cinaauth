@@ -307,7 +307,7 @@ describe("One-time token", async () => {
 
 			const setCookieHeader = verifyResponse.headers.get("set-cookie");
 			expect(setCookieHeader).toBeDefined();
-			expect(setCookieHeader).toContain("better-auth.session_token");
+			expect(setCookieHeader).toContain("cinaauth.session_token");
 		});
 	});
 

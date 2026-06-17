@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { CinaAuthError } from "@cinaauth/core/error";
 import * as z from "zod";
 import { expireCookie } from "./cookies";
 import {
@@ -41,7 +41,7 @@ export type StateErrorCode =
 	| "state_mismatch"
 	| "state_security_mismatch";
 
-export class StateError extends BetterAuthError {
+export class StateError extends CinaAuthError {
 	code: string;
 	details?: Record<string, any>;
 	/**

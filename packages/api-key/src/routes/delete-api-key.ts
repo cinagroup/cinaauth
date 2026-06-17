@@ -1,7 +1,7 @@
-import type { AuthContext } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { APIError } from "@better-auth/core/error";
-import { sessionMiddleware } from "better-auth/api";
+import type { AuthContext } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { APIError } from "@cinaauth/core/error";
+import { sessionMiddleware } from "cinaauth/api";
 import * as z from "zod";
 import { API_KEY_TABLE_NAME, API_KEY_ERROR_CODES as ERROR_CODES } from "..";
 import {

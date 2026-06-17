@@ -1,7 +1,7 @@
-import type { GenericEndpointContext } from "@better-auth/core";
+import type { GenericEndpointContext } from "@cinaauth/core";
 
 const HANDLING_DOCS_URL =
-	"https://www.better-auth.com/docs/concepts/oauth#handling-providers-without-email";
+	"https://www.cinagroup.com/docs/concepts/oauth#handling-providers-without-email";
 
 /**
  * Redirect the user to the OAuth error page with a machine-readable `error`

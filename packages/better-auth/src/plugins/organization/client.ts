@@ -1,5 +1,5 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
-import type { DBFieldAttribute } from "@better-auth/core/db";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
+import type { DBFieldAttribute } from "@cinaauth/core/db";
 import { atom } from "nanostores";
 import { useAuthQuery } from "../../client";
 import type {
@@ -9,7 +9,7 @@ import type {
 	InferTeam,
 	Member,
 } from "../../plugins/organization/schema";
-import type { BetterAuthOptions, BetterAuthPlugin } from "../../types";
+import type { CinaAuthOptions, CinaAuthPlugin } from "../../types";
 import type { Prettify } from "../../types/helper";
 import { PACKAGE_VERSION } from "../../version";
 import type { AccessControl, ArrayElement, Role } from "../access";
@@ -285,19 +285,19 @@ export const organizationClient = <CO extends OrganizationClientOptions>(
 			},
 		],
 		$ERROR_CODES: ORGANIZATION_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export const inferOrgAdditionalFields = <
 	O extends {
-		options: BetterAuthOptions;
+		options: CinaAuthOptions;
 	},
 	S extends OrganizationOptions["schema"] = undefined,
 >(
 	schema?: S | undefined,
 ) => {
 	type FindById<
-		T extends readonly BetterAuthPlugin[],
+		T extends readonly CinaAuthPlugin[],
 		TargetId extends string,
 	> = Extract<T[number], { id: TargetId }>;
 

@@ -1,12 +1,12 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { BASE_ERROR_CODES } from "@better-auth/core/error";
-import type { OAuth2Tokens, OAuth2UserInfo } from "@better-auth/core/oauth2";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { BASE_ERROR_CODES } from "@cinaauth/core/error";
+import type { OAuth2Tokens, OAuth2UserInfo } from "@cinaauth/core/oauth2";
 import {
 	applyDefaultAccessTokenExpiry,
 	createAuthorizationURL,
 	validateAuthorizationCode,
-} from "@better-auth/core/oauth2";
+} from "@cinaauth/core/oauth2";
 import { betterFetch } from "@better-fetch/fetch";
 import { decodeJwt } from "jose";
 import * as z from "zod";
@@ -98,7 +98,7 @@ const signInWithOAuth2BodySchema = z.object({
  * **client:**
  * `authClient.signIn.oauth2`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/sign-in#api-method-sign-in-oauth2)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/sign-in#api-method-sign-in-oauth2)
  */
 export const signInWithOAuth2 = (options: GenericOAuthOptions) =>
 	createAuthEndpoint(
@@ -644,7 +644,7 @@ const OAuth2LinkAccountBodySchema = z.object({
  * **client:**
  * `authClient.oauth2.link`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/generic-oauth#api-method-oauth2-link)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/generic-oauth#api-method-oauth2-link)
  */
 export const oAuth2LinkAccount = (options: GenericOAuthOptions) =>
 	createAuthEndpoint(

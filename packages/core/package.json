@@ -1,20 +1,20 @@
 {
-  "name": "@better-auth/core",
+  "name": "@cinaauth/core",
   "version": "1.6.19",
   "description": "The most comprehensive authentication framework for TypeScript.",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com",
+  "homepage": "https://www.cinagroup.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/core"
   },
   "keywords": [
     "auth",
     "core",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"

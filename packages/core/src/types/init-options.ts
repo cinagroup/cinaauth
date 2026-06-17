@@ -30,7 +30,7 @@ import type { Logger } from "../env";
 import type { SocialProviderList, SocialProviders } from "../social-providers";
 import type { AuthContext, GenericEndpointContext } from "./context";
 import type { Awaitable, LiteralString, LiteralUnion } from "./helper";
-import type { BetterAuthPlugin } from "./plugin";
+import type { CinaAuthPlugin } from "./plugin";
 
 type KyselyDatabaseType = "postgres" | "mysql" | "sqlite" | "mssql";
 type Optional<T> = {
@@ -49,7 +49,7 @@ export type GenerateIdFn = (options: {
 
 /**
  * Configuration for dynamic base URL resolution.
- * Allows Better Auth to work with multiple domains (e.g., Vercel preview deployments).
+ * Allows CinaAuth to work with multiple domains (e.g., Vercel preview deployments).
  */
 export type DynamicBaseURLConfig = {
 	/**
@@ -71,7 +71,7 @@ export type DynamicBaseURLConfig = {
 
 	/**
 	 * Fallback URL to use if the derived host doesn't match any allowed host.
-	 * If not set, Better Auth will throw an error when the host doesn't match.
+	 * If not set, CinaAuth will throw an error when the host doesn't match.
 	 *
 	 * @example "https://myapp.com"
 	 */
@@ -94,7 +94,7 @@ export type DynamicBaseURLConfig = {
  */
 export type BaseURLConfig = string | DynamicBaseURLConfig;
 
-export interface BetterAuthRateLimitStorage {
+export interface CinaAuthRateLimitStorage {
 	get: (key: string) => Promise<RateLimit | null | undefined>;
 	set: (
 		key: string,
@@ -129,7 +129,7 @@ export interface BetterAuthRateLimitStorage {
 	) => Promise<{ allowed: boolean; retryAfter: number | null }>;
 }
 
-export type BetterAuthRateLimitRule = {
+export type CinaAuthRateLimitRule = {
 	/**
 	 * Default window to use for rate limiting. The value
 	 * should be in seconds.
@@ -145,7 +145,7 @@ export type BetterAuthRateLimitRule = {
 	max: number;
 };
 
-export type BetterAuthDBOptions<
+export type CinaAuthDBOptions<
 	ModelName extends string,
 	Keys extends string = string,
 > = {
@@ -165,9 +165,9 @@ export type BetterAuthDBOptions<
 	};
 };
 
-export type BetterAuthRateLimitOptions = Optional<BetterAuthRateLimitRule> &
+export type CinaAuthRateLimitOptions = Optional<CinaAuthRateLimitRule> &
 	Omit<
-		BetterAuthDBOptions<"rateLimit", keyof BaseRateLimit>,
+		CinaAuthDBOptions<"rateLimit", keyof BaseRateLimit>,
 		"additionalFields"
 	> & {
 		/**
@@ -182,12 +182,12 @@ export type BetterAuthRateLimitOptions = Optional<BetterAuthRateLimitRule> &
 		customRules?:
 			| {
 					[key: string]:
-						| BetterAuthRateLimitRule
+						| CinaAuthRateLimitRule
 						| false
 						| ((
 								request: Request,
-								currentRule: BetterAuthRateLimitRule,
-						  ) => Awaitable<false | BetterAuthRateLimitRule>);
+								currentRule: CinaAuthRateLimitRule,
+						  ) => Awaitable<false | CinaAuthRateLimitRule>);
 			  }
 			| undefined;
 		/**
@@ -206,10 +206,10 @@ export type BetterAuthRateLimitOptions = Optional<BetterAuthRateLimitRule> &
 		 * NOTE: If custom storage is used storage
 		 * is ignored
 		 */
-		customStorage?: BetterAuthRateLimitStorage;
+		customStorage?: CinaAuthRateLimitStorage;
 	};
 
-export type BetterAuthAdvancedOptions = {
+export type CinaAuthAdvancedOptions = {
 	/**
 	 * Ip address configuration
 	 */
@@ -223,7 +223,7 @@ export type BetterAuthAdvancedOptions = {
 				 * @example ["x-client-ip", "x-forwarded-for", "cf-connecting-ip"]
 				 *
 				 * @default
-				 * @link https://github.com/better-auth/better-auth/blob/main/packages/better-auth/src/utils/get-request-ip.ts#L8
+				 * @link https://github.com/cinagroup/cinaauth/blob/main/packages/cinaauth/src/utils/get-request-ip.ts#L8
 				 */
 				ipAddressHeaders?: string[];
 				/**
@@ -327,7 +327,7 @@ export type BetterAuthAdvancedOptions = {
 	 *
 	 * @default
 	 * ```txt
-	 * "appName" -> which defaults to "better-auth"
+	 * "appName" -> which defaults to "cinaauth"
 	 * ```
 	 */
 	cookiePrefix?: string | undefined;
@@ -411,7 +411,7 @@ export type BetterAuthAdvancedOptions = {
 	skipTrailingSlashes?: boolean;
 };
 
-export type BetterAuthOptions = {
+export type CinaAuthOptions = {
 	/**
 	 * The name of your application. Used as a display name in contexts
 	 * where your app needs to be identified — for example, as the default
@@ -419,11 +419,11 @@ export type BetterAuthOptions = {
 	 *
 	 * Can also be set via the `APP_NAME` environment variable.
 	 *
-	 * @default "Better Auth"
+	 * @default "CinaAuth"
 	 */
 	appName?: string | undefined;
 	/**
-	 * Base URL for the Better Auth. This is typically the
+	 * Base URL for the CinaAuth. This is typically the
 	 * root URL where your application server is hosted.
 	 *
 	 * Can be configured as:
@@ -431,7 +431,7 @@ export type BetterAuthOptions = {
 	 * - A dynamic config with allowed hosts for multi-domain deployments
 	 *
 	 * If not explicitly set, the system will check environment variables:
-	 * `BETTER_AUTH_URL`, `NEXT_PUBLIC_BETTER_AUTH_URL`, etc.
+	 * `CINAAUTH_URL`, `NEXT_PUBLIC_CINAAUTH_URL`, etc.
 	 *
 	 * @example
 	 * ```ts
@@ -447,9 +447,9 @@ export type BetterAuthOptions = {
 	 */
 	baseURL?: BaseURLConfig | undefined;
 	/**
-	 * Base path for the Better Auth. This is typically
+	 * Base path for the CinaAuth. This is typically
 	 * the path where the
-	 * Better Auth routes are mounted.
+	 * CinaAuth routes are mounted.
 	 *
 	 * @default "/api/auth"
 	 */
@@ -458,14 +458,14 @@ export type BetterAuthOptions = {
 	 * The secret to use for encryption,
 	 * signing and hashing.
 	 *
-	 * By default Better Auth will look for
+	 * By default CinaAuth will look for
 	 * the following environment variables:
-	 * process.env.BETTER_AUTH_SECRET,
+	 * process.env.CINAAUTH_SECRET,
 	 * process.env.AUTH_SECRET
 	 * If none of these environment
 	 * variables are set,
 	 * it will default to
-	 * "better-auth-secret-123456789".
+	 * "cinaauth-secret-123456789".
 	 *
 	 * on production if it's not set
 	 * it will throw an error.
@@ -484,8 +484,8 @@ export type BetterAuthOptions = {
 	 * First entry is the current key used for new encryption.
 	 * Remaining entries are decryption-only (previous rotations).
 	 *
-	 * Can also be set via BETTER_AUTH_SECRETS env var:
-	 * `BETTER_AUTH_SECRETS=2:base64secret,1:base64secret`
+	 * Can also be set via CINAAUTH_SECRETS env var:
+	 * `CINAAUTH_SECRETS=2:base64secret,1:base64secret`
 	 *
 	 * When set, `secret` is only used as legacy fallback
 	 * for decrypting bare-hex payloads that predate the envelope format.
@@ -795,14 +795,14 @@ export type BetterAuthOptions = {
 	 */
 	socialProviders?: SocialProviders | undefined;
 	/**
-	 * List of Better Auth plugins
+	 * List of CinaAuth plugins
 	 */
-	plugins?: ([] | BetterAuthPlugin[]) | undefined;
+	plugins?: ([] | CinaAuthPlugin[]) | undefined;
 	/**
 	 * User configuration
 	 */
 	user?:
-		| (BetterAuthDBOptions<"user", keyof BaseUser> & {
+		| (CinaAuthDBOptions<"user", keyof BaseUser> & {
 				/**
 				 * Changing email configuration
 				 */
@@ -877,7 +877,7 @@ export type BetterAuthOptions = {
 		  })
 		| undefined;
 	session?:
-		| (BetterAuthDBOptions<"session", keyof BaseSession> & {
+		| (CinaAuthDBOptions<"session", keyof BaseSession> & {
 				/**
 				 * Expiration time for the session token. The value
 				 * should be in seconds.
@@ -1018,7 +1018,7 @@ export type BetterAuthOptions = {
 		  })
 		| undefined;
 	account?:
-		| (BetterAuthDBOptions<"account", keyof BaseAccount> & {
+		| (CinaAuthDBOptions<"account", keyof BaseAccount> & {
 				/**
 				 * When enabled (true), the user account data (accessToken, idToken, refreshToken, etc.)
 				 * will be updated on sign in with the latest data from the provider.
@@ -1165,7 +1165,7 @@ export type BetterAuthOptions = {
 				 * refresh tokens, ID tokens, scopes, and token expiry.
 				 *
 				 * This is useful for database-less flows, but large provider tokens can
-				 * still hit browser or proxy cookie/header limits even though Better Auth
+				 * still hit browser or proxy cookie/header limits even though CinaAuth
 				 * chunks oversized account cookies.
 				 *
 				 * @default false
@@ -1176,7 +1176,7 @@ export type BetterAuthOptions = {
 		  })
 		| undefined;
 	verification?:
-		| (BetterAuthDBOptions<"verification", keyof BaseVerification> & {
+		| (CinaAuthDBOptions<"verification", keyof BaseVerification> & {
 				/**
 				 * disable cleaning up expired values when a verification value is
 				 * fetched
@@ -1203,7 +1203,7 @@ export type BetterAuthOptions = {
 		  })
 		| undefined;
 	/**
-	 * Additional trusted origins. By default, Better Auth trusts your
+	 * Additional trusted origins. By default, CinaAuth trusts your
 	 * app's {@link baseURL}. Use this option to allow additional origins
 	 * (e.g. a separate frontend domain).
 	 *
@@ -1222,8 +1222,8 @@ export type BetterAuthOptions = {
 	 * ```ts
 	 * trustedOrigins: async (request) => {
 	 *   return [
-	 *    "https://better-auth.com",
-	 *    "https://*.better-auth.com",
+	 *    "https://cinagroup.com",
+	 *    "https://*.cinagroup.com",
 	 *    request.headers.get("x-custom-origin")
 	 *   ];
 	 * }
@@ -1241,11 +1241,11 @@ export type BetterAuthOptions = {
 	/**
 	 * Rate limiting configuration
 	 */
-	rateLimit?: BetterAuthRateLimitOptions | undefined;
+	rateLimit?: CinaAuthRateLimitOptions | undefined;
 	/**
 	 * Advanced options
 	 */
-	advanced?: BetterAuthAdvancedOptions | undefined;
+	advanced?: CinaAuthAdvancedOptions | undefined;
 	logger?: Logger | undefined;
 	/**
 	 * allows you to define custom hooks that can be
@@ -1570,7 +1570,7 @@ export type BetterAuthOptions = {
 				 */
 				errorURL?: string;
 				/**
-				 * Configure the default error page provided by Better-Auth
+				 * Configure the default error page provided by CinaAuth
 				 * Start your dev server and go to /api/auth/error to see the error page.
 				 */
 				customizeDefaultErrorPage?: {

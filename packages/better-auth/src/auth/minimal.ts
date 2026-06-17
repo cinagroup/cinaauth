@@ -1,15 +1,15 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import { initMinimal } from "../context/init-minimal";
 import type { Auth } from "../types";
-import { createBetterAuth } from "./base";
+import { createCinaAuth } from "./base";
 
-export type { BetterAuthOptions };
+export type { CinaAuthOptions };
 
 /**
- * Better Auth initializer for minimal mode (without Kysely)
+ * CinaAuth initializer for minimal mode (without Kysely)
  */
-export const betterAuth = <Options extends BetterAuthOptions>(
+export const CinaAuth = <Options extends CinaAuthOptions>(
 	options: Options & {},
 ): Auth<Options> => {
-	return createBetterAuth(options, initMinimal);
+	return createCinaAuth(options, initMinimal);
 };

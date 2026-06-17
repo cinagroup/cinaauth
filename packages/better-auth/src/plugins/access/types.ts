@@ -1,4 +1,4 @@
-import type { LiteralString } from "@better-auth/core";
+import type { LiteralString } from "@cinaauth/core";
 import type { AuthorizeResponse, createAccessControl } from "./access";
 
 export type ArrayElement<T> = T extends readonly (infer E)[] ? E : never;

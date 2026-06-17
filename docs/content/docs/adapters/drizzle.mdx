@@ -1,6 +1,6 @@
----
+﻿---
 title: Drizzle ORM Adapter
-description: Integrate Better Auth with Drizzle ORM.
+description: Integrate CinaAuth with Drizzle ORM.
 ---
 
 Drizzle ORM is a powerful and flexible ORM for Node.js and TypeScript. It provides a simple and intuitive API for working with databases, and supports a wide range of databases including MySQL, PostgreSQL, SQLite, and more.
@@ -9,10 +9,10 @@ Before getting started, make sure you have Drizzle installed and configured. For
 
 ## Installation
 
-To use the Drizzle adapter, you need to install the `@better-auth/drizzle-adapter` package:
+To use the Drizzle adapter, you need to install the `@cinaauth/drizzle-adapter` package:
 
 ```package-install
-@better-auth/drizzle-adapter
+@cinaauth/drizzle-adapter
 ```
 
 ## Example Usage
@@ -20,11 +20,11 @@ To use the Drizzle adapter, you need to install the `@better-auth/drizzle-adapte
 You can use the Drizzle adapter to connect to your database as follows.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { CinaAuth } from "cinaauth";
+import { drizzleAdapter } from "@cinaauth/drizzle-adapter";
 import { db } from "./database.ts";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: drizzleAdapter(db, { // [!code highlight]
     provider: "sqlite", // or "pg" or "mysql" // [!code highlight]
   }), // [!code highlight]
@@ -34,10 +34,10 @@ export const auth = betterAuth({
 
 ## Schema generation & migration
 
-The [Better Auth CLI](/docs/concepts/cli) allows you to generate or migrate
-your database schema based on your Better Auth configuration and plugins.
+The [CinaAuth CLI](/docs/concepts/cli) allows you to generate or migrate
+your database schema based on your CinaAuth configuration and plugins.
 
-To generate the schema required by Better Auth, run the following command:
+To generate the schema required by CinaAuth, run the following command:
 
 ```package-install
 npx auth@latest generate
@@ -61,7 +61,7 @@ To generate and apply the migration, run the following commands:
 
 ## Joins (Experimental)
 
-Database joins is useful when Better-Auth needs to fetch related data from multiple tables in a single query.
+Database joins is useful when CinaAuth needs to fetch related data from multiple tables in a single query.
 Endpoints like `/get-session`, `/get-full-organization` and many others benefit greatly from this feature,
 seeing upwards of 2x to 3x performance improvements depending on database latency.
 
@@ -69,9 +69,9 @@ The Drizzle adapter supports joins out of the box since version `1.4.0`.
 To enable this feature, you need to set the `experimental.joins` option to `true` in your auth configuration.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   experimental: { joins: true }
 });
 ```
@@ -89,12 +89,12 @@ export const auth = betterAuth({
 The Drizzle adapter expects the schema you define to match the table names. For example, if your Drizzle schema maps the `user` table to `users`, you need to manually pass the schema and map it to the user table.
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { db } from "./drizzle";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { drizzleAdapter } from "@cinaauth/drizzle-adapter";
 import { schema } from "./schema";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: drizzleAdapter(db, {
     provider: "sqlite", // or "pg" or "mysql"
     schema: { // [!code highlight]
@@ -110,9 +110,9 @@ or you can mutate the auth config's `modelName` property directly.
 For example:
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: drizzleAdapter(db, {
     provider: "sqlite", // or "pg" or "mysql"
     schema,
@@ -132,7 +132,7 @@ you simply need to change the Drizzle schema to:
 ```ts
 export const user = mysqlTable("user", {
   // Changed field name without changing the schema property name
-  // This allows drizzle & better-auth to still use the original field name,
+  // This allows drizzle & cinaauth to still use the original field name,
   // while your DB uses the modified field name
   email: varchar("email_address", { length: 255 }).notNull().unique(), // [!code highlight]
   // ... others
@@ -144,9 +144,9 @@ or you can mutate the auth config's `fields` property directly.
 For example:
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: drizzleAdapter(db, {
     provider: "sqlite", // or "pg" or "mysql"
     schema,
@@ -164,9 +164,9 @@ export const auth = betterAuth({
 If all your tables are using plural form, you can just pass the `usePlural` option:
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: drizzleAdapter(db, {
     ...
     usePlural: true, // [!code highlight]

@@ -1,18 +1,18 @@
 import type {
 	AuthContext,
-	BetterAuthOptions,
+	CinaAuthOptions,
 	SecretConfig,
-} from "@better-auth/core";
-import { getBetterAuthVersion } from "@better-auth/core/context";
-import { getAuthTables } from "@better-auth/core/db";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
-import { createLogger, env, isProduction, isTest } from "@better-auth/core/env";
-import { BetterAuthError } from "@better-auth/core/error";
-import type { OAuthProvider } from "@better-auth/core/oauth2";
-import type { SocialProviders } from "@better-auth/core/social-providers";
-import { socialProviders } from "@better-auth/core/social-providers";
-import { generateId } from "@better-auth/core/utils/id";
-import { createTelemetry } from "@better-auth/telemetry";
+} from "@cinaauth/core";
+import { getCinaAuthVersion } from "@cinaauth/core/context";
+import { getAuthTables } from "@cinaauth/core/db";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import { createLogger, env, isProduction, isTest } from "@cinaauth/core/env";
+import { CinaAuthError } from "@cinaauth/core/error";
+import type { OAuthProvider } from "@cinaauth/core/oauth2";
+import type { SocialProviders } from "@cinaauth/core/social-providers";
+import { socialProviders } from "@cinaauth/core/social-providers";
+import { generateId } from "@cinaauth/core/utils/id";
+import { createTelemetry } from "@cinaauth/telemetry";
 import defu from "defu";
 import type { Entries } from "type-fest";
 import { checkEndpointConflicts } from "../api";
@@ -49,7 +49,7 @@ function estimateEntropy(str: string): number {
 
 /**
  * Validates that the secret meets minimum security requirements.
- * Throws BetterAuthError if the secret is invalid.
+ * Throws CinaAuthError if the secret is invalid.
  * Skips validation for DEFAULT_SECRET in test environments only.
  * Only throws for DEFAULT_SECRET in production environment.
  */
@@ -64,20 +64,20 @@ function validateSecret(
 	}
 
 	if (isDefaultSecret && isProduction) {
-		throw new BetterAuthError(
-			"You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.",
+		throw new CinaAuthError(
+			"You are using the default secret. Please set `CINAAUTH_SECRET` in your environment variables or pass `secret` in your auth config.",
 		);
 	}
 
 	if (!secret) {
-		throw new BetterAuthError(
-			"BETTER_AUTH_SECRET is missing. Set it in your environment or pass `secret` to betterAuth({ secret }).",
+		throw new CinaAuthError(
+			"CINAAUTH_SECRET is missing. Set it in your environment or pass `secret` to CinaAuth({ secret }).",
 		);
 	}
 
 	if (secret.length < 32) {
 		logger.warn(
-			`[better-auth] Warning: your BETTER_AUTH_SECRET should be at least 32 characters long for adequate security. Generate one with \`npx auth secret\` or \`openssl rand -base64 32\`.`,
+			`[cinaauth] Warning: your CINAAUTH_SECRET should be at least 32 characters long for adequate security. Generate one with \`npx auth secret\` or \`openssl rand -base64 32\`.`,
 		);
 	}
 
@@ -85,12 +85,12 @@ function validateSecret(
 	const entropy = estimateEntropy(secret);
 	if (entropy < 120) {
 		logger.warn(
-			"[better-auth] Warning: your BETTER_AUTH_SECRET appears low-entropy. Use a randomly generated secret for production.",
+			"[cinaauth] Warning: your CINAAUTH_SECRET appears low-entropy. Use a randomly generated secret for production.",
 		);
 	}
 }
 
-export async function createAuthContext<Options extends BetterAuthOptions>(
+export async function createAuthContext<Options extends CinaAuthOptions>(
 	adapter: DBAdapter,
 	options: Options,
 	getDatabaseType: (database: Options["database"]) => string,
@@ -133,7 +133,7 @@ export async function createAuthContext<Options extends BetterAuthOptions>(
 	if (isDynamicBaseURLConfig(options.baseURL)) {
 		const { allowedHosts } = options.baseURL;
 		if (!allowedHosts || allowedHosts.length === 0) {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				"baseURL.allowedHosts cannot be empty. Provide at least one allowed host pattern " +
 					'(e.g., ["myapp.com", "*.vercel.app"]).',
 			);
@@ -149,7 +149,7 @@ export async function createAuthContext<Options extends BetterAuthOptions>(
 
 	if (!baseURL && !isDynamicConfig) {
 		logger.warn(
-			`[better-auth] Base URL is not set. Set the baseURL option or BETTER_AUTH_URL env, or use a dynamic baseURL with allowedHosts for multi-host setups. Without it the origin is derived from the incoming request, and callbacks and redirects may not work correctly.`,
+			`[cinaauth] Base URL is not set. Set the baseURL option or CINAAUTH_URL env, or use a dynamic baseURL with allowedHosts for multi-host setups. Without it the origin is derived from the incoming request, and callbacks and redirects may not work correctly.`,
 		);
 	}
 
@@ -158,18 +158,18 @@ export async function createAuthContext<Options extends BetterAuthOptions>(
 		options.advanced?.database?.generateId === false
 	) {
 		logger.error(
-			`[better-auth] Misconfiguration detected.
+			`[cinaauth] Misconfiguration detected.
 You are using the memory DB with generateId: false.
 This will cause no id to be generated for any model.
-Most of the features of Better Auth will not work correctly.`,
+Most of the features of CinaAuth will not work correctly.`,
 		);
 	}
 
 	const secretsArray =
-		options.secrets ?? parseSecretsEnv(env.BETTER_AUTH_SECRETS);
+		options.secrets ?? parseSecretsEnv(env.CINAAUTH_SECRETS);
 
 	const legacySecret =
-		options.secret || env.BETTER_AUTH_SECRET || env.AUTH_SECRET || "";
+		options.secret || env.CINAAUTH_SECRET || env.AUTH_SECRET || "";
 
 	let secret: string;
 	let secretConfig: string | SecretConfig;
@@ -268,9 +268,9 @@ Most of the features of Better Auth will not work correctly.`,
 	const trustedProviders = await getTrustedProviders(options);
 
 	const ctx: AuthContext = {
-		appName: options.appName || "Better Auth",
+		appName: options.appName || "CinaAuth",
 		baseURL: baseURL || "",
-		version: getBetterAuthVersion(),
+		version: getCinaAuthVersion(),
 		socialProviders: providers,
 		options,
 		oauthConfig: {
@@ -311,7 +311,7 @@ Most of the features of Better Auth will not work correctly.`,
 				// and disable stateless refresh behavior to avoid confusing/unsafe configurations.
 				if (isStateful && refreshCache) {
 					logger.warn(
-						"[better-auth] `session.cookieCache.refreshCache` is enabled while `database` or `secondaryStorage` is configured. `refreshCache` is meant for stateless (DB-less) setups. Disabling `refreshCache` — remove it from your config to silence this warning.",
+						"[cinaauth] `session.cookieCache.refreshCache` is enabled while `database` or `secondaryStorage` is configured. `refreshCache` is meant for stateless (DB-less) setups. Disabling `refreshCache` — remove it from your config to silence this warning.",
 					);
 					return false;
 				}
@@ -376,7 +376,7 @@ Most of the features of Better Auth will not work correctly.`,
 		}),
 		createAuthCookie: createCookieGetter(options),
 		async runMigrations() {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				"runMigrations will be set by the specific init implementation",
 			);
 		},

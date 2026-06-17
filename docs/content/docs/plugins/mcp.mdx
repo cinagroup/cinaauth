@@ -1,6 +1,6 @@
----
+﻿---
 title: MCP
-description: MCP provider plugin for Better Auth
+description: MCP provider plugin for CinaAuth
 ---
 
 `OAuth` `MCP`
@@ -24,10 +24,10 @@ The **MCP** plugin lets your app act as an OAuth provider for MCP clients. It ha
     Add the MCP plugin to your auth configuration and specify the login page path.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
-    import { mcp } from "better-auth/plugins"; // [!code highlight]
+    import { CinaAuth } from "cinaauth";
+    import { mcp } from "cinaauth/plugins"; // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
             mcp({ // [!code highlight]
                 loginPage: "/sign-in" // path to your login page // [!code highlight]
@@ -68,10 +68,10 @@ The **MCP** plugin lets your app act as an OAuth provider for MCP clients. It ha
 
 ### OAuth Discovery Metadata
 
-Better Auth already handles the `/api/auth/.well-known/oauth-authorization-server` route automatically but some client may fail to parse the `WWW-Authenticate` header and default to `/.well-known/oauth-authorization-server` (this can happen, for example, if your CORS configuration doesn't expose the `WWW-Authenticate`). For this reason it's better to add a route to expose OAuth metadata for MCP clients:
+CinaAuth already handles the `/api/auth/.well-known/oauth-authorization-server` route automatically but some client may fail to parse the `WWW-Authenticate` header and default to `/.well-known/oauth-authorization-server` (this can happen, for example, if your CORS configuration doesn't expose the `WWW-Authenticate`). For this reason it's better to add a route to expose OAuth metadata for MCP clients:
 
 ```ts title=".well-known/oauth-authorization-server/route.ts"
-import { oAuthDiscoveryMetadata } from "better-auth/plugins";
+import { oAuthDiscoveryMetadata } from "cinaauth/plugins";
 import { auth } from "../../../lib/auth";
 
 export const GET = oAuthDiscoveryMetadata(auth);
@@ -79,10 +79,10 @@ export const GET = oAuthDiscoveryMetadata(auth);
 
 ### OAuth Protected Resource Metadata
 
-Better Auth already handles the `/api/auth/.well-known/oauth-protected-resource` route automatically but some client may fail to parse the `WWW-Authenticate` header and default to `/.well-known/oauth-protected-resource` (this can happen, for example, if your CORS configuration doesn't expose the `WWW-Authenticate`). For this reason it's better to add a route to expose OAuth metadata for MCP clients:
+CinaAuth already handles the `/api/auth/.well-known/oauth-protected-resource` route automatically but some client may fail to parse the `WWW-Authenticate` header and default to `/.well-known/oauth-protected-resource` (this can happen, for example, if your CORS configuration doesn't expose the `WWW-Authenticate`). For this reason it's better to add a route to expose OAuth metadata for MCP clients:
 
 ```ts title="/.well-known/oauth-protected-resource/route.ts"
-import { oAuthProtectedResourceMetadata } from "better-auth/plugins";
+import { oAuthProtectedResourceMetadata } from "cinaauth/plugins";
 import { auth } from "@/lib/auth";
 
 export const GET = oAuthProtectedResourceMetadata(auth);
@@ -95,7 +95,7 @@ You can use the helper function `withMcpAuth` to get the session and handle unau
 ```ts title="api/[transport]/route.ts"
 import { auth } from "@/lib/auth";
 import { createMcpHandler } from "@vercel/mcp-adapter";
-import { withMcpAuth } from "better-auth/plugins";
+import { withMcpAuth } from "cinaauth/plugins";
 import { z } from "zod";
 
 const handler = withMcpAuth(auth, (req, session) => {
@@ -246,10 +246,10 @@ export const mcpOidcConfigOptionsType = {
 
 ## Remote MCP Client
 
-The examples above use `withMcpAuth` which requires the Better Auth instance to be in the **same process** as the MCP server. If your MCP server runs as a separate service (different repo, different runtime, different language), you can use the **MCP Client** — a lightweight, framework-agnostic HTTP client that validates Bearer tokens against a remote Better Auth server.
+The examples above use `withMcpAuth` which requires the CinaAuth instance to be in the **same process** as the MCP server. If your MCP server runs as a separate service (different repo, different runtime, different language), you can use the **MCP Client** — a lightweight, framework-agnostic HTTP client that validates Bearer tokens against a remote CinaAuth server.
 
 <Callout>
-  No additional packages needed — the MCP Client is included in `better-auth`.
+  No additional packages needed — the MCP Client is included in `cinaauth`.
 </Callout>
 
 ### Setup
@@ -258,10 +258,10 @@ The examples above use `withMcpAuth` which requires the Better Auth instance to 
   <Step>
     ### Create the client
 
-    Point it at your Better Auth server's URL (the same `baseURL` + `basePath` from your auth config):
+    Point it at your CinaAuth server's URL (the same `baseURL` + `basePath` from your auth config):
 
     ```ts title="mcp-server.ts"
-    import { createMcpAuthClient } from "better-auth/plugins/mcp/client" // [!code highlight]
+    import { createMcpAuthClient } from "cinaauth/plugins/mcp/client" // [!code highlight]
 
     const mcpAuth = createMcpAuthClient({ // [!code highlight]
         authURL: "http://localhost:3000/api/auth" // [!code highlight]
@@ -297,11 +297,11 @@ The examples above use `withMcpAuth` which requires the Better Auth instance to 
     const discovery = mcpAuth.discoveryHandler() // [!code highlight]
     const protectedResource = mcpAuth.protectedResourceHandler("http://localhost:4000") // [!code highlight]
 
-    // GET /.well-known/oauth-authorization-server → proxied from Better Auth
-    // GET /.well-known/oauth-protected-resource → points MCP clients to Better Auth
+    // GET /.well-known/oauth-authorization-server → proxied from CinaAuth
+    // GET /.well-known/oauth-protected-resource → points MCP clients to CinaAuth
     ```
 
-    These proxy and cache the metadata from your Better Auth server, so MCP clients can discover the authorization, token, and registration endpoints automatically.
+    These proxy and cache the metadata from your CinaAuth server, so MCP clients can discover the authorization, token, and registration endpoints automatically.
   </Step>
 </Steps>
 
@@ -311,7 +311,7 @@ The examples above use `withMcpAuth` which requires the Better Auth instance to 
   <Tab value="Hono">
     ```ts title="mcp-server.ts"
     import { Hono } from "hono"
-    import { mcpAuthHono } from "better-auth/plugins/mcp/client/adapters" // [!code highlight]
+    import { mcpAuthHono } from "cinaauth/plugins/mcp/client/adapters" // [!code highlight]
 
     const app = new Hono()
     const { middleware, discoveryRoutes } = mcpAuthHono({ // [!code highlight]
@@ -334,7 +334,7 @@ The examples above use `withMcpAuth` which requires the Better Auth instance to 
   <Tab value="Express">
     ```ts title="mcp-server.ts"
     import express from "express"
-    import { createMcpAuthClient } from "better-auth/plugins/mcp/client" // [!code highlight]
+    import { createMcpAuthClient } from "cinaauth/plugins/mcp/client" // [!code highlight]
 
     const app = express()
     const mcpAuth = createMcpAuthClient({ // [!code highlight]
@@ -354,7 +354,7 @@ The examples above use `withMcpAuth` which requires the Better Auth instance to 
     ```ts title="mcp-server.ts"
     import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
     import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
-    import { mcpAuthOfficial } from "better-auth/plugins/mcp/client/adapters" // [!code highlight]
+    import { mcpAuthOfficial } from "cinaauth/plugins/mcp/client/adapters" // [!code highlight]
 
     const auth = mcpAuthOfficial({ // [!code highlight]
         authURL: "http://localhost:3000/api/auth" // [!code highlight]
@@ -378,7 +378,7 @@ The examples above use `withMcpAuth` which requires the Better Auth instance to 
 
     ```ts title="mcp-server.ts"
     import { MCPServer } from "mcp-use/server"
-    import { mcpAuthMcpUse } from "better-auth/plugins/mcp/client/adapters" // [!code highlight]
+    import { mcpAuthMcpUse } from "cinaauth/plugins/mcp/client/adapters" // [!code highlight]
 
     const server = new MCPServer({
         name: "my-server",
@@ -395,7 +395,7 @@ The examples above use `withMcpAuth` which requires the Better Auth instance to 
 
 export const mcpClientOptionsType = {
   authURL: {
-    description: "Full URL to Better Auth endpoints (baseURL + basePath)",
+    description: "Full URL to CinaAuth endpoints (baseURL + basePath)",
     type: "string",
     required: true,
   },

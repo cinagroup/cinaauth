@@ -1,6 +1,6 @@
----
+﻿---
 title: Admin
-description: Admin plugin for Better Auth
+description: Admin plugin for CinaAuth
 ---
 
 The Admin plugin provides a set of administrative functions for user management in your application. It allows administrators to perform various operations such as creating users, managing user roles, banning/unbanning users, impersonating users, and more.
@@ -14,10 +14,10 @@ The Admin plugin provides a set of administrative functions for user management 
     To use the Admin plugin, add it to your auth config.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { admin } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { admin } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         // ... other config options
         plugins: [
             admin() // [!code highlight]
@@ -54,8 +54,8 @@ The Admin plugin provides a set of administrative functions for user management 
     Next, include the admin client plugin in your authentication client instance.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { adminClient } from "better-auth/client/plugins"  // [!code highlight]
+    import { createAuthClient } from "cinaauth/client"
+    import { adminClient } from "cinaauth/client/plugins"  // [!code highlight]
 
     export const authClient = createAuthClient({
         plugins: [
@@ -462,7 +462,7 @@ The plugin provides an easy way to define your own set of permissions for each r
     You first need to create an access controller by calling the `createAccessControl` function and passing the statement object. The statement object should have the resource name as the key and the array of actions as the value.
 
     ```ts title="permissions.ts"
-    import { createAccessControl } from "better-auth/plugins/access";
+    import { createAccessControl } from "cinaauth/plugins/access";
 
     /**
      * make sure to use `as const` so typescript can infer the type correctly
@@ -475,7 +475,7 @@ The plugin provides an easy way to define your own set of permissions for each r
     ```
 
     <Callout type="warning">
-      To keep bundle sizes small, make sure to import from `better-auth/plugins/access` instead of `better-auth/plugins`.
+      To keep bundle sizes small, make sure to import from `cinaauth/plugins/access` instead of `cinaauth/plugins`.
     </Callout>
   </Step>
 
@@ -485,7 +485,7 @@ The plugin provides an easy way to define your own set of permissions for each r
     Once you have created the access controller you can create roles with the permissions you have defined.
 
     ```ts title="permissions.ts"
-    import { createAccessControl } from "better-auth/plugins/access";
+    import { createAccessControl } from "cinaauth/plugins/access";
 
     export const statement = {
         project: ["create", "share", "update", "delete"], // <-- Permissions available for created roles
@@ -510,8 +510,8 @@ The plugin provides an easy way to define your own set of permissions for each r
     When you create custom roles for existing roles, the predefined permissions for those roles will be overridden. To add the existing permissions to the custom role, you need to import `defaultStatements` and merge it with your new statement, plus merge the roles' permissions set with the default roles.
 
     ```ts title="permissions.ts"
-    import { createAccessControl } from "better-auth/plugins/access";
-    import { defaultStatements, adminAc } from "better-auth/plugins/admin/access";
+    import { createAccessControl } from "cinaauth/plugins/access";
+    import { defaultStatements, adminAc } from "cinaauth/plugins/admin/access";
 
     const statement = {
         ...defaultStatements, // [!code highlight]
@@ -533,11 +533,11 @@ The plugin provides an easy way to define your own set of permissions for each r
     Once you have created the roles you can pass them to the admin plugin both on the client and the server.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { admin as adminPlugin } from "better-auth/plugins"
+    import { CinaAuth } from "cinaauth"
+    import { admin as adminPlugin } from "cinaauth/plugins"
     import { ac, admin, user } from "@/auth/permissions"
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
             adminPlugin({
                 ac,
@@ -554,8 +554,8 @@ The plugin provides an easy way to define your own set of permissions for each r
     You also need to pass the access controller and the roles to the client plugin.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { adminClient } from "better-auth/client/plugins"
+    import { createAuthClient } from "cinaauth/client"
+    import { adminClient } from "cinaauth/client/plugins"
     import { ac, admin, user, myCustomRole } from "@/auth/permissions"
 
     export const client = createAuthClient({
@@ -738,7 +738,7 @@ export const adminSessionTableFields = [
 If you use [email enumeration protection](/docs/authentication/email-password#email-enumeration-protection) (`requireEmailVerification` or `autoSignIn: false`), you need to configure `customSyntheticUser` to include the admin plugin fields in the fake sign-up response:
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

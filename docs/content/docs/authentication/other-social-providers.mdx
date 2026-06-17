@@ -1,9 +1,9 @@
----
+﻿---
 title: Other Social Providers
 description: Other social providers setup and usage.
 ---
 
-Better Auth provides support for any social provider that implements the OAuth2 protocol or OpenID Connect (OIDC) flows through the [Generic OAuth Plugin](/docs/plugins/generic-oauth). You can use pre-configured helper functions for popular providers like Auth0, Keycloak, Okta, Microsoft Entra ID, and Slack, or manually configure any OAuth provider.
+CinaAuth provides support for any social provider that implements the OAuth2 protocol or OpenID Connect (OIDC) flows through the [Generic OAuth Plugin](/docs/plugins/generic-oauth). You can use pre-configured helper functions for popular providers like Auth0, Keycloak, Okta, Microsoft Entra ID, and Slack, or manually configure any OAuth provider.
 
 ## Installation
 
@@ -14,10 +14,10 @@ Better Auth provides support for any social provider that implements the OAuth2 
     To use the Generic OAuth plugin, add it to your auth config.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { genericOAuth } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { genericOAuth } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         // ... other config options
         plugins: [
             genericOAuth({ // [!code highlight]
@@ -43,8 +43,8 @@ Better Auth provides support for any social provider that implements the OAuth2 
     Include the Generic OAuth client plugin in your authentication client instance.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { genericOAuthClient } from "better-auth/client/plugins"
+    import { createAuthClient } from "cinaauth/client"
+    import { genericOAuthClient } from "cinaauth/client/plugins"
 
     const authClient = createAuthClient({
         plugins: [
@@ -65,10 +65,10 @@ Better Auth provides support for any social provider that implements the OAuth2 
 Here's a basic example of configuring a generic OAuth provider:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { genericOAuth } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { genericOAuth } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     genericOAuth({
       config: [
@@ -86,13 +86,13 @@ export const auth = betterAuth({
 
 ## Using Pre-configured Providers
 
-Better Auth provides pre-configured helper functions for popular OAuth providers. Here's an example using Slack:
+CinaAuth provides pre-configured helper functions for popular OAuth providers. Here's an example using Slack:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { genericOAuth, slack } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { genericOAuth, slack } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     genericOAuth({
       config: [
@@ -122,10 +122,10 @@ If you need to configure a provider that doesn't have a pre-configured helper, y
 ### Instagram Example
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { genericOAuth } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { genericOAuth } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // ... other config options
   plugins: [
     genericOAuth({
@@ -154,10 +154,10 @@ const response = await authClient.signIn.oauth2({
 ### Coinbase Example
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { genericOAuth } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { genericOAuth } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // ... other config options
   plugins: [
     genericOAuth({

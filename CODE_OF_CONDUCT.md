@@ -1,4 +1,4 @@
-# Contributor Covenant 3.0
+﻿# Contributor Covenant 3.0
 
 ## Our Pledge
 
@@ -74,7 +74,7 @@ Conduct reinforces encouraged behaviors and norms that can help avoid conflicts
 and minimize harm.
 
 When an incident does occur, it is important to report it promptly.
-To report a possible violation, **email [community@better-auth.com](mailto:community@better-auth.com)**
+To report a possible violation, **email [community@cinagroup.com](mailto:community@cinagroup.com)**
 
 Community Moderators take reports of violations seriously and will make every
 effort to respond in a timely manner.

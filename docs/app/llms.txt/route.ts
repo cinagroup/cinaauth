@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { source } from "../../lib/source";
 
 export const revalidate = false;
@@ -45,7 +45,7 @@ export async function GET() {
 	const pages = source.getPages();
 	const groupedPages = groupPagesByCategory(pages);
 
-	let content = `# Better Auth
+	let content = `# CinaAuth
 
 > The most comprehensive authentication framework for TypeScript
 

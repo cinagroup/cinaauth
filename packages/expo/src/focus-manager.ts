@@ -1,5 +1,5 @@
-import type { FocusListener, FocusManager } from "better-auth/client";
-import { kFocusManager } from "better-auth/client";
+import type { FocusListener, FocusManager } from "cinaauth/client";
+import { kFocusManager } from "cinaauth/client";
 import type { AppStateStatus } from "react-native";
 import { AppState } from "react-native";
 

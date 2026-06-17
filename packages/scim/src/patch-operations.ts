@@ -1,4 +1,4 @@
-import type { User } from "better-auth";
+import type { User } from "cinaauth";
 import { getUserFullName } from "./mappings";
 
 type Operation = {

@@ -1,4 +1,4 @@
-import { createAuthClient } from "better-auth/client";
+﻿import { createAuthClient } from "cinaauth/client";
 
 const search = new URLSearchParams(window.location.search);
 const port = search.get("port");

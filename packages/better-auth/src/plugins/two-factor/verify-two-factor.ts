@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError } from "@better-auth/core/error";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError } from "@cinaauth/core/error";
 import { createHMAC } from "@better-auth/utils/hmac";
 import { getSessionFromCtx } from "../../api";
 import { expireCookie, setSessionCookie } from "../../cookies";

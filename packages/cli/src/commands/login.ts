@@ -14,7 +14,7 @@ async function loginAction() {
 }
 
 export const login = new Command("login")
-	.description("Login to Better Auth Infrastructure")
+	.description("Login to CinaAuth Infrastructure")
 	.action(loginAction);
 
 async function logoutAction() {
@@ -29,5 +29,5 @@ async function logoutAction() {
 }
 
 export const logout = new Command("logout")
-	.description("Logout from Better Auth Infrastructure")
+	.description("Logout from CinaAuth Infrastructure")
 	.action(logoutAction);

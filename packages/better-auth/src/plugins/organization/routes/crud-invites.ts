@@ -1,7 +1,7 @@
-import type { GenerateIdFn, LiteralString } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { runWithTransaction } from "@better-auth/core/context";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import type { GenerateIdFn, LiteralString } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { runWithTransaction } from "@cinaauth/core/context";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
 import { getSessionFromCtx } from "../../../api/routes";
 import { setSessionCookie } from "../../../cookies";

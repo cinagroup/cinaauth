@@ -1,4 +1,4 @@
-import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+﻿import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import defaultMdxComponents from "fumadocs-ui/mdx";
@@ -304,8 +304,8 @@ export async function generateMetadata({
 	const { slug } = await params;
 	if (!slug) {
 		return createMetadata({
-			title: "Blog - Better Auth",
-			description: "Latest updates, articles, and insights about Better Auth",
+			title: "Blog - CinaAuth",
+			description: "Latest updates, articles, and insights about CinaAuth",
 		});
 	}
 	const page = blogs.getPage(slug);

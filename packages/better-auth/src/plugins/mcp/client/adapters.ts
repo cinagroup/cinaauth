@@ -140,17 +140,17 @@ interface OAuthProvider {
 	getRegistrationEndpoint?(): string;
 }
 
-export interface McpUseBetterAuthConfig {
+export interface McpUseCinaAuthConfig {
 	authURL: string;
 	getUserInfo?: (payload: Record<string, unknown>) => McpUseUserInfo;
 }
 
-export function mcpAuthMcpUse(config: McpUseBetterAuthConfig): OAuthProvider {
+export function mcpAuthMcpUse(config: McpUseCinaAuthConfig): OAuthProvider {
 	const authURL = normalizeURL(config.authURL);
 
 	if (!authURL) {
 		throw new Error(
-			"Better Auth authURL is required. " +
+			"CinaAuth authURL is required. " +
 				"Pass authURL in config, e.g.: mcpAuthMcpUse({ authURL: 'http://localhost:3000/api/auth' })",
 		);
 	}

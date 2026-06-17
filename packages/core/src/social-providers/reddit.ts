@@ -48,7 +48,7 @@ export const reddit = (options: RedditOptions) => {
 			const headers = {
 				"content-type": "application/x-www-form-urlencoded",
 				accept: "text/plain",
-				"user-agent": "better-auth",
+				"user-agent": "cinaauth",
 				Authorization: `Basic ${base64.encode(
 					`${options.clientId}:${options.clientSecret}`,
 				)}`,
@@ -94,7 +94,7 @@ export const reddit = (options: RedditOptions) => {
 				{
 					headers: {
 						Authorization: `Bearer ${token.accessToken}`,
-						"User-Agent": "better-auth",
+						"User-Agent": "cinaauth",
 					},
 				},
 			);

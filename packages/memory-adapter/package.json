@@ -1,13 +1,13 @@
 {
-  "name": "@better-auth/memory-adapter",
+  "name": "@cinaauth/memory-adapter",
   "version": "1.6.19",
-  "description": "Memory adapter for Better Auth",
+  "description": "Memory adapter for CinaAuth",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com",
+  "homepage": "https://www.cinagroup.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/memory-adapter"
   },
   "keywords": [
@@ -15,7 +15,7 @@
     "memory",
     "adapter",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -43,11 +43,11 @@
     }
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:"
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "@better-auth/utils": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

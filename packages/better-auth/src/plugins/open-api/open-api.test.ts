@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
 import { createAuthEndpoint } from "../../api";
@@ -96,7 +96,7 @@ const nullableIntersectionPlugin = {
 			async () => ({ success: true }),
 		),
 	},
-} satisfies BetterAuthPlugin;
+} satisfies CinaAuthPlugin;
 
 const defaultBodyPlugin = {
 	id: "default-body-test",
@@ -140,7 +140,7 @@ const defaultBodyPlugin = {
 			async () => ({ success: true }),
 		),
 	},
-} satisfies BetterAuthPlugin;
+} satisfies CinaAuthPlugin;
 
 const unionIntersectionPlugin = {
 	id: "union-intersection-test",
@@ -167,7 +167,7 @@ const unionIntersectionPlugin = {
 			async () => ({ success: true }),
 		),
 	},
-} satisfies BetterAuthPlugin;
+} satisfies CinaAuthPlugin;
 
 const recordIntersectionPlugin = {
 	id: "record-intersection-test",
@@ -193,7 +193,7 @@ const recordIntersectionPlugin = {
 			async () => ({ success: true }),
 		),
 	},
-} satisfies BetterAuthPlugin;
+} satisfies CinaAuthPlugin;
 
 const queryConstraintsPlugin = {
 	id: "query-constraints-test",
@@ -212,7 +212,7 @@ const queryConstraintsPlugin = {
 			async () => ({ success: true }),
 		),
 	},
-} satisfies BetterAuthPlugin;
+} satisfies CinaAuthPlugin;
 
 let defaultFactoryCallCount = 0;
 
@@ -237,7 +237,7 @@ const defaultFactoryBodyPlugin = {
 			async () => ({ success: true }),
 		),
 	},
-} satisfies BetterAuthPlugin;
+} satisfies CinaAuthPlugin;
 
 let wrapperDefaultFactoryCallCount = 0;
 
@@ -265,7 +265,7 @@ const wrapperSemanticsPlugin = {
 			async () => ({ success: true }),
 		),
 	},
-} satisfies BetterAuthPlugin;
+} satisfies CinaAuthPlugin;
 
 describe("open-api", async () => {
 	const { auth } = await getTestInstance({
@@ -452,7 +452,7 @@ describe("open-api", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9669
+	 * @see https://github.com/cinagroup/cinaauth/issues/9669
 	 */
 	it("should emit unique operationIds across multi-method endpoints", async () => {
 		const schema = await auth.api.generateOpenAPISchema();
@@ -510,7 +510,7 @@ describe("open-api", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9669
+	 * @see https://github.com/cinagroup/cinaauth/issues/9669
 	 */
 	it("should serialize the generated schema without circular response refs", async () => {
 		const schema = await auth.api.generateOpenAPISchema();
@@ -584,7 +584,7 @@ describe("open-api", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9260
+	 * @see https://github.com/cinagroup/cinaauth/issues/9260
 	 */
 	it("should not require token/user in /sign-in/social response and allow redirect to be true or false", async () => {
 		const schema = await auth.api.generateOpenAPISchema();

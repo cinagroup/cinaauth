@@ -1,9 +1,9 @@
 import type {
-	BetterAuthClientPlugin,
-	BetterAuthOptions,
-	BetterAuthPlugin,
-} from "@better-auth/core";
-import type { DBFieldAttribute } from "@better-auth/core/db";
+	CinaAuthClientPlugin,
+	CinaAuthOptions,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
+import type { DBFieldAttribute } from "@cinaauth/core/db";
 import { PACKAGE_VERSION } from "../../version";
 
 export const inferAdditionalFields = <
@@ -23,10 +23,10 @@ export const inferAdditionalFields = <
 >(
 	schema?: S | undefined,
 ) => {
-	type Opts = T extends BetterAuthOptions
+	type Opts = T extends CinaAuthOptions
 		? T
 		: T extends {
-					options: BetterAuthOptions;
+					options: CinaAuthOptions;
 				}
 			? T["options"]
 			: never;
@@ -57,7 +57,7 @@ export const inferAdditionalFields = <
 					};
 				}
 			: never
-		: Opts extends BetterAuthOptions
+		: Opts extends CinaAuthOptions
 			? {
 					id: "additional-fields";
 					version: string;
@@ -83,8 +83,8 @@ export const inferAdditionalFields = <
 	return {
 		id: "additional-fields-client",
 		version: PACKAGE_VERSION,
-		$InferServerPlugin: {} as Plugin extends BetterAuthPlugin
+		$InferServerPlugin: {} as Plugin extends CinaAuthPlugin
 			? Plugin
 			: undefined,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

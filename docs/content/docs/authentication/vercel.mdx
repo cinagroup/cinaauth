@@ -1,4 +1,4 @@
----
+﻿---
 title: Vercel
 description: Vercel provider setup and usage.
 ---
@@ -12,7 +12,7 @@ description: Vercel provider setup and usage.
     Make sure to set the redirect URL to `http://localhost:3000/api/auth/callback/vercel` for local development. For production, you should set it to the URL of your application. If you change the base path of the auth routes, you should update the redirect URL accordingly.
 
     <Callout type="info">
-      Vercel requires PKCE (Proof Key for Code Exchange) for enhanced security. This is automatically handled by Better Auth.
+      Vercel requires PKCE (Proof Key for Code Exchange) for enhanced security. This is automatically handled by CinaAuth.
     </Callout>
   </Step>
 
@@ -22,9 +22,9 @@ description: Vercel provider setup and usage.
     To configure the provider, you need to import the provider and pass it to the `socialProviders` option of the auth instance.
 
     ```ts title="auth.ts" 
-    import { betterAuth } from "better-auth"
+    import { CinaAuth } from "cinaauth"
 
-    export const auth = betterAuth({ 
+    export const auth = CinaAuth({ 
         socialProviders: {
             vercel: { // [!code highlight]
                 clientId: process.env.VERCEL_CLIENT_ID as string, // [!code highlight]
@@ -45,7 +45,7 @@ To sign in with Vercel, you can use the `signIn.social` function provided by the
 * `provider`: The provider to use. It should be set to `vercel`.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
+import { createAuthClient } from "cinaauth/client"
 const authClient = createAuthClient()
 
 const signIn = async () => {
@@ -73,9 +73,9 @@ Scopes are configured on the Vercel App, and so it is not necessary to pass a `s
 If you do pass a `scope` parameter, it has the effect of requesting a subset of the configured scopes:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     socialProviders: {
         vercel: {
             clientId: process.env.VERCEL_CLIENT_ID as string,

@@ -1,5 +1,5 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
 
 export interface SchemaGeneratorResult {
 	code?: string;
@@ -9,7 +9,7 @@ export interface SchemaGeneratorResult {
 }
 
 export interface SchemaGenerator {
-	<Options extends BetterAuthOptions>(opts: {
+	<Options extends CinaAuthOptions>(opts: {
 		file?: string;
 		adapter: DBAdapter;
 		options: Options;

@@ -1,10 +1,10 @@
-import Database from "bun:sqlite";
-import { betterAuth } from "better-auth";
-import { getMigrations } from "better-auth/db/migration";
+﻿import Database from "bun:sqlite";
+import { CinaAuth } from "cinaauth";
+import { getMigrations } from "cinaauth/db/migration";
 
 const database = new Database(":memory:");
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: "http://localhost:4000",
 	database,
 	emailAndPassword: {

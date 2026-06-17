@@ -1,12 +1,12 @@
-import type { AsyncLocalStorage } from "@better-auth/core/async_hooks";
+import type { AsyncLocalStorage } from "@cinaauth/core/async_hooks";
 
-interface BetterAuthGlobal {
+interface CinaAuthGlobal {
 	/**
-	 * The version of BetterAuth.
+	 * The version of CinaAuth.
 	 */
 	version: string;
 	/**
-	 * Used to track the number of BetterAuth instances in the same process.
+	 * Used to track the number of CinaAuth instances in the same process.
 	 *
 	 * Debugging purposes only.
 	 */
@@ -17,41 +17,41 @@ interface BetterAuthGlobal {
 	context: Record<string, AsyncLocalStorage<unknown>>;
 }
 
-const symbol = Symbol.for("better-auth:global");
-let bind: BetterAuthGlobal | null = null;
+const symbol = Symbol.for("cinaauth:global");
+let bind: CinaAuthGlobal | null = null;
 
 const __context: Record<string, AsyncLocalStorage<unknown>> = {};
-const __betterAuthVersion: string = import.meta.env
-	.BETTER_AUTH_VERSION as string;
+const __CinaAuthVersion: string = import.meta.env
+	.CINAAUTH_VERSION as string;
 
 /**
  * We store context instance in the globalThis.
  *
  * The reason we do this is that some bundlers, web framework, or package managers might
- * create multiple copies of BetterAuth in the same process intentionally or unintentionally.
+ * create multiple copies of CinaAuth in the same process intentionally or unintentionally.
  *
  * For example, yarn v1, Next.js, SSR, Vite...
  *
  * @internal
  */
-export function __getBetterAuthGlobal(): BetterAuthGlobal {
+export function __getCinaAuthGlobal(): CinaAuthGlobal {
 	if (!(globalThis as any)[symbol]) {
 		(globalThis as any)[symbol] = {
-			version: __betterAuthVersion,
+			version: __CinaAuthVersion,
 			epoch: 1,
 			context: __context,
 		};
-		bind = (globalThis as any)[symbol] as BetterAuthGlobal;
+		bind = (globalThis as any)[symbol] as CinaAuthGlobal;
 	}
-	bind = (globalThis as any)[symbol] as BetterAuthGlobal;
-	if (bind.version !== __betterAuthVersion) {
-		bind.version = __betterAuthVersion;
-		// Different versions of BetterAuth are loaded in the same process.
+	bind = (globalThis as any)[symbol] as CinaAuthGlobal;
+	if (bind.version !== __CinaAuthVersion) {
+		bind.version = __CinaAuthVersion;
+		// Different versions of CinaAuth are loaded in the same process.
 		bind.epoch++;
 	}
-	return (globalThis as any)[symbol] as BetterAuthGlobal;
+	return (globalThis as any)[symbol] as CinaAuthGlobal;
 }
 
-export function getBetterAuthVersion(): string {
-	return __getBetterAuthGlobal().version;
+export function getCinaAuthVersion(): string {
+	return __getCinaAuthGlobal().version;
 }

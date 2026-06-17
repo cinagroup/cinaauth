@@ -74,7 +74,7 @@ describe("next-js integration", () => {
 	}
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8464
+	 * @see https://github.com/cinagroup/cinaauth/issues/8464
 	 */
 	it("should not probe cookies in server action context", async () => {
 		const { cookiesMock, headersMock, session } =
@@ -90,7 +90,7 @@ describe("next-js integration", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8464
+	 * @see https://github.com/cinagroup/cinaauth/issues/8464
 	 */
 	it("should skip refresh in server component context", async () => {
 		const { cookiesMock, headersMock, session } =
@@ -111,9 +111,9 @@ describe("next-js integration", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8828
+	 * @see https://github.com/cinagroup/cinaauth/issues/8828
 	 */
-	it("should not leak __better-auth-cookie-store cookie", async () => {
+	it("should not leak __cinaauth-cookie-store cookie", async () => {
 		vi.doMock("next/headers.js", () => ({
 			cookies: vi.fn(async () => ({
 				set: vi.fn(),
@@ -150,7 +150,7 @@ describe("next-js integration", () => {
 
 		const setCookies = res.headers.getSetCookie();
 		const hasProbeCookie = setCookies.some((c) =>
-			c.includes("__better-auth-cookie-store"),
+			c.includes("__cinaauth-cookie-store"),
 		);
 		expect(hasProbeCookie).toBe(false);
 	});
@@ -162,7 +162,7 @@ describe("next-js integration", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9705
+	 * @see https://github.com/cinagroup/cinaauth/issues/9705
 	 */
 	it("should forward every set-cookie header to next cookies()", async () => {
 		const cookieSet = vi.fn();
@@ -205,13 +205,13 @@ describe("next-js integration", () => {
 			.getSetCookie()
 			.map((cookie) => cookie.split("=")[0]!);
 		expect(setCookieNames).toEqual([
-			"better-auth.session_token",
-			"better-auth.session_data",
+			"cinaauth.session_token",
+			"cinaauth.session_data",
 		]);
 
 		expect(cookieSet.mock.calls.map(([name]) => name)).toEqual(setCookieNames);
 		const sessionDataCall = cookieSet.mock.calls.find(
-			([name]) => name === "better-auth.session_data",
+			([name]) => name === "cinaauth.session_data",
 		);
 		expect(sessionDataCall?.[2]).toMatchObject({ maxAge: 600 });
 	});

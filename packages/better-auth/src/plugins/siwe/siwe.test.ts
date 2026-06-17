@@ -97,7 +97,7 @@ describe("siwe", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8631
+	 * @see https://github.com/cinagroup/cinaauth/issues/8631
 	 */
 	it("should support getNonce alias with address input", async () => {
 		const { client } = await getTestInstance(

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -16,7 +16,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { getVersionFromPathname, versionedDocsHref } from "@/lib/docs-versions";
 import { cn } from "@/lib/utils";
 import { Icons } from "../icons";
-import { BetterAuthWordmark } from "../icons/logo";
+import { CinaAuthWordmark } from "../icons/logo";
 import { contents } from "../sidebar-content";
 import {
 	Accordion,
@@ -492,7 +492,7 @@ export function StaggeredNavFiles() {
 					>
 						<div className="flex flex-col gap-2 w-full">
 							<LogoContextMenu
-								logo={<BetterAuthWordmark className="w-35 h-auto" />}
+								logo={<CinaAuthWordmark className="w-35 h-auto" />}
 							/>
 						</div>
 					</Link>
@@ -509,7 +509,7 @@ export function StaggeredNavFiles() {
 						href="/"
 						className="flex h-full items-center gap-1 px-4 transition-colors duration-150"
 					>
-						<BetterAuthWordmark className="w-35 h-auto" />
+						<CinaAuthWordmark className="w-35 h-auto" />
 					</Link>
 					<div className="flex items-center gap-1 pr-2">
 						{isDocs && (
@@ -606,7 +606,7 @@ export function StaggeredNavFiles() {
 							className={`flex h-full items-center gap-1 shrink-0 px-4 lg:px-7 py-3 border-r ${tabDividerClass} transition-colors duration-150`}
 						>
 							<LogoContextMenu
-								logo={<BetterAuthWordmark className="w-35 h-auto" />}
+								logo={<CinaAuthWordmark className="w-35 h-auto" />}
 							/>
 						</Link>
 					)}
@@ -880,7 +880,7 @@ export function StaggeredNavFiles() {
 									</div>
 									<div className="grid w-full grid-cols-[repeat(auto-fit,minmax(1.75rem,1fr))] items-center justify-items-center gap-y-0.5 border-t border-foreground/[0.06] px-2 py-2">
 										<a
-											href="https://github.com/better-auth/better-auth"
+											href="https://github.com/cinagroup/cinaauth"
 											target="_blank"
 											rel="noreferrer"
 											className="flex items-center justify-center p-1 text-foreground/55 dark:text-foreground/40 hover:text-foreground/75 transition-colors"
@@ -899,7 +899,7 @@ export function StaggeredNavFiles() {
 											</svg>
 										</a>
 										<a
-											href="https://discord.gg/better-auth"
+											href="https://discord.gg/cinaauth"
 											target="_blank"
 											rel="noreferrer"
 											className="flex items-center justify-center p-1 text-foreground/55 dark:text-foreground/40 hover:text-foreground/75 transition-colors"
@@ -918,7 +918,7 @@ export function StaggeredNavFiles() {
 											</svg>
 										</a>
 										<a
-											href="https://reddit.com/r/better_auth"
+											href="https://reddit.com/r/cinaauth"
 											target="_blank"
 											rel="noreferrer"
 											className="flex items-center justify-center p-1 text-foreground/55 dark:text-foreground/40 hover:text-foreground/75 transition-colors"
@@ -939,7 +939,7 @@ export function StaggeredNavFiles() {
 											</svg>
 										</a>
 										<a
-											href="https://x.com/better_auth"
+											href="https://x.com/cinaauth"
 											target="_blank"
 											rel="noreferrer"
 											className="flex items-center justify-center p-1 text-foreground/55 dark:text-foreground/40 hover:text-foreground/75 transition-colors"
@@ -958,7 +958,7 @@ export function StaggeredNavFiles() {
 											</svg>
 										</a>
 										<a
-											href="https://www.npmjs.com/package/better-auth"
+											href="https://www.npmjs.com/package/cinaauth"
 											target="_blank"
 											rel="noreferrer"
 											className="flex items-center justify-center p-1 text-foreground/55 dark:text-foreground/40 hover:text-foreground/75 transition-colors"
@@ -979,7 +979,7 @@ export function StaggeredNavFiles() {
 						className="flex items-stretch shrink-0"
 					>
 						<a
-							href="https://dash.better-auth.com/sign-in"
+							href="https://dash.cinagroup.com/sign-in"
 							className="flex items-center cursor-pointer gap-1.5 px-5 py-3 bg-foreground text-background hover:opacity-90 transition-colors duration-150"
 						>
 							<span className="font-mono text-xs uppercase tracking-wider">
@@ -1304,7 +1304,7 @@ export function StaggeredNavFiles() {
 							{!(isDocs && mobileView === "docs") && (
 								<div className="shrink-0 border-t border-foreground/[0.06] bg-background px-5 py-4">
 									<a
-										href="https://dash.better-auth.com/sign-in"
+										href="https://dash.cinagroup.com/sign-in"
 										onClick={() => setMobileMenuOpen(false)}
 										className="flex items-center justify-center gap-1.5 w-full py-3 bg-foreground text-background font-mono text-sm uppercase tracking-wider transition-opacity hover:opacity-90"
 									>

@@ -1,26 +1,26 @@
----
+﻿---
 title: Options
-description: Better Auth configuration options reference.
+description: CinaAuth configuration options reference.
 ---
 
-List of all the available options for configuring Better Auth. See [Better Auth Options](https://github.com/better-auth/better-auth/blob/main/packages/core/src/types/init-options.ts).
+List of all the available options for configuring CinaAuth. See [CinaAuth Options](https://github.com/cinagroup/cinaauth/blob/main/packages/core/src/types/init-options.ts).
 
 ## `appName`
 
-The name of your application. Defaults to `"Better Auth"`.
+The name of your application. Defaults to `"CinaAuth"`.
 
 It's used as a display name in contexts where your app needs to be identified — for example, when users set up two-factor authentication with an authenticator app (like Google Authenticator), `appName` appears as the issuer name in the TOTP entry. This can be overridden per-plugin (e.g. the [2FA plugin's `issuer` option](/docs/plugins/2fa#issuer)).
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	appName: "My App",
 })
 ```
 
 ## `baseURL`
 
-Base URL for Better Auth. This is typically the root URL where your application server is hosted. You can configure it as either:
+Base URL for CinaAuth. This is typically the root URL where your application server is hosted. You can configure it as either:
 
 * a static string for single-domain deployments
 * an object for dynamic per-request resolution across multiple allowed hosts
@@ -28,26 +28,26 @@ Base URL for Better Auth. This is typically the root URL where your application 
 If you include a path in the baseURL string, it will take precedence over the default path.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	baseURL: "https://example.com",
 })
 ```
 
-If not explicitly set, the system will check for the environment variable `BETTER_AUTH_URL`. If that's also not set, it will be inferred from the incoming request.
+If not explicitly set, the system will check for the environment variable `CINAAUTH_URL`. If that's also not set, it will be inferred from the incoming request.
 
 <Callout type="warn">
-  Relying on request inference is not recommended. For security and stability, always set `baseURL` explicitly in your config or via the `BETTER_AUTH_URL` environment variable.
+  Relying on request inference is not recommended. For security and stability, always set `baseURL` explicitly in your config or via the `CINAAUTH_URL` environment variable.
 </Callout>
 
 ### Dynamic Base URL
 
-Use the object form when your app can be reached through multiple domains, such as preview deployments, branch environments, or multiple production hosts. Better Auth derives the host from the incoming request, validates it against `allowedHosts`, and constructs the request-specific base URL from that match.
+Use the object form when your app can be reached through multiple domains, such as preview deployments, branch environments, or multiple production hosts. CinaAuth derives the host from the incoming request, validates it against `allowedHosts`, and constructs the request-specific base URL from that match.
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: {
 		allowedHosts: [
 			"myapp.com",
@@ -74,11 +74,11 @@ For deployment patterns and end-to-end examples, see the [Dynamic Base URL guide
 
 ## `basePath`
 
-Base path for Better Auth. This is typically the path where the Better Auth routes are mounted. It will be overridden if there is a path component within `baseURL`.
+Base path for CinaAuth. This is typically the path where the CinaAuth routes are mounted. It will be overridden if there is a path component within `baseURL`.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	basePath: "/api/auth",
 })
 ```
@@ -87,15 +87,15 @@ Default: `/api/auth`
 
 ## `trustedOrigins`
 
-By default, Better Auth trusts the base URL of your app (i.e. [`baseURL`](#baseurl)). You can specify additional trusted origins via this option. Values can be a static array of origins, a function that returns origins dynamically, or wildcard patterns to match multiple domains.
+By default, CinaAuth trusts the base URL of your app (i.e. [`baseURL`](#baseurl)). You can specify additional trusted origins via this option. Values can be a static array of origins, a function that returns origins dynamically, or wildcard patterns to match multiple domains.
 
 ### Static Origins
 
 You can provide a static array of origins:
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	trustedOrigins: ["http://localhost:3000", "https://example.com"],
 })
 ```
@@ -105,7 +105,7 @@ export const auth = betterAuth({
 You can provide a function that returns origins dynamically:
 
 ```ts
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	trustedOrigins: async (request) => {
 		// request is undefined during initialization and auth.api calls
 		if (!request) {
@@ -126,7 +126,7 @@ export const auth = betterAuth({
 You can use wildcard patterns in trusted origins:
 
 ```ts
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	trustedOrigins: [
 		"https://*.example.com", // trust all HTTPS subdomains of example.com
 		"http://*.dev.example.com" // trust all HTTP subdomains of dev.example.com
@@ -165,18 +165,18 @@ export const auth = betterAuth({
 The secret used for encryption, signing, and hashing.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	secret: "your-secret-key",
 })
 ```
 
-By default, Better Auth will look for the following environment variables:
+By default, CinaAuth will look for the following environment variables:
 
-* `process.env.BETTER_AUTH_SECRET`
+* `process.env.CINAAUTH_SECRET`
 * `process.env.AUTH_SECRET`
 
-If none of these environment variables are set, it will default to `"better-auth-secret-12345678901234567890"`. In production, if it's not set, it will throw an error.
+If none of these environment variables are set, it will default to `"cinaauth-secret-12345678901234567890"`. In production, if it's not set, it will throw an error.
 
 You can generate a good secret using the following command:
 
@@ -189,8 +189,8 @@ openssl rand -base64 32
 Versioned secrets for non-destructive secret rotation. When set, encrypted data uses an envelope format that embeds the key version, allowing you to rotate secrets without invalidating existing data.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	secrets: [
 		{ version: 2, value: "new-secret-key" },
 		{ version: 1, value: "old-secret-key" },
@@ -202,21 +202,21 @@ export const auth = betterAuth({
 * Remaining entries are **decryption-only** (previous rotations).
 * Versions are integers. Gaps are allowed (e.g., `1, 3` after revoking version 2).
 
-You can also set this via the `BETTER_AUTH_SECRETS` environment variable:
+You can also set this via the `CINAAUTH_SECRETS` environment variable:
 
 ```txt title=".env"
-BETTER_AUTH_SECRETS=2:new-secret-base64,1:old-secret-base64
+CINAAUTH_SECRETS=2:new-secret-base64,1:old-secret-base64
 ```
 
 When `secrets` is set, `secret` (singular) is only used as a fallback for decrypting legacy data that predates the envelope format. Both can coexist during migration.
 
 ## `database`
 
-Database configuration for Better Auth.
+Database configuration for CinaAuth.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	database: {
 		dialect: "postgres",
 		type: "postgres",
@@ -225,7 +225,7 @@ export const auth = betterAuth({
 })
 ```
 
-Better Auth supports various database configurations including [PostgreSQL](/docs/adapters/postgresql), [MySQL](/docs/adapters/mysql), and [SQLite](/docs/adapters/sqlite).
+CinaAuth supports various database configurations including [PostgreSQL](/docs/adapters/postgresql), [MySQL](/docs/adapters/mysql), and [SQLite](/docs/adapters/sqlite).
 
 Read more about [databases](/docs/concepts/database).
 
@@ -234,9 +234,9 @@ Read more about [databases](/docs/concepts/database).
 Secondary storage configuration used to store session data, verification records, and rate limit data.
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	// ... other options
     secondaryStorage: {
     	// Your implementation here
@@ -251,8 +251,8 @@ Read more about [secondary storage](/docs/concepts/database#secondary-storage).
 Email verification configuration.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	emailVerification: {
 		sendVerificationEmail: async ({ user, url, token }) => {
 			// Send verification email to user
@@ -275,8 +275,8 @@ export const auth = betterAuth({
 Email and password authentication configuration.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	emailAndPassword: {
 		enabled: true,
 		disableSignUp: false,
@@ -321,8 +321,8 @@ export const auth = betterAuth({
 Configure social login providers.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	socialProviders: {
 		google: {
 			clientId: "your-client-id",
@@ -358,13 +358,13 @@ export const auth = betterAuth({
 
 ## `plugins`
 
-List of Better Auth plugins.
+List of CinaAuth plugins.
 
 ```ts
-import { betterAuth } from "better-auth";
-import { emailOTP } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { emailOTP } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [
 		emailOTP({
 			sendVerificationOTP: async ({ email, otp, type }) => {
@@ -380,8 +380,8 @@ export const auth = betterAuth({
 User configuration options.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	user: {
 		modelName: "users",
 		fields: {
@@ -427,8 +427,8 @@ export const auth = betterAuth({
 Session configuration options.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	session: {
 		modelName: "sessions",
 		fields: {
@@ -466,8 +466,8 @@ export const auth = betterAuth({
 Account configuration options.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	account: {
 		modelName: "accounts",
 		fields: {
@@ -513,15 +513,15 @@ Store provider account data after an OAuth flow in an encrypted cookie. This is 
 * Default: `false`
 * Automatically set to `true` if no database is provided
 
-The account cookie has a five-minute max age and is refreshed when Better Auth writes updated provider account data, for example after `getAccessToken` or `/refresh-token` refreshes provider tokens. When this happens in server-side code, forward the returned `Set-Cookie` header to the browser so the refreshed account cookie is retained.
+The account cookie has a five-minute max age and is refreshed when CinaAuth writes updated provider account data, for example after `getAccessToken` or `/refresh-token` refreshes provider tokens. When this happens in server-side code, forward the returned `Set-Cookie` header to the browser so the refreshed account cookie is retained.
 
-Better Auth chunks oversized account cookies, but browsers and proxies can still enforce total cookie or header limits. Prefer database-backed account storage for providers that issue large JWTs or for production flows that need durable token storage.
+CinaAuth chunks oversized account cookies, but browsers and proxies can still enforce total cookie or header limits. Prefer database-backed account storage for providers that issue large JWTs or for production flows that need durable token storage.
 
-When this option is enabled, you can read the decrypted account cookie in hooks or middleware using `getAccountCookie` from `better-auth/cookies`:
+When this option is enabled, you can read the decrypted account cookie in hooks or middleware using `getAccountCookie` from `cinaauth/cookies`:
 
 ```ts
-import { createAuthMiddleware } from "better-auth/api";
-import { getAccountCookie } from "better-auth/cookies";
+import { createAuthMiddleware } from "cinaauth/api";
+import { getAccountCookie } from "cinaauth/cookies";
 
 const hook = createAuthMiddleware(async (ctx) => {
 	const account = await getAccountCookie(ctx);
@@ -542,8 +542,8 @@ Configuration for account linking.
 Verification configuration options.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	secondaryStorage: {
 		// your Redis or KV implementation
 	},
@@ -561,15 +561,15 @@ export const auth = betterAuth({
 * `storeIdentifier`: How to store verification identifiers such as tokens and OTP keys. Supports `"plain"`, `"hashed"`, or a custom hasher. You can also use `{ default, overrides }` to apply different strategies per identifier prefix.
 * `storeInDatabase`: Store verification records in the database even when `secondaryStorage` is configured. Default is `false`.
 
-If `secondaryStorage` is configured, verification records are stored there by default. That behavior applies to flows that use Better Auth's shared verification layer, including OTP and magic-link style flows.
+If `secondaryStorage` is configured, verification records are stored there by default. That behavior applies to flows that use CinaAuth's shared verification layer, including OTP and magic-link style flows.
 
 ## `rateLimit`
 
 Rate limiting configuration.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	rateLimit: {
 		enabled: true,
 		window: 10,
@@ -598,8 +598,8 @@ export const auth = betterAuth({
 Advanced configuration options.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	advanced: {
 		ipAddress: {
 			ipAddressHeaders: ["x-client-ip", "x-forwarded-for"],
@@ -667,13 +667,13 @@ export const auth = betterAuth({
 
 Set custom strategies for ID generation and findMany queries.
 
-* `generateId`: Controls how record IDs are generated. Accepts a custom function, `false`, `"serial"`, or `"uuid"` (default: [random base62 string](https://github.com/better-auth/better-auth/blob/main/packages/core/src/utils/id.ts)). See the [Database documentation](/docs/concepts/database#id-generation) for more info.
+* `generateId`: Controls how record IDs are generated. Accepts a custom function, `false`, `"serial"`, or `"uuid"` (default: [random base62 string](https://github.com/cinagroup/cinaauth/blob/main/packages/core/src/utils/id.ts)). See the [Database documentation](/docs/concepts/database#id-generation) for more info.
 * `defaultFindManyLimit`: The default maximum number of records returned by the `findMany` adapter method. (default: `100`)
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	advanced: {
 		database: {
 			generateId: "uuid",
@@ -696,10 +696,10 @@ Some examples are: `waitUntil` from `@vercel/functions` on Vercel, or `ctx.waitU
 <Tabs items={["Vercel", "Cloudflare Workers"]}>
   <Tab value="Vercel">
     ```ts
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { waitUntil } from "@vercel/functions";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       advanced: {
         backgroundTasks: {
           handler: waitUntil,
@@ -711,12 +711,12 @@ Some examples are: `waitUntil` from `@vercel/functions` on Vercel, or `ctx.waitU
 
   <Tab value="Cloudflare Workers">
     ```ts
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { AsyncLocalStorage } from "node:async_hooks";
 
     const execCtxStorage = new AsyncLocalStorage<ExecutionContext>();
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       advanced: {
         backgroundTasks: {
           handler: (p) => execCtxStorage.getStore()?.waitUntil(p),
@@ -731,11 +731,11 @@ Some examples are: `waitUntil` from `@vercel/functions` on Vercel, or `ctx.waitU
 
 ## `logger`
 
-Logger configuration for Better Auth.
+Logger configuration for CinaAuth.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	logger: {
 		disabled: false,
 		disableColors: false,
@@ -748,7 +748,7 @@ export const auth = betterAuth({
 })
 ```
 
-The logger configuration allows you to customize how Better Auth handles logging. It supports the following options:
+The logger configuration allows you to customize how CinaAuth handles logging. It supports the following options:
 
 * `disabled`: Disable all logging when set to `true` (default: `false`)
 * `disableColors`: Disable colors in the default logger implementation (default: determined by the terminal's color support)
@@ -765,8 +765,8 @@ The logger configuration allows you to customize how Better Auth handles logging
 Example with custom logging:
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	logger: {
 		level: "info",
 		log: (level, message, ...args) => {
@@ -787,8 +787,8 @@ export const auth = betterAuth({
 Database lifecycle hooks for core operations.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	databaseHooks: {
 		user: {
 			create: {
@@ -828,8 +828,8 @@ export const auth = betterAuth({
 API error handling configuration.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	onAPIError: {
 		throw: true,
 		onError: (error, ctx) => {
@@ -876,7 +876,7 @@ export const auth = betterAuth({
 * `throw`: Throw an error on API error (default: `false`)
 * `onError`: Custom error handler
 * `errorURL`: URL to redirect to on error (default: `/api/auth/error`)
-* `customizeDefaultErrorPage`: Configure the default error page provided by Better Auth. Start your dev server and go to `/api/auth/error` to see the error page.
+* `customizeDefaultErrorPage`: Configure the default error page provided by CinaAuth. Start your dev server and go to `/api/auth/error` to see the error page.
   * `colors`: Customize color scheme for the error page
     * `background`: Background color
     * `foreground`: Foreground/text color
@@ -910,10 +910,10 @@ export const auth = betterAuth({
 Request lifecycle hooks.
 
 ```ts
-import { betterAuth } from "better-auth";
-import { createAuthMiddleware } from "better-auth/api";
+import { CinaAuth } from "cinaauth";
+import { createAuthMiddleware } from "cinaauth/api";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	hooks: {
 		before: createAuthMiddleware(async (ctx) => {
 			// Execute before processing the request
@@ -934,19 +934,19 @@ For more details and examples, see the [Hooks documentation](/docs/concepts/hook
 Disable specific auth paths.
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
 	disabledPaths: ["/sign-up/email", "/sign-in/email"],
 })
 ```
 
 ## `telemetry`
 
-Enable or disable Better Auth's telemetry collection. (default: `false`)
+Enable or disable CinaAuth's telemetry collection. (default: `false`)
 
 ```ts
-import { betterAuth } from "better-auth";
-export const auth = betterAuth({
+import { CinaAuth } from "cinaauth";
+export const auth = CinaAuth({
   telemetry: {
     enabled: false,
   }

@@ -1,4 +1,4 @@
-import type { Awaitable, BetterAuthOptions } from "@better-auth/core";
+import type { Awaitable, CinaAuthOptions } from "@cinaauth/core";
 import type {
 	AdapterFactoryCustomizeAdapterCreator,
 	AdapterFactoryOptions,
@@ -6,9 +6,9 @@ import type {
 	DBAdapterDebugLogOption,
 	JoinConfig,
 	Where,
-} from "@better-auth/core/db/adapter";
-import { createAdapterFactory } from "@better-auth/core/db/adapter";
-import { BetterAuthError } from "@better-auth/core/error";
+} from "@cinaauth/core/db/adapter";
+import { createAdapterFactory } from "@cinaauth/core/db/adapter";
+import { CinaAuthError } from "@cinaauth/core/error";
 
 export interface PrismaConfig {
 	/**
@@ -71,7 +71,7 @@ type PrismaClientInternal = {
 };
 
 export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
-	let lazyOptions: BetterAuthOptions | null = null;
+	let lazyOptions: CinaAuthOptions | null = null;
 	const createCustomAdapter =
 		(
 			prisma: PrismaClient,
@@ -399,7 +399,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 			return {
 				async create({ model, data: values, select }) {
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -417,7 +417,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 						action: "findOne",
 					});
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -436,7 +436,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 						select: selects,
 					});
 
-					// transform the resulting `include` items to use better-auth expected field names
+					// transform the resulting `include` items to use cinaauth expected field names
 					if (join && result) {
 						for (const [includeKey, originalKey] of map.entries()) {
 							if (includeKey === originalKey) continue;
@@ -456,7 +456,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 						action: "findMany",
 					});
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -486,7 +486,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 						select: selects,
 					});
 
-					// transform the resulting join items to use better-auth expected field names
+					// transform the resulting join items to use cinaauth expected field names
 					if (join && Array.isArray(result)) {
 						for (const item of result) {
 							for (const [includeKey, originalKey] of map.entries()) {
@@ -508,7 +508,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 						action: "count",
 					});
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -518,7 +518,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 				},
 				async update({ model, where, update }) {
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -557,7 +557,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 				},
 				async updateMany({ model, where, update }) {
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -574,7 +574,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 				},
 				async delete({ model, where }) {
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -622,7 +622,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 				},
 				async consumeOne({ model, where }) {
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -690,7 +690,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 				},
 				async incrementOne({ model, where, increment, set }) {
 					if (!db[model]) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							`Model ${model} does not exist in the database. If you haven't generated the Prisma client, you need to run 'npx prisma generate'`,
 						);
 					}
@@ -804,7 +804,7 @@ export const prismaAdapter = (prisma: PrismaClient, config: PrismaConfig) => {
 	};
 
 	const adapter = createAdapterFactory(adapterOptions);
-	return (options: BetterAuthOptions): DBAdapter<BetterAuthOptions> => {
+	return (options: CinaAuthOptions): DBAdapter<CinaAuthOptions> => {
 		lazyOptions = options;
 		return adapter(options);
 	};

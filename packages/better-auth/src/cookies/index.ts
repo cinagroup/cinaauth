@@ -1,13 +1,13 @@
 import type {
-	BetterAuthCookie,
-	BetterAuthCookies,
-	BetterAuthOptions,
+	CinaAuthCookie,
+	CinaAuthCookies,
+	CinaAuthOptions,
 	GenericEndpointContext,
-} from "@better-auth/core";
-import { env, isProduction } from "@better-auth/core/env";
-import { BetterAuthError } from "@better-auth/core/error";
-import { filterOutputFields } from "@better-auth/core/utils/db";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+} from "@cinaauth/core";
+import { env, isProduction } from "@cinaauth/core/env";
+import { CinaAuthError } from "@cinaauth/core/error";
+import { filterOutputFields } from "@cinaauth/core/utils/db";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import { base64Url } from "@better-auth/utils/base64";
 import { binary } from "@better-auth/utils/binary";
 import { createHMAC } from "@better-auth/utils/hmac";
@@ -37,7 +37,7 @@ import {
 	setAccountCookie,
 } from "./session-store";
 
-export function createCookieGetter(options: BetterAuthOptions) {
+export function createCookieGetter(options: CinaAuthOptions) {
 	const baseURLString =
 		typeof options.baseURL === "string" ? options.baseURL : undefined;
 	const dynamicProtocol =
@@ -80,7 +80,7 @@ export function createCookieGetter(options: BetterAuthOptions) {
 		!domain &&
 		!isDynamicBaseURLConfig(options.baseURL)
 	) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"baseURL is required when crossSubdomainCookies are enabled.",
 		);
 	}
@@ -88,7 +88,7 @@ export function createCookieGetter(options: BetterAuthOptions) {
 		cookieName: string,
 		overrideAttributes: Partial<CookieOptions> = {},
 	) {
-		const prefix = options.advanced?.cookiePrefix || "better-auth";
+		const prefix = options.advanced?.cookiePrefix || "cinaauth";
 		const name =
 			options.advanced?.cookies?.[cookieName]?.name ||
 			`${prefix}.${cookieName}`;
@@ -107,12 +107,12 @@ export function createCookieGetter(options: BetterAuthOptions) {
 				...overrideAttributes,
 				...attributes,
 			},
-		} satisfies BetterAuthCookie;
+		} satisfies CinaAuthCookie;
 	}
 	return createCookie;
 }
 
-export function getCookies(options: BetterAuthOptions) {
+export function getCookies(options: CinaAuthOptions) {
 	const createCookie = createCookieGetter(options);
 	const sessionMaxAge = options.session?.expiresIn || sec("7d");
 	const sessionToken = createCookie("session_token", {
@@ -204,7 +204,7 @@ export async function setCookieCache(
 		data = await symmetricEncodeJWT(
 			sessionData,
 			ctx.context.secretConfig,
-			"better-auth-session",
+			"cinaauth-session",
 			options.maxAge || 60 * 5,
 		);
 	} else if (strategy === "jwt") {
@@ -409,7 +409,7 @@ function hasPendingSetCookie(
  */
 export function expireCookie(
 	ctx: GenericEndpointContext,
-	cookie: BetterAuthCookie,
+	cookie: CinaAuthCookie,
 ) {
 	removeSetCookieEntries(ctx, cookie.name);
 	ctx.setCookie(cookie.name, "", {
@@ -456,7 +456,7 @@ export function deleteSessionCookie(
 	}
 }
 
-export type EligibleCookies = (string & {}) | (keyof BetterAuthCookies & {});
+export type EligibleCookies = (string & {}) | (keyof CinaAuthCookies & {});
 
 export const getSessionCookie = (
 	request: Request | Headers,
@@ -476,7 +476,7 @@ export const getSessionCookie = (
 	if (!cookies) {
 		return null;
 	}
-	const { cookieName = "session_token", cookiePrefix = "better-auth" } =
+	const { cookieName = "session_token", cookiePrefix = "cinaauth" } =
 		config || {};
 	const parsedCookie = parseCookies(cookies);
 	// Prefer __Secure- (HTTPS-only) over a non-secure leftover.
@@ -531,7 +531,7 @@ export const getCookieCache = async <
 	if (!cookies) {
 		return null;
 	}
-	const { cookieName = "session_data", cookiePrefix = "better-auth" } =
+	const { cookieName = "session_data", cookiePrefix = "cinaauth" } =
 		config || {};
 	const name =
 		config?.isSecure !== undefined
@@ -567,10 +567,10 @@ export const getCookieCache = async <
 	}
 
 	if (sessionData) {
-		const secret = config?.secret || env.BETTER_AUTH_SECRET;
+		const secret = config?.secret || env.CINAAUTH_SECRET;
 		if (!secret) {
-			throw new BetterAuthError(
-				"getCookieCache requires a secret to be provided. Either pass it as an option or set the BETTER_AUTH_SECRET environment variable",
+			throw new CinaAuthError(
+				"getCookieCache requires a secret to be provided. Either pass it as an option or set the CINAAUTH_SECRET environment variable",
 			);
 		}
 
@@ -590,7 +590,7 @@ export const getCookieCache = async <
 			const payload = await symmetricDecodeJWT<S>(
 				sessionData,
 				secret,
-				"better-auth-session",
+				"cinaauth-session",
 			);
 
 			if (payload && payload.session && payload.user) {

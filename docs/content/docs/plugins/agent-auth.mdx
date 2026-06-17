@@ -1,4 +1,4 @@
----
+﻿---
 title: Agent Auth
 description: Agent identity, registration, discovery, and capability-based authorization for AI agents.
 ---
@@ -6,10 +6,10 @@ description: Agent identity, registration, discovery, and capability-based autho
 `AI Agents` `MCP` `Capabilities`
 
 <Callout type="warn">
-  This plugin is an implementation of a standard on heavy development. It's not yet stable and may change in the future. Please report any issues or bugs on [Github](https://github.com/better-auth/agent-auth).
+  This plugin is an implementation of a standard on heavy development. It's not yet stable and may change in the future. Please report any issues or bugs on [Github](https://github.com/cinaauth/agent-auth).
 </Callout>
 
-The Agent Auth plugin lets your Better Auth server act as an **Agent Auth provider**. It's a server implementation of the [Agent Auth Protocol](https://agentauthprotocol.com).
+The Agent Auth plugin lets your CinaAuth server act as an **Agent Auth provider**. It's a server implementation of the [Agent Auth Protocol](https://agentauthprotocol.com).
 
 It gives AI agents a standard way to discover your service, register themselves, request approval, and execute scoped capabilities using short-lived signed JWTs. It comes with adapters for **OpenAPI** and **MCP** — so you can turn an existing REST API or MCP server into an agent-auth-enabled service without writing capabilities by hand.
 
@@ -31,7 +31,7 @@ It gives AI agents a standard way to discover your service, register themselves,
     ### Install the packages
 
     ```package-install
-    @better-auth/agent-auth
+    @cinaauth/agent-auth
     ```
 
     Client and CLI packages (optional):
@@ -47,10 +47,10 @@ It gives AI agents a standard way to discover your service, register themselves,
     Start by defining the capabilities your service exposes and an `onExecute` handler that performs the action for an authenticated agent.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
-    import { agentAuth } from "@better-auth/agent-auth"; // [!code highlight]
+    import { CinaAuth } from "cinaauth";
+    import { agentAuth } from "@cinaauth/agent-auth"; // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       plugins: [
         agentAuth({ // [!code highlight]
           providerName: "Acme", // [!code highlight]
@@ -130,13 +130,13 @@ It gives AI agents a standard way to discover your service, register themselves,
   </Step>
 
   <Step>
-    ### Optional: add the Better Auth client plugin
+    ### Optional: add the CinaAuth client plugin
 
-    If you want type-safe access to the plugin endpoints from a Better Auth client, add the client plugin too.
+    If you want type-safe access to the plugin endpoints from a CinaAuth client, add the client plugin too.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client";
-    import { agentAuthClient } from "@better-auth/agent-auth/client"; // [!code highlight]
+    import { createAuthClient } from "cinaauth/client";
+    import { agentAuthClient } from "@cinaauth/agent-auth/client"; // [!code highlight]
 
     export const authClient = createAuthClient({
       plugins: [
@@ -163,7 +163,7 @@ The discovery document tells agents how to interact with your server. The plugin
 
 Important fields for execution:
 
-* **`issuer`** — The provider’s base URL (Better Auth `baseURL`).
+* **`issuer`** — The provider’s base URL (CinaAuth `baseURL`).
 * **`endpoints`** — Absolute URLs for each route (for example `execute` points at `POST /capability/execute` on that base).
 * **`default_location`** — The full URL of the default execute endpoint. It always matches `endpoints.execute`. Agents use this as the JWT **`aud`** when a capability does not define a custom URL, and as the request URL for those capabilities.
 
@@ -180,7 +180,7 @@ export async function GET() {
 ```
 
 <Callout>
-  The discovery route should live at `/.well-known/agent-configuration`, even if your Better Auth base path is `/api/auth`.
+  The discovery route should live at `/.well-known/agent-configuration`, even if your CinaAuth base path is `/api/auth`.
 </Callout>
 
 ## OpenAPI Adapter
@@ -188,15 +188,15 @@ export async function GET() {
 If your service already has an OpenAPI spec, you can turn the entire API into an agent-auth provider in a few lines. **`createFromOpenAPI`** reads the spec and produces everything the plugin needs: capabilities (one per `operationId`), input/output JSON Schemas, a proxy **`onExecute`** handler, and optionally **`providerName`** / **`providerDescription`** from `info`.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { agentAuth } from "@better-auth/agent-auth";
-import { createFromOpenAPI } from "@better-auth/agent-auth/openapi";
+import { CinaAuth } from "cinaauth";
+import { agentAuth } from "@cinaauth/agent-auth";
+import { createFromOpenAPI } from "@cinaauth/agent-auth/openapi";
 
 const spec = await fetch("https://api.example.com/openapi.json").then((r) =>
   r.json(),
 );
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     agentAuth({
       ...createFromOpenAPI(spec, {
@@ -272,7 +272,7 @@ If you only need part of the pipeline, the adapter also exports the lower-level 
 import {
   fromOpenAPI,
   createOpenAPIHandler,
-} from "@better-auth/agent-auth/openapi";
+} from "@cinaauth/agent-auth/openapi";
 
 const capabilities = fromOpenAPI(spec);
 const onExecute = createOpenAPIHandler(spec, {
@@ -348,7 +348,7 @@ export async function POST(request: Request) {
 
 ```ts
 // Equivalent when you already have `Request` + `auth` and prefer a helper:
-import { verifyAgentRequest } from "@better-auth/agent-auth";
+import { verifyAgentRequest } from "@cinaauth/agent-auth";
 const agentSession = await verifyAgentRequest(request, auth);
 ```
 
@@ -374,7 +374,7 @@ If that grant has **`constraints`**, validate the request body or query the same
 * **`agentSession.agent`** — Id, name, mode, **`capabilityGrants`**, host id, metadata.
 * **`agentSession.host`** — Host record when the agent is linked to a host.
 
-Types are exported from **`@better-auth/agent-auth`** (for example **`AgentSession`**).
+Types are exported from **`@cinaauth/agent-auth`** (for example **`AgentSession`**).
 
 ### JWT audience (`aud`)
 

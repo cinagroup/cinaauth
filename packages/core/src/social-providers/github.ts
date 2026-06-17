@@ -137,7 +137,7 @@ export const github = (options: GithubOptions) => {
 				"https://api.github.com/user",
 				{
 					headers: {
-						"User-Agent": "better-auth",
+						"User-Agent": "cinaauth",
 						authorization: `Bearer ${token.accessToken}`,
 					},
 				},
@@ -155,7 +155,7 @@ export const github = (options: GithubOptions) => {
 			>("https://api.github.com/user/emails", {
 				headers: {
 					Authorization: `Bearer ${token.accessToken}`,
-					"User-Agent": "better-auth",
+					"User-Agent": "cinaauth",
 				},
 			});
 

@@ -1,6 +1,6 @@
----
+﻿---
 title: Getting Started
-description: This guide will help you integrate Better Auth Infrastructure into your application.
+description: This guide will help you integrate CinaAuth Infrastructure into your application.
 ---
 
 <Steps>
@@ -9,17 +9,17 @@ description: This guide will help you integrate Better Auth Infrastructure into 
 
     Before you begin, make sure you have:
 
-    1. A working [Better Auth](/docs/installation) installation
-    2. An account & API Key from the [Better Auth Infrastructure](/dashboard) dashboard
+    1. A working [CinaAuth](/docs/installation) installation
+    2. An account & API Key from the [CinaAuth Infrastructure](/dashboard) dashboard
   </Step>
 
   <Step>
     ## Installation
 
-    Install the `@better-auth/infra` package:
+    Install the `@cinaauth/infra` package:
 
     ```package-install
-    @better-auth/infra
+    @cinaauth/infra
     ```
   </Step>
 
@@ -27,16 +27,16 @@ description: This guide will help you integrate Better Auth Infrastructure into 
     ## Environment Variables
 
     Once you've gotten the API Key from the infrastructure dashboard,
-    go ahead and add the `BETTER_AUTH_API_KEY` environment variable in your production environment variables.
+    go ahead and add the `CINAAUTH_API_KEY` environment variable in your production environment variables.
 
     ```dotenv
-    # Required: Your Better Auth Infrastructure API key
-    BETTER_AUTH_API_KEY=your_api_key_here
+    # Required: Your CinaAuth Infrastructure API key
+    CINAAUTH_API_KEY=your_api_key_here
     ```
 
     <Callout>
       You can get your API key by signing-up and creating a new project in the
-      [Better Auth Infrastructure dashboard](/dashboard).
+      [CinaAuth Infrastructure dashboard](/dashboard).
     </Callout>
   </Step>
 </Steps>
@@ -45,17 +45,17 @@ description: This guide will help you integrate Better Auth Infrastructure into 
 
 ### Basic Configuration
 
-Add the `dash()` plugin to your Better Auth configuration:
+Add the `dash()` plugin to your CinaAuth configuration:
 
 ```ts
-import { betterAuth } from "better-auth";
-import { dash } from "@better-auth/infra"; // [!code highlight]
+import { CinaAuth } from "cinaauth";
+import { dash } from "@cinaauth/infra"; // [!code highlight]
 
-export const auth = betterAuth({
-  // ... your existing Better Auth config
+export const auth = CinaAuth({
+  // ... your existing CinaAuth config
   plugins: [
     dash({ // [!code highlight]
-      apiKey: process.env.BETTER_AUTH_API_KEY, // [!code highlight]
+      apiKey: process.env.CINAAUTH_API_KEY, // [!code highlight]
     }), // [!code highlight]
   ],
 });
@@ -64,14 +64,14 @@ export const auth = betterAuth({
 If you're on **pro** plan or above, you can use the `sentinel()` plugin to enable security checks, abuse protection, and more:
 
 ```ts
-import { betterAuth } from "better-auth";
-import { dash, sentinel } from "@better-auth/infra";  // [!code highlight]
+import { CinaAuth } from "cinaauth";
+import { dash, sentinel } from "@cinaauth/infra";  // [!code highlight]
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     dash({ /* ... */ }),
     sentinel({ // [!code highlight]
-      apiKey: process.env.BETTER_AUTH_API_KEY, // [!code highlight]
+      apiKey: process.env.CINAAUTH_API_KEY, // [!code highlight]
     }) // [!code highlight]
   ],
 });
@@ -84,8 +84,8 @@ export const auth = betterAuth({
 Add the client plugins to your auth client:
 
 ```ts
-import { createAuthClient } from "better-auth/client";
-import { dashClient, sentinelClient } from "@better-auth/infra/client";
+import { createAuthClient } from "cinaauth/client";
+import { dashClient, sentinelClient } from "@cinaauth/infra/client";
 
 export const authClient = createAuthClient({
   plugins: [
@@ -99,11 +99,11 @@ export const authClient = createAuthClient({
 
 ### Expo and React Native
 
-For **Expo** or **React Native** clients, import from `@better-auth/infra/native` instead of `@better-auth/infra/client`. The native entry provides `dashClient` (same audit log APIs as the web client) and `sentinelNativeClient`.
+For **Expo** or **React Native** clients, import from `@cinaauth/infra/native` instead of `@cinaauth/infra/client`. The native entry provides `dashClient` (same audit log APIs as the web client) and `sentinelNativeClient`.
 
 ```ts
-import { createAuthClient } from "better-auth/client";
-import { dashClient, sentinelNativeClient } from "@better-auth/infra/native";
+import { createAuthClient } from "cinaauth/client";
+import { dashClient, sentinelNativeClient } from "@cinaauth/infra/native";
 
 export const authClient = createAuthClient({
   baseURL: "https://your-api.example.com",
@@ -123,7 +123,7 @@ See [Sentinel — Expo and React Native](/docs/infrastructure/plugins/sentinel#e
 * **`dash()`** - Enables analytics tracking, audit logging, dashboard admin APIs, and more
 * **`sentinel()`** - Enables security checks and abuse protection
 
-You can use either plugin independently, but using both together provides the full Better Auth Infrastructure experience.
+You can use either plugin independently, but using both together provides the full CinaAuth Infrastructure experience.
 
 ## Next Steps
 

@@ -1,9 +1,9 @@
----
+﻿---
 title: Expo Integration
-description: Integrate Better Auth with Expo.
+description: Integrate CinaAuth with Expo.
 ---
 
-Expo is a popular framework for building cross-platform apps with React Native. Better Auth supports both Expo native and web apps.
+Expo is a popular framework for building cross-platform apps with React Native. CinaAuth supports both Expo native and web apps.
 
 <Callout type="info">
   This guide is written for **Expo SDK 55** (React Native 0.83, React 19.2). SDK 55 requires the [New Architecture](https://docs.expo.dev/guides/new-architecture/) — the Legacy Architecture is no longer supported. If you're upgrading from an older SDK, see the [Expo SDK 55 upgrade guide](https://expo.dev/blog/upgrading-to-sdk-55).
@@ -13,16 +13,16 @@ Expo is a popular framework for building cross-platform apps with React Native. 
 
 <Steps>
   <Step>
-    ## Configure A Better Auth Backend
+    ## Configure A CinaAuth Backend
 
-    Before using Better Auth with Expo, make sure you have a Better Auth backend set up. You can either use a separate server or leverage Expo's new [API Routes](https://docs.expo.dev/router/reference/api-routes) feature to host your Better Auth instance.
+    Before using CinaAuth with Expo, make sure you have a CinaAuth backend set up. You can either use a separate server or leverage Expo's new [API Routes](https://docs.expo.dev/router/reference/api-routes) feature to host your CinaAuth instance.
 
-    To get started, check out our [installation](/docs/installation) guide for setting up Better Auth on your server. If you prefer, check out the [full example](https://github.com/better-auth/examples/tree/main/expo-example).
+    To get started, check out our [installation](/docs/installation) guide for setting up CinaAuth on your server. If you prefer, check out the [full example](https://github.com/cinaauth/examples/tree/main/expo-example).
 
-    To use the new API routes feature in Expo to host your Better Auth instance you can create a new API route in your Expo app and mount the Better Auth handler.
+    To use the new API routes feature in Expo to host your CinaAuth instance you can create a new API route in your Expo app and mount the CinaAuth handler.
 
     ```ts title="app/api/auth/[...auth]+api.ts"
-    import { auth } from "@/lib/auth"; // import Better Auth handler
+    import { auth } from "@/lib/auth"; // import CinaAuth handler
 
     const handler = auth.handler;
     export { handler as GET, handler as POST }; // export handler for both GET and POST requests
@@ -32,10 +32,10 @@ Expo is a popular framework for building cross-platform apps with React Native. 
   <Step>
     ## Install Server Dependencies
 
-    Install both the Better Auth package and Expo plugin into your server application.
+    Install both the CinaAuth package and Expo plugin into your server application.
 
     ```package-install
-    better-auth @better-auth/expo
+    cinaauth @cinaauth/expo
     ```
 
     <Callout type="info">
@@ -46,10 +46,10 @@ Expo is a popular framework for building cross-platform apps with React Native. 
   <Step>
     ## Install Client Dependencies
 
-    * You also need to install both the Better Auth package and Expo plugin into your Expo application.
+    * You also need to install both the CinaAuth package and Expo plugin into your Expo application.
 
     ```package-install
-    better-auth @better-auth/expo
+    cinaauth @cinaauth/expo
     ```
 
     * And you need to install `expo-network` for network state detection.
@@ -69,13 +69,13 @@ Expo is a popular framework for building cross-platform apps with React Native. 
   <Step>
     ## Add the Expo Plugin on Your Server
 
-    Add the Expo plugin to your Better Auth server.
+    Add the Expo plugin to your CinaAuth server.
 
     ```ts title="lib/auth.ts"
-    import { betterAuth } from "better-auth";
-    import { expo } from "@better-auth/expo";
+    import { CinaAuth } from "cinaauth";
+    import { expo } from "@cinaauth/expo";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [expo()],
         emailAndPassword: { 
             enabled: true, // Enable authentication using email and password.
@@ -85,9 +85,9 @@ Expo is a popular framework for building cross-platform apps with React Native. 
   </Step>
 
   <Step>
-    ## Initialize Better Auth Client
+    ## Initialize CinaAuth Client
 
-    To initialize Better Auth in your Expo app, you need to call `createAuthClient` with the base URL of your Better Auth backend. Make sure to import the client from `/react`.
+    To initialize CinaAuth in your Expo app, you need to call `createAuthClient` with the base URL of your CinaAuth backend. Make sure to import the client from `/react`.
 
     Make sure you install the `expo-secure-store` package into your Expo app. This is used to store the session data and cookies securely.
 
@@ -95,7 +95,7 @@ Expo is a popular framework for building cross-platform apps with React Native. 
     expo-secure-store
     ```
 
-    You need to also import client plugin from `@better-auth/expo/client` and pass it to the `plugins` array when initializing the auth client.
+    You need to also import client plugin from `@cinaauth/expo/client` and pass it to the `plugins` array when initializing the auth client.
 
     This is important because:
 
@@ -103,12 +103,12 @@ Expo is a popular framework for building cross-platform apps with React Native. 
     * **Secure Cookie Management:** stores cookies securely and automatically adds them to the headers of your auth requests.
 
     ```ts title="lib/auth-client.ts"
-    import { createAuthClient } from "better-auth/react";
-    import { expoClient } from "@better-auth/expo/client";
+    import { createAuthClient } from "cinaauth/react";
+    import { expoClient } from "@cinaauth/expo/client";
     import * as SecureStore from "expo-secure-store";
 
     export const authClient = createAuthClient({
-        baseURL: "http://localhost:8081", // Base URL of your Better Auth backend.
+        baseURL: "http://localhost:8081", // Base URL of your CinaAuth backend.
         plugins: [
             expoClient({
                 scheme: "myapp",
@@ -127,7 +127,7 @@ Expo is a popular framework for building cross-platform apps with React Native. 
   <Step>
     ## Scheme and Trusted Origins
 
-    Better Auth uses deep links to redirect users back to your app after authentication. To enable this, you need to add your app's scheme to the `trustedOrigins` list in your Better Auth config.
+    CinaAuth uses deep links to redirect users back to your app after authentication. To enable this, you need to add your app's scheme to the `trustedOrigins` list in your CinaAuth config.
 
     First, make sure you have a scheme defined in your `app.json` file.
 
@@ -139,10 +139,10 @@ Expo is a popular framework for building cross-platform apps with React Native. 
     }
     ```
 
-    Then, update your Better Auth config to include the scheme in the `trustedOrigins` list.
+    Then, update your CinaAuth config to include the scheme in the `trustedOrigins` list.
 
     ```ts title="auth.ts"
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         trustedOrigins: ["myapp://"]
     })
     ```
@@ -150,7 +150,7 @@ Expo is a popular framework for building cross-platform apps with React Native. 
     If you have multiple schemes or need to support deep linking with various paths, you can use specific patterns or wildcards:
 
     ```ts title="auth.ts"
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         trustedOrigins: [
             // Basic scheme
             "myapp://", 
@@ -170,7 +170,7 @@ Expo is a popular framework for building cross-platform apps with React Native. 
     During development, Expo uses the `exp://` scheme with your device's local IP address. To support this, you can use wildcards to match common local IP ranges:
 
     ```ts title="auth.ts"
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         trustedOrigins: [
             "myapp://",
             
@@ -194,7 +194,7 @@ Expo is a popular framework for building cross-platform apps with React Native. 
   <Step>
     ## Configure Metro Bundler
 
-    Better Auth relies on `package.json` exports to resolve its modules. Starting with **Expo SDK 53+** (including SDK 55), package exports support is enabled by default in Metro, so **no extra Metro configuration is needed**.
+    CinaAuth relies on `package.json` exports to resolve its modules. Starting with **Expo SDK 53+** (including SDK 55), package exports support is enabled by default in Metro, so **no extra Metro configuration is needed**.
 
     If you have a custom `metro.config.js`, make sure you're not disabling package exports:
 
@@ -203,7 +203,7 @@ Expo is a popular framework for building cross-platform apps with React Native. 
 
     const config = getDefaultConfig(__dirname);
 
-    // Do NOT set this to false — Better Auth requires package exports
+    // Do NOT set this to false — CinaAuth requires package exports
     // config.resolver.unstable_enablePackageExports = false;
 
     module.exports = config;
@@ -221,7 +221,7 @@ Expo is a popular framework for building cross-platform apps with React Native. 
 
 ### Authenticating Users
 
-With Better Auth initialized, you can now use the `authClient` to authenticate users in your Expo app.
+With CinaAuth initialized, you can now use the `authClient` to authenticate users in your Expo app.
 
 <Tabs items={["sign-in", "sign-up"]}>
   <Tab value="sign-in">
@@ -357,9 +357,9 @@ export default function SocialSignIn() {
 
 <Accordions>
   <Accordion title="Example: Google Sign-In with `@react-native-google-signin/google-signin`">
-    This example shows how to implement Google Sign-In using an idToken. No additional configuration is needed in Better Auth. However, since this approach uses native code, you'll need to configure Expo to obtain the idToken.
+    This example shows how to implement Google Sign-In using an idToken. No additional configuration is needed in CinaAuth. However, since this approach uses native code, you'll need to configure Expo to obtain the idToken.
 
-    Follow the [Expo Google authentication guide](https://docs.expo.dev/guides/google-authentication/) to set up `@react-native-google-signin/google-signin`, then pass the idToken to Better Auth:
+    Follow the [Expo Google authentication guide](https://docs.expo.dev/guides/google-authentication/) to set up `@react-native-google-signin/google-signin`, then pass the idToken to CinaAuth:
 
     ```tsx title="app/sign-in.tsx"
     import {
@@ -404,7 +404,7 @@ export default function SocialSignIn() {
 
 ### Session
 
-Better Auth provides a `useSession` hook to access the current user's session in your app.
+CinaAuth provides a `useSession` hook to access the current user's session in your app.
 
 ```tsx title="app/index.tsx"
 import { Text } from "react-native";
@@ -486,8 +486,8 @@ export function TRPCProvider(props: { children: React.ReactNode }) {
 **storage**: the storage mechanism used to cache the session data and cookies.
 
 ```ts title="lib/auth-client.ts"
-import { createAuthClient } from "better-auth/react";
-import { expoClient } from "@better-auth/expo/client";
+import { createAuthClient } from "cinaauth/react";
+import { expoClient } from "@cinaauth/expo/client";
 import SecureStorage from "expo-secure-store";
 
 const authClient = createAuthClient({
@@ -501,11 +501,11 @@ const authClient = createAuthClient({
 });
 ```
 
-**scheme**: scheme is used to deep link back to your app after a user has authenticated using oAuth providers. By default, Better Auth tries to read the scheme from the `app.json` file. If you need to override this, you can pass the scheme option to the client.
+**scheme**: scheme is used to deep link back to your app after a user has authenticated using oAuth providers. By default, CinaAuth tries to read the scheme from the `app.json` file. If you need to override this, you can pass the scheme option to the client.
 
 ```ts title="lib/auth-client.ts"
-import { createAuthClient } from "better-auth/react";
-import { expoClient } from "@better-auth/expo/client";
+import { createAuthClient } from "cinaauth/react";
+import { expoClient } from "@cinaauth/expo/client";
 
 const authClient = createAuthClient({
     baseURL: "http://localhost:8081",
@@ -521,8 +521,8 @@ const authClient = createAuthClient({
 **disableCache**: By default, the client will cache the session data in SecureStore. You can disable this behavior by passing the `disableCache` option to the client.
 
 ```ts title="lib/auth-client.ts"
-import { createAuthClient } from "better-auth/react";
-import { expoClient } from "@better-auth/expo/client";
+import { createAuthClient } from "cinaauth/react";
+import { expoClient } from "@cinaauth/expo/client";
 
 const authClient = createAuthClient({
     baseURL: "http://localhost:8081",
@@ -535,11 +535,11 @@ const authClient = createAuthClient({
 });
 ```
 
-**cookiePrefix**: Prefix(es) for server cookie names to identify which cookies belong to better-auth. This prevents infinite refetching when third-party cookies are set. Can be a single string or an array of strings to match multiple prefixes. Defaults to `"better-auth"`.
+**cookiePrefix**: Prefix(es) for server cookie names to identify which cookies belong to cinaauth. This prevents infinite refetching when third-party cookies are set. Can be a single string or an array of strings to match multiple prefixes. Defaults to `"cinaauth"`.
 
 ```ts title="lib/auth-client.ts"
-import { createAuthClient } from "better-auth/react";
-import { expoClient } from "@better-auth/expo/client";
+import { createAuthClient } from "cinaauth/react";
+import { expoClient } from "@cinaauth/expo/client";
 import * as SecureStore from "expo-secure-store";
 
 const authClient = createAuthClient({
@@ -548,7 +548,7 @@ const authClient = createAuthClient({
         expoClient({
             storage: SecureStore,
             // Single prefix
-            cookiePrefix: "better-auth"
+            cookiePrefix: "cinaauth"
         })
     ]
 });
@@ -563,7 +563,7 @@ const authClient = createAuthClient({
         expoClient({
             storage: SecureStore,
             // Multiple prefixes
-            cookiePrefix: ["better-auth", "my-app", "custom-auth"]
+            cookiePrefix: ["cinaauth", "my-app", "custom-auth"]
         })
     ]
 });

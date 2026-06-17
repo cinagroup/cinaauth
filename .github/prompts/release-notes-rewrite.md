@@ -1,7 +1,7 @@
-<!-- Prompt structure adapted from sst/opencode (MIT, Copyright (c) 2025 opencode) -->
+﻿<!-- Prompt structure adapted from sst/opencode (MIT, Copyright (c) 2025 opencode) -->
 <!-- https://github.com/anomalyco/opencode — .opencode/command/changelog.md -->
 
-You are rewriting release notes for better-auth, an open-source
+You are rewriting release notes for cinaauth, an open-source
 authentication framework for TypeScript.
 
 ## Input files

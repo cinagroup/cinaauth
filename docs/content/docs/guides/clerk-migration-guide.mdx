@@ -1,9 +1,9 @@
----
-title: Migrating from Clerk to Better Auth
-description: A step-by-step guide to transitioning from Clerk to Better Auth.
+﻿---
+title: Migrating from Clerk to CinaAuth
+description: A step-by-step guide to transitioning from Clerk to CinaAuth.
 ---
 
-In this guide, we'll walk through the steps to migrate a project from Clerk to Better Auth — including email/password with proper hashing, social/external accounts, phone number, two-factor data, and more.
+In this guide, we'll walk through the steps to migrate a project from Clerk to CinaAuth — including email/password with proper hashing, social/external accounts, phone number, two-factor data, and more.
 
 <Callout type="warn">
   This migration will invalidate all active sessions. This guide doesn't currently show you how to migrate Organization but it should be possible with additional steps and the [Organization](/docs/plugins/organization) Plugin.
@@ -11,7 +11,7 @@ In this guide, we'll walk through the steps to migrate a project from Clerk to B
 
 ## Before You Begin
 
-Before starting the migration process, set up Better Auth in your project. Follow the [installation guide](/docs/installation) to get started. And go to
+Before starting the migration process, set up CinaAuth in your project. Follow the [installation guide](/docs/installation) to get started. And go to
 
 <Steps>
   <Step>
@@ -28,7 +28,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
     ```ts title="auth.ts"
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -42,7 +42,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Enable the email and password in your auth config and implement your own logic for sending verification emails, reset password emails, etc.
 
     <Callout type="info">
-      **Important for Clerk Migrations**: Clerk uses bcrypt to hash passwords, while Better Auth uses `scrypt` by default. To ensure migrated users can sign in with their existing passwords, you'll need to configure Better Auth to use bcrypt for password verification.
+      **Important for Clerk Migrations**: Clerk uses bcrypt to hash passwords, while CinaAuth uses `scrypt` by default. To ensure migrated users can sign in with their existing passwords, you'll need to configure CinaAuth to use bcrypt for password verification.
     </Callout>
 
     First, install bcrypt:
@@ -52,13 +52,13 @@ Before starting the migration process, set up Better Auth in your project. Follo
     pnpm add -D @types/bcrypt
     ```
 
-    Then configure Better Auth to use bcrypt:
+    Then configure CinaAuth to use bcrypt:
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import bcrypt from "bcrypt";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         emailAndPassword: { 
             enabled: true,
             password: { // [!code highlight]
@@ -82,9 +82,9 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Add social providers you have enabled in your Clerk project in your auth config.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -116,11 +116,11 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
     ```ts title="auth.ts"
     import { Pool } from "pg";
-    import { betterAuth } from "better-auth";
-    import { admin, twoFactor, phoneNumber, username } from "better-auth/plugins";
+    import { CinaAuth } from "cinaauth";
+    import { admin, twoFactor, phoneNumber, username } from "cinaauth/plugins";
     import bcrypt from "bcrypt";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -174,7 +174,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Create a new file called `migrate-clerk.ts` in the `scripts` folder and add the following code:
 
     ```ts title="scripts/migrate-clerk.ts"
-    import { generateRandomString, symmetricEncrypt } from "better-auth/crypto";
+    import { generateRandomString, symmetricEncrypt } from "cinaauth/crypto";
 
     import { auth } from "@/lib/auth"; // import your auth instance
 
@@ -430,7 +430,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
       1. Test the migration in a development environment first
       2. Monitor the migration process for any errors
-      3. Verify the migrated data in Better Auth before proceeding
+      3. Verify the migrated data in CinaAuth before proceeding
       4. Keep Clerk installed and configured until the migration is complete
     </Callout>
   </Step>
@@ -444,10 +444,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Update your components
 
-    Now that the data is migrated, you can start updating your components to use Better Auth. Here's an example for the sign-in component:
+    Now that the data is migrated, you can start updating your components to use CinaAuth. Here's an example for the sign-in component:
 
     ```tsx title="components/auth/sign-in.tsx"
-    import { authClient } from "better-auth/client";
+    import { authClient } from "cinaauth/client";
 
     export const SignIn = () => {
       const handleSignIn = async () => {
@@ -475,12 +475,12 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Update the middleware
 
-    Replace your Clerk middleware with Better Auth's middleware:
+    Replace your Clerk middleware with CinaAuth's middleware:
 
     ```ts title="middleware.ts"
 
     import { NextRequest, NextResponse } from "next/server";
-    import { getSessionCookie } from "better-auth/cookies";
+    import { getSessionCookie } from "cinaauth/cookies";
     export async function middleware(request: NextRequest) {
       const sessionCookie = getSessionCookie(request);
       const { pathname } = request.nextUrl;
@@ -502,7 +502,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Remove Clerk Dependencies
 
-    Once you've verified that everything is working correctly with Better Auth, you can remove Clerk:
+    Once you've verified that everything is working correctly with CinaAuth, you can remove Clerk:
 
     ```bash title="Remove Clerk"
     pnpm remove @clerk/nextjs @clerk/themes @clerk/types
@@ -512,10 +512,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
 ## Additional Resources
 
-[Goodbye Clerk, Hello Better Auth – Full Migration Guide!](https://www.youtube.com/watch?v=Za_QihbDSuk)
+[Goodbye Clerk, Hello CinaAuth – Full Migration Guide!](https://www.youtube.com/watch?v=Za_QihbDSuk)
 
 ## Wrapping Up
 
-Congratulations! You've successfully migrated from Clerk to Better Auth.
+Congratulations! You've successfully migrated from Clerk to CinaAuth.
 
-Better Auth offers greater flexibility and more features—be sure to explore the [documentation](/docs) to unlock its full potential.
+CinaAuth offers greater flexibility and more features—be sure to explore the [documentation](/docs) to unlock its full potential.

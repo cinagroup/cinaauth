@@ -1,10 +1,10 @@
-import { logger } from "@better-auth/core/env";
-import { BetterAuthError } from "@better-auth/core/error";
-import { verifyAccessToken } from "better-auth/oauth2";
+import { logger } from "@cinaauth/core/env";
+import { CinaAuthError } from "@cinaauth/core/error";
+import { verifyAccessToken } from "cinaauth/oauth2";
 import type {
-	BetterAuthClientPlugin,
-	BetterAuthOptions,
-} from "better-auth/types";
+	CinaAuthClientPlugin,
+	CinaAuthOptions,
+} from "cinaauth/types";
 import { APIError } from "better-call";
 import type { JWTPayload, JWTVerifyOptions } from "jose";
 import { handleMcpErrors } from "./mcp";
@@ -14,8 +14,8 @@ import { PACKAGE_VERSION } from "./version";
 
 type ResourceClientAuth = {
 	options: {
-		baseURL?: BetterAuthOptions["baseURL"];
-		basePath?: BetterAuthOptions["basePath"];
+		baseURL?: CinaAuthOptions["baseURL"];
+		basePath?: CinaAuthOptions["basePath"];
 	};
 	$context: Promise<unknown>;
 };
@@ -171,7 +171,7 @@ export const oauthProviderResourceClient = <
 						opts?.externalScopes &&
 						(overrides?.authorization_servers?.length ?? 0) <= 1
 					) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							"external scopes should not be provided with one authorization server",
 						);
 					}
@@ -183,7 +183,7 @@ export const oauthProviderResourceClient = <
 						]);
 						for (const sc of overrides.scopes_supported) {
 							if (sc === "openid") {
-								throw new BetterAuthError(
+								throw new CinaAuthError(
 									"Only the Auth Server should utilize the openid scope",
 								);
 							}
@@ -195,7 +195,7 @@ export const oauthProviderResourceClient = <
 								}
 							}
 							if (!allValidScopes.has(sc)) {
-								throw new BetterAuthError(
+								throw new CinaAuthError(
 									`Unsupported scope ${sc}. If external, please add to "externalScopes"`,
 								);
 							}
@@ -214,7 +214,7 @@ export const oauthProviderResourceClient = <
 				}) as ProtectedResourceMetadataOutput<T>,
 			};
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export interface VerifyAccessTokenRemote {

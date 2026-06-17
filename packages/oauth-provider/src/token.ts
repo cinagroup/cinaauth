@@ -1,9 +1,9 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError } from "better-auth/api";
-import { generateRandomString } from "better-auth/crypto";
-import { generateCodeChallenge } from "better-auth/oauth2";
-import { signJWT, toExpJWT } from "better-auth/plugins";
-import type { Session, User } from "better-auth/types";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError } from "cinaauth/api";
+import { generateRandomString } from "cinaauth/crypto";
+import { generateCodeChallenge } from "cinaauth/oauth2";
+import { signJWT, toExpJWT } from "cinaauth/plugins";
+import type { Session, User } from "cinaauth/types";
 import type { JWTPayload } from "jose";
 import { SignJWT } from "jose";
 import type {

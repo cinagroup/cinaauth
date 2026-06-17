@@ -1,4 +1,4 @@
-import type { Awaitable, BetterAuthClientPlugin } from "@better-auth/core";
+import type { Awaitable, CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../version";
 
 export interface LastLoginMethodClientConfig {
@@ -9,7 +9,7 @@ export interface LastLoginMethodClientConfig {
 	};
 	/**
 	 * Prefix for local storage keys (e.g., "my-app_last_login_method")
-	 * @default "better-auth"
+	 * @default "cinaauth"
 	 */
 	storagePrefix?: string | undefined;
 	/**
@@ -42,7 +42,7 @@ const defaultResolveMethod = (url: string | URL) => {
 
 export const lastLoginMethodClient = (config: LastLoginMethodClientConfig) => {
 	const resolveMethod = config.customResolveMethod || defaultResolveMethod;
-	const storagePrefix = config.storagePrefix || "better-auth";
+	const storagePrefix = config.storagePrefix || "cinaauth";
 	const lastLoginMethodName = `${storagePrefix}_last_login_method`;
 	const storage = config.storage;
 
@@ -92,5 +92,5 @@ export const lastLoginMethodClient = (config: LastLoginMethodClientConfig) => {
 				},
 			};
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

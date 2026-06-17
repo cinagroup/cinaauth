@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 import { runClient, setup } from "./utils";
 
 const { ref, start, clean } = setup();
@@ -28,7 +28,7 @@ test.describe("solid-vinxi", async () => {
 		// Check that the session is now set
 		const cookies = await page.context().cookies();
 		expect(
-			cookies.find((c) => c.name === "better-auth.session_token"),
+			cookies.find((c) => c.name === "cinaauth.session_token"),
 		).toBeDefined();
 	});
 });

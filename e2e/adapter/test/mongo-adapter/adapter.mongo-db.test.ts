@@ -1,6 +1,6 @@
-import { mongodbAdapter } from "@better-auth/mongo-adapter";
-import { createTestSuite, testAdapter } from "@better-auth/test-utils/adapter";
-import type { Session, User } from "better-auth";
+﻿import { mongodbAdapter } from "@cinaauth/mongo-adapter";
+import { createTestSuite, testAdapter } from "@cinaauth/test-utils/adapter";
+import type { Session, User } from "cinaauth";
 import { MongoClient, ObjectId } from "mongodb";
 import { expect } from "vitest";
 import {
@@ -19,7 +19,7 @@ const dbClient = async (connectionString: string, dbName: string) => {
 	return { db, client };
 };
 
-const { db } = await dbClient("mongodb://127.0.0.1:27017", "better-auth");
+const { db } = await dbClient("mongodb://127.0.0.1:27017", "cinaauth");
 
 const updateObjectIdTestSuite = createTestSuite(
 	"update-object-id",
@@ -78,7 +78,7 @@ const { execute } = await testAdapter({
 			transaction: false,
 		});
 	},
-	runMigrations: async (betterAuthOptions) => {},
+	runMigrations: async (CinaAuthOptions) => {},
 	tests: [
 		normalTestSuite(),
 		authFlowTestSuite(),

@@ -1,5 +1,5 @@
----
-"better-auth": patch
+﻿---
+"cinaauth": patch
 ---
 
 declare inherited APIError properties to fix TypeScript inference errors

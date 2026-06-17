@@ -1,4 +1,4 @@
-name: Publish Any Commit
+﻿name: Publish Any Commit
 on: [pull_request]
 
 permissions: {}
@@ -6,7 +6,7 @@ permissions: {}
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM || github.repository_owner }}
-  BETTER_AUTH_TELEMETRY_ENDPOINT: ${{ vars.BETTER_AUTH_TELEMETRY_ENDPOINT }}
+  CINAAUTH_TELEMETRY_ENDPOINT: ${{ vars.CINAAUTH_TELEMETRY_ENDPOINT }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'better-auth/better-auth' || github.event_name != 'pull_request' && github.repository == 'better-auth/better-auth') && 'starsling-ubuntu-24.04' || 'ubuntu-24.04' }}
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'cinaauth/cinaauth' || github.event_name != 'pull_request' && github.repository == 'cinaauth/cinaauth') && 'starsling-ubuntu-24.04' || 'ubuntu-24.04' }}
     permissions:
       contents: read
 

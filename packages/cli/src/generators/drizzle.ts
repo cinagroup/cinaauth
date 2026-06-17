@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
-import { toSnakeCase } from "@better-auth/core/utils/string";
-import { initGetFieldName, initGetModelName } from "better-auth/adapters";
-import type { BetterAuthDBSchema, DBFieldAttribute } from "better-auth/db";
-import { getAuthTables } from "better-auth/db";
-import type { BetterAuthOptions } from "better-auth/types";
+import { toSnakeCase } from "@cinaauth/core/utils/string";
+import { initGetFieldName, initGetModelName } from "cinaauth/adapters";
+import type { CinaAuthDBSchema, DBFieldAttribute } from "cinaauth/db";
+import { getAuthTables } from "cinaauth/db";
+import type { CinaAuthOptions } from "cinaauth/types";
 import prettier from "prettier";
 import type { SchemaGenerator } from "./types";
 
@@ -23,7 +23,7 @@ export const generateDrizzleSchema: SchemaGenerator = async ({
 
 	if (!databaseType) {
 		throw new Error(
-			`Database provider type is undefined during Drizzle schema generation. Please define a \`provider\` in the Drizzle adapter config. Read more at https://better-auth.com/docs/adapters/drizzle`,
+			`Database provider type is undefined during Drizzle schema generation. Please define a \`provider\` in the Drizzle adapter config. Read more at https://cinagroup.com/docs/adapters/drizzle`,
 		);
 	}
 	const fileExist = existsSync(filePath);
@@ -53,7 +53,7 @@ export const generateDrizzleSchema: SchemaGenerator = async ({
 			// Not possible to reach, it's here to make typescript happy
 			if (!databaseType) {
 				throw new Error(
-					`Database provider type is undefined during Drizzle schema generation. Please define a \`provider\` in the Drizzle adapter config. Read more at https://better-auth.com/docs/adapters/drizzle`,
+					`Database provider type is undefined during Drizzle schema generation. Please define a \`provider\` in the Drizzle adapter config. Read more at https://cinagroup.com/docs/adapters/drizzle`,
 				);
 			}
 			name = convertToSnakeCase(name, adapter.options?.camelCase);
@@ -537,8 +537,8 @@ function generateImport({
 	options,
 }: {
 	databaseType: "sqlite" | "mysql" | "pg";
-	tables: BetterAuthDBSchema;
-	options: BetterAuthOptions;
+	tables: CinaAuthDBSchema;
+	options: CinaAuthOptions;
 }) {
 	const rootImports: string[] = ["relations"];
 	const coreImports: string[] = [];

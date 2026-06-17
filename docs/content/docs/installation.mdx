@@ -1,20 +1,20 @@
----
+﻿---
 title: Installation
-description: Learn how to configure Better Auth in your project.
+description: Learn how to configure CinaAuth in your project.
 ---
 
 <Steps>
   <Step>
     ### Install the Package
 
-    Let's start by adding Better Auth to your project:
+    Let's start by adding CinaAuth to your project:
 
     ```package-install
-    better-auth
+    cinaauth
     ```
 
     <Callout type="info">
-      If you're using a separate client and server setup, make sure to install Better Auth in both parts of your project.
+      If you're using a separate client and server setup, make sure to install CinaAuth in both parts of your project.
     </Callout>
   </Step>
 
@@ -28,24 +28,24 @@ description: Learn how to configure Better Auth in your project.
     A secret value used for encryption and hashing. It must be at least 32 characters and generated with high entropy. Click the button below to generate one. You can also use `openssl rand -base64 32` to generate one.
 
     ```txt title=".env"
-    BETTER_AUTH_SECRET=
+    CINAAUTH_SECRET=
     ```
 
     <GenerateSecret />
 
     <Callout type="info">
-      Need to rotate your secret later? You can use `BETTER_AUTH_SECRETS` (plural) to roll over to a new secret without invalidating existing data. See the [`secrets` option](/docs/reference/options#secrets) for details.
+      Need to rotate your secret later? You can use `CINAAUTH_SECRETS` (plural) to roll over to a new secret without invalidating existing data. See the [`secrets` option](/docs/reference/options#secrets) for details.
     </Callout>
 
     2. **Set Base URL**
 
     ```txt title=".env"
-    BETTER_AUTH_URL=http://localhost:3000 # Base URL of your app
+    CINAAUTH_URL=http://localhost:3000 # Base URL of your app
     ```
   </Step>
 
   <Step>
-    ### Create A Better Auth Instance
+    ### Create A CinaAuth Instance
 
     Create a file named `auth.ts` in one of these locations:
 
@@ -55,12 +55,12 @@ description: Learn how to configure Better Auth in your project.
 
     You can also nest any of these folders under `src/`, `app/` or `server/` folder. (e.g. `src/lib/auth.ts`, `app/lib/auth.ts`).
 
-    And in this file, import Better Auth and create your auth instance. Make sure to export the auth instance with the variable name `auth` or as a `default` export.
+    And in this file, import CinaAuth and create your auth instance. Make sure to export the auth instance with the variable name `auth` or as a `default` export.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       //...
     });
     ```
@@ -69,20 +69,20 @@ description: Learn how to configure Better Auth in your project.
   <Step>
     ### Configure Database
 
-    Better Auth requires a database to store user data.
-    You can easily configure Better Auth to use SQLite, PostgreSQL, or MySQL, and more!
+    CinaAuth requires a database to store user data.
+    You can easily configure CinaAuth to use SQLite, PostgreSQL, or MySQL, and more!
 
     <Callout>
-      You can also configure Better Auth to work in a stateless mode if you don't configure a database. See [Stateless Session Management](/docs/concepts/session-management#stateless-session-management) for more information. Note that most plugins will require a database.
+      You can also configure CinaAuth to work in a stateless mode if you don't configure a database. See [Stateless Session Management](/docs/concepts/session-management#stateless-session-management) for more information. Note that most plugins will require a database.
     </Callout>
 
     <Tabs items={["sqlite", "postgres", "mysql"]}>
       <Tab value="sqlite">
         ```ts title="auth.ts"
-        import { betterAuth } from "better-auth";
+        import { CinaAuth } from "cinaauth";
         import Database from "better-sqlite3";
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
             database: new Database("./sqlite.db"),
         })
         ```
@@ -90,10 +90,10 @@ description: Learn how to configure Better Auth in your project.
 
       <Tab value="postgres">
         ```ts title="auth.ts"
-        import { betterAuth } from "better-auth";
+        import { CinaAuth } from "cinaauth";
         import { Pool } from "pg";
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
             database: new Pool({
                 // connection options
             }),
@@ -103,10 +103,10 @@ description: Learn how to configure Better Auth in your project.
 
       <Tab value="mysql">
         ```ts title="auth.ts"
-        import { betterAuth } from "better-auth";
+        import { CinaAuth } from "cinaauth";
         import { createPool } from "mysql2/promise";
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
             database: createPool({
                 // connection options
             }),
@@ -120,11 +120,11 @@ description: Learn how to configure Better Auth in your project.
     <Tabs items={["drizzle", "prisma", "mongodb"]}>
       <Tab value="drizzle">
         ```ts title="auth.ts"
-        import { betterAuth } from "better-auth";
-        import { drizzleAdapter } from "better-auth/adapters/drizzle";
+        import { CinaAuth } from "cinaauth";
+        import { drizzleAdapter } from "cinaauth/adapters/drizzle";
         import { db } from "@/db"; // your drizzle instance
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
             database: drizzleAdapter(db, {
                 provider: "pg", // or "mysql", "sqlite"
             }),
@@ -134,13 +134,13 @@ description: Learn how to configure Better Auth in your project.
 
       <Tab value="prisma">
         ```ts title="auth.ts"
-        import { betterAuth } from "better-auth";
-        import { prismaAdapter } from "better-auth/adapters/prisma";
+        import { CinaAuth } from "cinaauth";
+        import { prismaAdapter } from "cinaauth/adapters/prisma";
         // If your Prisma file is located elsewhere, you can change the path
         import { PrismaClient } from "@/generated/prisma/client";
 
         const prisma = new PrismaClient();
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
             database: prismaAdapter(prisma, {
                 provider: "sqlite", // or "mysql", "postgresql", ...etc
             }),
@@ -150,11 +150,11 @@ description: Learn how to configure Better Auth in your project.
 
       <Tab value="mongodb">
         ```ts title="auth.ts"
-        import { betterAuth } from "better-auth";
-        import { mongodbAdapter } from "better-auth/adapters/mongodb";
+        import { CinaAuth } from "cinaauth";
+        import { mongodbAdapter } from "cinaauth/adapters/mongodb";
         import { client } from "@/db"; // your mongodb client
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
             database: mongodbAdapter(client),
         });
         ```
@@ -167,7 +167,7 @@ description: Learn how to configure Better Auth in your project.
 
     <Callout>
       If you’re using a database adapter (Drizzle, Prisma, MongoDB, or a community adapter),
-      consider importing `betterAuth` from `better-auth/minimal` instead of `better-auth` to reduce bundle size.
+      consider importing `CinaAuth` from `cinaauth/minimal` instead of `cinaauth` to reduce bundle size.
       See [Bundle Size Optimization](/docs/guides/optimizing-for-performance#bundle-size-optimization) for more information.
     </Callout>
   </Step>
@@ -175,7 +175,7 @@ description: Learn how to configure Better Auth in your project.
   <Step>
     ### Create Database Tables
 
-    Better Auth includes a CLI tool to help manage the schema required by the library.
+    CinaAuth includes a CLI tool to help manage the schema required by the library.
 
     * **Generate**: This command generates an ORM schema or SQL migration file.
 
@@ -203,12 +203,12 @@ description: Learn how to configure Better Auth in your project.
   <Step>
     ### Authentication Methods
 
-    Configure the authentication methods you want to use. Better Auth comes with built-in support for email/password, and social sign-on providers.
+    Configure the authentication methods you want to use. CinaAuth comes with built-in support for email/password, and social sign-on providers.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       //...other options // [!code highlight]
       emailAndPassword: { // [!code highlight]
         enabled: true, // [!code highlight]
@@ -235,7 +235,7 @@ description: Learn how to configure Better Auth in your project.
     Create a new file or route in your framework's designated catch-all route handler. This route should handle requests for the path `/api/auth/*` (unless you've configured a different base path).
 
     <Callout>
-      Better Auth supports any backend framework with standard Request and Response
+      CinaAuth supports any backend framework with standard Request and Response
       objects and offers helper functions for popular frameworks.
     </Callout>
 
@@ -243,7 +243,7 @@ description: Learn how to configure Better Auth in your project.
       <Tab value="next-js-app-router">
         ```ts title="/app/api/auth/[...all]/route.ts"
         import { auth } from "@/lib/auth"; // path to your auth file
-        import { toNextJsHandler } from "better-auth/next-js";
+        import { toNextJsHandler } from "cinaauth/next-js";
 
         export const { POST, GET } = toNextJsHandler(auth);
         ```
@@ -252,7 +252,7 @@ description: Learn how to configure Better Auth in your project.
       <Tab value="next-js-pages-router">
         ```ts title="/pages/api/auth/[...all].ts"
         import { auth } from "@/lib/auth"; // path to your auth file
-        import { toNodeHandler } from "better-auth/node";
+        import { toNodeHandler } from "cinaauth/node";
 
         // Disallow body parsing, we will parse it manually
         export const config = { api: { bodyParser: false } };
@@ -273,7 +273,7 @@ description: Learn how to configure Better Auth in your project.
       <Tab value="svelte-kit">
         ```ts title="hooks.server.ts"
         import { auth } from "$lib/auth"; // path to your auth file
-        import { svelteKitHandler } from "better-auth/svelte-kit";
+        import { svelteKitHandler } from "cinaauth/svelte-kit";
         import { building } from '$app/environment'
 
         export async function handle({ event, resolve }) {
@@ -300,7 +300,7 @@ description: Learn how to configure Better Auth in your project.
       <Tab value="solid-start">
         ```ts title="/routes/api/auth/*all.ts"
         import { auth } from "~/lib/auth"; // path to your auth file
-        import { toSolidStartHandler } from "better-auth/solid-start";
+        import { toSolidStartHandler } from "cinaauth/solid-start";
 
         export const { GET, POST } = toSolidStartHandler(auth);
         ```
@@ -341,7 +341,7 @@ description: Learn how to configure Better Auth in your project.
         ```
 
         <Callout type="info">
-          **Node.js AsyncLocalStorage Support**: Better Auth uses AsyncLocalStorage for async context tracking. To enable this in Cloudflare Workers, add the `nodejs_compat` flag to your `wrangler.toml`:
+          **Node.js AsyncLocalStorage Support**: CinaAuth uses AsyncLocalStorage for async context tracking. To enable this in Cloudflare Workers, add the `nodejs_compat` flag to your `wrangler.toml`:
 
           ```toml title="wrangler.toml"
           compatibility_flags = ["nodejs_compat"]
@@ -374,7 +374,7 @@ description: Learn how to configure Better Auth in your project.
 
         ```ts title="server.ts"
         import express from "express";
-        import { toNodeHandler } from "better-auth/node";
+        import { toNodeHandler } from "cinaauth/node";
         import { auth } from "./auth";
 
         const app = express();
@@ -382,12 +382,12 @@ description: Learn how to configure Better Auth in your project.
 
         app.all("/api/auth/*", toNodeHandler(auth));
 
-        // Mount express json middleware after Better Auth handler
-        // or only apply it to routes that don't interact with Better Auth
+        // Mount express json middleware after CinaAuth handler
+        // or only apply it to routes that don't interact with CinaAuth
         app.use(express.json());
 
         app.listen(port, () => {
-            console.log(`Better Auth app listening on port ${port}`);
+            console.log(`CinaAuth app listening on port ${port}`);
         });
         ```
 
@@ -414,17 +414,17 @@ description: Learn how to configure Better Auth in your project.
         import { Elysia, Context } from "elysia";
         import { auth } from "./auth";
 
-        const betterAuthView = (context: Context) => {
-            const BETTER_AUTH_ACCEPT_METHODS = ["POST", "GET"]
+        const CinaAuthView = (context: Context) => {
+            const CINAAUTH_ACCEPT_METHODS = ["POST", "GET"]
             // validate request method
-            if(BETTER_AUTH_ACCEPT_METHODS.includes(context.request.method)) {
+            if(CINAAUTH_ACCEPT_METHODS.includes(context.request.method)) {
                 return auth.handler(context.request);
             } else {
                 context.error(405)
             }
         }
 
-        const app = new Elysia().all("/api/auth/*", betterAuthView).listen(3000);
+        const app = new Elysia().all("/api/auth/*", CinaAuthView).listen(3000);
 
         console.log(
         `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
@@ -452,15 +452,15 @@ description: Learn how to configure Better Auth in your project.
         ```
 
         <Callout type="info">
-          When you call functions that need to set cookies (like `signInEmail` or `signUpEmail`), you'll need to handle cookie setting for TanStack Start. Better Auth provides a `tanstackStartCookies` plugin to automatically handle this for you.
+          When you call functions that need to set cookies (like `signInEmail` or `signUpEmail`), you'll need to handle cookie setting for TanStack Start. CinaAuth provides a `tanstackStartCookies` plugin to automatically handle this for you.
 
           For React (TanStack Start with React):
 
           ```ts title="src/lib/auth.ts"
-          import { betterAuth } from "better-auth";
-          import { tanstackStartCookies } from "better-auth/tanstack-start";
+          import { CinaAuth } from "cinaauth";
+          import { tanstackStartCookies } from "cinaauth/tanstack-start";
 
-          export const auth = betterAuth({
+          export const auth = CinaAuth({
               //...your config
               plugins: [tanstackStartCookies()] // make sure this is the last plugin in the array
           })
@@ -469,10 +469,10 @@ description: Learn how to configure Better Auth in your project.
           For Solid.js (TanStack Start with Solid):
 
           ```ts title="src/lib/auth.ts"
-          import { betterAuth } from "better-auth";
-          import { tanstackStartCookies } from "better-auth/tanstack-start/solid";
+          import { CinaAuth } from "cinaauth";
+          import { tanstackStartCookies } from "cinaauth/tanstack-start/solid";
 
-          export const auth = betterAuth({
+          export const auth = CinaAuth({
               //...your config
               plugins: [tanstackStartCookies()] // make sure this is the last plugin in the array
           })
@@ -496,9 +496,9 @@ description: Learn how to configure Better Auth in your project.
   <Step>
     ### Create Client Instance
 
-    The client-side library helps you interact with the auth server. Better Auth comes with a client for all the popular web frameworks, including vanilla JavaScript.
+    The client-side library helps you interact with the auth server. CinaAuth comes with a client for all the popular web frameworks, including vanilla JavaScript.
 
-    1. Import `createAuthClient` from the package for your framework (e.g., "better-auth/react" for React).
+    1. Import `createAuthClient` from the package for your framework (e.g., "cinaauth/react" for React).
     2. Call the function to create your client.
     3. Pass the base URL of your auth server. (If the auth server is running on the same domain as your client, you can skip this step.)
 
@@ -515,7 +515,7 @@ description: Learn how to configure Better Auth in your project.
     >
       <Tab value="vanilla">
         ```ts title="lib/auth-client.ts"
-        import { createAuthClient } from "better-auth/client"
+        import { createAuthClient } from "cinaauth/client"
         export const authClient = createAuthClient({
             /** The base URL of the server (optional if you're using the same domain) */ // [!code highlight]
             baseURL: "http://localhost:3000" // [!code highlight]
@@ -525,7 +525,7 @@ description: Learn how to configure Better Auth in your project.
 
       <Tab value="react" title="lib/auth-client.ts">
         ```ts title="lib/auth-client.ts"
-        import { createAuthClient } from "better-auth/react"
+        import { createAuthClient } from "cinaauth/react"
         export const authClient = createAuthClient({
             /** The base URL of the server (optional if you're using the same domain) */ // [!code highlight]
             baseURL: "http://localhost:3000" // [!code highlight]
@@ -535,7 +535,7 @@ description: Learn how to configure Better Auth in your project.
 
       <Tab value="vue" title="lib/auth-client.ts">
         ```ts title="lib/auth-client.ts"
-        import { createAuthClient } from "better-auth/vue"
+        import { createAuthClient } from "cinaauth/vue"
         export const authClient = createAuthClient({
             /** The base URL of the server (optional if you're using the same domain) */ // [!code highlight]
             baseURL: "http://localhost:3000" // [!code highlight]
@@ -545,7 +545,7 @@ description: Learn how to configure Better Auth in your project.
 
       <Tab value="svelte" title="lib/auth-client.ts">
         ```ts title="lib/auth-client.ts"
-        import { createAuthClient } from "better-auth/svelte"
+        import { createAuthClient } from "cinaauth/svelte"
         export const authClient = createAuthClient({
             /** The base URL of the server (optional if you're using the same domain) */ // [!code highlight]
             baseURL: "http://localhost:3000" // [!code highlight]
@@ -555,7 +555,7 @@ description: Learn how to configure Better Auth in your project.
 
       <Tab value="solid" title="lib/auth-client.ts">
         ```ts title="lib/auth-client.ts"
-        import { createAuthClient } from "better-auth/solid"
+        import { createAuthClient } from "cinaauth/solid"
         export const authClient = createAuthClient({
             /** The base URL of the server (optional if you're using the same domain) */ // [!code highlight]
             baseURL: "http://localhost:3000" // [!code highlight]
@@ -576,6 +576,6 @@ description: Learn how to configure Better Auth in your project.
   <Step>
     ### 🎉 That's it!
 
-    That's it! You're now ready to use better-auth in your application. Continue to [basic usage](/docs/basic-usage) to learn how to use the auth instance to sign in users.
+    That's it! You're now ready to use cinaauth in your application. Continue to [basic usage](/docs/basic-usage) to learn how to use the auth instance to sign in users.
   </Step>
 </Steps>

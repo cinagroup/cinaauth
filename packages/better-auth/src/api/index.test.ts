@@ -1,9 +1,9 @@
 import type {
 	AuthContext,
-	BetterAuthOptions,
-	BetterAuthPlugin,
-} from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+	CinaAuthOptions,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { describe, expect, it, vi } from "vitest";
 import { getTestInstance } from "../test-utils/test-instance";
 import { getEndpoints } from "./index";
@@ -17,7 +17,7 @@ describe("getEndpoints", () => {
 
 		const middlewareFn = vi.fn().mockResolvedValue({});
 
-		const testPlugin: BetterAuthPlugin = {
+		const testPlugin: CinaAuthPlugin = {
 			id: "test-plugin",
 			middlewares: [
 				{
@@ -30,7 +30,7 @@ describe("getEndpoints", () => {
 			],
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [testPlugin],
 		};
 
@@ -61,7 +61,7 @@ describe("onRequest chain", () => {
 	it("should execute all plugins onRequest handlers in chain", async () => {
 		const onRequestOrder: string[] = [];
 
-		const pluginA: BetterAuthPlugin = {
+		const pluginA: CinaAuthPlugin = {
 			id: "plugin-a",
 			async onRequest(request, _ctx) {
 				onRequestOrder.push("plugin-a");
@@ -74,7 +74,7 @@ describe("onRequest chain", () => {
 			},
 		};
 
-		const pluginB: BetterAuthPlugin = {
+		const pluginB: CinaAuthPlugin = {
 			id: "plugin-b",
 			async onRequest(request, _ctx) {
 				onRequestOrder.push("plugin-b");
@@ -87,7 +87,7 @@ describe("onRequest chain", () => {
 			},
 		};
 
-		const pluginC: BetterAuthPlugin = {
+		const pluginC: CinaAuthPlugin = {
 			id: "plugin-c",
 			async onRequest(_request, _ctx) {
 				onRequestOrder.push("plugin-c");
@@ -112,7 +112,7 @@ describe("onRequest chain", () => {
 	it("should pass modified request from previous plugin to next plugin", async () => {
 		let pluginBReceivedHeader: string | null = null;
 
-		const pluginA: BetterAuthPlugin = {
+		const pluginA: CinaAuthPlugin = {
 			id: "plugin-a",
 			async onRequest(request, _ctx) {
 				const newHeaders = new Headers(request.headers);
@@ -123,7 +123,7 @@ describe("onRequest chain", () => {
 			},
 		};
 
-		const pluginB: BetterAuthPlugin = {
+		const pluginB: CinaAuthPlugin = {
 			id: "plugin-b",
 			async onRequest(request, _ctx) {
 				// Should receive the header set by plugin-a
@@ -147,7 +147,7 @@ describe("onRequest chain", () => {
 	it("should stop chain when response is returned", async () => {
 		const onRequestOrder: string[] = [];
 
-		const pluginA: BetterAuthPlugin = {
+		const pluginA: CinaAuthPlugin = {
 			id: "plugin-a",
 			async onRequest(_request, _ctx) {
 				onRequestOrder.push("plugin-a");
@@ -158,7 +158,7 @@ describe("onRequest chain", () => {
 			},
 		};
 
-		const pluginB: BetterAuthPlugin = {
+		const pluginB: CinaAuthPlugin = {
 			id: "plugin-b",
 			async onRequest(_request, _ctx) {
 				onRequestOrder.push("plugin-b");

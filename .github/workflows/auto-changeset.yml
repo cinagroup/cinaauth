@@ -1,4 +1,4 @@
-# cSpell:words anthropics
+﻿# cSpell:words anthropics
 name: Auto Changeset
 
 on:
@@ -20,7 +20,7 @@ jobs:
       github.event.action == 'created' &&
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/changeset') &&
-      github.repository_owner == 'better-auth' &&
+      github.repository_owner == 'cinaauth' &&
       contains(fromJSON('["MEMBER", "OWNER", "COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
     permissions:
@@ -97,7 +97,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            You are generating a changeset description for a PR in better-auth,
+            You are generating a changeset description for a PR in cinaauth,
             an open-source authentication framework for TypeScript.
 
             A changeset describes what changed FOR USERS. It appears in CHANGELOG.md.
@@ -204,7 +204,7 @@ jobs:
       contains(github.event.comment.body, '<!-- auto-changeset -->') &&
       contains(github.event.comment.body, '- [x] **Commit this changeset**') &&
       (github.event.comment.user.login == 'better-release[bot]' || github.event.comment.user.login == 'github-actions[bot]') &&
-      github.repository_owner == 'better-auth'
+      github.repository_owner == 'cinaauth'
     runs-on: ubuntu-latest
     permissions:
       contents: write

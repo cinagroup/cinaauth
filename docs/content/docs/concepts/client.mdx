@@ -1,21 +1,21 @@
----
+﻿---
 title: Client
-description: Learn how to set up the Better Auth client for React, Vue, Svelte, and other frameworks, use hooks, configure fetch options, handle errors, and extend with client plugins.
+description: Learn how to set up the CinaAuth client for React, Vue, Svelte, and other frameworks, use hooks, configure fetch options, handle errors, and extend with client plugins.
 ---
 
-Better Auth offers a client library compatible with popular frontend frameworks like React, Vue, Svelte, and more. This client library includes a set of functions for interacting with the Better Auth server. Each framework's client library is built on top of a core client library that is framework-agnostic, so that all methods and hooks are consistently available across all client libraries.
+CinaAuth offers a client library compatible with popular frontend frameworks like React, Vue, Svelte, and more. This client library includes a set of functions for interacting with the CinaAuth server. Each framework's client library is built on top of a core client library that is framework-agnostic, so that all methods and hooks are consistently available across all client libraries.
 
 ## Installation
 
-If you haven't already, install better-auth.
+If you haven't already, install cinaauth.
 
 ```package-install
-npm i better-auth
+npm i cinaauth
 ```
 
 ## Create Client Instance
 
-Import `createAuthClient` from the package for your framework (e.g., "better-auth/react" for React). Call the function to create your client. Pass the base URL of your auth server. If the auth server is running on the same domain as your client, you can skip this step.
+Import `createAuthClient` from the package for your framework (e.g., "cinaauth/react" for React). Call the function to create your client. Pass the base URL of your auth server. If the auth server is running on the same domain as your client, you can skip this step.
 
 <Callout type="info">
   If your auth server uses a different base path other than `/api/auth`, you can either pass the full URL including the path (e.g., `http://localhost:3000/custom-path/auth`), or use the `basePath` option separately.
@@ -28,7 +28,7 @@ Import `createAuthClient` from the package for your framework (e.g., "better-aut
 >
   <Tab value="vanilla">
     ```ts title="lib/auth-client.ts" 
-    import { createAuthClient } from "better-auth/client" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client" // [!code highlight]
     export const authClient = createAuthClient({
         baseURL: "http://localhost:3000" // The base URL of your auth server // [!code highlight]
     })
@@ -37,7 +37,7 @@ Import `createAuthClient` from the package for your framework (e.g., "better-aut
 
   <Tab value="react" title="lib/auth-client.ts">
     ```ts title="lib/auth-client.ts"  
-    import { createAuthClient } from "better-auth/react" // [!code highlight]
+    import { createAuthClient } from "cinaauth/react" // [!code highlight]
     export const authClient = createAuthClient({
         baseURL: "http://localhost:3000" // The base URL of your auth server // [!code highlight]
     })
@@ -46,7 +46,7 @@ Import `createAuthClient` from the package for your framework (e.g., "better-aut
 
   <Tab value="vue" title="lib/auth-client.ts">
     ```ts title="lib/auth-client.ts" 
-    import { createAuthClient } from "better-auth/vue" // [!code highlight]
+    import { createAuthClient } from "cinaauth/vue" // [!code highlight]
     export const authClient = createAuthClient({
         baseURL: "http://localhost:3000" // The base URL of your auth server // [!code highlight]
     })
@@ -55,7 +55,7 @@ Import `createAuthClient` from the package for your framework (e.g., "better-aut
 
   <Tab value="svelte" title="lib/auth-client.ts">
     ```ts title="lib/auth-client.ts" 
-    import { createAuthClient } from "better-auth/svelte" // [!code highlight]
+    import { createAuthClient } from "cinaauth/svelte" // [!code highlight]
     export const authClient = createAuthClient({
         baseURL: "http://localhost:3000" // The base URL of your auth server // [!code highlight]
     })
@@ -64,7 +64,7 @@ Import `createAuthClient` from the package for your framework (e.g., "better-aut
 
   <Tab value="solid" title="lib/auth-client.ts">
     ```ts title="lib/auth-client.ts" 
-    import { createAuthClient } from "better-auth/solid" // [!code highlight]
+    import { createAuthClient } from "cinaauth/solid" // [!code highlight]
     export const authClient = createAuthClient({
         baseURL: "http://localhost:3000" // The base URL of your auth server // [!code highlight]
     })
@@ -74,12 +74,12 @@ Import `createAuthClient` from the package for your framework (e.g., "better-aut
 
 ## Usage
 
-Once you've created your client instance, you can use the client to interact with the Better Auth server. The client provides a set of functions by default and they can be extended with plugins.
+Once you've created your client instance, you can use the client to interact with the CinaAuth server. The client provides a set of functions by default and they can be extended with plugins.
 
 **Example: Sign In**
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
+import { createAuthClient } from "cinaauth/client"
 const authClient = createAuthClient()
 
 await authClient.signIn.email({
@@ -98,7 +98,7 @@ In addition to the standard methods, the client provides hooks to easily access 
   <Tab value="React">
     ```tsx title="user.tsx"
     //make sure you're using the react client
-    import { createAuthClient } from "better-auth/react"
+    import { createAuthClient } from "cinaauth/react"
     const { useSession } = createAuthClient() // [!code highlight]
 
     export function User() {
@@ -206,12 +206,12 @@ In addition to the standard methods, the client provides hooks to easily access 
 
 The client uses a library called [better fetch](https://better-fetch.vercel.app) to make requests to the server.
 
-Better fetch is a wrapper around the native fetch API that provides a more convenient way to make requests. It's created by the same team behind Better Auth and is designed to work seamlessly with it.
+Better fetch is a wrapper around the native fetch API that provides a more convenient way to make requests. It's created by the same team behind CinaAuth and is designed to work seamlessly with it.
 
 You can pass any default fetch options to the client by passing `fetchOptions` object to the `createAuthClient`.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
+import { createAuthClient } from "cinaauth/client"
 
 const authClient = createAuthClient({
     fetchOptions: {
@@ -225,7 +225,7 @@ const authClient = createAuthClient({
 The auth client includes default fetch plugins that handle browser-specific behaviors like automatic redirects. For non-browser environments (e.g., React Native/Expo), you can disable these by setting `disableDefaultFetchPlugins` to `true`:
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
+import { createAuthClient } from "cinaauth/client"
 
 const authClient = createAuthClient({
     disableDefaultFetchPlugins: true,
@@ -264,7 +264,7 @@ await authClient.signIn.email({
 You can configure how the client handles session fetching and revalidation using the `sessionOptions` option.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
+import { createAuthClient } from "cinaauth/client"
 
 const authClient = createAuthClient({
     sessionOptions: {
@@ -300,7 +300,7 @@ export const clientSessionOptionsType = {
 The client includes a default redirect plugin that handles authentication redirects. If you need to disable this behavior, you can set `disableDefaultFetchPlugins` to `true`.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
+import { createAuthClient } from "cinaauth/client"
 
 const authClient = createAuthClient({
     disableDefaultFetchPlugins: true
@@ -466,8 +466,8 @@ You can extend the client with plugins to add more functionality. Plugins can ad
 **Example: Magic Link Plugin**
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
-import { magicLinkClient } from "better-auth/client/plugins"
+import { createAuthClient } from "cinaauth/client"
+import { magicLinkClient } from "cinaauth/client/plugins"
 
 const authClient = createAuthClient({
     plugins: [

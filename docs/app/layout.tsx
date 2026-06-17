@@ -1,4 +1,4 @@
-import { GeistPixelSquare } from "geist/font/pixel";
+﻿import { GeistPixelSquare } from "geist/font/pixel";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
@@ -21,8 +21,8 @@ const fontMono = Geist_Mono({
 
 export const metadata: Metadata = createMetadata({
 	title: {
-		template: "%s | Better Auth",
-		default: "Better Auth",
+		template: "%s | CinaAuth",
+		default: "CinaAuth",
 	},
 	description: "The Most Comprehensive Authentication Framework",
 });

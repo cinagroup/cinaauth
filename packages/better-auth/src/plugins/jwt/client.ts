@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import type { JSONWebKeySet } from "jose";
 import { PACKAGE_VERSION } from "../../version";
 import type { jwt } from "./index";
@@ -19,7 +19,7 @@ export const jwtClient = (options?: JwtClientOptions) => {
 	const jwksPath = options?.jwks?.jwksPath ?? "/jwks";
 
 	return {
-		id: "better-auth-client",
+		id: "cinaauth-client",
 		version: PACKAGE_VERSION,
 		$InferServerPlugin: {} as ReturnType<typeof jwt>,
 		pathMethods: {
@@ -33,7 +33,7 @@ export const jwtClient = (options?: JwtClientOptions) => {
 				});
 			},
 		}),
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export type * from "./types";

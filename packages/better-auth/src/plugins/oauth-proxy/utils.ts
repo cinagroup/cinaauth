@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { env } from "@better-auth/core/env";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { env } from "@cinaauth/core/env";
 import { getOrigin, trimTrailingSlashes } from "../../utils/url";
 import type { OAuthProxyOptions } from "./index";
 
@@ -77,7 +77,7 @@ export function checkSkipProxy(
 
 	// Determine production URL (fallback to baseURL if not set)
 	const productionURL =
-		opts?.productionURL || env.BETTER_AUTH_URL || ctx.context.baseURL;
+		opts?.productionURL || env.CINAAUTH_URL || ctx.context.baseURL;
 	if (!productionURL) {
 		return false;
 	}

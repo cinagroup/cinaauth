@@ -1,12 +1,12 @@
----
+﻿---
 title: Create your first plugin
-description: A step-by-step guide to creating your first Better Auth plugin.
+description: A step-by-step guide to creating your first CinaAuth plugin.
 ---
 
-In this guide, we’ll walk you through the steps of creating your first Better Auth plugin.
+In this guide, we’ll walk you through the steps of creating your first CinaAuth plugin.
 
 <Callout type="warn">
-  This guide assumes you have <Link href="/docs/installation">setup the basics</Link> of Better Auth and are ready to create your first plugin.
+  This guide assumes you have <Link href="/docs/installation">setup the basics</Link> of CinaAuth and are ready to create your first plugin.
 </Callout>
 
 <Steps>
@@ -21,7 +21,7 @@ In this guide, we’ll walk you through the steps of creating your first Better 
   <Step>
     ## Server plugin first
 
-    Better Auth plugins operate as a pair: a <Link href="/docs/concepts/plugins#create-a-server-plugin">server plugin</Link> and a <Link href="/docs/concepts/plugins#creating-a-client-plugin">client plugin</Link>.
+    CinaAuth plugins operate as a pair: a <Link href="/docs/concepts/plugins#create-a-server-plugin">server plugin</Link> and a <Link href="/docs/concepts/plugins#creating-a-client-plugin">client plugin</Link>.
     The server plugin forms the foundation of your authentication system, while the client plugin provides convenient frontend APIs to interact with your server implementation.
 
     <Callout>
@@ -42,13 +42,13 @@ In this guide, we’ll walk you through the steps of creating your first Better 
     This will be what we will later add to our plugin list in the `auth.ts` file.
 
     ```ts title="index.ts"
-    import { createAuthClient } from "better-auth/client";
-    import type { BetterAuthPlugin } from "better-auth";
+    import { createAuthClient } from "cinaauth/client";
+    import type { CinaAuthPlugin } from "cinaauth";
 
     export const birthdayPlugin = () =>
       ({
         id: "birthdayPlugin",
-      } satisfies BetterAuthPlugin);
+      } satisfies CinaAuthPlugin);
 
     ```
 
@@ -60,7 +60,7 @@ In this guide, we’ll walk you through the steps of creating your first Better 
 
     In order to save each user’s birthday data, we must create a schema on top of the `user` model.
 
-    By creating a schema here, this also allows <Link href="/docs/concepts/cli">Better Auth’s CLI</Link> to generate the schemas required to update your database.
+    By creating a schema here, this also allows <Link href="/docs/concepts/cli">CinaAuth’s CLI</Link> to generate the schemas required to update your database.
 
     <Callout type="info">
       You can learn more about <Link href="/docs/concepts/plugins#schema">plugin schemas here</Link>.
@@ -82,7 +82,7 @@ In this guide, we’ll walk you through the steps of creating your first Better 
             },// [!code highlight]
           },// [!code highlight]
         },
-      } satisfies BetterAuthPlugin);
+      } satisfies CinaAuthPlugin);
     ```
   </Step>
 
@@ -109,7 +109,7 @@ In this guide, we’ll walk you through the steps of creating your first Better 
             },
           ],
         },
-    } satisfies BetterAuthPlugin)
+    } satisfies CinaAuthPlugin)
     ```
 
     In our case we want to match any requests going to the signup path:
@@ -124,7 +124,7 @@ In this guide, we’ll walk you through the steps of creating your first Better 
     And for our logic, we’ll write the following code to check the if user’s birthday makes them above 5 years old.
 
     ```ts title="Imports"
-    import { createAuthMiddleware, APIError } from "better-auth/api";
+    import { createAuthMiddleware, APIError } from "cinaauth/api";
     ```
 
     ```ts title="Before hook"
@@ -174,7 +174,7 @@ In this guide, we’ll walk you through the steps of creating your first Better 
     Then, add the following code:
 
     ```ts title="client.ts"
-    import type { BetterAuthClientPlugin } from "better-auth/client";
+    import type { CinaAuthClientPlugin } from "cinaauth/client";
     import type { birthdayPlugin } from "./index"; // make sure to import the server plugin as a type // [!code highlight]
 
     type BirthdayPlugin = typeof birthdayPlugin;
@@ -183,7 +183,7 @@ In this guide, we’ll walk you through the steps of creating your first Better 
       return {
         id: "birthdayPlugin",
         $InferServerPlugin: {} as ReturnType<BirthdayPlugin>,
-      } satisfies BetterAuthClientPlugin;
+      } satisfies CinaAuthClientPlugin;
     };
     ```
 
@@ -200,10 +200,10 @@ In this guide, we’ll walk you through the steps of creating your first Better 
     ### Server initiation
 
     ```ts title="server.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { birthdayPlugin } from "./birthday-plugin";// [!code highlight]
      
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
           birthdayPlugin(),// [!code highlight]
         ]
@@ -213,7 +213,7 @@ In this guide, we’ll walk you through the steps of creating your first Better 
     ### Client initiation
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client";
+    import { createAuthClient } from "cinaauth/client";
     import { birthdayClientPlugin } from "./birthday-plugin/client";// [!code highlight]
      
     const authClient = createAuthClient({
@@ -237,10 +237,10 @@ In this guide, we’ll walk you through the steps of creating your first Better 
 
 ## Wrapping Up
 
-Congratulations! You’ve successfully created your first ever Better Auth plugin.
+Congratulations! You’ve successfully created your first ever CinaAuth plugin.
 We highly recommend you visit our <Link href="/docs/concepts/plugins">plugins documentation</Link> to learn more information.
 
 If you have a plugin you’d like to share with the community, feel free to let us know through
-our <Link href="https://discord.gg/better-auth">Discord server</Link>,
-or through a <Link href="https://github.com/better-auth/better-auth/pulls">pull-request</Link>
+our <Link href="https://discord.gg/cinaauth">Discord server</Link>,
+or through a <Link href="https://github.com/cinagroup/cinaauth/pulls">pull-request</Link>
 and we may add it to the <Link href="/docs/plugins/community-plugins">community-plugins</Link> list!

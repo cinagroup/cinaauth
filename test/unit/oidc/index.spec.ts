@@ -1,12 +1,12 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
 import https from "node:https";
 import path from "node:path";
 import { betterFetch } from "@better-fetch/fetch";
-import type { Auth } from "better-auth";
-import { betterAuth } from "better-auth";
-import { toNodeHandler } from "better-auth/node";
-import { jwt, oidcProvider } from "better-auth/plugins";
+import type { Auth } from "cinaauth";
+import { CinaAuth } from "cinaauth";
+import { toNodeHandler } from "cinaauth/node";
+import { jwt, oidcProvider } from "cinaauth/plugins";
 import * as client from "openid-client";
 import {
 	afterAll,
@@ -42,7 +42,7 @@ describe("oidc provider", async () => {
 	let auth: Auth<ReturnType<typeof authConfig>>;
 
 	beforeEach(async () => {
-		auth = betterAuth(authConfig());
+		auth = CinaAuth(authConfig());
 		const handler = toNodeHandler(auth);
 		server = https.createServer(options, (req, res) => {
 			requests.push(req);

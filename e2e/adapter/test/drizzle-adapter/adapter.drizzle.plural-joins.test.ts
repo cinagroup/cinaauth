@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Regression test: db.query[model] lookup fails when the Drizzle schema
  * object passed to drizzle() has plural export names ("users", "sessions")
- * but config.schema maps singular Better Auth model names to the tables.
+ * but config.schema maps singular CinaAuth model names to the tables.
  *
  * This is the standard setup when users have a hand-written Drizzle schema
- * (common with ORMs) and map it to Better Auth's singular model names:
+ * (common with ORMs) and map it to CinaAuth's singular model names:
  *
  *   drizzleAdapter(db, {
  *     schema: { user: schema.users, session: schema.sessions, ... },
@@ -15,8 +15,8 @@
  * config.schema, but the join code path does db.query["user"] directly,
  * which fails because db.query keys are "users", "sessions", etc.
  */
-import type { Session, User } from "@better-auth/core/db";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import type { Session, User } from "@cinaauth/core/db";
+import { drizzleAdapter } from "@cinaauth/drizzle-adapter";
 import Database from "better-sqlite3";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
@@ -106,7 +106,7 @@ const drizzleSchema = {
 	accountsRelations,
 };
 
-// Schema passed to the adapter — keys are SINGULAR Better Auth model names.
+// Schema passed to the adapter — keys are SINGULAR CinaAuth model names.
 // This is the standard config pattern: { user: schema.users, session: schema.sessions, ... }
 const adapterSchema = {
 	user: users,
@@ -177,7 +177,7 @@ describe("drizzle adapter: singular config.schema keys with plural db.query keys
 
 	it("findOne should use relational query (not fall back) when db.query keys differ from model names", async () => {
 		const adapterFactory = drizzleAdapter(db, {
-			// Singular keys — matches Better Auth internal model names
+			// Singular keys — matches CinaAuth internal model names
 			schema: adapterSchema,
 			provider: "sqlite",
 			// usePlural is NOT set (default: false) — this is the common config

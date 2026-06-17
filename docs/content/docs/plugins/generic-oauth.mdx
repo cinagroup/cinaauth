@@ -1,4 +1,4 @@
----
+﻿---
 title: Generic OAuth
 description: Authenticate users with any OAuth provider
 ---
@@ -14,10 +14,10 @@ The Generic OAuth plugin provides a flexible way to integrate authentication wit
     To use the Generic OAuth plugin, add it to your auth config.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { genericOAuth } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { genericOAuth } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         // ... other config options
         plugins: [
             genericOAuth({ // [!code highlight]
@@ -43,8 +43,8 @@ The Generic OAuth plugin provides a flexible way to integrate authentication wit
     Include the Generic OAuth client plugin in your authentication client instance.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { genericOAuthClient } from "better-auth/client/plugins" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client"
+    import { genericOAuthClient } from "cinaauth/client/plugins" // [!code highlight]
 
     export const authClient = createAuthClient({
         plugins: [
@@ -125,7 +125,7 @@ Unlike built-in providers, the `:providerId` parameter is required and must matc
 
 ## Pre-configured Provider Helpers
 
-Better Auth provides pre-configured helper functions for popular OAuth providers. These helpers handle the provider-specific configuration, including discovery URLs and user info endpoints.
+CinaAuth provides pre-configured helper functions for popular OAuth providers. These helpers handle the provider-specific configuration, including discovery URLs and user info endpoints.
 
 ### Supported Providers
 
@@ -141,7 +141,7 @@ Better Auth provides pre-configured helper functions for popular OAuth providers
 ### Example: Using Pre-configured Providers
 
 ```ts title="auth.ts"
-import { betterAuth } from 'better-auth';
+import { CinaAuth } from 'cinaauth';
 import {
 	// genericOAuth plugin
 	genericOAuth,
@@ -155,9 +155,9 @@ import {
 	okta,
 	slack,
 	patreon,
-} from 'better-auth/plugins';
+} from 'cinaauth/plugins';
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [
 		genericOAuth({
 			config: [
@@ -325,11 +325,11 @@ interface GenericOAuthConfig {
 
 ## Security: Issuer Validation
 
-Better Auth validates the OAuth provider's issuer to protect against mix-up attacks ([RFC 9207](https://datatracker.ietf.org/doc/html/rfc9207)). A mix-up attack occurs when a malicious authorization server tricks your application into sending an authorization code to the wrong token endpoint.
+CinaAuth validates the OAuth provider's issuer to protect against mix-up attacks ([RFC 9207](https://datatracker.ietf.org/doc/html/rfc9207)). A mix-up attack occurs when a malicious authorization server tricks your application into sending an authorization code to the wrong token endpoint.
 
 ### How It Works
 
-When an OAuth provider supports RFC 9207, it includes an `iss` (issuer) parameter in the authorization response. Better Auth validates this parameter against the expected issuer to ensure the response came from the intended provider.
+When an OAuth provider supports RFC 9207, it includes an `iss` (issuer) parameter in the authorization response. CinaAuth validates this parameter against the expected issuer to ensure the response came from the intended provider.
 
 ### Configuration Examples
 
@@ -518,4 +518,4 @@ getUserInfo: async (tokens) => {
 
 ### Error Handling
 
-The plugin includes built-in error handling for common OAuth issues. Errors are typically redirected to your application's error page with an appropriate error message in the URL parameters. If the callback URL is not provided, the user will be redirected to Better Auth's default error page.
+The plugin includes built-in error handling for common OAuth issues. Errors are typically redirected to your application's error page with an appropriate error message in the URL parameters. If the callback URL is not provided, the user will be redirected to CinaAuth's default error page.

@@ -1,4 +1,4 @@
-import { defineErrorCodes } from "@better-auth/core/utils/error-codes";
+import { defineErrorCodes } from "@cinaauth/core/utils/error-codes";
 
 export const DEVICE_AUTHORIZATION_ERROR_CODES = defineErrorCodes({
 	INVALID_DEVICE_CODE: "Invalid device code",

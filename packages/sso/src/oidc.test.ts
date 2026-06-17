@@ -1,8 +1,8 @@
-import { APIError } from "@better-auth/core/error";
+import { APIError } from "@cinaauth/core/error";
 import { betterFetch } from "@better-fetch/fetch";
-import { createAuthClient } from "better-auth/client";
-import { organization } from "better-auth/plugins";
-import { getTestInstance } from "better-auth/test";
+import { createAuthClient } from "cinaauth/client";
+import { organization } from "cinaauth/plugins";
+import { getTestInstance } from "cinaauth/test";
 import { OAuth2Server } from "oauth2-mock-server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { sso } from ".";
@@ -772,7 +772,7 @@ describe("provisioning", async (ctx) => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/7857
+ * @see https://github.com/cinagroup/cinaauth/issues/7857
  */
 describe("provisionUser should only be called for new users", async () => {
 	const provisionUserFn = vi.fn();
@@ -908,7 +908,7 @@ describe("provisionUser should only be called for new users", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8630
+ * @see https://github.com/cinagroup/cinaauth/issues/8630
  */
 describe("provisionUserOnEveryLogin should call provisionUser on every sign-in", async () => {
 	const provisionUserFn = vi.fn();
@@ -1045,7 +1045,7 @@ describe("provisionUserOnEveryLogin should call provisionUser on every sign-in",
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/7693
+ * @see https://github.com/cinagroup/cinaauth/issues/7693
  */
 describe("SSO shared redirectURI", async () => {
 	const { auth, signInWithTestUser, customFetchImpl, cookieSetter } =
@@ -1404,7 +1404,7 @@ describe("OIDC SSO with defaultSSO array", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8269
+ * @see https://github.com/cinagroup/cinaauth/issues/8269
  */
 describe("SSO OIDC UserInfo endpoint sub claim mapping", async () => {
 	const { auth, signInWithTestUser, customFetchImpl, cookieSetter } =
@@ -1533,7 +1533,7 @@ describe("SSO OIDC UserInfo endpoint sub claim mapping", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-5rr4-8452-hf4v
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-5rr4-8452-hf4v
 	 */
 	describe("skipDiscovery SSRF protection (registerSSOProvider)", () => {
 		it("should reject registration when tokenEndpoint points to a non-publicly-routable host", async () => {
@@ -1728,7 +1728,7 @@ describe("SSO OIDC UserInfo endpoint sub claim mapping", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-5rr4-8452-hf4v
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-5rr4-8452-hf4v
 	 */
 	describe("OIDC endpoint SSRF protection (updateSSOProvider)", () => {
 		it("should reject update when oidcConfig contains a link-local endpoint", async () => {

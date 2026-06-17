@@ -1,13 +1,13 @@
 {
-  "name": "@better-auth-test/adapter-factory",
+  "name": "@cinaauth-test/adapter-factory",
   "private": true,
   "type": "module",
   "scripts": {
     "e2e:integration": "vitest run"
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
-    "@better-auth/test-utils": "workspace:*",
-    "better-auth": "workspace:*"
+    "@cinaauth/core": "workspace:*",
+    "@cinaauth/test-utils": "workspace:*",
+    "cinaauth": "workspace:*"
   }
 }

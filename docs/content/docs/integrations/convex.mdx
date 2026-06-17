@@ -1,9 +1,9 @@
----
+﻿---
 title: Convex Integration
-description: Integrate Better Auth with Convex.
+description: Integrate CinaAuth with Convex.
 ---
 
-In this guide, we'll walk through the steps to integrate Better Auth with [Convex](https://www.convex.dev).
+In this guide, we'll walk through the steps to integrate CinaAuth with [Convex](https://www.convex.dev).
 
 <Steps>
   <Step>
@@ -11,7 +11,7 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
 
     ### Create a Convex project
 
-    To use Better Auth with Convex, you need a Convex project. If you don’t have one, run the following command to create a new project. For more details, see the [Convex documentation](https://docs.convex.dev/home).
+    To use CinaAuth with Convex, you need a Convex project. If you don’t have one, run the following command to create a new project. For more details, see the [Convex documentation](https://docs.convex.dev/home).
 
     ```package-install
     npm create convex@latest
@@ -33,14 +33,14 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
   <Step>
     ## Install packages
 
-    Install Better Auth and the Convex component for Better Auth, and make sure you are using the latest version of Convex.
+    Install CinaAuth and the Convex component for CinaAuth, and make sure you are using the latest version of Convex.
 
     ```package-install
-    npm install better-auth @convex-dev/better-auth
+    npm install cinaauth @convex-dev/cinaauth
     ```
 
     <Callout type="info">
-      [`@convex-dev/better-auth`](https://github.com/get-convex/better-auth) is maintained by Convex.
+      [`@convex-dev/cinaauth`](https://github.com/get-convex/cinaauth) is maintained by Convex.
     </Callout>
   </Step>
 
@@ -50,7 +50,7 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
     Generate a secret for encryption and generating hashes. Use the command below if you have openssl installed, or use `npx auth secret` to generate one.
 
     ```package-install
-    npx convex env set BETTER_AUTH_SECRET=$(openssl rand -base64 32)
+    npx convex env set CINAAUTH_SECRET=$(openssl rand -base64 32)
     ```
 
     Add your site URL to your Convex deployment.
@@ -90,19 +90,19 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
     ```
 
     <Callout type="info">
-      Since the Better Auth instance runs on Convex, environment variables used by the auth instance should be configured through the Convex CLI or dashboard, not in `.env.local`.
+      Since the CinaAuth instance runs on Convex, environment variables used by the auth instance should be configured through the Convex CLI or dashboard, not in `.env.local`.
 
-      e.g. `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` ...
+      e.g. `CINAAUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` ...
     </Callout>
   </Step>
 
   <Step>
     ## Add Convex auth config
 
-    Add a `convex/auth.config.ts` file to configure Better Auth as an authentication provider.
+    Add a `convex/auth.config.ts` file to configure CinaAuth as an authentication provider.
 
     ```ts title="convex/auth.config.ts"
-    import { getAuthConfigProvider } from "@convex-dev/better-auth/auth-config";
+    import { getAuthConfigProvider } from "@convex-dev/cinaauth/auth-config";
     import type { AuthConfig } from "convex/server";
 
     export default {
@@ -112,107 +112,107 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
   </Step>
 
   <Step>
-    ## Create the Better Auth Convex Component
+    ## Create the CinaAuth Convex Component
 
-    Convex components can be installed from NPM or a local folder. While the [NPM version](https://labs.convex.dev/better-auth) is available, this guide uses a local folder setup to unlock the full potential of Better Auth.
+    Convex components can be installed from NPM or a local folder. While the [NPM version](https://labs.convex.dev/cinaauth) is available, this guide uses a local folder setup to unlock the full potential of CinaAuth.
 
     ### Create the component definition
 
-    Create a `convex/betterAuth/convex.config.ts` file to define the component. This will signal to Convex that the `convex/betterAuth` directory is a locally installed component.
+    Create a `convex/CinaAuth/convex.config.ts` file to define the component. This will signal to Convex that the `convex/CinaAuth` directory is a locally installed component.
 
-    ```ts title="convex/betterAuth/convex.config.ts"
+    ```ts title="convex/CinaAuth/convex.config.ts"
     import { defineComponent } from "convex/server";
 
-    const component = defineComponent("betterAuth");
+    const component = defineComponent("CinaAuth");
 
     export default component;
     ```
 
     ### Register the component
 
-    Register the Better Auth component in your Convex project.
+    Register the CinaAuth component in your Convex project.
 
     ```ts title="convex/convex.config.ts"
     import { defineApp } from "convex/server";
-    import betterAuth from "./betterAuth/convex.config";
+    import CinaAuth from "./CinaAuth/convex.config";
 
     const app = defineApp();
 
-    app.use(betterAuth);
+    app.use(CinaAuth);
 
     export default app;
     ```
 
-    ### Create a Better Auth instance
+    ### Create a CinaAuth instance
 
-    Create a Better Auth instance and initialize the component.
+    Create a CinaAuth instance and initialize the component.
 
     <Callout type="info">
       * This file is not yet complete before the next step.
       * Some TypeScript errors will show until you save the file.
     </Callout>
 
-    ```ts title="convex/betterAuth/auth.ts"
-    import { createClient } from "@convex-dev/better-auth";
-    import { convex } from "@convex-dev/better-auth/plugins";
-    import type { GenericCtx } from "@convex-dev/better-auth/utils";
-    import type { BetterAuthOptions } from "better-auth";
-    import { betterAuth } from "better-auth";
+    ```ts title="convex/CinaAuth/auth.ts"
+    import { createClient } from "@convex-dev/cinaauth";
+    import { convex } from "@convex-dev/cinaauth/plugins";
+    import type { GenericCtx } from "@convex-dev/cinaauth/utils";
+    import type { CinaAuthOptions } from "cinaauth";
+    import { CinaAuth } from "cinaauth";
     import { components } from "../_generated/api";
     import type { DataModel } from "../_generated/dataModel";
     import authConfig from "../auth.config";
     import schema from "./schema";
 
-    // Better Auth Component
+    // CinaAuth Component
     export const authComponent = createClient<DataModel, typeof schema>(
-      components.betterAuth,
+      components.CinaAuth,
       {
         local: { schema },
         verbose: false,
       },
     );
 
-    // Better Auth Options
+    // CinaAuth Options
     export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       return {
         appName: "My App",
         baseURL: process.env.SITE_URL,
-        secret: process.env.BETTER_AUTH_SECRET,
+        secret: process.env.CINAAUTH_SECRET,
         database: authComponent.adapter(ctx),
         emailAndPassword: {
           enabled: true,
         },
         plugins: [convex({ authConfig })],
-      } satisfies BetterAuthOptions;
+      } satisfies CinaAuthOptions;
     };
 
     // For `auth` CLI
     export const options = createAuthOptions({} as GenericCtx<DataModel>);
 
-    // Better Auth Instance
+    // CinaAuth Instance
     export const createAuth = (ctx: GenericCtx<DataModel>) => {
-      return betterAuth(createAuthOptions(ctx));
+      return CinaAuth(createAuthOptions(ctx));
     };
     ```
 
     ### Generate the schema
 
-    After configuring your Better Auth instance, run the command below to generate `convex/betterAuth/schema.ts`.
+    After configuring your CinaAuth instance, run the command below to generate `convex/CinaAuth/schema.ts`.
 
     ```package-install
-    npx auth generate --config ./convex/betterAuth/auth.ts --output ./convex/betterAuth/schema.ts
+    npx auth generate --config ./convex/CinaAuth/auth.ts --output ./convex/CinaAuth/schema.ts
     ```
 
     <Callout type="info">
-      If you need to modify your Better Auth instance, use this command to update the schema.
+      If you need to modify your CinaAuth instance, use this command to update the schema.
     </Callout>
 
     ### Export adapter functions
 
-    Export adapter functions for the Better Auth component.
+    Export adapter functions for the CinaAuth component.
 
-    ```ts title="convex/betterAuth/adapter.ts"
-    import { createApi } from "@convex-dev/better-auth";
+    ```ts title="convex/CinaAuth/adapter.ts"
+    import { createApi } from "@convex-dev/cinaauth";
     import { createAuthOptions } from "./auth";
     import schema from "./schema";
 
@@ -229,13 +229,13 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
   </Step>
 
   <Step>
-    ## Create the Better Auth client instance
+    ## Create the CinaAuth client instance
 
-    Create the Better Auth client instance for interacting with the Better Auth server from your client.
+    Create the CinaAuth client instance for interacting with the CinaAuth server from your client.
 
     ```ts title="lib/auth-client.ts"
-    import { convexClient } from "@convex-dev/better-auth/client/plugins";
-    import { createAuthClient } from "better-auth/react";
+    import { convexClient } from "@convex-dev/cinaauth/client/plugins";
+    import { createAuthClient } from "cinaauth/react";
 
     export const authClient = createAuthClient({
       plugins: [convexClient()],
@@ -249,7 +249,7 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
     Configure a set of helper functions for authenticated SSR, server functions, and route handlers.
 
     ```ts title="lib/auth-server.ts"
-    import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
+    import { convexCinaAuthNextJs } from "@convex-dev/cinaauth/nextjs";
 
     export const {
       handler,
@@ -259,7 +259,7 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
       fetchAuthQuery,
       fetchAuthMutation,
       fetchAuthAction,
-    } = convexBetterAuthNextJs({
+    } = convexCinaAuthNextJs({
       convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
       convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL!,
     });
@@ -269,11 +269,11 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
   <Step>
     ## Mount handlers
 
-    Register Better Auth route handlers on your Convex deployment.
+    Register CinaAuth route handlers on your Convex deployment.
 
     ```ts title="convex/http.ts"
     import { httpRouter } from "convex/server";
-    import { authComponent, createAuth } from "./betterAuth/auth";
+    import { authComponent, createAuth } from "./CinaAuth/auth";
 
     const http = httpRouter();
 
@@ -299,7 +299,7 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
     ```tsx title="components/ConvexClientProvider.tsx"
     "use client";
 
-    import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+    import { ConvexCinaAuthProvider } from "@convex-dev/cinaauth/react";
     import { ConvexReactClient } from "convex/react";
     import { authClient } from "@/lib/auth-client";
 
@@ -313,13 +313,13 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
       initialToken?: string | null;
     }) {
       return (
-        <ConvexBetterAuthProvider
+        <ConvexCinaAuthProvider
           client={convex}
           authClient={authClient}
           initialToken={initialToken}
         >
           {children}
-        </ConvexBetterAuthProvider>
+        </ConvexCinaAuthProvider>
       );
     }
     ```
@@ -352,7 +352,7 @@ In this guide, we'll walk through the steps to integrate Better Auth with [Conve
 
 ## Done 🎉
 
-You're now ready to start using Better Auth with Convex.
+You're now ready to start using CinaAuth with Convex.
 
 ***
 
@@ -360,7 +360,7 @@ You're now ready to start using Better Auth with Convex.
 
 ### Create your functions
 
-Better Auth's `auth.api` methods would normally run in your server, but with Convex being your backend, these methods need to run in a Convex function. The Convex function can then be called from the client via hooks like `useMutation` or in server functions and other server code using one of the auth-server utilities like `fetchAuthMutation`.
+CinaAuth's `auth.api` methods would normally run in your server, but with Convex being your backend, these methods need to run in a Convex function. The Convex function can then be called from the client via hooks like `useMutation` or in server functions and other server code using one of the auth-server utilities like `fetchAuthMutation`.
 
 Convex has a convention of creating functions in the `convex/` directory. For example, you can create auth-related functions in the `convex/auth.ts` file like this:
 
@@ -378,9 +378,9 @@ export const getCurrentUser = query({
 // ... other functions
 ```
 
-### Using the Better Auth client
+### Using the CinaAuth client
 
-You can use the `authClient` like the Better Auth client normally.
+You can use the `authClient` like the CinaAuth client normally.
 
 ```tsx title="app/sign-in/page.tsx"
 "use client";
@@ -495,7 +495,7 @@ export default Page;
 ```tsx title="app/landing/header.tsx"
 "use client";
 
-import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
+import { usePreloadedAuthQuery } from "@convex-dev/cinaauth/nextjs/client";
 import type { Preloaded } from "convex/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -528,5 +528,5 @@ export default Header;
 ## Additional Resources
 
 * [Convex Documentation](https://docs.convex.dev/home)
-* [`@convex-dev/better-auth` Documentation](https://labs.convex.dev/better-auth)
-* [`@convex-dev/better-auth` GitHub Repository](https://github.com/get-convex/better-auth)
+* [`@convex-dev/cinaauth` Documentation](https://labs.convex.dev/cinaauth)
+* [`@convex-dev/cinaauth` GitHub Repository](https://github.com/get-convex/cinaauth)

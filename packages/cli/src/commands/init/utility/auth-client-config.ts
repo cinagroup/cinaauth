@@ -1,4 +1,4 @@
-import type { Awaitable } from "@better-auth/core";
+import type { Awaitable } from "@cinaauth/core";
 import type { DatabasesConfig } from "../configs/databases.config";
 import type { PluginConfig } from "../configs/temp-plugins.config";
 import { getAuthClientPluginsCode } from "./plugin";

@@ -1,6 +1,6 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
-import { APIError } from "@better-auth/core/error";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
+import { APIError } from "@cinaauth/core/error";
 import { mergeSchema } from "../../db/schema";
 import { PACKAGE_VERSION } from "../../version";
 import { PHONE_NUMBER_ERROR_CODES } from "./error-codes";
@@ -17,8 +17,8 @@ import type { PhoneNumberOptions, UserWithPhoneNumber } from "./types";
 
 export type { PhoneNumberOptions, UserWithPhoneNumber };
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"phone-number": {
 			creator: typeof phoneNumber;
 		};
@@ -107,5 +107,5 @@ export const phoneNumber = (options?: PhoneNumberOptions | undefined) => {
 		],
 		options,
 		$ERROR_CODES: PHONE_NUMBER_ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

@@ -1,4 +1,4 @@
-import { memoryAdapter } from "@better-auth/memory-adapter";
+import { memoryAdapter } from "@cinaauth/memory-adapter";
 import { describe, expect, it } from "vitest";
 import { initMinimal } from "./init-minimal";
 
@@ -23,7 +23,7 @@ describe("init-minimal (without Kysely)", () => {
 		});
 
 		await expect(res.runMigrations()).rejects.toThrow(
-			"Migrations are not supported in 'better-auth/minimal'",
+			"Migrations are not supported in 'cinaauth/minimal'",
 		);
 	});
 

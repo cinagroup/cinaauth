@@ -1,5 +1,7 @@
 allowBuilds:
+  esbuild: set this to true or false
   sharp: true
+  workerd: set this to true or false
 
 overrides:
   path-to-regexp@>=8: ^8.4.0

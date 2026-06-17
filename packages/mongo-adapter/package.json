@@ -1,13 +1,13 @@
 {
-  "name": "@better-auth/mongo-adapter",
+  "name": "@cinaauth/mongo-adapter",
   "version": "1.6.19",
-  "description": "Mongo adapter for Better Auth",
+  "description": "Mongo adapter for CinaAuth",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/adapters/mongodb",
+  "homepage": "https://www.cinagroup.com/docs/adapters/mongodb",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/mongo-adapter"
   },
   "keywords": [
@@ -15,7 +15,7 @@
     "mongodb",
     "adapter",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -43,7 +43,7 @@
     }
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:",
     "mongodb": "^6.0.0 || ^7.0.0"
   },
@@ -53,7 +53,7 @@
     }
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "@better-auth/utils": "catalog:",
     "mongodb": "^7.1.0",
     "tsdown": "catalog:",

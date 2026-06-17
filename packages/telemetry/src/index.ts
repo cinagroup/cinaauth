@@ -1,5 +1,5 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { ENV, getBooleanEnvVar, isTest, logger } from "@better-auth/core/env";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import { ENV, getBooleanEnvVar, isTest, logger } from "@cinaauth/core/env";
 import { betterFetch } from "@better-fetch/fetch";
 import { getTelemetryAuthConfig } from "./detectors/detect-auth-config";
 import { detectDatabase } from "./detectors/detect-database";
@@ -15,14 +15,14 @@ export type { TelemetryEvent } from "./types";
 const noop: (event: TelemetryEvent) => Promise<void> = async function noop() {};
 
 export async function createTelemetry(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	context?: TelemetryContext | undefined,
 ) {
 	const debugEnabled =
 		options.telemetry?.debug ||
-		getBooleanEnvVar("BETTER_AUTH_TELEMETRY_DEBUG", false);
+		getBooleanEnvVar("CINAAUTH_TELEMETRY_DEBUG", false);
 
-	const telemetryEndpoint = ENV.BETTER_AUTH_TELEMETRY_ENDPOINT;
+	const telemetryEndpoint = ENV.CINAAUTH_TELEMETRY_ENDPOINT;
 	// Return noop if no endpoint and no custom track function
 	if (!telemetryEndpoint && !context?.customTrack) {
 		return {
@@ -49,7 +49,7 @@ export async function createTelemetry(
 			options.telemetry?.enabled !== undefined
 				? options.telemetry.enabled
 				: false;
-		const envEnabled = getBooleanEnvVar("BETTER_AUTH_TELEMETRY", false);
+		const envEnabled = getBooleanEnvVar("CINAAUTH_TELEMETRY", false);
 		return (
 			(envEnabled || telemetryEnabled) && (context?.skipTestCheck || !isTest())
 		);

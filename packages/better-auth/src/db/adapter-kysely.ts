@@ -1,17 +1,17 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import { CinaAuthError } from "@cinaauth/core/error";
 import { getBaseAdapter } from "./adapter-base";
 
 export async function getAdapter(
-	options: BetterAuthOptions,
-): Promise<DBAdapter<BetterAuthOptions>> {
+	options: CinaAuthOptions,
+): Promise<DBAdapter<CinaAuthOptions>> {
 	return getBaseAdapter(options, async (opts) => {
 		const { createKyselyAdapter } = await import("../adapters/kysely-adapter");
 		const { kysely, databaseType, transaction } =
 			await createKyselyAdapter(opts);
 		if (!kysely) {
-			throw new BetterAuthError("Failed to initialize database adapter");
+			throw new CinaAuthError("Failed to initialize database adapter");
 		}
 		const { kyselyAdapter } = await import("../adapters/kysely-adapter");
 		return kyselyAdapter(kysely, {

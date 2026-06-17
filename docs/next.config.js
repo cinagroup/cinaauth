@@ -1,4 +1,4 @@
-import { createMDX } from "fumadocs-mdx/next";
+﻿import { createMDX } from "fumadocs-mdx/next";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -30,7 +30,7 @@ const nextConfig = {
 			// Infrastructure backwards compatibility redirects
 			{
 				source: "/dashboard/:path*",
-				destination: "https://dash.better-auth.com",
+				destination: "https://dash.cinagroup.com",
 				permanent: true,
 			},
 			{

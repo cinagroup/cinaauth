@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
@@ -59,7 +59,7 @@ function FrameworkHero() {
 						Read Docs
 					</Link>
 					<Link
-						href="https://github.com/better-auth/better-auth"
+						href="https://github.com/cinagroup/cinaauth"
 						className="inline-flex items-center gap-1.5 text-[12px] text-foreground/70 dark:text-foreground/50 hover:text-foreground/80 font-mono uppercase tracking-wider transition-colors"
 					>
 						GitHub
@@ -163,7 +163,7 @@ function InfrastructureHero() {
 
 				<div className="flex items-center gap-3 pt-1">
 					<Link
-						href="https://dash.better-auth.com/sign-in"
+						href="https://dash.cinagroup.com/sign-in"
 						className="inline-flex items-center gap-1.5 px-5 py-2 bg-foreground text-background text-sm font-medium hover:opacity-90 transition-colors"
 					>
 						Get Started

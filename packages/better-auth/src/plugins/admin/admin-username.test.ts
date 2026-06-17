@@ -8,7 +8,7 @@ import { adminClient } from "./client";
 
 /**
  * Tests for admin + username plugin interaction
- * @see https://github.com/better-auth/better-auth/issues/9446
+ * @see https://github.com/cinagroup/cinaauth/issues/9446
  *
  * When using the username plugin together with the admin plugin,
  * the admin createUser endpoint should:

@@ -6,13 +6,13 @@ import {
 } from "node:crypto";
 import type { createServer } from "node:http";
 import { betterFetch } from "@better-fetch/fetch";
-import { betterAuth } from "better-auth";
-import { memoryAdapter } from "better-auth/adapters/memory";
-import { APIError } from "better-auth/api";
-import { createAuthClient } from "better-auth/client";
-import { parseSetCookieHeader, setCookieToHeader } from "better-auth/cookies";
-import { bearer } from "better-auth/plugins";
-import { getTestInstance } from "better-auth/test";
+import { CinaAuth } from "cinaauth";
+import { memoryAdapter } from "cinaauth/adapters/memory";
+import { APIError } from "cinaauth/api";
+import { createAuthClient } from "cinaauth/client";
+import { parseSetCookieHeader, setCookieToHeader } from "cinaauth/cookies";
+import { bearer } from "cinaauth/plugins";
+import { getTestInstance } from "cinaauth/test";
 import bodyParser from "body-parser";
 import type {
 	Application as ExpressApp,
@@ -664,7 +664,7 @@ describe("SAML SSO with defaultSSO array", async () => {
 			}),
 	};
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {
@@ -761,7 +761,7 @@ describe("SAML SSO with signed AuthnRequests", async () => {
 		],
 	};
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {
@@ -828,7 +828,7 @@ describe("SAML SSO with signed AuthnRequests", async () => {
 	});
 
 	it("should throw when authnRequestsSigned is true but no privateKey is provided", async () => {
-		const noKeyAuth = betterAuth({
+		const noKeyAuth = CinaAuth({
 			database: memoryAdapter({
 				user: [],
 				session: [],
@@ -912,7 +912,7 @@ describe("SAML SSO without signed AuthnRequests", async () => {
 		],
 	};
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {
@@ -983,7 +983,7 @@ describe("SAML SSO with idpMetadata but without metadata XML (fallback to top-le
 		],
 	};
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {
@@ -1052,7 +1052,7 @@ describe("SAML SSO", async () => {
 			}),
 	};
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {
@@ -2356,7 +2356,7 @@ describe("SAML SSO", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7777
+	 * @see https://github.com/cinagroup/cinaauth/issues/7777
 	 */
 	it("should correctly parse verification-ID-based RelayState on ACS route (SP-initiated)", async () => {
 		const { auth, signInWithTestUser } = await getTestInstance({
@@ -2601,7 +2601,7 @@ describe("SAML SSO", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7777
+	 * @see https://github.com/cinagroup/cinaauth/issues/7777
 	 */
 	it("should fallback to provider callbackUrl on ACS route when RelayState is invalid", async () => {
 		const { auth, signInWithTestUser } = await getTestInstance({
@@ -2691,7 +2691,7 @@ describe("SAML SSO with custom fields", () => {
 
 	const memory = memoryAdapter(data);
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {
@@ -2857,7 +2857,7 @@ describe("SSO Provider Config Parsing", () => {
 
 		const memory = memoryAdapter(data);
 
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			database: memory,
 			baseURL: "http://localhost:3000",
 			emailAndPassword: { enabled: true },
@@ -2930,7 +2930,7 @@ describe("SSO Provider Config Parsing", () => {
 
 			const memory = memoryAdapter(data);
 
-			const auth = betterAuth({
+			const auth = CinaAuth({
 				database: memory,
 				trustedOrigins: ["http://localhost:8082"],
 				baseURL: "http://localhost:3000",
@@ -4010,7 +4010,7 @@ describe("SAML ACS Origin Check Bypass", () => {
 					headers: {
 						"Content-Type": "application/json",
 						Origin: "http://attacker.com",
-						Cookie: "better-auth.session_token=fake-session",
+						Cookie: "cinaauth.session_token=fake-session",
 					},
 					body: JSON.stringify({
 						email: "victim@example.com",
@@ -5056,14 +5056,14 @@ describe("SAML SSO - Single Assertion Validation", () => {
 			firstCallbackResponse.headers.get("set-cookie") ?? "",
 		);
 		const firstSessionToken = firstCookies.get(
-			"better-auth.session_token",
+			"cinaauth.session_token",
 		)?.value;
 		expect(firstSessionToken).toBeDefined();
 
 		const firstSession = await client.getSession({
 			fetchOptions: {
 				headers: {
-					Cookie: `better-auth.session_token=${firstSessionToken}`,
+					Cookie: `cinaauth.session_token=${firstSessionToken}`,
 				},
 			},
 		});
@@ -5110,14 +5110,14 @@ describe("SAML SSO - Single Assertion Validation", () => {
 			secondCallbackResponse.headers.get("set-cookie") ?? "",
 		);
 		const secondSessionToken = secondCookies.get(
-			"better-auth.session_token",
+			"cinaauth.session_token",
 		)?.value;
 		expect(secondSessionToken).toBeDefined();
 
 		const secondSession = await client.getSession({
 			fetchOptions: {
 				headers: {
-					Cookie: `better-auth.session_token=${secondSessionToken}`,
+					Cookie: `cinaauth.session_token=${secondSessionToken}`,
 				},
 			},
 		});
@@ -5634,7 +5634,7 @@ describe("SAML Single Logout (SLO)", () => {
 			expect(location).toBe(callbackUrl);
 
 			const setCookie = sloRes.headers.get("set-cookie");
-			expect(setCookie).toContain("better-auth.session_token=;");
+			expect(setCookie).toContain("cinaauth.session_token=;");
 		});
 
 		it("should redirect to baseURL when relayState is missing", async () => {
@@ -5720,7 +5720,7 @@ describe("SAML Single Logout (SLO)", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8630
+ * @see https://github.com/cinagroup/cinaauth/issues/8630
  */
 describe("SAML provisionUser should only be called for new users", async () => {
 	const provisionUserFn = vi.fn();
@@ -5834,7 +5834,7 @@ describe("SAML provisionUser should only be called for new users", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8630
+ * @see https://github.com/cinagroup/cinaauth/issues/8630
  */
 describe("SAML provisionUserOnEveryLogin should call provisionUser on every sign-in", async () => {
 	const provisionUserFn = vi.fn();
@@ -6048,7 +6048,7 @@ describe("SAML SSO Hardening", () => {
 	});
 
 	/**
-	 * Better-auth specific: acsEndpoint provider lookup MUST fall back to the
+	 * cinaauth specific: acsEndpoint provider lookup MUST fall back to the
 	 * database when defaultSSO is configured but no entry matches the providerId.
 	 */
 	describe("Provider lookup fallback", () => {
@@ -6157,7 +6157,7 @@ describe("SAML SSO Hardening", () => {
 	});
 
 	/**
-	 * Better-auth specific: registration-time validation should catch config
+	 * cinaauth specific: registration-time validation should catch config
 	 * errors early rather than failing silently at sign-in time.
 	 */
 	describe("Registration-time config validation", () => {

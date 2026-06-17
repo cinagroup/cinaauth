@@ -1,11 +1,11 @@
----
+﻿---
 title: Encore Integration
-description: Integrate Better Auth with Encore.
+description: Integrate CinaAuth with Encore.
 ---
 
-Better Auth can be integrated with your [Encore](https://encore.dev) application (an open source TypeScript framework with automated infrastructure and observability).
+CinaAuth can be integrated with your [Encore](https://encore.dev) application (an open source TypeScript framework with automated infrastructure and observability).
 
-Before you start, make sure you have a Better Auth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
+Before you start, make sure you have a CinaAuth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
 
 ### Getting Started
 
@@ -15,17 +15,17 @@ Install the Encore CLI and create a new application. This will scaffold a TypeSc
 brew install encoredev/tap/encore # if you don't have Encore installed
 encore app create my-app --example=ts/hello-world
 cd my-app
-npm install better-auth
+npm install cinaauth
 ```
 
 ### Mount the handler
 
-To handle auth requests, mount Better Auth on a catch-all endpoint using Encore's `api.raw()`:
+To handle auth requests, mount CinaAuth on a catch-all endpoint using Encore's `api.raw()`:
 
 ```ts title="auth/handler.ts"
 import { api } from "encore.dev/api";
-import { toNodeHandler } from "better-auth/node";
-import { auth } from "./auth"; // Your Better Auth instance
+import { toNodeHandler } from "cinaauth/node";
+import { auth } from "./auth"; // Your CinaAuth instance
 
 export const authHandler = api.raw(
   { expose: true, path: "/api/auth/*path", method: "*" },
@@ -34,7 +34,7 @@ export const authHandler = api.raw(
 ```
 
 <Callout>
-  Encore's `api.raw()` provides Node.js request/response types. We use `toNodeHandler` from `better-auth/node` to bridge these to Better Auth's Web API handler.
+  Encore's `api.raw()` provides Node.js request/response types. We use `toNodeHandler` from `cinaauth/node` to bridge these to CinaAuth's Web API handler.
 </Callout>
 
 ### CORS
@@ -52,10 +52,10 @@ If your frontend runs on a different origin, configure CORS in your `encore.app`
 
 ### Trusted Origins
 
-When requests come from a different origin, they are blocked by default. Add trusted origins to your Better Auth config:
+When requests come from a different origin, they are blocked by default. Add trusted origins to your CinaAuth config:
 
 ```ts title="auth/auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
   trustedOrigins: ["http://localhost:3000", "https://your-app.com"],
   // ... rest of config
 });
@@ -75,7 +75,7 @@ encore run
 
 ### Protecting Endpoints
 
-Encore has a built-in auth handler pattern for protecting endpoints. Create an auth handler that validates Better Auth sessions:
+Encore has a built-in auth handler pattern for protecting endpoints. Create an auth handler that validates CinaAuth sessions:
 
 ```ts title="auth/gateway.ts"
 import { APIError, Gateway, Header } from "encore.dev/api";
@@ -139,4 +139,4 @@ export const getProfile = api(
 
 ### Learn More
 
-For a complete walkthrough including database setup and deployment, see the [Better Auth with Encore tutorial](https://encore.dev/blog/betterauth-tutorial).
+For a complete walkthrough including database setup and deployment, see the [CinaAuth with Encore tutorial](https://encore.dev/blog/CinaAuth-tutorial).

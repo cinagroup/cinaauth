@@ -1,9 +1,9 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { BetterAuthError } from "@better-auth/core/error";
+} from "@cinaauth/core/api";
+import { CinaAuthError } from "@cinaauth/core/error";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import * as z from "zod";
 import { APIError, sessionMiddleware } from "../../api";
@@ -21,8 +21,8 @@ export type * from "./types";
 export { createJwk, generateExportedKeyPair, toExpJWT } from "./utils";
 export { verifyJWT } from "./verify";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		jwt: {
 			creator: typeof jwt;
 		};
@@ -42,14 +42,14 @@ const verifyJWTBodySchema = z.object({
 export const jwt = <O extends JwtOptions>(options?: O) => {
 	// Remote url must be set when using signing function
 	if (options?.jwt?.sign && !options.jwks?.remoteUrl) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"options.jwks.remoteUrl must be set when using options.jwt.sign",
 		);
 	}
 
 	// Alg is required to be specified when using remote url (needed in openid metadata)
 	if (options?.jwks?.remoteUrl && !options.jwks?.keyPairConfig?.alg) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"options.jwks.keyPairConfig.alg must be specified when using the oidc plugin with options.jwks.remoteUrl",
 		);
 	}
@@ -61,7 +61,7 @@ export const jwt = <O extends JwtOptions>(options?: O) => {
 		!jwksPath.startsWith("/") ||
 		jwksPath.includes("..")
 	) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"options.jwks.jwksPath must be a non-empty string starting with '/' and not contain '..'",
 		);
 	}
@@ -175,7 +175,7 @@ export const jwt = <O extends JwtOptions>(options?: O) => {
 					}
 
 					if (!keySets?.length) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							"No key sets found. Make sure you have a key in your database.",
 						);
 					}
@@ -348,7 +348,7 @@ export const jwt = <O extends JwtOptions>(options?: O) => {
 			],
 		},
 		schema: mergeSchema(schema, options?.schema),
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export { getJwtToken };

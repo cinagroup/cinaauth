@@ -7,4 +7,4 @@ export {
 	numberIdTestSuite,
 	transactionsTestSuite,
 	uuidTestSuite,
-} from "@better-auth/test-utils/adapter";
+} from "@cinaauth/test-utils/adapter";

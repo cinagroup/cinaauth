@@ -1,4 +1,4 @@
-import type { GoogleProfile } from "@better-auth/core/social-providers";
+import type { GoogleProfile } from "@cinaauth/core/social-providers";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import {
@@ -127,7 +127,7 @@ describe("lastLoginMethod", async () => {
 			},
 		);
 		const cookies = parseCookies(headers.get("cookie") || "");
-		expect(cookies.get("better-auth.last_used_login_method")).toBe("email");
+		expect(cookies.get("cinaauth.last_used_login_method")).toBe("email");
 	});
 
 	it("should set the last login method cookie for siwe", async () => {
@@ -150,7 +150,7 @@ describe("lastLoginMethod", async () => {
 			},
 		);
 		const cookies = parseCookies(headers.get("cookie") || "");
-		expect(cookies.get("better-auth.last_used_login_method")).toBe("siwe");
+		expect(cookies.get("cinaauth.last_used_login_method")).toBe("siwe");
 	});
 
 	it("should set the last login method cookie for magic-link", async () => {
@@ -190,7 +190,7 @@ describe("lastLoginMethod", async () => {
 					context.response.headers.get("set-cookie") || "",
 				);
 				const lastMethod = cookies.get(
-					"better-auth.last_used_login_method",
+					"cinaauth.last_used_login_method",
 				)?.value;
 				expect(lastMethod).toBe("magic-link");
 			},
@@ -238,7 +238,7 @@ describe("lastLoginMethod", async () => {
 						const cookies = parseSetCookieHeader(
 							context.response.headers.get("set-cookie") || "",
 						);
-						const sessionCookie = cookies.get("better-auth.session_token");
+						const sessionCookie = cookies.get("cinaauth.session_token");
 						if (sessionCookie?.value) {
 							sessionToken = sessionCookie.value;
 						}
@@ -331,7 +331,7 @@ describe("lastLoginMethod", async () => {
 		expect(response.error).toBeDefined();
 
 		const cookies = parseCookies(headers.get("cookie") || "");
-		expect(cookies.get("better-auth.last_used_login_method")).toBeUndefined();
+		expect(cookies.get("cinaauth.last_used_login_method")).toBeUndefined();
 	});
 
 	it("should NOT set the last login method cookie on failed OAuth callback", async () => {
@@ -350,7 +350,7 @@ describe("lastLoginMethod", async () => {
 		expect(response.error).toBeDefined();
 
 		const cookies = parseCookies(headers.get("cookie") || "");
-		expect(cookies.get("better-auth.last_used_login_method")).toBeUndefined();
+		expect(cookies.get("cinaauth.last_used_login_method")).toBeUndefined();
 	});
 
 	it("should ignore missing path in after hooks", async () => {
@@ -366,7 +366,7 @@ describe("lastLoginMethod", async () => {
 					responseHeaders: undefined,
 					authCookies: {
 						sessionToken: {
-							name: "better-auth.session_token",
+							name: "cinaauth.session_token",
 							attributes: {},
 						},
 					},
@@ -605,7 +605,7 @@ describe("lastLoginMethod", async () => {
 					context.response.headers.get("set-cookie") || "",
 				);
 				const lastLoginMethod = cookies.get(
-					"better-auth.last_used_login_method",
+					"cinaauth.last_used_login_method",
 				)?.value;
 				if (lastLoginMethod) {
 					expect(lastLoginMethod).toBe("google");
@@ -685,7 +685,7 @@ describe("lastLoginMethod", async () => {
 					context.response.headers.get("set-cookie") || "",
 				);
 				const lastLoginMethod = cookies.get(
-					"better-auth.last_used_login_method",
+					"cinaauth.last_used_login_method",
 				)?.value;
 				if (lastLoginMethod) {
 					expect(lastLoginMethod).toBe("my-provider-id");
@@ -704,7 +704,7 @@ describe("lastLoginMethod", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9276
+	 * @see https://github.com/cinagroup/cinaauth/issues/9276
 	 */
 	it("should clear cross-subdomain cookies by including the domain attribute", async () => {
 		const { client, testUser } = await getTestInstance(
@@ -741,7 +741,7 @@ describe("lastLoginMethod", async () => {
 
 		// Verify the server sets the cookie with Domain=example.com
 		expect(setCookieHeader).toContain(
-			"better-auth.last_used_login_method=email",
+			"cinaauth.last_used_login_method=email",
 		);
 		expect(setCookieHeader).toContain("Domain=example.com");
 
@@ -761,7 +761,7 @@ describe("lastLoginMethod", async () => {
 
 		Object.defineProperty(globalThis.document, "cookie", {
 			get() {
-				return "better-auth.last_used_login_method=email";
+				return "cinaauth.last_used_login_method=email";
 			},
 			set(val: string) {
 				writtenCookie = val;
@@ -844,14 +844,14 @@ describe("lastLoginMethod", async () => {
 					const cookieStrings = setCookieHeaders.join(";");
 					expect(cookieStrings).toContain("additional-test-cookie=test-value");
 					expect(cookieStrings).toContain(
-						"better-auth.last_used_login_method=email",
+						"cinaauth.last_used_login_method=email",
 					);
 				},
 			},
 		);
 
 		const cookies = parseCookies(headers.get("cookie") || "");
-		expect(cookies.get("better-auth.last_used_login_method")).toBe("email");
+		expect(cookies.get("cinaauth.last_used_login_method")).toBe("email");
 		expect(cookies.get("additional-test-cookie")).toBe("test-value");
 	});
 });

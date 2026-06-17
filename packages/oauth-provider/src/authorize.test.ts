@@ -1,8 +1,8 @@
-import { createAuthClient } from "better-auth/client";
-import { generateRandomString, makeSignature } from "better-auth/crypto";
-import { createAuthorizationURL } from "better-auth/oauth2";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+import { createAuthClient } from "cinaauth/client";
+import { generateRandomString, makeSignature } from "cinaauth/crypto";
+import { createAuthorizationURL } from "cinaauth/oauth2";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { validateIssuerUrl } from "./authorize";
 import { oauthProviderClient } from "./client";
@@ -362,8 +362,8 @@ describe("oauth authorize - request_uri resolution", async () => {
 	const rpBaseUrl = "http://localhost:5000";
 	const providerId = "test";
 	const redirectUri = `${rpBaseUrl}/api/auth/oauth2/callback/${providerId}`;
-	const requestUri = "urn:better-auth:par:test";
-	const requestUriWithPostLoginMarker = "urn:better-auth:par:post-login";
+	const requestUri = "urn:cinaauth:par:test";
+	const requestUriWithPostLoginMarker = "urn:cinaauth:par:post-login";
 
 	const { auth, signInWithTestUser, customFetchImpl } = await getTestInstance({
 		baseURL: authServerBaseUrl,

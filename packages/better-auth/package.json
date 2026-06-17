@@ -1,14 +1,14 @@
 {
-  "name": "better-auth",
+  "name": "cinaauth",
   "version": "1.6.19",
   "description": "The most comprehensive authentication framework for TypeScript.",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://better-auth.com",
+  "homepage": "https://cinagroup.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
-    "directory": "packages/better-auth"
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
+    "directory": "packages/cinaauth"
   },
   "keywords": [
     "auth",
@@ -489,13 +489,13 @@
     }
   },
   "dependencies": {
-    "@better-auth/core": "workspace:*",
-    "@better-auth/drizzle-adapter": "workspace:*",
-    "@better-auth/kysely-adapter": "workspace:*",
-    "@better-auth/memory-adapter": "workspace:*",
-    "@better-auth/mongo-adapter": "workspace:*",
-    "@better-auth/prisma-adapter": "workspace:*",
-    "@better-auth/telemetry": "workspace:*",
+    "@cinaauth/core": "workspace:*",
+    "@cinaauth/drizzle-adapter": "workspace:*",
+    "@cinaauth/kysely-adapter": "workspace:*",
+    "@cinaauth/memory-adapter": "workspace:*",
+    "@cinaauth/mongo-adapter": "workspace:*",
+    "@cinaauth/prisma-adapter": "workspace:*",
+    "@cinaauth/telemetry": "workspace:*",
     "@better-auth/utils": "catalog:",
     "@better-fetch/fetch": "catalog:",
     "@noble/ciphers": "^2.1.1",

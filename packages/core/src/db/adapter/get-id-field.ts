@@ -1,7 +1,7 @@
 import { logger } from "../../env";
-import type { BetterAuthOptions } from "../../types";
+import type { CinaAuthOptions } from "../../types";
 import { generateId as defaultGenerateId } from "../../utils/id";
-import type { BetterAuthDBSchema, DBFieldAttribute } from "../type";
+import type { CinaAuthDBSchema, DBFieldAttribute } from "../type";
 import { initGetDefaultModelName } from "./get-default-model-name";
 
 export const initGetIdField = ({
@@ -13,8 +13,8 @@ export const initGetIdField = ({
 	supportsUUIDs,
 }: {
 	usePlural?: boolean;
-	schema: BetterAuthDBSchema;
-	options: BetterAuthOptions;
+	schema: CinaAuthDBSchema;
+	options: CinaAuthOptions;
 	disableIdGeneration?: boolean;
 	customIdGenerator?: ((props: { model: string }) => string) | undefined;
 	supportsUUIDs?: boolean;

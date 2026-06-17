@@ -1,11 +1,11 @@
-import { createAuthClient } from "better-auth/client";
-import { generateRandomString } from "better-auth/crypto";
+import { createAuthClient } from "cinaauth/client";
+import { generateRandomString } from "cinaauth/crypto";
 import {
 	createAuthorizationCodeRequest,
 	createAuthorizationURL,
-} from "better-auth/oauth2";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+} from "cinaauth/oauth2";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { oauthProviderClient } from "./client";
 import { oauthProvider } from "./oauth";

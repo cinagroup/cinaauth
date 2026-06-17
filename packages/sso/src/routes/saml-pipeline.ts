@@ -1,8 +1,8 @@
-import { isAPIError } from "@better-auth/core/utils/is-api-error";
-import type { User } from "better-auth";
-import { APIError } from "better-auth/api";
-import { setSessionCookie } from "better-auth/cookies";
-import { handleOAuthUserInfo } from "better-auth/oauth2";
+import { isAPIError } from "@cinaauth/core/utils/is-api-error";
+import type { User } from "cinaauth";
+import { APIError } from "cinaauth/api";
+import { setSessionCookie } from "cinaauth/cookies";
+import { handleOAuthUserInfo } from "cinaauth/oauth2";
 import { XMLParser } from "fast-xml-parser";
 import type { FlowResult } from "samlify/types/src/flow";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@better-auth/stateless-demo",
+  "name": "@cinaauth/stateless-demo",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "better-auth": "link:../../packages/better-auth",
+    "cinaauth": "link:../../packages/better-auth",
     "next": "^16.2.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

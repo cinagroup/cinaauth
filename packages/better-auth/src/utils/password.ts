@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 
 export async function validatePassword(
 	ctx: GenericEndpointContext,

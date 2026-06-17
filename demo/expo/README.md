@@ -1,6 +1,6 @@
-# Better Auth Expo Example
+﻿# CinaAuth Expo Example
 
-This is an example of how to use Better Auth with Expo.
+This is an example of how to use CinaAuth with Expo.
 It uses Expo’s new API Router to host the auth server.
 
 ## How to run
@@ -14,5 +14,5 @@ It uses Expo’s new API Router to host the auth server.
    pnpm start
    ```
 
-Checkout the [expo guide](https://www.better-auth.com/docs/integrations/expo) to
+Checkout the [expo guide](https://www.cinagroup.com/docs/integrations/expo) to
 learn more.

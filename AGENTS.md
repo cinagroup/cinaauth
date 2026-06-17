@@ -1,10 +1,10 @@
-# Better Auth Development Guide
+﻿# CinaAuth Development Guide
 
-This is the Better Auth repository - a comprehensive authentication framework for TypeScript, designed to be runtime and framework-agnostic.
+This is the CinaAuth repository - a comprehensive authentication framework for TypeScript, designed to be runtime and framework-agnostic.
 
 ## Project Structure
 
-- `packages/better-auth` - Main authentication library
+- `packages/cinaauth` - Main authentication library
 - `packages/core` - Shared core types and utilities
 - `packages/cli` - CLI tool
 - `packages/*` - Database adapters, plugins, integrations
@@ -34,7 +34,7 @@ This is the Better Auth repository - a comprehensive authentication framework fo
 
 ## Issue Triage and Architecture
 
-- A reproducible error is not automatically a bug. First prove the behavior violates Better Auth's documented contract, TypeScript contract, or established runtime semantics.
+- A reproducible error is not automatically a bug. First prove the behavior violates CinaAuth's documented contract, TypeScript contract, or established runtime semantics.
 - Before changing public API behavior, check existing docs, generated/inferred types, endpoint metadata, release history, and git history for the relevant code path. Treat long-standing metadata such as `requireHeaders`, `requireRequest`, endpoint method, schema, and middleware as part of the API contract.
 - For regression claims, compare the exact reported versions or tags. If the behavior existed before the claimed version, classify it as expected behavior, documentation gap, or integration misuse unless another contract proves otherwise.
 - Distinguish invalid usage from valid empty state. Example: a server session check without request headers is invalid usage; a server session check with headers but no session cookie is a valid request that returns `null`.
@@ -45,7 +45,7 @@ This is the Better Auth repository - a comprehensive authentication framework fo
 ## Testing
 
 - Most tests use Vitest; some under `e2e/` use Playwright
-- Use `getTestInstance()` from `better-auth/test`. It returns `{ client, auth, sessionSetter, ... }`
+- Use `getTestInstance()` from `cinaauth/test`. It returns `{ client, auth, sessionSetter, ... }`
 - Pass client plugins via `clientOptions.plugins`
 - NEVER create separate clients with `createAuthClient()` in tests
 - Default test DB is SQLite in-memory; use `testWith` for other databases
@@ -53,7 +53,7 @@ This is the Better Auth repository - a comprehensive authentication framework fo
 - Regression tests: add `@see` comment with issue URL above `it()` or `describe()`:
   ```typescript
   /**
-   * @see https://github.com/better-auth/better-auth/issues/{issue_number}
+   * @see https://github.com/cinagroup/cinaauth/issues/{issue_number}
    */
   it("should handle the previously broken behavior", async () => {
     // ...

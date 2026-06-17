@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { anonymous } from ".";
 import { ANONYMOUS_ERROR_CODES } from "./error-codes";
@@ -19,7 +19,7 @@ export const anonymousClient = () => {
 			},
 		],
 		$ERROR_CODES: ANONYMOUS_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export * from "./error-codes";

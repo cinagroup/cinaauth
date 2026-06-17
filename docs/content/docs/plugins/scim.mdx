@@ -1,4 +1,4 @@
----
+﻿---
 title: System for Cross-domain Identity Management (SCIM)
 description: Integrate SCIM with your application.
 ---
@@ -17,7 +17,7 @@ This plugin exposes a [SCIM](https://simplecloud.info/#Specification) server tha
     ### Install the plugin
 
     ```package-install
-    @better-auth/scim
+    @cinaauth/scim
     ```
   </Step>
 
@@ -25,10 +25,10 @@ This plugin exposes a [SCIM](https://simplecloud.info/#Specification) server tha
     ### Add Plugin to the server
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { scim } from "@better-auth/scim"; // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { scim } from "@cinaauth/scim"; // [!code highlight]
 
-    const auth = betterAuth({
+    const auth = CinaAuth({
         plugins: [
             scim() // [!code highlight]
         ]
@@ -46,7 +46,7 @@ This plugin exposes a [SCIM](https://simplecloud.info/#Specification) server tha
       <Tab value="Next.js">
         ```ts title="api/auth/[...all]/route.ts"
         import { auth } from "@/lib/auth";
-        import { toNextJsHandler } from "better-auth/next-js";
+        import { toNextJsHandler } from "cinaauth/next-js";
 
         export const { POST, GET, PUT, PATCH, DELETE } = toNextJsHandler(auth); // [!code highlight]
         ```
@@ -55,7 +55,7 @@ This plugin exposes a [SCIM](https://simplecloud.info/#Specification) server tha
       <Tab value="Solid Start">
         ```ts title="routes/api/auth/*auth.ts"
         import { auth } from "~/lib/auth";
-        import { toSolidStartHandler } from "better-auth/solid-start";
+        import { toSolidStartHandler } from "cinaauth/solid-start";
 
         export const { GET, POST, PUT, PATCH, DELETE } = toSolidStartHandler(auth); // [!code highlight]
         ```
@@ -95,12 +95,12 @@ Upon registration, this plugin will expose compliant [SCIM 2.0](https://simplecl
 
 ### Self-Service Directory Sync
 
-If you're using [Better Auth Infrastructure](https://dash.better-auth.com/sign-in), you get self-service directory sync in the dashboard. Organization admins can create and manage SCIM directory connections and rotate bearer tokens without calling the SCIM APIs directly.
+If you're using [CinaAuth Infrastructure](https://dash.cinagroup.com/sign-in), you get self-service directory sync in the dashboard. Organization admins can create and manage SCIM directory connections and rotate bearer tokens without calling the SCIM APIs directly.
 
 The dashboard is available at:
 
 ```
-https://dash.better-auth.com/[project]/organization/[orgId]/enterprise
+https://dash.cinagroup.com/[project]/organization/[orgId]/enterprise
 ```
 
 From the dashboard you can:
@@ -132,7 +132,7 @@ A SCIM token is a simple bearer token that you can generate:
   ```
 </APIMethod>
 
-A `SCIM` token is always restricted to a provider, thus you are required to specify a `providerId`. This can be any provider your instance supports (e.g one of the built-in providers such as `credentials` or an external provider registered through an external plugin such as `@better-auth/sso`).
+A `SCIM` token is always restricted to a provider, thus you are required to specify a `providerId`. This can be any provider your instance supports (e.g one of the built-in providers such as `credentials` or an external provider registered through an external plugin such as `@cinaauth/sso`).
 Additionally, when the `organization` plugin is registered, you can optionally restrict the token to an organization via the `organizationId`.
 
 <Callout>
@@ -141,7 +141,7 @@ Additionally, when the `organization` plugin is registered, you can optionally r
 
 #### Organization-scoped authorization
 
-When `organizationId` is provided, Better Auth requires the current user to be a member of that organization and to have at least one of the configured `requiredRole` values.
+When `organizationId` is provided, CinaAuth requires the current user to be a member of that organization and to have at least one of the configured `requiredRole` values.
 
 By default, `requiredRole` resolves to:
 
@@ -174,10 +174,10 @@ See the [hooks](#hooks) documentation for more details about supported hooks.
 We also provide a way for you to specify a `SCIM` token to use by default. This allows you to test a SCIM connection without setting up providers in the database:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { scim } from "@better-auth/scim"; 
+import { CinaAuth } from "cinaauth"
+import { scim } from "@cinaauth/scim"; 
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         scim({
             defaultSCIM: [
@@ -203,10 +203,10 @@ const auth = betterAuth({
 SCIM provider connection ownership applies to personal (non-organization) SCIM connections. It lets your application track who generated a connection and restricts later management operations for that connection to the same user.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { scim } from "@better-auth/scim";
+import { CinaAuth } from "cinaauth";
+import { scim } from "@cinaauth/scim";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         scim({ // [!code highlight]
             providerOwnership: { // [!code highlight]

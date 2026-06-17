@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { isDevelopment, logger } from "@better-auth/core/env";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { isDevelopment, logger } from "@cinaauth/core/env";
 import { createEmailVerificationToken } from "../api";
 import { setAccountCookie } from "../cookies/session-store";
 import type { Account, User } from "../types";
@@ -43,7 +43,7 @@ export async function handleOAuthUserInfo(
 		)
 		.catch((e) => {
 			logger.error(
-				"Better auth was unable to query your database.\nError: ",
+				"CinaAuth was unable to query your database.\nError: ",
 				e,
 			);
 			const errorURL =
@@ -79,7 +79,7 @@ export async function handleOAuthUserInfo(
 			) {
 				if (isDevelopment()) {
 					logger.warn(
-						`User already exist but account isn't linked to ${account.providerId}. To read more about how account linking works in Better Auth see https://www.better-auth.com/docs/concepts/users-accounts#account-linking.`,
+						`User already exist but account isn't linked to ${account.providerId}. To read more about how account linking works in CinaAuth see https://www.cinagroup.com/docs/concepts/users-accounts#account-linking.`,
 					);
 				}
 				return {

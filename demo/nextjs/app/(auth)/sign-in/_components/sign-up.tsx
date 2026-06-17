@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -37,12 +37,12 @@ export function SignUp() {
 					<p className="text-center text-xs text-neutral-500">
 						built with{" "}
 						<Link
-							href="https://better-auth.com"
+							href="https://cinagroup.com"
 							className="underline"
 							target="_blank"
 						>
 							<span className="dark:text-white/70 cursor-pointer">
-								better-auth.
+								cinaauth.
 							</span>
 						</Link>
 					</p>

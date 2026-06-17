@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { AccessControl, ArrayElement, Role } from "../access";
 import type { defaultStatements } from "./access";
@@ -94,7 +94,7 @@ export const adminClient = <O extends AdminClientOptions>(
 			},
 		],
 		$ERROR_CODES: ADMIN_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export type * from "./types";

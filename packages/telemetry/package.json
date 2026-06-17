@@ -1,20 +1,20 @@
 {
-  "name": "@better-auth/telemetry",
+  "name": "@cinaauth/telemetry",
   "version": "1.6.19",
-  "description": "Telemetry package for Better Auth",
+  "description": "Telemetry package for CinaAuth",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com",
+  "homepage": "https://www.cinagroup.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/telemetry"
   },
   "keywords": [
     "auth",
     "telemetry",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -49,12 +49,12 @@
     }
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "tsdown": "catalog:",
     "type-fest": "^5.4.4"
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:",
     "@better-fetch/fetch": "catalog:"
   }

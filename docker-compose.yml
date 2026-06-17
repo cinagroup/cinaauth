@@ -1,7 +1,7 @@
 # cspell:ignore isready uuser ppassword
 x-postgres-healthcheck: &postgres-healthcheck
   healthcheck:
-    test: ["CMD-SHELL", "pg_isready -U user -d better_auth"]
+    test: ["CMD-SHELL", "pg_isready -U user -d cina_auth"]
     interval: 1s
     timeout: 5s
     retries: 10
@@ -55,7 +55,7 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: better_auth
+      POSTGRES_DB: cina_auth
     ports:
       - "5432:5432"
     volumes:
@@ -68,7 +68,7 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: better_auth
+      POSTGRES_DB: cina_auth
     ports:
       - "5433:5432"
     volumes:
@@ -81,7 +81,7 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: better_auth
+      POSTGRES_DB: cina_auth
     ports:
       - "5435:5432"
     volumes:
@@ -94,7 +94,7 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: better_auth
+      POSTGRES_DB: cina_auth
     ports:
       - "5434:5432"
     volumes:
@@ -107,7 +107,7 @@ services:
     container_name: mysql
     environment:
       MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: better_auth
+      MYSQL_DATABASE: cina_auth
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:
@@ -121,7 +121,7 @@ services:
     container_name: mysql-kysely
     environment:
       MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: better_auth
+      MYSQL_DATABASE: cina_auth
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:
@@ -135,7 +135,7 @@ services:
     container_name: mysql-prisma
     environment:
       MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: better_auth
+      MYSQL_DATABASE: cina_auth
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:

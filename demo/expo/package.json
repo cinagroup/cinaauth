@@ -1,5 +1,5 @@
 {
-  "name": "@better-auth/expo-example",
+  "name": "@cinaauth/expo-example",
   "private": true,
   "version": "1.0.0",
   "scripts": {
@@ -12,7 +12,7 @@
     "android": "expo run:android"
   },
   "dependencies": {
-    "@better-auth/expo": "link:../../packages/expo",
+    "@cinaauth/expo": "link:../../packages/expo",
     "@expo/metro-runtime": "^55.0.6",
     "@expo/vector-icons": "^15.1.1",
     "@nanostores/react": "^1.0.0",
@@ -24,7 +24,7 @@
     "@rn-primitives/types": "^1.2.0",
     "@types/better-sqlite3": "^7.6.13",
     "babel-plugin-transform-import-meta": "^2.3.3",
-    "better-auth": "link:../../packages/better-auth",
+    "cinaauth": "link:../../packages/better-auth",
     "better-sqlite3": "^12.6.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -1,16 +1,16 @@
 {
-  "name": "@better-auth-test/smoke",
+  "name": "@cinaauth-test/smoke",
   "private": true,
   "type": "module",
   "dependencies": {
-    "@better-auth/passkey": "workspace:*",
-    "better-auth": "workspace:*"
+    "@cinaauth/passkey": "workspace:*",
+    "cinaauth": "workspace:*"
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
-    "@better-auth/redis-storage": "workspace:*",
-    "@better-auth/sso": "workspace:*",
-    "better-auth": "workspace:*",
+    "@cinaauth/core": "workspace:*",
+    "@cinaauth/redis-storage": "workspace:*",
+    "@cinaauth/sso": "workspace:*",
+    "cinaauth": "workspace:*",
     "ioredis": "^5.9.3",
     "msw": "^2.12.10"
   },

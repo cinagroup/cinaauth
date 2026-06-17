@@ -1,4 +1,4 @@
-import "dotenv/config";
+﻿import "dotenv/config";
 import * as fs from "node:fs";
 import { Client } from "typesense";
 import type { DocumentRecord } from "typesense-fumadocs-adapter";
@@ -73,7 +73,7 @@ async function main() {
 		});
 
 		await sync(client, {
-			typesenseCollectionName: "better-auth-docs",
+			typesenseCollectionName: "cinaauth-docs",
 			documents: records,
 		});
 		console.log(`[Typesense] search updated: ${records.length} records`);

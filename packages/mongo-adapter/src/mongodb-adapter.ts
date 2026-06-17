@@ -1,12 +1,12 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import type {
 	AdapterFactoryCustomizeAdapterCreator,
 	AdapterFactoryOptions,
 	DBAdapter,
 	DBAdapterDebugLogOption,
 	Where,
-} from "@better-auth/core/db/adapter";
-import { createAdapterFactory } from "@better-auth/core/db/adapter";
+} from "@cinaauth/core/db/adapter";
+import { createAdapterFactory } from "@cinaauth/core/db/adapter";
 import type { ClientSession, Db, MongoClient } from "mongodb";
 import { ObjectId, UUID } from "mongodb";
 import {
@@ -64,9 +64,9 @@ export const mongodbAdapter = (
 	db: Db,
 	config?: MongoDBAdapterConfig | undefined,
 ) => {
-	let lazyOptions: BetterAuthOptions | null;
+	let lazyOptions: CinaAuthOptions | null;
 
-	const getCustomIdGenerator = (options: BetterAuthOptions) => {
+	const getCustomIdGenerator = (options: CinaAuthOptions) => {
 		const generator = options.advanced?.database?.generateId;
 		if (typeof generator === "function") {
 			return generator;
@@ -663,7 +663,7 @@ export const mongodbAdapter = (
 		};
 
 	let lazyAdapter:
-		| ((options: BetterAuthOptions) => DBAdapter<BetterAuthOptions>)
+		| ((options: CinaAuthOptions) => DBAdapter<CinaAuthOptions>)
 		| null = null;
 	let adapterOptions: AdapterFactoryOptions | null = null;
 	adapterOptions = {
@@ -798,7 +798,7 @@ export const mongodbAdapter = (
 	};
 	lazyAdapter = createAdapterFactory(adapterOptions);
 
-	return (options: BetterAuthOptions): DBAdapter<BetterAuthOptions> => {
+	return (options: CinaAuthOptions): DBAdapter<CinaAuthOptions> => {
 		lazyOptions = options;
 		return lazyAdapter(options);
 	};

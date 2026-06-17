@@ -1,13 +1,13 @@
 {
-  "name": "@better-auth/sso",
+  "name": "@cinaauth/sso",
   "version": "1.6.19",
-  "description": "SSO plugin for Better Auth",
+  "description": "SSO plugin for CinaAuth",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/plugins/sso",
+  "homepage": "https://www.cinagroup.com/docs/plugins/sso",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/sso"
   },
   "author": "Bereket Engida",
@@ -21,7 +21,7 @@
     "openid connect",
     "single sign on",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -72,10 +72,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "@types/body-parser": "^1.19.6",
     "@types/express": "^5.0.6",
-    "better-auth": "workspace:*",
+    "cinaauth": "workspace:*",
     "better-call": "catalog:",
     "body-parser": "^2.2.2",
     "express": "^5.2.1",
@@ -83,10 +83,10 @@
     "tsdown": "catalog:"
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:",
     "@better-fetch/fetch": "catalog:",
-    "better-auth": "workspace:^",
+    "cinaauth": "workspace:^",
     "better-call": "catalog:"
   }
 }

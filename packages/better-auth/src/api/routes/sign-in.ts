@@ -1,8 +1,8 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import type { User } from "@better-auth/core/db";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
-import { SocialProviderListEnum } from "@better-auth/core/social-providers";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import type { User } from "@cinaauth/core/db";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { SocialProviderListEnum } from "@cinaauth/core/social-providers";
 import * as z from "zod";
 import { getAwaitableValue } from "../../context/helpers";
 import { setSessionCookie } from "../../cookies";
@@ -173,7 +173,7 @@ const socialSignInBodySchema = z.object({
 	}),
 });
 
-export const signInSocial = <O extends BetterAuthOptions>() =>
+export const signInSocial = <O extends CinaAuthOptions>() =>
 	createAuthEndpoint(
 		"/sign-in/social",
 		{
@@ -358,7 +358,7 @@ export const signInSocial = <O extends BetterAuthOptions>() =>
 		},
 	);
 
-export const signInEmail = <O extends BetterAuthOptions>() =>
+export const signInEmail = <O extends CinaAuthOptions>() =>
 	createAuthEndpoint(
 		"/sign-in/email",
 		{
@@ -472,7 +472,7 @@ export const signInEmail = <O extends BetterAuthOptions>() =>
 		}> => {
 			if (!ctx.context.options?.emailAndPassword?.enabled) {
 				ctx.context.logger.error(
-					"Email and password is not enabled. Make sure to enable it in the options on you `auth.ts` file. Check `https://better-auth.com/docs/authentication/email-password` for more!",
+					"Email and password is not enabled. Make sure to enable it in the options on you `auth.ts` file. Check `https://cinagroup.com/docs/authentication/email-password` for more!",
 				);
 				throw APIError.from("BAD_REQUEST", {
 					code: "EMAIL_PASSWORD_DISABLED",

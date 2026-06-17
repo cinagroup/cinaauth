@@ -1,14 +1,14 @@
 import type {
-	BetterAuthClientPlugin,
-	BetterAuthOptions,
-} from "@better-auth/core";
+	CinaAuthClientPlugin,
+	CinaAuthOptions,
+} from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 
 export const InferServerPlugin = <
 	AuthOrOption extends
-		| BetterAuthOptions
+		| CinaAuthOptions
 		| {
-				options: BetterAuthOptions;
+				options: CinaAuthOptions;
 		  },
 	ID extends string,
 >() => {
@@ -25,5 +25,5 @@ export const InferServerPlugin = <
 		id: "infer-server-plugin",
 		version: PACKAGE_VERSION,
 		$InferServerPlugin: {} as Plugin,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

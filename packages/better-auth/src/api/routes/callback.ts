@@ -1,6 +1,6 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
-import type { OAuth2Tokens } from "@better-auth/core/oauth2";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import type { OAuth2Tokens } from "@cinaauth/core/oauth2";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import * as z from "zod";
 import { getAwaitableValue } from "../../context/helpers";
 import { setSessionCookie } from "../../cookies";

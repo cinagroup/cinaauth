@@ -38,15 +38,15 @@ describe("multi-session", async () => {
 					const setCookieString = context.response.headers.get("set-cookie");
 					const setCookies = parseSetCookieHeader(setCookieString || "");
 					const sessionToken = setCookies
-						.get("better-auth.session_token")
+						.get("cinaauth.session_token")
 						?.value.split(".")[0];
 					const multiSession = setCookies.get(
-						`better-auth.session_token_multi-${sessionToken?.toLowerCase()}`,
+						`cinaauth.session_token_multi-${sessionToken?.toLowerCase()}`,
 					)?.value;
 					expect(sessionToken).not.toBe(null);
 					expect(multiSession).not.toBe(null);
 					expect(multiSession).toContain(sessionToken);
-					expect(setCookieString).toContain("better-auth.session_token_multi-");
+					expect(setCookieString).toContain("cinaauth.session_token_multi-");
 				},
 				onSuccess: cookieSetter(headers),
 			},
@@ -86,7 +86,7 @@ describe("multi-session", async () => {
 			.split(";")
 			.map((cookie) => cookie.trim())
 			.filter(Boolean)
-			.filter((cookie) => !cookie.startsWith("better-auth.session_token="))
+			.filter((cookie) => !cookie.startsWith("cinaauth.session_token="))
 			.join("; ");
 
 		const multiOnlyHeaders = new Headers();
@@ -122,10 +122,10 @@ describe("multi-session", async () => {
 		await client.signUp.email(testUser3, {
 			onSuccess: (ctx) => {
 				const header = ctx.response.headers.get("set-cookie");
-				expect(header).toContain("better-auth.session_token");
+				expect(header).toContain("cinaauth.session_token");
 				const cookies = parseSetCookieHeader(header || "");
 				token =
-					cookies.get("better-auth.session_token")?.value.split(".")[0] || "";
+					cookies.get("cinaauth.session_token")?.value.split(".")[0] || "";
 			},
 		});
 		await client.multiSession.revoke(
@@ -135,7 +135,7 @@ describe("multi-session", async () => {
 			{
 				onSuccess(context) {
 					expect(context.response.headers.get("set-cookie")).toContain(
-						`better-auth.session_token=`,
+						`cinaauth.session_token=`,
 					);
 				},
 				headers,
@@ -186,7 +186,7 @@ describe("multi-session", async () => {
 				const header = context.response.headers.get("set-cookie");
 				const cookies = parseSetCookieHeader(header || "");
 				firstSessionToken =
-					cookies.get("better-auth.session_token")?.value.split(".")[0] || "";
+					cookies.get("cinaauth.session_token")?.value.split(".")[0] || "";
 			},
 		});
 
@@ -210,9 +210,9 @@ describe("multi-session", async () => {
 					const header = context.response.headers.get("set-cookie");
 					const cookies = parseSetCookieHeader(header || "");
 					secondSessionToken =
-						cookies.get("better-auth.session_token")?.value.split(".")[0] || "";
+						cookies.get("cinaauth.session_token")?.value.split(".")[0] || "";
 					// Verify old cookie is being deleted
-					const oldCookieName = `better-auth.session_token_multi-${firstSessionToken.toLowerCase()}`;
+					const oldCookieName = `cinaauth.session_token_multi-${firstSessionToken.toLowerCase()}`;
 					const oldCookie = cookies.get(oldCookieName);
 					expect(oldCookie?.["max-age"]).toBe(0);
 				},
@@ -256,7 +256,7 @@ describe("multi-session", async () => {
 				const header = context.response.headers.get("set-cookie");
 				const cookies = parseSetCookieHeader(header || "");
 				victimSessionToken =
-					cookies.get("better-auth.session_token")?.value.split(".")[0] || "";
+					cookies.get("cinaauth.session_token")?.value.split(".")[0] || "";
 			},
 		});
 
@@ -269,7 +269,7 @@ describe("multi-session", async () => {
 		expect(attackerSession.data?.user.email).toBe(attackerUser.email);
 		expect(victimSession.data?.user.email).toBe(victimUser.email);
 
-		const forgedCookieName = `better-auth.session_token_multi-${victimSessionToken.toLowerCase()}`;
+		const forgedCookieName = `cinaauth.session_token_multi-${victimSessionToken.toLowerCase()}`;
 		const forgedCookieValue = `${victimSessionToken}.fake-signature`;
 
 		const signOutHeaders = new Headers(attackerHeaders);
@@ -323,10 +323,10 @@ describe("multi-session", async () => {
 					context.response.headers.get("set-cookie") || "",
 				);
 				callerToken =
-					cookies.get("better-auth.session_token")?.value.split(".")[0] || "";
+					cookies.get("cinaauth.session_token")?.value.split(".")[0] || "";
 				callerSignedMultiCookie =
 					cookies.get(
-						`better-auth.session_token_multi-${callerToken.toLowerCase()}`,
+						`cinaauth.session_token_multi-${callerToken.toLowerCase()}`,
 					)?.value || "";
 			},
 		});
@@ -340,7 +340,7 @@ describe("multi-session", async () => {
 					context.response.headers.get("set-cookie") || "",
 				);
 				otherToken =
-					cookies.get("better-auth.session_token")?.value.split(".")[0] || "";
+					cookies.get("cinaauth.session_token")?.value.split(".")[0] || "";
 			},
 		});
 		expect(callerSignedMultiCookie).not.toBe("");
@@ -351,7 +351,7 @@ describe("multi-session", async () => {
 		const craftedHeaders = new Headers(callerHeaders);
 		craftedHeaders.set(
 			"cookie",
-			`${callerHeaders.get("cookie")}; better-auth.session_token_multi-${otherToken.toLowerCase()}=${callerSignedMultiCookie}`,
+			`${callerHeaders.get("cookie")}; cinaauth.session_token_multi-${otherToken.toLowerCase()}=${callerSignedMultiCookie}`,
 		);
 
 		await client.multiSession.revoke(

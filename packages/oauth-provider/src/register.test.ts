@@ -1,14 +1,14 @@
-import { createAuthClient } from "better-auth/client";
-import { organizationClient } from "better-auth/client/plugins";
-import { generateRandomString } from "better-auth/crypto";
+import { createAuthClient } from "cinaauth/client";
+import { organizationClient } from "cinaauth/client/plugins";
+import { generateRandomString } from "cinaauth/crypto";
 import {
 	createAuthorizationCodeRequest,
 	createAuthorizationURL,
-} from "better-auth/oauth2";
-import { jwt } from "better-auth/plugins/jwt";
-import type { Organization } from "better-auth/plugins/organization";
-import { organization } from "better-auth/plugins/organization";
-import { getTestInstance } from "better-auth/test";
+} from "cinaauth/oauth2";
+import { jwt } from "cinaauth/plugins/jwt";
+import type { Organization } from "cinaauth/plugins/organization";
+import { organization } from "cinaauth/plugins/organization";
+import { getTestInstance } from "cinaauth/test";
 import { beforeAll, describe, expect, it, onTestFinished, vi } from "vitest";
 import { oauthProviderClient } from "./client";
 import { oauthProvider } from "./oauth";
@@ -313,7 +313,7 @@ describe("oauth register - unauthenticated", async () => {
 	 * per RFC 7591 §3.2.1 ("the server MAY reject or replace any of the
 	 * client's requested metadata values").
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/8588
+	 * @see https://github.com/cinagroup/cinaauth/issues/8588
 	 */
 	it("should override omitted auth method (RFC 7591 default) to public", async () => {
 		const response = await unauthenticatedClient.oauth2.register({
@@ -331,7 +331,7 @@ describe("oauth register - unauthenticated", async () => {
 	 * The server overrides this to "none" and communicates the actual method
 	 * in the registration response so compliant clients can adjust.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/8588
+	 * @see https://github.com/cinagroup/cinaauth/issues/8588
 	 */
 	it("should override client_secret_post to public for unauthenticated DCR", async () => {
 		const response = await unauthenticatedClient.oauth2.register({
@@ -345,7 +345,7 @@ describe("oauth register - unauthenticated", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8588
+	 * @see https://github.com/cinagroup/cinaauth/issues/8588
 	 */
 	it("should override client_secret_basic to public for unauthenticated DCR", async () => {
 		const response = await unauthenticatedClient.oauth2.register({
@@ -359,7 +359,7 @@ describe("oauth register - unauthenticated", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8588
+	 * @see https://github.com/cinagroup/cinaauth/issues/8588
 	 */
 	it("should clear type 'web' when overriding confidential to public", async () => {
 		const response = await unauthenticatedClient.oauth2.register({
@@ -377,7 +377,7 @@ describe("oauth register - unauthenticated", async () => {
 	 * client_credentials requires a secret, which public clients never get.
 	 * Reject the combination at registration rather than creating an unusable client.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/8588
+	 * @see https://github.com/cinagroup/cinaauth/issues/8588
 	 */
 	it("should reject client_credentials grant for unauthenticated DCR", async () => {
 		const response = await unauthenticatedClient.oauth2.register({
@@ -392,7 +392,7 @@ describe("oauth register - unauthenticated", async () => {
  * Verifies the overridden public client is actually usable end-to-end:
  * DCR with client_secret_post (overridden to "none") -> authorize -> PKCE token exchange.
  *
- * @see https://github.com/better-auth/better-auth/issues/8588
+ * @see https://github.com/cinagroup/cinaauth/issues/8588
  */
 describe("oauth register - unauthenticated DCR full flow", async () => {
 	const authServerBaseUrl = "http://localhost:3000";

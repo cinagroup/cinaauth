@@ -146,7 +146,7 @@ describe("passkey client", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9373
+	 * @see https://github.com/cinagroup/cinaauth/issues/9373
 	 */
 	it("returns an auth error without logging expected authentication ceremony failures", async () => {
 		mocks.startAuthentication.mockRejectedValueOnce(

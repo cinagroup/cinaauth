@@ -1,6 +1,6 @@
-import type { AuthContext, BetterAuthOptions } from "@better-auth/core";
-import { runWithAdapter } from "@better-auth/core/context";
-import { BASE_ERROR_CODES, BetterAuthError } from "@better-auth/core/error";
+import type { AuthContext, CinaAuthOptions } from "@cinaauth/core";
+import { runWithAdapter } from "@cinaauth/core/context";
+import { BASE_ERROR_CODES, CinaAuthError } from "@cinaauth/core/error";
 import { getEndpoints, router } from "../api";
 import {
 	getTrustedOrigins,
@@ -11,7 +11,7 @@ import {
 import type { Auth } from "../types";
 import { getBaseURL, getOrigin, isDynamicBaseURLConfig } from "../utils/url";
 
-export const createBetterAuth = <Options extends BetterAuthOptions>(
+export const createCinaAuth = <Options extends CinaAuthOptions>(
 	options: Options,
 	initFn: (options: Options) => Promise<AuthContext>,
 ): Auth<Options> => {
@@ -63,7 +63,7 @@ export const createBetterAuth = <Options extends BetterAuthOptions>(
 						ctx.options.advanced?.trustedProxyHeaders,
 					);
 					if (!baseURL) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							"Could not get base URL from request. Please provide a valid base URL.",
 						);
 					}

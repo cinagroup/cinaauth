@@ -1,19 +1,19 @@
 {
-  "name": "@better-auth/electron",
+  "name": "@cinaauth/electron",
   "version": "1.6.19",
-  "description": "Better Auth integration for Electron applications.",
+  "description": "CinaAuth integration for Electron applications.",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/integrations/electron",
+  "homepage": "https://www.cinagroup.com/docs/integrations/electron",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/electron"
   },
   "keywords": [
     "electron",
     "auth",
-    "better-auth",
+    "cinaauth",
     "typescript"
   ],
   "publishConfig": {
@@ -85,18 +85,18 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
-    "better-auth": "workspace:*",
+    "cinaauth": "workspace:*",
     "better-sqlite3": "^12.6.2",
     "electron": "^41.2.2",
     "tsdown": "catalog:"
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:",
     "@better-fetch/fetch": "catalog:",
-    "better-auth": "workspace:^",
+    "cinaauth": "workspace:^",
     "better-call": "catalog:",
     "conf": "^15.0.2",
     "electron": ">=36.0.0"

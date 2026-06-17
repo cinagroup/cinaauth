@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PR Analyzer — shared classification module
  *
  * Pure functions for mapping conventional commit scopes and file paths
@@ -97,35 +97,35 @@ const SCOPE_TO_DOMAIN: Record<string, string> = {
 
 const PATH_TO_DOMAIN: [string, string][] = [
 	["packages/oauth-provider/", "identity"],
-	["packages/better-auth/src/plugins/oidc-provider/", "identity"],
-	["packages/better-auth/src/plugins/mcp/", "identity"],
-	["packages/better-auth/src/plugins/device-authorization/", "identity"],
-	["packages/better-auth/src/plugins/magic-link/", "credentials"],
-	["packages/better-auth/src/plugins/email-otp/", "credentials"],
-	["packages/better-auth/src/plugins/phone-number/", "credentials"],
-	["packages/better-auth/src/plugins/username/", "credentials"],
-	["packages/better-auth/src/plugins/anonymous/", "credentials"],
-	["packages/better-auth/src/plugins/siwe/", "credentials"],
+	["packages/cinaauth/src/plugins/oidc-provider/", "identity"],
+	["packages/cinaauth/src/plugins/mcp/", "identity"],
+	["packages/cinaauth/src/plugins/device-authorization/", "identity"],
+	["packages/cinaauth/src/plugins/magic-link/", "credentials"],
+	["packages/cinaauth/src/plugins/email-otp/", "credentials"],
+	["packages/cinaauth/src/plugins/phone-number/", "credentials"],
+	["packages/cinaauth/src/plugins/username/", "credentials"],
+	["packages/cinaauth/src/plugins/anonymous/", "credentials"],
+	["packages/cinaauth/src/plugins/siwe/", "credentials"],
 	["packages/passkey/", "credentials"],
-	["packages/better-auth/src/plugins/two-factor/", "security"],
-	["packages/better-auth/src/api/rate-limiter/", "security"],
-	["packages/better-auth/src/plugins/captcha/", "security"],
-	["packages/better-auth/src/plugins/haveibeenpwned/", "security"],
-	["packages/better-auth/src/plugins/organization/", "organization"],
-	["packages/better-auth/src/plugins/admin/", "organization"],
-	["packages/better-auth/src/plugins/access/", "organization"],
-	["packages/better-auth/src/plugins/generic-oauth/", "oauth"],
-	["packages/better-auth/src/plugins/oauth-proxy/", "oauth"],
-	["packages/better-auth/src/plugins/one-tap/", "oauth"],
-	["packages/better-auth/src/oauth2/", "oauth"],
+	["packages/cinaauth/src/plugins/two-factor/", "security"],
+	["packages/cinaauth/src/api/rate-limiter/", "security"],
+	["packages/cinaauth/src/plugins/captcha/", "security"],
+	["packages/cinaauth/src/plugins/haveibeenpwned/", "security"],
+	["packages/cinaauth/src/plugins/organization/", "organization"],
+	["packages/cinaauth/src/plugins/admin/", "organization"],
+	["packages/cinaauth/src/plugins/access/", "organization"],
+	["packages/cinaauth/src/plugins/generic-oauth/", "oauth"],
+	["packages/cinaauth/src/plugins/oauth-proxy/", "oauth"],
+	["packages/cinaauth/src/plugins/one-tap/", "oauth"],
+	["packages/cinaauth/src/oauth2/", "oauth"],
 	["packages/core/src/social-providers/", "oauth"],
 	["packages/core/src/oauth2/", "oauth"],
 	["packages/sso/", "enterprise"],
 	["packages/scim/", "enterprise"],
 	["packages/stripe/", "payments"],
 	["packages/api-key/", "payments"],
-	["packages/better-auth/src/db/", "database"],
-	["packages/better-auth/src/adapters/", "database"],
+	["packages/cinaauth/src/db/", "database"],
+	["packages/cinaauth/src/adapters/", "database"],
 	["packages/drizzle-adapter/", "database"],
 	["packages/prisma-adapter/", "database"],
 	["packages/mongo-adapter/", "database"],
@@ -133,20 +133,20 @@ const PATH_TO_DOMAIN: [string, string][] = [
 	["packages/memory-adapter/", "database"],
 	["packages/expo/", "platform"],
 	["packages/electron/", "platform"],
-	["packages/better-auth/src/integrations/", "platform"],
+	["packages/cinaauth/src/integrations/", "platform"],
 	["packages/cli/", "devtools"],
-	["packages/better-auth/src/plugins/open-api/", "devtools"],
+	["packages/cinaauth/src/plugins/open-api/", "devtools"],
 	["packages/telemetry/", "devtools"],
 	["packages/i18n/", "devtools"],
 	["packages/test-utils/", "devtools"],
 	// Session-related plugins → core
-	["packages/better-auth/src/plugins/jwt/", "core"],
-	["packages/better-auth/src/plugins/bearer/", "core"],
-	["packages/better-auth/src/plugins/multi-session/", "core"],
-	["packages/better-auth/src/plugins/custom-session/", "core"],
+	["packages/cinaauth/src/plugins/jwt/", "core"],
+	["packages/cinaauth/src/plugins/bearer/", "core"],
+	["packages/cinaauth/src/plugins/multi-session/", "core"],
+	["packages/cinaauth/src/plugins/custom-session/", "core"],
 	["packages/redis-storage/", "core"],
-	// Catch-all for better-auth and core packages
-	["packages/better-auth/", "core"],
+	// Catch-all for cinaauth and core packages
+	["packages/cinaauth/", "core"],
 	["packages/core/", "core"],
 	// Non-user-facing
 	["docs/", "docs"],
@@ -252,22 +252,22 @@ export const FILTERED_DOMAINS = new Set(["docs", "devops"]);
  * Used by release-notes.ts to group entries by the package users install.
  */
 const SCOPE_TO_PACKAGE: Record<string, string> = {
-	sso: "@better-auth/sso",
-	scim: "@better-auth/scim",
-	passkey: "@better-auth/passkey",
-	"oauth-provider": "@better-auth/oauth-provider",
-	stripe: "@better-auth/stripe",
-	"api-key": "@better-auth/api-key",
-	expo: "@better-auth/expo",
-	electron: "@better-auth/electron",
-	i18n: "@better-auth/i18n",
-	"test-utils": "@better-auth/test-utils",
-	"drizzle-adapter": "@better-auth/drizzle-adapter",
-	"prisma-adapter": "@better-auth/prisma-adapter",
-	"kysely-adapter": "@better-auth/kysely-adapter",
-	"mongo-adapter": "@better-auth/mongo-adapter",
-	"memory-adapter": "@better-auth/memory-adapter",
-	"redis-storage": "@better-auth/redis-storage",
+	sso: "@cinaauth/sso",
+	scim: "@cinaauth/scim",
+	passkey: "@cinaauth/passkey",
+	"oauth-provider": "@cinaauth/oauth-provider",
+	stripe: "@cinaauth/stripe",
+	"api-key": "@cinaauth/api-key",
+	expo: "@cinaauth/expo",
+	electron: "@cinaauth/electron",
+	i18n: "@cinaauth/i18n",
+	"test-utils": "@cinaauth/test-utils",
+	"drizzle-adapter": "@cinaauth/drizzle-adapter",
+	"prisma-adapter": "@cinaauth/prisma-adapter",
+	"kysely-adapter": "@cinaauth/kysely-adapter",
+	"mongo-adapter": "@cinaauth/mongo-adapter",
+	"memory-adapter": "@cinaauth/memory-adapter",
+	"redis-storage": "@cinaauth/redis-storage",
 	cli: "auth",
 };
 
@@ -276,32 +276,32 @@ const SCOPE_TO_PACKAGE: Record<string, string> = {
  * Order matters: more specific paths must come before catch-alls.
  */
 const PATH_TO_PACKAGE: [string, string][] = [
-	["packages/sso/", "@better-auth/sso"],
-	["packages/scim/", "@better-auth/scim"],
-	["packages/passkey/", "@better-auth/passkey"],
-	["packages/oauth-provider/", "@better-auth/oauth-provider"],
-	["packages/stripe/", "@better-auth/stripe"],
-	["packages/api-key/", "@better-auth/api-key"],
-	["packages/expo/", "@better-auth/expo"],
-	["packages/electron/", "@better-auth/electron"],
-	["packages/i18n/", "@better-auth/i18n"],
-	["packages/redis-storage/", "@better-auth/redis-storage"],
-	["packages/test-utils/", "@better-auth/test-utils"],
-	["packages/telemetry/", "@better-auth/telemetry"],
-	["packages/drizzle-adapter/", "@better-auth/drizzle-adapter"],
-	["packages/prisma-adapter/", "@better-auth/prisma-adapter"],
-	["packages/kysely-adapter/", "@better-auth/kysely-adapter"],
-	["packages/mongo-adapter/", "@better-auth/mongo-adapter"],
-	["packages/memory-adapter/", "@better-auth/memory-adapter"],
-	// Catch-all: everything in better-auth or core maps to the main package
-	["packages/better-auth/", "better-auth"],
-	["packages/core/", "better-auth"],
+	["packages/sso/", "@cinaauth/sso"],
+	["packages/scim/", "@cinaauth/scim"],
+	["packages/passkey/", "@cinaauth/passkey"],
+	["packages/oauth-provider/", "@cinaauth/oauth-provider"],
+	["packages/stripe/", "@cinaauth/stripe"],
+	["packages/api-key/", "@cinaauth/api-key"],
+	["packages/expo/", "@cinaauth/expo"],
+	["packages/electron/", "@cinaauth/electron"],
+	["packages/i18n/", "@cinaauth/i18n"],
+	["packages/redis-storage/", "@cinaauth/redis-storage"],
+	["packages/test-utils/", "@cinaauth/test-utils"],
+	["packages/telemetry/", "@cinaauth/telemetry"],
+	["packages/drizzle-adapter/", "@cinaauth/drizzle-adapter"],
+	["packages/prisma-adapter/", "@cinaauth/prisma-adapter"],
+	["packages/kysely-adapter/", "@cinaauth/kysely-adapter"],
+	["packages/mongo-adapter/", "@cinaauth/mongo-adapter"],
+	["packages/memory-adapter/", "@cinaauth/memory-adapter"],
+	// Catch-all: everything in cinaauth or core maps to the main package
+	["packages/cinaauth/", "cinaauth"],
+	["packages/core/", "cinaauth"],
 	["packages/cli/", "auth"],
 ];
 
 /**
  * Resolves the npm package name for release notes grouping.
- * Priority: scope match > file path match > "better-auth" fallback.
+ * Priority: scope match > file path match > "cinaauth" fallback.
  */
 export function resolvePackage(
 	scope: string | undefined,
@@ -323,14 +323,14 @@ export function resolvePackage(
 	}
 
 	const packages = Object.keys(counts);
-	if (packages.length === 0) return "better-auth";
+	if (packages.length === 0) return "cinaauth";
 
 	// If files span multiple external packages, return the one with the most hits.
-	// If all files are in better-auth, return better-auth.
+	// If all files are in cinaauth, return cinaauth.
 	return packages.sort((a, b) => {
-		// Prefer non-better-auth packages (they're more specific)
-		const aIsCore = a === "better-auth" ? 1 : 0;
-		const bIsCore = b === "better-auth" ? 1 : 0;
+		// Prefer non-cinaauth packages (they're more specific)
+		const aIsCore = a === "cinaauth" ? 1 : 0;
+		const bIsCore = b === "cinaauth" ? 1 : 0;
 		if (aIsCore !== bIsCore) return aIsCore - bIsCore;
 		return (counts[b] ?? 0) - (counts[a] ?? 0);
 	})[0]!;

@@ -11,8 +11,8 @@ import { fetchLatestVersion } from "../utils/fetch-latest-version";
 import { getPackageInfo } from "../utils/get-package-info";
 import { installDependencies } from "../utils/install-dependencies";
 
-function isBetterAuthPackage(name: string): boolean {
-	return name === "better-auth" || name.startsWith("@better-auth/");
+function isCinaAuthPackage(name: string): boolean {
+	return name === "cinaauth" || name.startsWith("@cinaauth/");
 }
 
 interface UpgradeEntry {
@@ -56,18 +56,18 @@ async function upgradeAction(opts: unknown) {
 	}[] = [];
 
 	for (const [name, version] of Object.entries(deps) as [string, string][]) {
-		if (isBetterAuthPackage(name) && !version.startsWith("workspace:")) {
+		if (isCinaAuthPackage(name) && !version.startsWith("workspace:")) {
 			candidates.push({ name, current: version, depType: "prod" });
 		}
 	}
 	for (const [name, version] of Object.entries(devDeps) as [string, string][]) {
-		if (isBetterAuthPackage(name) && !version.startsWith("workspace:")) {
+		if (isCinaAuthPackage(name) && !version.startsWith("workspace:")) {
 			candidates.push({ name, current: version, depType: "dev" });
 		}
 	}
 
 	if (candidates.length === 0) {
-		console.log("No better-auth packages found in this project.");
+		console.log("No cinaauth packages found in this project.");
 		return;
 	}
 
@@ -95,7 +95,7 @@ async function upgradeAction(opts: unknown) {
 	spinner.stop();
 
 	if (upgrades.length === 0) {
-		console.log("All better-auth packages are up to date.");
+		console.log("All cinaauth packages are up to date.");
 		return;
 	}
 
@@ -154,7 +154,7 @@ async function upgradeAction(opts: unknown) {
 			});
 		}
 		installSpinner.stop();
-		console.log(chalk.green("Successfully upgraded better-auth packages."));
+		console.log(chalk.green("Successfully upgraded cinaauth packages."));
 	} catch (error) {
 		installSpinner.stop();
 		console.error("Failed to install updates:", error);
@@ -163,7 +163,7 @@ async function upgradeAction(opts: unknown) {
 }
 
 export const upgrade = new Command("upgrade")
-	.description("Upgrade better-auth packages to their latest versions")
+	.description("Upgrade cinaauth packages to their latest versions")
 	.option(
 		"-c, --cwd <cwd>",
 		"the working directory. defaults to the current directory.",

@@ -1,12 +1,12 @@
-import { BetterAuthError } from "../../error";
-import type { BetterAuthDBSchema } from "../type";
+import { CinaAuthError } from "../../error";
+import type { CinaAuthDBSchema } from "../type";
 
 export const initGetDefaultModelName = ({
 	usePlural,
 	schema,
 }: {
 	usePlural: boolean | undefined;
-	schema: BetterAuthDBSchema;
+	schema: CinaAuthDBSchema;
 }) => {
 	/**
 	 * This function helps us get the default model name from the schema defined by devs.
@@ -42,7 +42,7 @@ export const initGetDefaultModelName = ({
 		}
 
 		if (!m) {
-			throw new BetterAuthError(`Model "${model}" not found in schema`);
+			throw new CinaAuthError(`Model "${model}" not found in schema`);
 		}
 		return m;
 	};

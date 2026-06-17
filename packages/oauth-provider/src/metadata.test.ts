@@ -1,9 +1,9 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { APIError, BetterAuthError } from "@better-auth/core/error";
-import { createAuthClient } from "better-auth/client";
-import type { JwtOptions } from "better-auth/plugins/jwt";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { APIError, CinaAuthError } from "@cinaauth/core/error";
+import { createAuthClient } from "cinaauth/client";
+import type { JwtOptions } from "cinaauth/plugins/jwt";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import { describe, expect, it } from "vitest";
 import { oauthProviderClient } from "./client";
 import { oauthProviderResourceClient } from "./client-resource";
@@ -40,7 +40,7 @@ describe("oauth metadata", async () => {
 			"loginPage" | "consentPage"
 		>;
 		jwtConfig?: JwtOptions;
-		advanced?: BetterAuthOptions["advanced"];
+		advanced?: CinaAuthOptions["advanced"];
 	}) {
 		const { auth, customFetchImpl } = await getTestInstance({
 			baseURL: authServerBaseUrl,
@@ -129,7 +129,7 @@ describe("oauth metadata", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8343
+	 * @see https://github.com/cinagroup/cinaauth/issues/8343
 	 */
 	it("should serve authorization server metadata at the issuer-appended well-known URL", async () => {
 		const { customFetchImpl } = await createTestInstance();
@@ -407,7 +407,7 @@ describe("oauth metadata", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9105
+ * @see https://github.com/cinagroup/cinaauth/issues/9105
  */
 describe("dynamic baseURL metadata wrappers", async () => {
 	const host = "tenant.example.com";
@@ -523,7 +523,7 @@ describe("oauth resource metadata", async () => {
 				resource: validAudience,
 				scopes_supported: ["openid"],
 			}),
-		).rejects.toThrowError(BetterAuthError);
+		).rejects.toThrowError(CinaAuthError);
 	});
 
 	it("should pass with supported scopes", async () => {
@@ -544,7 +544,7 @@ describe("oauth resource metadata", async () => {
 				resource: validAudience,
 				scopes_supported: ["write:posts"],
 			}),
-		).rejects.toThrowError(BetterAuthError);
+		).rejects.toThrowError(CinaAuthError);
 	});
 
 	it("should pass with externally available scopes", async () => {

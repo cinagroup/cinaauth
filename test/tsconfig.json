@@ -1,4 +1,4 @@
-{
+﻿{
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["esnext"],
@@ -7,7 +7,7 @@
   "include": ["./unit"],
   "references": [
     {
-      "path": "../packages/better-auth/tsconfig.json"
+      "path": "../packages/cinaauth/tsconfig.json"
     }
   ]
 }

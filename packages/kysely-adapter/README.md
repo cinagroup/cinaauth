@@ -1,16 +1,16 @@
-# Better Auth Kysely Adapter
+﻿# CinaAuth Kysely Adapter
 
-Kysely adapter for [Better Auth](https://www.better-auth.com).
+Kysely adapter for [CinaAuth](https://www.cinagroup.com).
 
 ## Installation
 
 ```bash
-npm install @better-auth/kysely-adapter
+npm install @cinaauth/kysely-adapter
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/adapters/kysely](https://www.better-auth.com/docs/adapters/kysely).
+For full documentation, visit [cinagroup.com/docs/adapters/kysely](https://www.cinagroup.com/docs/adapters/kysely).
 
 ## License
 

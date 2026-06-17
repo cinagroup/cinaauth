@@ -1,4 +1,4 @@
-import { isSafeUrlScheme } from "@better-auth/core/utils/url";
+import { isSafeUrlScheme } from "@cinaauth/core/utils/url";
 import type { BetterFetchPlugin } from "@better-fetch/fetch";
 
 export const redirectPlugin = {

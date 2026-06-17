@@ -1,6 +1,6 @@
----
+﻿---
 title: One Tap
-description: One Tap plugin for Better Auth
+description: One Tap plugin for CinaAuth
 ---
 
 The One Tap plugin allows users to log in with a single tap using Google's One Tap API. The plugin
@@ -15,10 +15,10 @@ provides a simple way to integrate One Tap into your application, handling the c
     Add the One Tap plugin to your auth configuration:
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
-    import { oneTap } from "better-auth/plugins"; // [!code highlight]
+    import { CinaAuth } from "cinaauth";
+    import { oneTap } from "cinaauth/plugins"; // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
             oneTap(), // Add the One Tap server plugin  // [!code highlight]
         ]
@@ -32,8 +32,8 @@ provides a simple way to integrate One Tap into your application, handling the c
     Add the client plugin and specify where the user should be redirected after sign-in or if additional verification (like 2FA) is needed.
 
     ```ts
-    import { createAuthClient } from "better-auth/client";
-    import { oneTapClient } from "better-auth/client/plugins"; // [!code highlight]
+    import { createAuthClient } from "cinaauth/client";
+    import { oneTapClient } from "cinaauth/client/plugins"; // [!code highlight]
 
     export const authClient = createAuthClient({
       plugins: [

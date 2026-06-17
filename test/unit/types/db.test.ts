@@ -1,14 +1,14 @@
-import type {
-	BetterAuthDBOptions,
-	BetterAuthOptions,
-	BetterAuthPlugin,
-} from "@better-auth/core";
+﻿import type {
+	CinaAuthDBOptions,
+	CinaAuthOptions,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
 import type {
 	Account,
 	Session,
 	User,
 	Verification,
-} from "@better-auth/core/db";
+} from "@cinaauth/core/db";
 import { expectTypeOf, test } from "vitest";
 
 const testPlugin = () => {
@@ -24,7 +24,7 @@ const testPlugin = () => {
 				},
 			},
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 test("User with additionalFields", () => {
@@ -42,7 +42,7 @@ test("User with additionalFields", () => {
 			},
 		},
 		plugins: [testPlugin()],
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type Options = typeof options;
 
@@ -79,7 +79,7 @@ test("User with different field types", () => {
 				},
 			},
 		},
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type FinalUser = User<(typeof options)["user"]>;
 
@@ -107,7 +107,7 @@ test("Session with additionalFields", () => {
 				},
 			},
 		},
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type FinalSession = Session<(typeof options)["session"]>;
 
@@ -133,7 +133,7 @@ test("Account with additionalFields", () => {
 				},
 			},
 		},
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type FinalAccount = Account<(typeof options)["account"]>;
 
@@ -159,7 +159,7 @@ test("Verification with additionalFields", () => {
 				},
 			},
 		},
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type FinalVerification = Verification<(typeof options)["verification"]>;
 
@@ -204,10 +204,10 @@ test("User with plugin fields", () => {
 				},
 			},
 		],
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type FinalUser = User<
-		BetterAuthDBOptions<"user">,
+		CinaAuthDBOptions<"user">,
 		(typeof options)["plugins"]
 	>;
 
@@ -239,10 +239,10 @@ test("Session with plugin fields", () => {
 				},
 			},
 		],
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type FinalSession = Session<
-		BetterAuthDBOptions<"session">,
+		CinaAuthDBOptions<"session">,
 		(typeof options)["plugins"]
 	>;
 
@@ -270,10 +270,10 @@ test("Account with plugin fields", () => {
 				},
 			},
 		],
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type FinalAccount = Account<
-		BetterAuthDBOptions<"account">,
+		CinaAuthDBOptions<"account">,
 		(typeof options)["plugins"]
 	>;
 
@@ -306,7 +306,7 @@ test("User with both additionalFields and plugin fields", () => {
 				},
 			},
 		],
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
 	type FinalUser = User<(typeof options)["user"], (typeof options)["plugins"]>;
 

@@ -1,4 +1,4 @@
-import { getTestInstance } from "better-auth/test";
+﻿import { getTestInstance } from "cinaauth/test";
 import type Stripe from "stripe";
 import { describe, expect, vi } from "vitest";
 import { stripe } from "../src";
@@ -334,7 +334,7 @@ describe("stripe subscription", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7721
+	 * @see https://github.com/cinagroup/cinaauth/issues/7721
 	 */
 	test("should return annualDiscountPriceId when subscription billingInterval is year", async ({
 		stripeMock,
@@ -1626,7 +1626,7 @@ describe("stripe subscription", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/6863
+	 * @see https://github.com/cinagroup/cinaauth/issues/6863
 	 */
 	describe("trial abuse prevention", () => {
 		test("should check all subscriptions for trial history even when processing a specific incomplete subscription", async ({
@@ -2636,7 +2636,7 @@ describe("stripe subscription", () => {
 		expect(stripeMock.subscriptionSchedules.update).toHaveBeenCalledWith(
 			"sub_sched_mock",
 			expect.objectContaining({
-				metadata: { source: "@better-auth/stripe" },
+				metadata: { source: "@cinaauth/stripe" },
 				end_behavior: "release",
 				phases: expect.arrayContaining([
 					expect.objectContaining({
@@ -2739,7 +2739,7 @@ describe("stripe subscription", () => {
 					id: "sub_sched_existing",
 					subscription: "sub_with_schedule",
 					status: "active",
-					metadata: { source: "@better-auth/stripe" },
+					metadata: { source: "@cinaauth/stripe" },
 				},
 			],
 		});
@@ -2838,7 +2838,7 @@ describe("stripe subscription", () => {
 					id: "sub_schedule_old",
 					subscription: "sub_scheduled_then_upgrade",
 					status: "active",
-					metadata: { source: "@better-auth/stripe" },
+					metadata: { source: "@cinaauth/stripe" },
 				},
 			],
 		});
@@ -2927,7 +2927,7 @@ describe("stripe subscription", () => {
 			],
 		});
 
-		// Schedule created externally (no @better-auth/stripe metadata)
+		// Schedule created externally (no @cinaauth/stripe metadata)
 		stripeMock.subscriptionSchedules.list.mockResolvedValueOnce({
 			data: [
 				{

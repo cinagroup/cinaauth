@@ -1,6 +1,6 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { runWithEndpointContext } from "@better-auth/core/context";
-import { APIError } from "@better-auth/core/error";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { runWithEndpointContext } from "@cinaauth/core/context";
+import { APIError } from "@cinaauth/core/error";
 import { betterFetch } from "@better-fetch/fetch";
 import { OAuth2Server } from "oauth2-mock-server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -138,7 +138,7 @@ describe("oauth2", async () => {
 		);
 
 		const cookies = parseSetCookieHeader(setCookieHeader);
-		const stateCookie = cookies.get("better-auth.state");
+		const stateCookie = cookies.get("cinaauth.state");
 
 		expect(stateCookie?.["max-age"]).toBe(0);
 		expect(stateCookie?.path).toBe("/");
@@ -223,7 +223,7 @@ describe("oauth2", async () => {
 	 * caller's `callbackURL` intact. A raw interpolation truncates any value
 	 * containing `&` at the first ampersand.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/6086
+	 * @see https://github.com/cinagroup/cinaauth/issues/6086
 	 */
 	it("encodes callbackURL in the verify-email link for a new unverified OAuth user", async () => {
 		let capturedUrl = "";
@@ -282,7 +282,7 @@ describe("oauth2", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9375
+	 * @see https://github.com/cinagroup/cinaauth/issues/9375
 	 */
 	it("should resolve getAccessToken after first-time generic-oauth sign-in (storeAccountCookie + JWE)", async () => {
 		const { customFetchImpl, auth } = await getTestInstance({
@@ -367,7 +367,7 @@ describe("oauth2", async () => {
 			symmetricDecodeJWT(
 				accountDataCookie!.value!,
 				ctx.secret,
-				"better-auth-account",
+				"cinaauth-account",
 			),
 		).resolves.toMatchObject({
 			providerId: "test-store-account",
@@ -388,7 +388,7 @@ describe("oauth2", async () => {
 	 * `accessTokenExpiresIn` synthesizes the expiry so the existing refresh path
 	 * runs once the window passes.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/7703
+	 * @see https://github.com/cinagroup/cinaauth/issues/7703
 	 */
 	it("refreshes once the accessTokenExpiresIn window passes when the provider omits expires_in", async () => {
 		let refreshCount = 0;
@@ -556,7 +556,7 @@ describe("oauth2", async () => {
 	 * exchange. `accessTokenExpiresIn` must still apply to its result, or a
 	 * `getToken` provider that omits the expiry hits the same no-refresh bug.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/7703
+	 * @see https://github.com/cinagroup/cinaauth/issues/7703
 	 */
 	it("applies accessTokenExpiresIn to a custom getToken result", async () => {
 		let refreshCount = 0;
@@ -692,10 +692,10 @@ describe("oauth2", async () => {
 					);
 					headers.set(
 						"cookie",
-						`better-auth.state=${
-							parsedSetCookie.get("better-auth.state")?.value
-						}; better-auth.pk_code_verifier=${
-							parsedSetCookie.get("better-auth.pk_code_verifier")?.value
+						`cinaauth.state=${
+							parsedSetCookie.get("cinaauth.state")?.value
+						}; cinaauth.pk_code_verifier=${
+							parsedSetCookie.get("cinaauth.pk_code_verifier")?.value
 						}`,
 					);
 				},
@@ -1955,7 +1955,7 @@ describe("oauth2", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9124
+	 * @see https://github.com/cinagroup/cinaauth/issues/9124
 	 */
 	it("redirects with email_is_missing when both the provider and mapProfileToUser omit email", async () => {
 		server.service.once("beforeUserinfo", (userInfoResponse) => {
@@ -2074,7 +2074,7 @@ describe("oauth2", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8897
+	 * @see https://github.com/cinagroup/cinaauth/issues/8897
 	 */
 	it("should reject cookie-backed OAuth when callback state does not match the issued state", async () => {
 		const { customFetchImpl, cookieSetter } = await getTestInstance({
@@ -2135,7 +2135,7 @@ describe("oauth2", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/pull/4951
+	 * @see https://github.com/cinagroup/cinaauth/pull/4951
 	 */
 	it("should redirect to the error page when a GET callback arrives without state", async () => {
 		const res = await customFetchImpl(

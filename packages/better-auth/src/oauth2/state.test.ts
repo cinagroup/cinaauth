@@ -1,8 +1,8 @@
-import type { GenericEndpointContext } from "@better-auth/core";
+import type { GenericEndpointContext } from "@cinaauth/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9215
+ * @see https://github.com/cinagroup/cinaauth/issues/9215
  *
  * `parseState` forwards the specific `StateError` code raised while reading the
  * OAuth state, instead of collapsing every failure into a single opaque code.
@@ -99,7 +99,7 @@ describe("parseState error mapping", () => {
 	 * over the default error page, and the error parameter is appended with the
 	 * correct separator when that URL already carries a query string.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/5467
+	 * @see https://github.com/cinagroup/cinaauth/issues/5467
 	 */
 	it("prefers the recovered per-flow errorURL and appends with & when it has a query", async () => {
 		const { StateError } = await import("../state");

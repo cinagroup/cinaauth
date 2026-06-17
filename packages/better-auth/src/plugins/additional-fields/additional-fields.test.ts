@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { betterAuth } from "../../auth/full";
+import { CinaAuth } from "../../auth/full";
 import { createAuthClient } from "../../client";
 import { createAuthClient as createReactAuthClient } from "../../client/react";
 import { getTestInstance } from "../../test-utils/test-instance";
@@ -195,10 +195,10 @@ describe("additionalFields", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9770
+	 * @see https://github.com/cinagroup/cinaauth/issues/9770
 	 */
 	it("should infer session additional fields on updateSession", () => {
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			session: {
 				additionalFields: {
 					color: {
@@ -265,7 +265,7 @@ describe("additionalFields", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7982
+	 * @see https://github.com/cinagroup/cinaauth/issues/7982
 	 */
 	it("should infer additional fields on signIn response with manual schema", async () => {
 		const client = createReactAuthClient({

@@ -1,14 +1,14 @@
 import type {
-	BetterAuthPlugin,
+	CinaAuthPlugin,
 	GenericEndpointContext,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { getCurrentAuthContext } from "@better-auth/core/context";
-import { deprecate } from "@better-auth/core/utils/deprecate";
-import { isSafeUrlScheme } from "@better-auth/core/utils/url";
+} from "@cinaauth/core/api";
+import { getCurrentAuthContext } from "@cinaauth/core/context";
+import { deprecate } from "@cinaauth/core/utils/deprecate";
+import { isSafeUrlScheme } from "@cinaauth/core/utils/url";
 import { base64 } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
 import type { OpenAPIParameter } from "better-call";
@@ -39,8 +39,8 @@ import type {
 import { defaultClientSecretHasher } from "./utils";
 import { parsePrompt } from "./utils/prompt";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"oidc-provider": {
 			creator: typeof oidcProvider;
 		};
@@ -148,7 +148,7 @@ const registerOAuthApplicationBodySchema = z.object({
 	// This plugin is deprecated and removed in the next major. It gets only the
 	// non-breaking guard that rejects code-execution schemes (javascript:, data:,
 	// vbscript:). The stricter https-or-loopback policy lives in
-	// @better-auth/oauth-provider via SafeUrlSchema; migrating there is the path to
+	// @cinaauth/oauth-provider via SafeUrlSchema; migrating there is the path to
 	// full parity, so we do not tighten this plugin further.
 	redirect_uris: z
 		.array(
@@ -290,20 +290,20 @@ const DEFAULT_REFRESH_TOKEN_EXPIRES_IN = 604800;
 const warnOidcDeprecation = deprecate(
 	() => {},
 	'The "oidc-provider" plugin is deprecated and will be removed in the next major version. ' +
-		"Migrate to @better-auth/oauth-provider. " +
-		"See: https://www.better-auth.com/docs/plugins/oauth-provider",
+		"Migrate to @cinaauth/oauth-provider. " +
+		"See: https://www.cinagroup.com/docs/plugins/oauth-provider",
 );
 
 /**
- * OpenID Connect (OIDC) plugin for Better Auth. This plugin implements the
+ * OpenID Connect (OIDC) plugin for CinaAuth. This plugin implements the
  * authorization code flow and the token exchange flow. It also implements the
  * userinfo endpoint.
  *
- * @deprecated Use `@better-auth/oauth-provider` instead. This plugin will be removed in the next major version.
- * @see https://www.better-auth.com/docs/plugins/oauth-provider
+ * @deprecated Use `@cinaauth/oauth-provider` instead. This plugin will be removed in the next major version.
+ * @see https://www.cinagroup.com/docs/plugins/oauth-provider
  *
  * @param options - The options for the OIDC plugin.
- * @returns A Better Auth plugin.
+ * @returns A CinaAuth plugin.
  */
 export const oidcProvider = (options: OIDCOptions) => {
 	if (!options.__skipDeprecationWarning) {
@@ -881,8 +881,8 @@ export const oidcProvider = (options: OIDCOptions) => {
 					// and fall through to the `invalid_grant` error path.
 					//
 					// TODO(legacy-hardening-coordinate): in-flight follow-ups at
-					// https://github.com/better-auth/better-auth/security/advisories/GHSA-9h47-pqcx-hjr4
-					// and https://github.com/better-auth/better-auth/security/advisories/GHSA-pw9m-5jxm-xr6h
+					// https://github.com/cinagroup/cinaauth/security/advisories/GHSA-9h47-pqcx-hjr4
+					// and https://github.com/cinagroup/cinaauth/security/advisories/GHSA-pw9m-5jxm-xr6h
 					// touch this same surface. Whoever lands second must rebase
 					// to keep the atomic consume + `invalid_grant` semantics in
 					// place; do not regress to a `findVerificationValue` +
@@ -1320,7 +1320,7 @@ export const oidcProvider = (options: OIDCOptions) => {
 			 * **client:**
 			 * `authClient.oauth2.register`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/oidc-provider#api-method-oauth2-register)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/oidc-provider#api-method-oauth2-register)
 			 */
 			registerOAuthApplication: createAuthEndpoint(
 				"/oauth2/register",
@@ -1833,7 +1833,7 @@ export const oidcProvider = (options: OIDCOptions) => {
 							// FIXME(next): scope deletion to the session/token family
 							// represented by the validated id_token_hint (sid) instead of
 							// every access token for the user. The successor
-							// @better-auth/oauth-provider logout already deletes by sid.
+							// @cinaauth/oauth-provider logout already deletes by sid.
 							await ctx.context.adapter.deleteMany({
 								model: modelName.oauthAccessToken,
 								where: [{ field: "userId", value: userId }],
@@ -1874,6 +1874,6 @@ export const oidcProvider = (options: OIDCOptions) => {
 		get options() {
 			return opts;
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 export type * from "./types";

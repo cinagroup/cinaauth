@@ -10,7 +10,7 @@ import { createAuthClient } from "./solid";
 import { testClientPlugin } from "./test-plugin";
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8420
+ * @see https://github.com/cinagroup/cinaauth/issues/8420
  */
 describe("useAuthQuery - error handling", () => {
 	beforeEach(() => {
@@ -20,9 +20,9 @@ describe("useAuthQuery - error handling", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.restoreAllMocks();
-		delete (globalThis as any)[Symbol.for("better-auth:broadcast-channel")];
-		delete (globalThis as any)[Symbol.for("better-auth:focus-manager")];
-		delete (globalThis as any)[Symbol.for("better-auth:online-manager")];
+		delete (globalThis as any)[Symbol.for("cinaauth:broadcast-channel")];
+		delete (globalThis as any)[Symbol.for("cinaauth:focus-manager")];
+		delete (globalThis as any)[Symbol.for("cinaauth:online-manager")];
 	});
 
 	it("should preserve stale data on network error (fetch throws)", async () => {
@@ -143,7 +143,7 @@ describe("useAuthQuery - error handling", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9077
+	 * @see https://github.com/cinagroup/cinaauth/issues/9077
 	 */
 	it("should not refetch when atom re-mounts before the initial fetch resolves", async () => {
 		let fetchCount = 0;
@@ -179,7 +179,7 @@ describe("useAuthQuery - error handling", () => {
 
 	/**
 	 * Reproduces the actual storm mechanism from
-	 * https://github.com/better-auth/better-auth/issues/9077: multiple
+	 * https://github.com/cinagroup/cinaauth/issues/9077: multiple
 	 * `onMount` callbacks accumulate on the value atom (nanostores appends
 	 * MOUNT listeners) and all fire inside a single mount cycle, each
 	 * scheduling its own `setTimeout(0)`. Before the fix they all drained
@@ -312,7 +312,7 @@ describe("useAuthQuery - error handling", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9613
+	 * @see https://github.com/cinagroup/cinaauth/issues/9613
 	 */
 	it("should avoid an extra post-focus session fetch when the refreshed payload is unchanged", async () => {
 		let fetchCallCount = 0;

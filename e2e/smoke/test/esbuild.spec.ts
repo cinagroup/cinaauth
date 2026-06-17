@@ -1,4 +1,4 @@
-import assert from "node:assert";
+﻿import assert from "node:assert";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const fixturesDir = fileURLToPath(new URL("./fixtures", import.meta.url));
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/6213
+ * @see https://github.com/cinagroup/cinaauth/issues/6213
  */
 it("build client without zod runtime", async () => {
 	const esbuildDir = join(fixturesDir, "esbuild");

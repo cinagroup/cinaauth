@@ -1,4 +1,4 @@
-import * as http from "node:http";
+﻿import * as http from "node:http";
 import { expect, test } from "@playwright/test";
 import { setupServer } from "./utils";
 
@@ -45,7 +45,7 @@ function httpGet(
 
 test.describe("dynamic baseURL (HTTP)", () => {
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8447
+	 * @see https://github.com/cinagroup/cinaauth/issues/8447
 	 */
 	test("oauthProviderAuthServerMetadata resolves issuer from request host", async () => {
 		const { port, stop } = await setupServer(
@@ -82,7 +82,7 @@ test.describe("dynamic baseURL (HTTP)", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9105
+	 * @see https://github.com/cinagroup/cinaauth/issues/9105
 	 */
 	test("direct auth.api calls resolve baseURL from forwarded headers", async () => {
 		const { port, stop } = await setupServer({

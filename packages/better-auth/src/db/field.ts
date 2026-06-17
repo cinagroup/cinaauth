@@ -1,4 +1,4 @@
-import type { DBFieldAttribute, InferDBValueType } from "@better-auth/core/db";
+import type { DBFieldAttribute, InferDBValueType } from "@cinaauth/core/db";
 
 export type InferFieldsOutput<Fields extends Record<string, DBFieldAttribute>> =
 	Fields extends Record<infer Key, DBFieldAttribute>

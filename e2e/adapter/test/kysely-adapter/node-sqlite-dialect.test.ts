@@ -1,8 +1,8 @@
-import { DatabaseSync } from "node:sqlite";
-import { kyselyAdapter } from "@better-auth/kysely-adapter";
-import { NodeSqliteDialect } from "@better-auth/kysely-adapter/node-sqlite-dialect";
-import { testAdapter } from "@better-auth/test-utils/adapter";
-import { getMigrations } from "better-auth/db/migration";
+﻿import { DatabaseSync } from "node:sqlite";
+import { kyselyAdapter } from "@cinaauth/kysely-adapter";
+import { NodeSqliteDialect } from "@cinaauth/kysely-adapter/node-sqlite-dialect";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
+import { getMigrations } from "cinaauth/db/migration";
 import { Kysely } from "kysely";
 import {
 	authFlowTestSuite,
@@ -14,7 +14,7 @@ import {
 } from "../adapter-factory";
 
 let db = new DatabaseSync(":memory:");
-let betterAuthKysely = new Kysely({
+let CinaAuthKysely = new Kysely({
 	dialect: new NodeSqliteDialect({
 		database: db,
 	}),
@@ -22,21 +22,21 @@ let betterAuthKysely = new Kysely({
 
 const { execute } = await testAdapter({
 	adapter: () => {
-		return kyselyAdapter(betterAuthKysely, {
+		return kyselyAdapter(CinaAuthKysely, {
 			type: "sqlite",
 			debugLogs: { isRunningAdapterTests: true },
 		});
 	},
 	prefixTests: "node-sqlite",
-	async runMigrations(betterAuthOptions) {
-		await betterAuthKysely.destroy();
+	async runMigrations(CinaAuthOptions) {
+		await CinaAuthKysely.destroy();
 		db = new DatabaseSync(":memory:");
-		betterAuthKysely = new Kysely({
+		CinaAuthKysely = new Kysely({
 			dialect: new NodeSqliteDialect({
 				database: db,
 			}),
 		});
-		const opts = Object.assign(betterAuthOptions, { database: db });
+		const opts = Object.assign(CinaAuthOptions, { database: db });
 		const { runMigrations } = await getMigrations(opts);
 		await runMigrations();
 	},
@@ -49,7 +49,7 @@ const { execute } = await testAdapter({
 		uuidTestSuite(),
 	],
 	async onFinish() {
-		await betterAuthKysely.destroy();
+		await CinaAuthKysely.destroy();
 	},
 });
 

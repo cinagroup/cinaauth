@@ -1,4 +1,4 @@
----
+﻿---
 title: Single Sign-On (SSO)
 description: Integrate Single Sign-On (SSO) with your application.
 ---
@@ -18,7 +18,7 @@ Single Sign-On (SSO) allows users to authenticate with multiple applications usi
     ### Install the plugin
 
     ```package-install
-    @better-auth/sso
+    @cinaauth/sso
     ```
   </Step>
 
@@ -26,10 +26,10 @@ Single Sign-On (SSO) allows users to authenticate with multiple applications usi
     ### Add Plugin to the server
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { sso } from "@better-auth/sso"; // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { sso } from "@cinaauth/sso"; // [!code highlight]
 
-    const auth = betterAuth({
+    const auth = CinaAuth({
         plugins: [
             sso() // [!code highlight]
         ]
@@ -63,8 +63,8 @@ Single Sign-On (SSO) allows users to authenticate with multiple applications usi
     ### Add the client plugin
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { ssoClient } from "@better-auth/sso/client" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client"
+    import { ssoClient } from "@cinaauth/sso/client" // [!code highlight]
 
     const authClient = createAuthClient({
         plugins: [
@@ -88,7 +88,7 @@ A redirect URL will be automatically generated using the provider ID. For instan
 </Callout>
 
 <Callout type="info">
-  When you register an OIDC provider, Better Auth automatically fetches and validates the IdP's [OIDC discovery document](#oidc-discovery). Most endpoint fields are optional — see [OIDC Discovery](#oidc-discovery) for details on auto-discovered fields and possible registration errors.
+  When you register an OIDC provider, CinaAuth automatically fetches and validates the IdP's [OIDC discovery document](#oidc-discovery). Most endpoint fields are optional — see [OIDC Discovery](#oidc-discovery) for details on auto-discovered fields and possible registration errors.
 </Callout>
 
 #### Example
@@ -166,7 +166,7 @@ A redirect URL will be automatically generated using the provider ID. For instan
 
 ### OIDC Discovery
 
-Better Auth automatically fetches and validates the provider's [OpenID Connect Discovery Document](https://openid.net/specs/openid-connect-discovery-1_0.html) from:
+CinaAuth automatically fetches and validates the provider's [OpenID Connect Discovery Document](https://openid.net/specs/openid-connect-discovery-1_0.html) from:
 
 ```
 {issuer}/.well-known/openid-configuration
@@ -214,7 +214,7 @@ This allows most endpoint-related fields in `oidcConfig` to be **optional** — 
 
 #### Fields Automatically Discovered
 
-Better Auth fills in the following fields by reading the IdP's discovery document (if not explicitly provided):
+CinaAuth fills in the following fields by reading the IdP's discovery document (if not explicitly provided):
 
 * `authorizationEndpoint`
 * `tokenEndpoint`
@@ -289,10 +289,10 @@ See the [`trustedOrigins`](/docs/reference/security#trusted-origins) docs for mo
 
 #### Why Discovery Can Fail
 
-Better Auth validates that the IdP's metadata is correct and complete **before** allowing registration. This prevents subtle runtime failures during sign-in or token validation.
+CinaAuth validates that the IdP's metadata is correct and complete **before** allowing registration. This prevents subtle runtime failures during sign-in or token validation.
 
 <Callout type="info">
-  Better Auth does **not** support implicit-only OIDC flows.
+  CinaAuth does **not** support implicit-only OIDC flows.
   For this reason, `token_endpoint` and `jwks_uri` are required even though the OIDC spec allows implicit-only providers to omit `token_endpoint`.
 </Callout>
 
@@ -309,7 +309,7 @@ If the Identity Provider is misconfigured or unreachable, registration will fail
 | `discovery_invalid_url`         | The discovery URL is malformed or uses an unsupported protocol                                                                      |
 | `discovery_untrusted_origin`    | The discovery URL or one of the URLs discovered as part of this process was not trusted by your app's trusted origins configuration |
 | `discovery_invalid_json`        | The discovery response is empty or not valid JSON                                                                                   |
-| `unsupported_token_auth_method` | The IdP only supports token auth methods that Better Auth doesn't support                                                           |
+| `unsupported_token_auth_method` | The IdP only supports token auth methods that CinaAuth doesn't support                                                           |
 
 **Supported token auth methods:**
 
@@ -332,7 +332,7 @@ If the Identity Provider is misconfigured or unreachable, registration will fail
 
 #### Summary
 
-* Better Auth automatically performs OIDC discovery at registration time
+* CinaAuth automatically performs OIDC discovery at registration time
 * Most endpoint settings in `oidcConfig` become optional
 * Explicit user configuration always overrides discovery
 * Registration fails fast if the IdP is misconfigured
@@ -616,10 +616,10 @@ Note: If email is provided and loginHint is not specified, email will be sent as
 When a user is authenticated, if the user does not exist, the user will be provisioned using the `provisionUser` function. By default, `provisionUser` only runs when a new user is registered. If you want to run it on every login (e.g. to sync upstream identity provider profile changes), set `provisionUserOnEveryLogin` to `true`. If the organization provisioning is enabled and a provider is associated with an organization, the user will be added to the organization.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { sso } from "@better-auth/sso";
+import { CinaAuth } from "cinaauth";
+import { sso } from "@cinaauth/sso";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         sso({
             provisionUser: async (user) => {
@@ -653,10 +653,10 @@ User provisioning allows you to run custom logic when a user signs in through an
 * Updating user information from the SSO provider
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { sso } from "@better-auth/sso";
+import { CinaAuth } from "cinaauth";
+import { sso } from "@cinaauth/sso";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         sso({
             provisionUser: async ({ user, userInfo, token, provider }) => {
@@ -708,10 +708,10 @@ Organization provisioning automatically manages user memberships in organization
 #### Basic Organization Provisioning
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { sso } from "@better-auth/sso";
+import { CinaAuth } from "cinaauth";
+import { sso } from "@cinaauth/sso";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         sso({
             organizationProvisioning: {
@@ -726,10 +726,10 @@ const auth = betterAuth({
 #### Advanced Organization Provisioning with Custom Roles
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { sso } from "@better-auth/sso";
+import { CinaAuth } from "cinaauth";
+import { sso } from "@cinaauth/sso";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         sso({
             organizationProvisioning: {
@@ -790,12 +790,12 @@ Now when users from `acmecorp.com` sign in through this provider, they'll automa
 
 #### Self-Service SSO Dashboard
 
-If you're using [Better Auth Infrastructure](https://dash.better-auth.com/sign-in), you get access to a self-service SSO dashboard that simplifies onboarding enterprise customers. Instead of manually exchanging SAML metadata and certificates, organization admins can generate a shareable onboarding link that guides enterprise IT teams through configuring their identity provider.
+If you're using [CinaAuth Infrastructure](https://dash.cinagroup.com/sign-in), you get access to a self-service SSO dashboard that simplifies onboarding enterprise customers. Instead of manually exchanging SAML metadata and certificates, organization admins can generate a shareable onboarding link that guides enterprise IT teams through configuring their identity provider.
 
 The dashboard is available at:
 
 ```
-https://dash.better-auth.com/[project]/organization/[orgId]/enterprise
+https://dash.cinagroup.com/[project]/organization/[orgId]/enterprise
 ```
 
 From the dashboard you can:
@@ -905,10 +905,10 @@ organizationProvisioning: {
 ### Default SSO Provider
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { sso } from "@better-auth/sso";
+import { CinaAuth } from "cinaauth";
+import { sso } from "@cinaauth/sso";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         sso({
             defaultSSO: [
@@ -1017,10 +1017,10 @@ You can enable InResponseTo validation for SP-initiated SAML flows. When enabled
 For single-instance deployments, enable validation with the built-in in-memory store:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { sso } from "@better-auth/sso";
+import { CinaAuth } from "cinaauth";
+import { sso } from "@cinaauth/sso";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         sso({
             saml: {
@@ -1092,7 +1092,7 @@ According to the **SAML 2.0 Core specification**, `NotBefore` and `NotOnOrAfter`
 
 > "The Identity Provider MUST include a `<saml:Conditions>` element. Conditions restricting the period when the assertion is valid, the `@NotBefore` and `@NotOnOrAfter` MUST be included."
 
-Better Auth provides flexibility to support both:
+CinaAuth provides flexibility to support both:
 
 * **Default behavior**: Accepts assertions without timestamps (SAML 2.0 Core compliant) but logs a warning
 * **Strict mode**: Rejects assertions without timestamps (SAML2Int compliant)
@@ -1107,10 +1107,10 @@ For each SAML assertion:
 #### Configuration
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { sso } from "@better-auth/sso";
+import { CinaAuth } from "cinaauth";
+import { sso } from "@cinaauth/sso";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         sso({
             saml: {
@@ -1171,7 +1171,7 @@ sso({
 
 ### Algorithm Validation
 
-Better Auth validates SAML cryptographic algorithms and warns about deprecated ones (SHA-1, RSA 1.5, 3DES) by default.
+CinaAuth validates SAML cryptographic algorithms and warns about deprecated ones (SHA-1, RSA 1.5, 3DES) by default.
 
 ```ts title="auth.ts"
 sso({
@@ -1222,7 +1222,7 @@ sso({
 
 ### Size Limits
 
-Better Auth enforces size limits on SAML payloads to protect against denial-of-service attacks via oversized XML.
+CinaAuth enforces size limits on SAML payloads to protect against denial-of-service attacks via oversized XML.
 
 | Option            | Default | Description                         |
 | ----------------- | ------- | ----------------------------------- |
@@ -1249,10 +1249,10 @@ sso({
 By default, each OIDC provider gets its own callback URL (`/sso/callback/:providerId`). You can configure all providers to share a single redirect URI instead:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { sso } from "@better-auth/sso";
+import { CinaAuth } from "cinaauth";
+import { sso } from "@cinaauth/sso";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
         sso({
             redirectURI: "/sso/callback" // [!code highlight]
@@ -1274,7 +1274,7 @@ sso({ redirectURI: "https://login.example.com/callback" })
 The provider ID is stored in the OAuth state so the callback can identify which provider initiated the flow.
 
 <Callout type="info">
-  When using a full URL, make sure it routes to your Better Auth instance.
+  When using a full URL, make sure it routes to your CinaAuth instance.
 </Callout>
 
 <Callout type="info">
@@ -1309,10 +1309,10 @@ When a provider's domain is verified, it is also trusted for **automatic account
 
   <Tab value="server">
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
-    import { sso } from "@better-auth/sso";
+    import { CinaAuth } from "cinaauth";
+    import { sso } from "@cinaauth/sso";
 
-    const auth = betterAuth({
+    const auth = CinaAuth({
         plugins: [
             sso({ // [!code highlight]
                 domainVerification: { // [!code highlight]
@@ -1363,7 +1363,7 @@ To verify your ownership over a domain, follow these steps:
 
     To do this, you'll need to add a `TXT` record to your domain's DNS settings:
 
-    * **Host:** `_better-auth-token-{your-provider-id}` (**Note:** An underscore is automatically prepended to follow DNS infrastructure subdomain conventions. The `better-auth-token` part can be customized through the `domainVerification.tokenPrefix` option)
+    * **Host:** `_cinaauth-token-{your-provider-id}` (**Note:** An underscore is automatically prepended to follow DNS infrastructure subdomain conventions. The `cinaauth-token` part can be customized through the `domainVerification.tokenPrefix` option)
     * **Value:** The verification token you were given.
 
     **Save the record and wait for it to propagate.** This can take up to 48 hours, but it's usually much faster.
@@ -1426,7 +1426,7 @@ The SAML callback endpoint (`/api/auth/sso/saml2/callback/{providerId}`) handles
 * **SP-initiated**: User clicks "Sign in with SSO" in your app → redirects to IdP → IdP POSTs SAMLResponse to callback
 * **IdP-initiated**: User clicks app icon in IdP dashboard (Okta, Azure AD, etc.) → IdP POSTs SAMLResponse to callback
 
-**Important**: `callbackUrl` in your SAML configuration is used as the Assertion Consumer Service (ACS) URL. Set it to the SAML callback route for your provider (e.g., `https://yourapp.com/api/auth/sso/saml2/sp/acs/my-provider`). If omitted, Better Auth derives it automatically from your `baseURL` and `providerId`.
+**Important**: `callbackUrl` in your SAML configuration is used as the Assertion Consumer Service (ACS) URL. Set it to the SAML callback route for your provider (e.g., `https://yourapp.com/api/auth/sso/saml2/sp/acs/my-provider`). If omitted, CinaAuth derives it automatically from your `baseURL` and `providerId`.
 
 The post-login redirect destination is controlled by the `callbackURL` parameter in the client-side `signIn.sso()` call:
 
@@ -1512,13 +1512,13 @@ export const ssoProviderDomainVerificationFields = [
 
 ### IdP-Initiated SAML SSO
 
-Better Auth supports **IdP-initiated SSO flows**, where users access your application directly from their Identity Provider dashboard (e.g., Okta, Azure AD, OneLogin). This is common in enterprise environments where IT admins prefer centralized app access.
+CinaAuth supports **IdP-initiated SSO flows**, where users access your application directly from their Identity Provider dashboard (e.g., Okta, Azure AD, OneLogin). This is common in enterprise environments where IT admins prefer centralized app access.
 
 **How it works:**
 
 1. User clicks your app icon in the IdP dashboard
 2. IdP POSTs SAMLResponse to `/api/auth/sso/saml2/callback/{providerId}`
-3. Better Auth processes the assertion, creates a session, and redirects to your application
+3. CinaAuth processes the assertion, creates a session, and redirects to your application
 4. Browser follows the redirect with a GET request (handled automatically)
 
 **No additional configuration required** - the callback route automatically handles both GET and POST requests.
@@ -1528,11 +1528,11 @@ Better Auth supports **IdP-initiated SSO flows**, where users access your applic
 </Callout>
 
 <Callout type="info">
-  If you previously created a manual GET handler for the SAML callback route as a workaround, you can remove it after upgrading. Better Auth now handles GET requests automatically.
+  If you previously created a manual GET handler for the SAML callback route as a workaround, you can remove it after upgrading. CinaAuth now handles GET requests automatically.
 </Callout>
 
 <Callout type="info">
-  **Security:** Better Auth validates all redirect URLs to prevent open redirect attacks. Only relative paths (e.g., `/dashboard`) and URLs matching your configured `trustedOrigins` are allowed. Malicious URLs like `https://evil.com` or protocol-relative URLs (`//evil.com`) are automatically blocked.
+  **Security:** CinaAuth validates all redirect URLs to prevent open redirect attacks. Only relative paths (e.g., `/dashboard`) and URLs matching your configured `trustedOrigins` are allowed. Malicious URLs like `https://evil.com` or protocol-relative URLs (`//evil.com`) are automatically blocked.
 </Callout>
 
 For a detailed guide on setting up SAML SSO with examples for Okta and testing with DummyIDP, see our [SAML SSO with Okta](/docs/guides/saml-sso-with-okta).
@@ -1617,7 +1617,7 @@ export const ssoOptionsType = {
 				description: "Prefix used to generate the domain verification identifier. An underscore is automatically prepended.",
 				type: "string",
 				required: false,
-				default: "better-auth-token",
+				default: "cinaauth-token",
 			},
 		},
 	},

@@ -1,5 +1,5 @@
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-86j7-9j95-vpqj
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-86j7-9j95-vpqj
  */
 import { describe, expect, it } from "vitest";
 import { createAuthClient } from "../../client";

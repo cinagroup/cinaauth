@@ -1,4 +1,4 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import { describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 import { createAuthClient } from "../../client";
@@ -438,7 +438,7 @@ describe("Fetch Metadata CSRF Protection", async () => {
 
 		const setCookieHeader = signInResponse.headers.get("set-cookie");
 		const cookies = parseSetCookieHeader(setCookieHeader || "");
-		const sessionCookie = cookies.get("better-auth.session_token");
+		const sessionCookie = cookies.get("cinaauth.session_token");
 		if (!sessionCookie) {
 			throw new Error("Failed to get session cookie");
 		}
@@ -449,7 +449,7 @@ describe("Fetch Metadata CSRF Protection", async () => {
 				method: "POST",
 				headers: {
 					"content-type": "application/json",
-					cookie: `better-auth.session_token=${sessionCookie.value}`,
+					cookie: `cinaauth.session_token=${sessionCookie.value}`,
 					"Sec-Fetch-Site": "cross-site",
 					"Sec-Fetch-Mode": "navigate",
 					origin: "http://localhost:3000",
@@ -531,7 +531,7 @@ describe("Fetch Metadata CSRF Protection", async () => {
 				method: "POST",
 				headers: {
 					"content-type": "application/json",
-					cookie: "better-auth.session_token=expired_or_invalid_token",
+					cookie: "cinaauth.session_token=expired_or_invalid_token",
 					"Sec-Fetch-Site": "cross-site",
 					"Sec-Fetch-Mode": "navigate",
 					origin: "http://localhost:3000",
@@ -814,8 +814,8 @@ describe("trusted origins with baseURL inferred from request", async () => {
 		expect(res.error?.status).toBe(403);
 	});
 
-	it("should respect BETTER_AUTH_TRUSTED_ORIGINS env when baseURL is NOT in config", async () => {
-		vi.stubEnv("BETTER_AUTH_TRUSTED_ORIGINS", "http://env-frontend.com");
+	it("should respect CINAAUTH_TRUSTED_ORIGINS env when baseURL is NOT in config", async () => {
+		vi.stubEnv("CINAAUTH_TRUSTED_ORIGINS", "http://env-frontend.com");
 
 		try {
 			const { customFetchImpl, testUser } = await getTestInstance({
@@ -885,7 +885,7 @@ describe("trusted origins with baseURL inferred from request", async () => {
 	});
 
 	it("should support both config array and env var together when baseURL is inferred", async () => {
-		vi.stubEnv("BETTER_AUTH_TRUSTED_ORIGINS", "http://env-origin.com");
+		vi.stubEnv("CINAAUTH_TRUSTED_ORIGINS", "http://env-origin.com");
 
 		try {
 			const { customFetchImpl, testUser } = await getTestInstance({

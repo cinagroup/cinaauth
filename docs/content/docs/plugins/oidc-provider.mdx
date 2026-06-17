@@ -1,6 +1,6 @@
----
+﻿---
 title: OIDC Provider
-description: Open ID Connect plugin for Better Auth that allows you to have your own OIDC provider.
+description: Open ID Connect plugin for CinaAuth that allows you to have your own OIDC provider.
 ---
 
 <Callout type="warn">
@@ -22,7 +22,7 @@ The **OIDC Provider Plugin** enables you to build and manage your own OpenID Con
 * **UserInfo Endpoint**: Provide a UserInfo endpoint for clients to retrieve user details.
 
 <Callout type="warn">
-  This plugin is in active development and may not be suitable for production use. Please report any issues or bugs on [GitHub](https://github.com/better-auth/better-auth).
+  This plugin is in active development and may not be suitable for production use. Please report any issues or bugs on [GitHub](https://github.com/cinagroup/cinaauth).
 </Callout>
 
 ## Installation
@@ -34,10 +34,10 @@ The **OIDC Provider Plugin** enables you to build and manage your own OpenID Con
     Add the OIDC plugin to your auth config. See [Configuration Section](#configuration) on how to configure the plugin.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
-    import { oidcProvider } from "better-auth/plugins"; // [!code highlight]
+    import { CinaAuth } from "cinaauth";
+    import { oidcProvider } from "cinaauth/plugins"; // [!code highlight]
 
-    const auth = betterAuth({
+    const auth = CinaAuth({
         plugins: [
         oidcProvider({ // [!code highlight]
             loginPage: "/sign-in", // path to the login page // [!code highlight]
@@ -76,8 +76,8 @@ The **OIDC Provider Plugin** enables you to build and manage your own OpenID Con
     Add the OIDC client plugin to your auth client config.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client";
-    import { oidcClient } from "better-auth/client/plugins" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client";
+    import { oidcClient } from "cinaauth/client/plugins" // [!code highlight]
 
     const authClient = createAuthClient({
         plugins: [
@@ -184,10 +184,10 @@ Once the application is created, you will receive a `client_id` and `client_secr
 For first-party applications and internal services, you can configure trusted clients directly in your OIDC provider configuration. Trusted clients bypass database lookups for better performance and can optionally skip consent screens for improved user experience.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { oidcProvider } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { oidcProvider } from "cinaauth/plugins";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
       oidcProvider({
         loginPage: "/sign-in",
@@ -261,10 +261,10 @@ const userInfo = await response.json();
 The `getAdditionalUserInfoClaim` function receives the user object, requested scopes array, and the client, allowing you to conditionally include claims based on the scopes granted during authorization. These additional claims will be included in both the UserInfo endpoint response and the ID token.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { oidcProvider } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { oidcProvider } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         oidcProvider({
             loginPage: "/sign-in",
@@ -291,15 +291,15 @@ export const auth = betterAuth({
 
 ### Consent Screen
 
-When a user is redirected to the OIDC provider for authentication, they may be prompted to authorize the application to access their data. This is known as the consent screen. By default, Better Auth will display a sample consent screen. You can customize the consent screen by providing a `consentPage` option during initialization.
+When a user is redirected to the OIDC provider for authentication, they may be prompted to authorize the application to access their data. This is known as the consent screen. By default, CinaAuth will display a sample consent screen. You can customize the consent screen by providing a `consentPage` option during initialization.
 
 **Note**: Trusted clients with `skipConsent: true` will bypass the consent screen entirely, providing a seamless experience for first-party applications.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { oidcProvider } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { oidcProvider } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
       oidcProvider({
         consentPage: "/path/to/consent/page"
@@ -354,9 +354,9 @@ Both methods are fully supported. The URL parameter method works well with mobil
 When a user is redirected to the OIDC provider for authentication, if they are not already logged in, they will be redirected to the login page. You can customize the login page by providing a `loginPage` option during initialization.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
       oidcProvider({
         loginPage: "/sign-in"
@@ -374,10 +374,10 @@ You don't need to handle anything from your side; when a new session is created,
 Customize the OIDC metadata by providing a configuration object during initialization.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { oidcProvider } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { oidcProvider } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
       oidcProvider({
         metadata: {
@@ -398,11 +398,11 @@ The OIDC Provider plugin can integrate with the JWT plugin to provide asymmetric
 To make your plugin OIDC compliant, you **MUST** disable the `/token` endpoint, the OAuth equivalent is located at `/oauth2/token` instead.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { oidcProvider } from "better-auth/plugins";
-import { jwt } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { oidcProvider } from "cinaauth/plugins";
+import { jwt } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     disabledPaths: [
         "/token",
     ],
@@ -426,7 +426,7 @@ export const auth = betterAuth({
 If you want to allow clients to register dynamically, you can enable this feature by setting the `allowDynamicClientRegistration` option to `true`.
 
 ```ts title="auth.ts"
-const auth = betterAuth({
+const auth = CinaAuth({
     plugins: [
       oidcProvider({
         allowDynamicClientRegistration: true,

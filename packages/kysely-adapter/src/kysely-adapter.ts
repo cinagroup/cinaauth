@@ -1,4 +1,4 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import type {
 	AdapterFactoryCustomizeAdapterCreator,
 	AdapterFactoryOptions,
@@ -6,10 +6,10 @@ import type {
 	DBAdapterDebugLogOption,
 	JoinConfig,
 	Where,
-} from "@better-auth/core/db/adapter";
-import { createAdapterFactory } from "@better-auth/core/db/adapter";
-import { logger } from "@better-auth/core/env";
-import { capitalizeFirstLetter } from "@better-auth/core/utils/string";
+} from "@cinaauth/core/db/adapter";
+import { createAdapterFactory } from "@cinaauth/core/db/adapter";
+import { logger } from "@cinaauth/core/env";
+import { capitalizeFirstLetter } from "@cinaauth/core/utils/string";
 import type {
 	InsertQueryBuilder,
 	Kysely,
@@ -57,7 +57,7 @@ export const kyselyAdapter = (
 	db: Kysely<any>,
 	config?: KyselyAdapterConfig | undefined,
 ) => {
-	let lazyOptions: BetterAuthOptions | null = null;
+	let lazyOptions: CinaAuthOptions | null = null;
 	let mysqlNoIdWarned = false;
 	const createCustomAdapter = (
 		db: Kysely<any>,
@@ -82,7 +82,7 @@ export const kyselyAdapter = (
 					"[Kysely Adapter] MySQL does not support INSERT...RETURNING. " +
 						"With generateId set to false, the adapter uses best-effort fallback " +
 						"strategies (unique columns, full-field match) to retrieve inserted rows. " +
-						'For reliable behavior, use Better Auth\'s default ID generation, a custom generateId function, or generateId: "serial" for auto-increment.',
+						'For reliable behavior, use CinaAuth\'s default ID generation, a custom generateId function, or generateId: "serial" for auto-increment.',
 				);
 			}
 			const selectAllJoins = (join: JoinConfig | undefined) => {
@@ -176,7 +176,7 @@ export const kyselyAdapter = (
 							}
 						}
 
-						// 3. Unique column lookup via Better Auth schema
+						// 3. Unique column lookup via CinaAuth schema
 						const defaultModel = getDefaultModelName(model);
 						const modelSchema = schema[defaultModel]?.fields;
 						if (modelSchema) {
@@ -213,7 +213,7 @@ export const kyselyAdapter = (
 
 						logger.warn(
 							`[Kysely Adapter] Unable to safely identify the inserted "${model}" row on MySQL. ` +
-								'Enable Better Auth ID generation or use generateId: "serial" for reliable behavior.',
+								'Enable CinaAuth ID generation or use generateId: "serial" for reliable behavior.',
 						);
 						return null;
 					};
@@ -949,7 +949,7 @@ export const kyselyAdapter = (
 
 	const adapter = createAdapterFactory(adapterOptions);
 
-	return (options: BetterAuthOptions): DBAdapter<BetterAuthOptions> => {
+	return (options: CinaAuthOptions): DBAdapter<CinaAuthOptions> => {
 		lazyOptions = options;
 		return adapter(options);
 	};

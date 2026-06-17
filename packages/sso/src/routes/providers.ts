@@ -1,9 +1,9 @@
-import type { AuthContext } from "better-auth";
+import type { AuthContext } from "cinaauth";
 import {
 	APIError,
 	createAuthEndpoint,
 	sessionMiddleware,
-} from "better-auth/api";
+} from "cinaauth/api";
 import * as z from "zod";
 import { DEFAULT_MAX_SAML_METADATA_SIZE } from "../constants";
 import {

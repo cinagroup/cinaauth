@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -8,7 +8,7 @@ const Header = () => {
 			<Link href="/">
 				<div className="flex items-center gap-2">
 					<Logo />
-					<p className="select-none">BETTER-AUTH.</p>
+					<p className="select-none">CINAAUTH.</p>
 				</div>
 			</Link>
 

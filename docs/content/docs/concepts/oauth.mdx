@@ -1,9 +1,9 @@
----
+﻿---
 title: OAuth
 description: Learn how to configure social OAuth providers, sign in and link accounts, request scopes, pass additional data, refresh access tokens, map profiles, and customize provider options.
 ---
 
-Better Auth comes with built-in support for OAuth 2.0 and OpenID Connect. This allows you to authenticate users via popular OAuth providers like Google, Facebook, GitHub, and more.
+CinaAuth comes with built-in support for OAuth 2.0 and OpenID Connect. This allows you to authenticate users via popular OAuth providers like Google, Facebook, GitHub, and more.
 
 If your desired provider isn't directly supported, you can use the [Generic OAuth Plugin](/docs/plugins/generic-oauth) for custom integrations.
 
@@ -14,9 +14,9 @@ To enable a social provider, you need to provide `clientId` and `clientSecret` f
 Here's an example of how to configure Google as a provider:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -132,12 +132,12 @@ const requestAdditionalScopes = async () => {
 ```
 
 <Callout>
-  Make sure you're running Better Auth version 1.2.7 or later. Earlier versions (like 1.2.2) may show a "Social account already linked" error when trying to link with an existing provider for additional scopes.
+  Make sure you're running CinaAuth version 1.2.7 or later. Earlier versions (like 1.2.2) may show a "Social account already linked" error when trying to link with an existing provider for additional scopes.
 </Callout>
 
 ### Passing Additional Data Through OAuth Flow
 
-Better Auth allows you to pass additional data through the OAuth flow without storing it in the database. This is useful for scenarios like tracking referral codes, analytics sources, or other temporary data that should be processed during authentication but not persisted.
+CinaAuth allows you to pass additional data through the OAuth flow without storing it in the database. This is useful for scenarios like tracking referral codes, analytics sources, or other temporary data that should be processed during authentication but not persisted.
 
 When initiating OAuth sign-in or account linking, pass the additional data:
 
@@ -182,10 +182,10 @@ The additional data is available in your hooks during the OAuth callback through
 Example using an after hook:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { getOAuthState } from "better-auth/api";
+import { CinaAuth } from "cinaauth";
+import { getOAuthState } from "cinaauth/api";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   hooks: {
     after: [
@@ -271,7 +271,7 @@ Example using a database hook:
 
 ## Handling Providers Without Email
 
-Better Auth currently requires an email address on every user record. Most providers return one with the `email` scope, but several can legitimately omit it. When that happens the OAuth flow fails with `error=email_not_found` (or `error=email_is_missing` for the Generic OAuth plugin).
+CinaAuth currently requires an email address on every user record. Most providers return one with the `email` scope, but several can legitimately omit it. When that happens the OAuth flow fails with `error=email_not_found` (or `error=email_is_missing` for the Generic OAuth plugin).
 
 The table below summarises, for each affected provider, when `email` may be absent, which stable identifier you can use as a fallback in `mapProfileToUser`, and how much to trust the provider's `email_verified` signal.
 
@@ -283,16 +283,16 @@ The table below summarises, for each affected provider, when `email` may be abse
 | GitHub             | User has set email to private; GitHub App lacks the "Email addresses" permission                                                                                         | `profile.id` (numeric)                              | Reliable                                                                                                                                                            |
 | LinkedIn           | No confirmed email on the member; `email` scope not granted                                                                                                              | `profile.sub` (pairwise per app)                    | Reliable when present                                                                                                                                               |
 | Microsoft Entra ID | Managed users without a `mail` attribute, unless `email` is configured as an [optional claim](https://learn.microsoft.com/en-us/entra/identity-platform/optional-claims) | `profile.oid` plus `profile.tid` (or `profile.sub`) | **Untrustworthy**: Microsoft [explicitly warns](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference) never to use for authorization |
-| Roblox             | The default Roblox profile flow does not return an email; Better Auth currently falls back to `preferred_username`                                                       | `profile.sub` (Roblox user ID)                      | Unknown for the default profile flow                                                                                                                                |
+| Roblox             | The default Roblox profile flow does not return an email; CinaAuth currently falls back to `preferred_username`                                                       | `profile.sub` (Roblox user ID)                      | Unknown for the default profile flow                                                                                                                                |
 
 ### Synthesize a placeholder email with `mapProfileToUser`
 
 Fall back to the provider's stable ID when the `email` field is null or absent:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   socialProviders: {
     discord: {
       clientId: process.env.DISCORD_CLIENT_ID!,
@@ -330,7 +330,7 @@ export const auth = betterAuth({
 * **Microsoft Entra ID**: because `email` is tenant-mutable and never verified, use `profile.oid` (immutable, stable within the tenant) as the identity anchor; treat `email` as a profile attribute only. Microsoft's [claims validation guidance](https://learn.microsoft.com/en-us/entra/identity-platform/claims-validation) explicitly warns never to use `email`, `preferred_username`, or `unique_name` for authorization decisions.
 * **Facebook**: without a per-email verification flag, treat every Facebook email as unverified unless you run your own verification challenge.
 
-First-class support for emailless users, using the stable `(providerId, accountId)` pair as the identity key (in line with [OpenID Connect Core §5.7](https://openid.net/specs/openid-connect-core-1_0.html#ClaimStability)), is tracked in [#9124](https://github.com/better-auth/better-auth/issues/9124).
+First-class support for emailless users, using the stable `(providerId, accountId)` pair as the identity key (in line with [OpenID Connect Core §5.7](https://openid.net/specs/openid-connect-core-1_0.html#ClaimStability)), is tracked in [#9124](https://github.com/cinagroup/cinaauth/issues/9124).
 
 ## Provider Options
 
@@ -338,12 +338,12 @@ First-class support for emailless users, using the stable `(providerId, accountI
 
 The OAuth 2.0 Client ID issued by the provider.
 
-For providers that verify ID tokens by audience (Google, Apple, Microsoft Entra, Facebook, Cognito), you can pass an array to accept tokens issued for any of the configured clients. The first entry is used when Better Auth drives the authorization code flow; all entries are accepted when verifying an ID token's `aud` claim. This enables cross-platform sign-in (Web, iOS, Android) with a single backend configuration, where each platform's native SDK issues tokens under its own Client ID.
+For providers that verify ID tokens by audience (Google, Apple, Microsoft Entra, Facebook, Cognito), you can pass an array to accept tokens issued for any of the configured clients. The first entry is used when CinaAuth drives the authorization code flow; all entries are accepted when verifying an ID token's `aud` claim. This enables cross-platform sign-in (Web, iOS, Android) with a single backend configuration, where each platform's native SDK issues tokens under its own Client ID.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -365,9 +365,9 @@ All Client IDs must live in the same provider project so consent is shared. For 
 The scope of the access request. For example, `email` or `profile`.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -384,9 +384,9 @@ export const auth = betterAuth({
 Custom redirect URI for the provider. By default, it uses `/api/auth/callback/${providerName}`
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -421,9 +421,9 @@ A custom function to map the user profile returned from the provider to the user
 Useful, if you have additional fields in your user object you want to populate from the provider's profile. Or if you want to change how by default the user object is mapped.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -451,9 +451,9 @@ export const auth = betterAuth({
 A custom function to refresh the token. This feature is only supported for built-in social providers (Google, Facebook, GitHub, etc.) and is not currently supported for custom OAuth providers configured through the Generic OAuth Plugin. For built-in providers, you can provide a custom function to refresh the token if needed.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -475,9 +475,9 @@ export const auth = betterAuth({
 The client key of your application. This is used by TikTok Social Provider instead of `clientId`.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     tiktok: {
@@ -493,9 +493,9 @@ export const auth = betterAuth({
 A custom function to get user info from the provider. This allows you to override the default user info retrieval process.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -530,9 +530,9 @@ export const auth = betterAuth({
 Disables implicit sign up for new users. When set to true for the provider, sign-in needs to be called with `requestSignUp` as true to create new users.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -549,9 +549,9 @@ export const auth = betterAuth({
 The prompt to use for the authorization code request. This controls the authentication flow behavior.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -568,9 +568,9 @@ export const auth = betterAuth({
 The response mode to use for the authorization code request. This determines how the authorization response is returned.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {
@@ -587,9 +587,9 @@ export const auth = betterAuth({
 Removes the default scopes of the provider. By default, providers include certain scopes like `email` and `profile`. Set this to `true` to remove these default scopes and use only the scopes you specify.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // Other configurations...
   socialProviders: {
     google: {

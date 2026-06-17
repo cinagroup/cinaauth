@@ -1,6 +1,6 @@
----
+﻿---
 title: OAuth 2.1 Provider
-description: A Better Auth plugin that enables your auth server to serve as an OAuth 2.1 provider.
+description: A CinaAuth plugin that enables your auth server to serve as an OAuth 2.1 provider.
 ---
 
 An **OAuth 2.1 Provider Plugin** that allows you to turn your authentication server into an OAuth provider with OIDC compatibility allowing users and other services to authenticate with your API.
@@ -45,11 +45,11 @@ The plugin has a secured configuration by default providing ease to users unfami
     Add the OIDC plugin to your auth config. See [Configuration Section](#configuration) on how to configure the plugin.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
-    import { jwt } from "better-auth/plugins";
-    import { oauthProvider } from "@better-auth/oauth-provider"; // [!code highlight]
+    import { CinaAuth } from "cinaauth";
+    import { jwt } from "cinaauth/plugins";
+    import { oauthProvider } from "@cinaauth/oauth-provider"; // [!code highlight]
 
-    const auth = betterAuth({
+    const auth = CinaAuth({
       disabledPaths: [
         "/token",
       ],
@@ -90,7 +90,7 @@ The plugin has a secured configuration by default providing ease to users unfami
   <Step>
     ### Confirm `/.well-known` endpoints
 
-    Better Auth serves the OAuth Authorization Server metadata and OpenID Connect discovery metadata from the auth handler automatically. If your framework only forwards requests under a catch-all auth route, make sure the issuer metadata URLs reach `auth.handler`.
+    CinaAuth serves the OAuth Authorization Server metadata and OpenID Connect discovery metadata from the auth handler automatically. If your framework only forwards requests under a catch-all auth route, make sure the issuer metadata URLs reach `auth.handler`.
 
     * OAuth Authorization Server metadata is available at both `{issuer}/.well-known/oauth-authorization-server` and `/.well-known/oauth-authorization-server/[issuer-path]`.
     * OpenID Connect discovery metadata is available at `{issuer}/.well-known/openid-configuration` when you use the `openid` scope.
@@ -127,8 +127,8 @@ There exists two clients. You may wish to add one or both depending on your setu
 The OAuth Client is the connecting `oauthClient` such a mobile or web application.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
-import { oauthProviderClient } from "@better-auth/oauth-provider/client" // [!code highlight]
+import { createAuthClient } from "cinaauth/client";
+import { oauthProviderClient } from "@cinaauth/oauth-provider/client" // [!code highlight]
 
 export const authClient = createAuthClient({
   plugins: [
@@ -143,8 +143,8 @@ The Resource Server is a client that operates on your API server to perform acti
 
 ```ts title="server-client.ts"
 import { auth } from "@/lib/auth";
-import { createAuthClient } from "better-auth/client";
-import { oauthProviderResourceClient } from "@better-auth/oauth-provider/resource-client" // [!code highlight]
+import { createAuthClient } from "cinaauth/client";
+import { oauthProviderResourceClient } from "@cinaauth/oauth-provider/resource-client" // [!code highlight]
 
 export const serverClient = createAuthClient({
   plugins: [
@@ -409,7 +409,7 @@ After the client is created, you will receive a `client_id` and `client_secret` 
 
 #### Setup
 
-To enable client registration set `allowDynamicClientRegistration: true` in your BetterAuth config.
+To enable client registration set `allowDynamicClientRegistration: true` in your CinaAuth config.
 
 ```ts title="auth.ts"
 oauthProvider({
@@ -470,7 +470,7 @@ Clients should send a state value to mitigate cross-site request forgery (CSRF) 
 
 Generate a state value from your client and store on your client such as in a secure, HTTP-only cookie or database.
 
-The authorization server accepts requests without `state` for compatibility with OAuth and OpenID Connect, and echoes `state` back when it is provided. Better Auth's client helpers generate and validate `state` for you.
+The authorization server accepts requests without `state` for compatibility with OAuth and OpenID Connect, and echoes `state` back when it is provided. CinaAuth's client helpers generate and validate `state` for you.
 
 **Code Challenge**
 
@@ -622,14 +622,14 @@ Provides [OpenID Connect discovery metadata](https://openid.net/specs/openid-con
 
 This endpoint requires the scope `openid`.
 
-The OAuth Provider plugin serves this endpoint automatically from the Better Auth handler. If you do not set a custom issuer, the issuer path is your basePath, such as `/api/auth`.
+The OAuth Provider plugin serves this endpoint automatically from the CinaAuth handler. If you do not set a custom issuer, the issuer path is your basePath, such as `/api/auth`.
 
 For issuers with paths, OpenID Connect uses path appending. For example, issuer `https://example.com/api/auth` uses `/api/auth/.well-known/openid-configuration`.
 
 If your framework route does not forward this URL to `auth.handler`, add a route at the issuer path:
 
 ```ts title="[issuer-path]/.well-known/openid-configuration/route.ts"
-import { oauthProviderOpenIdConfigMetadata } from "@better-auth/oauth-provider";
+import { oauthProviderOpenIdConfigMetadata } from "@cinaauth/oauth-provider";
 import { auth } from "@/lib/auth";
 
 export const GET = oauthProviderOpenIdConfigMetadata(auth);
@@ -643,7 +643,7 @@ export const GET = oauthProviderOpenIdConfigMetadata(auth);
 
 Provides [RFC 8414](https://datatracker.ietf.org/doc/html/rfc8414)-compliant metadata for the authorization server.
 
-The OAuth Provider plugin serves both path-prefixed issuer aliases automatically from the Better Auth handler:
+The OAuth Provider plugin serves both path-prefixed issuer aliases automatically from the CinaAuth handler:
 
 * `{issuer}/.well-known/oauth-authorization-server`
 * `/.well-known/oauth-authorization-server/[issuer-path]`
@@ -653,7 +653,7 @@ For example, issuer `https://example.com/api/auth` can use `/api/auth/.well-know
 If your framework route does not forward one of these URLs to `auth.handler`, add a route and call the helper:
 
 ```ts title="/.well-known/oauth-authorization-server/[issuer-path]/route.ts"
-import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
+import { oauthProviderAuthServerMetadata } from "@cinaauth/oauth-provider";
 import { auth } from "@/lib/auth";
 
 export const GET = oauthProviderAuthServerMetadata(auth);
@@ -669,12 +669,12 @@ This section shows how your API should verify tokens received from your clients.
 
 ### Verification
 
-Verification can be performed using `verifyAccessToken` available through the `oauthProviderResourceClient` plugin or `better-auth/oauth2` package.
+Verification can be performed using `verifyAccessToken` available through the `oauthProviderResourceClient` plugin or `cinaauth/oauth2` package.
 
-With `better-auth` package:
+With `cinaauth` package:
 
 ```ts title="api/[endpoint].ts"
-import { verifyAccessToken } from "better-auth/oauth2";
+import { verifyAccessToken } from "cinaauth/oauth2";
 
 export const GET = async (req: Request) => {
   const authorization = req.headers?.get("authorization") ?? undefined;
@@ -1253,7 +1253,7 @@ The OAuth Provider includes built-in rate limiting for all OAuth endpoints to pr
 </Callout>
 
 <Callout type="warn">
-  These rate limits only apply when Better Auth's global rate limiting is enabled. By default, rate limiting is only enabled in production. See [Rate Limiting](/docs/concepts/rate-limit) for global configuration.
+  These rate limits only apply when CinaAuth's global rate limiting is enabled. By default, rate limiting is only enabled in production. See [Rate Limiting](/docs/concepts/rate-limit) for global configuration.
 </Callout>
 
 **Default limits:**
@@ -1293,7 +1293,7 @@ oauthProvider({
 ```
 
 <Callout type="info">
-  Setting an endpoint to `false` removes the OAuth Provider's stricter per-endpoint limit. The endpoint will still be subject to Better Auth's global rate limiting if enabled.
+  Setting an endpoint to `false` removes the OAuth Provider's stricter per-endpoint limit. The endpoint will still be subject to CinaAuth's global rate limiting if enabled.
 </Callout>
 
 ### Refresh Token Customization
@@ -1328,15 +1328,15 @@ oauthProvider({
 Pseudocode for a token encryption method:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { CompactEncrypt, compactDecrypt } from 'jose'
-import { oauthProvider } from "@better-auth/oauth-provider"; 
+import { oauthProvider } from "@cinaauth/oauth-provider"; 
 
 const secret = "SOME_SECRET_OR_KEY"
 const alg = "A256KW"
 const enc = "A256GCM"
 
-const auth = betterAuth({
+const auth = CinaAuth({
   plugins: [
     oauthProvider({
     formatRefreshToken: {
@@ -1484,8 +1484,8 @@ You can easily make your APIs [MCP-compatible](https://modelcontextprotocol.io/s
 
     ```ts title="server-client.ts"
     import { auth } from "@/lib/auth";
-    import { createAuthClient } from "better-auth/client";
-    import { oauthProviderResourceClient } from "@better-auth/oauth-provider/resource-client"
+    import { createAuthClient } from "cinaauth/client";
+    import { oauthProviderResourceClient } from "@cinaauth/oauth-provider/resource-client"
 
     export const serverClient = createAuthClient({
       plugins: [oauthProviderResourceClient(auth)], // auth optional
@@ -1570,7 +1570,7 @@ You can easily make your APIs [MCP-compatible](https://modelcontextprotocol.io/s
 
     ```ts title="api/[transport]/route.ts"
     import { createMcpHandler } from "mcp-handler";
-    import { mcpHandler } from "@better-auth/oauth-provider";
+    import { mcpHandler } from "@cinaauth/oauth-provider";
     import { z } from "zod";
 
     const handler = mcpHandler({
@@ -1606,7 +1606,7 @@ You can easily make your APIs [MCP-compatible](https://modelcontextprotocol.io/s
           );
         }, {
           serverInfo: {
-            name: "demo-better-auth",
+            name: "demo-cinaauth",
             version: "1.0.0",
           }
         }, {
@@ -2077,8 +2077,8 @@ Previously `oauthApplication`
   The following function will convert a `plain` representation into the default hash:
 
 ```ts
-import { createHash } from "@better-auth/utils/hash";
-import { base64Url } from "@better-auth/utils/base64";
+import { createHash } from "@cinaauth/utils/hash";
+import { base64Url } from "@cinaauth/utils/base64";
 
 const defaultHasher = async (value: string) => {
 	const hash = await createHash("SHA-256").digest(

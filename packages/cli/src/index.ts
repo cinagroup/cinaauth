@@ -21,7 +21,7 @@ process.on("SIGTERM", () => process.exit(0));
 export let cliVersion = "1.1.2";
 
 async function main() {
-	const program = new Command("better-auth");
+	const program = new Command("cinaauth");
 
 	let packageInfo: Record<string, any> = {};
 	try {
@@ -42,13 +42,13 @@ async function main() {
 		.addCommand(mcp)
 		.addCommand(upgrade)
 		.version(cliVersion)
-		.description("Better Auth CLI")
+		.description("CinaAuth CLI")
 		.action(() => program.help());
 
 	program.parse();
 }
 
 main().catch((error) => {
-	console.error("Error running Better Auth CLI:", error);
+	console.error("Error running CinaAuth CLI:", error);
 	process.exit(1);
 });

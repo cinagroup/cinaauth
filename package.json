@@ -1,11 +1,11 @@
 {
-  "name": "@better-auth/root",
+  "name": "@cinaauth/root",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.1.1",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git"
+    "url": "git+https://github.com/cinagroup/cinaauth.git"
   },
   "scripts": {
     "prepare": "lefthook install --reset-hooks-path",

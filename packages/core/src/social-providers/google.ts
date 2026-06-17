@@ -1,7 +1,7 @@
 import { betterFetch } from "@better-fetch/fetch";
 import { decodeJwt, decodeProtectedHeader, importJWK, jwtVerify } from "jose";
 import { logger } from "../env";
-import { APIError, BetterAuthError } from "../error";
+import { APIError, CinaAuthError } from "../error";
 import type { OAuthProvider, ProviderOptions } from "../oauth2";
 import {
 	createAuthorizationURL,
@@ -74,10 +74,10 @@ export const google = (options: GoogleOptions) => {
 				logger.error(
 					"Client Id and Client Secret is required for Google. Make sure to provide them in the options.",
 				);
-				throw new BetterAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
+				throw new CinaAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
 			}
 			if (!codeVerifier) {
-				throw new BetterAuthError("codeVerifier is required for Google");
+				throw new CinaAuthError("codeVerifier is required for Google");
 			}
 			const _scopes = options.disableDefaultScope
 				? []

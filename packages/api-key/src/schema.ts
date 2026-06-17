@@ -1,5 +1,5 @@
-import type { BetterAuthPluginDBSchema } from "@better-auth/core/db";
-import { parseJSON } from "better-auth/client";
+import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
+import { parseJSON } from "cinaauth/client";
 
 export const apiKeySchema = ({
 	defaultRateLimitMax,
@@ -201,4 +201,4 @@ export const apiKeySchema = ({
 				},
 			},
 		},
-	}) satisfies BetterAuthPluginDBSchema;
+	}) satisfies CinaAuthPluginDBSchema;

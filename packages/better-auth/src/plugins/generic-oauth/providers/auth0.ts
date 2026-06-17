@@ -13,9 +13,9 @@ export interface Auth0Options extends BaseOAuthProviderOptions {
  *
  * @example
  * ```ts
- * import { genericOAuth, auth0 } from "better-auth/plugins/generic-oauth";
+ * import { genericOAuth, auth0 } from "cinaauth/plugins/generic-oauth";
  *
- * export const auth = betterAuth({
+ * export const auth = CinaAuth({
  *   plugins: [
  *     genericOAuth({
  *       config: [

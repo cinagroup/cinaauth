@@ -1,6 +1,6 @@
-import type { BetterAuthClientOptions } from "@better-auth/core";
-import type { BASE_ERROR_CODES } from "@better-auth/core/error";
-import { capitalizeFirstLetter } from "@better-auth/core/utils/string";
+import type { CinaAuthClientOptions } from "@cinaauth/core";
+import type { BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { capitalizeFirstLetter } from "@cinaauth/core/utils/string";
 import type {
 	BetterFetchError,
 	BetterFetchResponse,
@@ -21,7 +21,7 @@ function getAtomKey(str: string) {
 	return `use${capitalizeFirstLetter(str)}`;
 }
 
-type InferResolvedHooks<O extends BetterAuthClientOptions> = O extends {
+type InferResolvedHooks<O extends CinaAuthClientOptions> = O extends {
 	plugins: Array<infer Plugin>;
 }
 	? UnionToIntersection<
@@ -44,7 +44,7 @@ type InferResolvedHooks<O extends BetterAuthClientOptions> = O extends {
 	: {};
 
 type ClientConfig = ReturnType<typeof getClientConfig>;
-type ClientSession<Option extends BetterAuthClientOptions> =
+type ClientSession<Option extends CinaAuthClientOptions> =
 	InferClientAPI<Option> extends {
 		getSession: () => Promise<infer Res>;
 	}
@@ -56,7 +56,7 @@ type ClientSession<Option extends BetterAuthClientOptions> =
 /**
  * Lynx client returned by `createAuthClient`.
  */
-export type LynxAuthClient<Option extends BetterAuthClientOptions> =
+export type LynxAuthClient<Option extends CinaAuthClientOptions> =
 	UnionToIntersection<InferResolvedHooks<Option>> &
 		InferClientAPI<Option> &
 		InferActions<Option> & {
@@ -78,7 +78,7 @@ export type LynxAuthClient<Option extends BetterAuthClientOptions> =
 			>;
 		};
 
-export function createAuthClient<Option extends BetterAuthClientOptions>(
+export function createAuthClient<Option extends CinaAuthClientOptions>(
 	options?: Option | undefined,
 ): LynxAuthClient<Option> {
 	const {

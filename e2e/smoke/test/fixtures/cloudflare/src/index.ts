@@ -1,7 +1,7 @@
-import { sso } from "@better-auth/sso";
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { jwt } from "better-auth/plugins/jwt";
+﻿import { sso } from "@cinaauth/sso";
+import { CinaAuth } from "cinaauth";
+import { drizzleAdapter } from "cinaauth/adapters/drizzle";
+import { jwt } from "cinaauth/plugins/jwt";
 import { Hono } from "hono";
 import { createDrizzle } from "./db";
 
@@ -10,7 +10,7 @@ interface CloudflareBindings {
 }
 
 const createAuth = (env: CloudflareBindings) =>
-	betterAuth({
+	CinaAuth({
 		baseURL: "http://localhost:4000",
 		database: drizzleAdapter(createDrizzle(env.DB), { provider: "sqlite" }),
 		emailAndPassword: {

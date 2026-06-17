@@ -1,4 +1,4 @@
-import type { BetterAuthPluginDBSchema } from "@better-auth/core/db";
+import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
 
 export const schema = {
 	passkey: {
@@ -51,4 +51,4 @@ export const schema = {
 			},
 		},
 	},
-} satisfies BetterAuthPluginDBSchema;
+} satisfies CinaAuthPluginDBSchema;

@@ -1,9 +1,9 @@
-import type { AuthContext, BetterAuthOptions } from "@better-auth/core";
+import type { AuthContext, CinaAuthOptions } from "@cinaauth/core";
 import type {
 	DBFieldAttribute,
 	DBFieldAttributeConfig,
 	DBFieldType,
-} from "@better-auth/core/db";
+} from "@cinaauth/core/db";
 import type {
 	OpenAPIParameter as BetterCallOpenAPIParameter,
 	Endpoint,
@@ -728,7 +728,7 @@ function cloneOpenAPIValue<T>(value: T): T {
 	return value;
 }
 
-export async function generator(ctx: AuthContext, options: BetterAuthOptions) {
+export async function generator(ctx: AuthContext, options: CinaAuthOptions) {
 	const baseEndpoints = getEndpoints(ctx, {
 		...options,
 		plugins: [],
@@ -953,8 +953,8 @@ export async function generator(ctx: AuthContext, options: BetterAuthOptions) {
 	const res = {
 		openapi: "3.1.1",
 		info: {
-			title: "Better Auth",
-			description: "API Reference for your Better Auth Instance",
+			title: "CinaAuth",
+			description: "API Reference for your CinaAuth Instance",
 			version: "1.1.0",
 		},
 		components: {
@@ -988,7 +988,7 @@ export async function generator(ctx: AuthContext, options: BetterAuthOptions) {
 			{
 				name: "Default",
 				description:
-					"Default endpoints that are included with Better Auth by default. These endpoints are not part of any plugin.",
+					"Default endpoints that are included with CinaAuth by default. These endpoints are not part of any plugin.",
 			},
 		],
 		paths,

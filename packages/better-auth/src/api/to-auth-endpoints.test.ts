@@ -1,8 +1,8 @@
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { APIError } from "@better-auth/core/error";
+} from "@cinaauth/core/api";
+import { APIError } from "@cinaauth/core/error";
 import { kAPIErrorHeaderSymbol } from "better-call";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
@@ -938,7 +938,7 @@ describe("debug mode stack trace", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9105
+ * @see https://github.com/cinagroup/cinaauth/issues/9105
  */
 describe("dynamic baseURL resolution", () => {
 	const endpoints = {
@@ -1231,7 +1231,7 @@ describe("custom response code", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8576
+ * @see https://github.com/cinagroup/cinaauth/issues/8576
  */
 describe("response headers on APIError", async () => {
 	const endpoints = {
@@ -1333,7 +1333,7 @@ describe("response headers on APIError", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9887
+ * @see https://github.com/cinagroup/cinaauth/issues/9887
  *
  * Configured hooks run once per dispatch boundary (the HTTP router or an
  * `auth.api.*` call), not once per endpoint invocation. Internal

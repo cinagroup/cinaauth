@@ -1,19 +1,19 @@
----
+﻿---
 title: Audit Logs
 description: Track and query authentication events across your application with automatic audit logging.
 ---
 
-Better Auth Infrastructure automatically collects audit logs for authentication events in your application. Once you've added the `dash()` plugin, events are tracked without any additional configuration.
+CinaAuth Infrastructure automatically collects audit logs for authentication events in your application. Once you've added the `dash()` plugin, events are tracked without any additional configuration.
 
 ## How Audit Logs Are Collected
 
-The `dash()` plugin hooks into your Better Auth instance and automatically records events as they happen. No manual instrumentation is needed — sign-ups, sign-ins, password changes, and more are all captured.
+The `dash()` plugin hooks into your CinaAuth instance and automatically records events as they happen. No manual instrumentation is needed — sign-ups, sign-ins, password changes, and more are all captured.
 
 ```ts
-import { betterAuth } from "better-auth";
-import { dash } from "@better-auth/infra";
+import { CinaAuth } from "cinaauth";
+import { dash } from "@cinaauth/infra";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     dash(),
   ],
@@ -112,8 +112,8 @@ That's it. Once `dash()` is active, audit logs are collected automatically.
 Add `dashClient()` to your auth client:
 
 ```ts
-import { createAuthClient } from "better-auth/client";
-import { dashClient } from "@better-auth/infra/client";
+import { createAuthClient } from "cinaauth/client";
+import { dashClient } from "@cinaauth/infra/client";
 
 export const authClient = createAuthClient({
   plugins: [dashClient()],

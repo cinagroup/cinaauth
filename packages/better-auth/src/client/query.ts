@@ -1,4 +1,4 @@
-import type { ClientFetchOption } from "@better-auth/core";
+import type { ClientFetchOption } from "@cinaauth/core";
 import type { BetterFetch, BetterFetchError } from "@better-fetch/fetch";
 import type { PreinitializedWritableAtom } from "nanostores";
 import { atom, onMount } from "nanostores";
@@ -160,7 +160,7 @@ export const useAuthQuery = <T>(
 				onMount(value, () => {
 					const timeoutId = setTimeout(async () => {
 						if (!isInitialized) {
-							// Must set to `true` immediately; see https://github.com/better-auth/better-auth/issues/9077
+							// Must set to `true` immediately; see https://github.com/cinagroup/cinaauth/issues/9077
 							isInitialized = true;
 							await fn();
 						}

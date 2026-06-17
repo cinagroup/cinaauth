@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { multiSession } from ".";
 import { MULTI_SESSION_ERROR_CODES } from "./error-codes";
@@ -19,7 +19,7 @@ export const multiSessionClient = () => {
 			},
 		],
 		$ERROR_CODES: MULTI_SESSION_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export type { MultiSessionConfig } from "./index";

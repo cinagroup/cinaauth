@@ -1,17 +1,17 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="public/branding/svg/better-auth-wordmark-light.svg" />
+﻿<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/branding/svg/cinaauth-wordmark-light.svg" />
 
-  <source media="(prefers-color-scheme: light)" srcset="public/branding/svg/better-auth-wordmark-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="public/branding/svg/cinaauth-wordmark-dark.svg" />
 
-  <img alt="Better Auth" src="public/branding/svg/better-auth-wordmark-dark.svg" width="280" />
+  <img alt="CinaAuth" src="public/branding/svg/cinaauth-wordmark-dark.svg" width="280" />
 </picture>
 
 ### Website & Docs
 
-The main website and documentation for [better-auth.com](https://better-auth.com)
+The main website and documentation for [cinagroup.com](https://cinagroup.com)
 
-[![Website](https://img.shields.io/badge/better--auth.com-000?style=flat\&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNDUiIHZpZXdCb3g9IjAgMCA2MCA0NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgMEgxNVYxNUgzMFYzMEgxNVY0NUgwVjMwVjE1VjBaTTQ1IDMwVjE1SDMwVjBINDVINjBWMTVWMzBWNDVINDVIMzBWMzBINDVaIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==\&logoColor=white)](https://better-auth.com)
-[![GitHub Stars](https://img.shields.io/github/stars/better-auth/better-auth?style=flat\&logo=github\&label=stars\&color=24292e)](https://github.com/better-auth/better-auth)
+[![Website](https://img.shields.io/badge/better--auth.com-000?style=flat\&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNDUiIHZpZXdCb3g9IjAgMCA2MCA0NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgMEgxNVYxNUgzMFYzMEgxNVY0NUgwVjMwVjE1VjBaTTQ1IDMwVjE1SDMwVjBINDVINjBWMTVWMzBWNDVINDVIMzBWMzBINDVaIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==\&logoColor=white)](https://cinagroup.com)
+[![GitHub Stars](https://img.shields.io/github/stars/cinaauth/cinaauth?style=flat\&logo=github\&label=stars\&color=24292e)](https://github.com/cinagroup/cinaauth)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 
 ***

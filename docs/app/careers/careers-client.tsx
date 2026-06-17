@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { motion } from "framer-motion";
 import Footer from "@/components/landing/footer";
@@ -56,10 +56,10 @@ function CareersHero({ openRoles }: { openRoles: number }) {
 				{/* Contact link */}
 				<div className="flex items-center gap-3 pt-1">
 					<a
-						href="mailto:careers@better-auth.com"
+						href="mailto:careers@cinagroup.com"
 						className="inline-flex items-center gap-1.5 text-xs text-foreground/40 hover:text-foreground/70 font-mono tracking-wider transition-colors"
 					>
-						careers@better-auth.com
+						careers@cinagroup.com
 						<svg
 							className="h-2.5 w-2.5 opacity-50"
 							viewBox="0 0 10 10"
@@ -183,10 +183,10 @@ function EmptyState() {
 			<p className="mt-2 text-xs text-foreground/45 leading-relaxed">
 				We are still happy to hear from you. Reach out at{" "}
 				<a
-					href="mailto:careers@better-auth.com"
+					href="mailto:careers@cinagroup.com"
 					className="underline decoration-foreground/30 underline-offset-2 hover:text-foreground/70 transition-colors"
 				>
-					careers@better-auth.com
+					careers@cinagroup.com
 				</a>
 				.
 			</p>
@@ -244,7 +244,7 @@ export function CareersPageClient({ roles }: { roles: Role[] }) {
 								<span className="flex-1 h-px bg-foreground/15" />
 							</h2>
 
-							{/* Section: Why Better Auth */}
+							{/* Section: Why CinaAuth */}
 							<motion.div
 								initial={{ opacity: 0, y: 6 }}
 								animate={{ opacity: 1, y: 0 }}
@@ -252,7 +252,7 @@ export function CareersPageClient({ roles }: { roles: Role[] }) {
 								className="space-y-5 max-w-2xl"
 							>
 								<p className="text-md text-foreground/60 leading-relaxed">
-									Better Auth is built with the idea of{" "}
+									CinaAuth is built with the idea of{" "}
 									<span className="text-foreground/80">
 										democratizing access to high quality software
 									</span>

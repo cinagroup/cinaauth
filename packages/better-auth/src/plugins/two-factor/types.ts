@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin, LiteralString } from "@better-auth/core";
+import type { CinaAuthPlugin, LiteralString } from "@cinaauth/core";
 import type { InferOptionSchema, User } from "../../types";
 import type { BackupCodeOptions } from "./backup-codes";
 import type { OTPOptions } from "./otp";
@@ -73,7 +73,7 @@ export interface UserWithTwoFactor extends User {
 export interface TwoFactorProvider {
 	id: LiteralString;
 	version?: string | undefined;
-	endpoints?: BetterAuthPlugin["endpoints"] | undefined;
+	endpoints?: CinaAuthPlugin["endpoints"] | undefined;
 }
 
 export interface TwoFactorTable {

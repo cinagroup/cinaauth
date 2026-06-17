@@ -1,5 +1,5 @@
 import { betterFetch } from "@better-fetch/fetch";
-import { BetterAuthError } from "../error";
+import { CinaAuthError } from "../error";
 import type { OAuthProvider, ProviderOptions } from "../oauth2";
 import { createAuthorizationURL, validateAuthorizationCode } from "../oauth2";
 
@@ -22,7 +22,7 @@ export const vercel = (options: VercelOptions) => {
 		name: "Vercel",
 		createAuthorizationURL({ state, scopes, codeVerifier, redirectURI }) {
 			if (!codeVerifier) {
-				throw new BetterAuthError("codeVerifier is required for Vercel");
+				throw new CinaAuthError("codeVerifier is required for Vercel");
 			}
 
 			let _scopes: string[] | undefined = undefined;

@@ -1,5 +1,5 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
-import { parseCookies } from "better-auth/cookies";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
+import { parseCookies } from "cinaauth/cookies";
 import type { electron } from "./index";
 import type { ElectronProxyClientOptions } from "./types/client";
 import { parseProtocolScheme } from "./utils";
@@ -8,7 +8,7 @@ import { PACKAGE_VERSION } from "./version";
 export const electronProxyClient = (options: ElectronProxyClientOptions) => {
 	const opts = {
 		clientID: "electron",
-		cookiePrefix: "better-auth",
+		cookiePrefix: "cinaauth",
 		callbackPath: "/auth/callback",
 		...options,
 	};
@@ -88,5 +88,5 @@ export const electronProxyClient = (options: ElectronProxyClientOptions) => {
 			"/electron/transfer-user": "POST",
 		},
 		$InferServerPlugin: {} as ReturnType<typeof electron>,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

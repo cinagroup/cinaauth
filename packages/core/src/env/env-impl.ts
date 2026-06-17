@@ -93,20 +93,20 @@ export function getBooleanEnvVar(key: string, fallback = true): boolean {
 }
 
 /**
- * Common environment variables used in Better Auth
+ * Common environment variables used in CinaAuth
  */
 export const ENV = Object.freeze({
-	get BETTER_AUTH_SECRET() {
-		return getEnvVar("BETTER_AUTH_SECRET");
+	get CINAAUTH_SECRET() {
+		return getEnvVar("CINAAUTH_SECRET");
 	},
 	get AUTH_SECRET() {
 		return getEnvVar("AUTH_SECRET");
 	},
-	get BETTER_AUTH_TELEMETRY() {
-		return getEnvVar("BETTER_AUTH_TELEMETRY");
+	get CINAAUTH_TELEMETRY() {
+		return getEnvVar("CINAAUTH_TELEMETRY");
 	},
-	get BETTER_AUTH_TELEMETRY_ID() {
-		return getEnvVar("BETTER_AUTH_TELEMETRY_ID");
+	get CINAAUTH_TELEMETRY_ID() {
+		return getEnvVar("CINAAUTH_TELEMETRY_ID");
 	},
 	get NODE_ENV() {
 		return getEnvVar("NODE_ENV", "development");
@@ -114,10 +114,10 @@ export const ENV = Object.freeze({
 	get PACKAGE_VERSION() {
 		return getEnvVar("PACKAGE_VERSION", "0.0.0");
 	},
-	get BETTER_AUTH_TELEMETRY_ENDPOINT(): string | undefined {
+	get CINAAUTH_TELEMETRY_ENDPOINT(): string | undefined {
 		return getEnvVar(
-			"BETTER_AUTH_TELEMETRY_ENDPOINT",
-			import.meta.env.BETTER_AUTH_TELEMETRY_ENDPOINT,
+			"CINAAUTH_TELEMETRY_ENDPOINT",
+			import.meta.env.CINAAUTH_TELEMETRY_ENDPOINT,
 		);
 	},
 });

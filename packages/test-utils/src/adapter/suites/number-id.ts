@@ -1,4 +1,4 @@
-import type { User } from "better-auth/types";
+﻿import type { User } from "cinaauth/types";
 import { expect } from "vitest";
 import { createTestSuite } from "../create-test-suite";
 import { getNormalTestSuiteTests } from "./basic";
@@ -6,7 +6,7 @@ import { getNormalTestSuiteTests } from "./basic";
 export const numberIdTestSuite = createTestSuite(
 	"number-id",
 	{
-		defaultBetterAuthOptions: {
+		defaultCinaAuthOptions: {
 			advanced: {
 				database: {
 					generateId: "serial",
@@ -22,7 +22,7 @@ export const numberIdTestSuite = createTestSuite(
 
 		return {
 			"init - tests": async () => {
-				const opts = helpers.getBetterAuthOptions();
+				const opts = helpers.getCinaAuthOptions();
 				expect(opts.advanced?.database?.generateId === "serial").toBe(true);
 			},
 			"create - should return a number id": async () => {

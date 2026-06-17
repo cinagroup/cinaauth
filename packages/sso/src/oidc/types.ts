@@ -11,7 +11,7 @@
  * Raw OIDC Discovery Document as returned by the IdP's
  * .well-known/openid-configuration endpoint.
  *
- * Required fields for Better Auth's OIDC support:
+ * Required fields for CinaAuth's OIDC support:
  * - issuer
  * - authorization_endpoint
  * - token_endpoint
@@ -111,7 +111,7 @@ export type DiscoveryErrorCode =
 	| "issuer_mismatch"
 	/** Discovery document is missing required fields */
 	| "discovery_incomplete"
-	/** IdP only advertises token auth methods that Better Auth doesn't currently support */
+	/** IdP only advertises token auth methods that CinaAuth doesn't currently support */
 	| "unsupported_token_auth_method"
 	/** Catch-all for unexpected errors */
 	| "discovery_unexpected_error";
@@ -147,7 +147,7 @@ export class DiscoveryError extends Error {
  * This is the normalized shape that gets persisted to the database
  * or merged into provider config at runtime.
  *
- * Field names are camelCase to match Better Auth conventions.
+ * Field names are camelCase to match CinaAuth conventions.
  */
 export interface HydratedOIDCConfig {
 	/** The issuer URL (validated to match configured issuer) */

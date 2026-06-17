@@ -1,12 +1,12 @@
----
+﻿---
 title: Create a Database Adapter
-description: Learn how to create a custom database adapter for Better-Auth
+description: Learn how to create a custom database adapter for CinaAuth
 ---
 
-Learn how to create a custom database adapter for Better-Auth using `createAdapterFactory`.
+Learn how to create a custom database adapter for CinaAuth using `createAdapterFactory`.
 
 Our `createAdapterFactory` function is designed to be very flexible, and we've done our best to make it easy to understand and use.
-Our hope is to allow you to focus on writing database logic, and not have to worry about how the adapter is working with Better-Auth.
+Our hope is to allow you to focus on writing database logic, and not have to worry about how the adapter is working with CinaAuth.
 
 Anything from custom schema configurations, custom ID generation, safe JSON parsing, key mapping, joins, and more is handled by the `createAdapterFactory` function.
 All you need to do is provide the database logic, and the `createAdapterFactory` function will handle the rest.
@@ -22,7 +22,7 @@ All you need to do is provide the database logic, and the `createAdapterFactory`
     3. Create the adapter!
 
     ```ts
-    import { createAdapterFactory, type DBAdapterDebugLogOption } from "better-auth/adapters";
+    import { createAdapterFactory, type DBAdapterDebugLogOption } from "cinaauth/adapters";
 
     // Your custom adapter config options
     interface CustomAdapterConfig {
@@ -46,7 +46,7 @@ All you need to do is provide the database logic, and the `createAdapterFactory`
   <Step>
     ### Configure the adapter
 
-    The `config` object is mostly used to provide information about the adapter to Better-Auth.
+    The `config` object is mostly used to provide information about the adapter to CinaAuth.
     We try to minimize the amount of code you need to write in your adapter functions, and these `config` options are used to help us do that.
 
     ```ts
@@ -114,8 +114,8 @@ If you haven't already, check out the `options` object in the [config section](#
 
 Before we get into the adapter function, let's go over the parameters that are available to you.
 
-* `options`: The Better Auth options.
-* `schema`: The schema from the user's Better Auth instance.
+* `options`: The CinaAuth options.
+* `schema`: The schema from the user's CinaAuth instance.
 * `debugLog`: The debug log function.
 * `getModelName`: Function to get the transformed model name for the database.
 * `getFieldName`: Function to get the transformed field name for the database.
@@ -361,11 +361,11 @@ const myAdapter = (config: CustomAdapterConfig) =>
 
 ### `createSchema` (optional)
 
-The `createSchema` method allows the [Better Auth CLI](/docs/concepts/cli) to [generate](/docs/concepts/cli/#generate) a schema for the database.
+The `createSchema` method allows the [CinaAuth CLI](/docs/concepts/cli) to [generate](/docs/concepts/cli/#generate) a schema for the database.
 
 parameters:
 
-* `tables`: The tables from the user's Better-Auth instance schema; which is expected to be generated into the schema file.
+* `tables`: The tables from the user's CinaAuth instance schema; which is expected to be generated into the schema file.
 * `file`: The file the user may have passed in to the `generate` command as the expected schema file output path.
 
 ```ts title="Example"
@@ -376,18 +376,18 @@ createSchema: async ({ file, tables }) => {
 
 ## Test your adapter
 
-We've provided a test suite via the `@better-auth/test-utils` package that you can use to test your adapter. It requires you to use `vitest`.
+We've provided a test suite via the `@cinaauth/test-utils` package that you can use to test your adapter. It requires you to use `vitest`.
 
 First, install the test utilities:
 
 ```bash
-npm install -D @better-auth/test-utils
+npm install -D @cinaauth/test-utils
 ```
 
 Then create a test file using `testAdapter` and `createTestSuite`:
 
 ```ts title="my-adapter.test.ts"
-import { testAdapter, createTestSuite } from "@better-auth/test-utils/adapter";
+import { testAdapter, createTestSuite } from "@cinaauth/test-utils/adapter";
 import { myAdapter } from "./my-adapter";
 
 const normalTestSuite = createTestSuite("Normal", ({ test, adapter }) => [
@@ -417,12 +417,12 @@ execute();
 The `testAdapter` function handles the test lifecycle for you, including running migrations before tests and cleaning up all tables after tests complete.
 
 <Callout type="info">
-  In v1.4, adapter tests used `runAdapterTest` and `runNumberIdAdapterTest` from `better-auth/adapters/test`. That export has been removed in v1.5. Use `@better-auth/test-utils/adapter` instead.
+  In v1.4, adapter tests used `runAdapterTest` and `runNumberIdAdapterTest` from `cinaauth/adapters/test`. That export has been removed in v1.5. Use `@cinaauth/test-utils/adapter` instead.
 </Callout>
 
 ## Config
 
-The `config` object is used to provide information about the adapter to Better-Auth.
+The `config` object is used to provide information about the adapter to CinaAuth.
 
 We **highly recommend** going through and reading each provided option below, as it will help you understand how to properly configure your adapter.
 
@@ -517,7 +517,7 @@ If your database only supports a specific custom ID generation, then you can use
 ### `mapKeysTransformInput`
 
 If your database uses a different key name for a given situation, you can use this option to map the keys. This is useful for databases that expect a different key name for a given situation.
-For example, MongoDB uses `_id` while in Better-Auth we use `id`.
+For example, MongoDB uses `_id` while in CinaAuth we use `id`.
 
 Each key in the returned object represents the old key to replace.
 The value represents the new key.
@@ -533,7 +533,7 @@ mapKeysTransformInput: {
 ### `mapKeysTransformOutput`
 
 If your database uses a different key name for a given situation, you can use this option to map the keys. This is useful for databases that use a different key name for a given situation.
-For example, MongoDB uses `_id` while in Better-Auth we use `id`.
+For example, MongoDB uses `_id` while in CinaAuth we use `id`.
 
 Each key in the returned object represents the old key to replace.
 The value represents the new key.
@@ -542,7 +542,7 @@ This can be a partial object that only transforms some keys.
 
 ```ts title="Example"
 mapKeysTransformOutput: {
-  _id: "id", // We want to replace `_id` (from MongoDB) to `id` (for Better-Auth)
+  _id: "id", // We want to replace `_id` (from MongoDB) to `id` (for CinaAuth)
 },
 ```
 
@@ -564,7 +564,7 @@ The `customTransformInput` function receives the following arguments:
 * `action`: The action which was called from the adapter (`create` or `update`).
 * `model`: The model that is being transformed.
 * `schema`: The schema that is being transformed.
-* `options`: Better Auth options.
+* `options`: CinaAuth options.
 
 The `customTransformInput` function runs at every key in the data object of a given action.
 

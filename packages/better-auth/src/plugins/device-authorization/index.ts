@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import * as z from "zod";
 import { mergeSchema } from "../../db";
 import type { InferOptionSchema } from "../../types/plugins";
@@ -15,8 +15,8 @@ import {
 } from "./routes";
 import { schema } from "./schema";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"device-authorization": {
 			creator: typeof deviceAuthorization;
 		};
@@ -144,7 +144,7 @@ export const deviceAuthorization = (
 		},
 		$ERROR_CODES: DEVICE_AUTHORIZATION_ERROR_CODES,
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export type * from "../../utils/time";

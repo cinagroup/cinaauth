@@ -1,5 +1,5 @@
 export { getAuthTables } from "./get-tables";
-export type { BetterAuthPluginDBSchema } from "./plugin";
+export type { CinaAuthPluginDBSchema } from "./plugin";
 export {
 	type Account,
 	accountSchema,
@@ -24,7 +24,7 @@ export {
 } from "./schema/verification";
 export type {
 	BaseModelNames,
-	BetterAuthDBSchema,
+	CinaAuthDBSchema,
 	DBFieldAttribute,
 	DBFieldAttributeConfig,
 	DBFieldType,

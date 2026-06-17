@@ -1,15 +1,15 @@
----
+﻿---
 title: state_mismatch
 description: State verification failed during the OAuth callback. Covers all state-related error codes and their causes.
 ---
 
 ## What is it?
 
-When an OAuth or SSO flow begins, Better Auth generates a unique `state` value and stores it so it can be
+When an OAuth or SSO flow begins, CinaAuth generates a unique `state` value and stores it so it can be
 verified when the provider redirects back. This prevents CSRF and replay attacks by ensuring the callback
 truly belongs to the same browser session that started it.
 
-Better Auth supports two state storage strategies - **database** (the default) and **cookie** - and each
+CinaAuth supports two state storage strategies - **database** (the default) and **cookie** - and each
 has its own failure modes. This page covers every state-related error code, why it fires, and how to fix it.
 
 ***
@@ -52,7 +52,7 @@ provider was used to look up a verification record in the database, but no match
    record may not be the one that receives the callback.
 
 5. **Secret rotation with hashed identifiers.** If `verification.storeIdentifier` is `"hashed"`, the
-   identifier is hashed using the server secret. Changing `BETTER_AUTH_SECRET` between the start and
+   identifier is hashed using the server secret. Changing `CINAAUTH_SECRET` between the start and
    callback of the flow means the hash on lookup won't match the hash at rest.
 
 6. **The OAuth provider altered the state parameter.** Some providers URL-encode, truncate, or otherwise
@@ -66,7 +66,7 @@ provider was used to look up a verification record in the database, but no match
 * Ensure your database (or Redis) is **shared across all instances** of your application.
 * If using `secondaryStorage`, either set `verification.storeInDatabase: true` as a fallback, or ensure
   your storage layer is reliable and the TTL is sufficient.
-* Do not rotate `BETTER_AUTH_SECRET` during active OAuth flows, or run both old and new secrets during
+* Do not rotate `CINAAUTH_SECRET` during active OAuth flows, or run both old and new secrets during
   a transition window.
 * If users consistently time out, consider switching to the `"cookie"` strategy which does not depend
   on database lookups.
@@ -118,7 +118,7 @@ The encrypted state cookie exists but cannot be decrypted or the decrypted JSON 
 
 ### Common causes
 
-* `BETTER_AUTH_SECRET` was rotated between the start and callback of the flow, so the decryption key
+* `CINAAUTH_SECRET` was rotated between the start and callback of the flow, so the decryption key
   no longer matches.
 * The cookie value was corrupted in transit (proxy rewriting, URL encoding issues).
 
@@ -131,7 +131,7 @@ The encrypted state cookie exists but cannot be decrypted or the decrypted JSON 
 
 ## `state_security_mismatch` - state not persisted correctly (database strategy)
 
-After the verification record is found in the database, Better Auth also checks that a **signed state
+After the verification record is found in the database, CinaAuth also checks that a **signed state
 cookie** was sent back and its value matches the state from the callback URL. This is a second layer of
 CSRF protection. This error means the cookie is missing or its value does not match.
 
@@ -142,16 +142,16 @@ CSRF protection. This error means the cookie is missing or its value does not ma
 * Cross-origin POST callbacks (common with SAML IdPs) do not send `SameSite=Lax` cookies.
 * Preview vs. production domain mismatch.
 * The user opened multiple sign-in tabs - each overwrites the state cookie, so only the last one is valid.
-* **OAuth Proxy with mismatched secrets:** When using the [OAuth Proxy plugin](/docs/plugins/oauth-proxy) and production/preview have different `BETTER_AUTH_SECRET` values without a shared `secret` configured in the plugin options, the proxy's before hook fails to decrypt the state package, causing the regular callback handler to run and fail.
+* **OAuth Proxy with mismatched secrets:** When using the [OAuth Proxy plugin](/docs/plugins/oauth-proxy) and production/preview have different `CINAAUTH_SECRET` values without a shared `secret` configured in the plugin options, the proxy's before hook fails to decrypt the state package, causing the regular callback handler to run and fail.
 
 ### How to fix
 
 * Use a **stable, custom domain** and verify cookie attributes.
-* For SAML flows, Better Auth already sets `skipStateCookieCheck` internally.
+* For SAML flows, CinaAuth already sets `skipStateCookieCheck` internally.
 * If your deployment requires it, you can skip this check:
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	account: {
 		skipStateCookieCheck: true,
 	},
@@ -211,8 +211,8 @@ triggers, and what to do about it.
 
 1. **Check the error code.** The `error` query parameter on your error page tells you the exact code
    (`state_mismatch`, `state_security_mismatch`, `state_invalid`, or `state_generation_error`).
-2. **Open DevTools → Application → Cookies.** Confirm the state cookie (`better-auth.state` or
-   `better-auth.oauth_state`) is set before the redirect and still present when the callback arrives.
+2. **Open DevTools → Application → Cookies.** Confirm the state cookie (`cinaauth.state` or
+   `cinaauth.oauth_state`) is set before the redirect and still present when the callback arrives.
 3. **Inspect the callback URL.** Confirm the `state` query parameter is present and unmodified.
 4. **Check your server logs.** The `details` object in the error includes the `state` value - you can
    cross-reference this with your `verification` table to see if the record exists, expired, or was

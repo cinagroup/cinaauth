@@ -1,9 +1,9 @@
-import type { BetterAuthOptions } from "../types";
-import type { BetterAuthDBSchema, DBFieldAttribute } from "./type";
+import type { CinaAuthOptions } from "../types";
+import type { CinaAuthDBSchema, DBFieldAttribute } from "./type";
 
 export const getAuthTables = (
-	options: BetterAuthOptions,
-): BetterAuthDBSchema => {
+	options: CinaAuthOptions,
+): CinaAuthDBSchema => {
 	const pluginSchema = (options.plugins ?? []).reduce(
 		(acc, plugin) => {
 			const schema = plugin.schema;
@@ -50,7 +50,7 @@ export const getAuthTables = (
 				},
 			},
 		},
-	} satisfies BetterAuthDBSchema;
+	} satisfies CinaAuthDBSchema;
 
 	const { user, session, account, verification, ...pluginTables } =
 		pluginSchema;
@@ -93,7 +93,7 @@ export const getAuthTables = (
 			},
 			order: 4,
 		},
-	} satisfies BetterAuthDBSchema;
+	} satisfies CinaAuthDBSchema;
 
 	const sessionTable = {
 		session: {
@@ -148,7 +148,7 @@ export const getAuthTables = (
 			},
 			order: 2,
 		},
-	} satisfies BetterAuthDBSchema;
+	} satisfies CinaAuthDBSchema;
 
 	return {
 		user: {
@@ -294,5 +294,5 @@ export const getAuthTables = (
 			: {}),
 		...pluginTables,
 		...(shouldAddRateLimitTable ? rateLimitTable : {}),
-	} satisfies BetterAuthDBSchema;
+	} satisfies CinaAuthDBSchema;
 };

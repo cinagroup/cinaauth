@@ -26,12 +26,12 @@ export default defineConfig({
 		"./src/instrumentation/pure.index.ts",
 	],
 	deps: {
-		neverBundle: ["@better-auth/core/async_hooks"],
+		neverBundle: ["@cinaauth/core/async_hooks"],
 	},
 	env: {
-		BETTER_AUTH_VERSION: packageJson.version,
-		BETTER_AUTH_TELEMETRY_ENDPOINT:
-			process.env.BETTER_AUTH_TELEMETRY_ENDPOINT ?? "",
+		CINAAUTH_VERSION: packageJson.version,
+		CINAAUTH_TELEMETRY_ENDPOINT:
+			process.env.CINAAUTH_TELEMETRY_ENDPOINT ?? "",
 	},
 	unbundle: true,
 	treeshake: true,

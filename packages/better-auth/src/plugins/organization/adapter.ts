@@ -1,11 +1,11 @@
-import type { AuthContext, GenericEndpointContext } from "@better-auth/core";
+import type { AuthContext, GenericEndpointContext } from "@cinaauth/core";
 import {
 	getCurrentAdapter,
 	runWithTransaction,
-} from "@better-auth/core/context";
-import type { WhereOperator } from "@better-auth/core/db/adapter";
-import { BetterAuthError } from "@better-auth/core/error";
-import { filterOutputFields } from "@better-auth/core/utils/db";
+} from "@cinaauth/core/context";
+import type { WhereOperator } from "@cinaauth/core/db/adapter";
+import { CinaAuthError } from "@cinaauth/core/error";
+import { filterOutputFields } from "@cinaauth/core/utils/db";
 import { parseJSON } from "../../client/parser";
 import type { InferAdditionalFieldsFromPluginOptions } from "../../db";
 import type { Session, User } from "../../types";
@@ -43,7 +43,7 @@ export async function resolveMaximumMembersPerTeam(
 	if (maximumMembersPerTeam === undefined) return undefined;
 	if (typeof maximumMembersPerTeam === "number") return maximumMembersPerTeam;
 	if (!context.session) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"`teams.maximumMembersPerTeam` is configured as a function but no session is available to evaluate it. Provide a session-bearing request or configure a numeric limit.",
 		);
 	}
@@ -233,7 +233,7 @@ export const getOrgAdapter = <O extends OrganizationOptions>(
 				members: members[0].map((member) => {
 					const user = users.find((user) => user.id === member.userId);
 					if (!user) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							"Unexpected error: User not found for member",
 						);
 					}
@@ -369,7 +369,7 @@ export const getOrgAdapter = <O extends OrganizationOptions>(
 						where: [{ field: "id", value: memberId }],
 					});
 					if (!member) {
-						throw new BetterAuthError("Member not found");
+						throw new CinaAuthError("Member not found");
 					}
 					userId = member.userId;
 				} else {
@@ -585,7 +585,7 @@ export const getOrgAdapter = <O extends OrganizationOptions>(
 			const membersWithUsers = members.map((member) => {
 				const user = userMap.get(member.userId);
 				if (!user) {
-					throw new BetterAuthError(
+					throw new CinaAuthError(
 						"Unexpected error: User not found for member",
 					);
 				}

@@ -1,9 +1,9 @@
-import { sso } from "@better-auth/sso";
-import { betterAuth } from "better-auth";
-import { memoryAdapter } from "better-auth/adapters/memory";
-import { createAuthClient } from "better-auth/client";
-import { setCookieToHeader } from "better-auth/cookies";
-import { bearer, organization } from "better-auth/plugins";
+import { sso } from "@cinaauth/sso";
+import { CinaAuth } from "cinaauth";
+import { memoryAdapter } from "cinaauth/adapters/memory";
+import { createAuthClient } from "cinaauth/client";
+import { setCookieToHeader } from "cinaauth/cookies";
+import { bearer, organization } from "cinaauth/plugins";
 import { describe, expect, it } from "vitest";
 import { scim } from ".";
 import { scimClient } from "./client";
@@ -28,7 +28,7 @@ const createTestInstance = (scimOptions?: SCIMOptions) => {
 	};
 	const memory = memoryAdapter(data);
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {

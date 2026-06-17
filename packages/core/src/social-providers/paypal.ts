@@ -2,7 +2,7 @@ import { base64 } from "@better-auth/utils/base64";
 import { betterFetch } from "@better-fetch/fetch";
 import { decodeProtectedHeader, importJWK, jwtVerify } from "jose";
 import { logger } from "../env";
-import { APIError, BetterAuthError } from "../error";
+import { APIError, CinaAuthError } from "../error";
 import type { OAuthProvider, ProviderOptions } from "../oauth2";
 import { createAuthorizationURL } from "../oauth2";
 
@@ -105,7 +105,7 @@ export const paypal = (options: PayPalOptions) => {
 				logger.error(
 					"Client Id and Client Secret is required for PayPal. Make sure to provide them in the options.",
 				);
-				throw new BetterAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
+				throw new CinaAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
 			}
 
 			/**
@@ -155,7 +155,7 @@ export const paypal = (options: PayPalOptions) => {
 				});
 
 				if (!response.data) {
-					throw new BetterAuthError("FAILED_TO_GET_ACCESS_TOKEN");
+					throw new CinaAuthError("FAILED_TO_GET_ACCESS_TOKEN");
 				}
 
 				const data = response.data as PayPalTokenResponse;
@@ -172,7 +172,7 @@ export const paypal = (options: PayPalOptions) => {
 				return result;
 			} catch (error) {
 				logger.error("PayPal token exchange failed:", error);
-				throw new BetterAuthError("FAILED_TO_GET_ACCESS_TOKEN");
+				throw new CinaAuthError("FAILED_TO_GET_ACCESS_TOKEN");
 			}
 		},
 
@@ -199,7 +199,7 @@ export const paypal = (options: PayPalOptions) => {
 						});
 
 						if (!response.data) {
-							throw new BetterAuthError("FAILED_TO_REFRESH_ACCESS_TOKEN");
+							throw new CinaAuthError("FAILED_TO_REFRESH_ACCESS_TOKEN");
 						}
 
 						const data = response.data as any;
@@ -212,7 +212,7 @@ export const paypal = (options: PayPalOptions) => {
 						};
 					} catch (error) {
 						logger.error("PayPal token refresh failed:", error);
-						throw new BetterAuthError("FAILED_TO_REFRESH_ACCESS_TOKEN");
+						throw new CinaAuthError("FAILED_TO_REFRESH_ACCESS_TOKEN");
 					}
 				},
 

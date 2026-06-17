@@ -1,9 +1,9 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { runWithTransaction } from "@better-auth/core/context";
-import { isDevelopment } from "@better-auth/core/env";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
-import { generateId } from "@better-auth/core/utils/id";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { runWithTransaction } from "@cinaauth/core/context";
+import { isDevelopment } from "@cinaauth/core/env";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { generateId } from "@cinaauth/core/utils/id";
 import * as z from "zod";
 import { setSessionCookie } from "../../cookies";
 import { parseUserInput } from "../../db";
@@ -24,7 +24,7 @@ const signUpEmailBodySchema = z
 	})
 	.and(z.record(z.string(), z.any()));
 
-export const signUpEmail = <O extends BetterAuthOptions>() =>
+export const signUpEmail = <O extends CinaAuthOptions>() =>
 	createAuthEndpoint(
 		"/sign-up/email",
 		{

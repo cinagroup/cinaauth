@@ -1,6 +1,6 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
 import { deleteSessionCookie, setSessionCookie } from "../../cookies";
 import { generateRandomString } from "../../crypto";
@@ -22,7 +22,7 @@ const updateUserBodySchema = z.record(
 	z.any(),
 );
 
-export const updateUser = <O extends BetterAuthOptions>() =>
+export const updateUser = <O extends CinaAuthOptions>() =>
 	createAuthEndpoint(
 		"/update-user",
 		{

@@ -1,9 +1,9 @@
-import type { AuthContext } from "@better-auth/core";
+import type { AuthContext } from "@cinaauth/core";
 import {
 	hasRequestState,
 	runWithRequestState,
-} from "@better-auth/core/context";
-import { APIError, BetterAuthError } from "@better-auth/core/error";
+} from "@cinaauth/core/context";
+import { APIError, CinaAuthError } from "@cinaauth/core/error";
 import type {
 	Endpoint,
 	EndpointContext,
@@ -57,7 +57,7 @@ async function resolveDynamicContext(
 			resolveDynamicTrustedProxyHeaders(rawCtx.options),
 		);
 	} catch (err) {
-		if (err instanceof BetterAuthError) {
+		if (err instanceof CinaAuthError) {
 			throw new APIError("INTERNAL_SERVER_ERROR", { message: err.message });
 		}
 		throw err;

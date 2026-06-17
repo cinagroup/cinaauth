@@ -1,4 +1,4 @@
-import type { SecretConfig } from "@better-auth/core";
+import type { SecretConfig } from "@cinaauth/core";
 import { describe, expect, it } from "vitest";
 import {
 	buildSecretConfig,
@@ -503,7 +503,7 @@ describe("secret rotation", () => {
 				];
 				const config = buildSecretConfig(
 					secrets,
-					"better-auth-secret-12345678901234567890",
+					"cinaauth-secret-12345678901234567890",
 				);
 				expect(config.legacySecret).toBeUndefined();
 			});

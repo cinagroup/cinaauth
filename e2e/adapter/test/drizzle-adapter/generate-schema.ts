@@ -1,21 +1,21 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import { join } from "node:path";
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import { drizzleAdapter } from "@cinaauth/drizzle-adapter";
 
 let generationCount = 0;
 
 const schemaCache = new Map<string, { count: number; schema: any }>();
 
 /**
- * generates a drizzle schema based on BetterAuthOptions & a given dialect.
+ * generates a drizzle schema based on CinaAuthOptions & a given dialect.
  *
  * Useful for testing the Drizzle adapter.
  */
 export const generateDrizzleSchema = async (
 	db: any,
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	dialect: "sqlite" | "mysql" | "pg",
 ) => {
 	const cacheKey = `${dialect}-${JSON.stringify(options)}`;
@@ -48,9 +48,9 @@ export const generateDrizzleSchema = async (
 		),
 	)) as {
 		generateSchema: (opts: {
-			adapter: DBAdapter<BetterAuthOptions>;
+			adapter: DBAdapter<CinaAuthOptions>;
 			file?: string;
-			options: BetterAuthOptions;
+			options: CinaAuthOptions;
 		}) => Promise<{
 			code: string | undefined;
 			fileName: string;

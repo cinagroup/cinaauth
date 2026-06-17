@@ -1,4 +1,4 @@
----
+﻿---
 title: Apple
 description: Apple provider setup and usage.
 ---
@@ -84,7 +84,7 @@ description: Apple provider setup and usage.
     You also need to add `https://appleid.apple.com` to the `trustedOrigins` array in your auth instance configuration to allow communication with Apple's authentication servers.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
+    import { CinaAuth } from "cinaauth"
     import { importPKCS8, SignJWT } from "jose";
 
     // Generate the client secret JWT required for 'Sign in with Apple'.
@@ -101,7 +101,7 @@ description: Apple provider setup and usage.
             .sign(key);
     }
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         socialProviders: {
             apple: async () => ({ // [!code highlight]
                 clientId: process.env.APPLE_CLIENT_ID as string, // [!code highlight]
@@ -148,7 +148,7 @@ To sign in with Apple, you can use the `signIn.social` function provided by the 
 * `provider`: The provider to use. It should be set to `apple`.
 
 ```ts title="auth-client.ts"  /
-import { createAuthClient } from "better-auth/client"
+import { createAuthClient } from "cinaauth/client"
 const authClient =  createAuthClient()
 
 const signIn = async () => {
@@ -181,7 +181,7 @@ await authClient.signIn.social({
 
 ## Generate Apple Client Secret (JWT)
 
-If you previously used the in-page generator from this section, use the [`jose` example above](#configure-the-provider) instead. It uses Better Auth's async provider configuration to generate the Apple client secret JWT from your Client ID, Team ID, Key ID, and private key.
+If you previously used the in-page generator from this section, use the [`jose` example above](#configure-the-provider) instead. It uses CinaAuth's async provider configuration to generate the Apple client secret JWT from your Client ID, Team ID, Key ID, and private key.
 
 The example uses a 180-day expiration, which stays below Apple's six-month limit. Generating the token from configuration avoids copying a static generated token into your auth setup.
 

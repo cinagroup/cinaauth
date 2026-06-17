@@ -1,7 +1,7 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { kyselyAdapter } from "@better-auth/kysely-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
-import { getMigrations } from "better-auth/db/migration";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import { kyselyAdapter } from "@cinaauth/kysely-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
+import { getMigrations } from "cinaauth/db/migration";
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import {
@@ -22,7 +22,7 @@ const CUSTOM_SCHEMA = "auth";
 
 // Connection string with custom schema in search_path
 const pgDB = new Pool({
-	connectionString: `postgres://user:password@localhost:5435/better_auth?options=-c search_path=${CUSTOM_SCHEMA}`,
+	connectionString: `postgres://user:password@localhost:5435/cinaauth?options=-c search_path=${CUSTOM_SCHEMA}`,
 });
 
 const kyselyDB = new Kysely({
@@ -43,7 +43,7 @@ const { execute } = await testAdapter({
 			type: "postgres",
 			debugLogs: { isRunningAdapterTests: true },
 		}),
-	runMigrations: async (options: BetterAuthOptions) => {
+	runMigrations: async (options: CinaAuthOptions) => {
 		await cleanupDatabase();
 
 		// Verify the custom schema exists

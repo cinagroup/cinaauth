@@ -1,11 +1,11 @@
-import { expect } from "vitest";
+﻿import { expect } from "vitest";
 import { createTestSuite } from "../create-test-suite";
 import { getNormalTestSuiteTests } from "./basic";
 
 export const joinsTestSuite = createTestSuite(
 	"joins",
 	{
-		defaultBetterAuthOptions: {
+		defaultCinaAuthOptions: {
 			experimental: {
 				joins: true,
 			},
@@ -19,7 +19,7 @@ export const joinsTestSuite = createTestSuite(
 
 		return {
 			"init - tests": async () => {
-				const opts = helpers.getBetterAuthOptions();
+				const opts = helpers.getCinaAuthOptions();
 				expect(opts.experimental?.joins).toBe(true);
 			},
 			...normalTests,

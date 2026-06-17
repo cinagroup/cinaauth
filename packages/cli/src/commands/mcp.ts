@@ -13,7 +13,7 @@ interface MCPOptions {
 	manual?: boolean;
 }
 
-const REMOTE_MCP_URL = "https://mcp.better-auth.com/mcp";
+const REMOTE_MCP_URL = "https://mcp.cinagroup.com/mcp";
 
 async function mcpAction(options: MCPOptions) {
 	if (options.cursor) {
@@ -30,7 +30,7 @@ async function mcpAction(options: MCPOptions) {
 }
 
 async function handleCursorAction() {
-	console.log(chalk.bold.blue("🚀 Adding Better Auth MCP to Cursor..."));
+	console.log(chalk.bold.blue("🚀 Adding CinaAuth MCP to Cursor..."));
 
 	const platform = os.platform();
 	let openCommand: string;
@@ -53,7 +53,7 @@ async function handleCursorAction() {
 	const encodedRemote = base64.encode(
 		new TextEncoder().encode(JSON.stringify(remoteConfig)),
 	);
-	const remoteDeeplink = `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent("better-auth")}&config=${encodedRemote}`;
+	const remoteDeeplink = `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent("cinaauth")}&config=${encodedRemote}`;
 
 	try {
 		const cmd =
@@ -61,7 +61,7 @@ async function handleCursorAction() {
 				? `start "" "${remoteDeeplink}"`
 				: `${openCommand} "${remoteDeeplink}"`;
 		execSync(cmd, { stdio: "inherit" });
-		console.log(chalk.green("\n✓ Better Auth MCP server installed!"));
+		console.log(chalk.green("\n✓ CinaAuth MCP server installed!"));
 	} catch {
 		console.log(
 			chalk.yellow(
@@ -75,19 +75,19 @@ async function handleCursorAction() {
 		chalk.gray("• The MCP server will be added to your Cursor configuration"),
 	);
 	console.log(
-		chalk.gray("• You can now use Better Auth features directly in Cursor"),
+		chalk.gray("• You can now use CinaAuth features directly in Cursor"),
 	);
 	console.log(
 		chalk.gray(
-			'• Try: "Set up Better Auth with Google login" or "Help me debug my auth"',
+			'• Try: "Set up CinaAuth with Google login" or "Help me debug my auth"',
 		),
 	);
 }
 
 function handleClaudeCodeAction() {
-	console.log(chalk.bold.blue("🤖 Adding Better Auth MCP to Claude Code..."));
+	console.log(chalk.bold.blue("🤖 Adding CinaAuth MCP to Claude Code..."));
 
-	const command = `claude mcp add --transport http better-auth ${REMOTE_MCP_URL}`;
+	const command = `claude mcp add --transport http cinaauth ${REMOTE_MCP_URL}`;
 
 	try {
 		execSync(command, { stdio: "inherit" });
@@ -109,18 +109,18 @@ function handleClaudeCodeAction() {
 	);
 	console.log(
 		chalk.gray(
-			"• You can now use Better Auth features directly in Claude Code",
+			"• You can now use CinaAuth features directly in Claude Code",
 		),
 	);
 }
 
 function handleOpenCodeAction() {
-	console.log(chalk.bold.blue("🔧 Adding Better Auth MCP to Open Code..."));
+	console.log(chalk.bold.blue("🔧 Adding CinaAuth MCP to Open Code..."));
 
 	const openCodeConfig = {
 		$schema: "https://opencode.ai/config.json",
 		mcp: {
-			"better-auth": {
+			"cinaauth": {
 				type: "remote",
 				url: REMOTE_MCP_URL,
 				enabled: true,
@@ -153,7 +153,7 @@ function handleOpenCodeAction() {
 		console.log(
 			chalk.green(`\n✓ Open Code configuration written to ${configPath}`),
 		);
-		console.log(chalk.green("✓ Better Auth MCP server added successfully!"));
+		console.log(chalk.green("✓ CinaAuth MCP server added successfully!"));
 	} catch {
 		console.log(
 			chalk.yellow(
@@ -166,15 +166,15 @@ function handleOpenCodeAction() {
 	console.log(chalk.bold.white("\n✨ Next Steps:"));
 	console.log(chalk.gray("• Restart Open Code to load the new MCP server"));
 	console.log(
-		chalk.gray("• You can now use Better Auth features directly in Open Code"),
+		chalk.gray("• You can now use CinaAuth features directly in Open Code"),
 	);
 }
 
 function handleManualAction() {
-	console.log(chalk.bold.blue("📝 Better Auth MCP Configuration..."));
+	console.log(chalk.bold.blue("📝 CinaAuth MCP Configuration..."));
 
 	const manualConfig = {
-		"better-auth": {
+		"cinaauth": {
 			url: REMOTE_MCP_URL,
 		},
 	};
@@ -195,7 +195,7 @@ function handleManualAction() {
 
 		fs.writeFileSync(configPath, JSON.stringify(mergedConfig, null, 2));
 		console.log(chalk.green(`\n✓ MCP configuration written to ${configPath}`));
-		console.log(chalk.green("✓ Better Auth MCP server added successfully!"));
+		console.log(chalk.green("✓ CinaAuth MCP server added successfully!"));
 	} catch {
 		console.log(
 			chalk.yellow(
@@ -209,13 +209,13 @@ function handleManualAction() {
 	console.log(chalk.gray("• Restart your MCP client to load the new server"));
 	console.log(
 		chalk.gray(
-			"• You can now use Better Auth features directly in your MCP client",
+			"• You can now use CinaAuth features directly in your MCP client",
 		),
 	);
 }
 
 function showAllOptions() {
-	console.log(chalk.bold.blue("🔌 Better Auth MCP Server"));
+	console.log(chalk.bold.blue("🔌 CinaAuth MCP Server"));
 	console.log(chalk.gray("Choose your MCP client to get started:"));
 	console.log();
 
@@ -233,14 +233,14 @@ function showAllOptions() {
 	console.log(chalk.bold.white("Server:"));
 	console.log(
 		chalk.gray("  • ") +
-			chalk.white("better-auth") +
+			chalk.white("cinaauth") +
 			chalk.gray(" - Search documentation, code examples, setup assistance"),
 	);
 	console.log();
 }
 
 export const mcp = new Command("mcp")
-	.description("Add Better Auth MCP server to MCP Clients")
+	.description("Add CinaAuth MCP server to MCP Clients")
 	.option("--cursor", "Automatically open Cursor with the MCP configuration")
 	.option("--claude-code", "Show Claude Code MCP configuration command")
 	.option("--open-code", "Show Open Code MCP configuration")

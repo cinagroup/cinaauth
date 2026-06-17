@@ -1,9 +1,9 @@
----
+﻿---
 title: FAQ
-description: Frequently asked questions about Better Auth.
+description: Frequently asked questions about CinaAuth.
 ---
 
-This page contains frequently asked questions, common issues, and other helpful information about Better Auth.
+This page contains frequently asked questions, common issues, and other helpful information about CinaAuth.
 
 <Accordions>
   <Accordion id="auth-client-not-working" title="Auth client not working">
@@ -12,13 +12,13 @@ This page contains frequently asked questions, common issues, and other helpful 
     If you're using the auth client on react front-end, you'll need to import it from `/react`:
 
     ```ts title="component.ts"
-    import { createAuthClient } from "better-auth/react";
+    import { createAuthClient } from "cinaauth/react";
     ```
 
     Where as if you're using the auth client in Next.js middleware, server-actions, server-components or anything server-related, you'll likely need to import it from `/client`:
 
     ```ts title="server.ts"
-    import { createAuthClient } from "better-auth/client";
+    import { createAuthClient } from "cinaauth/client";
     ```
   </Accordion>
 
@@ -49,21 +49,21 @@ This page contains frequently asked questions, common issues, and other helpful 
   </Accordion>
 
   <Accordion id="corporate-proxy-configuration" title="How to configure a corporate proxy for server-side requests">
-    If you need to configure a corporate proxy for Better Auth's outbound requests (e.g., OAuth provider requests), you can use undici's ProxyAgent to set up a global fetch proxy.
+    If you need to configure a corporate proxy for CinaAuth's outbound requests (e.g., OAuth provider requests), you can use undici's ProxyAgent to set up a global fetch proxy.
 
     ```typescript title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { ProxyAgent, setGlobalDispatcher } from "undici";
 
     const proxyAgent = new ProxyAgent("http://your-proxy.example.com:8080");
     setGlobalDispatcher(proxyAgent);
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       // your configuration
     });
     ```
 
-    Since Better Auth runs on the server side, you have full control over Node.js's fetch behavior through undici's global dispatcher. This approach allows all outbound requests from Better Auth to go through your corporate proxy.
+    Since CinaAuth runs on the server side, you have full control over Node.js's fetch behavior through undici's global dispatcher. This approach allows all outbound requests from CinaAuth to go through your corporate proxy.
 
     <Callout type="info">
       Learn more about undici ProxyAgent in the [undici documentation](https://github.com/nodejs/undici/blob/main/docs/docs/api/ProxyAgent.md).
@@ -71,7 +71,7 @@ This page contains frequently asked questions, common issues, and other helpful 
   </Accordion>
 
   <Accordion id="adding-custom-fields-to-the-users-table" title="Adding custom fields to the users table">
-    Better Auth provides a type-safe way to extend the user and session schemas, take a look at our docs on <Link href="/docs/concepts/database#extending-core-schema">extending core schema</Link>.
+    CinaAuth provides a type-safe way to extend the user and session schemas, take a look at our docs on <Link href="/docs/concepts/database#extending-core-schema">extending core schema</Link>.
   </Accordion>
 
   <Accordion id="difference-between-getsession-and-usesession" title="Difference between getSession and useSession">
@@ -134,24 +134,24 @@ This page contains frequently asked questions, common issues, and other helpful 
     No request state found. Please make sure you are calling this function within a `runWithRequestState` callback.
     ```
 
-    This is typically caused by a **dual module hazard** - when multiple versions of `better-auth` or `@better-auth/core` exist in your dependency tree. This commonly occurs after upgrading to v1.4+, especially in Cloudflare Workers, Nuxt, or when using plugins like `oauthProvider`.
+    This is typically caused by a **dual module hazard** - when multiple versions of `cinaauth` or `@cinaauth/core` exist in your dependency tree. This commonly occurs after upgrading to v1.4+, especially in Cloudflare Workers, Nuxt, or when using plugins like `oauthProvider`.
 
     ### How to Diagnose
 
-    Check if you have duplicate versions of Better Auth packages:
+    Check if you have duplicate versions of CinaAuth packages:
 
     ```bash
     # For pnpm users
-    pnpm why @better-auth/core
-    pnpm why better-auth
+    pnpm why @cinaauth/core
+    pnpm why cinaauth
 
     # For npm users
-    npm ls @better-auth/core
-    npm ls better-auth
+    npm ls @cinaauth/core
+    npm ls cinaauth
 
     # For yarn users
-    yarn why @better-auth/core
-    yarn why better-auth
+    yarn why @cinaauth/core
+    yarn why cinaauth
     ```
 
     If you see multiple versions listed, you have a dual module hazard.
@@ -160,7 +160,7 @@ This page contains frequently asked questions, common issues, and other helpful 
 
     #### Basic Steps
 
-    Start by ensuring your dependencies are clean and all Better Auth packages use compatible versions.
+    Start by ensuring your dependencies are clean and all CinaAuth packages use compatible versions.
 
     <Callout type="tip">
       **Clean reinstall:**
@@ -174,7 +174,7 @@ This page contains frequently asked questions, common issues, and other helpful 
       pnpm install # or npm install or yarn install
       ```
 
-      Check your `package.json` and make sure all Better Auth related packages (`better-auth`, `@better-auth/core`, `@better-auth/oauth-provider`, etc.) are using compatible versions.
+      Check your `package.json` and make sure all CinaAuth related packages (`cinaauth`, `@cinaauth/core`, `@cinaauth/oauth-provider`, etc.) are using compatible versions.
     </Callout>
 
     #### Package Manager Resolution Issues
@@ -208,7 +208,7 @@ This page contains frequently asked questions, common issues, and other helpful 
     </Callout>
 
     <Callout type="error">
-      **Important:** Make sure to install `better-auth` and related packages in `dependencies`, not `devDependencies`.
+      **Important:** Make sure to install `cinaauth` and related packages in `dependencies`, not `devDependencies`.
     </Callout>
 
     #### Bundler Resolution Issues
@@ -218,11 +218,11 @@ This page contains frequently asked questions, common issues, and other helpful 
     <Callout type="info">
       **For Next.js users:**
 
-      Add `better-auth` to `serverExternalPackages` in your `next.config.js`:
+      Add `cinaauth` to `serverExternalPackages` in your `next.config.js`:
 
       ```ts title="next.config.js"
       const config = {
-        serverExternalPackages: ['better-auth']
+        serverExternalPackages: ['cinaauth']
       };
       ```
     </Callout>
@@ -242,15 +242,15 @@ This page contains frequently asked questions, common issues, and other helpful 
     Run the diagnostic commands again to confirm only one version of each package exists:
 
     ```bash
-    pnpm why @better-auth/core
-    pnpm why better-auth
+    pnpm why @cinaauth/core
+    pnpm why cinaauth
     pnpm why better-call
     ```
 
     You should see only one version listed for each package.
 
     <Callout type="info">
-      Related issues: [#6613](https://github.com/better-auth/better-auth/issues/6613), [yjs#438](https://github.com/yjs/yjs/issues/438)
+      Related issues: [#6613](https://github.com/cinagroup/cinaauth/issues/6613), [yjs#438](https://github.com/yjs/yjs/issues/438)
     </Callout>
   </Accordion>
 </Accordions>

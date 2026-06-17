@@ -1,13 +1,13 @@
 import type {
-	BetterAuthPlugin,
+	CinaAuthPlugin,
 	GenericEndpointContext,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+} from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import * as z from "zod";
 import { setOAuthState } from "../../api/state/oauth";
 import { getAwaitableValue } from "../../context/helpers";
@@ -29,8 +29,8 @@ import {
 import { OAUTH_POPUP_ERROR_CODES } from "./error-codes";
 import type { OAuthPopupData } from "./types";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"oauth-popup": {
 			creator: typeof oauthPopup;
 		};
@@ -359,7 +359,7 @@ export const oauthPopup = () => {
 				},
 			],
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export {

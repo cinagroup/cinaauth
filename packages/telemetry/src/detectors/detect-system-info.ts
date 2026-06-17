@@ -1,4 +1,4 @@
-import { env } from "@better-auth/core/env";
+import { env } from "@cinaauth/core/env";
 
 function getVendor() {
 	const hasAny = (...keys: string[]) =>

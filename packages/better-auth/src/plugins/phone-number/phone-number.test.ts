@@ -107,7 +107,7 @@ describe("phone-number", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/4839
+ * @see https://github.com/cinagroup/cinaauth/issues/4839
  */
 describe("phone-number callbackOnVerification on updatePhoneNumber", async () => {
 	let otp = "";

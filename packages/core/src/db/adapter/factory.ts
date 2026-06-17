@@ -2,14 +2,14 @@ import {
 	ATTR_DB_COLLECTION_NAME,
 	ATTR_DB_OPERATION_NAME,
 	withSpan,
-} from "@better-auth/core/instrumentation";
+} from "@cinaauth/core/instrumentation";
 import {
 	getCurrentAdapter,
 	runWithTransaction,
 } from "../../context/transaction";
 import { createLogger, getColorDepth, TTY_COLORS } from "../../env";
-import { BetterAuthError } from "../../error";
-import type { BetterAuthOptions } from "../../types";
+import { CinaAuthError } from "../../error";
+import type { CinaAuthOptions } from "../../types";
 import { safeJSONParse } from "../../utils/json";
 import { getAuthTables } from "../get-tables";
 import { initGetDefaultFieldName } from "./get-default-field-name";
@@ -47,16 +47,16 @@ let debugLogs: { instance: string; args: any[] }[] = [];
 let transactionId = -1;
 
 const createAsIsTransaction =
-	<Options extends BetterAuthOptions>(adapter: DBAdapter<Options>) =>
+	<Options extends CinaAuthOptions>(adapter: DBAdapter<Options>) =>
 	<R>(fn: (trx: DBTransactionAdapter<Options>) => Promise<R>) =>
 		fn(adapter);
 
-export type AdapterFactory<Options extends BetterAuthOptions> = (
+export type AdapterFactory<Options extends CinaAuthOptions> = (
 	options: Options,
 ) => DBAdapter<Options>;
 
 export const createAdapterFactory =
-	<Options extends BetterAuthOptions>({
+	<Options extends CinaAuthOptions>({
 		adapter: customAdapter,
 		config: cfg,
 	}: AdapterFactoryOptions): AdapterFactory<Options> =>
@@ -82,12 +82,12 @@ export const createAdapterFactory =
 
 		const useNumberId = options.advanced?.database?.generateId === "serial";
 		if (useNumberId && config.supportsNumericIds === false) {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				`[${config.adapterName}] Your database or database adapter does not support numeric ids. Please disable "useNumberId" in your config.`,
 			);
 		}
 
-		// End-user's Better-Auth instance's schema
+		// End-user's CinaAuth instance's schema
 		const schema = getAuthTables(options);
 
 		const debugLog = (...args: any[]) => {
@@ -516,7 +516,7 @@ export const createAdapterFactory =
 				} = w;
 				if (operator === "in") {
 					if (!Array.isArray(value)) {
-						throw new BetterAuthError("Value must be an array");
+						throw new CinaAuthError("Value must be an array");
 					}
 				}
 
@@ -667,11 +667,11 @@ export const createAdapterFactory =
 				}
 
 				if (!foreignKeys.length) {
-					throw new BetterAuthError(
+					throw new CinaAuthError(
 						`No foreign key found for model ${model} and base model ${baseModel} while performing join operation.`,
 					);
 				} else if (foreignKeys.length > 1) {
-					throw new BetterAuthError(
+					throw new CinaAuthError(
 						`Multiple foreign keys found for model ${model} and base model ${baseModel} while performing join operation. Only one foreign key is supported.`,
 					);
 				}
@@ -680,7 +680,7 @@ export const createAdapterFactory =
 				if (!foreignKeyAttributes.references) {
 					// this should never happen, as we filter for references in the foreign keys.
 					// it's here for typescript to be happy.
-					throw new BetterAuthError(
+					throw new CinaAuthError(
 						`No references found for foreign key ${foreignKey} on model ${model} while performing join operation.`,
 					);
 				}
@@ -1368,7 +1368,7 @@ export const createAdapterFactory =
 					// engines with real transaction isolation; race window narrows
 					// (does not close) on adapters that fall through to sequential
 					// execution. Remove this branch when consumeOne becomes required.
-					// Use Better Auth's transaction context here, not a direct adapter
+					// Use CinaAuth's transaction context here, not a direct adapter
 					// transaction, so callers already inside a transaction keep using
 					// the active transaction adapter.
 					res = await withSpan(
@@ -1402,7 +1402,7 @@ export const createAdapterFactory =
 								});
 								// A non-numeric count coerces to a false miss, so fail loud.
 								if (typeof deleted !== "number") {
-									throw new BetterAuthError(
+									throw new CinaAuthError(
 										`Adapter "${config.adapterId}" returned a non-numeric value from deleteMany during the consumeOne fallback. Return the number of deleted rows, or implement a native consumeOne for atomic single-use consumption.`,
 									);
 								}
@@ -1456,7 +1456,7 @@ export const createAdapterFactory =
 					// An empty `increment` and empty `set` compiles to `UPDATE ... SET `
 					// with no assignments, which is a syntax error on kysely, drizzle, and
 					// Prisma. Fail fast with an actionable message instead.
-					throw new BetterAuthError(
+					throw new CinaAuthError(
 						"incrementOne requires a non-empty `increment` or `set`; both were empty.",
 					);
 				}
@@ -1503,7 +1503,7 @@ export const createAdapterFactory =
 						Object.keys(increment).length === 0 &&
 						(!set || Object.keys(set).length === 0)
 					) {
-						throw new BetterAuthError(
+						throw new CinaAuthError(
 							"incrementOne resolved to an empty update: every increment/set field was unknown to the schema or transformed away.",
 						);
 					}
@@ -1570,7 +1570,7 @@ export const createAdapterFactory =
 								});
 								// A non-numeric count coerces to a false miss, so fail loud.
 								if (typeof updated !== "number") {
-									throw new BetterAuthError(
+									throw new CinaAuthError(
 										`Adapter "${config.adapterId}" returned a non-numeric value from updateMany during the incrementOne fallback. Return the number of updated rows, or implement a native incrementOne for atomic guarded counter updates.`,
 									);
 								}

@@ -1,4 +1,4 @@
-import type { BetterAuthDBSchema } from "../type";
+import type { CinaAuthDBSchema } from "../type";
 import { initGetDefaultFieldName } from "./get-default-field-name";
 import { initGetDefaultModelName } from "./get-default-model-name";
 
@@ -6,7 +6,7 @@ export const initGetFieldName = ({
 	schema,
 	usePlural,
 }: {
-	schema: BetterAuthDBSchema;
+	schema: CinaAuthDBSchema;
 	usePlural: boolean | undefined;
 }) => {
 	const getDefaultModelName = initGetDefaultModelName({

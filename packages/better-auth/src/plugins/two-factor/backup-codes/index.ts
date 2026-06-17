@@ -1,6 +1,6 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import * as z from "zod";
 import { sessionMiddleware } from "../../../api";
 import type { SecretConfig } from "../../../crypto";
@@ -198,7 +198,7 @@ export const backupCode2fa = (opts: BackupCodeOptions) => {
 			 * **client:**
 			 * `authClient.twoFactor.verifyBackupCode`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#api-method-two-factor-verify-backup-code)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#api-method-two-factor-verify-backup-code)
 			 */
 			verifyBackupCode: createAuthEndpoint(
 				"/two-factor/verify-backup-code",
@@ -400,7 +400,7 @@ export const backupCode2fa = (opts: BackupCodeOptions) => {
 			 * **client:**
 			 * `authClient.twoFactor.generateBackupCodes`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#api-method-two-factor-generate-backup-codes)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#api-method-two-factor-generate-backup-codes)
 			 */
 			generateBackupCodes: createAuthEndpoint(
 				"/two-factor/generate-backup-codes",
@@ -518,7 +518,7 @@ export const backupCode2fa = (opts: BackupCodeOptions) => {
 			 * **server:**
 			 * `auth.api.viewBackupCodes`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#api-method-two-factor-view-backup-codes)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#api-method-two-factor-view-backup-codes)
 			 */
 			viewBackupCodes: createAuthEndpoint.serverOnly(
 				{

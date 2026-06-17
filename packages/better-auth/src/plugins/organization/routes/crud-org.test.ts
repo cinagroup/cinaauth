@@ -446,7 +446,7 @@ describe("organization hooks", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9288
+	 * @see https://github.com/cinagroup/cinaauth/issues/9288
 	 */
 	it("should allow passing id through `beforeCreateTeam`", async () => {
 		const customTeamId = "custom-team-id";
@@ -557,7 +557,7 @@ describe("updateOrganization", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9829
+	 * @see https://github.com/cinagroup/cinaauth/issues/9829
 	 */
 	it("should clear the logo when passing null", async () => {
 		const { headers } = await signInWithTestUser();
@@ -584,7 +584,7 @@ describe("updateOrganization", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9829
+	 * @see https://github.com/cinagroup/cinaauth/issues/9829
 	 */
 	it("should accept a null logo on create", async () => {
 		const { headers } = await signInWithTestUser();

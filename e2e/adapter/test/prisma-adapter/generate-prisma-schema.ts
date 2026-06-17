@@ -1,13 +1,13 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import { join } from "node:path";
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
-import { prismaAdapter } from "@better-auth/prisma-adapter";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import { prismaAdapter } from "@cinaauth/prisma-adapter";
 import type { PrismaClient } from "@prisma/client";
 import type { Dialect } from "./constants";
 
 export async function generatePrismaSchema(
-	betterAuthOptions: BetterAuthOptions,
+	CinaAuthOptions: CinaAuthOptions,
 	db: PrismaClient,
 	iteration: number,
 	dialect: Dialect,
@@ -20,9 +20,9 @@ export async function generatePrismaSchema(
 		),
 	)) as {
 		generateSchema: (opts: {
-			adapter: DBAdapter<BetterAuthOptions>;
+			adapter: DBAdapter<CinaAuthOptions>;
 			file?: string;
-			options: BetterAuthOptions;
+			options: CinaAuthOptions;
 		}) => Promise<{
 			code: string | undefined;
 			fileName: string;
@@ -34,7 +34,7 @@ export async function generatePrismaSchema(
 	let { fileName, code } = await generateSchema({
 		file: join(import.meta.dirname, `schema-${dialect}.prisma`),
 		adapter: prismaDB({}),
-		options: { ...betterAuthOptions, database: prismaDB },
+		options: { ...CinaAuthOptions, database: prismaDB },
 	});
 
 	// The CLI may not detect Prisma v7 if process.cwd() doesn't have prisma

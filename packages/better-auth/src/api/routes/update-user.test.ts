@@ -492,7 +492,7 @@ describe("delete user", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8173
+	 * @see https://github.com/cinagroup/cinaauth/issues/8173
 	 */
 	it("should require password when session is no longer fresh", async () => {
 		const { client, signInWithTestUser, db } = await getTestInstance({

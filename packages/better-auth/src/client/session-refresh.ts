@@ -1,4 +1,4 @@
-import type { BetterAuthClientOptions } from "@better-auth/core";
+import type { CinaAuthClientOptions } from "@cinaauth/core";
 import type { WritableAtom } from "nanostores";
 import { getGlobalBroadcastChannel } from "./broadcast-channel";
 import { getGlobalFocusManager } from "./focus-manager";
@@ -15,7 +15,7 @@ export interface SessionRefreshOptions {
 	fetchSession: () => Promise<void>;
 	shouldPollSession?: () => boolean;
 	sessionSignal: WritableAtom<boolean>;
-	options?: BetterAuthClientOptions | undefined;
+	options?: CinaAuthClientOptions | undefined;
 }
 
 interface SessionRefreshState {

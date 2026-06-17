@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { serverClient } from "@/lib/server-client";
 
 export async function GET(): Promise<NextResponse> {
 	const config = await serverClient.getProtectedResourceMetadata({
 		resource:
-			(process.env.BETTER_AUTH_URL || "https://demo.better-auth.com") +
+			(process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com") +
 			"/api/mcp",
 	});
 	const headers = new Headers();

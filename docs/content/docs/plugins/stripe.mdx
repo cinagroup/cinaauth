@@ -1,9 +1,9 @@
----
+﻿---
 title: Stripe
-description: Stripe plugin for Better Auth to manage subscriptions and payments.
+description: Stripe plugin for CinaAuth to manage subscriptions and payments.
 ---
 
-The Stripe plugin integrates Stripe's payment and subscription functionality with Better Auth. Since payment and authentication are often tightly coupled, this plugin simplifies the integration of Stripe into your application, handling customer creation, subscription management, and webhook processing.
+The Stripe plugin integrates Stripe's payment and subscription functionality with CinaAuth. Since payment and authentication are often tightly coupled, this plugin simplifies the integration of Stripe into your application, handling customer creation, subscription management, and webhook processing.
 
 ## Features
 
@@ -26,7 +26,7 @@ The Stripe plugin integrates Stripe's payment and subscription functionality wit
     First, install the plugin:
 
     ```package-install
-    @better-auth/stripe
+    @cinaauth/stripe
     ```
 
     <Callout>
@@ -48,15 +48,15 @@ The Stripe plugin integrates Stripe's payment and subscription functionality wit
     ### Add the plugin to your auth config
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { stripe } from "@better-auth/stripe"
+    import { CinaAuth } from "cinaauth"
+    import { stripe } from "@cinaauth/stripe"
     import Stripe from "stripe"
 
     const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!, {
         apiVersion: "2026-03-25.dahlia", // Latest API version as of Stripe SDK v22.0.0
     })
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         // ... your existing config
         plugins: [
             stripe({
@@ -77,8 +77,8 @@ The Stripe plugin integrates Stripe's payment and subscription functionality wit
     ### Add the client plugin
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { stripeClient } from "@better-auth/stripe/client"
+    import { createAuthClient } from "cinaauth/client"
+    import { stripeClient } from "@cinaauth/stripe/client"
 
     export const authClient = createAuthClient({
         // ... your existing config
@@ -982,10 +982,10 @@ await stripeClient.customers.update(organization.stripeCustomerId, {
 Organizations with active subscriptions are blocked from deletion automatically, but users are not. To mirror the same behavior on user deletion, throw from the [`beforeDelete`](/docs/concepts/users-accounts#callbacks) callback when a subscription is active:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { CinaAuth } from "cinaauth";
+import { APIError } from "cinaauth/api";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         deleteUser: {
             enabled: true,

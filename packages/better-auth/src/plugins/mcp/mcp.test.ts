@@ -342,7 +342,7 @@ describe("mcp", async () => {
 	// regression test once the consent + PKCE harness here can hand us a code
 	// without going through genericOAuth. The `/mcp/token` handler calls the
 	// same `internalAdapter.consumeVerificationValue` primitive that
-	// `@better-auth/oauth-provider` and `better-auth`'s `oidc-provider` plugin
+	// `@cinaauth/oauth-provider` and `cinaauth`'s `oidc-provider` plugin
 	// use, both of which already carry the race regression test, so a
 	// regression in the primitive surfaces in those tests today.
 	it.skip("rejects concurrent redemption of the same authorization code", async ({
@@ -954,7 +954,7 @@ describe("mcp", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-pw9m-5jxm-xr6h
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-pw9m-5jxm-xr6h
  */
 describe("mcp refresh_token grant client authentication", () => {
 	const REFRESH_TOKEN = "pw9m-mcp-test-refresh-token";
@@ -1179,7 +1179,7 @@ describe("mcp refresh_token grant client authentication", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-9h47-pqcx-hjr4
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-9h47-pqcx-hjr4
  */
 describe("mcp discovery metadata (security)", async () => {
 	const { auth } = await getTestInstance({

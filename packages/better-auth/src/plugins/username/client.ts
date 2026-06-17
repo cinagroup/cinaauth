@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { username } from ".";
 import { USERNAME_ERROR_CODES } from "./error-codes";
@@ -17,5 +17,5 @@ export const usernameClient = () => {
 			},
 		],
 		$ERROR_CODES: USERNAME_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

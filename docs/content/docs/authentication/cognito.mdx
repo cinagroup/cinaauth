@@ -1,4 +1,4 @@
----
+﻿---
 title: Cognito
 description: Amazon Cognito provider setup and usage.
 ---
@@ -31,9 +31,9 @@ description: Amazon Cognito provider setup and usage.
     Configure the `cognito` key in `socialProviders` key of your `auth` instance.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       socialProviders: {
         cognito: {
           clientId: process.env.COGNITO_CLIENT_ID as string, // [!code highlight]
@@ -53,7 +53,7 @@ description: Amazon Cognito provider setup and usage.
     To sign in with Cognito, use the `signIn.social` function from the client.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
+    import { createAuthClient } from "cinaauth/client"
 
     const authClient = createAuthClient()
 
@@ -80,11 +80,11 @@ description: Amazon Cognito provider setup and usage.
 
     ### Refresh tokens
 
-    Cognito returns a refresh token after a successful authorization code grant. Later refresh-token grants return new access and ID tokens. Cognito only returns a new refresh token when refresh token rotation is enabled in the app client; otherwise, the original refresh token remains valid and Better Auth keeps using it.
+    Cognito returns a refresh token after a successful authorization code grant. Later refresh-token grants return new access and ID tokens. Cognito only returns a new refresh token when refresh token rotation is enabled in the app client; otherwise, the original refresh token remains valid and CinaAuth keeps using it.
 
     `auth.api.getAccessToken` refreshes an expired access token automatically when the provider account has a refresh token and a known `accessTokenExpiresAt`. It returns the valid access token and ID token. If you need the refresh token in the response, use the `/refresh-token` endpoint instead.
 
-    In database-less setups, Better Auth stores provider account data, including OAuth token material, in the encrypted `account_data` cookie when `storeAccountCookie` is enabled. Token refresh responses set an updated cookie, so server-side callers must forward the returned `Set-Cookie` header to the browser. Cognito JWTs can be large; Better Auth chunks oversized account cookies, but browsers and proxies can still enforce total header limits. Use database-backed account storage for large token payloads or production flows that need durable token storage.
+    In database-less setups, CinaAuth stores provider account data, including OAuth token material, in the encrypted `account_data` cookie when `storeAccountCookie` is enabled. Token refresh responses set an updated cookie, so server-side callers must forward the returned `Set-Cookie` header to the browser. Cognito JWTs can be large; CinaAuth chunks oversized account cookies, but browsers and proxies can still enforce total header limits. Use database-backed account storage for large token payloads or production flows that need durable token storage.
 
     <Callout type="info">
       For more information about Amazon Cognito's scopes and API capabilities, refer to the [official documentation](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-define-resource-servers.html?utm_source).

@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
 import { organization } from "../../plugins";
@@ -33,10 +33,10 @@ const createAuthorizationTestPlugin = () =>
 		endpoints: {
 			checkOrgAdmin,
 		},
-	}) satisfies BetterAuthPlugin;
+	}) satisfies CinaAuthPlugin;
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"test-authorization-plugin": {
 			creator: typeof createAuthorizationTestPlugin;
 		};

@@ -225,7 +225,7 @@ export function createMcpAuthClient(
 				return Response.json(cachedMetadata, { headers: corsHeaders });
 			} catch {
 				return Response.json(
-					{ error: "Better Auth server unreachable" },
+					{ error: "CinaAuth server unreachable" },
 					{ status: 502, headers: corsHeaders },
 				);
 			}

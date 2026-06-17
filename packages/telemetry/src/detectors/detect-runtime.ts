@@ -1,4 +1,4 @@
-import { getEnvVar, isTest } from "@better-auth/core/env";
+import { getEnvVar, isTest } from "@cinaauth/core/env";
 import { isCI } from "./detect-system-info";
 
 export function detectRuntime() {

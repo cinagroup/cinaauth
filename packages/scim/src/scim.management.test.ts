@@ -1,10 +1,10 @@
-import { sso } from "@better-auth/sso";
-import { APIError, betterAuth } from "better-auth";
-import { memoryAdapter } from "better-auth/adapters/memory";
-import { createAuthClient } from "better-auth/client";
-import { setCookieToHeader } from "better-auth/cookies";
-import type { OrganizationOptions } from "better-auth/plugins";
-import { bearer, organization } from "better-auth/plugins";
+import { sso } from "@cinaauth/sso";
+import { APIError, CinaAuth } from "cinaauth";
+import { memoryAdapter } from "cinaauth/adapters/memory";
+import { createAuthClient } from "cinaauth/client";
+import { setCookieToHeader } from "cinaauth/cookies";
+import type { OrganizationOptions } from "cinaauth/plugins";
+import { bearer, organization } from "cinaauth/plugins";
 import { describe, expect, it } from "vitest";
 import { scim } from ".";
 import { scimClient } from "./client";
@@ -32,7 +32,7 @@ const createTestInstance = (
 	};
 	const memory = memoryAdapter(data);
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		database: memory,
 		baseURL: "http://localhost:3000",
 		emailAndPassword: {
@@ -210,7 +210,7 @@ describe("SCIM provider management", () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-2g28-66mv-wghh
+		 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-2g28-66mv-wghh
 		 */
 		it("rejects providerId values that collide with built-in account providers", async () => {
 			const { auth, getAuthCookieHeaders } = createTestInstance();
@@ -236,7 +236,7 @@ describe("SCIM provider management", () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-2g28-66mv-wghh
+		 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-2g28-66mv-wghh
 		 */
 		it("rejects providerId values that collide with configured social providers", async () => {
 			const data = {
@@ -250,7 +250,7 @@ describe("SCIM provider management", () => {
 				member: [],
 			};
 			const memory = memoryAdapter(data);
-			const auth = betterAuth({
+			const auth = CinaAuth({
 				database: memory,
 				baseURL: "http://localhost:3000",
 				emailAndPassword: { enabled: true },
@@ -988,7 +988,7 @@ describe("SCIM provider management", () => {
 
 	describe("role-based authorization", () => {
 		/**
-		 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-2g28-66mv-wghh
+		 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-2g28-66mv-wghh
 		 */
 		it("should deny org-scoped token generation for a regular member", async () => {
 			const { auth, getAuthCookieHeaders, registerOrganization } =
@@ -1026,7 +1026,7 @@ describe("SCIM provider management", () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-2g28-66mv-wghh
+		 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-2g28-66mv-wghh
 		 */
 		it("should allow org-scoped token generation for an admin", async () => {
 			const { auth, getAuthCookieHeaders, registerOrganization } =

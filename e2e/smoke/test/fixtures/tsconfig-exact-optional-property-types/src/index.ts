@@ -1,13 +1,13 @@
-import { betterAuth } from "better-auth";
+﻿import { CinaAuth } from "cinaauth";
 import {
 	inferAdditionalFields,
 	organizationClient,
-} from "better-auth/client/plugins";
-import { nextCookies } from "better-auth/next-js";
-import { organization } from "better-auth/plugins";
-import { createAuthClient } from "better-auth/react";
+} from "cinaauth/client/plugins";
+import { nextCookies } from "cinaauth/next-js";
+import { organization } from "cinaauth/plugins";
+import { createAuthClient } from "cinaauth/react";
 
-const auth = betterAuth({
+const auth = CinaAuth({
 	trustedOrigins: [],
 	emailAndPassword: {
 		enabled: true,

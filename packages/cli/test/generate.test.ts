@@ -1,11 +1,11 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { BetterAuthOptions, BetterAuthPlugin } from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import { organization, twoFactor, username } from "better-auth/plugins";
+import type { CinaAuthOptions, CinaAuthPlugin } from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import { drizzleAdapter } from "cinaauth/adapters/drizzle";
+import { prismaAdapter } from "cinaauth/adapters/prisma";
+import { organization, twoFactor, username } from "cinaauth/plugins";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { generateSchema } from "../src/generators";
@@ -23,7 +23,7 @@ describe("generate", async () => {
 				{
 					provider: "postgresql",
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: prismaAdapter(
 					{},
@@ -40,7 +40,7 @@ describe("generate", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9717
+	 * @see https://github.com/cinagroup/cinaauth/issues/9717
 	 */
 	const runBigintToggleTest = async (
 		fromBigint: boolean,
@@ -65,7 +65,7 @@ describe("generate", async () => {
 						{
 							provider: "postgresql",
 						},
-					)({} as BetterAuthOptions),
+					)({} as CinaAuthOptions),
 					options: {
 						database: prismaAdapter(
 							{},
@@ -118,7 +118,7 @@ describe("generate", async () => {
 						{
 							provider: "postgresql",
 						},
-					)({} as BetterAuthOptions),
+					)({} as CinaAuthOptions),
 					options: {
 						database: prismaAdapter(
 							{},
@@ -161,7 +161,7 @@ describe("generate", async () => {
 				{
 					provider: "postgresql",
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: prismaAdapter(
 					{},
@@ -190,7 +190,7 @@ describe("generate", async () => {
 				{
 					provider: "postgresql",
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: prismaAdapter(
 					{},
@@ -219,7 +219,7 @@ describe("generate", async () => {
 				{
 					provider: "mongodb",
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: prismaAdapter(
 					{},
@@ -243,7 +243,7 @@ describe("generate", async () => {
 				{
 					provider: "mysql",
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: prismaAdapter(
 					{},
@@ -267,7 +267,7 @@ describe("generate", async () => {
 				{
 					provider: "mysql",
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: prismaAdapter(
 					{},
@@ -305,7 +305,7 @@ describe("generate", async () => {
 					provider: "pg",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -343,7 +343,7 @@ describe("generate", async () => {
 					provider: "pg",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -378,7 +378,7 @@ describe("generate", async () => {
 	});
 
 	it("should treat fields with omitted required as notNull (default true)", async () => {
-		const pluginWithOmittedRequired = (): BetterAuthPlugin => ({
+		const pluginWithOmittedRequired = (): CinaAuthPlugin => ({
 			id: "omitted-required-test",
 			schema: {
 				testTable: {
@@ -412,7 +412,7 @@ describe("generate", async () => {
 			options: {
 				database: {} as any,
 				plugins: [pluginWithOmittedRequired()],
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 
 		// Fields with omitted `required` should have .notNull()
@@ -442,7 +442,7 @@ describe("generate", async () => {
 			);
 			process.chdir(tmpDir);
 
-			const pluginWithOmittedRequired = (): BetterAuthPlugin => ({
+			const pluginWithOmittedRequired = (): CinaAuthPlugin => ({
 				id: "omitted-required-test",
 				schema: {
 					testTable: {
@@ -469,7 +469,7 @@ describe("generate", async () => {
 				adapter: prismaAdapter(
 					{},
 					{ provider: "postgresql" },
-				)({} as BetterAuthOptions),
+				)({} as CinaAuthOptions),
 				options: {
 					database: prismaAdapter({}, { provider: "postgresql" }),
 					plugins: [pluginWithOmittedRequired()],
@@ -489,7 +489,7 @@ describe("generate", async () => {
 	});
 
 	// Minimal plugin that reproduces the bug: two fields referencing the same model
-	const testPlugin = (): BetterAuthPlugin => {
+	const testPlugin = (): CinaAuthPlugin => {
 		return {
 			id: "test",
 			schema: {
@@ -528,7 +528,7 @@ describe("generate", async () => {
 					provider: "sqlite",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -546,7 +546,7 @@ describe("generate", async () => {
 	});
 
 	// Plugin that tests multiple relations to different models (should be combined)
-	const multiRelationPlugin = (): BetterAuthPlugin => {
+	const multiRelationPlugin = (): CinaAuthPlugin => {
 		return {
 			id: "multi-relation",
 			schema: {
@@ -585,7 +585,7 @@ describe("generate", async () => {
 					provider: "sqlite",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -653,7 +653,7 @@ describe("JSON field support in CLI generators", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toContain("preferences: jsonb(");
 	});
@@ -677,7 +677,7 @@ describe("JSON field support in CLI generators", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toContain("preferences: json(");
 	});
@@ -701,7 +701,7 @@ describe("JSON field support in CLI generators", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toContain("preferences: text(");
 	});
@@ -722,7 +722,7 @@ describe("JSON field support in CLI generators", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		// required omitted → defaults to true → non-nullable
 		expect(schema.code).toMatch(/preferences\s+Json(?!\?)/);
@@ -757,7 +757,7 @@ describe("JSON field support in CLI generators", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		// required omitted → defaults to true → non-nullable
 		expect(schema.code).toMatch(/preferences\s+Json(?!\?)/);
@@ -789,7 +789,7 @@ describe("Enum field support in Drizzle schemas", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toContain(
 			'role: text("role", { enum: ["admin", "user", "guest"] })',
@@ -819,7 +819,7 @@ describe("Enum field support in Drizzle schemas", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toContain("mysqlEnum");
 		expect(schema.code).toContain(
@@ -849,7 +849,7 @@ describe("Enum field support in Drizzle schemas", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toContain("text({ enum: [");
 		expect(schema.code).toContain(
@@ -879,7 +879,7 @@ describe("Enum field support in Drizzle schemas", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toMatch(
 			/import.*mysqlEnum.*from.*drizzle-orm\/mysql-core/s,
@@ -905,7 +905,7 @@ describe("Enum field support in Drizzle schemas", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).not.toContain("enum");
 	});
@@ -929,7 +929,7 @@ describe("Enum field support in Drizzle schemas", () => {
 
 describe("Drizzle array defaultValue serialization", () => {
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/10046
+	 * @see https://github.com/cinagroup/cinaauth/issues/10046
 	 */
 	it("emits a JS array literal for string[] additionalField defaultValue", async () => {
 		const schema = await generateDrizzleSchema({
@@ -950,7 +950,7 @@ describe("Drizzle array defaultValue serialization", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toContain(
 			'roles: text("roles").array().default(["customer"]).notNull()',
@@ -976,7 +976,7 @@ describe("Drizzle array defaultValue serialization", () => {
 						},
 					},
 				},
-			} as BetterAuthOptions,
+			} as CinaAuthOptions,
 		});
 		expect(schema.code).toContain(
 			'scores: integer("scores").array().default([1, 2, 3]).notNull()',
@@ -1116,7 +1116,7 @@ describe("Prisma v7 compatibility", () => {
 					{
 						provider: "postgresql",
 					},
-				)({} as BetterAuthOptions),
+				)({} as CinaAuthOptions),
 				options: {
 					database: prismaAdapter(
 						{},
@@ -1164,7 +1164,7 @@ describe("Prisma v7 compatibility", () => {
 					{
 						provider: "postgresql",
 					},
-				)({} as BetterAuthOptions),
+				)({} as CinaAuthOptions),
 				options: {
 					database: prismaAdapter(
 						{},
@@ -1212,7 +1212,7 @@ describe("Prisma v7 compatibility", () => {
 					{
 						provider: "postgresql",
 					},
-				)({} as BetterAuthOptions),
+				)({} as CinaAuthOptions),
 				options: {
 					database: prismaAdapter(
 						{},

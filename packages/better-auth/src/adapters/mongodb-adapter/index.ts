@@ -1,1 +1,1 @@
-export * from "@better-auth/mongo-adapter";
+export * from "@cinaauth/mongo-adapter";

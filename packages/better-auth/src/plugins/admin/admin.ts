@@ -1,6 +1,6 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
-import { APIError, BetterAuthError } from "@better-auth/core/error";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
+import { APIError, CinaAuthError } from "@cinaauth/core/error";
 import { mergeSchema } from "../../db/schema";
 import { getEndpointResponse } from "../../utils/plugin-helper";
 import { PACKAGE_VERSION } from "../../version";
@@ -30,8 +30,8 @@ import type {
 	UserWithRole,
 } from "./types";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		admin: {
 			creator: typeof admin;
 		};
@@ -62,7 +62,7 @@ export const admin = <O extends AdminOptions>(options?: O | undefined) => {
 					.includes(role.toLowerCase()),
 		);
 		if (invalidRoles.length > 0) {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				`Invalid admin roles: ${invalidRoles.join(", ")}. Admin roles must be defined in the 'roles' configuration.`,
 			);
 		}
@@ -167,5 +167,5 @@ export const admin = <O extends AdminOptions>(options?: O | undefined) => {
 		$ERROR_CODES: ADMIN_ERROR_CODES,
 		schema: mergeSchema(schema, opts.schema),
 		options: options as NoInfer<O>,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

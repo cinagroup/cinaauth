@@ -1,9 +1,9 @@
 /// <reference types="@types/google.accounts" />
 import type {
-	BetterAuthClientPlugin,
+	CinaAuthClientPlugin,
 	ClientFetchOption,
-} from "@better-auth/core";
-import { isSafeUrlScheme } from "@better-auth/core/utils/url";
+} from "@cinaauth/core";
+import { isSafeUrlScheme } from "@cinaauth/core/utils/url";
 import { PACKAGE_VERSION } from "../../version";
 
 declare global {
@@ -422,7 +422,7 @@ export const oneTapClient = (options: GoogleOneTapOptions) => {
 		getAtoms($fetch) {
 			return {};
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 const loadGoogleScript = (): Promise<void> => {

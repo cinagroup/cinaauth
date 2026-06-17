@@ -1,11 +1,11 @@
 import type {
-	BetterAuthPlugin,
+	CinaAuthPlugin,
 	GenericEndpointContext,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
+} from "@cinaauth/core/api";
 import * as z from "zod";
 import { sessionMiddleware } from "../../api";
 import { setSessionCookie } from "../../cookies";
@@ -14,8 +14,8 @@ import type { Session, User } from "../../types";
 import { PACKAGE_VERSION } from "../../version";
 import { defaultKeyHasher } from "./utils";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"one-time-token": {
 			creator: typeof oneTimeToken;
 		};
@@ -132,7 +132,7 @@ export const oneTimeToken = (options?: OneTimeTokenOptions | undefined) => {
 			 * **client:**
 			 * `authClient.oneTimeToken.generate`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/one-time-token#api-method-one-time-token-generate)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/one-time-token#api-method-one-time-token-generate)
 			 */
 			generateOneTimeToken: createAuthEndpoint(
 				"/one-time-token/generate",
@@ -165,7 +165,7 @@ export const oneTimeToken = (options?: OneTimeTokenOptions | undefined) => {
 			 * **client:**
 			 * `authClient.oneTimeToken.verify`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/one-time-token#api-method-one-time-token-verify)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/one-time-token#api-method-one-time-token-verify)
 			 */
 			verifyOneTimeToken: createAuthEndpoint(
 				"/one-time-token/verify",
@@ -242,5 +242,5 @@ export const oneTimeToken = (options?: OneTimeTokenOptions | undefined) => {
 			],
 		},
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

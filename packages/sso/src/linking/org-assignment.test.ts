@@ -1,7 +1,7 @@
-import type { GenericEndpointContext, User } from "better-auth";
-import { betterAuth } from "better-auth";
-import { memoryAdapter } from "better-auth/adapters/memory";
-import { organization } from "better-auth/plugins";
+import type { GenericEndpointContext, User } from "cinaauth";
+import { CinaAuth } from "cinaauth";
+import { memoryAdapter } from "cinaauth/adapters/memory";
+import { organization } from "cinaauth/plugins";
 import { describe, expect, it } from "vitest";
 import { sso } from "..";
 import { assignOrganizationByDomain } from "./org-assignment";
@@ -38,7 +38,7 @@ describe("assignOrganizationByDomain", () => {
 
 		const memory = memoryAdapter(data);
 
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			database: memory,
 			baseURL: "http://localhost:3000",
 			emailAndPassword: {

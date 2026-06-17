@@ -1,7 +1,7 @@
-import { expo } from "@better-auth/expo";
-import { betterAuth } from "better-auth";
+﻿import { expo } from "@cinaauth/expo";
+import { CinaAuth } from "cinaauth";
 
-const auth = betterAuth({
+const auth = CinaAuth({
 	plugins: [expo()],
 });
 

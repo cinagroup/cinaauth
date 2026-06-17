@@ -1,13 +1,13 @@
 import type {
-	BetterAuthClientOptions,
-	BetterAuthClientPlugin,
+	CinaAuthClientOptions,
+	CinaAuthClientPlugin,
 	ClientAtomListener,
 	ClientStore,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import type {
 	DBFieldAttribute,
 	InferDBFieldsOutput,
-} from "@better-auth/core/db";
+} from "@cinaauth/core/db";
 import type { InferFieldsInputClient } from "../db/field";
 import type { Auth, Session, User } from "../types";
 import type { StripEmptyObjects, UnionToIntersection } from "../types/helper";
@@ -15,8 +15,8 @@ import type { InferRoutes } from "./path-to-object";
 export type {
 	ClientStore,
 	ClientAtomListener,
-	BetterAuthClientOptions,
-	BetterAuthClientPlugin,
+	CinaAuthClientOptions,
+	CinaAuthClientPlugin,
 };
 
 type ClientPluginError<K extends string = string> = {
@@ -41,7 +41,7 @@ type InferPluginEndpoints<Plugins> =
 			>
 		: {};
 
-export type InferClientAPI<O extends BetterAuthClientOptions> = InferRoutes<
+export type InferClientAPI<O extends CinaAuthClientOptions> = InferRoutes<
 	O["plugins"] extends Array<any>
 		? Omit<Auth["api"], keyof InferPluginEndpoints<O["plugins"]>> &
 				InferPluginEndpoints<O["plugins"]>
@@ -49,7 +49,7 @@ export type InferClientAPI<O extends BetterAuthClientOptions> = InferRoutes<
 	O
 >;
 
-export type InferActions<O extends BetterAuthClientOptions> =
+export type InferActions<O extends CinaAuthClientOptions> =
 	(O["plugins"] extends Array<infer Plugin>
 		? UnionToIntersection<
 				Plugin extends {
@@ -79,7 +79,7 @@ export type InferActions<O extends BetterAuthClientOptions> =
 			O
 		>;
 
-export type InferErrorCodes<O extends BetterAuthClientOptions> =
+export type InferErrorCodes<O extends CinaAuthClientOptions> =
 	O["plugins"] extends Array<infer Plugin>
 		? UnionToIntersection<
 				Plugin extends {
@@ -101,18 +101,18 @@ export type InferErrorCodes<O extends BetterAuthClientOptions> =
  */
 export type IsSignal<T> = T extends `$${infer _}` ? true : false;
 
-export type InferSessionFromClient<O extends BetterAuthClientOptions> =
+export type InferSessionFromClient<O extends CinaAuthClientOptions> =
 	StripEmptyObjects<
 		Session &
 			UnionToIntersection<InferAdditionalFromClient<O, "session", "output">>
 	>;
-export type InferUserFromClient<O extends BetterAuthClientOptions> =
+export type InferUserFromClient<O extends CinaAuthClientOptions> =
 	StripEmptyObjects<
 		User & UnionToIntersection<InferAdditionalFromClient<O, "user", "output">>
 	>;
 
 export type InferAdditionalFromClient<
-	Options extends BetterAuthClientOptions,
+	Options extends CinaAuthClientOptions,
 	Key extends string,
 	Format extends "input" | "output" = "output",
 > =

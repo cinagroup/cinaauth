@@ -1,18 +1,18 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { describe, test } from "node:test";
-import { betterAuth } from "better-auth";
-import type { AuthClient } from "better-auth/client";
-import { createAuthClient } from "better-auth/client";
-import type { ApiKeyClientPlugin } from "better-auth/client/plugins";
-import { apiKeyClient } from "better-auth/client/plugins";
-import { getMigrations } from "better-auth/db/migration";
-import { apiKey } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import type { AuthClient } from "cinaauth/client";
+import { createAuthClient } from "cinaauth/client";
+import type { ApiKeyClientPlugin } from "cinaauth/client/plugins";
+import { apiKeyClient } from "cinaauth/client/plugins";
+import { getMigrations } from "cinaauth/db/migration";
+import { apiKey } from "cinaauth/plugins";
 
 describe("server side client", () => {
 	test("can use api key on server side", async () => {
 		const database = new DatabaseSync(":memory:");
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			baseURL: "http://localhost:3000",
 			database,
 			socialProviders: {

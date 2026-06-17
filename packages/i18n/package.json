@@ -1,13 +1,13 @@
 {
-  "name": "@better-auth/i18n",
+  "name": "@cinaauth/i18n",
   "version": "1.6.19",
-  "description": "i18n plugin for Better Auth - translate error messages",
+  "description": "i18n plugin for CinaAuth - translate error messages",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/plugins/i18n",
+  "homepage": "https://www.cinagroup.com/docs/plugins/i18n",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/i18n"
   },
   "keywords": [
@@ -15,7 +15,7 @@
     "i18n",
     "internationalization",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -59,12 +59,12 @@
     }
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
-    "better-auth": "workspace:*",
+    "@cinaauth/core": "workspace:*",
+    "cinaauth": "workspace:*",
     "tsdown": "catalog:"
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
-    "better-auth": "workspace:^"
+    "@cinaauth/core": "workspace:^",
+    "cinaauth": "workspace:^"
   }
 }

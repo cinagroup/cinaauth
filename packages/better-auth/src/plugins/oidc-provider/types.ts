@@ -195,7 +195,7 @@ export interface AuthorizationQuery {
 	 * Cross-Site Request Forgery (CSRF, XSRF) mitigation is done by cryptographically binding the
 	 * value of this parameter with a browser cookie.
 	 *
-	 * Note: Better Auth stores the state in a database instead of a cookie. - This is to minimize
+	 * Note: CinaAuth stores the state in a database instead of a cookie. - This is to minimize
 	 * the complication with native apps and other clients that may not have access to cookies.
 	 */
 	state: string;
@@ -222,7 +222,7 @@ export interface AuthorizationQuery {
 	 * then French (without a region designation), followed by English (without a region
 	 * designation).
 	 *
-	 * Better Auth does not support this parameter yet. It'll not throw an error if it's provided,
+	 * CinaAuth does not support this parameter yet. It'll not throw an error if it's provided,
 	 *
 	 * 🏗️ currently not implemented
 	 */

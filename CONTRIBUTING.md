@@ -1,6 +1,6 @@
-# Contributing to Better Auth
+﻿# Contributing to CinaAuth
 
-Hi, we really appreciate your interest in contributing to Better Auth. This guide will help you get started. Your contributions make Better Auth even better for everyone. Before you begin, please take a moment to review the following guidelines.
+Hi, we really appreciate your interest in contributing to CinaAuth. This guide will help you get started. Your contributions make CinaAuth even better for everyone. Before you begin, please take a moment to review the following guidelines.
 
 By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -9,8 +9,8 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 1. Fork the repository and clone it locally:
 
    ```bash
-   git clone https://github.com/your-username/better-auth.git
-   cd better-auth
+   git clone https://github.com/your-username/cinaauth.git
+   cd cinaauth
    ```
 
 2. Install Node.js (LTS version recommended)
@@ -68,15 +68,15 @@ pnpm test
 Or filter by file or directory:
 
 ```bash
-pnpm vitest packages/better-auth/src/plugins/organization --run
+pnpm vitest packages/cinaauth/src/plugins/organization --run
 ```
 
 ### Unit Tests
 
-Use `getTestInstance()` from `better-auth/test` to set up test instances:
+Use `getTestInstance()` from `cinaauth/test` to set up test instances:
 
 ```typescript
-import { getTestInstance } from "better-auth/test";
+import { getTestInstance } from "cinaauth/test";
 
 const { client, auth } = await getTestInstance({
   plugins: [organization()],
@@ -105,7 +105,7 @@ When writing a test for a specific GitHub issue, add a `@see` comment:
 
 ```typescript
 /**
- * @see https://github.com/better-auth/better-auth/issues/1234
+ * @see https://github.com/cinagroup/cinaauth/issues/1234
  */
 it("should handle the previously broken behavior", async () => {
   // ...
@@ -131,18 +131,18 @@ We provide templates to help you get started.
 
 ### Bug Reports
 
-Use the [bug report template](https://github.com/better-auth/better-auth/issues/new?template=bug_report.yml).
+Use the [bug report template](https://github.com/cinagroup/cinaauth/issues/new?template=bug_report.yml).
 Provide a clear description of the bug with steps to reproduce and a minimal
 reproduction.
 
 ### Feature Requests
 
-New features start with discussion. Open a [feature request](https://github.com/better-auth/better-auth/issues/new?template=feature_request.yml) describing the problem, your proposed solution, and how it would benefit the project. This gives us room to align on scope and API shape before anyone writes code.
+New features start with discussion. Open a [feature request](https://github.com/cinagroup/cinaauth/issues/new?template=feature_request.yml) describing the problem, your proposed solution, and how it would benefit the project. This gives us room to align on scope and API shape before anyone writes code.
 
 ### Security Reports
 
 Do not open a public issue for security vulnerabilities.
-Email [security@better-auth.com](mailto:security@better-auth.com) instead.
+Email [security@cinagroup.com](mailto:security@cinagroup.com) instead.
 See [SECURITY.md](/SECURITY.md) for details.
 
 ## Pull Request Guidelines

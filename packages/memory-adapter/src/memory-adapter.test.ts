@@ -1,5 +1,5 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import { describe, expect, it } from "vitest";
 import type { MemoryDB } from "./memory-adapter";
 import { memoryAdapter } from "./memory-adapter";
@@ -23,18 +23,18 @@ const widgetPlugin = {
 	},
 };
 
-const options: BetterAuthOptions = {
+const options: CinaAuthOptions = {
 	plugins: [widgetPlugin as any],
 };
 
-function setup(): { db: MemoryDB; adapter: DBAdapter<BetterAuthOptions> } {
+function setup(): { db: MemoryDB; adapter: DBAdapter<CinaAuthOptions> } {
 	const db: MemoryDB = { widget: [] };
 	const adapter = memoryAdapter(db)(options);
 	return { db, adapter };
 }
 
 async function seedWidget(
-	adapter: DBAdapter<BetterAuthOptions>,
+	adapter: DBAdapter<CinaAuthOptions>,
 	id: string,
 	name: string,
 ) {

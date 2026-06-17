@@ -1,9 +1,9 @@
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
+﻿import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { terminate } from "@better-auth-test/test-utils/playwright";
+import { terminate } from "@cinaauth-test/test-utils/playwright";
 import type { Page } from "@playwright/test";
-import type { BetterAuthOptions } from "better-auth";
+import type { CinaAuthOptions } from "cinaauth";
 import { createAuthServer } from "./app";
 
 type ServerExtras = Parameters<typeof createAuthServer>[2];
@@ -13,7 +13,7 @@ type ServerExtras = Parameters<typeof createAuthServer>[2];
  * Use for API-only E2E assertions that don't need a browser.
  */
 export async function setupServer(
-	overrides?: Partial<BetterAuthOptions>,
+	overrides?: Partial<CinaAuthOptions>,
 	extras?: ServerExtras,
 ) {
 	const server = await createAuthServer(undefined, overrides, extras);
@@ -47,7 +47,7 @@ export async function runClient<R>(
 	return page.evaluate(fn, { client });
 }
 
-export function setup(overrides?: Partial<BetterAuthOptions>) {
+export function setup(overrides?: Partial<CinaAuthOptions>) {
 	let server: Awaited<ReturnType<typeof createAuthServer>>;
 	let clientChild: ChildProcessWithoutNullStreams;
 	const ref: {

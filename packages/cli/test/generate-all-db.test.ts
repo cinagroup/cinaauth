@@ -1,7 +1,7 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { passkey } from "@better-auth/passkey";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { twoFactor, username } from "better-auth/plugins";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { passkey } from "@cinaauth/passkey";
+import { drizzleAdapter } from "cinaauth/adapters/drizzle";
+import { twoFactor, username } from "cinaauth/plugins";
 import { describe, expect, it } from "vitest";
 import { generateDrizzleSchema } from "../src/generators/drizzle";
 
@@ -15,7 +15,7 @@ describe("generate drizzle schema for all databases", async () => {
 					provider: "mysql",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -53,7 +53,7 @@ describe("generate drizzle schema for all databases", async () => {
 					provider: "sqlite",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -91,7 +91,7 @@ describe("generate drizzle schema for all databases", async () => {
 					provider: "mysql",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -133,7 +133,7 @@ describe("generate drizzle schema for all databases", async () => {
 					provider: "mysql",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -176,7 +176,7 @@ describe("generate drizzle schema for all databases", async () => {
 					provider: "pg",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -218,7 +218,7 @@ describe("generate drizzle schema for all databases", async () => {
 					provider: "sqlite",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -261,7 +261,7 @@ describe("generate drizzle schema for all databases", async () => {
 					provider: "sqlite",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -306,7 +306,7 @@ describe("generate drizzle schema for all databases with passkey plugin", async 
 					provider: "mysql",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -344,7 +344,7 @@ describe("generate drizzle schema for all databases with passkey plugin", async 
 					provider: "sqlite",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -382,7 +382,7 @@ describe("generate drizzle schema for all databases with passkey plugin", async 
 					provider: "pg",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -420,7 +420,7 @@ describe("generate drizzle schema for all databases with passkey plugin", async 
 					provider: "mysql",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},
@@ -463,7 +463,7 @@ describe("generate drizzle schema for all databases with passkey plugin", async 
 					provider: "sqlite",
 					schema: {},
 				},
-			)({} as BetterAuthOptions),
+			)({} as CinaAuthOptions),
 			options: {
 				database: drizzleAdapter(
 					{},

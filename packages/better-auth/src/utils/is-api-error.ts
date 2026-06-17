@@ -1,1 +1,1 @@
-export { isAPIError } from "@better-auth/core/utils/is-api-error";
+export { isAPIError } from "@cinaauth/core/utils/is-api-error";

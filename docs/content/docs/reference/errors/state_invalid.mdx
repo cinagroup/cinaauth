@@ -1,11 +1,11 @@
----
+﻿---
 title: state_invalid
 description: Failed to decrypt or parse the OAuth state during the callback.
 ---
 
 ## What is it?
 
-When using the **cookie** state storage strategy (`account.storeStateStrategy: "cookie"`), Better Auth encrypts
+When using the **cookie** state storage strategy (`account.storeStateStrategy: "cookie"`), CinaAuth encrypts
 all OAuth state data into a cookie. During the callback, this cookie is decrypted and parsed. The `state_invalid`
 error means the cookie exists but could not be decrypted, or the decrypted content could not be parsed as valid JSON.
 
@@ -14,7 +14,7 @@ codes (for example `state_mismatch`), depending on what failed.
 
 ## Common Causes
 
-* **Secret rotation mid-flow.** The `BETTER_AUTH_SECRET` was changed between the start and the callback of the OAuth
+* **Secret rotation mid-flow.** The `CINAAUTH_SECRET` was changed between the start and the callback of the OAuth
   flow, so the decryption key no longer matches the one that encrypted the cookie.
 * **Cookie value corrupted in transit.** A proxy, CDN, or middleware modified or truncated the cookie value during
   the redirect.
@@ -35,7 +35,7 @@ cookie value. Look for cookie rewriting, truncation, or URL-encoding issues.
 
 ### Verify cookie names and values
 
-Use your browser's DevTools (Application, then Cookies) to confirm that the `better-auth.oauth_state` cookie is set
+Use your browser's DevTools (Application, then Cookies) to confirm that the `cinaauth.oauth_state` cookie is set
 before the redirect and still exists (unmodified) when the callback arrives.
 
 ### Switch to the database strategy
@@ -44,7 +44,7 @@ If cookie issues persist, switch to the default database strategy, which does no
 decryption:
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	account: {
 		storeStateStrategy: "database",
 	},

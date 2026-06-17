@@ -29,14 +29,14 @@ describe("installDependencies", () => {
 		"should run npm install with single dependency",
 		async ({ tmp }) => {
 			const result = await installDependencies({
-				dependencies: "better-auth",
+				dependencies: "cinaauth",
 				packageManager: "npm",
 				cwd: tmp,
 			});
 
 			expect(result).toBe(true);
 			expect(mockExec).toHaveBeenCalledWith(
-				"npm install --force better-auth",
+				"npm install --force cinaauth",
 				{ cwd: tmp },
 				expect.any(Function),
 			);
@@ -47,13 +47,13 @@ describe("installDependencies", () => {
 		"should run npm install with multiple dependencies",
 		async ({ tmp }) => {
 			await installDependencies({
-				dependencies: ["better-auth", "drizzle-orm"],
+				dependencies: ["cinaauth", "drizzle-orm"],
 				packageManager: "npm",
 				cwd: tmp,
 			});
 
 			expect(mockExec).toHaveBeenCalledWith(
-				"npm install --force better-auth drizzle-orm",
+				"npm install --force cinaauth drizzle-orm",
 				{ cwd: tmp },
 				expect.any(Function),
 			);
@@ -64,14 +64,14 @@ describe("installDependencies", () => {
 		"should run npm install with --save-dev for dev dependencies",
 		async ({ tmp }) => {
 			await installDependencies({
-				dependencies: "better-auth",
+				dependencies: "cinaauth",
 				packageManager: "npm",
 				cwd: tmp,
 				type: "dev",
 			});
 
 			expect(mockExec).toHaveBeenCalledWith(
-				"npm install --force --save-dev better-auth",
+				"npm install --force --save-dev cinaauth",
 				{ cwd: tmp },
 				expect.any(Function),
 			);
@@ -82,14 +82,14 @@ describe("installDependencies", () => {
 		"should run npm install with --save-optional for optional dependencies",
 		async ({ tmp }) => {
 			await installDependencies({
-				dependencies: "better-auth",
+				dependencies: "cinaauth",
 				packageManager: "npm",
 				cwd: tmp,
 				type: "optional",
 			});
 
 			expect(mockExec).toHaveBeenCalledWith(
-				"npm install --force --save-optional better-auth",
+				"npm install --force --save-optional cinaauth",
 				{ cwd: tmp },
 				expect.any(Function),
 			);
@@ -100,13 +100,13 @@ describe("installDependencies", () => {
 		"should run pnpm add with single dependency",
 		async ({ tmp }) => {
 			await installDependencies({
-				dependencies: "better-auth",
+				dependencies: "cinaauth",
 				packageManager: "pnpm",
 				cwd: tmp,
 			});
 
 			expect(mockExec).toHaveBeenCalledWith(
-				"pnpm add better-auth",
+				"pnpm add cinaauth",
 				{ cwd: tmp },
 				expect.any(Function),
 			);
@@ -186,13 +186,13 @@ describe("installDependencies", () => {
 		"should run bun install with single dependency",
 		async ({ tmp }) => {
 			await installDependencies({
-				dependencies: "better-auth",
+				dependencies: "cinaauth",
 				packageManager: "bun",
 				cwd: tmp,
 			});
 
 			expect(mockExec).toHaveBeenCalledWith(
-				"bun install better-auth",
+				"bun install cinaauth",
 				{ cwd: tmp },
 				expect.any(Function),
 			);
@@ -257,13 +257,13 @@ describe("installDependencies", () => {
 		"should run yarn install with single dependency",
 		async ({ tmp }) => {
 			await installDependencies({
-				dependencies: "better-auth",
+				dependencies: "cinaauth",
 				packageManager: "yarn",
 				cwd: tmp,
 			});
 
 			expect(mockExec).toHaveBeenCalledWith(
-				"yarn install better-auth",
+				"yarn install cinaauth",
 				{ cwd: tmp },
 				expect.any(Function),
 			);
@@ -273,7 +273,7 @@ describe("installDependencies", () => {
 	testWithTmpDir("should throw for invalid package manager", ({ tmp }) => {
 		expect(() =>
 			installDependencies({
-				dependencies: "better-auth",
+				dependencies: "cinaauth",
 				packageManager: "invalid" as "npm",
 				cwd: tmp,
 			}),
@@ -287,7 +287,7 @@ describe("installDependencies", () => {
 		});
 
 		const result = await installDependencies({
-			dependencies: "better-auth",
+			dependencies: "cinaauth",
 			packageManager: "npm",
 			cwd: tmp,
 		});
@@ -317,7 +317,7 @@ describe("installDependencies", () => {
 
 	testWithTmpDir("should pass cwd to exec", async ({ tmp }) => {
 		await installDependencies({
-			dependencies: "better-auth",
+			dependencies: "cinaauth",
 			packageManager: "npm",
 			cwd: tmp,
 		});

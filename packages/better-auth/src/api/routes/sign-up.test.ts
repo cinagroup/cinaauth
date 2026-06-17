@@ -1,4 +1,4 @@
-import { BASE_ERROR_CODES } from "@better-auth/core/error";
+import { BASE_ERROR_CODES } from "@cinaauth/core/error";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { admin } from "../../plugins/admin/admin";
 import { getTestInstance } from "../../test-utils/test-instance";
@@ -201,7 +201,7 @@ describe("sign-up with custom fields", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/7972
+ * @see https://github.com/cinagroup/cinaauth/issues/7972
  */
 describe("sign-up user enumeration protection", async () => {
 	it("should return success for existing email when email verification is required", async () => {
@@ -757,7 +757,7 @@ describe("sign-up enumeration protection — indistinguishable response", async 
 	);
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9346
+	 * @see https://github.com/cinagroup/cinaauth/issues/9346
 	 */
 	it("should have identical image key presence for real and synthetic user when image is omitted", async () => {
 		const body = {
@@ -774,7 +774,7 @@ describe("sign-up enumeration protection — indistinguishable response", async 
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9346
+	 * @see https://github.com/cinagroup/cinaauth/issues/9346
 	 */
 	it("should have identical image key presence in raw JSON response when image is omitted", async () => {
 		const { auth } = await getTestInstance(

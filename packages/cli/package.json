@@ -1,20 +1,20 @@
 {
   "name": "auth",
   "version": "1.6.19",
-  "description": "The CLI for Better Auth",
+  "description": "The CLI for CinaAuth",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/concepts/cli",
+  "homepage": "https://www.cinagroup.com/docs/concepts/cli",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/cli"
   },
   "keywords": [
     "auth",
     "cli",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public",
@@ -49,19 +49,19 @@
     }
   },
   "bin": {
-    "better-auth": "./dist/index.mjs",
+    "cinaauth": "./dist/index.mjs",
     "auth": "./dist/index.mjs"
   },
   "dependencies": {
     "@babel/core": "^7.29.0",
     "@babel/preset-react": "^7.28.5",
     "@babel/preset-typescript": "^7.28.5",
-    "@better-auth/core": "workspace:*",
-    "@better-auth/telemetry": "workspace:*",
+    "@cinaauth/core": "workspace:*",
+    "@cinaauth/telemetry": "workspace:*",
     "@better-auth/utils": "catalog:",
     "@clack/prompts": "^0.11.0",
     "@mrleebo/prisma-ast": "^0.13.1",
-    "better-auth": "workspace:*",
+    "cinaauth": "workspace:*",
     "c12": "^3.3.3",
     "chalk": "^5.6.2",
     "commander": "^12.1.0",
@@ -75,7 +75,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@better-auth/passkey": "workspace:*",
+    "@cinaauth/passkey": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/prompts": "^2.4.9",
     "@types/semver": "^7.7.1",

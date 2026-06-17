@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-	title: "Better Auth - Stateless Session Management",
+	title: "CinaAuth - Stateless Session Management",
 	description: "Stateless session management demo with GitHub OAuth",
 };
 

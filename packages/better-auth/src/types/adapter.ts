@@ -1,4 +1,4 @@
-import type { Where } from "@better-auth/core/db/adapter";
+import type { Where } from "@cinaauth/core/db/adapter";
 
 export type {
 	DBAdapter,
@@ -7,6 +7,6 @@ export type {
 	DBTransactionAdapter,
 	JoinConfig,
 	JoinOption,
-} from "@better-auth/core/db/adapter";
+} from "@cinaauth/core/db/adapter";
 
 export type { Where };

@@ -1,7 +1,7 @@
-import { betterAuth } from "better-auth";
-import { oidcProvider } from "better-auth/plugins";
+﻿import { CinaAuth } from "cinaauth";
+import { oidcProvider } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [
 		oidcProvider({
 			loginPage: "/login",

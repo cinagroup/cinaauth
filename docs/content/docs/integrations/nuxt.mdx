@@ -1,13 +1,13 @@
----
+﻿---
 title: Nuxt Integration
-description: Integrate Better Auth with Nuxt.
+description: Integrate CinaAuth with Nuxt.
 ---
 
-Before you start, make sure you have a Better Auth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
+Before you start, make sure you have a CinaAuth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
 
 ## Mount the handler
 
-Mount the Better Auth handler to a catch-all Nitro route. Create a file at `server/api/auth/[...all].ts`:
+Mount the CinaAuth handler to a catch-all Nitro route. Create a file at `server/api/auth/[...all].ts`:
 
 ```ts title="server/api/auth/[...all].ts"
 import { auth } from "~~/lib/auth"; // import your auth config
@@ -18,15 +18,15 @@ export default defineEventHandler((event) => {
 ```
 
 <Callout type="info">
-  You can change the mount path in your Better Auth configuration, but keeping it as `/api/auth/[...all]` is recommended.
+  You can change the mount path in your CinaAuth configuration, but keeping it as `/api/auth/[...all]` is recommended.
 </Callout>
 
 ## Create a client
 
-Create an auth client using `better-auth/vue` so `useSession` returns Vue refs:
+Create an auth client using `cinaauth/vue` so `useSession` returns Vue refs:
 
 ```ts title="lib/auth-client.ts"
-import { createAuthClient } from "better-auth/vue";
+import { createAuthClient } from "cinaauth/vue";
 
 export const authClient = createAuthClient();
 export const { signIn, signUp, signOut, useSession } = authClient;
@@ -119,7 +119,7 @@ onMounted(async () => {
 **Approach B: create a request-scoped client that forwards cookies during SSR.** Add a `useAuth` composable and combine it with `useAsyncData`:
 
 ```ts title="app/composables/useAuth.ts"
-import { createAuthClient } from "better-auth/vue";
+import { createAuthClient } from "cinaauth/vue";
 
 export function useAuth() {
 	const url = useRequestURL();
@@ -153,8 +153,8 @@ export default defineNuxtConfig({
 
 {/* cspell:disable */}
 
-* [`atinux/nuxthub-better-auth`](https://github.com/atinux/nuxthub-better-auth)
-* [`leamsigc/nuxt-better-auth-drizzle`](https://github.com/leamsigc/nuxt-better-auth-drizzle)
+* [`atinux/nuxthub-cinaauth`](https://github.com/atinux/nuxthub-cinaauth)
+* [`leamsigc/nuxt-cinaauth-drizzle`](https://github.com/leamsigc/nuxt-cinaauth-drizzle)
 * [`NuxSaaS/NuxSaaS`](https://github.com/NuxSaaS/NuxSaaS)
 * [`nuxtone/nuxt-one`](https://github.com/nuxtone/nuxt-one)
 

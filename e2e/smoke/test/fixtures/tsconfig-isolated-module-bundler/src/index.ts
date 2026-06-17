@@ -1,14 +1,14 @@
-// Copy and modify from https://github.com/wannabespace/conar/blob/ae42097562d1d57b21e6ca32b31a203cebbaad6f/apps/api/src/lib/auth.ts
-import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
-import { betterAuth } from "better-auth";
-import { createAuthMiddleware } from "better-auth/api";
+﻿// Copy and modify from https://github.com/wannabespace/conar/blob/ae42097562d1d57b21e6ca32b31a203cebbaad6f/apps/api/src/lib/auth.ts
+import type { CinaAuthOptions, CinaAuthPlugin } from "cinaauth";
+import { CinaAuth } from "cinaauth";
+import { createAuthMiddleware } from "cinaauth/api";
 import {
 	anonymous,
 	bearer,
 	lastLoginMethod,
 	organization,
 	twoFactor,
-} from "better-auth/plugins";
+} from "cinaauth/plugins";
 import { emailHarmony } from "better-auth-harmony";
 
 /**
@@ -36,7 +36,7 @@ function noSetCookiePlugin() {
 				},
 			],
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 }
 
 const config = {
@@ -83,6 +83,6 @@ const config = {
 	emailAndPassword: {
 		enabled: true,
 	},
-} satisfies BetterAuthOptions;
+} satisfies CinaAuthOptions;
 
-export const auth = betterAuth(config);
+export const auth = CinaAuth(config);

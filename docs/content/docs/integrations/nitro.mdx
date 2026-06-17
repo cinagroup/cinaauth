@@ -1,11 +1,11 @@
----
+﻿---
 title: Nitro Integration
-description: Integrate Better Auth with Nitro.
+description: Integrate CinaAuth with Nitro.
 ---
 
-Better Auth can be integrated with your [Nitro Application](https://nitro.build/) (an open source framework to build web servers).
+CinaAuth can be integrated with your [Nitro Application](https://nitro.build/) (an open source framework to build web servers).
 
-This guide aims to help you integrate Better Auth with your Nitro application in a few simple steps.
+This guide aims to help you integrate CinaAuth with your Nitro application in a few simple steps.
 
 ## Create a new Nitro Application
 
@@ -74,19 +74,19 @@ Run the following command to generate the Prisma client & sync the database:
 npx prisma db push
 ```
 
-### Install & Configure Better Auth
+### Install & Configure CinaAuth
 
-Follow steps 1 & 2 from the [installation guide](/docs/installation) to install Better Auth in your Nitro application & set up the environment variables.
+Follow steps 1 & 2 from the [installation guide](/docs/installation) to install CinaAuth in your Nitro application & set up the environment variables.
 
-Once that is done, create your Better Auth instance within the `server/utils/auth.ts` file.
+Once that is done, create your CinaAuth instance within the `server/utils/auth.ts` file.
 
 ```ts title="server/utils/auth.ts"
-import { betterAuth } from "better-auth";
-import { prismaAdapter } from "better-auth/adapters/prisma";
+import { CinaAuth } from "cinaauth";
+import { prismaAdapter } from "cinaauth/adapters/prisma";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: prismaAdapter(prisma, { provider: "sqlite" }),
   emailAndPassword: { enabled: true },
 });
@@ -94,14 +94,14 @@ export const auth = betterAuth({
 
 ### Update Prisma Schema
 
-Use the Better Auth CLI to update your Prisma schema with the required models by running the following command:
+Use the CinaAuth CLI to update your Prisma schema with the required models by running the following command:
 
 ```bash title="Terminal"
 npx auth generate --config server/utils/auth.ts
 ```
 
 <Callout>
-  The `--config` flag is used to specify the path to the file where you have created your Better Auth instance.
+  The `--config` flag is used to specify the path to the file where you have created your CinaAuth instance.
 </Callout>
 
 Head over to the `prisma/schema.prisma` file & save the file to trigger the format on save.
@@ -110,7 +110,7 @@ After saving the file, you can run the `npx prisma db push` command to update th
 
 ## Mount The Handler
 
-You can now mount the Better Auth handler in your Nitro application. You can do this by adding the following code to your `server/routes/api/auth/[...all].ts` file:
+You can now mount the CinaAuth handler in your Nitro application. You can do this by adding the following code to your `server/routes/api/auth/[...all].ts` file:
 
 ```ts title="server/routes/api/auth/[...all].ts"
 export default defineEventHandler((event) => {
@@ -157,7 +157,7 @@ You can add an auth guard to your Nitro application to protect routes that requi
 
 ```ts title="server/utils/require-auth.ts"
 import { EventHandler, H3Event } from "h3";
-import { fromNodeHeaders } from "better-auth/node";
+import { fromNodeHeaders } from "cinaauth/node";
 
 /**
  * Middleware used to require authentication for a route.
@@ -196,4 +196,4 @@ export default defineEventHandler({
 
 ### Example
 
-See an [example Nitro application integrated with Better Auth & Prisma](https://github.com/BayBreezy/nitrojs-better-auth-prisma).
+See an [example Nitro application integrated with CinaAuth & Prisma](https://github.com/BayBreezy/nitrojs-cinaauth-prisma).

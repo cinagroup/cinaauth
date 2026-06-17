@@ -1,4 +1,4 @@
-import type { OAuth2Tokens, OAuth2UserInfo } from "@better-auth/core/oauth2";
+import type { OAuth2Tokens, OAuth2UserInfo } from "@cinaauth/core/oauth2";
 import { betterFetch } from "@better-fetch/fetch";
 import type { BaseOAuthProviderOptions, GenericOAuthConfig } from "../index";
 
@@ -21,9 +21,9 @@ interface GumroadProfile {
  *
  * @example
  * ```ts
- * import { genericOAuth, gumroad } from "better-auth/plugins/generic-oauth";
+ * import { genericOAuth, gumroad } from "cinaauth/plugins/generic-oauth";
  *
- * export const auth = betterAuth({
+ * export const auth = CinaAuth({
  *   plugins: [
  *     genericOAuth({
  *       config: [
