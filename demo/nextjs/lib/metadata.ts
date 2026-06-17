@@ -26,4 +26,4 @@ export function createMetadata(override: Metadata): Metadata {
 export const baseUrl =
   process.env.NODE_ENV === "development"
     ? new URL("http://localhost:3000")
-    : new URL(process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com");
+    : (() => { try { return new URL(process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com"); } catch { return new URL("https://demo-auth.cinagroup.com"); } })();

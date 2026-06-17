@@ -1,17 +1,9 @@
-﻿name = "cinaauth-demo"
-compatibility_date = "2025-01-01"
+name = "cinaauth-demo"
+main = ".open-next/worker.js"
+compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
+assets = { directory = ".open-next/assets", binding = "ASSETS" }
 
 [vars]
-CINAAUTH_URL = "https://demo-auth.cinagroup.com"
-
-# Bind to the auth API Worker
-# Replace with actual worker name after deployment
-# [[services]]
-# binding = "AUTH_API"
-# service = "cinaauth-api"
-
-# KV namespace for session caching (optional)
-# [[kv_namespaces]]
-# binding = "SESSION_KV"
-# id = "your-kv-namespace-id"
+CINAAUTH_URL = "https://auth.cinagroup.com"
+CINAAUTH_SECRET = "cinaauth-demo-secret-32-chars-long-xxx"

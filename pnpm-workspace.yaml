@@ -1,4 +1,4 @@
-packages:
+﻿packages:
   - packages/**
   - docs
   - e2e/**
@@ -93,7 +93,7 @@ allowBuilds:
   sharp: true
   workerd: true
   electron: false
-  electron-winstaller: set this to true or false
+  electron-winstaller: false
 
 linkWorkspacePackages: true
 
@@ -113,3 +113,18 @@ trustPolicyIgnoreAfter: 43200
 trustedDependencies:
   - esbuild
   - workerd
+
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+  - better-sqlite3
+  - sharp
+  - msw
+  - electron
+  - lefthook
+  - prisma
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "@parcel/watcher"
+  - "@swc/core"
+  - protobufjs

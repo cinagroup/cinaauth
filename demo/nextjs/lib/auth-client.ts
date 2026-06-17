@@ -1,4 +1,4 @@
-﻿import { electronProxyClient } from "@cinaauth/electron/proxy";
+import { electronProxyClient } from "@cinaauth/electron/proxy";
 import { dashClient } from "./infra";
 import { oauthProviderClient } from "@cinaauth/oauth-provider/client";
 import { passkeyClient } from "@cinaauth/passkey/client";
@@ -9,7 +9,6 @@ import {
 	deviceAuthorizationClient,
 	lastLoginMethodClient,
 	multiSessionClient,
-	oneTapClient,
 	organizationClient,
 	twoFactorClient,
 } from "cinaauth/client/plugins";
@@ -18,6 +17,7 @@ import { toast } from "sonner";
 import type { auth } from "./auth";
 
 export const authClient = createAuthClient({
+	baseURL: process.env.NEXT_PUBLIC_CINAAUTH_API_URL || "https://auth.cinagroup.com",
 	plugins: [
 		dashClient(),
 		organizationClient(),
@@ -29,12 +29,6 @@ export const authClient = createAuthClient({
 		passkeyClient(),
 		adminClient(),
 		multiSessionClient(),
-		oneTapClient({
-			clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-			promptOptions: {
-				maxAttempts: 1,
-			},
-		}),
 		oauthProviderClient(),
 		stripeClient({
 			subscription: true,
