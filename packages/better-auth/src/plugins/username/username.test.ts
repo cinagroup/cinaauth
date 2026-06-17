@@ -55,7 +55,7 @@ describe("username", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9469
+	 * @see https://github.com/cinagroup/cinaauth/issues/9469
 	 */
 	it("should redirect to callbackURL on sign-in (parity with sign-in/email)", async () => {
 		const res = await client.signIn.username({
@@ -105,7 +105,7 @@ describe("username", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8689
+	 * @see https://github.com/cinagroup/cinaauth/issues/8689
 	 */
 	it("should fail on duplicate username in update-user if user is different", async () => {
 		const newHeaders = new Headers();
@@ -130,7 +130,7 @@ describe("username", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8689
+	 * @see https://github.com/cinagroup/cinaauth/issues/8689
 	 */
 	it("should fail on duplicate username in update-user with different casing", async () => {
 		const newHeaders = new Headers();
@@ -662,7 +662,7 @@ describe("username sign-in verify-email callbackURL", async () => {
 	 * keep the caller's `callbackURL` intact. A raw interpolation truncates any
 	 * value containing `&` at the first ampersand.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/6086
+	 * @see https://github.com/cinagroup/cinaauth/issues/6086
 	 */
 	it("encodes callbackURL in the verify-email link on username sign-in", async () => {
 		let capturedUrl = "";

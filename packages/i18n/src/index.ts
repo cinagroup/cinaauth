@@ -1,9 +1,9 @@
 import type {
-	BetterAuthPlugin,
+	CinaAuthPlugin,
 	GenericEndpointContext,
-} from "@better-auth/core";
-import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
-import { parseCookies } from "better-auth/cookies";
+} from "@cinaauth/core";
+import { APIError, createAuthMiddleware, isAPIError } from "cinaauth/api";
+import { parseCookies } from "cinaauth/cookies";
 import type { I18nOptions, LocaleDetectionStrategy } from "./types";
 import { PACKAGE_VERSION } from "./version";
 
@@ -13,8 +13,8 @@ export type {
 	TranslationDictionary,
 } from "./types";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		i18n: {
 			creator: typeof i18n;
 		};
@@ -41,16 +41,16 @@ function parseAcceptLanguage(header: string | null): string[] {
 }
 
 /**
- * i18n plugin for Better Auth
+ * i18n plugin for CinaAuth
  *
  * Translates error messages based on detected locale.
  *
  * @example
  * ```ts
- * import { betterAuth } from "better-auth";
- * import { i18n } from "@better-auth/i18n";
+ * import { CinaAuth } from "cinaauth";
+ * import { i18n } from "@cinaauth/i18n";
  *
- * export const auth = betterAuth({
+ * export const auth = CinaAuth({
  *   plugins: [
  *     i18n({
  *       translations: {
@@ -186,7 +186,7 @@ export const i18n = <Locales extends string[]>(
 		},
 
 		options: opts,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export type * from "./types";

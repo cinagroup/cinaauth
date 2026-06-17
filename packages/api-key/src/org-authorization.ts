@@ -1,6 +1,6 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError } from "@better-auth/core/error";
-import type { OrganizationOptions } from "better-auth/plugins/organization";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError } from "@cinaauth/core/error";
+import type { OrganizationOptions } from "cinaauth/plugins/organization";
 import { API_KEY_ERROR_CODES as ERROR_CODES } from ".";
 
 /**
@@ -121,7 +121,7 @@ async function checkPermission(
 	orgOptions: OrganizationOptions,
 ): Promise<boolean> {
 	// Import hasPermission dynamically to avoid circular dependencies
-	const { hasPermission } = await import("better-auth/plugins/organization");
+	const { hasPermission } = await import("cinaauth/plugins/organization");
 
 	try {
 		const result = await hasPermission(

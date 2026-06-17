@@ -45,7 +45,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"better-auth": "^1.0.0",
+					"cinaauth": "^1.0.0",
 				},
 			}),
 		);
@@ -67,9 +67,9 @@ describe("info command", () => {
 		expect(output.packageManager).toHaveProperty("name");
 		expect(output.packageManager).toHaveProperty("version");
 
-		// Better Auth config should have an error since no auth file exists
-		expect(output.betterAuth).toHaveProperty("version");
-		expect(output.betterAuth.config).toBeNull();
+		// CinaAuth config should have an error since no auth file exists
+		expect(output.CinaAuth).toHaveProperty("version");
+		expect(output.CinaAuth.config).toBeNull();
 	});
 
 	it("should load and sanitize auth configuration", async () => {
@@ -80,7 +80,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"better-auth": "^1.0.0",
+					"cinaauth": "^1.0.0",
 					next: "^14.0.0",
 					react: "^18.0.0",
 				},
@@ -90,9 +90,9 @@ describe("info command", () => {
 		// Create auth.ts with sensitive data - using in-memory database to avoid adapter errors
 		await fs.writeFile(
 			path.join(tmpDir, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 
-			export const auth = betterAuth({
+			export const auth = CinaAuth({
 				secret: "super-secret-key-123",
 				baseURL: "https://example.com",
 				emailAndPassword: {
@@ -116,29 +116,29 @@ describe("info command", () => {
 		const output = JSON.parse(stdout);
 
 		// Check that sensitive data is redacted
-		expect(output.betterAuth.config).toBeDefined();
-		expect(output.betterAuth.config.secret).toBe("[REDACTED]");
+		expect(output.CinaAuth.config).toBeDefined();
+		expect(output.CinaAuth.config.secret).toBe("[REDACTED]");
 
 		// Check social providers are sanitized
-		expect(output.betterAuth.config.socialProviders).toBeDefined();
-		expect(output.betterAuth.config.socialProviders.github.clientId).toBe(
+		expect(output.CinaAuth.config.socialProviders).toBeDefined();
+		expect(output.CinaAuth.config.socialProviders.github.clientId).toBe(
 			"[REDACTED]",
 		);
-		expect(output.betterAuth.config.socialProviders.github.clientSecret).toBe(
+		expect(output.CinaAuth.config.socialProviders.github.clientSecret).toBe(
 			"[REDACTED]",
 		);
-		expect(output.betterAuth.config.socialProviders.google.clientId).toBe(
+		expect(output.CinaAuth.config.socialProviders.google.clientId).toBe(
 			"[REDACTED]",
 		);
-		expect(output.betterAuth.config.socialProviders.google.clientSecret).toBe(
+		expect(output.CinaAuth.config.socialProviders.google.clientSecret).toBe(
 			"[REDACTED]",
 		);
 
 		// Check non-sensitive data is preserved
-		expect(output.betterAuth.config.emailAndPassword).toEqual({
+		expect(output.CinaAuth.config.emailAndPassword).toEqual({
 			enabled: true,
 		});
-		expect(output.betterAuth.config.baseURL).toBe("https://example.com");
+		expect(output.CinaAuth.config.baseURL).toBe("https://example.com");
 	});
 
 	it("should redact versioned secrets", async () => {
@@ -148,16 +148,16 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"better-auth": "^1.0.0",
+					"cinaauth": "^1.0.0",
 				},
 			}),
 		);
 
 		await fs.writeFile(
 			path.join(tmpDir, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 
-			export const auth = betterAuth({
+			export const auth = CinaAuth({
 				secrets: [
 					{ version: 1, value: "old-rotation-secret-123" },
 					{ version: 2, value: "new-rotation-secret-456" },
@@ -172,9 +172,9 @@ describe("info command", () => {
 
 		const output = JSON.parse(stdout);
 
-		expect(output.betterAuth.config).toBeDefined();
-		expect(output.betterAuth.config.secrets).toBe("[REDACTED]");
-		const configStr = JSON.stringify(output.betterAuth.config);
+		expect(output.CinaAuth.config).toBeDefined();
+		expect(output.CinaAuth.config.secrets).toBe("[REDACTED]");
+		const configStr = JSON.stringify(output.CinaAuth.config);
 		expect(configStr).not.toContain("old-rotation-secret-123");
 		expect(configStr).not.toContain("new-rotation-secret-456");
 	});
@@ -187,7 +187,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"better-auth": "^1.0.0",
+					"cinaauth": "^1.0.0",
 					next: "^14.0.0",
 					react: "^18.0.0",
 				},
@@ -229,7 +229,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"better-auth": "^1.0.0",
+					"cinaauth": "^1.0.0",
 					"@prisma/client": "^5.0.0",
 					kysely: "^0.26.0",
 				},
@@ -271,7 +271,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"better-auth": "^1.0.0",
+					"cinaauth": "^1.0.0",
 				},
 			}),
 		);
@@ -283,9 +283,9 @@ describe("info command", () => {
 		// Create auth config in custom location
 		await fs.writeFile(
 			path.join(customPath, "auth.config.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 
-			export const auth = betterAuth({
+			export const auth = CinaAuth({
 				secret: "my-secret",
 				appName: "Custom Config App",
 				emailAndPassword: {
@@ -302,10 +302,10 @@ describe("info command", () => {
 		const output = JSON.parse(stdout);
 
 		// Check that custom config was loaded
-		expect(output.betterAuth.config).toBeDefined();
-		expect(output.betterAuth.config.appName).toBe("Custom Config App");
-		expect(output.betterAuth.config.secret).toBe("[REDACTED]");
-		expect(output.betterAuth.config.emailAndPassword).toEqual({
+		expect(output.CinaAuth.config).toBeDefined();
+		expect(output.CinaAuth.config.appName).toBe("Custom Config App");
+		expect(output.CinaAuth.config.secret).toBe("[REDACTED]");
+		expect(output.CinaAuth.config.emailAndPassword).toEqual({
 			enabled: true,
 		});
 	});
@@ -318,7 +318,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"better-auth": "^1.0.0",
+					"cinaauth": "^1.0.0",
 				},
 			}),
 		);
@@ -326,10 +326,10 @@ describe("info command", () => {
 		// Create auth.ts with plugins
 		await fs.writeFile(
 			path.join(tmpDir, "auth.ts"),
-			`import { betterAuth } from "better-auth";
-			import { twoFactor, organization } from "better-auth/plugins";
+			`import { CinaAuth } from "cinaauth";
+			import { twoFactor, organization } from "cinaauth/plugins";
 
-			export const auth = betterAuth({
+			export const auth = CinaAuth({
 				plugins: [
 					twoFactor({
 						otpOptions: {
@@ -349,11 +349,11 @@ describe("info command", () => {
 		const output = JSON.parse(stdout);
 
 		// Check that plugin configs are sanitized
-		expect(output.betterAuth.config.plugins).toBeDefined();
-		expect(Array.isArray(output.betterAuth.config.plugins)).toBe(true);
+		expect(output.CinaAuth.config.plugins).toBeDefined();
+		expect(Array.isArray(output.CinaAuth.config.plugins)).toBe(true);
 
 		// Plugin sensitive data should be redacted
-		const plugins = output.betterAuth.config.plugins;
+		const plugins = output.CinaAuth.config.plugins;
 		plugins.forEach((plugin: any) => {
 			if (plugin.config) {
 				// Check that sensitive keys are redacted

@@ -1,9 +1,9 @@
 import type {
-	BetterAuthClientPlugin,
+	CinaAuthClientPlugin,
 	ClientAtomListener,
 	ClientFetchOption,
-} from "@better-auth/core";
-import { toKebabCase } from "@better-auth/core/utils/string";
+} from "@cinaauth/core";
+import { toKebabCase } from "@cinaauth/core/utils/string";
 import type { BetterFetch } from "@better-fetch/fetch";
 import type { Atom } from "nanostores";
 import { isAtom } from "../utils/is-atom";
@@ -38,7 +38,7 @@ export function createDynamicPathProxy<T extends Record<string, any>>(
 	client: BetterFetch,
 	knownPathMethods: Record<string, "POST" | "GET">,
 	atoms: Record<string, Atom>,
-	atomListeners: BetterAuthClientPlugin["atomListeners"],
+	atomListeners: CinaAuthClientPlugin["atomListeners"],
 ): T {
 	function createProxy(path: string[] = []): any {
 		return new Proxy(function () {}, {

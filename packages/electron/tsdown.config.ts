@@ -22,10 +22,10 @@ export default defineConfig([
 				return (
 					!id.startsWith(".") &&
 					!id.startsWith("better-call") &&
-					!id.startsWith("@better-auth/core")
+					!id.startsWith("@cinaauth/core")
 				);
 			},
-			alwaysBundle: [/^@better-auth\/core/, /^better-call/],
+			alwaysBundle: [/^@cinaauth\/core/, /^better-call/],
 			onlyAllowBundle: ["better-call", "@standard-schema/spec"],
 		},
 		treeshake: true,

@@ -1,4 +1,4 @@
-# Postmortem: TanStack Start Virtual Module Issue
+﻿# Postmortem: TanStack Start Virtual Module Issue
 
 ## Issue Reference
 
@@ -16,9 +16,9 @@ pre-bundling errors because the package uses virtual modules
 This issue has resurfaced multiple times, caused by PRs attempting to
 support both Solid and React versions of TanStack Start:
 
-1. [PR #6045](https://github.com/better-auth/better-auth/pull/6045)
-2. [PR #6235](https://github.com/better-auth/better-auth/pull/6235)
-3. [PR #7340](https://github.com/better-auth/better-auth/pull/7340)
+1. [PR #6045](https://github.com/cinagroup/cinaauth/pull/6045)
+2. [PR #6235](https://github.com/cinagroup/cinaauth/pull/6235)
+3. [PR #7340](https://github.com/cinagroup/cinaauth/pull/7340)
    (v1.4.12 -> v1.4.13)
 
 The initial fix in v1.4.14 using `@tanstack/react-start-server` and
@@ -29,7 +29,7 @@ The initial fix in v1.4.14 using `@tanstack/react-start-server` and
 `@tanstack/start-server-core` is an internal TanStack package that has
 its own Vite configuration with external dependencies like
 `#tanstack-router-entry`.
-When better-auth tanstack-start integration imported directly from
+When cinaauth tanstack-start integration imported directly from
 this package:
 
 ```ts
@@ -91,14 +91,14 @@ When integrating with TanStack Start:
 
 ## Files Changed in Fix
 
-* `packages/better-auth/src/integrations/tanstack-start.ts` -
+* `packages/cinaauth/src/integrations/tanstack-start.ts` -
   Changed import to `@tanstack/react-start/server`
-* `packages/better-auth/src/integrations/tanstack-start-solid.ts` -
+* `packages/cinaauth/src/integrations/tanstack-start-solid.ts` -
   Changed import to `@tanstack/solid-start/server`
-* `packages/better-auth/package.json` -
+* `packages/cinaauth/package.json` -
   Updated peer dependencies from `@tanstack/*-start-server` to
   `@tanstack/*-start`
 
-[gh-issue]: https://github.com/better-auth/better-auth/issues/7386
+[gh-issue]: https://github.com/cinagroup/cinaauth/issues/7386
 
 [tanstack-issue]: https://github.com/TanStack/router/issues/5795

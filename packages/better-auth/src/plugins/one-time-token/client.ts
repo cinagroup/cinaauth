@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { oneTimeToken } from "./index";
 
@@ -7,7 +7,7 @@ export const oneTimeTokenClient = () => {
 		id: "one-time-token",
 		version: PACKAGE_VERSION,
 		$InferServerPlugin: {} as ReturnType<typeof oneTimeToken>,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export type { OneTimeTokenOptions } from "./index";

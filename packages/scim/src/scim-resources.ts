@@ -1,4 +1,4 @@
-import type { Account, User } from "better-auth";
+import type { Account, User } from "cinaauth";
 import { SCIMUserResourceSchema } from "./user-schemas";
 import { getResourceURL } from "./utils";
 

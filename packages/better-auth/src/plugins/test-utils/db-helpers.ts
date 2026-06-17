@@ -1,4 +1,4 @@
-import type { AuthContext } from "@better-auth/core";
+import type { AuthContext } from "@cinaauth/core";
 import { generateRandomString } from "../../crypto";
 import type { User } from "../../types";
 

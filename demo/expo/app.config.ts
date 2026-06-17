@@ -1,10 +1,10 @@
-import type { ConfigContext, ExpoConfig } from "expo/config";
+﻿import type { ConfigContext, ExpoConfig } from "expo/config";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
 	...config,
-	name: "Better Auth",
-	slug: "better-auth",
-	scheme: "better-auth",
+	name: "CinaAuth",
+	slug: "cinaauth",
+	scheme: "cinaauth",
 	version: "0.1.0",
 	orientation: "portrait",
 	icon: "./assets/icon.png",

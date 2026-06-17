@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type {
 	Awaitable,
-	BetterAuthOptions,
+	CinaAuthOptions,
 	LiteralString,
 	UnionToIntersection,
 } from "../types";
@@ -93,11 +93,11 @@ export type InferDBFieldsOutput<
 
 export type InferDBFieldsFromOptionsInput<
 	DBOptions extends
-		| BetterAuthOptions["session"]
-		| BetterAuthOptions["user"]
-		| BetterAuthOptions["verification"]
-		| BetterAuthOptions["account"]
-		| BetterAuthOptions["rateLimit"],
+		| CinaAuthOptions["session"]
+		| CinaAuthOptions["user"]
+		| CinaAuthOptions["verification"]
+		| CinaAuthOptions["account"]
+		| CinaAuthOptions["rateLimit"],
 > = DBOptions extends {
 	additionalFields: Record<string, DBFieldAttribute>;
 }
@@ -106,11 +106,11 @@ export type InferDBFieldsFromOptionsInput<
 
 export type InferDBFieldsFromOptions<
 	DBOptions extends
-		| BetterAuthOptions["session"]
-		| BetterAuthOptions["user"]
-		| BetterAuthOptions["verification"]
-		| BetterAuthOptions["account"]
-		| BetterAuthOptions["rateLimit"],
+		| CinaAuthOptions["session"]
+		| CinaAuthOptions["user"]
+		| CinaAuthOptions["verification"]
+		| CinaAuthOptions["account"]
+		| CinaAuthOptions["rateLimit"],
 > = DBOptions extends {
 	additionalFields: Record<string, DBFieldAttribute>;
 }
@@ -281,7 +281,7 @@ export type DBFieldAttribute<T extends DBFieldType = DBFieldType> = {
 	type: T;
 } & DBFieldAttributeConfig;
 
-export type BetterAuthDBSchema = Record<
+export type CinaAuthDBSchema = Record<
 	string,
 	{
 		/**

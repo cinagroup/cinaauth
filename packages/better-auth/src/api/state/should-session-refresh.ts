@@ -1,4 +1,4 @@
-import { defineRequestState } from "@better-auth/core/context";
+import { defineRequestState } from "@cinaauth/core/context";
 
 /**
  * State for skipping session refresh

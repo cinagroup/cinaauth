@@ -1,5 +1,5 @@
-import { BetterAuthError } from "@better-auth/core/error";
-import type { GoogleProfile } from "@better-auth/core/social-providers";
+import { CinaAuthError } from "@cinaauth/core/error";
+import type { GoogleProfile } from "@cinaauth/core/social-providers";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
@@ -376,7 +376,7 @@ describe("Admin plugin", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7837
+	 * @see https://github.com/cinagroup/cinaauth/issues/7837
 	 */
 	it("should apply filter when filterValue is defined", async () => {
 		// Create a dedicated user for this test to avoid invalidating shared sessions
@@ -819,7 +819,7 @@ describe("Admin plugin", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9401
+	 * @see https://github.com/cinagroup/cinaauth/issues/9401
 	 */
 	it("should revalidate useSession after admin impersonation", async () => {
 		vi.stubGlobal("window", {});
@@ -1334,7 +1334,7 @@ describe("Admin plugin", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/3553
+	 * @see https://github.com/cinagroup/cinaauth/issues/3553
 	 */
 	it("should create a credential account when setting password for a user without one", async () => {
 		const created = await client.admin.createUser(
@@ -2245,7 +2245,7 @@ describe("access control", async () => {
 			admin({
 				adminRoles: ["non-existent-role"],
 			}),
-		).toThrowError(BetterAuthError);
+		).toThrowError(CinaAuthError);
 	});
 
 	it("should properly type custom roles in createUser", async () => {

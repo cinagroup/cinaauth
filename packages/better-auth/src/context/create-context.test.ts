@@ -3,13 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { createAuthEndpoint } from "../api";
 import { getAdapter } from "../db/adapter-kysely";
 import { getTestInstance } from "../test-utils/test-instance";
-import type { BetterAuthOptions } from "../types";
+import type { CinaAuthOptions } from "../types";
 import { createAuthContext } from "./create-context";
 import { getAwaitableValue } from "./helpers";
 
 describe("base context creation", () => {
-	const initBase = async (options: Partial<BetterAuthOptions> = {}) => {
-		const opts: BetterAuthOptions = {
+	const initBase = async (options: Partial<CinaAuthOptions> = {}) => {
+		const opts: CinaAuthOptions = {
 			baseURL: "http://localhost:3000",
 			...options,
 		};
@@ -19,9 +19,9 @@ describe("base context creation", () => {
 	};
 
 	it("should infer BASE_URL from env", async () => {
-		vi.stubEnv("BETTER_AUTH_URL", "http://localhost:5147");
+		vi.stubEnv("CINAAUTH_URL", "http://localhost:5147");
 
-		const opts: BetterAuthOptions = {};
+		const opts: CinaAuthOptions = {};
 		const adapter = await getAdapter(opts);
 		const getDatabaseType = () => "memory";
 		const res = await createAuthContext(adapter, opts, getDatabaseType);
@@ -233,7 +233,7 @@ describe("base context creation", () => {
 	describe("secret management", () => {
 		it("should use options.secret as highest priority", async () => {
 			vi.stubEnv(
-				"BETTER_AUTH_SECRET",
+				"CINAAUTH_SECRET",
 				"env-secret-that-is-long-enough-for-validation-test",
 			);
 			const res = await initBase({
@@ -245,17 +245,17 @@ describe("base context creation", () => {
 			vi.unstubAllEnvs();
 		});
 
-		it("should use BETTER_AUTH_SECRET from env", async () => {
+		it("should use CINAAUTH_SECRET from env", async () => {
 			vi.stubEnv(
-				"BETTER_AUTH_SECRET",
-				"better-auth-secret-that-is-long-enough-for-validation",
+				"CINAAUTH_SECRET",
+				"cinaauth-secret-that-is-long-enough-for-validation",
 			);
-			const opts: BetterAuthOptions = {};
+			const opts: CinaAuthOptions = {};
 			const adapter = await getAdapter(opts);
 			const getDatabaseType = () => "memory";
 			const res = await createAuthContext(adapter, opts, getDatabaseType);
 			expect(res.secret).toBe(
-				"better-auth-secret-that-is-long-enough-for-validation",
+				"cinaauth-secret-that-is-long-enough-for-validation",
 			);
 			vi.unstubAllEnvs();
 		});
@@ -265,7 +265,7 @@ describe("base context creation", () => {
 				"AUTH_SECRET",
 				"auth-secret-that-is-long-enough-for-validation-test",
 			);
-			const opts: BetterAuthOptions = {};
+			const opts: CinaAuthOptions = {};
 			const adapter = await getAdapter(opts);
 			const getDatabaseType = () => "memory";
 			const res = await createAuthContext(adapter, opts, getDatabaseType);
@@ -874,7 +874,7 @@ describe("base context creation", () => {
 		 * cookie. Otherwise OAuth tokens have no durable home and getAccessToken
 		 * fails with ACCOUNT_NOT_FOUND on the next stateless invocation.
 		 *
-		 * @see https://github.com/better-auth/better-auth/issues/9581
+		 * @see https://github.com/cinagroup/cinaauth/issues/9581
 		 */
 		it("should keep storeAccountCookie enabled when only secondaryStorage is configured", async () => {
 			const res = await initBase({
@@ -894,7 +894,7 @@ describe("base context creation", () => {
 	describe("app name", () => {
 		it("should use default app name", async () => {
 			const res = await initBase({});
-			expect(res.appName).toBe("Better Auth");
+			expect(res.appName).toBe("CinaAuth");
 		});
 
 		it("should allow custom app name", async () => {
@@ -932,9 +932,9 @@ describe("base context creation", () => {
 	});
 
 	describe("trusted origins - environment variables", () => {
-		it("should include origins from BETTER_AUTH_TRUSTED_ORIGINS env", async () => {
+		it("should include origins from CINAAUTH_TRUSTED_ORIGINS env", async () => {
 			vi.stubEnv(
-				"BETTER_AUTH_TRUSTED_ORIGINS",
+				"CINAAUTH_TRUSTED_ORIGINS",
 				"http://app1.com,http://app2.com",
 			);
 			const res = await initBase({
@@ -958,7 +958,7 @@ describe("base context creation", () => {
 		});
 
 		it("should handle empty baseURL gracefully", async () => {
-			const opts: BetterAuthOptions = {
+			const opts: CinaAuthOptions = {
 				baseURL: undefined,
 			};
 			const adapter = await getAdapter(opts);
@@ -1106,7 +1106,7 @@ describe("base context creation", () => {
 
 	describe("edge cases", () => {
 		it("should handle baseURL as undefined", async () => {
-			const opts: BetterAuthOptions = {
+			const opts: CinaAuthOptions = {
 				baseURL: undefined,
 			};
 			const adapter = await getAdapter(opts);
@@ -1449,7 +1449,7 @@ describe("base context creation", () => {
 
 	describe("secret validation", () => {
 		it("should allow default secret in test environment", async () => {
-			vi.stubEnv("BETTER_AUTH_SECRET", "");
+			vi.stubEnv("CINAAUTH_SECRET", "");
 			vi.stubEnv("AUTH_SECRET", "");
 
 			const { DEFAULT_SECRET } = await import("../utils/constants");
@@ -1464,17 +1464,17 @@ describe("base context creation", () => {
 		});
 
 		it("should throw error when default secret is set in production environment", async () => {
-			vi.stubEnv("BETTER_AUTH_SECRET", "");
+			vi.stubEnv("CINAAUTH_SECRET", "");
 			vi.stubEnv("AUTH_SECRET", "");
 			const originalNodeEnv = process.env.NODE_ENV;
 
 			const { DEFAULT_SECRET } = await import("../utils/constants");
 
 			const expectedErrorMessage =
-				"You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.";
+				"You are using the default secret. Please set `CINAAUTH_SECRET` in your environment variables or pass `secret` in your auth config.";
 
-			vi.doMock("@better-auth/core/env", async () => {
-				const actual = await vi.importActual("@better-auth/core/env");
+			vi.doMock("@cinaauth/core/env", async () => {
+				const actual = await vi.importActual("@cinaauth/core/env");
 				return {
 					...actual,
 					isProduction: true,
@@ -1488,9 +1488,9 @@ describe("base context creation", () => {
 			const { getAdapter } = await import("../db/adapter-kysely");
 
 			const initBaseProduction = async (
-				options: Partial<BetterAuthOptions> = {},
+				options: Partial<CinaAuthOptions> = {},
 			) => {
-				const opts: BetterAuthOptions = {
+				const opts: CinaAuthOptions = {
 					baseURL: "http://localhost:3000",
 					...options,
 				};
@@ -1505,14 +1505,14 @@ describe("base context creation", () => {
 				}),
 			).rejects.toThrow(expectedErrorMessage);
 
-			vi.doUnmock("@better-auth/core/env");
+			vi.doUnmock("@cinaauth/core/env");
 			vi.resetModules();
 			process.env.NODE_ENV = originalNodeEnv;
 			vi.unstubAllEnvs();
 		});
 
 		it("should log a warning when secret is too short", async () => {
-			vi.stubEnv("BETTER_AUTH_SECRET", "");
+			vi.stubEnv("CINAAUTH_SECRET", "");
 			vi.stubEnv("AUTH_SECRET", "");
 			const originalNodeEnv = process.env.NODE_ENV;
 			const log = vi.fn();
@@ -1529,8 +1529,8 @@ describe("base context creation", () => {
 				},
 			});
 
-			vi.doMock("@better-auth/core/env", async () => {
-				const actual = await vi.importActual("@better-auth/core/env");
+			vi.doMock("@cinaauth/core/env", async () => {
+				const actual = await vi.importActual("@cinaauth/core/env");
 				return {
 					...actual,
 					isProduction: false,
@@ -1544,9 +1544,9 @@ describe("base context creation", () => {
 			const { getAdapter } = await import("../db/adapter-kysely");
 
 			const initBaseNonTest = async (
-				options: Partial<BetterAuthOptions> = {},
+				options: Partial<CinaAuthOptions> = {},
 			) => {
-				const opts: BetterAuthOptions = {
+				const opts: CinaAuthOptions = {
 					baseURL: "http://localhost:3000",
 					...options,
 				};
@@ -1564,14 +1564,14 @@ describe("base context creation", () => {
 					),
 				);
 
-			vi.doUnmock("@better-auth/core/env");
+			vi.doUnmock("@cinaauth/core/env");
 			vi.resetModules();
 			process.env.NODE_ENV = originalNodeEnv;
 			vi.unstubAllEnvs();
 		});
 
 		it("should fallback to default secret when secret is empty", async () => {
-			vi.stubEnv("BETTER_AUTH_SECRET", "");
+			vi.stubEnv("CINAAUTH_SECRET", "");
 			vi.stubEnv("AUTH_SECRET", "");
 
 			const { DEFAULT_SECRET } = await import("../utils/constants");

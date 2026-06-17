@@ -1,4 +1,4 @@
-name: Auto-retarget
+﻿name: Auto-retarget
 
 on:
   pull_request_target:
@@ -10,7 +10,7 @@ permissions: {}
 jobs:
   retarget:
     if: >
-      github.repository_owner == 'better-auth' &&
+      github.repository_owner == 'cinaauth' &&
       !startsWith(github.event.pull_request.head.ref, 'changeset-release/') &&
       github.event.pull_request.head.ref != 'next' &&
       github.actor != 'github-actions[bot]' &&

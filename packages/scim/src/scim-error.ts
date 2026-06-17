@@ -1,5 +1,5 @@
-import type { Status } from "better-auth";
-import { APIError } from "better-auth";
+import type { Status } from "cinaauth";
+import { APIError } from "cinaauth";
 import { statusCodes } from "better-call";
 
 /**

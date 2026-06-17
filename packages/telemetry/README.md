@@ -1,16 +1,16 @@
-# Better Auth Telemetry
+﻿# CinaAuth Telemetry
 
-Telemetry package for [Better Auth](https://www.better-auth.com) — anonymous usage analytics to help improve the framework.
+Telemetry package for [CinaAuth](https://www.cinagroup.com) — anonymous usage analytics to help improve the framework.
 
 ## Installation
 
 ```bash
-npm install @better-auth/telemetry
+npm install @cinaauth/telemetry
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com](https://www.better-auth.com).
+For full documentation, visit [cinagroup.com](https://www.cinagroup.com).
 
 ## License
 

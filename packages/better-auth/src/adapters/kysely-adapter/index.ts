@@ -1,1 +1,1 @@
-export * from "@better-auth/kysely-adapter";
+export * from "@cinaauth/kysely-adapter";

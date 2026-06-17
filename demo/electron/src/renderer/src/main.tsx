@@ -1,4 +1,4 @@
-import "./global.css";
+﻿import "./global.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
@@ -9,7 +9,7 @@ createRoot(document.getElementById("root")!).render(
 	<StrictMode>
 		<ThemeProvider
 			defaultTheme="system"
-			storageKey="better-auth-demo-electron-theme"
+			storageKey="cinaauth-demo-electron-theme"
 		>
 			<UserProvider>
 				<App />

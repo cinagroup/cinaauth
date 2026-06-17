@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "better-auth/client";
+import type { CinaAuthClientPlugin } from "cinaauth/client";
 import type { scim } from "./index";
 import { PACKAGE_VERSION } from "./version";
 
@@ -7,5 +7,5 @@ export const scimClient = () => {
 		id: "scim-client",
 		version: PACKAGE_VERSION,
 		$InferServerPlugin: {} as ReturnType<typeof scim>,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

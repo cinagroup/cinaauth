@@ -1,14 +1,14 @@
 import { DatabaseSync } from "node:sqlite";
-import type { GenericEndpointContext } from "@better-auth/core";
-import { runWithEndpointContext } from "@better-auth/core/context";
-import { refreshAccessToken } from "@better-auth/core/oauth2";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { runWithEndpointContext } from "@cinaauth/core/context";
+import { refreshAccessToken } from "@cinaauth/core/oauth2";
 import type {
 	GoogleProfile,
 	MicrosoftEntraIDProfile,
 	RailwayProfile,
 	VercelProfile,
-} from "@better-auth/core/social-providers";
-import { reddit } from "@better-auth/core/social-providers";
+} from "@cinaauth/core/social-providers";
+import { reddit } from "@cinaauth/core/social-providers";
 import { betterFetch } from "@better-fetch/fetch";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { HttpResponse, http } from "msw";
@@ -256,7 +256,7 @@ describe("Social Providers", async (c) => {
 				const cookies = parseSetCookieHeader(
 					context.response.headers.get("set-cookie") || "",
 				);
-				expect(cookies.get("better-auth.session_token")?.value).toBeDefined();
+				expect(cookies.get("cinaauth.session_token")?.value).toBeDefined();
 			},
 		});
 	});
@@ -266,7 +266,7 @@ describe("Social Providers", async (c) => {
 	 * redirect to the error page using the `error` query parameter the page
 	 * reads, not a `state` parameter the page ignores.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/9215
+	 * @see https://github.com/cinagroup/cinaauth/issues/9215
 	 */
 	it("redirects a built-in callback with no state to error=state_not_found", async () => {
 		await client.$fetch("/callback/google", {
@@ -289,7 +289,7 @@ describe("Social Providers", async (c) => {
 	 * page. The error URL is recoverable from the parsed state even when the
 	 * state-cookie check fails, and it was already origin-validated at sign-in.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/5467
+	 * @see https://github.com/cinagroup/cinaauth/issues/5467
 	 */
 	it("redirects to the per-flow errorCallbackURL when state validation fails", async () => {
 		const headers = new Headers();
@@ -347,7 +347,7 @@ describe("Social Providers", async (c) => {
 				const cookies = parseSetCookieHeader(
 					context.response.headers.get("set-cookie") || "",
 				);
-				expect(cookies.get("better-auth.session_token")?.value).toBeDefined();
+				expect(cookies.get("cinaauth.session_token")?.value).toBeDefined();
 			},
 		});
 	});
@@ -383,7 +383,7 @@ describe("Social Providers", async (c) => {
 				const cookies = parseSetCookieHeader(
 					context.response.headers.get("set-cookie") || "",
 				);
-				expect(cookies.get("better-auth.session_token")?.value).toBeDefined();
+				expect(cookies.get("cinaauth.session_token")?.value).toBeDefined();
 			},
 		});
 	});
@@ -439,7 +439,7 @@ describe("Social Providers", async (c) => {
 					);
 					headers.set(
 						"cookie",
-						`better-auth.state=${cookies.get("better-auth.state")?.value}`,
+						`cinaauth.state=${cookies.get("cinaauth.state")?.value}`,
 					);
 				},
 			},
@@ -480,7 +480,7 @@ describe("Social Providers", async (c) => {
 					context.response.headers.get("set-cookie") || "",
 				);
 				cookieSetter(headers)(context as any);
-				expect(cookies.get("better-auth.session_token")?.value).toBeDefined();
+				expect(cookies.get("cinaauth.session_token")?.value).toBeDefined();
 			},
 		});
 		await client.listAccounts({
@@ -658,7 +658,7 @@ describe("Disable implicit signup", async () => {
 				const cookies = parseSetCookieHeader(
 					context.response.headers.get("set-cookie") || "",
 				);
-				expect(cookies.get("better-auth.session_token")?.value).toBeDefined();
+				expect(cookies.get("cinaauth.session_token")?.value).toBeDefined();
 			},
 		});
 	});
@@ -1055,7 +1055,7 @@ describe("updateAccountOnSignIn", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/4498
+ * @see https://github.com/cinagroup/cinaauth/issues/4498
  */
 describe("Google Provider — multiple client IDs", async () => {
 	const googleKeyPair = await generateKeyPair("RS256");
@@ -1187,7 +1187,7 @@ describe("Google Provider — multiple client IDs", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/4498
+ * @see https://github.com/cinagroup/cinaauth/issues/4498
  */
 describe("Multi-client ID support — other widened providers", () => {
 	const appleConfig = {
@@ -1407,7 +1407,7 @@ describe("Apple Provider", async () => {
 			},
 		});
 
-		expect(session.data?.user.name).toBe("Better Auth");
+		expect(session.data?.user.name).toBe("CinaAuth");
 	});
 
 	it("should pass user name via idToken body for Apple sign-in", async () => {
@@ -1647,7 +1647,7 @@ describe("Vercel Provider", async () => {
 				const cookies = parseSetCookieHeader(
 					context.response.headers.get("set-cookie") || "",
 				);
-				expect(cookies.get("better-auth.session_token")?.value).toBeDefined();
+				expect(cookies.get("cinaauth.session_token")?.value).toBeDefined();
 
 				cookieSetter(headers)(context as any);
 			},
@@ -2304,7 +2304,7 @@ describe("Railway Provider", async () => {
 					expect(params.get("code")).toBeDefined();
 					expect(params.get("redirect_uri")).toBeDefined();
 
-					// Verify PKCE code_verifier is present (Better Auth uses PKCE by default)
+					// Verify PKCE code_verifier is present (CinaAuth uses PKCE by default)
 					const codeVerifier = params.get("code_verifier");
 					expect(codeVerifier).not.toBeNull();
 					expect(codeVerifier).not.toBe("");
@@ -2369,7 +2369,7 @@ describe("Railway Provider", async () => {
 		expect(authUrl.searchParams.get("scope")).toContain("email");
 		expect(authUrl.searchParams.get("scope")).toContain("profile");
 
-		// Verify PKCE parameters are present (Better Auth uses PKCE by default)
+		// Verify PKCE parameters are present (CinaAuth uses PKCE by default)
 		expect(authUrl.searchParams.get("code_challenge")).not.toBeNull();
 		expect(authUrl.searchParams.get("code_challenge_method")).toBe("S256");
 	});
@@ -2418,7 +2418,7 @@ describe("Railway Provider", async () => {
 				const cookies = parseSetCookieHeader(
 					context.response.headers.get("set-cookie") || "",
 				);
-				expect(cookies.get("better-auth.session_token")?.value).toBeDefined();
+				expect(cookies.get("cinaauth.session_token")?.value).toBeDefined();
 
 				cookieSetter(headers)(context as any);
 			},

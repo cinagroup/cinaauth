@@ -1,5 +1,5 @@
-import type { Awaitable } from "@better-auth/core";
-import type { User } from "@better-auth/core/db";
+import type { Awaitable } from "@cinaauth/core";
+import type { User } from "@cinaauth/core/db";
 import type { ElectronSharedOptions } from "./options";
 
 export interface Storage {
@@ -48,7 +48,7 @@ export interface ElectronClientOptions extends ElectronSharedClientOptions {
 	 *
 	 * @example
 	 * ```ts
-	 * import { storage } from "@better-auth/electron/storage";
+	 * import { storage } from "@cinaauth/electron/storage";
 	 * electronClient({
 	 *   storage: storage(),
 	 * });
@@ -57,7 +57,7 @@ export interface ElectronClientOptions extends ElectronSharedClientOptions {
 	storage: Storage;
 	/**
 	 * Prefix for local storage keys (e.g., "my-app_cookie", "my-app_session_data")
-	 * @default "better-auth"
+	 * @default "cinaauth"
 	 */
 	storagePrefix?: string | undefined;
 	/**
@@ -112,21 +112,21 @@ export interface ElectronClientOptions extends ElectronSharedClientOptions {
 		  }
 		| undefined;
 	/**
-	 * Prefix(es) for server cookie names to filter (e.g., "better-auth.session_token")
-	 * This is used to identify which cookies belong to better-auth to prevent
+	 * Prefix(es) for server cookie names to filter (e.g., "cinaauth.session_token")
+	 * This is used to identify which cookies belong to cinaauth to prevent
 	 * infinite refetching when third-party cookies are set.
 	 *
 	 * Can be a single string or an array of strings to match multiple prefixes.
 	 *
-	 * @default "better-auth"
-	 * @example "better-auth"
-	 * @example ["better-auth", "my-app"]
+	 * @default "cinaauth"
+	 * @example "cinaauth"
+	 * @example ["cinaauth", "my-app"]
 	 */
 	cookiePrefix?: string | string[] | undefined;
 	/**
-	 * Channel prefix for IPC bridges (e.g., "better-auth:request-auth")
+	 * Channel prefix for IPC bridges (e.g., "cinaauth:request-auth")
 	 *
-	 * @default "better-auth"
+	 * @default "cinaauth"
 	 */
 	channelPrefix?: string | undefined;
 	/**
@@ -142,7 +142,7 @@ export interface ElectronProxyClientOptions
 	/**
 	 * The prefix to use for cookies set by the plugin.
 	 *
-	 * @default "better-auth"
+	 * @default "cinaauth"
 	 */
 	cookiePrefix?: string | undefined;
 }

@@ -146,7 +146,7 @@ const getDatabaseProvider = (
 };
 
 /**
- * Create a minimal BetterAuthOptions config for schema generation
+ * Create a minimal CinaAuthOptions config for schema generation
  */
 const createMinimalConfig = (plugins: Plugin[], baseURL: string): any => {
 	// Convert plugin keys to actual plugin instances if needed
@@ -380,8 +380,8 @@ export async function initAction(opts: any) {
 		"\n" +
 			[
 				`   ██  ████`,
-				`   ████  ██  ${chalk.bold(`Better Auth CLI`)} ${chalk.dim(`(${cliVersion})`)}`,
-				`   ██  ████  ${chalk.gray("Welcome to the Better Auth CLI! Let's get you set up.")}`,
+				`   ████  ██  ${chalk.bold(`CinaAuth CLI`)} ${chalk.dim(`(${cliVersion})`)}`,
+				`   ██  ████  ${chalk.gray("Welcome to the CinaAuth CLI! Let's get you set up.")}`,
 			]
 				// .map((x) => x.padStart(10))
 				.join("\n"),
@@ -415,23 +415,23 @@ export async function initAction(opts: any) {
 	>();
 	const filesToWrite: (() => Promise<unknown>)[] = [];
 
-	// Install Better Auth
+	// Install CinaAuth
 	await (async () => {
-		const hasBetterAuth = await hasDependency(packageJson, "better-auth");
-		if (hasBetterAuth) return;
-		await nextStep("Install Better Auth");
+		const hasCinaAuth = await hasDependency(packageJson, "cinaauth");
+		if (hasCinaAuth) return;
+		await nextStep("Install CinaAuth");
 
-		const shouldInstallBetterAuth = await confirm({
-			message: `Would you like to install better-auth using ${chalk.bold(pm)}?`,
+		const shouldInstallCinaAuth = await confirm({
+			message: `Would you like to install cinaauth using ${chalk.bold(pm)}?`,
 			initial: true,
 		});
-		if (isCancel(shouldInstallBetterAuth)) {
+		if (isCancel(shouldInstallCinaAuth)) {
 			cancel("✋ Operation cancelled.");
 			process.exit(0);
 		}
 
-		if (shouldInstallBetterAuth) {
-			depsToInstall.set("better-auth", {
+		if (shouldInstallCinaAuth) {
+			depsToInstall.set("cinaauth", {
 				prod: true,
 			});
 		}
@@ -458,7 +458,7 @@ export async function initAction(opts: any) {
 				const { providedSecret } = await prompts({
 					type: "text",
 					name: "providedSecret",
-					message: `Better Auth secret (used for encryption, hashing, and signing). ${chalk.dim("(Press Enter to auto generate)")}`,
+					message: `CinaAuth secret (used for encryption, hashing, and signing). ${chalk.dim("(Press Enter to auto generate)")}`,
 				});
 				if (isCancel(providedSecret)) {
 					cancel("✋ Operation cancelled.");
@@ -467,7 +467,7 @@ export async function initAction(opts: any) {
 				const { providedURL } = await prompts({
 					type: "text",
 					name: "providedURL",
-					message: `Better Auth Base URL (your auth server URL):`,
+					message: `CinaAuth Base URL (your auth server URL):`,
 					initial: "http://localhost:3000",
 				});
 				if (isCancel(providedURL)) {
@@ -477,8 +477,8 @@ export async function initAction(opts: any) {
 
 				const secret = providedSecret || generateSecretHash();
 				const envs = [
-					`BETTER_AUTH_SECRET="${secret}"`,
-					`BETTER_AUTH_URL="${providedURL}"`,
+					`CINAAUTH_SECRET="${secret}"`,
+					`CINAAUTH_URL="${providedURL}"`,
 				];
 				envFiles.set(".env", envs);
 				filesToWrite.push(() => createEnvFile(cwd, envs));
@@ -488,8 +488,8 @@ export async function initAction(opts: any) {
 
 		// Check for missing ENV variables (basic ones only - social providers handled later)
 		const missingEnvVars = await getMissingEnvVars(envFiles, [
-			"BETTER_AUTH_SECRET",
-			"BETTER_AUTH_URL",
+			"CINAAUTH_SECRET",
+			"CINAAUTH_URL",
 		]);
 
 		if (!missingEnvVars.length) {
@@ -512,31 +512,31 @@ export async function initAction(opts: any) {
 				const envs: string[] = [];
 
 				for (const v of missingVars) {
-					if (v === "BETTER_AUTH_SECRET") {
+					if (v === "CINAAUTH_SECRET") {
 						const { providedSecret } = await prompts({
 							type: "text",
 							name: "providedSecret",
-							message: `Better Auth secret (used for encryption, hashing, and signing). ${chalk.dim("(Press Enter to auto generate)")}`,
+							message: `CinaAuth secret (used for encryption, hashing, and signing). ${chalk.dim("(Press Enter to auto generate)")}`,
 						});
 						if (isCancel(providedSecret)) {
 							cancel("✋ Operation cancelled.");
 							process.exit(0);
 						}
 						envs.push(
-							`BETTER_AUTH_SECRET="${providedSecret || generateSecretHash()}"`,
+							`CINAAUTH_SECRET="${providedSecret || generateSecretHash()}"`,
 						);
-					} else if (v === "BETTER_AUTH_URL") {
+					} else if (v === "CINAAUTH_URL") {
 						const { providedURL } = await prompts({
 							type: "text",
 							name: "providedURL",
-							message: `Better Auth base URL (your auth server URL):`,
+							message: `CinaAuth base URL (your auth server URL):`,
 							initial: "http://localhost:3000",
 						});
 						if (isCancel(providedURL)) {
 							cancel("✋ Operation cancelled.");
 							process.exit(0);
 						}
-						envs.push(`BETTER_AUTH_URL="${providedURL}"`);
+						envs.push(`CINAAUTH_URL="${providedURL}"`);
 					}
 				}
 				envFiles.set(file, envs);
@@ -564,11 +564,11 @@ export async function initAction(opts: any) {
 				const envs = missingEnvVars
 					.find((x) => x.file === file)!
 					.var.map((v) => {
-						if (v === "BETTER_AUTH_SECRET") {
-							return `BETTER_AUTH_SECRET="${secretHash}"`;
+						if (v === "CINAAUTH_SECRET") {
+							return `CINAAUTH_SECRET="${secretHash}"`;
 						}
-						if (v === "BETTER_AUTH_URL") {
-							return 'BETTER_AUTH_URL="http://localhost:3000"';
+						if (v === "CINAAUTH_URL") {
+							return 'CINAAUTH_URL="http://localhost:3000"';
 						}
 						return `${v}=${v}`;
 					});
@@ -637,7 +637,7 @@ export async function initAction(opts: any) {
 	})();
 
 	if (!hasAuthConfigAlready) {
-		await nextStep("Create A Better Auth Instance");
+		await nextStep("Create A CinaAuth Instance");
 
 		const { data: allFiles, error } = await tryCatch(fs.readdir(cwd, "utf-8"));
 		if (error) {
@@ -681,9 +681,9 @@ export async function initAction(opts: any) {
 		authConfigFilePath = absoluteFilePath;
 
 		// Generate minimal boilerplate auth config immediately
-		const boilerplateCode = `import { betterAuth } from "better-auth";
+		const boilerplateCode = `import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	// Configuration will be added here
 });
 `;
@@ -1500,7 +1500,7 @@ export const auth = betterAuth({
 		type: "confirm",
 		name: "connect",
 		message:
-			"Would you like to connect your app to Better Auth infrastructure?",
+			"Would you like to connect your app to CinaAuth infrastructure?",
 		initial: true,
 	});
 	// If the user cancels the prompt, `connect` will be undefined.
@@ -1508,7 +1508,7 @@ export const auth = betterAuth({
 	if (connectResponse.connect === undefined) {
 		console.log(
 			chalk.yellow("\n✖ ") +
-				"Setup cancelled before connecting to Better Auth infrastructure.\n",
+				"Setup cancelled before connecting to CinaAuth infrastructure.\n",
 		);
 		return;
 	}
@@ -1517,15 +1517,15 @@ export const auth = betterAuth({
 	if (connectResponse.connect === undefined) {
 		console.log(
 			chalk.yellow("\n✖ ") +
-				"Setup cancelled before connecting to Better Auth infrastructure.\n",
+				"Setup cancelled before connecting to CinaAuth infrastructure.\n",
 		);
 		return;
 	}
 	if (connectResponse.connect) {
-		await open("https://dash.better-auth.com/onboarding");
+		await open("https://dash.cinagroup.com/onboarding");
 		console.log(
 			chalk.cyan("\n→ ") +
-				"Opening Better Auth onboarding in your browser...\n",
+				"Opening CinaAuth onboarding in your browser...\n",
 		);
 	}
 

@@ -1,5 +1,5 @@
-import type { BetterAuthOptions, BetterAuthPlugin } from "@better-auth/core";
-import type { InternalLogger, LogLevel } from "@better-auth/core/env";
+import type { CinaAuthOptions, CinaAuthPlugin } from "@cinaauth/core";
+import type { InternalLogger, LogLevel } from "@cinaauth/core/env";
 import { createEndpoint } from "better-call";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { checkEndpointConflicts, createAuthEndpoint } from "./index";
@@ -29,7 +29,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should not log errors when there are no endpoint conflicts", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -49,7 +49,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin2: BetterAuthPlugin = {
+		const plugin2: CinaAuthPlugin = {
 			id: "plugin2",
 			endpoints: {
 				endpoint3: endpoint(
@@ -69,7 +69,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1, plugin2],
 		};
 
@@ -79,7 +79,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should NOT log an error when two plugins use the same endpoint path with different methods", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -92,7 +92,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin2: BetterAuthPlugin = {
+		const plugin2: CinaAuthPlugin = {
 			id: "plugin2",
 			endpoints: {
 				endpoint2: endpoint(
@@ -105,7 +105,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1, plugin2],
 		};
 
@@ -116,7 +116,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should log an error when two plugins use the same endpoint path with the same method", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -129,7 +129,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin2: BetterAuthPlugin = {
+		const plugin2: CinaAuthPlugin = {
 			id: "plugin2",
 			endpoints: {
 				endpoint2: endpoint(
@@ -142,7 +142,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1, plugin2],
 		};
 
@@ -160,7 +160,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should NOT detect conflicts when plugins use different methods on same paths", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -180,7 +180,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin2: BetterAuthPlugin = {
+		const plugin2: CinaAuthPlugin = {
 			id: "plugin2",
 			endpoints: {
 				endpoint3: endpoint(
@@ -193,7 +193,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin3: BetterAuthPlugin = {
+		const plugin3: CinaAuthPlugin = {
 			id: "plugin3",
 			endpoints: {
 				endpoint4: endpoint(
@@ -206,7 +206,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1, plugin2, plugin3],
 		};
 
@@ -217,7 +217,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should detect conflicts when plugins use the same method on the same path", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -230,7 +230,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin2: BetterAuthPlugin = {
+		const plugin2: CinaAuthPlugin = {
 			id: "plugin2",
 			endpoints: {
 				endpoint2: endpoint(
@@ -243,7 +243,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1, plugin2],
 		};
 
@@ -257,7 +257,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should allow multiple endpoints from the same plugin using the same path with different methods", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -277,7 +277,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1],
 		};
 
@@ -288,7 +288,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should detect conflicts when same plugin has duplicate methods on same path", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -308,7 +308,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1],
 		};
 
@@ -321,7 +321,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should allow three plugins on the same path with different methods", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -334,7 +334,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin2: BetterAuthPlugin = {
+		const plugin2: CinaAuthPlugin = {
 			id: "plugin2",
 			endpoints: {
 				endpoint2: endpoint(
@@ -347,7 +347,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin3: BetterAuthPlugin = {
+		const plugin3: CinaAuthPlugin = {
 			id: "plugin3",
 			endpoints: {
 				endpoint3: endpoint(
@@ -360,7 +360,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1, plugin2, plugin3],
 		};
 
@@ -371,7 +371,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should detect conflicts when endpoints don't specify a method (wildcard)", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: endpoint(
@@ -384,7 +384,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const plugin2: BetterAuthPlugin = {
+		const plugin2: CinaAuthPlugin = {
 			id: "plugin2",
 			endpoints: {
 				endpoint2: endpoint(
@@ -397,7 +397,7 @@ describe("checkEndpointConflicts", () => {
 			},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1, plugin2],
 		};
 
@@ -410,16 +410,16 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should handle plugins with no endpoints", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 		};
 
-		const plugin2: BetterAuthPlugin = {
+		const plugin2: CinaAuthPlugin = {
 			id: "plugin2",
 			endpoints: {},
 		};
 
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1, plugin2],
 		};
 
@@ -429,7 +429,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should handle options with no plugins", () => {
-		const options: BetterAuthOptions = {};
+		const options: CinaAuthOptions = {};
 
 		checkEndpointConflicts(options, mockLogger);
 
@@ -437,7 +437,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should handle options with empty plugins array", () => {
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [],
 		};
 
@@ -447,7 +447,7 @@ describe("checkEndpointConflicts", () => {
 	});
 
 	it("should handle plugins with endpoints that don't have a path", () => {
-		const plugin1: BetterAuthPlugin = {
+		const plugin1: CinaAuthPlugin = {
 			id: "plugin1",
 			endpoints: {
 				endpoint1: createAuthEndpoint({ method: "GET" }, async () => ({
@@ -458,7 +458,7 @@ describe("checkEndpointConflicts", () => {
 				})),
 			},
 		};
-		const options: BetterAuthOptions = {
+		const options: CinaAuthOptions = {
 			plugins: [plugin1],
 		};
 

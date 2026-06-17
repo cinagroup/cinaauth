@@ -1,7 +1,7 @@
 import type {
 	DiscordProfile,
 	GoogleProfile,
-} from "@better-auth/core/social-providers";
+} from "@cinaauth/core/social-providers";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import {
@@ -108,7 +108,7 @@ describe("oauth2 - email verification on link", async () => {
 	}
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-g38m-r43w-p2q7
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-g38m-r43w-p2q7
 	 */
 	it("should reject implicit link when local user is unverified, even if provider email is verified", async () => {
 		const testEmail = "unverified-local@example.com";
@@ -292,7 +292,7 @@ describe("oauth2 - email verification on link", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/7806
+ * @see https://github.com/cinagroup/cinaauth/issues/7806
  */
 describe("oauth2 - account linking with case insensitive email", async () => {
 	const { auth, client, cookieSetter } = await getTestInstance({
@@ -849,7 +849,7 @@ describe("oauth2 - disableImplicitLinking", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8742
+ * @see https://github.com/cinagroup/cinaauth/issues/8742
  */
 describe("oauth2 - updateUserInfoOnLink via callback", async () => {
 	const { auth, client, cookieSetter } = await getTestInstance({
@@ -1064,7 +1064,7 @@ describe("oauth2 - updateUserInfoOnLink via callback", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8742
+ * @see https://github.com/cinagroup/cinaauth/issues/8742
  *
  * Implicit linking (an existing user signs in with a social provider whose
  * email matches) updated the user row but returned the pre-update user, so the
@@ -1272,7 +1272,7 @@ describe("oauth2 - override user info on sign-in", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8906
+ * @see https://github.com/cinagroup/cinaauth/issues/8906
  *
  * Regression: linkSocial callback looked up the account by accountId
  * alone, without filtering by providerId. When two different providers share the same
@@ -1448,7 +1448,7 @@ describe("oauth2 - link-social uses provider-scoped account lookup", async () =>
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9124
+ * @see https://github.com/cinagroup/cinaauth/issues/9124
  */
 describe("oauth2 - providers without email", async () => {
 	const discordTokenResponse = {
@@ -1508,7 +1508,7 @@ describe("oauth2 - providers without email", async () => {
 		const ctx = await auth.$context;
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/9454
+		 * @see https://github.com/cinagroup/cinaauth/issues/9454
 		 */
 		it("rejects provider user info with a missing id before creating an account", async () => {
 			const email = "missing-id@example.com";
@@ -1665,7 +1665,7 @@ describe("oauth2 - providers without email", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-g38m-r43w-p2q7
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-g38m-r43w-p2q7
  */
 describe("oauth2 - accountLinking.requireLocalEmailVerified: false opt-out", async () => {
 	const { auth, client, cookieSetter } = await getTestInstance({

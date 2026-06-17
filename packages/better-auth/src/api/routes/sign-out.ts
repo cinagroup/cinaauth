@@ -1,4 +1,4 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import { deleteSessionCookie } from "../../cookies";
 
 export const signOut = createAuthEndpoint(

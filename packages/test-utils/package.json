@@ -1,20 +1,20 @@
 {
-  "name": "@better-auth/test-utils",
+  "name": "@cinaauth/test-utils",
   "version": "1.6.19",
-  "description": "Testing utilities for Better Auth adapter development",
+  "description": "Testing utilities for CinaAuth adapter development",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com",
+  "homepage": "https://www.cinagroup.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/test-utils"
   },
   "keywords": [
     "auth",
     "testing",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -35,14 +35,14 @@
     }
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
-    "better-auth": "workspace:*",
+    "@cinaauth/core": "workspace:*",
+    "cinaauth": "workspace:*",
     "tsdown": "catalog:",
     "vitest": "catalog:vitest"
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
-    "better-auth": "workspace:^",
+    "@cinaauth/core": "workspace:^",
+    "cinaauth": "workspace:^",
     "vitest": "catalog:vitest"
   }
 }

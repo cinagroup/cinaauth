@@ -1,8 +1,8 @@
-import type { AuthContext, GenericEndpointContext } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { APIError } from "@better-auth/core/error";
-import { safeJSONParse } from "@better-auth/core/utils/json";
-import { role } from "better-auth/plugins/access";
+import type { AuthContext, GenericEndpointContext } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { APIError } from "@cinaauth/core/error";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
+import { role } from "cinaauth/plugins/access";
 import * as z from "zod";
 import { API_KEY_TABLE_NAME, API_KEY_ERROR_CODES as ERROR_CODES } from "..";
 import { defaultKeyHasher } from "../";

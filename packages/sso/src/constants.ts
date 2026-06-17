@@ -17,7 +17,7 @@ export const USED_ASSERTION_KEY_PREFIX = "saml-used-assertion:";
 /** Prefix for SAML session data (NameID + SessionIndex) for SLO */
 export const SAML_SESSION_KEY_PREFIX = "saml-session:";
 
-/** Prefix for reverse lookup of SAML session by Better Auth session ID */
+/** Prefix for reverse lookup of SAML session by CinaAuth session ID */
 export const SAML_SESSION_BY_ID_PREFIX = "saml-session-by-id:";
 
 /** Prefix for LogoutRequest IDs used in SP-initiated SLO validation */

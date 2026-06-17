@@ -1,11 +1,11 @@
-import type { BetterAuthPlugin, HookEndpointContext } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import type { CinaAuthPlugin, HookEndpointContext } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { base64Url } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
-import { BetterAuthError } from "better-auth";
-import { APIError } from "better-auth/api";
-import { generateRandomString } from "better-auth/crypto";
-import { mergeSchema } from "better-auth/db";
+import { CinaAuthError } from "cinaauth";
+import { APIError } from "cinaauth/api";
+import { generateRandomString } from "cinaauth/crypto";
+import { mergeSchema } from "cinaauth/db";
 import { API_KEY_ERROR_CODES } from "./error-codes";
 import type { PredefinedApiKeyOptions } from "./routes";
 import { createApiKeyRoutes, deleteAllExpiredApiKeys } from "./routes";
@@ -15,8 +15,8 @@ import type { ApiKeyConfigurationOptions, ApiKeyOptions } from "./types";
 import { getDate, getIp } from "./utils";
 import { PACKAGE_VERSION } from "./version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"api-key": {
 			creator: typeof apiKey;
 		};
@@ -46,13 +46,13 @@ export function apiKey(
 ) {
 	if (Array.isArray(_configurations) && _configurations.length > 0) {
 		if (!_configurations.every((option) => option.configId)) {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				"configId is required for each API key configuration in the api-key plugin.",
 			);
 		}
 		const configIds = _configurations.map((option) => option.configId);
 		if (new Set(configIds).size !== configIds.length) {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				"configId must be unique for each API key configuration in the api-key plugin.",
 			);
 		}
@@ -285,7 +285,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.create`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-create)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-create)
 			 */
 			createApiKey: routes.createApiKey,
 			/**
@@ -298,7 +298,7 @@ export function apiKey(
 			 * **server:**
 			 * `auth.api.verifyApiKey`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-verify)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-verify)
 			 */
 			verifyApiKey: routes.verifyApiKey,
 			/**
@@ -314,7 +314,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.get`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-get)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-get)
 			 */
 			getApiKey: routes.getApiKey,
 			/**
@@ -330,7 +330,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.update`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-update)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-update)
 			 */
 			updateApiKey: routes.updateApiKey,
 			/**
@@ -346,7 +346,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.delete`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-delete)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-delete)
 			 */
 			deleteApiKey: routes.deleteApiKey,
 			/**
@@ -362,7 +362,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.list`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-list)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-list)
 			 */
 			listApiKeys: routes.listApiKeys,
 			/**
@@ -375,12 +375,12 @@ export function apiKey(
 			 * **server:**
 			 * `auth.api.deleteAllExpiredApiKeys`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-delete-all-expired-api-keys)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-delete-all-expired-api-keys)
 			 */
 			deleteAllExpiredApiKeys: routes.deleteAllExpiredApiKeys,
 		},
 		schema,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 }
 
 export type * from "./types";

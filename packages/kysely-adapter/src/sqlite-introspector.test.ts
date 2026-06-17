@@ -128,7 +128,7 @@ describe("sqlite introspector", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9810
+	 * @see https://github.com/cinagroup/cinaauth/issues/9810
 	 */
 	it("hides Kysely's internal migration tables during introspection", async () => {
 		const sqlite = new DatabaseSync(":memory:");
@@ -155,7 +155,7 @@ describe("sqlite introspector", () => {
 	 * Guards against drift: the dialects mirror these constants instead of
 	 * importing them, so they must stay equal to Kysely's own values.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/9810
+	 * @see https://github.com/cinagroup/cinaauth/issues/9810
 	 */
 	it("mirrors Kysely's migration-table constants", async () => {
 		const {

@@ -1,7 +1,7 @@
-import { safeJSONParse } from "@better-auth/core/utils/json";
-import { magicLinkClient } from "better-auth/client/plugins";
-import { magicLink } from "better-auth/plugins";
-import { getTestInstance } from "better-auth/test";
+﻿import { safeJSONParse } from "@cinaauth/core/utils/json";
+import { magicLinkClient } from "cinaauth/client/plugins";
+import { magicLink } from "cinaauth/plugins";
+import { getTestInstance } from "cinaauth/test";
 import { describe, expect, it } from "vitest";
 
 interface VerificationEmail {
@@ -11,7 +11,7 @@ interface VerificationEmail {
 }
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8228
+ * @see https://github.com/cinagroup/cinaauth/issues/8228
  */
 describe("magic link with secondary storage (string return)", async () => {
 	const store = new Map<string, string>();
@@ -77,8 +77,8 @@ describe("magic link with secondary storage (string return)", async () => {
 			},
 		});
 		expect(response.data?.token).toBeDefined();
-		const betterAuthCookie = headers.get("set-cookie");
-		expect(betterAuthCookie).toBeDefined();
+		const CinaAuthCookie = headers.get("set-cookie");
+		expect(CinaAuthCookie).toBeDefined();
 	});
 
 	it("should sign up new user via magic link", async () => {
@@ -108,7 +108,7 @@ describe("magic link with secondary storage (string return)", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-hc7v-x88r-fmh4
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-hc7v-x88r-fmh4
 	 */
 	it("consumes the token atomically on first verify, INVALID_TOKEN on retries", async () => {
 		const attemptStore = new Map<string, string>();
@@ -229,7 +229,7 @@ describe("magic link with secondary storage (string return)", async () => {
  * Redis client wrappers do). This exercises the `new Date()` defensive path
  * in updateVerificationByIdentifier.
  *
- * @see https://github.com/better-auth/better-auth/issues/8228
+ * @see https://github.com/cinagroup/cinaauth/issues/8228
  */
 describe("magic link with secondary storage (pre-parsed object return)", async () => {
 	const store = new Map<string, any>();
@@ -286,12 +286,12 @@ describe("magic link with secondary storage (pre-parsed object return)", async (
 			},
 		});
 		expect(response.data?.token).toBeDefined();
-		const betterAuthCookie = headers.get("set-cookie");
-		expect(betterAuthCookie).toBeDefined();
+		const CinaAuthCookie = headers.get("set-cookie");
+		expect(CinaAuthCookie).toBeDefined();
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-hc7v-x88r-fmh4
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-hc7v-x88r-fmh4
 	 */
 	it("consumes the token atomically with pre-parsed storage, INVALID_TOKEN on retries", async () => {
 		const attemptStore = new Map<string, any>();

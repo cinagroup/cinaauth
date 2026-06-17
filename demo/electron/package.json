@@ -1,6 +1,6 @@
 {
-  "name": "@better-auth/electron-demo",
-  "productName": "Better Auth + Electron",
+  "name": "@cinaauth/electron-demo",
+  "productName": "CinaAuth + Electron",
   "private": true,
   "version": "1.0.0",
   "description": "An Electron application with React and TypeScript",
@@ -19,11 +19,11 @@
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
-    "@better-auth/electron": "link:../../packages/electron",
+    "@cinaauth/electron": "link:../../packages/electron",
     "@electron-toolkit/utils": "^4.0.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-slot": "^1.2.4",
-    "better-auth": "link:../../packages/better-auth",
+    "cinaauth": "link:../../packages/better-auth",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "conf": "^15.1.0",

@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "better-auth";
+import type { CinaAuthPlugin } from "cinaauth";
 import { authMiddlewareFactory } from "./middlewares";
 import {
 	createSCIMUser,
@@ -20,8 +20,8 @@ import {
 import type { SCIMOptions } from "./types";
 import { PACKAGE_VERSION } from "./version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		scim: {
 			creator: typeof scim;
 		};
@@ -90,7 +90,7 @@ export const scim = (options?: SCIMOptions) => {
 			},
 		},
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export * from "./types";

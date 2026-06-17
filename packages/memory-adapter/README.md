@@ -1,16 +1,16 @@
-# Better Auth Memory Adapter
+﻿# CinaAuth Memory Adapter
 
-In-memory adapter for [Better Auth](https://www.better-auth.com) — useful for development and testing.
+In-memory adapter for [CinaAuth](https://www.cinagroup.com) — useful for development and testing.
 
 ## Installation
 
 ```bash
-npm install @better-auth/memory-adapter
+npm install @cinaauth/memory-adapter
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com](https://www.better-auth.com).
+For full documentation, visit [cinagroup.com](https://www.cinagroup.com).
 
 ## License
 

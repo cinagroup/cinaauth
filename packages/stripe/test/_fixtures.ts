@@ -1,4 +1,4 @@
-import { memoryAdapter } from "better-auth/adapters/memory";
+﻿import { memoryAdapter } from "cinaauth/adapters/memory";
 import type Stripe from "stripe";
 import { test as baseTest, vi } from "vitest";
 import type { StripeOptions } from "../src/types";

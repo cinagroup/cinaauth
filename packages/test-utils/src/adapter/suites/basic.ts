@@ -1,17 +1,17 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+﻿import type { CinaAuthPlugin } from "@cinaauth/core";
 import type {
 	Account,
 	Session,
 	User,
 	Verification,
-} from "@better-auth/core/db";
+} from "@cinaauth/core/db";
 import type {
 	Invitation,
 	Member,
 	Organization,
 	Team,
-} from "better-auth/plugins/organization";
-import { organization } from "better-auth/plugins/organization";
+} from "cinaauth/plugins/organization";
+import { organization } from "cinaauth/plugins/organization";
 import { expect } from "vitest";
 import { createTestSuite } from "../create-test-suite";
 
@@ -25,7 +25,7 @@ export const normalTestSuite = createTestSuite(
 		const tests = getNormalTestSuiteTests(helpers, debugTools);
 		return {
 			"init - tests": async () => {
-				const opts = helpers.getBetterAuthOptions();
+				const opts = helpers.getCinaAuthOptions();
 				expect(opts.advanced?.database?.generateId !== "serial").toBeTruthy();
 			},
 			...tests,
@@ -38,10 +38,10 @@ export const getNormalTestSuiteTests = (
 		adapter,
 		generate,
 		insertRandom,
-		modifyBetterAuthOptions,
+		modifyCinaAuthOptions,
 		sortModels,
 		customIdGenerator,
-		getBetterAuthOptions,
+		getCinaAuthOptions,
 		transformGeneratedModel,
 		transformIdOutput,
 	}: Parameters<Parameters<typeof createTestSuite>[2]>[0],
@@ -56,7 +56,7 @@ export const getNormalTestSuiteTests = (
 				data: user,
 				forceAllowId: true,
 			});
-			const options = getBetterAuthOptions();
+			const options = getCinaAuthOptions();
 			if (
 				options.advanced?.database?.generateId === "serial" ||
 				options.advanced?.database?.generateId === "uuid"
@@ -81,7 +81,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"create - should use generateId if provided": async () => {
 			const ID = (await customIdGenerator?.()) || "MOCK-ID";
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					advanced: {
 						database: {
@@ -104,7 +104,7 @@ export const getNormalTestSuiteTests = (
 			expect(findResult).toEqual(res);
 		},
 		"create - should return null for nullable foreign keys": {
-			migrateBetterAuth: {
+			migrateCinaAuth: {
 				plugins: [
 					{
 						id: "nullable-test",
@@ -119,7 +119,7 @@ export const getNormalTestSuiteTests = (
 								},
 							},
 						},
-					} satisfies BetterAuthPlugin,
+					} satisfies CinaAuthPlugin,
 				],
 			},
 			test: async () => {
@@ -135,7 +135,7 @@ export const getNormalTestSuiteTests = (
 		},
 
 		"create - should apply default values to fields": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						additionalFields: {
@@ -210,7 +210,7 @@ export const getNormalTestSuiteTests = (
 			expect(result).toEqual(user);
 		},
 		"findOne - should not apply defaultValue if value not found": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						additionalFields: {
@@ -315,7 +315,7 @@ export const getNormalTestSuiteTests = (
 			expect(result).toEqual(session);
 		},
 		"findOne - should not throw on record not found": async () => {
-			const options = getBetterAuthOptions();
+			const options = getCinaAuthOptions();
 			const useUUIDs = options.advanced?.database?.generateId === "uuid";
 			const result = await adapter.findOne<User>({
 				model: "user",
@@ -388,7 +388,7 @@ export const getNormalTestSuiteTests = (
 			});
 		},
 		"findOne - should find a model with modified field name": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						fields: {
@@ -408,7 +408,7 @@ export const getNormalTestSuiteTests = (
 			expect(true).toEqual(true);
 		},
 		"findOne - should find a model with modified model name": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						modelName: "user_custom",
@@ -429,7 +429,7 @@ export const getNormalTestSuiteTests = (
 			expect(true).toEqual(true);
 		},
 		"findOne - should find a model with additional fields": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						additionalFields: {
@@ -496,7 +496,7 @@ export const getNormalTestSuiteTests = (
 			expect(result?.session[0]).toEqual(session);
 		},
 		"findOne - should select fields with one-to-one join": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					plugins: [
 						{
@@ -513,7 +513,7 @@ export const getNormalTestSuiteTests = (
 									},
 								},
 							},
-						} satisfies BetterAuthPlugin,
+						} satisfies CinaAuthPlugin,
 					],
 				},
 				true,
@@ -624,7 +624,7 @@ export const getNormalTestSuiteTests = (
 			});
 		},
 		"findOne - should return an object for one-to-one joins": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					plugins: [
 						{
@@ -641,7 +641,7 @@ export const getNormalTestSuiteTests = (
 									},
 								},
 							},
-						} satisfies BetterAuthPlugin,
+						} satisfies CinaAuthPlugin,
 					],
 				},
 				true,
@@ -696,7 +696,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"findOne - should work with both one-to-one and one-to-many joins":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						plugins: [
 							{
@@ -713,7 +713,7 @@ export const getNormalTestSuiteTests = (
 										},
 									},
 								},
-							} satisfies BetterAuthPlugin,
+							} satisfies CinaAuthPlugin,
 						],
 					},
 					true,
@@ -765,7 +765,7 @@ export const getNormalTestSuiteTests = (
 			},
 		"findOne - should return null for failed base model lookup that has joins":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						plugins: [
 							{
@@ -783,13 +783,13 @@ export const getNormalTestSuiteTests = (
 										},
 									},
 								},
-							} satisfies BetterAuthPlugin,
+							} satisfies CinaAuthPlugin,
 						],
 					},
 					true,
 				);
 
-				const options = getBetterAuthOptions();
+				const options = getCinaAuthOptions();
 				const useUUIDs = options.advanced?.database?.generateId === "uuid";
 				const result = await adapter.findOne<User>({
 					model: "user",
@@ -801,7 +801,7 @@ export const getNormalTestSuiteTests = (
 				expect(result).toBeNull();
 			},
 		"findOne - should join a model with modified field name": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						fields: {
@@ -825,7 +825,7 @@ export const getNormalTestSuiteTests = (
 									},
 								},
 							},
-						} satisfies BetterAuthPlugin,
+						} satisfies CinaAuthPlugin,
 					],
 				},
 				true,
@@ -1046,7 +1046,7 @@ export const getNormalTestSuiteTests = (
 			expect(result?.session[0]).toEqual(session);
 		},
 		"findMany - should select fields with one-to-one join": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					plugins: [
 						{
@@ -1063,7 +1063,7 @@ export const getNormalTestSuiteTests = (
 									},
 								},
 							},
-						} satisfies BetterAuthPlugin,
+						} satisfies CinaAuthPlugin,
 					],
 				},
 				true,
@@ -1175,7 +1175,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"findMany - should find many with join and sortBy": async () => {
 			let n = -1;
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						additionalFields: {
@@ -1299,7 +1299,7 @@ export const getNormalTestSuiteTests = (
 				});
 			},
 		"findMany - should find many with one-to-one join": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					plugins: [
 						{
@@ -1316,7 +1316,7 @@ export const getNormalTestSuiteTests = (
 									},
 								},
 							},
-						} satisfies BetterAuthPlugin,
+						} satisfies CinaAuthPlugin,
 					],
 				},
 				true,
@@ -1350,7 +1350,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"findMany - should find many with both one-to-one and one-to-many joins":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						plugins: [
 							{
@@ -1367,7 +1367,7 @@ export const getNormalTestSuiteTests = (
 										},
 									},
 								},
-							} satisfies BetterAuthPlugin,
+							} satisfies CinaAuthPlugin,
 						],
 					},
 					true,
@@ -1410,7 +1410,7 @@ export const getNormalTestSuiteTests = (
 			},
 		"findMany - should return an empty array when no models are found":
 			async () => {
-				const options = getBetterAuthOptions();
+				const options = getCinaAuthOptions();
 				const useUUIDs = options.advanced?.database?.generateId === "uuid";
 				const result = await adapter.findMany<User>({
 					model: "user",
@@ -1422,7 +1422,7 @@ export const getNormalTestSuiteTests = (
 			},
 		"findMany - should return empty array when base records don't exist with joins":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						plugins: [
 							{
@@ -1439,12 +1439,12 @@ export const getNormalTestSuiteTests = (
 										},
 									},
 								},
-							} satisfies BetterAuthPlugin,
+							} satisfies CinaAuthPlugin,
 						],
 					},
 					true,
 				);
-				const options = getBetterAuthOptions();
+				const options = getCinaAuthOptions();
 				const useUUIDs = options.advanced?.database?.generateId === "uuid";
 				const result = await adapter.findMany<User>({
 					model: "user",
@@ -1807,7 +1807,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"findMany - should find many models with sortBy": async () => {
 			let n = -1;
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						additionalFields: {
@@ -1843,7 +1843,7 @@ export const getNormalTestSuiteTests = (
 				console.log(`--------------------------------`);
 				throw error;
 			}
-			const options = getBetterAuthOptions();
+			const options = getCinaAuthOptions();
 			if (options.advanced?.database?.generateId === "serial") {
 				expect(Number(users[0]!.id)).not.toBeNaN();
 			}
@@ -1888,7 +1888,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"findMany - should find many models with sortBy and offset": async () => {
 			let n = -1;
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						additionalFields: {
@@ -1918,7 +1918,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"findMany - should find many models with sortBy and limit": async () => {
 			let n = -1;
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						additionalFields: {
@@ -1948,7 +1948,7 @@ export const getNormalTestSuiteTests = (
 		"findMany - should find many models with sortBy and limit and offset":
 			async () => {
 				let n = -1;
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						user: {
 							additionalFields: {
@@ -1980,7 +1980,7 @@ export const getNormalTestSuiteTests = (
 		"findMany - should find many models with sortBy and limit and offset and where":
 			async () => {
 				let n = -1;
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						user: {
 							additionalFields: {
@@ -2200,7 +2200,7 @@ export const getNormalTestSuiteTests = (
 			expect(result).toBeNull();
 		},
 		"delete - should not throw on record not found": async () => {
-			const options = getBetterAuthOptions();
+			const options = getCinaAuthOptions();
 			const useUUIDs = options.advanced?.database?.generateId === "uuid";
 			await expect(
 				adapter.delete({
@@ -2212,7 +2212,7 @@ export const getNormalTestSuiteTests = (
 			).resolves.not.toThrow();
 		},
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/8313
+		 * @see https://github.com/cinagroup/cinaauth/issues/8313
 		 */
 		"delete - should delete by non-unique field": async () => {
 			const [verification] = await insertRandom("verification");
@@ -2345,7 +2345,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"deleteMany - should delete many models with numeric values": async () => {
 			let i = 0;
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					user: {
 						additionalFields: {
@@ -2562,7 +2562,7 @@ export const getNormalTestSuiteTests = (
 			},
 		"findOne - backwards join with modified field name (session base, users-table join)":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						user: {
 							modelName: "user_table",
@@ -2597,7 +2597,7 @@ export const getNormalTestSuiteTests = (
 			},
 		"findOne - multiple joins should return result even when some joined tables have no matching rows":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						plugins: [organization({ teams: { enabled: true } })],
 					},
@@ -2832,7 +2832,7 @@ export const getNormalTestSuiteTests = (
 		},
 		"findOne - should return null for one-to-one join when joined record doesn't exist":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						plugins: [
 							{
@@ -2849,7 +2849,7 @@ export const getNormalTestSuiteTests = (
 										},
 									},
 								},
-							} satisfies BetterAuthPlugin,
+							} satisfies CinaAuthPlugin,
 						],
 					},
 					true,
@@ -2876,7 +2876,7 @@ export const getNormalTestSuiteTests = (
 			},
 		"findMany - should return null for one-to-one join when joined records don't exist":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						plugins: [
 							{
@@ -2893,7 +2893,7 @@ export const getNormalTestSuiteTests = (
 										},
 									},
 								},
-							} satisfies BetterAuthPlugin,
+							} satisfies CinaAuthPlugin,
 						],
 					},
 					true,
@@ -3002,7 +3002,7 @@ export const getNormalTestSuiteTests = (
 			},
 		"findMany - should handle mixed joins correctly when some are missing":
 			async () => {
-				await modifyBetterAuthOptions(
+				await modifyCinaAuthOptions(
 					{
 						plugins: [
 							{
@@ -3019,7 +3019,7 @@ export const getNormalTestSuiteTests = (
 										},
 									},
 								},
-							} satisfies BetterAuthPlugin,
+							} satisfies CinaAuthPlugin,
 						],
 					},
 					true,
@@ -3121,7 +3121,7 @@ export const getNormalTestSuiteTests = (
 				expect(result4?.session).toHaveLength(0);
 			},
 		"create - should support arrays": {
-			migrateBetterAuth: {
+			migrateCinaAuth: {
 				plugins: [
 					{
 						id: "string-arrays-test",
@@ -3139,7 +3139,7 @@ export const getNormalTestSuiteTests = (
 								},
 							},
 						},
-					} satisfies BetterAuthPlugin,
+					} satisfies CinaAuthPlugin,
 				],
 			},
 			test: async () => {
@@ -3167,7 +3167,7 @@ export const getNormalTestSuiteTests = (
 			},
 		},
 		"create - should support json": {
-			migrateBetterAuth: {
+			migrateCinaAuth: {
 				plugins: [
 					{
 						id: "json-test",
@@ -3181,7 +3181,7 @@ export const getNormalTestSuiteTests = (
 								},
 							},
 						},
-					} satisfies BetterAuthPlugin,
+					} satisfies CinaAuthPlugin,
 				],
 			},
 			test: async () => {

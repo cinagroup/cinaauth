@@ -1,4 +1,4 @@
----
+﻿---
 title: email_not_found
 description: The provider did not return an email address.
 ---
@@ -6,7 +6,7 @@ description: The provider did not return an email address.
 ## What is it?
 
 This error occurs during the OAuth flow when the provider does not return an email address for the user.
-Better Auth uses the email from the provider to identify or create a user account. If the provider omits
+CinaAuth uses the email from the provider to identify or create a user account. If the provider omits
 the email (or returns it as empty/undefined), we cannot proceed and the request is rejected.
 
 This error is only possible through OAuth providers. It will not occur in non-OAuth flows.

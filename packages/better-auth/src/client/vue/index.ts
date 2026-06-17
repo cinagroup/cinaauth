@@ -1,6 +1,6 @@
-import type { BetterAuthClientOptions } from "@better-auth/core";
-import type { BASE_ERROR_CODES } from "@better-auth/core/error";
-import { capitalizeFirstLetter } from "@better-auth/core/utils/string";
+import type { CinaAuthClientOptions } from "@cinaauth/core";
+import type { BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { capitalizeFirstLetter } from "@cinaauth/core/utils/string";
 import type {
 	BetterFetchError,
 	BetterFetchResponse,
@@ -22,7 +22,7 @@ function getAtomKey(str: string) {
 	return `use${capitalizeFirstLetter(str)}`;
 }
 
-type InferResolvedHooks<O extends BetterAuthClientOptions> = O extends {
+type InferResolvedHooks<O extends CinaAuthClientOptions> = O extends {
 	plugins: Array<infer Plugin>;
 }
 	? UnionToIntersection<
@@ -47,7 +47,7 @@ type InferResolvedHooks<O extends BetterAuthClientOptions> = O extends {
 	: {};
 
 type ClientConfig = ReturnType<typeof getClientConfig>;
-type ClientSession<Option extends BetterAuthClientOptions> =
+type ClientSession<Option extends CinaAuthClientOptions> =
 	InferClientAPI<Option> extends {
 		getSession: () => Promise<infer Res>;
 	}
@@ -58,7 +58,7 @@ type ClientSession<Option extends BetterAuthClientOptions> =
 				: never
 		: never;
 
-type VueUseSession<Option extends BetterAuthClientOptions> = {
+type VueUseSession<Option extends CinaAuthClientOptions> = {
 	(): DeepReadonly<
 		Ref<{
 			data: ClientSession<Option>;
@@ -86,7 +86,7 @@ type VueUseSession<Option extends BetterAuthClientOptions> = {
 /**
  * Vue client returned by `createAuthClient`.
  */
-export type VueAuthClient<Option extends BetterAuthClientOptions> =
+export type VueAuthClient<Option extends CinaAuthClientOptions> =
 	UnionToIntersection<InferResolvedHooks<Option>> &
 		InferClientAPI<Option> &
 		InferActions<Option> & {
@@ -101,7 +101,7 @@ export type VueAuthClient<Option extends BetterAuthClientOptions> =
 			>;
 		};
 
-export function createAuthClient<Option extends BetterAuthClientOptions>(
+export function createAuthClient<Option extends CinaAuthClientOptions>(
 	options?: Option | undefined,
 ): VueAuthClient<Option> {
 	const {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ExternalLink, Key, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
@@ -41,12 +41,12 @@ export function GenerateSecret() {
 				onClick={() => {
 					const elements = document.querySelectorAll("pre code span.line span");
 					for (let i = 0; i < elements.length; i++) {
-						if (elements[i].textContent === "BETTER_AUTH_SECRET=") {
+						if (elements[i].textContent === "CINAAUTH_SECRET=") {
 							elements[i].textContent =
-								`BETTER_AUTH_SECRET=${generateRandomString(32)}`;
+								`CINAAUTH_SECRET=${generateRandomString(32)}`;
 							setGenerated(true);
 							setTimeout(() => {
-								elements[i].textContent = "BETTER_AUTH_SECRET=";
+								elements[i].textContent = "CINAAUTH_SECRET=";
 								setGenerated(false);
 							}, 5000);
 						}
@@ -580,7 +580,7 @@ export function AddToCursor() {
 			>
 				<img
 					src="https://cursor.com/deeplink/mcp-install-dark.svg"
-					alt="Add Better Auth MCP to Cursor"
+					alt="Add CinaAuth MCP to Cursor"
 					height="32"
 				/>
 			</Link>
@@ -591,7 +591,7 @@ export function AddToCursor() {
 			>
 				<img
 					src="https://cursor.com/deeplink/mcp-install-light.svg"
-					alt="Add Better Auth MCP to Cursor"
+					alt="Add CinaAuth MCP to Cursor"
 					height="32"
 				/>
 			</Link>

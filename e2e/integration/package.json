@@ -1,12 +1,12 @@
 {
-  "name": "@better-auth-test/integration",
+  "name": "@cinaauth-test/integration",
   "private": true,
   "scripts": {
     "e2e:integration": "playwright test"
   },
   "dependencies": {
-    "@better-auth/oauth-provider": "workspace:*",
-    "better-auth": "workspace:*"
+    "@cinaauth/oauth-provider": "workspace:*",
+    "cinaauth": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2"

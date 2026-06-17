@@ -1,10 +1,10 @@
-name: npm dist-tag
+﻿name: npm dist-tag
 
 on:
   workflow_dispatch:
     inputs:
       package:
-        description: 'Package name (e.g., better-auth, @better-auth/core)'
+        description: 'Package name (e.g., cinaauth, @cinaauth/core)'
         required: true
         type: string
       version:
@@ -21,7 +21,7 @@ permissions: {}
 
 jobs:
   dist-tag:
-    if: github.repository_owner == 'better-auth'
+    if: github.repository_owner == 'cinaauth'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0

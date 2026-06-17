@@ -1,12 +1,12 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import {
 	ATTR_CONTEXT,
 	ATTR_HOOK_TYPE,
 	ATTR_HTTP_RESPONSE_STATUS_CODE,
 	ATTR_HTTP_ROUTE,
 	ATTR_OPERATION_ID,
-} from "@better-auth/core/instrumentation";
+} from "@cinaauth/core/instrumentation";
 import { trace } from "@opentelemetry/api";
 import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
 import {
@@ -32,7 +32,7 @@ let provider: NodeTracerProvider;
 const PLUGIN_ID = "test-plugin";
 
 async function createTestInstance() {
-	const otelPlugin: BetterAuthPlugin = {
+	const otelPlugin: CinaAuthPlugin = {
 		id: PLUGIN_ID,
 		endpoints: {
 			routeWithParams: createAuthEndpoint(

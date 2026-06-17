@@ -1,4 +1,4 @@
-import { safeJSONParse } from "@better-auth/core/utils/json";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import { beforeEach, describe, expect, it } from "vitest";
 import { admin } from "../plugins/admin/admin";
 import { adminClient } from "../plugins/admin/client";
@@ -234,7 +234,7 @@ describe("secondary storage - storeSessionInDatabase", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-2vg6-77g8-24mp
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-2vg6-77g8-24mp
  */
 describe("secondary storage - admin removeUser cleans up sessions", async () => {
 	const store = new Map<string, string>();
@@ -324,7 +324,7 @@ describe("secondary storage - admin removeUser cleans up sessions", async () => 
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-2vg6-77g8-24mp
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-2vg6-77g8-24mp
  */
 describe("secondary storage - /delete-anonymous-user cleans up sessions", async () => {
 	const store = new Map<string, string>();

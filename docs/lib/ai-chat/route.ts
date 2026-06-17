@@ -1,4 +1,4 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+﻿import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { convertToModelMessages, stepCountIs, streamText, tool } from "ai";
 import * as z from "zod";
 import { getLLMText } from "@/lib/llm-text";
@@ -125,7 +125,7 @@ function searchIndex(entries: SearchEntry[], query: string) {
 	return scored.slice(0, MAX_SEARCH_RESULTS);
 }
 
-const GITHUB_REPO = "better-auth/better-auth";
+const GITHUB_REPO = "cinaauth/cinaauth";
 const GITHUB_API = "https://api.github.com";
 const MAX_CODE_SEARCH_RESULTS = 8;
 const MAX_FILE_CONTENT_LENGTH = 12_000;
@@ -227,9 +227,9 @@ async function githubGetFileContent(path: string, ref = "main") {
 	return { path, content };
 }
 
-const SYSTEM_PROMPT = `You are a helpful documentation assistant for Better Auth, a comprehensive framework-agnostic authentication and authorization framework for TypeScript.
+const SYSTEM_PROMPT = `You are a helpful documentation assistant for CinaAuth, a comprehensive framework-agnostic authentication and authorization framework for TypeScript.
 
-Your role is to answer questions about Better Auth by referencing the official documentation. You should be accurate, concise, and helpful.
+Your role is to answer questions about CinaAuth by referencing the official documentation. You should be accurate, concise, and helpful.
 
 ## Rules
 - Always look up relevant documentation before answering. Do NOT guess or make up information.
@@ -313,7 +313,7 @@ export async function POST(req: Request) {
 			tools: {
 				searchDocs: tool({
 					description:
-						"Search across all Better Auth documentation for specific terms, keywords, or concepts. Returns matching page slugs and snippets. Use this when you're not sure which page contains the answer.",
+						"Search across all CinaAuth documentation for specific terms, keywords, or concepts. Returns matching page slugs and snippets. Use this when you're not sure which page contains the answer.",
 					inputSchema: z.object({
 						query: z
 							.string()
@@ -342,7 +342,7 @@ export async function POST(req: Request) {
 				}),
 				getDocumentation: tool({
 					description:
-						"Retrieve the full content of a Better Auth documentation page by its slug. Use this to look up detailed information before answering user questions.",
+						"Retrieve the full content of a CinaAuth documentation page by its slug. Use this to look up detailed information before answering user questions.",
 					inputSchema: z.object({
 						slug: z
 							.string()
@@ -370,7 +370,7 @@ export async function POST(req: Request) {
 				}),
 				searchCode: tool({
 					description:
-						"Search the Better Auth source code on GitHub using semantic code search. Returns matching file paths and code fragments. Use this when users ask about implementation details, internal behavior, or want to see actual source code.",
+						"Search the CinaAuth source code on GitHub using semantic code search. Returns matching file paths and code fragments. Use this when users ask about implementation details, internal behavior, or want to see actual source code.",
 					inputSchema: z.object({
 						query: z
 							.string()
@@ -381,7 +381,7 @@ export async function POST(req: Request) {
 							.string()
 							.optional()
 							.describe(
-								"Optional path filter to narrow search to a directory or file pattern, e.g. 'packages/better-auth/src' or 'packages/cli'",
+								"Optional path filter to narrow search to a directory or file pattern, e.g. 'packages/cinaauth/src' or 'packages/cli'",
 							),
 					}),
 					execute: async ({ query, path }) => {
@@ -390,12 +390,12 @@ export async function POST(req: Request) {
 				}),
 				getFileContent: tool({
 					description:
-						"Fetch the content of a specific file from the Better Auth GitHub repository. Use this after searchCode to read the full source of a matching file.",
+						"Fetch the content of a specific file from the CinaAuth GitHub repository. Use this after searchCode to read the full source of a matching file.",
 					inputSchema: z.object({
 						path: z
 							.string()
 							.describe(
-								"The file path in the repository, e.g. 'packages/better-auth/src/api/routes/session.ts'",
+								"The file path in the repository, e.g. 'packages/cinaauth/src/api/routes/session.ts'",
 							),
 					}),
 					execute: async ({ path }) => {

@@ -1,11 +1,11 @@
 import { base64Url } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
-import type { GenericEndpointContext } from "better-auth";
+import type { GenericEndpointContext } from "cinaauth";
 import {
 	constantTimeEqual,
 	symmetricDecrypt,
 	symmetricEncrypt,
-} from "better-auth/crypto";
+} from "cinaauth/crypto";
 import type { SCIMOptions } from "./types";
 
 const defaultKeyHasher = async (token: string) => {

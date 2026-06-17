@@ -1,4 +1,4 @@
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import { createOTP } from "@better-auth/utils/otp";
 import { describe, expect, it, vi } from "vitest";
 import { createAuthClient } from "../../client";
@@ -157,20 +157,20 @@ describe("two factor", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("Set-Cookie") || "",
 					);
-					expect(parsed.get("better-auth.session_token")?.value).toBe("");
-					expect(parsed.get("better-auth.session_data")?.value).toBe("");
-					expect(parsed.get("better-auth.two_factor")?.value).toBeDefined();
-					expect(parsed.get("better-auth.dont_remember")?.value).toBeDefined();
+					expect(parsed.get("cinaauth.session_token")?.value).toBe("");
+					expect(parsed.get("cinaauth.session_data")?.value).toBe("");
+					expect(parsed.get("cinaauth.two_factor")?.value).toBeDefined();
+					expect(parsed.get("cinaauth.dont_remember")?.value).toBeDefined();
 					headers.append(
 						"cookie",
-						`better-auth.two_factor=${
-							parsed.get("better-auth.two_factor")?.value
+						`cinaauth.two_factor=${
+							parsed.get("cinaauth.two_factor")?.value
 						}`,
 					);
 					headers.append(
 						"cookie",
-						`better-auth.dont_remember=${
-							parsed.get("better-auth.dont_remember")?.value
+						`cinaauth.dont_remember=${
+							parsed.get("cinaauth.dont_remember")?.value
 						}`,
 					);
 				},
@@ -192,10 +192,10 @@ describe("two factor", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("Set-Cookie") || "",
 					);
-					expect(parsed.get("better-auth.session_token")?.value).toBeDefined();
+					expect(parsed.get("cinaauth.session_token")?.value).toBeDefined();
 					// max age should be undefined because we are not using remember me
 					expect(
-						parsed.get("better-auth.session_token")?.["max-age"],
+						parsed.get("cinaauth.session_token")?.["max-age"],
 					).not.toBeDefined();
 				},
 			},
@@ -214,14 +214,14 @@ describe("two factor", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("Set-Cookie") || "",
 					);
-					expect(parsed.get("better-auth.session_token")?.value).toBe("");
+					expect(parsed.get("cinaauth.session_token")?.value).toBe("");
 					// 2FA Cookie is in response, but we are not setting it in headers
-					expect(parsed.get("better-auth.two_factor")?.value).toBeDefined();
-					expect(parsed.get("better-auth.dont_remember")?.value).toBeDefined();
+					expect(parsed.get("cinaauth.two_factor")?.value).toBeDefined();
+					expect(parsed.get("cinaauth.dont_remember")?.value).toBeDefined();
 					headers.append(
 						"cookie",
-						`better-auth.dont_remember=${
-							parsed.get("better-auth.dont_remember")?.value
+						`cinaauth.dont_remember=${
+							parsed.get("cinaauth.dont_remember")?.value
 						}`,
 					);
 				},
@@ -244,7 +244,7 @@ describe("two factor", async () => {
 					);
 					// Session should not be defined when two factor cookie is missing
 					expect(
-						parsed.get("better-auth.session_token")?.value,
+						parsed.get("cinaauth.session_token")?.value,
 					).not.toBeDefined();
 				},
 			},
@@ -288,12 +288,12 @@ describe("two factor", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("Set-Cookie") || "",
 					);
-					const token = parsed.get("better-auth.session_token")?.value;
+					const token = parsed.get("cinaauth.session_token")?.value;
 					expect(token).toBe("");
 					headers.append(
 						"cookie",
-						`better-auth.two_factor=${
-							parsed.get("better-auth.two_factor")?.value
+						`cinaauth.two_factor=${
+							parsed.get("cinaauth.two_factor")?.value
 						}`,
 					);
 				},
@@ -313,7 +313,7 @@ describe("two factor", async () => {
 				},
 			},
 		});
-		const token = parsedCookies.get("better-auth.session_token")?.value;
+		const token = parsedCookies.get("cinaauth.session_token")?.value;
 		expect(token?.length).toBeGreaterThan(0);
 		const currentBackupCodes = await auth.api.viewBackupCodes({
 			body: {
@@ -335,8 +335,8 @@ describe("two factor", async () => {
 					);
 					headers2.append(
 						"cookie",
-						`better-auth.two_factor=${
-							parsed.get("better-auth.two_factor")?.value
+						`cinaauth.two_factor=${
+							parsed.get("cinaauth.two_factor")?.value
 						}`,
 					);
 				},
@@ -351,7 +351,7 @@ describe("two factor", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("Set-Cookie") || "",
 					);
-					const token = parsed.get("better-auth.session_token")?.value;
+					const token = parsed.get("cinaauth.session_token")?.value;
 					expect(token?.length).toBeGreaterThan(0);
 				},
 			},
@@ -371,8 +371,8 @@ describe("two factor", async () => {
 					);
 					headers.append(
 						"cookie",
-						`better-auth.two_factor=${
-							parsed.get("better-auth.two_factor")?.value
+						`cinaauth.two_factor=${
+							parsed.get("cinaauth.two_factor")?.value
 						}`,
 					);
 				},
@@ -388,8 +388,8 @@ describe("two factor", async () => {
 					);
 					headers.append(
 						"cookie",
-						`better-auth.otp.counter=${
-							parsed.get("better-auth.otp_counter")?.value
+						`cinaauth.otp.counter=${
+							parsed.get("cinaauth.otp_counter")?.value
 						}`,
 					);
 				},
@@ -405,11 +405,11 @@ describe("two factor", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("Set-Cookie") || "",
 					);
-					expect(parsed.get("better-auth.trust_device")?.value).toBeDefined();
+					expect(parsed.get("cinaauth.trust_device")?.value).toBeDefined();
 					newHeaders.set(
 						"cookie",
-						`better-auth.trust_device=${
-							parsed.get("better-auth.trust_device")?.value
+						`cinaauth.trust_device=${
+							parsed.get("cinaauth.trust_device")?.value
 						}`,
 					);
 				},
@@ -426,11 +426,11 @@ describe("two factor", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("Set-Cookie") || "",
 					);
-					expect(parsed.get("better-auth.trust_device")?.value).toBeDefined();
+					expect(parsed.get("cinaauth.trust_device")?.value).toBeDefined();
 					updatedHeaders.set(
 						"cookie",
-						`better-auth.trust_device=${
-							parsed.get("better-auth.trust_device")?.value
+						`cinaauth.trust_device=${
+							parsed.get("cinaauth.trust_device")?.value
 						}`,
 					);
 				},
@@ -473,8 +473,8 @@ describe("two factor", async () => {
 					);
 					headers.append(
 						"cookie",
-						`better-auth.two_factor=${
-							parsed.get("better-auth.two_factor")?.value
+						`cinaauth.two_factor=${
+							parsed.get("cinaauth.two_factor")?.value
 						}`,
 					);
 				},
@@ -603,9 +603,9 @@ describe("two factor auth API", async () => {
 		const parsed = parseSetCookieHeader(
 			signInRes.headers.get("Set-Cookie") || "",
 		);
-		const twoFactorCookie = parsed.get("better-auth.two_factor");
+		const twoFactorCookie = parsed.get("cinaauth.two_factor");
 		expect(twoFactorCookie).toBeDefined();
-		const sessionToken = parsed.get("better-auth.session_token");
+		const sessionToken = parsed.get("cinaauth.session_token");
 		expect(sessionToken?.value).toBeFalsy();
 	});
 
@@ -793,8 +793,8 @@ describe("view backup codes", async () => {
 					);
 					verifyHeaders.append(
 						"cookie",
-						`better-auth.two_factor=${
-							parsed.get("better-auth.two_factor")?.value
+						`cinaauth.two_factor=${
+							parsed.get("cinaauth.two_factor")?.value
 						}`,
 					);
 				},
@@ -812,7 +812,7 @@ describe("view backup codes", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("Set-Cookie") || "",
 					);
-					sessionToken = parsed.get("better-auth.session_token")?.value || "";
+					sessionToken = parsed.get("cinaauth.session_token")?.value || "";
 				},
 			},
 		});
@@ -908,7 +908,7 @@ describe("trust device server-side validation", async () => {
 			verifyRes.headers.get("Set-Cookie") || "",
 		);
 		const trustDeviceCookieValue = parsed.get(
-			"better-auth.trust_device",
+			"cinaauth.trust_device",
 		)?.value;
 		expect(trustDeviceCookieValue).toBeDefined();
 
@@ -943,7 +943,7 @@ describe("trust device server-side validation", async () => {
 		const trustHeaders = new Headers();
 		trustHeaders.set(
 			"cookie",
-			`better-auth.trust_device=${trustDeviceCookieValue}`,
+			`cinaauth.trust_device=${trustDeviceCookieValue}`,
 		);
 
 		const signIn2Res = await auth.api.signInEmail({
@@ -964,7 +964,7 @@ describe("trust device server-side validation", async () => {
 		const signIn2Parsed = parseSetCookieHeader(
 			signIn2Res.headers.get("Set-Cookie") || "",
 		);
-		const clearedTrustCookie = signIn2Parsed.get("better-auth.trust_device");
+		const clearedTrustCookie = signIn2Parsed.get("cinaauth.trust_device");
 		expect(clearedTrustCookie?.value).toBe("");
 	});
 
@@ -1001,7 +1001,7 @@ describe("trust device server-side validation", async () => {
 			verifyRes.headers.get("Set-Cookie") || "",
 		);
 		const trustDeviceCookieValue = parsed.get(
-			"better-auth.trust_device",
+			"cinaauth.trust_device",
 		)?.value;
 		expect(trustDeviceCookieValue).toBeDefined();
 
@@ -1034,7 +1034,7 @@ describe("trust device server-side validation", async () => {
 			signOutRes.headers.get("Set-Cookie") || "",
 		);
 		const trustCookieAfterSignOut = signOutParsed.get(
-			"better-auth.trust_device",
+			"cinaauth.trust_device",
 		);
 		// Cookie should either not be set (unchanged) or still have its value
 		expect(trustCookieAfterSignOut?.value || "preserved").not.toBe("");
@@ -1055,7 +1055,7 @@ describe("trust device server-side validation", async () => {
 		const trustHeaders = new Headers();
 		trustHeaders.set(
 			"cookie",
-			`better-auth.trust_device=${trustDeviceCookieValue}`,
+			`cinaauth.trust_device=${trustDeviceCookieValue}`,
 		);
 
 		const signIn2Res = await auth.api.signInEmail({
@@ -1107,7 +1107,7 @@ describe("trust device server-side validation", async () => {
 			verifyRes.headers.get("Set-Cookie") || "",
 		);
 		const trustDeviceCookieValue = parsed.get(
-			"better-auth.trust_device",
+			"cinaauth.trust_device",
 		)?.value;
 		expect(trustDeviceCookieValue).toBeDefined();
 
@@ -1142,7 +1142,7 @@ describe("trust device server-side validation", async () => {
 		const disableParsed = parseSetCookieHeader(
 			disableRes.headers.get("Set-Cookie") || "",
 		);
-		const clearedCookie = disableParsed.get("better-auth.trust_device");
+		const clearedCookie = disableParsed.get("cinaauth.trust_device");
 		expect(clearedCookie?.value).toBe("");
 
 		// Verify the DB record was deleted
@@ -1219,7 +1219,7 @@ describe("trustDeviceMaxAge", async () => {
 		const parsed = parseSetCookieHeader(
 			verifyRes.headers.get("Set-Cookie") || "",
 		);
-		const trustDeviceCookie = parsed.get("better-auth.trust_device");
+		const trustDeviceCookie = parsed.get("cinaauth.trust_device");
 		expect(trustDeviceCookie).toBeDefined();
 		expect(Number(trustDeviceCookie?.["max-age"])).toBe(customMaxAge);
 
@@ -1305,7 +1305,7 @@ describe("trustDeviceMaxAge", async () => {
 		const parsed = parseSetCookieHeader(
 			verifyRes.headers.get("Set-Cookie") || "",
 		);
-		const trustDeviceCookie = parsed.get("better-auth.trust_device");
+		const trustDeviceCookie = parsed.get("cinaauth.trust_device");
 		expect(trustDeviceCookie).toBeDefined();
 		// Default is 30 days = 30 * 24 * 60 * 60 = 2592000 seconds
 		expect(Number(trustDeviceCookie?.["max-age"])).toBe(30 * 24 * 60 * 60);
@@ -1348,7 +1348,7 @@ describe("twoFactorCookieMaxAge", async () => {
 		const parsed = parseSetCookieHeader(
 			signInRes.headers.get("Set-Cookie") || "",
 		);
-		const twoFactorCookie = parsed.get("better-auth.two_factor");
+		const twoFactorCookie = parsed.get("cinaauth.two_factor");
 		expect(twoFactorCookie).toBeDefined();
 		expect(Number(twoFactorCookie?.["max-age"])).toBe(customMaxAge);
 	});
@@ -1386,7 +1386,7 @@ describe("twoFactorCookieMaxAge", async () => {
 		const parsed = parseSetCookieHeader(
 			signInRes.headers.get("Set-Cookie") || "",
 		);
-		const twoFactorCookie = parsed.get("better-auth.two_factor");
+		const twoFactorCookie = parsed.get("cinaauth.two_factor");
 		expect(twoFactorCookie).toBeDefined();
 		// Default is 10 minutes = 600 seconds
 		expect(Number(twoFactorCookie?.["max-age"])).toBe(600);
@@ -1394,7 +1394,7 @@ describe("twoFactorCookieMaxAge", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8424
+ * @see https://github.com/cinagroup/cinaauth/issues/8424
  */
 describe("twoFactorTable option", async () => {
 	const { auth, signInWithTestUser, testUser, db } = await getTestInstance({
@@ -1699,7 +1699,7 @@ describe("pre-migration twoFactor rows (verified absent)", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8627
+ * @see https://github.com/cinagroup/cinaauth/issues/8627
  */
 describe("OTP-only account adding TOTP (issue #8627)", async () => {
 	it("should create twoFactor row with verified=false on enableTwoFactor", async () => {
@@ -2022,7 +2022,7 @@ describe("two factor password still required for credential accounts", async () 
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8900
+ * @see https://github.com/cinagroup/cinaauth/issues/8900
  */
 describe("checkPassword must not leak credential presence via error codes", async () => {
 	const { auth, signInWithTestUser, testUser, db } = await getTestInstance({
@@ -2093,7 +2093,7 @@ describe("checkPassword must not leak credential presence via error codes", asyn
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/4101
+ * @see https://github.com/cinagroup/cinaauth/issues/4101
  */
 describe("twoFactorMethods in sign-in response", () => {
 	describe("totp enabled in config, otp disabled", async () => {
@@ -2327,7 +2327,7 @@ describe("twoFactorMethods in sign-in response", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/pull/9205
+ * @see https://github.com/cinagroup/cinaauth/pull/9205
  *
  * 2FA enforcement is intentionally scoped to credential sign-in paths
  * only. These tests lock that scope in so a future refactor does not
@@ -2417,7 +2417,7 @@ describe("2FA enforcement scope", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/pull/7231
+ * @see https://github.com/cinagroup/cinaauth/pull/7231
  */
 describe("backup codes storage configurations", () => {
 	const customEncrypt = async (data: string) =>
@@ -2507,7 +2507,7 @@ describe("backup codes storage configurations", () => {
 						);
 						signInHeaders.append(
 							"cookie",
-							`better-auth.two_factor=${parsed.get("better-auth.two_factor")?.value}`,
+							`cinaauth.two_factor=${parsed.get("cinaauth.two_factor")?.value}`,
 						);
 					},
 				},

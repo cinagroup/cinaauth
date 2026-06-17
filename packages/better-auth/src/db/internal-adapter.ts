@@ -1,17 +1,17 @@
 import type {
 	AuthContext,
-	BetterAuthOptions,
+	CinaAuthOptions,
 	InternalAdapter,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import {
 	getCurrentAdapter,
 	getCurrentAuthContext,
 	runWithTransaction,
-} from "@better-auth/core/context";
-import type { DBAdapter, Where } from "@better-auth/core/db/adapter";
-import type { InternalLogger } from "@better-auth/core/env";
-import { generateId } from "@better-auth/core/utils/id";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+} from "@cinaauth/core/context";
+import type { DBAdapter, Where } from "@cinaauth/core/db/adapter";
+import type { InternalLogger } from "@cinaauth/core/env";
+import { generateId } from "@cinaauth/core/utils/id";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import { base64Url } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
 import type { Account, Session, User, Verification } from "../types";
@@ -36,9 +36,9 @@ function getTTLSeconds(expiresAt: Date | number, now = Date.now()): number {
 }
 
 export const createInternalAdapter = (
-	adapter: DBAdapter<BetterAuthOptions>,
+	adapter: DBAdapter<CinaAuthOptions>,
 	ctx: {
-		options: Omit<BetterAuthOptions, "logger">;
+		options: Omit<CinaAuthOptions, "logger">;
 		logger: InternalLogger;
 		hooks: DatabaseHooksEntry[];
 		generateId: AuthContext["generateId"];

@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { betterAuth } from "better-auth";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { CinaAuth } from "cinaauth";
 import Database from "better-sqlite3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { migrateAction } from "../src/commands/migrate";
@@ -8,7 +8,7 @@ import * as config from "../src/utils/get-config";
 describe("migrate base auth instance", () => {
 	const db = new Database(":memory:");
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		baseURL: "http://localhost:3000",
 		database: db,
 		emailAndPassword: {
@@ -54,9 +54,9 @@ describe("migrate auth instance with plugins", () => {
 				},
 			},
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		baseURL: "http://localhost:3000",
 		database: db,
 		emailAndPassword: {

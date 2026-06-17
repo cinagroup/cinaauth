@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Footer from "@/components/landing/footer";
 import { HalftoneBackground } from "@/components/landing/halftone-bg";
 import { createMetadata } from "@/lib/metadata";
@@ -65,7 +65,7 @@ export default async function ChangelogPage() {
 	let releases: GitHubRelease[] = [];
 	try {
 		const res = await fetch(
-			"https://api.github.com/repos/better-auth/better-auth/releases",
+			"https://api.github.com/repos/cinaauth/cinaauth/releases",
 			{
 				next: { revalidate: 3600 },
 				headers: {
@@ -135,7 +135,7 @@ export default async function ChangelogPage() {
 							All changes, fixes, and updates
 						</h1>
 						<p className="text-sm text-foreground/70 dark:text-foreground/50 leading-relaxed max-w-[240px]">
-							Every release shipped to Better Auth, straight from GitHub.
+							Every release shipped to CinaAuth, straight from GitHub.
 						</p>
 					</div>
 
@@ -152,7 +152,7 @@ export default async function ChangelogPage() {
 
 					<div className="flex items-center gap-3 pt-4">
 						<Link
-							href="https://github.com/better-auth/better-auth/releases"
+							href="https://github.com/cinagroup/cinaauth/releases"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="inline-flex items-center gap-1.5 text-[12px] text-foreground/70 dark:text-foreground/50 hover:text-foreground/80 font-mono uppercase tracking-wider transition-colors"
@@ -199,7 +199,7 @@ export default async function ChangelogPage() {
 							All changes, fixes, and updates
 						</h1>
 						<p className="text-sm text-foreground/70 dark:text-foreground/50 leading-relaxed">
-							Every release shipped to Better Auth, straight from GitHub.
+							Every release shipped to CinaAuth, straight from GitHub.
 						</p>
 					</div>
 				</div>
@@ -221,5 +221,5 @@ export default async function ChangelogPage() {
 
 export const metadata = createMetadata({
 	title: "Changelog",
-	description: "Latest changes, fixes, and updates to Better Auth",
+	description: "Latest changes, fixes, and updates to CinaAuth",
 });

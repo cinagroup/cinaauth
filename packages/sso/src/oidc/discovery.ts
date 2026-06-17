@@ -11,7 +11,7 @@
 import {
 	classifyHost,
 	isPublicRoutableHost,
-} from "@better-auth/core/utils/host";
+} from "@cinaauth/core/utils/host";
 import { betterFetch } from "@better-fetch/fetch";
 import type { OIDCConfig } from "../types";
 import type {
@@ -139,7 +139,7 @@ export function validateDiscoveryUrl(
  * Step 2 rejects loopback, RFC 1918, link-local, ULA, shared-address,
  * cloud-metadata FQDNs (e.g. `169.254.169.254`, `metadata.google.internal`),
  * multicast, and reserved ranges. See `isPublicRoutableHost` in
- * `@better-auth/core/utils/host`.
+ * `@cinaauth/core/utils/host`.
  *
  * Step 3 is the documented escape hatch for customers whose IdP runs on a
  * private network or behind a corporate VPN: they add the IdP origin to their

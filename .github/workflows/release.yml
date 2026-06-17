@@ -1,4 +1,4 @@
-# cSpell:words anthropics
+﻿# cSpell:words anthropics
 name: Release
 
 on:
@@ -32,13 +32,13 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BETTER_AUTH_TELEMETRY_ENDPOINT: ${{ vars.BETTER_AUTH_TELEMETRY_ENDPOINT }}
+  CINAAUTH_TELEMETRY_ENDPOINT: ${{ vars.CINAAUTH_TELEMETRY_ENDPOINT }}
 
 jobs:
   release:
     if: >
       (github.event_name != 'workflow_dispatch' || (inputs.snapshot == '' && inputs.preview_version == '')) &&
-      github.repository_owner == 'better-auth' &&
+      github.repository_owner == 'cinaauth' &&
       (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next' || startsWith(github.ref, 'refs/heads/release/'))
     runs-on: ubuntu-latest
     environment: Release
@@ -118,7 +118,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.changesets.outputs.pullRequestNumber }}
         run: |
-          VERSION=$(jq -r '.version' packages/better-auth/package.json)
+          VERSION=$(jq -r '.version' packages/cinaauth/package.json)
           gh pr edit "$PR_NUMBER" --title "chore: release v${VERSION}"
 
       - name: Generate raw release notes
@@ -308,7 +308,7 @@ jobs:
           fi
 
   snapshot:
-    if: github.event_name == 'workflow_dispatch' && inputs.snapshot != '' && github.repository_owner == 'better-auth'
+    if: github.event_name == 'workflow_dispatch' && inputs.snapshot != '' && github.repository_owner == 'cinaauth'
     runs-on: ubuntu-latest
     environment: Release
     permissions:
@@ -354,7 +354,7 @@ jobs:
         run: pnpm changeset publish --no-git-tag --tag "$SNAPSHOT_TAG"
 
   preview-notes:
-    if: github.event_name == 'workflow_dispatch' && inputs.preview_version != '' && github.repository_owner == 'better-auth'
+    if: github.event_name == 'workflow_dispatch' && inputs.preview_version != '' && github.repository_owner == 'cinaauth'
     runs-on: ubuntu-latest
     environment: Release
     permissions:

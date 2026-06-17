@@ -1,4 +1,4 @@
-name: E2E
+﻿name: E2E
 on:
   push:
     branches: [ main, next ]
@@ -8,7 +8,7 @@ on:
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM || github.repository_owner }}
-  BETTER_AUTH_TELEMETRY_ENDPOINT: ${{ vars.BETTER_AUTH_TELEMETRY_ENDPOINT }}
+  CINAAUTH_TELEMETRY_ENDPOINT: ${{ vars.CINAAUTH_TELEMETRY_ENDPOINT }}
 
 permissions: {}
 
@@ -20,7 +20,7 @@ jobs:
   smoke:
     name: Smoke test (${{ matrix.node-version }})
     timeout-minutes: 30
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'better-auth/better-auth' || github.event_name != 'pull_request' && github.repository == 'better-auth/better-auth') && 'starsling-ubuntu-24.04' || 'ubuntu-24.04' }}
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'cinaauth/cinaauth' || github.event_name != 'pull_request' && github.repository == 'cinaauth/cinaauth') && 'starsling-ubuntu-24.04' || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
@@ -90,7 +90,7 @@ jobs:
   integration:
     name: Integration test
     timeout-minutes: 60
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'better-auth/better-auth' || github.event_name != 'pull_request' && github.repository == 'better-auth/better-auth') && 'starsling-ubuntu-24.04' || 'ubuntu-24.04' }}
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'cinaauth/cinaauth' || github.event_name != 'pull_request' && github.repository == 'cinaauth/cinaauth') && 'starsling-ubuntu-24.04' || 'ubuntu-24.04' }}
     permissions:
       contents: read
     env:
@@ -146,24 +146,24 @@ jobs:
         run: docker compose down --volumes --remove-orphans
   adapter-integration:
     name: ${{ matrix.packages }} Integration Test
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'better-auth/better-auth' || github.event_name != 'pull_request' && github.repository == 'better-auth/better-auth') && 'starsling-ubuntu-24.04' || 'ubuntu-24.04' }}
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'cinaauth/cinaauth' || github.event_name != 'pull_request' && github.repository == 'cinaauth/cinaauth') && 'starsling-ubuntu-24.04' || 'ubuntu-24.04' }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         include:
-          - packages: "@better-auth-test/adapter-factory"
+          - packages: "@cinaauth-test/adapter-factory"
             compose_services: ""
-          - packages: "@better-auth-test/drizzle-adapter"
+          - packages: "@cinaauth-test/drizzle-adapter"
             compose_services: "postgres mysql"
-          - packages: "@better-auth-test/kysely-prisma-adapter"
+          - packages: "@cinaauth-test/kysely-prisma-adapter"
             compose_services: "postgres-kysely mysql-kysely postgres-kysely2 mssql"
-          - packages: "@better-auth-test/memory-adapter"
+          - packages: "@cinaauth-test/memory-adapter"
             compose_services: ""
-          - packages: "@better-auth-test/mongo-adapter"
+          - packages: "@cinaauth-test/mongo-adapter"
             compose_services: "mongodb"
-          - packages: "@better-auth-test/prisma-adapter"
+          - packages: "@cinaauth-test/prisma-adapter"
             compose_services: "postgres-prisma mysql-prisma"
     env:
       COMPOSE_SERVICES: ${{ matrix.compose_services }}

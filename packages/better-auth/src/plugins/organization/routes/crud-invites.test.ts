@@ -1,4 +1,4 @@
-import type { BetterAuthOptions, GenerateIdFn } from "@better-auth/core";
+import type { CinaAuthOptions, GenerateIdFn } from "@cinaauth/core";
 import { describe, expect, it } from "vitest";
 import { getTestInstance } from "../../../test-utils/test-instance";
 import { organizationClient } from "../client";
@@ -6,19 +6,19 @@ import { organization } from "../organization";
 import type { OrganizationOptions } from "../types";
 
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-fmh4-wcc4-5jm3
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-fmh4-wcc4-5jm3
  */
 describe("organization invitation recipient ownership gates", async () => {
 	const VICTIM_EMAIL = "victim@target.example";
 	const ATTACKER_PASSWORD = "attacker-password-123";
 
 	type SetupInviteOptions = {
-		authOptions?: Partial<BetterAuthOptions>;
+		authOptions?: Partial<CinaAuthOptions>;
 		organizationOptions?: OrganizationOptions;
 	};
 
-	type AuthOptionsWithAdvancedGenerateId = Partial<BetterAuthOptions> & {
-		advanced: NonNullable<Partial<BetterAuthOptions>["advanced"]> & {
+	type AuthOptionsWithAdvancedGenerateId = Partial<CinaAuthOptions> & {
+		advanced: NonNullable<Partial<CinaAuthOptions>["advanced"]> & {
 			generateId: GenerateIdFn;
 		};
 	};
@@ -29,7 +29,7 @@ describe("organization invitation recipient ownership gates", async () => {
 				generateId: "serial",
 			},
 		},
-	} satisfies Partial<BetterAuthOptions>;
+	} satisfies Partial<CinaAuthOptions>;
 
 	let customIdSequence = 0;
 	const customAdvancedIdAuthOptions = {
@@ -165,7 +165,7 @@ describe("organization invitation recipient ownership gates", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-fmh4-wcc4-5jm3
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-fmh4-wcc4-5jm3
 	 */
 	it("keeps listUserInvitations gated when invitation ID verification is disabled", async () => {
 		const { client, signInWithUser } = await setupInvite({

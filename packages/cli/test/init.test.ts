@@ -138,8 +138,8 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				// Install Better Auth
-				if (question.message?.includes("install better-auth")) {
+				// Install CinaAuth
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 
@@ -232,12 +232,12 @@ describe("initAction", () => {
 			// Assertions
 			expect(mockHasDependency).toHaveBeenCalledWith(
 				packageJson,
-				"better-auth",
+				"cinaauth",
 			);
 			expect(mockInstallDependencies).toHaveBeenCalledWith(
 				expect.objectContaining({
 					cwd: path.resolve(tmp),
-					dependencies: expect.arrayContaining(["better-auth"]),
+					dependencies: expect.arrayContaining(["cinaauth"]),
 				}),
 			);
 
@@ -286,7 +286,7 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (question.message?.includes("set environment variables")) {
@@ -378,7 +378,7 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (question.name === "providedSecret") {
@@ -427,7 +427,7 @@ describe("initAction", () => {
 		// The init command checks possibleAuthConfigPaths, which includes "src/lib/auth.ts"
 		await fs.mkdir(path.join(tmp, "src/lib"), { recursive: true });
 		const existingAuthPath = path.join(tmp, "src/lib/auth.ts");
-		const originalContent = "export const auth = betterAuth({});";
+		const originalContent = "export const auth = CinaAuth({});";
 		await fs.writeFile(existingAuthPath, originalContent);
 
 		// Mock prompts - should not be called for auth config since it exists
@@ -435,7 +435,7 @@ describe("initAction", () => {
 			const question = Array.isArray(questions) ? questions[0] : questions;
 
 			// Handle other prompts that might be called
-			if (question.message?.includes("install better-auth")) {
+			if (question.message?.includes("install cinaauth")) {
 				return { value: true };
 			}
 			if (
@@ -464,7 +464,7 @@ describe("initAction", () => {
 		// detect the existing file and skip the generation step
 		const authConfigContent = await fs.readFile(existingAuthPath, "utf-8");
 		// The file might be updated, but let's check it at least exists
-		expect(authConfigContent).toContain("betterAuth");
+		expect(authConfigContent).toContain("CinaAuth");
 	});
 
 	testWithTmpDir("should handle cancellation gracefully", async ({ tmp }) => {
@@ -502,7 +502,7 @@ describe("initAction", () => {
 		mockPrompts.mockImplementation(async (questions: any) => {
 			const question = Array.isArray(questions) ? questions[0] : questions;
 
-			if (question.message?.includes("install better-auth")) {
+			if (question.message?.includes("install cinaauth")) {
 				return { value: true };
 			}
 			if (
@@ -576,7 +576,7 @@ describe("initAction", () => {
 		mockPrompts.mockImplementation(async (questions: any) => {
 			const question = Array.isArray(questions) ? questions[0] : questions;
 
-			if (question.message?.includes("install better-auth")) {
+			if (question.message?.includes("install cinaauth")) {
 				return { value: true };
 			}
 			if (
@@ -646,7 +646,7 @@ describe("initAction", () => {
 		mockPrompts.mockImplementation(async (questions: any) => {
 			const question = Array.isArray(questions) ? questions[0] : questions;
 
-			if (question.message?.includes("install better-auth")) {
+			if (question.message?.includes("install cinaauth")) {
 				return { value: true };
 			}
 			if (
@@ -711,7 +711,7 @@ describe("initAction", () => {
 	]) {
 		testWithTmpDir(
 			/**
-			 * @see https://github.com/better-auth/better-auth/issues/9367
+			 * @see https://github.com/cinagroup/cinaauth/issues/9367
 			 */
 			`should generate a working Kysely ${db.database} auth config`,
 			async ({ tmp }) => {
@@ -723,7 +723,7 @@ describe("initAction", () => {
 				mockPrompts.mockImplementation(async (questions: any) => {
 					const question = Array.isArray(questions) ? questions[0] : questions;
 
-					if (question.message?.includes("install better-auth")) {
+					if (question.message?.includes("install cinaauth")) {
 						return { value: false };
 					}
 					if (question.message?.includes("set environment variables")) {
@@ -794,13 +794,13 @@ describe("initAction", () => {
 			);
 			await fs.writeFile(
 				path.join(tmp, ".env"),
-				"BETTER_AUTH_SECRET=test\nBETTER_AUTH_URL=http://localhost:3000",
+				"CINAAUTH_SECRET=test\nCINAAUTH_URL=http://localhost:3000",
 			);
 
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (
@@ -869,7 +869,7 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (
@@ -940,7 +940,7 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (
@@ -1010,7 +1010,7 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (
@@ -1099,7 +1099,7 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (
@@ -1165,7 +1165,7 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (
@@ -1228,7 +1228,7 @@ describe("initAction", () => {
 		mockPrompts.mockImplementation(async (questions: any) => {
 			const question = Array.isArray(questions) ? questions[0] : questions;
 
-			if (question.message?.includes("install better-auth")) {
+			if (question.message?.includes("install cinaauth")) {
 				return { value: true };
 			}
 			if (
@@ -1283,7 +1283,7 @@ describe("initAction", () => {
 		mockPrompts.mockImplementation(async (questions: any) => {
 			const question = Array.isArray(questions) ? questions[0] : questions;
 
-			if (question.message?.includes("install better-auth")) {
+			if (question.message?.includes("install cinaauth")) {
 				return { value: true };
 			}
 			if (
@@ -1332,7 +1332,7 @@ describe("initAction", () => {
 			mockPrompts.mockImplementation(async (questions: any) => {
 				const question = Array.isArray(questions) ? questions[0] : questions;
 
-				if (question.message?.includes("install better-auth")) {
+				if (question.message?.includes("install cinaauth")) {
 					return { value: true };
 				}
 				if (

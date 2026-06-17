@@ -1,5 +1,5 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import { createOTP } from "@better-auth/utils/otp";
 import * as z from "zod";
 import { sessionMiddleware } from "../../../api";
@@ -347,7 +347,7 @@ export const totp2fa = (options?: TOTPOptions | undefined) => {
 			 * **server:**
 			 * `auth.api.generateTOTP`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#totp)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#totp)
 			 */
 			generateTOTP: generateTOTP,
 			/**
@@ -363,7 +363,7 @@ export const totp2fa = (options?: TOTPOptions | undefined) => {
 			 * **client:**
 			 * `authClient.twoFactor.getTotpUri`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#getting-totp-uri)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#getting-totp-uri)
 			 */
 			getTOTPURI: getTOTPURI,
 			/**
@@ -379,7 +379,7 @@ export const totp2fa = (options?: TOTPOptions | undefined) => {
 			 * **client:**
 			 * `authClient.twoFactor.verifyTotp`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#verifying-totp)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#verifying-totp)
 			 */
 			verifyTOTP,
 		},

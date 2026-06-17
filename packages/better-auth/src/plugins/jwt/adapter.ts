@@ -1,12 +1,12 @@
 import type {
-	BetterAuthOptions,
+	CinaAuthOptions,
 	GenericEndpointContext,
-} from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
+} from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import type { Jwk, JwtOptions } from "./types";
 
 export const getJwksAdapter = (
-	adapter: DBAdapter<BetterAuthOptions>,
+	adapter: DBAdapter<CinaAuthOptions>,
 	options?: JwtOptions,
 ) => {
 	return {

@@ -2,7 +2,7 @@ import { betterFetch } from "@better-fetch/fetch";
 
 import { decodeJwt, decodeProtectedHeader, importJWK, jwtVerify } from "jose";
 import { logger } from "../env";
-import { APIError, BetterAuthError } from "../error";
+import { APIError, CinaAuthError } from "../error";
 import type { OAuthProvider, ProviderOptions } from "../oauth2";
 import {
 	createAuthorizationURL,
@@ -105,7 +105,7 @@ export const apple = (options: AppleOptions) => {
 				logger.error(
 					"Client ID and client secret are required for Apple. Make sure to provide them in the options.",
 				);
-				throw new BetterAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
+				throw new CinaAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
 			}
 			const _scope = options.disableDefaultScope ? [] : ["email", "name"];
 			if (options.scope) _scope.push(...options.scope);

@@ -1,17 +1,17 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { CinaAuthError } from "@cinaauth/core/error";
 import { getBaseAdapter } from "../db/adapter-base";
 import { createAuthContext } from "./create-context";
 
-export const initMinimal = async (options: BetterAuthOptions) => {
+export const initMinimal = async (options: CinaAuthOptions) => {
 	const adapter = await getBaseAdapter(options, async () => {
-		throw new BetterAuthError(
-			"Direct database connection requires Kysely. Please use `better-auth` instead of `better-auth/minimal`, or provide an adapter (drizzleAdapter, prismaAdapter, etc.)",
+		throw new CinaAuthError(
+			"Direct database connection requires Kysely. Please use `cinaauth` instead of `cinaauth/minimal`, or provide an adapter (drizzleAdapter, prismaAdapter, etc.)",
 		);
 	});
 
 	// Without Kysely, we can't detect database type, so always return "unknown"
-	const getDatabaseType = (_database: BetterAuthOptions["database"]) =>
+	const getDatabaseType = (_database: CinaAuthOptions["database"]) =>
 		"unknown";
 
 	// Use base context creation
@@ -19,8 +19,8 @@ export const initMinimal = async (options: BetterAuthOptions) => {
 
 	// Add runMigrations that throws error (migrations require Kysely)
 	ctx.runMigrations = async function () {
-		throw new BetterAuthError(
-			"Migrations are not supported in 'better-auth/minimal'. Please use 'better-auth' for migration support.",
+		throw new CinaAuthError(
+			"Migrations are not supported in 'cinaauth/minimal'. Please use 'cinaauth' for migration support.",
 		);
 	};
 

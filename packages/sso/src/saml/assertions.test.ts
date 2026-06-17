@@ -30,7 +30,7 @@ describe("validateSingleAssertion", () => {
 
 	describe("base64 whitespace handling", () => {
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/8921
+		 * @see https://github.com/cinagroup/cinaauth/issues/8921
 		 */
 		it("should accept base64 with embedded whitespace from line-wrapping IDPs", () => {
 			const xml = `

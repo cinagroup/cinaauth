@@ -1,8 +1,8 @@
-import type { BetterAuthOptions, BetterAuthPlugin } from "@better-auth/core";
-import type { GoogleProfile, JoinConfig, JoinOption } from "better-auth/types";
+import type { CinaAuthOptions, CinaAuthPlugin } from "@cinaauth/core";
+import type { GoogleProfile, JoinConfig, JoinOption } from "cinaauth/types";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createAuthEndpoint } from "../api";
-import { betterAuth } from "../auth/minimal";
+import { CinaAuth } from "../auth/minimal";
 import type { InferCtx } from "../client/path-to-object";
 import { tanstackStartCookies } from "../integrations/tanstack-start";
 import { admin, organization, twoFactor } from "../plugins";
@@ -39,10 +39,10 @@ const createTestTypePlugin = <O extends TestTypeOptions>(options?: O) =>
 				}
 			: {},
 		options: options as NoInfer<O>,
-	}) satisfies BetterAuthPlugin;
+	}) satisfies CinaAuthPlugin;
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"test-type-plugin": {
 			creator: Options extends TestTypeOptions
 				? typeof createTestTypePlugin<Options>
@@ -161,11 +161,11 @@ describe("general types", async () => {
 	 * `Auth<O>["api"].getSession` must remain callable from a generic context.
 	 * Changing this contract is a breaking change for downstream consumers.
 	 *
-	 * @see https://github.com/better-auth/better-auth/pull/8466
+	 * @see https://github.com/cinagroup/cinaauth/pull/8466
 	 * @see https://github.com/next-safe-action/next-safe-action/pull/439
 	 */
 	it("should keep getSession on auth.api when O is a generic parameter", () => {
-		async function probe<O extends BetterAuthOptions>(auth: Auth<O>) {
+		async function probe<O extends CinaAuthOptions>(auth: Auth<O>) {
 			await auth.api.getSession({ headers: new Headers() });
 		}
 		void probe;
@@ -189,7 +189,7 @@ describe("general types", async () => {
 					},
 				),
 			},
-		} satisfies BetterAuthPlugin;
+		} satisfies CinaAuthPlugin;
 		const { auth } = await getTestInstance({ plugins: [overridePlugin] });
 		type ApiSignInEmail = (typeof auth.api)["signInEmail"];
 		type Ret = Awaited<ReturnType<ApiSignInEmail>>;
@@ -239,7 +239,7 @@ describe("general types", async () => {
 					},
 				};
 			},
-		} satisfies BetterAuthPlugin;
+		} satisfies CinaAuthPlugin;
 
 		const { auth } = await getTestInstance({
 			plugins: [testUtilsPlugin],
@@ -274,12 +274,12 @@ describe("general types", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8823
+ * @see https://github.com/cinagroup/cinaauth/issues/8823
  */
 describe("plugin types through factory and indirection patterns", () => {
 	it("preserves endpoint types through factory ReturnType", () => {
 		const createAuth = () =>
-			betterAuth({
+			CinaAuth({
 				plugins: [admin()],
 			});
 		type Auth = ReturnType<typeof createAuth>;
@@ -293,13 +293,13 @@ describe("plugin types through factory and indirection patterns", () => {
 
 	it("preserves endpoint types when options are stored in a variable", () => {
 		const opts = { plugins: [admin()] };
-		const auth = betterAuth(opts);
+		const auth = CinaAuth(opts);
 		expectTypeOf(auth.api.createUser).toBeFunction();
 		expectTypeOf(auth.api.listUsers).toBeFunction();
 	});
 
 	it("preserves endpoint types with mixed-shape plugins", () => {
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			plugins: [admin(), organization(), tanstackStartCookies()],
 		});
 		expectTypeOf(auth.api.createUser).toBeFunction();
@@ -307,7 +307,7 @@ describe("plugin types through factory and indirection patterns", () => {
 	});
 
 	it("preserves $ERROR_CODES through factory ReturnType", () => {
-		const createAuth = () => betterAuth({ plugins: [admin()] });
+		const createAuth = () => CinaAuth({ plugins: [admin()] });
 		type Codes = ReturnType<typeof createAuth>["$ERROR_CODES"];
 		expectTypeOf<Codes>().not.toBeAny();
 		expectTypeOf<Codes>().toHaveProperty("SESSION_EXPIRED");
@@ -316,18 +316,18 @@ describe("plugin types through factory and indirection patterns", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/6876
+ * @see https://github.com/cinagroup/cinaauth/issues/6876
  */
 describe("public type exports", () => {
-	it("should export JoinOption from better-auth/types", () => {
+	it("should export JoinOption from cinaauth/types", () => {
 		expectTypeOf<JoinOption>().not.toBeAny();
 	});
 
-	it("should export JoinConfig from better-auth/types", () => {
+	it("should export JoinConfig from cinaauth/types", () => {
 		expectTypeOf<JoinConfig>().not.toBeAny();
 	});
 
-	it("should export GoogleProfile from better-auth/types", () => {
+	it("should export GoogleProfile from cinaauth/types", () => {
 		expectTypeOf<GoogleProfile>().not.toBeAny();
 	});
 });

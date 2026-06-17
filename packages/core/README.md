@@ -1,16 +1,16 @@
-# Better Auth Core
+﻿# CinaAuth Core
 
-Core utilities and types for [Better Auth](https://www.better-auth.com) — the most comprehensive authentication framework for TypeScript.
+Core utilities and types for [CinaAuth](https://www.cinagroup.com) — the most comprehensive authentication framework for TypeScript.
 
 ## Installation
 
 ```bash
-npm install @better-auth/core
+npm install @cinaauth/core
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com](https://www.better-auth.com).
+For full documentation, visit [cinagroup.com](https://www.cinagroup.com).
 
 ## License
 

@@ -1,11 +1,11 @@
 import { describe, it } from "vitest";
-import { betterAuth } from "../../auth/full";
+import { CinaAuth } from "../../auth/full";
 import { createAuthClient } from "../../client";
 import { inferOrgAdditionalFields, organizationClient } from "./client";
 import { organization } from "./organization";
 
 describe("organization", () => {
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		plugins: [
 			organization({
 				schema: {

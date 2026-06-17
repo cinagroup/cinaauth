@@ -1,8 +1,8 @@
-import type { BetterAuthClientPlugin } from "better-auth/client";
-import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
-import { createAccessControl } from "better-auth/plugins/access";
-import { defaultStatements } from "better-auth/plugins/admin/access";
-import { createAuthClient } from "better-auth/react";
+﻿import type { CinaAuthClientPlugin } from "cinaauth/client";
+import { adminClient, inferAdditionalFields } from "cinaauth/client/plugins";
+import { createAccessControl } from "cinaauth/plugins/access";
+import { defaultStatements } from "cinaauth/plugins/admin/access";
+import { createAuthClient } from "cinaauth/react";
 import { atom } from "nanostores";
 
 const statement = {
@@ -46,10 +46,10 @@ const fixtureAtomClient = () =>
 				fixtureCounter: atom(0),
 			};
 		},
-	}) satisfies BetterAuthClientPlugin;
+	}) satisfies CinaAuthClientPlugin;
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9189
+ * @see https://github.com/cinagroup/cinaauth/issues/9189
  */
 export const authClient = createAuthClient({
 	baseURL: "http://localhost:3000",

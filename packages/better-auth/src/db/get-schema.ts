@@ -1,8 +1,8 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { DBFieldAttribute } from "@better-auth/core/db";
-import { getAuthTables } from "@better-auth/core/db";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import type { DBFieldAttribute } from "@cinaauth/core/db";
+import { getAuthTables } from "@cinaauth/core/db";
 
-export function getSchema(config: BetterAuthOptions) {
+export function getSchema(config: CinaAuthOptions) {
 	const tables = getAuthTables(config);
 	const schema: Record<
 		string,

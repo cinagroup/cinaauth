@@ -1,8 +1,8 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
+} from "@cinaauth/core/api";
 import * as z from "zod";
 import { APIError, sessionMiddleware } from "../../api";
 import {
@@ -16,8 +16,8 @@ import {
 import { parseSessionOutput, parseUserOutput } from "../../db/schema";
 import { PACKAGE_VERSION } from "../../version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"multi-session": {
 			creator: typeof multiSession;
 		};
@@ -74,7 +74,7 @@ export const multiSession = (options?: MultiSessionConfig | undefined) => {
 			 * **client:**
 			 * `authClient.multiSession.listDeviceSessions`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/multi-session#api-method-multi-session-list-device-sessions)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/multi-session#api-method-multi-session-list-device-sessions)
 			 */
 			listDeviceSessions: createAuthEndpoint(
 				"/multi-session/list-device-sessions",
@@ -136,7 +136,7 @@ export const multiSession = (options?: MultiSessionConfig | undefined) => {
 			 * **client:**
 			 * `authClient.multiSession.setActive`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/multi-session#api-method-multi-session-set-active)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/multi-session#api-method-multi-session-set-active)
 			 */
 			setActiveSession: createAuthEndpoint(
 				"/multi-session/set-active",
@@ -219,7 +219,7 @@ export const multiSession = (options?: MultiSessionConfig | undefined) => {
 			 * **client:**
 			 * `authClient.multiSession.revoke`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/multi-session#api-method-multi-session-revoke)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/multi-session#api-method-multi-session-revoke)
 			 */
 			revokeDeviceSession: createAuthEndpoint(
 				"/multi-session/revoke",
@@ -416,5 +416,5 @@ export const multiSession = (options?: MultiSessionConfig | undefined) => {
 		},
 		options,
 		$ERROR_CODES: ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

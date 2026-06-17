@@ -1,6 +1,6 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { isProduction } from "@better-auth/core/env";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { isProduction } from "@cinaauth/core/env";
 import { HIDE_METADATA } from "../../utils/hide-metadata";
 
 function sanitize(input: string): string {
@@ -15,7 +15,7 @@ function sanitize(input: string): string {
 }
 
 const html = (
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	code: string = "Unknown",
 	description: string | null = null,
 ) => {
@@ -306,7 +306,7 @@ ${
             ${
 							!description
 								? "We encountered an unexpected error. Please try again or return to the home page. If you're a developer, you can find " +
-									`<a href='https://better-auth.com/docs/reference/errors/${encodeURIComponent(code)}' target='_blank' rel="noopener noreferrer" style='color: var(--foreground); text-decoration: underline;'>more information about the error</a>.`
+									`<a href='https://cinagroup.com/docs/reference/errors/${encodeURIComponent(code)}' target='_blank' rel="noopener noreferrer" style='color: var(--foreground); text-decoration: underline;'>more information about the error</a>.`
 								: description
 						}
           </p>
@@ -342,7 +342,7 @@ ${
             </div>
           </a>
           <a
-            href="https://better-auth.com/docs/reference/errors/${encodeURIComponent(code)}?askai=${encodeURIComponent(`What does the error code ${code} mean?`)}"
+            href="https://cinagroup.com/docs/reference/errors/${encodeURIComponent(code)}?askai=${encodeURIComponent(`What does the error code ${code} mean?`)}"
             target="_blank"
             rel="noopener noreferrer"
             style="

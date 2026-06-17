@@ -1,16 +1,16 @@
 {
-  "name": "@better-auth/drizzle-adapter",
+  "name": "@cinaauth/drizzle-adapter",
   "version": "1.6.19",
   "bugs": {
-    "url": "https://github.com/better-auth/better-auth/issues"
+    "url": "https://github.com/cinagroup/cinaauth/issues"
   },
-  "description": "Drizzle adapter for Better Auth",
+  "description": "Drizzle adapter for CinaAuth",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/adapters/drizzle",
+  "homepage": "https://www.cinagroup.com/docs/adapters/drizzle",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/drizzle-adapter"
   },
   "keywords": [
@@ -18,7 +18,7 @@
     "drizzle",
     "adapter",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -46,7 +46,7 @@
     }
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:",
     "drizzle-orm": "^0.45.2"
   },
@@ -56,7 +56,7 @@
     }
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "@better-auth/utils": "catalog:",
     "drizzle-orm": "^0.45.2",
     "tsdown": "catalog:",

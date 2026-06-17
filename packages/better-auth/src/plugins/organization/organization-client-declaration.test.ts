@@ -8,13 +8,13 @@ import { describe, expect, it } from "vitest";
 const execAsync = promisify(exec);
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/7039
+ * @see https://github.com/cinagroup/cinaauth/issues/7039
  *
  * When using organizationClient with additionalFields and compiling
  * with `declaration: true` + `moduleResolution: "bundler"`, TypeScript
  * throws TS2742 because internal types from `db/field.mjs` leak into
  * the inferred return type but are not accessible through the public
- * export path `better-auth/client/plugins`.
+ * export path `cinaauth/client/plugins`.
  */
 describe("organizationClient declaration emit with additionalFields", () => {
 	const createTempProject = (
@@ -59,7 +59,7 @@ describe("organizationClient declaration emit with additionalFields", () => {
 		fs.mkdirSync(path.join(dir, "node_modules"), { recursive: true });
 		fs.symlinkSync(
 			pkgDir,
-			path.join(dir, "node_modules", "better-auth"),
+			path.join(dir, "node_modules", "cinaauth"),
 			"junction",
 		);
 
@@ -72,8 +72,8 @@ describe("organizationClient declaration emit with additionalFields", () => {
 
 	it("should not produce TS2742 when organizationClient uses additionalFields", async () => {
 		const { dir, cleanup } = createTempProject(`
-import { createAuthClient } from "better-auth/client";
-import { organizationClient } from "better-auth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
+import { organizationClient } from "cinaauth/client/plugins";
 
 export const authClient = createAuthClient({
   baseURL: "http://localhost:3000",
@@ -112,8 +112,8 @@ export const authClient = createAuthClient({
 
 	it("should not produce TS2742 when organizationClient is used without additionalFields", async () => {
 		const { dir, cleanup } = createTempProject(`
-import { createAuthClient } from "better-auth/client";
-import { organizationClient } from "better-auth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
+import { organizationClient } from "cinaauth/client/plugins";
 
 export const authClient = createAuthClient({
   baseURL: "http://localhost:3000",

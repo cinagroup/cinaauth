@@ -1,4 +1,4 @@
----
+﻿---
 title: unable_to_link_account
 description: The account could not be linked.
 ---
@@ -6,7 +6,7 @@ description: The account could not be linked.
 ## What is it?
 
 This error occurs only during an OAuth flow when attempting to link the provider account to the
-currently authenticated user. Better Auth blocks the operation if either:
+currently authenticated user. CinaAuth blocks the operation if either:
 
 1. The database operation to create/update the linked account fails.
 2. The provider is not considered trusted for linking based on your auth configuration
@@ -29,7 +29,7 @@ currently authenticated user. Better Auth blocks the operation if either:
 
 ### Fix database reliability and constraints
 
-* Run pending migrations and ensure the schema matches the current Better Auth version.
+* Run pending migrations and ensure the schema matches the current CinaAuth version.
 * Investigate DB errors (deadlocks, timeouts, connection pool limits) and retry if appropriate.
 
 ### Verify environment configuration

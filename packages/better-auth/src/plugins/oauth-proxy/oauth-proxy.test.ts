@@ -1,4 +1,4 @@
-import type { GoogleProfile } from "@better-auth/core/social-providers";
+import type { GoogleProfile } from "@cinaauth/core/social-providers";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import {
@@ -515,13 +515,13 @@ describe("oauth-proxy", async () => {
 
 		/**
 		 * Cookie strategy with a dedicated proxy `secret` that differs from
-		 * `BETTER_AUTH_SECRET`. The `oauth_state` cookie is encrypted with the
+		 * `CINAAUTH_SECRET`. The `oauth_state` cookie is encrypted with the
 		 * environment secret, so the proxy must re-encrypt it with the proxy key
 		 * for the production callback to recover the inner state. Without that,
 		 * the callback fails to decrypt the state package and produces no
 		 * passthrough profile.
 		 *
-		 * @see https://github.com/better-auth/better-auth/pull/9385
+		 * @see https://github.com/cinagroup/cinaauth/pull/9385
 		 */
 		it("recovers cookie-strategy state when the proxy secret differs from the env secret", async () => {
 			const { client } = await getTestInstance({
@@ -1386,7 +1386,7 @@ describe("oauth-proxy", async () => {
 
 	/**
 	 * Tests for secret configuration across environments.
-	 * When production and preview have different BETTER_AUTH_SECRET values,
+	 * When production and preview have different CINAAUTH_SECRET values,
 	 * a shared `secret` must be configured in the oAuthProxy options.
 	 */
 	describe("secret configuration", () => {
@@ -1396,7 +1396,7 @@ describe("oauth-proxy", async () => {
 		 * the before hook can't decrypt the state package.
 		 *
 		 * This is the root cause of the issue where users see:
-		 * "ERROR [Better Auth]: Failed to parse state BetterAuthError: State mismatch: State not persisted correctly"
+		 * "ERROR [CinaAuth]: Failed to parse state CinaAuthError: State mismatch: State not persisted correctly"
 		 */
 		it("should fail when preview and production have different secrets (no shared secret)", async () => {
 			// Preview instance with its own secret
@@ -1588,7 +1588,7 @@ describe("oauth-proxy", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8889
+	 * @see https://github.com/cinagroup/cinaauth/issues/8889
 	 */
 	it("should read code from POST body for form_post response mode", async () => {
 		const { client } = await getTestInstance({

@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { deviceAuthorization } from ".";
 
@@ -14,5 +14,5 @@ export const deviceAuthorizationClient = () => {
 			"/device/approve": "POST",
 			"/device/deny": "POST",
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Icons } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -36,14 +36,14 @@ export function SignatureMark() {
 			</div>
 			<div className="flex items-center gap-3">
 				<Link
-					href="https://x.com/better_auth"
+					href="https://x.com/cinaauth"
 					aria-label="Twitter/X"
 					className="text-foreground/50 hover:text-foreground/80 transition-colors"
 				>
 					<Icons.XIcon className="h-3.5 w-3.5" />
 				</Link>
 				<Link
-					href="https://github.com/better-auth"
+					href="https://github.com/cinaauth"
 					aria-label="GitHub"
 					className="text-foreground/50 hover:text-foreground/80 transition-colors"
 				>

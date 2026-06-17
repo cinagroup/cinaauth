@@ -1,6 +1,6 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { logger } from "@better-auth/core/env";
-import { verifyJwsAccessToken } from "better-auth/oauth2";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { logger } from "@cinaauth/core/env";
+import { verifyJwsAccessToken } from "cinaauth/oauth2";
 import { APIError } from "better-call";
 import type { JSONWebKeySet } from "jose";
 import { decodeRefreshToken, invalidateRefreshFamily } from "./token";

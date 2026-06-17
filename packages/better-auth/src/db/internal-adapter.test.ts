@@ -1,13 +1,13 @@
 import { DatabaseSync } from "node:sqlite";
-import type { GenericEndpointContext } from "@better-auth/core";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { betterAuth } from "../auth/full";
+import { CinaAuth } from "../auth/full";
 import { init } from "../context/init";
 import { getTestInstance } from "../test-utils/test-instance";
 import type {
-	BetterAuthOptions,
-	BetterAuthPlugin,
+	CinaAuthOptions,
+	CinaAuthPlugin,
 	Session,
 	User,
 } from "../types";
@@ -126,9 +126,9 @@ describe("internal adapter test", async () => {
 						},
 					};
 				},
-			} satisfies BetterAuthPlugin,
+			} satisfies CinaAuthPlugin,
 		],
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 	beforeAll(async () => {
 		(await getMigrations(opts)).runMigrations();
 	});
@@ -291,7 +291,7 @@ describe("internal adapter test", async () => {
 				verification: {
 					storeIdentifier: "hashed" as const,
 				},
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(hashedOpts)).runMigrations();
 			const hashedCtx = await init(hashedOpts);
@@ -334,7 +334,7 @@ describe("internal adapter test", async () => {
 						},
 					},
 				},
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(overrideOpts)).runMigrations();
 			const overrideCtx = await init(overrideOpts);
@@ -366,7 +366,7 @@ describe("internal adapter test", async () => {
 			const plainOpts = {
 				database,
 				verification: { storeIdentifier: "plain" as const },
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(plainOpts)).runMigrations();
 			const plainCtx = await init(plainOpts);
@@ -380,7 +380,7 @@ describe("internal adapter test", async () => {
 			const hashedOpts = {
 				database,
 				verification: { storeIdentifier: "hashed" as const },
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			const hashedCtx = await init(hashedOpts);
 
@@ -434,12 +434,12 @@ describe("internal adapter test", async () => {
 				},
 			},
 			emailAndPassword: { enabled: true },
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		const migrations = await getMigrations(opts);
 		await migrations.runMigrations();
 
-		const auth = betterAuth(opts);
+		const auth = CinaAuth(opts);
 
 		await auth.api.signUpEmail({
 			body: {
@@ -478,7 +478,7 @@ describe("internal adapter test", async () => {
 					mockStorage.delete(key);
 				},
 			},
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		// Run migrations for the new database
 		(await getMigrations(testOpts)).runMigrations();
@@ -779,7 +779,7 @@ describe("internal adapter test", async () => {
 					testMap.delete(key);
 				},
 			},
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		(await getMigrations(testOpts)).runMigrations();
 
@@ -827,7 +827,7 @@ describe("internal adapter test", async () => {
 					testMap.delete(key);
 				},
 			},
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		(await getMigrations(testOpts)).runMigrations();
 
@@ -871,7 +871,7 @@ describe("internal adapter test", async () => {
 					testMap.delete(key);
 				},
 			},
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		(await getMigrations(testOpts)).runMigrations();
 
@@ -914,7 +914,7 @@ describe("internal adapter test", async () => {
 					testMap.delete(key);
 				},
 			},
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		(await getMigrations(testOpts)).runMigrations();
 
@@ -955,7 +955,7 @@ describe("internal adapter test", async () => {
 					testMap.delete(key);
 				},
 			},
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		(await getMigrations(testOpts)).runMigrations();
 
@@ -1008,7 +1008,7 @@ describe("internal adapter test", async () => {
 					testExpirationMap.delete(key);
 				},
 			},
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		// Run migrations for the new database
 		(await getMigrations(testOpts)).runMigrations();
@@ -1113,7 +1113,7 @@ describe("internal adapter test", async () => {
 					testExpirationMap.delete(key);
 				},
 			},
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		(await getMigrations(testOpts)).runMigrations();
 		const testAuthContext = await init(testOpts);
@@ -1183,7 +1183,7 @@ describe("internal adapter test", async () => {
 			const secondaryOnlyOpts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(secondaryOnlyOpts)).runMigrations();
 			const ctx = await init(secondaryOnlyOpts);
@@ -1204,7 +1204,7 @@ describe("internal adapter test", async () => {
 			const secondaryOnlyOpts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(secondaryOnlyOpts)).runMigrations();
 			const ctx = await init(secondaryOnlyOpts);
@@ -1228,7 +1228,7 @@ describe("internal adapter test", async () => {
 			const secondaryOnlyOpts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(secondaryOnlyOpts)).runMigrations();
 			const ctx = await init(secondaryOnlyOpts);
@@ -1254,7 +1254,7 @@ describe("internal adapter test", async () => {
 			const secondaryOnlyOpts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(secondaryOnlyOpts)).runMigrations();
 			const ctx = await init(secondaryOnlyOpts);
@@ -1281,7 +1281,7 @@ describe("internal adapter test", async () => {
 					storeInDatabase: true,
 				},
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(dualStorageOpts)).runMigrations();
 			const ctx = await init(dualStorageOpts);
@@ -1310,7 +1310,7 @@ describe("internal adapter test", async () => {
 					storeInDatabase: true,
 				},
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(dualStorageOpts)).runMigrations();
 			const ctx = await init(dualStorageOpts);
@@ -1335,7 +1335,7 @@ describe("internal adapter test", async () => {
 			const secondaryOnlyOpts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(secondaryOnlyOpts)).runMigrations();
 			const ctx = await init(secondaryOnlyOpts);
@@ -1391,7 +1391,7 @@ describe("internal adapter test", async () => {
 			const opts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			(await getMigrations(opts)).runMigrations();
 			const ctx = await init(opts);
@@ -1416,7 +1416,7 @@ describe("internal adapter test", async () => {
 			const opts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			await (await getMigrations(opts)).runMigrations();
 			const ctx = await init(opts);
@@ -1442,7 +1442,7 @@ describe("internal adapter test", async () => {
 			const opts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			await (await getMigrations(opts)).runMigrations();
 			const ctx = await init(opts);
@@ -1476,7 +1476,7 @@ describe("internal adapter test", async () => {
 			const opts = {
 				database: new DatabaseSync(":memory:"),
 				secondaryStorage: storage,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 
 			await (await getMigrations(opts)).runMigrations();
 			const ctx = await init(opts);
@@ -1501,11 +1501,11 @@ describe("internal adapter test", async () => {
 	});
 
 	describe("consumeVerificationValue", () => {
-		async function makeAdapter(overrides?: Partial<BetterAuthOptions>) {
+		async function makeAdapter(overrides?: Partial<CinaAuthOptions>) {
 			const opts = {
 				database: new DatabaseSync(":memory:"),
 				...overrides,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 			(await getMigrations(opts)).runMigrations();
 			const ctx = await init(opts);
 			return ctx.internalAdapter;
@@ -1882,11 +1882,11 @@ describe("internal adapter test", async () => {
 	});
 
 	describe("reserveVerificationValue", () => {
-		async function makeAdapter(overrides?: Partial<BetterAuthOptions>) {
+		async function makeAdapter(overrides?: Partial<CinaAuthOptions>) {
 			const opts = {
 				database: new DatabaseSync(":memory:"),
 				...overrides,
-			} satisfies BetterAuthOptions;
+			} satisfies CinaAuthOptions;
 			(await getMigrations(opts)).runMigrations();
 			const ctx = await init(opts);
 			return ctx.internalAdapter;

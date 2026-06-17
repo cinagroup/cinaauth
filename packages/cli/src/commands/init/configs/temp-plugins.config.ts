@@ -39,7 +39,7 @@ export const tempPluginsConfig = {
 			function: "twoFactor",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "twoFactor" })],
 					isNamedImport: false,
 				},
@@ -210,7 +210,7 @@ export const tempPluginsConfig = {
 			function: "twoFactorClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "twoFactorClient" })],
 					isNamedImport: false,
 				},
@@ -223,7 +223,7 @@ export const tempPluginsConfig = {
 			function: "username",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "username" })],
 					isNamedImport: false,
 				},
@@ -307,7 +307,7 @@ export const tempPluginsConfig = {
 			function: "usernameClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "usernameClient" })],
 					isNamedImport: false,
 				},
@@ -320,7 +320,7 @@ export const tempPluginsConfig = {
 			function: "magicLink",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "magicLink" })],
 					isNamedImport: false,
 				},
@@ -417,7 +417,7 @@ export const tempPluginsConfig = {
 			function: "magicLinkClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "magicLinkClient" })],
 					isNamedImport: false,
 				},
@@ -430,7 +430,7 @@ export const tempPluginsConfig = {
 			function: "emailOTP",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "emailOTP" })],
 					isNamedImport: false,
 				},
@@ -558,7 +558,7 @@ export const tempPluginsConfig = {
 			function: "emailOTPClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "emailOTPClient" })],
 					isNamedImport: false,
 				},
@@ -571,7 +571,7 @@ export const tempPluginsConfig = {
 			function: "genericOAuth",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "genericOAuth" })],
 					isNamedImport: false,
 				},
@@ -581,7 +581,7 @@ export const tempPluginsConfig = {
 			function: "genericOAuthClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "genericOAuthClient" })],
 					isNamedImport: false,
 				},
@@ -594,7 +594,7 @@ export const tempPluginsConfig = {
 			function: "anonymous",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "anonymous" })],
 					isNamedImport: false,
 				},
@@ -604,7 +604,7 @@ export const tempPluginsConfig = {
 			function: "anonymousClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "anonymousClient" })],
 					isNamedImport: false,
 				},
@@ -617,7 +617,7 @@ export const tempPluginsConfig = {
 			function: "phoneNumber",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "phoneNumber" })],
 					isNamedImport: false,
 				},
@@ -627,7 +627,7 @@ export const tempPluginsConfig = {
 			function: "phoneNumberClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "phoneNumberClient" })],
 					isNamedImport: false,
 				},
@@ -640,7 +640,7 @@ export const tempPluginsConfig = {
 			function: "passkey",
 			imports: [
 				{
-					path: "better-auth/plugins/passkey",
+					path: "cinaauth/plugins/passkey",
 					imports: [createImport({ name: "passkey" })],
 					isNamedImport: false,
 				},
@@ -650,7 +650,7 @@ export const tempPluginsConfig = {
 			function: "passkeyClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "passkeyClient" })],
 					isNamedImport: false,
 				},
@@ -663,7 +663,7 @@ export const tempPluginsConfig = {
 			function: "oidc",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "oidc" })],
 					isNamedImport: false,
 				},
@@ -673,7 +673,7 @@ export const tempPluginsConfig = {
 			function: "oidcClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "oidcClient" })],
 					isNamedImport: false,
 				},
@@ -686,7 +686,7 @@ export const tempPluginsConfig = {
 			function: "admin",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "admin" })],
 					isNamedImport: false,
 				},
@@ -722,7 +722,7 @@ export const tempPluginsConfig = {
 			function: "adminClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "adminClient" })],
 					isNamedImport: false,
 				},
@@ -735,7 +735,7 @@ export const tempPluginsConfig = {
 			function: "apiKey",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "apiKey" })],
 					isNamedImport: false,
 				},
@@ -809,7 +809,7 @@ export const tempPluginsConfig = {
 			function: "apiKeyClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "apiKeyClient" })],
 					isNamedImport: false,
 				},
@@ -822,7 +822,7 @@ export const tempPluginsConfig = {
 			function: "bearer",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "bearer" })],
 					isNamedImport: false,
 				},
@@ -851,7 +851,7 @@ export const tempPluginsConfig = {
 			function: "captcha",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "captcha" })],
 					isNamedImport: false,
 				},
@@ -923,7 +923,7 @@ export const tempPluginsConfig = {
 			function: "customSession",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "customSession" })],
 					isNamedImport: false,
 				},
@@ -948,7 +948,7 @@ export const tempPluginsConfig = {
 			function: "customSessionClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "customSessionClient" })],
 					isNamedImport: false,
 				},
@@ -961,7 +961,7 @@ export const tempPluginsConfig = {
 			function: "deviceAuthorization",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "deviceAuthorization" })],
 					isNamedImport: false,
 				},
@@ -1025,7 +1025,7 @@ export const tempPluginsConfig = {
 			function: "deviceAuthorizationClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "deviceAuthorizationClient" })],
 					isNamedImport: false,
 				},
@@ -1038,7 +1038,7 @@ export const tempPluginsConfig = {
 			function: "haveIBeenPwned",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "haveIBeenPwned" })],
 					isNamedImport: false,
 				},
@@ -1066,7 +1066,7 @@ export const tempPluginsConfig = {
 			function: "jwt",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "jwt" })],
 					isNamedImport: false,
 				},
@@ -1090,7 +1090,7 @@ export const tempPluginsConfig = {
 			function: "jwtClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "jwtClient" })],
 					isNamedImport: false,
 				},
@@ -1103,7 +1103,7 @@ export const tempPluginsConfig = {
 			function: "lastLoginMethod",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "lastLoginMethod" })],
 					isNamedImport: false,
 				},
@@ -1113,7 +1113,7 @@ export const tempPluginsConfig = {
 					flag: "last-login-method-cookie-name",
 					question: "What is the cookie name for last login method?",
 					description: "Name of the cookie to store the last login method.",
-					defaultValue: "better-auth.last_used_login_method",
+					defaultValue: "cinaauth.last_used_login_method",
 					skip: "prompt",
 					argument: {
 						index: 0,
@@ -1153,7 +1153,7 @@ export const tempPluginsConfig = {
 			function: "lastLoginMethodClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "lastLoginMethodClient" })],
 					isNamedImport: false,
 				},
@@ -1166,7 +1166,7 @@ export const tempPluginsConfig = {
 			function: "mcp",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "mcp" })],
 					isNamedImport: false,
 				},
@@ -1203,7 +1203,7 @@ export const tempPluginsConfig = {
 			function: "multiSession",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "multiSession" })],
 					isNamedImport: false,
 				},
@@ -1229,7 +1229,7 @@ export const tempPluginsConfig = {
 			function: "multiSessionClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "multiSessionClient" })],
 					isNamedImport: false,
 				},
@@ -1242,7 +1242,7 @@ export const tempPluginsConfig = {
 			function: "oAuthProxy",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "oAuthProxy" })],
 					isNamedImport: false,
 				},
@@ -1282,7 +1282,7 @@ export const tempPluginsConfig = {
 			function: "oneTap",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "oneTap" })],
 					isNamedImport: false,
 				},
@@ -1318,7 +1318,7 @@ export const tempPluginsConfig = {
 			function: "oneTapClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "oneTapClient" })],
 					isNamedImport: false,
 				},
@@ -1331,7 +1331,7 @@ export const tempPluginsConfig = {
 			function: "oneTimeToken",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "oneTimeToken" })],
 					isNamedImport: false,
 				},
@@ -1384,7 +1384,7 @@ export const tempPluginsConfig = {
 			function: "oneTimeTokenClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "oneTimeTokenClient" })],
 					isNamedImport: false,
 				},
@@ -1397,7 +1397,7 @@ export const tempPluginsConfig = {
 			function: "openAPI",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "openAPI" })],
 					isNamedImport: false,
 				},
@@ -1480,7 +1480,7 @@ export const tempPluginsConfig = {
 			function: "organization",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "organization" })],
 					isNamedImport: false,
 				},
@@ -1532,7 +1532,7 @@ export const tempPluginsConfig = {
 			function: "organizationClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "organizationClient" })],
 					isNamedImport: false,
 				},
@@ -1545,7 +1545,7 @@ export const tempPluginsConfig = {
 			function: "siwe",
 			imports: [
 				{
-					path: "better-auth/plugins",
+					path: "cinaauth/plugins",
 					imports: [createImport({ name: "siwe" })],
 					isNamedImport: false,
 				},
@@ -1590,7 +1590,7 @@ export const tempPluginsConfig = {
 			function: "siweClient",
 			imports: [
 				{
-					path: "better-auth/client/plugins",
+					path: "cinaauth/client/plugins",
 					imports: [createImport({ name: "siweClient" })],
 					isNamedImport: false,
 				},
@@ -1599,12 +1599,12 @@ export const tempPluginsConfig = {
 	},
 	scim: {
 		displayName: "SCIM",
-		dependencies: ["@better-auth/scim"],
+		dependencies: ["@cinaauth/scim"],
 		auth: {
 			function: "scim",
 			imports: [
 				{
-					path: "@better-auth/scim",
+					path: "@cinaauth/scim",
 					imports: [createImport({ name: "scim" })],
 					isNamedImport: false,
 				},
@@ -1614,7 +1614,7 @@ export const tempPluginsConfig = {
 			function: "scimClient",
 			imports: [
 				{
-					path: "@better-auth/scim/client",
+					path: "@cinaauth/scim/client",
 					imports: [createImport({ name: "scimClient" })],
 					isNamedImport: false,
 				},
@@ -1623,12 +1623,12 @@ export const tempPluginsConfig = {
 	},
 	sso: {
 		displayName: "SSO",
-		dependencies: ["@better-auth/sso"],
+		dependencies: ["@cinaauth/sso"],
 		auth: {
 			function: "sso",
 			imports: [
 				{
-					path: "@better-auth/sso",
+					path: "@cinaauth/sso",
 					imports: [createImport({ name: "sso" })],
 					isNamedImport: false,
 				},
@@ -1727,7 +1727,7 @@ export const tempPluginsConfig = {
 			function: "ssoClient",
 			imports: [
 				{
-					path: "@better-auth/sso/client",
+					path: "@cinaauth/sso/client",
 					imports: [createImport({ name: "ssoClient" })],
 					isNamedImport: false,
 				},
@@ -1768,12 +1768,12 @@ export const tempPluginsConfig = {
 	},
 	stripe: {
 		displayName: "Stripe",
-		dependencies: ["stripe", "@better-auth/stripe"],
+		dependencies: ["stripe", "@cinaauth/stripe"],
 		auth: {
 			function: "stripe",
 			imports: [
 				{
-					path: "@better-auth/stripe",
+					path: "@cinaauth/stripe",
 					imports: [createImport({ name: "stripe" })],
 					isNamedImport: false,
 				},
@@ -1787,12 +1787,12 @@ export const tempPluginsConfig = {
 	},
 	i18n: {
 		displayName: "I18n",
-		dependencies: ["@better-auth/i18n"],
+		dependencies: ["@cinaauth/i18n"],
 		auth: {
 			function: "i18n",
 			imports: [
 				{
-					path: "@better-auth/i18n",
+					path: "@cinaauth/i18n",
 					imports: [createImport({ name: "i18n" })],
 					isNamedImport: false,
 				},
@@ -1803,7 +1803,7 @@ export const tempPluginsConfig = {
 			function: "i18nClient",
 			imports: [
 				{
-					path: "@better-auth/i18n/client",
+					path: "@cinaauth/i18n/client",
 					imports: [createImport({ name: "i18nClient" })],
 					isNamedImport: false,
 				},

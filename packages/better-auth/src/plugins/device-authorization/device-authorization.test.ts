@@ -1,8 +1,8 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { getAuthTables } from "@better-auth/core/db";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
-import type { MemoryDB } from "@better-auth/memory-adapter";
-import { memoryAdapter } from "@better-auth/memory-adapter";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { getAuthTables } from "@cinaauth/core/db";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import type { MemoryDB } from "@cinaauth/memory-adapter";
+import { memoryAdapter } from "@cinaauth/memory-adapter";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getTestInstance } from "../../test-utils/test-instance";
 import { deviceAuthorization, deviceAuthorizationOptionsSchema } from ".";
@@ -680,7 +680,7 @@ describe("device authorization ownership gate", () => {
 	const ATTACKER_PASSWORD = "attacker-password-123";
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-cq3f-vc6p-68fh
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-cq3f-vc6p-68fh
 	 */
 	it("rejects approve from a session that did not claim the pending code", async () => {
 		const { auth, client, db, signInWithUser } = await getTestInstance(
@@ -744,7 +744,7 @@ describe("device authorization ownership gate", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-cq3f-vc6p-68fh
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-cq3f-vc6p-68fh
 	 */
 	it("rejects deny from a session that did not claim the pending code", async () => {
 		const { auth, client, db, signInWithUser } = await getTestInstance(
@@ -794,7 +794,7 @@ describe("device authorization ownership gate", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-cq3f-vc6p-68fh
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-cq3f-vc6p-68fh
 	 */
 	it("allows approve when the same session called verify first", async () => {
 		const { auth, signInWithTestUser } = await getTestInstance({
@@ -825,7 +825,7 @@ describe("device authorization ownership gate", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-cq3f-vc6p-68fh
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-cq3f-vc6p-68fh
 	 */
 	it("rejects approve from a different user after another claimed the code", async () => {
 		const { auth, client, signInWithTestUser, signInWithUser } =
@@ -1034,11 +1034,11 @@ describe("device authorization ownership gate", () => {
 	});
 
 	it("does not overwrite a device code claimed after verify reads it", async () => {
-		let adapter: DBAdapter<BetterAuthOptions> | null = null;
+		let adapter: DBAdapter<CinaAuthOptions> | null = null;
 		let concurrentOwnerId: string | undefined;
 		let simulateConcurrentClaim = false;
 
-		const database = ((options: BetterAuthOptions) => {
+		const database = ((options: CinaAuthOptions) => {
 			if (adapter) {
 				return adapter;
 			}
@@ -1051,7 +1051,7 @@ describe("device authorization ownership gate", () => {
 			adapter = {
 				...baseAdapter,
 				incrementOne: async <T>(
-					data: Parameters<DBAdapter<BetterAuthOptions>["incrementOne"]>[0],
+					data: Parameters<DBAdapter<CinaAuthOptions>["incrementOne"]>[0],
 				) => {
 					if (
 						simulateConcurrentClaim &&
@@ -1075,7 +1075,7 @@ describe("device authorization ownership gate", () => {
 				},
 			};
 			return adapter;
-		}) satisfies BetterAuthOptions["database"];
+		}) satisfies CinaAuthOptions["database"];
 
 		const { auth, client, db, signInWithUser } = await getTestInstance({
 			database,

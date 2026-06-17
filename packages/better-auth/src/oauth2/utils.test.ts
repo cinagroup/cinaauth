@@ -1,4 +1,4 @@
-import type { AuthContext } from "@better-auth/core";
+import type { AuthContext } from "@cinaauth/core";
 import { describe, expect, it } from "vitest";
 import { symmetricEncrypt } from "../crypto";
 import { decryptOAuthToken, setTokenUtil } from "./utils";
@@ -80,7 +80,7 @@ describe("decryptOAuthToken", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/6018
+ * @see https://github.com/cinagroup/cinaauth/issues/6018
  */
 describe("migration scenario - issue #6018", () => {
 	it("should handle Google OAuth token stored before encryption was enabled", async () => {

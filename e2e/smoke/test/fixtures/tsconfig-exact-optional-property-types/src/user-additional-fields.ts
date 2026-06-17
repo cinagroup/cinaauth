@@ -1,6 +1,6 @@
-import { betterAuth } from "better-auth";
+﻿import { CinaAuth } from "cinaauth";
 
-const auth = betterAuth({
+const auth = CinaAuth({
 	trustedOrigins: [],
 	emailAndPassword: {
 		enabled: true,

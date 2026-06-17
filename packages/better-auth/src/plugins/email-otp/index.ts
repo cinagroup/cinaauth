@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { generateRandomString } from "../../crypto";
 import { getDate } from "../../utils/date";
 import { getEndpointResponse } from "../../utils/plugin-helper";
@@ -22,8 +22,8 @@ import {
 import type { EmailOTPOptions } from "./types";
 import { toOTPIdentifier } from "./utils";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"email-otp": {
 			creator: typeof emailOTP;
 		};
@@ -194,5 +194,5 @@ export const emailOTP = (options: EmailOTPOptions) => {
 		],
 		options,
 		$ERROR_CODES: EMAIL_OTP_ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

@@ -1,20 +1,20 @@
----
+﻿---
 title: Dashboard Plugin (dash)
-description: The `dash()` plugin connects your Better Auth instance to Better Auth Infrastructure, enabling analytics tracking, event logging, and admin dashboard APIs.
+description: The `dash()` plugin connects your CinaAuth instance to CinaAuth Infrastructure, enabling analytics tracking, event logging, and admin dashboard APIs.
 ---
 
 ## Installation
 
 ```ts
-import { betterAuth } from "better-auth";
-import { dash } from "@better-auth/infra";
+import { CinaAuth } from "cinaauth";
+import { dash } from "@cinaauth/infra";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     dash({
-      apiUrl: process.env.BETTER_AUTH_API_URL,
-      kvUrl: process.env.BETTER_AUTH_KV_URL,
-      apiKey: process.env.BETTER_AUTH_API_KEY,
+      apiUrl: process.env.CINAAUTH_API_URL,
+      kvUrl: process.env.CINAAUTH_KV_URL,
+      apiKey: process.env.CINAAUTH_API_KEY,
     }),
   ],
 });
@@ -26,7 +26,7 @@ export const auth = betterAuth({
 
 | Option             | Type     | Description                                                           |
 | ------------------ | -------- | --------------------------------------------------------------------- |
-| `apiUrl`           | `string` | Better Auth Infrastructure API URL                                    |
+| `apiUrl`           | `string` | CinaAuth Infrastructure API URL                                    |
 | `kvUrl`            | `string` | KV store URL for caching                                              |
 | `apiKey`           | `string` | Your API key for authentication                                       |
 | `apiTimeout`       | `number` | Timeout in ms for infra API HTTP requests (`apiUrl`). Default: `3000` |
@@ -37,7 +37,7 @@ export const auth = betterAuth({
 
 ```ts
 dash({
-  apiKey: process.env.BETTER_AUTH_API_KEY,
+  apiKey: process.env.CINAAUTH_API_KEY,
   activityTracking: {
     enabled: true,           // Enable activity tracking
     updateInterval: 300000,  // Update interval in ms (default: 5 minutes)
@@ -237,15 +237,15 @@ The dash plugin registers numerous admin endpoints for the dashboard:
 The client plugin provides access to audit log queries:
 
 ```ts
-import { createAuthClient } from "better-auth/client";
-import { dashClient } from "@better-auth/infra/client";
+import { createAuthClient } from "cinaauth/client";
+import { dashClient } from "@cinaauth/infra/client";
 
 export const authClient = createAuthClient({
   plugins: [dashClient()],
 });
 ```
 
-**Note**: For **Expo** or **React Native**, import `dashClient` from `@better-auth/infra/native` (same API) and pair it with `sentinelNativeClient` as described in [Sentinel — Expo and React Native](/docs/infrastructure/plugins/sentinel#expo-and-react-native).
+**Note**: For **Expo** or **React Native**, import `dashClient` from `@cinaauth/infra/native` (same API) and pair it with `sentinelNativeClient` as described in [Sentinel — Expo and React Native](/docs/infrastructure/plugins/sentinel#expo-and-react-native).
 
 ### Configuration
 

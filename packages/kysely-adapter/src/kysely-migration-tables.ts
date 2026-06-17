@@ -7,10 +7,10 @@
  * The values are a stable part of Kysely's public migration contract, so
  * mirroring them lets the SQLite dialects run on both Kysely 0.28 and 0.29
  * without importing from a moving path.
- * TODO: Revisit this mirror if Better Auth drops Kysely 0.28 support and can
+ * TODO: Revisit this mirror if CinaAuth drops Kysely 0.28 support and can
  * depend on Kysely's `kysely/migration` export.
  *
- * @see https://github.com/better-auth/better-auth/issues/9810
+ * @see https://github.com/cinagroup/cinaauth/issues/9810
  */
 export const DEFAULT_MIGRATION_TABLE = "kysely_migration";
 export const DEFAULT_MIGRATION_LOCK_TABLE = "kysely_migration_lock";

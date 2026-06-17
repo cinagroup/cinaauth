@@ -2,7 +2,7 @@ import type {
 	AuthContext,
 	Awaitable,
 	GenericEndpointContext,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import type { EndpointContext } from "better-call";
 import type { InferOptionSchema, Session, User } from "../../types";
 import type { schema } from "./schema";

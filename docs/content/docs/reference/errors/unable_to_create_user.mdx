@@ -1,18 +1,18 @@
----
+﻿---
 title: unable_to_create_user
 description: The user could not be created during authentication.
 ---
 
 ## What is it?
 
-This error occurs when Better Auth fails to create a new user during the authentication process. It typically happens during OAuth or SSO-based signup flows when a new user record is expected to be created but the operation fails.
+This error occurs when CinaAuth fails to create a new user during the authentication process. It typically happens during OAuth or SSO-based signup flows when a new user record is expected to be created but the operation fails.
 
 ## Common Causes
 
 * Database write failure due to connection issues, timeouts, or transaction errors.
 * Missing or invalid required fields in the user schema.
 * Unique constraint violations (e.g., email already exists).
-* Mismatch between your database schema and the expected Better Auth schema.
+* Mismatch between your database schema and the expected CinaAuth schema.
 * Errors thrown inside custom database hooks (e.g., `user.create`).
 * Misconfigured adapters or database clients.
 
@@ -30,7 +30,7 @@ This error occurs when Better Auth fails to create a new user during the authent
 
 ### Run migrations
 
-* Ensure your database schema is up to date with the current Better Auth version.
+* Ensure your database schema is up to date with the current CinaAuth version.
 
 ### Review custom hooks
 

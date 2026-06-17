@@ -1,4 +1,4 @@
-import type { OAuth2Tokens, OAuth2UserInfo } from "@better-auth/core/oauth2";
+import type { OAuth2Tokens, OAuth2UserInfo } from "@cinaauth/core/oauth2";
 import { betterFetch } from "@better-fetch/fetch";
 import { decodeJwt } from "jose";
 import type { BaseOAuthProviderOptions, GenericOAuthConfig } from "../index";
@@ -41,9 +41,9 @@ interface LineUserInfo {
  *
  * @example
  * ```ts
- * import { genericOAuth, line } from "better-auth/plugins/generic-oauth";
+ * import { genericOAuth, line } from "cinaauth/plugins/generic-oauth";
  *
- * export const auth = betterAuth({
+ * export const auth = CinaAuth({
  *   plugins: [
  *     genericOAuth({
  *       config: [

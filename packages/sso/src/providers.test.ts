@@ -1,8 +1,8 @@
-import { betterAuth } from "better-auth";
-import { memoryAdapter } from "better-auth/adapters/memory";
-import { createAuthClient } from "better-auth/client";
-import { setCookieToHeader } from "better-auth/cookies";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { memoryAdapter } from "cinaauth/adapters/memory";
+import { createAuthClient } from "cinaauth/client";
+import { setCookieToHeader } from "cinaauth/cookies";
+import { organization } from "cinaauth/plugins";
 import { describe, expect, it } from "vitest";
 import { sso } from ".";
 import { ssoClient } from "./client";
@@ -56,7 +56,7 @@ describe("SSO provider read endpoints", () => {
 			? [ssoPlugin, organization()]
 			: [ssoPlugin];
 
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			database: memory,
 			baseURL: "http://localhost:3000",
 			emailAndPassword: {
@@ -1320,7 +1320,7 @@ describe("SSO provider read endpoints", () => {
 
 	describe("POST /sso/register", () => {
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/9133
+		 * @see https://github.com/cinagroup/cinaauth/issues/9133
 		 */
 		it("should reject registration from non-admin org members", async () => {
 			const { auth, getAuthHeaders, createOrganization, addMember, data } =
@@ -1369,7 +1369,7 @@ describe("SSO provider read endpoints", () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/9133
+		 * @see https://github.com/cinagroup/cinaauth/issues/9133
 		 */
 		it("should allow registration from org admins", async () => {
 			const { auth, getAuthHeaders, createOrganization, addMember, data } =
@@ -1418,7 +1418,7 @@ describe("SSO provider read endpoints", () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/9133
+		 * @see https://github.com/cinagroup/cinaauth/issues/9133
 		 */
 		it("should reject registration when user is not a member of the organization", async () => {
 			const { auth, getAuthHeaders, createOrganization } = createTestAuth(true);
@@ -1477,7 +1477,7 @@ describe("SSO providerId namespace collisions", () => {
 			account: [],
 			ssoProvider: [],
 		};
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			database: memoryAdapter(data),
 			baseURL: "http://localhost:3000",
 			emailAndPassword: { enabled: true },

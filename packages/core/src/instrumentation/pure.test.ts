@@ -11,7 +11,7 @@ type CorePackageJSON = {
 	};
 };
 
-// @see https://github.com/better-auth/better-auth/issues/8765
+// @see https://github.com/cinagroup/cinaauth/issues/8765
 describe("instrumentation (pure entry)", () => {
 	it("returns the result of a sync fn", () => {
 		expect(withSpan("test.sync", { k: 1 }, () => 42)).toBe(42);
@@ -54,7 +54,7 @@ describe("instrumentation (pure entry)", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9365
+	 * @see https://github.com/cinagroup/cinaauth/issues/9365
 	 */
 	it("routes workerd package imports to the pure instrumentation entry", () => {
 		const pkg = JSON.parse(

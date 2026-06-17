@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
@@ -28,28 +28,28 @@ const mcpCommands = [
 	{ name: "Manual", command: "npx auth mcp --manual" },
 ];
 
-const aiPromptText = `Set up authentication in my project using Better Auth (better-auth npm package).
+const aiPromptText = `Set up authentication in my project using CinaAuth (cinaauth npm package).
 
-1. Install better-auth. If I already have a database configured in this project, use that — don't set up a new one.
+1. Install cinaauth. If I already have a database configured in this project, use that — don't set up a new one.
 
-2. Create lib/auth.ts — call betterAuth() with:
+2. Create lib/auth.ts — call CinaAuth() with:
    - My existing database connection (or a new SQLite/Postgres setup if none exists)
    - emailAndPassword enabled
    - Any social providers if I have OAuth credentials in my env
 
 3. Create lib/auth-client.ts — use the correct framework import:
-   - React/Next.js: "better-auth/react"
-   - Vue: "better-auth/vue"
-   - Svelte: "better-auth/svelte"
-   - Vanilla: "better-auth/client"
+   - React/Next.js: "cinaauth/react"
+   - Vue: "cinaauth/vue"
+   - Svelte: "cinaauth/svelte"
+   - Vanilla: "cinaauth/client"
 
 4. Add the API route handler for my framework (e.g. app/api/auth/[...all]/route.ts for Next.js App Router).
 
-5. Add BETTER_AUTH_SECRET to my .env if it doesn't exist (generate a 32+ char secret).
+5. Add CINAAUTH_SECRET to my .env if it doesn't exist (generate a 32+ char secret).
 
 6. Run npx auth migrate to apply database migrations.
 
-Refer to better-auth.com/docs for exact API and plugin syntax.`;
+Refer to cinagroup.com/docs for exact API and plugin syntax.`;
 
 function CredentialFields() {
 	const emailText = "user@email.com";
@@ -289,7 +289,7 @@ function InstallBlock() {
 													npx
 												</span>{" "}
 												<span className="text-neutral-700 dark:text-neutral-300">
-													skills add better-auth/skills
+													skills add cinaauth/skills
 												</span>
 											</>
 										) : (
@@ -307,7 +307,7 @@ function InstallBlock() {
 										{mode === "skills" ? (
 											<button
 												onClick={() =>
-													copy("npx skills add better-auth/skills")
+													copy("npx skills add cinaauth/skills")
 												}
 												className="text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors p-1"
 												aria-label="Copy command"
@@ -522,14 +522,14 @@ function InstallBlock() {
 							) : (
 								<div className="bg-neutral-100/50 dark:bg-[#050505] px-5 py-4">
 									<p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-200 leading-relaxed">
-										Set up authentication in my project using Better Auth.
+										Set up authentication in my project using CinaAuth.
 									</p>
 									<div className="relative mt-1.5">
 										<p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed line-clamp-2">
-											Install better-auth. If I already have a database
+											Install cinaauth. If I already have a database
 											configured, use that. Create lib/auth.ts with{" "}
 											<code className="text-neutral-500 dark:text-neutral-400">
-												betterAuth()
+												CinaAuth()
 											</code>
 											, create auth-client.ts, add the route handler, run
 											migrations...
@@ -905,7 +905,7 @@ function ReadmeFooter({ stats }: { stats: CommunityHeroStats }) {
 				<div className="flex items-center justify-center gap-2">
 					{stats.npmDownloads > 0 && (
 						<a
-							href="https://www.npmjs.com/package/better-auth"
+							href="https://www.npmjs.com/package/cinaauth"
 							target="_blank"
 							rel="noopener noreferrer"
 						>
@@ -919,7 +919,7 @@ function ReadmeFooter({ stats }: { stats: CommunityHeroStats }) {
 					)}
 					{stats.githubStars > 0 && (
 						<a
-							href="https://github.com/better-auth/better-auth"
+							href="https://github.com/cinagroup/cinaauth"
 							target="_blank"
 							rel="noopener noreferrer"
 						>
@@ -954,7 +954,7 @@ function ReadmeFooter({ stats }: { stats: CommunityHeroStats }) {
 						Get Started
 					</Link>
 					<Link
-						href="https://dash.better-auth.com/sign-in"
+						href="https://dash.cinagroup.com/sign-in"
 						className="relative inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm font-medium transition-colors group"
 					>
 						<span
@@ -1826,7 +1826,7 @@ export function HeroReadMe({
 								</div>
 								<p className="text-[15px] sm:text-base text-foreground/75 dark:text-foreground/65 leading-relaxed">
 									Connect to our infrastructure and power your self-hosted
-									Better Auth with a dashboard, audit logs, security detection,
+									CinaAuth with a dashboard, audit logs, security detection,
 									enterprise features, and more.
 								</p>
 							</div>
@@ -1849,7 +1849,7 @@ export function HeroReadMe({
 											<span className="size-2 rounded-full bg-foreground/10" />
 										</div>
 										<span className="text-[10px] font-mono text-foreground/30 ml-2">
-											dash.better-auth.com
+											dash.cinagroup.com
 										</span>
 									</div>
 									<div className="flex items-center gap-3">

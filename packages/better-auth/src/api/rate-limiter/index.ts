@@ -1,10 +1,10 @@
 import type {
 	AuthContext,
-	BetterAuthRateLimitStorage,
-} from "@better-auth/core";
-import { createRateLimitKey } from "@better-auth/core/utils/ip";
-import { safeJSONParse } from "@better-auth/core/utils/json";
-import { normalizePathname } from "@better-auth/core/utils/url";
+	CinaAuthRateLimitStorage,
+} from "@cinaauth/core";
+import { createRateLimitKey } from "@cinaauth/core/utils/ip";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
+import { normalizePathname } from "@cinaauth/core/utils/url";
 import type { RateLimit } from "../../types";
 import { getIp } from "../../utils/get-request-ip";
 import { wildcardMatch } from "../../utils/wildcard";
@@ -115,7 +115,7 @@ function getRetryAfter(lastRequest: number, window: number) {
 
 function createDatabaseStorageWrapper(
 	ctx: AuthContext,
-): BetterAuthRateLimitStorage {
+): CinaAuthRateLimitStorage {
 	const model = "rateLimit";
 	const db = ctx.adapter;
 	const readRow = async (key: string) => {
@@ -279,7 +279,7 @@ function getRateLimitStorage(
 	rateLimitSettings: {
 		window: number;
 	},
-): BetterAuthRateLimitStorage {
+): CinaAuthRateLimitStorage {
 	if (ctx.options.rateLimit?.customStorage) {
 		return ctx.options.rateLimit.customStorage;
 	}
@@ -489,7 +489,7 @@ export async function onRequestRateLimit(req: Request, ctx: AuthContext) {
  */
 async function legacyConsume(
 	ctx: AuthContext,
-	storage: BetterAuthRateLimitStorage,
+	storage: CinaAuthRateLimitStorage,
 	key: string,
 	rule: { window: number; max: number },
 ) {

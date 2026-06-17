@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { createOTP } from "@better-auth/utils/otp";
 import { describe, expect, it } from "vitest";
 import { symmetricDecrypt } from "../../crypto";
@@ -32,7 +32,7 @@ import type { TwoFactorTable, UserWithTwoFactor } from "./types";
  * `/sign-in/phone-number`; we parameterize over all three to pin the fix
  * against every entry point that triggers it.
  *
- * @see https://github.com/better-auth/better-auth/security/advisories
+ * @see https://github.com/cinagroup/cinaauth/security/advisories
  */
 
 function extractSetCookies(res: Response): string[] {
@@ -76,7 +76,7 @@ describe("two-factor security: sign-in does not leak session cookies (cookieCach
 				},
 			],
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 
 	const { auth, signInWithTestUser, testUser, db } = await getTestInstance({
 		secret: DEFAULT_SECRET,
@@ -176,9 +176,9 @@ describe("two-factor security: sign-in does not leak session cookies (cookieCach
 
 		const sessionEntries = setCookies.filter(
 			(entry) =>
-				entry.startsWith("better-auth.session_token=") ||
-				entry.startsWith("better-auth.session_data=") ||
-				entry.startsWith("better-auth.session_data."),
+				entry.startsWith("cinaauth.session_token=") ||
+				entry.startsWith("cinaauth.session_data=") ||
+				entry.startsWith("cinaauth.session_data."),
 		);
 
 		for (const entry of sessionEntries) {
@@ -186,7 +186,7 @@ describe("two-factor security: sign-in does not leak session cookies (cookieCach
 		}
 
 		const twoFactorEntry = setCookies.find((entry) =>
-			entry.startsWith("better-auth.two_factor="),
+			entry.startsWith("cinaauth.two_factor="),
 		);
 		expect(twoFactorEntry).toBeDefined();
 	});
@@ -199,8 +199,8 @@ describe("two-factor security: sign-in does not leak session cookies (cookieCach
 		const res = await call();
 		const setCookies = extractSetCookies(res);
 		const replay = buildCookieHeader(setCookies, [
-			"better-auth.session_token",
-			"better-auth.session_data",
+			"cinaauth.session_token",
+			"cinaauth.session_data",
 		]);
 
 		const session = await auth.api.getSession({ headers: replay });
@@ -261,7 +261,7 @@ describe("two-factor security: sign-in does not leak session cookies (cookieCach
 
 		const setCookies = extractSetCookies(res);
 		const tokenEntries = setCookies.filter((entry) =>
-			entry.startsWith("better-auth.session_token="),
+			entry.startsWith("cinaauth.session_token="),
 		);
 		for (const entry of tokenEntries) {
 			expect(getCookieValue(entry)).toBe("");
@@ -275,8 +275,8 @@ describe("two-factor security: sign-in does not leak session cookies (cookieCach
 		});
 		const setCookies = extractSetCookies(res);
 		const replay = buildCookieHeader(setCookies, [
-			"better-auth.session_token",
-			"better-auth.session_data",
+			"cinaauth.session_token",
+			"cinaauth.session_data",
 		]);
 
 		const session = await auth.api.getSession({ headers: replay });
@@ -321,7 +321,7 @@ describe("two-factor security: chunked session_data is fully scrubbed on 2FA-req
 		asResponse: true,
 	});
 	const chunkProbeEntries = extractSetCookies(chunkProbeRes).filter((entry) =>
-		entry.startsWith("better-auth.session_data."),
+		entry.startsWith("cinaauth.session_data."),
 	);
 
 	const enrollment = await auth.api.enableTwoFactor({
@@ -363,14 +363,14 @@ describe("two-factor security: chunked session_data is fully scrubbed on 2FA-req
 		// `session_data.*` entry, so either none survive OR any that do must
 		// carry an empty value.
 		const chunkEntries = setCookies.filter((entry) =>
-			entry.startsWith("better-auth.session_data."),
+			entry.startsWith("cinaauth.session_data."),
 		);
 		for (const entry of chunkEntries) {
 			expect(getCookieValue(entry)).toBe("");
 		}
 
 		const tokenEntries = setCookies.filter((entry) =>
-			entry.startsWith("better-auth.session_token="),
+			entry.startsWith("cinaauth.session_token="),
 		);
 		for (const entry of tokenEntries) {
 			expect(getCookieValue(entry)).toBe("");
@@ -383,9 +383,9 @@ describe("two-factor security: chunked session_data is fully scrubbed on 2FA-req
 		const parts: string[] = [];
 		for (const entry of setCookies) {
 			if (
-				!entry.startsWith("better-auth.session_token=") &&
-				!entry.startsWith("better-auth.session_data=") &&
-				!entry.startsWith("better-auth.session_data.")
+				!entry.startsWith("cinaauth.session_token=") &&
+				!entry.startsWith("cinaauth.session_data=") &&
+				!entry.startsWith("cinaauth.session_data.")
 			) {
 				continue;
 			}
@@ -504,7 +504,7 @@ describe("two-factor security: 2FA challenge is single-use and expiry-bounded", 
 
 		const setCookies = res.headers.getSetCookie();
 		const tokenEntries = setCookies.filter((entry) =>
-			entry.startsWith("better-auth.session_token="),
+			entry.startsWith("cinaauth.session_token="),
 		);
 		for (const entry of tokenEntries) {
 			const firstSegment = entry.split(";")[0] ?? "";

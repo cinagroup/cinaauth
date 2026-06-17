@@ -1,6 +1,6 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { Auth, User } from "better-auth";
-import type { AuthClient } from "better-auth/client";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import type { Auth, User } from "cinaauth";
+import type { AuthClient } from "cinaauth/client";
 import { expectTypeOf, test } from "vitest";
 
 test("expect imports", async () => {
@@ -20,7 +20,7 @@ test("infer user type correctly", async () => {
 				},
 			},
 		},
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 	type Config = typeof config;
 	type MyAuth = Auth<typeof config>;
 	type MyUser = User<Config["user"], []>;

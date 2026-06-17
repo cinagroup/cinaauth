@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 describe("client declaration emit", () => {
 	const createCompositeProject = (): { dir: string; cleanup: () => void } => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ba-client-dts-"));
-		const betterAuthDir = path.resolve(__dirname, "../..");
+		const CinaAuthDir = path.resolve(__dirname, "../..");
 		const authPackageDir = path.join(dir, "packages/auth");
 		const webAppDir = path.join(dir, "apps/web");
 
@@ -22,8 +22,8 @@ describe("client declaration emit", () => {
 		fs.mkdirSync(path.join(dir, "node_modules/@repo"), { recursive: true });
 
 		fs.symlinkSync(
-			betterAuthDir,
-			path.join(authPackageDir, "node_modules/better-auth"),
+			CinaAuthDir,
+			path.join(authPackageDir, "node_modules/cinaauth"),
 			"junction",
 		);
 		fs.symlinkSync(
@@ -111,7 +111,7 @@ describe("client declaration emit", () => {
 		fs.writeFileSync(
 			path.join(authPackageDir, "src/client.ts"),
 			`
-import { createAuthClient as createBetterAuthClient } from "better-auth/react";
+import { createAuthClient as createCinaAuthClient } from "cinaauth/react";
 
 export type AuthClientOptions = {
   apiBaseUrl: string;
@@ -122,7 +122,7 @@ export const createAuthClient = ({
   apiBaseUrl,
   apiBasePath,
 }: AuthClientOptions) =>
-  createBetterAuthClient({
+  createCinaAuthClient({
     baseURL: \`\${apiBaseUrl}\${apiBasePath}/auth\`,
   });
 `,
@@ -148,7 +148,7 @@ authClient.useSession();
 	};
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8623
+	 * @see https://github.com/cinagroup/cinaauth/issues/8623
 	 */
 	it("should emit declarations for auth clients re-exported through a workspace package", async () => {
 		const { dir, cleanup } = createCompositeProject();

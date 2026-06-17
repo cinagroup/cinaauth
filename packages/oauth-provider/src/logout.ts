@@ -1,6 +1,6 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { getJwks } from "better-auth/oauth2";
-import type { Session } from "better-auth/types";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { getJwks } from "cinaauth/oauth2";
+import type { Session } from "cinaauth/types";
 import { APIError } from "better-call";
 import type { JWTPayload } from "jose";
 import { compactVerify, createLocalJWKSet, decodeJwt } from "jose";

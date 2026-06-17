@@ -1,8 +1,8 @@
-import type { BetterAuthOptions, BetterAuthPlugin } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import type { Auth } from "better-auth";
-import { createAuthClient, InferPlugin } from "better-auth/client";
-import { customSession } from "better-auth/plugins/custom-session";
+﻿import type { CinaAuthOptions, CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import type { Auth } from "cinaauth";
+import { createAuthClient, InferPlugin } from "cinaauth/client";
+import { customSession } from "cinaauth/plugins/custom-session";
 import { describe, expectTypeOf, test } from "vitest";
 
 describe("Endpoint method types", () => {
@@ -58,7 +58,7 @@ describe("Plugin endpoint override types", () => {
 					};
 				}),
 			],
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		type TestAuth = Auth<typeof options>;
 
@@ -75,7 +75,7 @@ describe("Plugin endpoint override types", () => {
 					};
 				}),
 			],
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		type TestAuth = Auth<typeof options>;
 		type Session = TestAuth["$Infer"]["Session"];
@@ -95,7 +95,7 @@ describe("Plugin endpoint override types", () => {
 					async () => ({ result: true }),
 				),
 			},
-		} satisfies BetterAuthPlugin;
+		} satisfies CinaAuthPlugin;
 
 		type TestAuth = Auth<{
 			plugins: [typeof testPlugin];
@@ -118,7 +118,7 @@ describe("Plugin endpoint override types", () => {
 					async () => ({ custom: true }),
 				),
 			},
-		} satisfies BetterAuthPlugin;
+		} satisfies CinaAuthPlugin;
 
 		type TestAuth = Auth<{
 			plugins: [typeof plugin];
@@ -146,7 +146,7 @@ describe("Client getSession return type", () => {
 					};
 				}),
 			],
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		// Extract the plugin type to feed into InferPlugin
 		type CustomSessionPlugin = (typeof options)["plugins"][0];
@@ -170,7 +170,7 @@ describe("Client getSession return type", () => {
 					};
 				}),
 			],
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		type TestAuth = Auth<typeof options>;
 		type GetSession = TestAuth["api"]["getSession"];
@@ -191,7 +191,7 @@ describe("Client getSession return type", () => {
 					return { extra: true };
 				}),
 			],
-		} satisfies BetterAuthOptions;
+		} satisfies CinaAuthOptions;
 
 		type CustomSessionPlugin = (typeof options)["plugins"][0];
 

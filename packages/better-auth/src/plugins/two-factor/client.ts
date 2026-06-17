@@ -1,5 +1,5 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
-import { isSafeUrlScheme } from "@better-auth/core/utils/url";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
+import { isSafeUrlScheme } from "@cinaauth/core/utils/url";
 import { PACKAGE_VERSION } from "../../version";
 import type { twoFactor as twoFa } from ".";
 import { TWO_FACTOR_ERROR_CODES } from "./error-code";
@@ -82,7 +82,7 @@ export const twoFactorClient = (
 			},
 		],
 		$ERROR_CODES: TWO_FACTOR_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export type * from "./backup-codes";

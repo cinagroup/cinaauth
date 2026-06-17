@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { emailOTP } from ".";
 import { EMAIL_OTP_ERROR_CODES } from "./error-codes";
@@ -20,5 +20,5 @@ export const emailOTPClient = () => {
 			},
 		],
 		$ERROR_CODES: EMAIL_OTP_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

@@ -1,6 +1,6 @@
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+﻿import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [organization({})],
 });

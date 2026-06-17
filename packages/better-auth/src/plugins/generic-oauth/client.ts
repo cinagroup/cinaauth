@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { genericOAuth } from ".";
 import { GENERIC_OAUTH_ERROR_CODES } from "./error-codes";
@@ -9,7 +9,7 @@ export const genericOAuthClient = () => {
 		version: PACKAGE_VERSION,
 		$InferServerPlugin: {} as ReturnType<typeof genericOAuth>,
 		$ERROR_CODES: GENERIC_OAUTH_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export * from "./error-codes";

@@ -1,9 +1,9 @@
----
+﻿---
 title: Email
 description: Learn how to set up email verification, require verified emails for sign-in, auto sign-in after verification, handle post-verification callbacks, and implement password reset emails.
 ---
 
-Email is a key part of Better Auth, required for all users regardless of their authentication method. Better Auth provides email and password authentication out of the box, and a lot of utilities to help you manage email verification, password reset, and more.
+Email is a key part of CinaAuth, required for all users regardless of their authentication method. CinaAuth provides email and password authentication out of the box, and a lot of utilities to help you manage email verification, password reset, and more.
 
 ## Email Verification
 
@@ -22,10 +22,10 @@ To enable email verification, you need to pass a function that sends a verificat
 and a `request` object as the second parameter.
 
 ```ts title="auth.ts"
-import { betterAuth } from 'better-auth';
+import { CinaAuth } from 'cinaauth';
 import { sendEmail } from './email'; // your email sending function
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     emailVerification: {
         sendVerificationEmail: async ({ user, url, token }, request) => {
             void sendEmail({
@@ -52,9 +52,9 @@ You can initiate email verification in several ways:
 To automatically send a verification email at signup, set `emailVerification.sendOnSignUp` to `true`.
 
 ```ts title="auth.ts"
-import { betterAuth } from 'better-auth';
+import { CinaAuth } from 'cinaauth';
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     emailVerification: {
         sendOnSignUp: true
     }
@@ -64,7 +64,7 @@ export const auth = betterAuth({
 This sends a verification email when a user signs up. For social logins, email verification status is read from the SSO.
 
 <Callout>
-  With `sendOnSignUp` enabled, when the user logs in with an SSO that does not claim the email as verified, Better Auth will dispatch a verification email, but the verification is not required to login even when `requireEmailVerification` is enabled.
+  With `sendOnSignUp` enabled, when the user logs in with an SSO that does not claim the email as verified, CinaAuth will dispatch a verification email, but the verification is not required to login even when `requireEmailVerification` is enabled.
 </Callout>
 
 #### 2. Require Email Verification
@@ -76,10 +76,10 @@ If you enable require email verification, users must verify their email before t
 </Callout>
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { sendEmail } from './email'; // your email sending function
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
       void sendEmail({
@@ -144,9 +144,9 @@ await authClient.verifyEmail({
 To sign in the user automatically after they successfully verify their email, set the `autoSignInAfterVerification` option to `true`:
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-const auth = betterAuth({
+const auth = CinaAuth({
     //...your other options
     emailVerification: {
         autoSignInAfterVerification: true
@@ -159,9 +159,9 @@ const auth = betterAuth({
 You can run custom code just before a user's email is marked as verified using the `beforeEmailVerification` callback. This is useful for validation, pre-checks, or preparing data before the verification is finalized.
 
 ```ts title="auth.ts"
-import { betterAuth } from 'better-auth';
+import { CinaAuth } from 'cinaauth';
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     emailVerification: {
         async beforeEmailVerification(user, request) {
             // Run pre-verification logic
@@ -180,9 +180,9 @@ The `afterEmailVerification` function runs automatically when a user's email is 
 Here's how you can set it up:
 
 ```ts title="auth.ts"
-import { betterAuth } from 'better-auth';
+import { CinaAuth } from 'cinaauth';
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     emailVerification: {
         async afterEmailVerification(user, request) {
             // Your custom logic here, e.g., grant access to premium features
@@ -201,9 +201,9 @@ The `onExistingUserSignUp` callback is triggered when someone tries to sign up w
 </Callout>
 
 ```ts title="auth.ts"
-import { betterAuth } from 'better-auth';
+import { CinaAuth } from 'cinaauth';
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     emailAndPassword: {
         enabled: true,
         onExistingUserSignUp: async ({ user }, request) => {
@@ -216,15 +216,15 @@ export const auth = betterAuth({
 
 ## Password Reset Email
 
-Password reset allows users to reset their password if they forget it. Better Auth provides a simple way to implement password reset functionality.
+Password reset allows users to reset their password if they forget it. CinaAuth provides a simple way to implement password reset functionality.
 
 You can enable password reset by passing a function that sends a password reset email with a link.
 
 ```ts title="auth.ts"
-import { betterAuth } from 'better-auth';
+import { CinaAuth } from 'cinaauth';
 import { sendEmail } from './email'; // your email sending function
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     emailAndPassword: {
         enabled: true,
         sendResetPassword: async ({ user, url, token }, request) => {

@@ -1,6 +1,6 @@
----
+﻿---
 title: Dynamic Base URL
-description: Configure Better Auth for preview deployments, multiple domains, and per-request URL resolution.
+description: Configure CinaAuth for preview deployments, multiple domains, and per-request URL resolution.
 ---
 
 Use dynamic base URL when your app is served from more than one hostname, such as:
@@ -16,9 +16,9 @@ The configuration itself lives on the [`baseURL` option](/docs/reference/options
 Configure `baseURL` as an object with an `allowedHosts` allowlist:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: {
 		allowedHosts: [
 			"myapp.com",
@@ -29,14 +29,14 @@ export const auth = betterAuth({
 })
 ```
 
-When a request comes in, Better Auth extracts the host from `x-forwarded-host`, `host` header, or the request URL (in that order), validates it against `allowedHosts`, and uses the matched value to build the request-specific base URL.
+When a request comes in, CinaAuth extracts the host from `x-forwarded-host`, `host` header, or the request URL (in that order), validates it against `allowedHosts`, and uses the matched value to build the request-specific base URL.
 
 ## Common Deployment Patterns
 
 ### Vercel Deployment
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: {
 		allowedHosts: [
 			"myapp.com",
@@ -50,7 +50,7 @@ export const auth = betterAuth({
 ### Development + Production
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: {
 		allowedHosts: [
 			"localhost:3000",
@@ -66,7 +66,7 @@ export const auth = betterAuth({
 ### Multiple Production Domains
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: {
 		allowedHosts: [
 			"myapp.com",
@@ -80,12 +80,12 @@ export const auth = betterAuth({
 
 ## Choosing a Fallback
 
-By default, Better Auth throws if the incoming host does not match `allowedHosts`. That is usually the safer default because it exposes proxy or deployment mistakes immediately.
+By default, CinaAuth throws if the incoming host does not match `allowedHosts`. That is usually the safer default because it exposes proxy or deployment mistakes immediately.
 
 If you need a fallback, set one explicitly:
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: {
 		allowedHosts: ["myapp.com", "*.vercel.app"],
 		fallback: "https://myapp.com",
@@ -97,12 +97,12 @@ Use this only when falling back to a canonical domain is clearly preferable to f
 
 ## Cookies Across Subdomains
 
-If you need to share cookies across subdomains, you can enable `crossSubDomainCookies` while still using dynamic base URL. Better Auth will derive the cookie domain from the resolved host unless you set `domain` explicitly.
+If you need to share cookies across subdomains, you can enable `crossSubDomainCookies` while still using dynamic base URL. CinaAuth will derive the cookie domain from the resolved host unless you set `domain` explicitly.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: {
 		allowedHosts: [
 			"auth.example1.com",
@@ -121,9 +121,9 @@ export const auth = betterAuth({
 If you want to force a shared parent domain instead, set it directly:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	baseURL: {
 		allowedHosts: ["auth.example1.com", "auth.example2.com"],
 		protocol: "https",

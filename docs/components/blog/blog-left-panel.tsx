@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import type { ReactNode } from "react";
 import { HalftoneBackground } from "@/components/landing/halftone-bg";
 
@@ -128,7 +128,7 @@ export function BlogLeftPanel({ postCount, post }: BlogLeftPanelProps) {
 					{/* Social & RSS */}
 					<div className="flex items-center gap-3 pt-2">
 						<a
-							href="https://github.com/better-auth/better-auth"
+							href="https://github.com/cinagroup/cinaauth"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="flex items-center gap-1.5 text-foreground/30 hover:text-foreground/70 transition-colors"
@@ -147,7 +147,7 @@ export function BlogLeftPanel({ postCount, post }: BlogLeftPanelProps) {
 							</svg>
 						</a>
 						<a
-							href="https://x.com/better_auth"
+							href="https://x.com/cinaauth"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="flex items-center gap-1.5 text-foreground/30 hover:text-foreground/70 transition-colors"

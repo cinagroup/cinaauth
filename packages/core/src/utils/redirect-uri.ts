@@ -13,7 +13,7 @@ import { DANGEROUS_URL_SCHEMES } from "./url";
  * - Allows custom schemes for mobile apps (e.g. `myapp://callback`).
  *
  * This is the single source of truth for redirect-URI validation across the
- * OAuth provider plugins. Consume it from `@better-auth/core/utils/redirect-uri`
+ * OAuth provider plugins. Consume it from `@cinaauth/core/utils/redirect-uri`
  * rather than re-implementing the scheme policy per plugin.
  */
 export const SafeUrlSchema = z.url().superRefine((val, ctx) => {

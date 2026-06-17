@@ -1,7 +1,7 @@
-import { betterAuth } from "better-auth";
-import { username } from "better-auth/plugins";
+﻿import { CinaAuth } from "cinaauth";
+import { username } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	emailAndPassword: {
 		enabled: true,
 	},

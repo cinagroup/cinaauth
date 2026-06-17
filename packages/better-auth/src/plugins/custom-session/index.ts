@@ -1,13 +1,13 @@
 import type {
-	BetterAuthOptions,
-	BetterAuthPlugin,
+	CinaAuthOptions,
+	CinaAuthPlugin,
 	GenericEndpointContext,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import type { Session, User } from "@better-auth/core/db";
+} from "@cinaauth/core/api";
+import type { Session, User } from "@cinaauth/core/db";
 import { getSession } from "../../api";
 import {
 	parseSetCookieHeader,
@@ -17,8 +17,8 @@ import { getSessionQuerySchema } from "../../cookies/session-store";
 import { getEndpointResponse } from "../../utils/plugin-helper";
 import { PACKAGE_VERSION } from "../../version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"custom-session": {
 			creator: typeof customSession;
 		};
@@ -35,7 +35,7 @@ export type CustomSessionPluginOptions = {
 
 export const customSession = <
 	Returns extends Record<string, any>,
-	O extends BetterAuthOptions = BetterAuthOptions,
+	O extends CinaAuthOptions = CinaAuthOptions,
 >(
 	fn: (
 		session: {
@@ -131,5 +131,5 @@ export const customSession = <
 			Session: {} as Awaited<ReturnType<typeof fn>>,
 		},
 		options: pluginOptions,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

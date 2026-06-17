@@ -1,5 +1,5 @@
-import { APIError } from "@better-auth/core/error";
-import { APIError as BaseAPIError } from "better-auth/api";
+import { APIError } from "@cinaauth/core/error";
+import { APIError as BaseAPIError } from "cinaauth/api";
 
 export const getDate = (span: number, unit: "sec" | "ms" = "ms") => {
 	return new Date(Date.now() + (unit === "sec" ? span * 1000 : span));
@@ -13,16 +13,16 @@ export function isAPIError(error: unknown): error is APIError {
 	);
 }
 
-import type { BetterAuthOptions } from "@better-auth/core";
-import { isDevelopment, isTest } from "@better-auth/core/env";
-import { isValidIP, normalizeIP } from "@better-auth/core/utils/ip";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { isDevelopment, isTest } from "@cinaauth/core/env";
+import { isValidIP, normalizeIP } from "@cinaauth/core/utils/ip";
 
 // Localhost IP used for test and development environments
 const LOCALHOST_IP = "127.0.0.1";
 
 export function getIp(
 	req: Request | Headers,
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 ): string | null {
 	if (options.advanced?.ipAddress?.disableIpTracking) {
 		return null;

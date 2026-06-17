@@ -1,8 +1,8 @@
-import { betterAuth } from "better-auth";
-import { memoryAdapter } from "better-auth/adapters/memory";
-import { createAuthClient } from "better-auth/client";
-import { setCookieToHeader } from "better-auth/cookies";
-import { bearer, organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { memoryAdapter } from "cinaauth/adapters/memory";
+import { createAuthClient } from "cinaauth/client";
+import { setCookieToHeader } from "cinaauth/cookies";
+import { bearer, organization } from "cinaauth/plugins";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sso } from ".";
 import { ssoClient } from "./client";
@@ -31,7 +31,7 @@ describe("Domain verification", async () => {
 
 	const createTestAuth = (
 		options?: SSOOptions,
-		betterAuthOptions?: {
+		CinaAuthOptions?: {
 			secondaryStorage?: {
 				set: (key: string, value: string, ttl?: number) => void;
 				get: (key: string) => string | null;
@@ -48,7 +48,7 @@ describe("Domain verification", async () => {
 			organization: [],
 		};
 
-		if (!betterAuthOptions?.secondaryStorage) {
+		if (!CinaAuthOptions?.secondaryStorage) {
 			data.verification = [];
 		}
 
@@ -62,13 +62,13 @@ describe("Domain verification", async () => {
 			},
 		} satisfies SSOOptions;
 
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			database: memory,
 			baseURL: "http://localhost:3000",
 			emailAndPassword: {
 				enabled: true,
 			},
-			secondaryStorage: betterAuthOptions?.secondaryStorage,
+			secondaryStorage: CinaAuthOptions?.secondaryStorage,
 			plugins: [sso(ssoOptions), organization()],
 		});
 
@@ -330,7 +330,7 @@ describe("Domain verification", async () => {
 
 			dnsMock.resolveTxt.mockResolvedValue([
 				[
-					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
+					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`,
 				],
 			]);
 
@@ -510,7 +510,7 @@ describe("Domain verification", async () => {
 					"v=spf1 ip4:50.242.118.232/29 include:_spf.google.com include:mail.zendesk.com ~all",
 				],
 				[
-					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
+					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`,
 				],
 			]);
 
@@ -524,7 +524,7 @@ describe("Domain verification", async () => {
 
 			expect(response.status).toBe(204);
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_better-auth-token-saml-provider-1.hello.com",
+				"_cinaauth-token-saml-provider-1.hello.com",
 			);
 		});
 
@@ -558,7 +558,7 @@ describe("Domain verification", async () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/8361
+		 * @see https://github.com/cinagroup/cinaauth/issues/8361
 		 */
 		it("should verify a provider domain ownership with a bare domain", async () => {
 			const { auth, getAuthHeaders } = createTestAuth();
@@ -589,7 +589,7 @@ describe("Domain verification", async () => {
 			const { domainVerificationToken } = await requestResponse.json();
 
 			dnsMock.resolveTxt.mockResolvedValue([
-				[`_better-auth-token-bare-domain-provider=${domainVerificationToken}`],
+				[`_cinaauth-token-bare-domain-provider=${domainVerificationToken}`],
 			]);
 
 			const verifyResponse = await auth.api.verifyDomain({
@@ -600,7 +600,7 @@ describe("Domain verification", async () => {
 
 			expect(verifyResponse.status).toBe(204);
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_better-auth-token-bare-domain-provider.hello.com",
+				"_cinaauth-token-bare-domain-provider.hello.com",
 			);
 		});
 
@@ -647,7 +647,7 @@ describe("Domain verification", async () => {
 
 			dnsMock.resolveTxt.mockResolvedValue([
 				[
-					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
+					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`,
 				],
 			]);
 
@@ -678,7 +678,7 @@ describe("Domain verification", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8348
+	 * @see https://github.com/cinagroup/cinaauth/issues/8348
 	 */
 	describe("with secondaryStorage (no storeInDatabase)", () => {
 		it("should request and verify domain verification via secondary storage", async () => {
@@ -720,7 +720,7 @@ describe("Domain verification", async () => {
 			// Verify domain via DNS
 			dnsMock.resolveTxt.mockResolvedValue([
 				[
-					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
+					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`,
 				],
 			]);
 

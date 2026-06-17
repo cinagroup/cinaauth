@@ -1,13 +1,13 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { createHMAC } from "@better-auth/utils/hmac";
 import { serializeSignedCookie } from "better-call";
 import { parseSetCookieHeader } from "../../cookies";
 import { setRequestCookie } from "../../cookies/cookie-utils";
 import { PACKAGE_VERSION } from "../../version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		bearer: {
 			creator: typeof bearer;
 		};
@@ -158,5 +158,5 @@ export const bearer = (options?: BearerOptions | undefined) => {
 			],
 		},
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

@@ -1,4 +1,4 @@
-import type { BetterAuthPluginDBSchema } from "@better-auth/core/db";
+import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
 
 export const schema = {
 	oauthClient: {
@@ -207,7 +207,7 @@ export const schema = {
 	 * An opaque access token sent when there is no audience
 	 * to assigned to the JWT.
 	 *
-	 * Access tokens are linked to a session, better-auth
+	 * Access tokens are linked to a session, cinaauth
 	 * authors SHALL always check for valid session!
 	 *
 	 * AccessTokens SHALL only be created at refresh,
@@ -316,4 +316,4 @@ export const schema = {
 			},
 		},
 	},
-} satisfies BetterAuthPluginDBSchema;
+} satisfies CinaAuthPluginDBSchema;

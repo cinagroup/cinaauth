@@ -1,4 +1,4 @@
-import type { User } from "better-auth/db";
+﻿import type { User } from "cinaauth/db";
 import { expect } from "vitest";
 import { createTestSuite } from "../create-test-suite";
 

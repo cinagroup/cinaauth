@@ -1,4 +1,4 @@
-import type { Awaitable } from "@better-auth/core";
+import type { Awaitable } from "@cinaauth/core";
 import type { ZodSchema } from "zod";
 import type { DatabaseAdapter } from "./configs/databases.config";
 import type { Framework } from "./configs/frameworks.config";
@@ -132,8 +132,8 @@ export const generateAuthConfigCode = async ({
 
 	const imports: ImportGroup[] = [
 		{
-			imports: [createImport({ name: "betterAuth" })],
-			path: "better-auth",
+			imports: [createImport({ name: "CinaAuth" })],
+			path: "cinaauth",
 			isNamedImport: false,
 		},
 		...Object.values(plugins)
@@ -168,7 +168,7 @@ export const generateAuthConfigCode = async ({
 		``,
 		segmentedCode.preAuthConfig,
 		``,
-		`export const auth = betterAuth({`,
+		`export const auth = CinaAuth({`,
 		segmentedCode.authConfig,
 		`});`,
 		``,

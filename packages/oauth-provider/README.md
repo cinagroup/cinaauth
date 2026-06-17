@@ -1,16 +1,16 @@
-# Better Auth OAuth Provider Plugin
+﻿# CinaAuth OAuth Provider Plugin
 
-OAuth provider plugin for [Better Auth](https://www.better-auth.com) — turn your application into an OAuth 2.0 provider.
+OAuth provider plugin for [CinaAuth](https://www.cinagroup.com) — turn your application into an OAuth 2.0 provider.
 
 ## Installation
 
 ```bash
-npm install @better-auth/oauth-provider
+npm install @cinaauth/oauth-provider
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/plugins/oauth-provider](https://www.better-auth.com/docs/plugins/oauth-provider).
+For full documentation, visit [cinagroup.com/docs/plugins/oauth-provider](https://www.cinagroup.com/docs/plugins/oauth-provider).
 
 ## License
 

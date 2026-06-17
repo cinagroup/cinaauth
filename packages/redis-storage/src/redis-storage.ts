@@ -1,4 +1,4 @@
-import type { SecondaryStorage } from "@better-auth/core/db";
+import type { SecondaryStorage } from "@cinaauth/core/db";
 import type Redis from "ioredis";
 
 export interface RedisStorageConfig {
@@ -8,34 +8,34 @@ export interface RedisStorageConfig {
 	client: Redis;
 	/**
 	 * Optional key prefix for all keys stored in Redis
-	 * @default "better-auth:"
+	 * @default "cinaauth:"
 	 */
 	keyPrefix?: string | undefined;
 }
 
 /**
- * Creates a Redis secondary storage for Better Auth using ioredis.
+ * Creates a Redis secondary storage for CinaAuth using ioredis.
  *
  * @example
  * ```ts
  * import { Redis } from "ioredis";
- * import { redisStorage } from "@better-auth/redis-storage";
+ * import { redisStorage } from "@cinaauth/redis-storage";
  *
  * const redis = new Redis({
  *   host: "localhost",
  *   port: 6379,
  * });
  *
- * const auth = betterAuth({
+ * const auth = CinaAuth({
  *   secondaryStorage: redisStorage({ client: redis }),
  * });
  * ```
  *
  * @param config - Configuration object containing the Redis client and optional key prefix
- * @returns SecondaryStorage implementation for Better Auth
+ * @returns SecondaryStorage implementation for CinaAuth
  */
 export function redisStorage(config: RedisStorageConfig) {
-	const { client, keyPrefix = "better-auth:" } = config;
+	const { client, keyPrefix = "cinaauth:" } = config;
 	let supportsGetDel = true;
 	const getAndDeleteScript = `
 local value = redis.call("GET", KEYS[1])

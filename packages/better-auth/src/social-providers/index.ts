@@ -1,1 +1,1 @@
-export * from "@better-auth/core/social-providers";
+export * from "@cinaauth/core/social-providers";

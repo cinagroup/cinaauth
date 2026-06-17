@@ -1,5 +1,5 @@
 {
-  "name": "@better-auth-test/adapter-base",
+  "name": "@cinaauth-test/adapter-base",
   "type": "module",
   "private": true,
   "devDependencies": {

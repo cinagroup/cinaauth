@@ -1,9 +1,9 @@
----
-title: Migrating from Supabase Auth to Better Auth
-description: A step-by-step guide to transitioning from Supabase Auth to Better Auth.
+﻿---
+title: Migrating from Supabase Auth to CinaAuth
+description: A step-by-step guide to transitioning from Supabase Auth to CinaAuth.
 ---
 
-In this guide, we'll walk through the steps to migrate a project from Supabase Auth to Better Auth.
+In this guide, we'll walk through the steps to migrate a project from Supabase Auth to CinaAuth.
 
 <Callout type="warn">
   This migration will invalidate all active sessions. While this guide doesn't currently cover migrating two-factor (2FA) or Row Level Security (RLS) configurations, both should be possible with additional steps.
@@ -15,7 +15,7 @@ In this guide, we'll walk through the steps to migrate a project from Supabase A
 
 ## Before You Begin
 
-Before starting the migration process, set up Better Auth in your project. Follow the [installation guide](/docs/installation) to get started.
+Before starting the migration process, set up CinaAuth in your project. Follow the [installation guide](/docs/installation) to get started.
 
 <Steps>
   <Step>
@@ -30,10 +30,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
     And then you can use the following code to connect to your database.
 
     ```ts title="auth.ts"
-    import { betterAuth } from 'better-auth';
+    import { CinaAuth } from 'cinaauth';
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -47,10 +47,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Enable the email and password in your auth config.
 
     ```ts title="auth.ts"
-    import { betterAuth } from 'better-auth';
+    import { CinaAuth } from 'cinaauth';
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -71,10 +71,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Add all the social providers used in Supabase to the auth config. Missing any may cause user data loss during migration.
 
     ```ts title="auth.ts"
-    import { betterAuth } from 'better-auth';
+    import { CinaAuth } from 'cinaauth';
     import { Pool } from "pg";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -105,11 +105,11 @@ Before starting the migration process, set up Better Auth in your project. Follo
     </Callout>
 
     ```ts title="auth.ts"
-    import { betterAuth } from 'better-auth';
+    import { CinaAuth } from 'cinaauth';
     import { Pool } from "pg";
-    import { admin, anonymous, phoneNumber } from 'better-auth/plugins';
+    import { admin, anonymous, phoneNumber } from 'cinaauth/plugins';
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -133,11 +133,11 @@ Before starting the migration process, set up Better Auth in your project. Follo
     To minimize data loss from Supabase Auth, the following additional fields are required. You can adjust them as needed after the migration is complete.
 
     ```ts title="auth.ts"
-    import { betterAuth } from 'better-auth';
+    import { CinaAuth } from 'cinaauth';
     import { Pool } from "pg";
-    import { admin, anonymous, phoneNumber } from 'better-auth/plugins';
+    import { admin, anonymous, phoneNumber } from 'cinaauth/plugins';
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -188,9 +188,9 @@ Before starting the migration process, set up Better Auth in your project. Follo
     npx auth migrate
     ```
 
-    This will create the necessary tables in the `public` schema of your Better Auth instance.
+    This will create the necessary tables in the `public` schema of your CinaAuth instance.
 
-    Now that we have the necessary tables in our database, we can run the migration script to migrate the users and accounts from Supabase to Better Auth.
+    Now that we have the necessary tables in our database, we can run the migration script to migrate the users and accounts from Supabase to CinaAuth.
   </Step>
 
   <Step>
@@ -210,10 +210,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
     And then copy and paste the following code into the file.
 
     ```ts title="migration.ts"
-    import { generateId } from 'better-auth';
-    import { DBFieldAttribute } from 'better-auth/db';
+    import { generateId } from 'cinaauth';
+    import { DBFieldAttribute } from 'cinaauth/db';
     import { Pool } from 'pg';
-    import { auth } from './auth'; // <- Your Better Auth Instance
+    import { auth } from './auth'; // <- Your CinaAuth Instance
 
     // ============================================================================
     // CONFIGURATION
@@ -234,10 +234,10 @@ Before starting the migration process, set up Better Auth in your project. Follo
       resumeFromId: null as string | null,
       /**
        * Temporary email domain for phone-only users
-       * Phone-only users need an email for Better Auth
+       * Phone-only users need an email for CinaAuth
        * Format: {phone_number}@{tempEmailDomain}
        */
-      tempEmailDomain: 'temp.better-auth.com',
+      tempEmailDomain: 'temp.cinagroup.com',
     };
 
     // ============================================================================
@@ -449,11 +449,11 @@ Before starting the migration process, set up Better Auth in your project. Follo
     });
 
     // ============================================================================
-    // BETTER AUTH VALIDATION
+    // CinaAuth VALIDATION
     // ============================================================================
 
     /**
-     * Validates that the imported Better Auth instance meets migration requirements
+     * Validates that the imported CinaAuth instance meets migration requirements
      */
     async function validateAuthConfig() {
       const ctx = await auth.$context;
@@ -517,9 +517,9 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
       // Show errors (blocking)
       if (errors.length > 0) {
-        console.error('\n🟧 Better Auth Configuration Errors:\n');
+        console.error('\n🟧 CinaAuth Configuration Errors:\n');
         errors.forEach((err) => console.error(`   ${err}`));
-        console.error('\n🟧 Please update your Better Auth configuration to include:\n');
+        console.error('\n🟧 Please update your CinaAuth configuration to include:\n');
         console.error('   1. emailAndPassword: { enabled: true }');
         console.error(
           '   2. user.additionalFields: { userMetadata, appMetadata, invitedAt, lastSignInAt }\n',
@@ -794,7 +794,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
       console.log('[MIGRATION] Starting migration with config:', CONFIG);
 
-      // Validate Better Auth configuration
+      // Validate CinaAuth configuration
       const ctx = await validateAuthConfig();
 
       try {
@@ -918,7 +918,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
     // ============================================================================
 
     async function main() {
-      console.log('🚀 Supabase Auth → Better Auth Migration\n');
+      console.log('🚀 Supabase Auth → CinaAuth Migration\n');
 
       if (!process.env.FROM_DATABASE_URL) {
         console.error('Error: FROM_DATABASE_URL environment variable is required');
@@ -944,7 +944,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
 
     * `batchSize`: Number of users to process in each batch. Default: 5000
     * `resumeFromId`: Resume from a specific user ID (cursor-based pagination). Default: null
-    * `tempEmailDomain`: Temporary email domain for phone-only users. Default: "temp.better-auth.com"
+    * `tempEmailDomain`: Temporary email domain for phone-only users. Default: "temp.cinagroup.com"
   </Step>
 
   <Step>
@@ -954,7 +954,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
       The migration script uses **keyset pagination** (cursor-based) which efficiently handles large datasets without loading everything into memory. For very large migrations (500k+ users), you may need to increase Node's memory limit with `NODE_OPTIONS="--max-old-space-size=8192"`.
     </Callout>
 
-    Run the migration script to migrate the users and accounts from Supabase to Better Auth.
+    Run the migration script to migrate the users and accounts from Supabase to CinaAuth.
 
     ```bash title="Terminal"
     npx tsx migration.ts
@@ -966,7 +966,7 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Change password hashing algorithm
 
-    By default, Better Auth uses the `scrypt` algorithm to hash passwords. Since Supabase uses `bcrypt`, you'll need to configure Better Auth to use bcrypt for password verification.
+    By default, CinaAuth uses the `scrypt` algorithm to hash passwords. Since Supabase uses `bcrypt`, you'll need to configure CinaAuth to use bcrypt for password verification.
 
     First, install bcrypt:
 
@@ -981,12 +981,12 @@ Before starting the migration process, set up Better Auth in your project. Follo
     Then add the password configuration to your existing auth config:
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
     import { Pool } from "pg";
-    import { admin, anonymous, phoneNumber } from 'better-auth/plugins';
+    import { admin, anonymous, phoneNumber } from 'cinaauth/plugins';
     import bcrypt from "bcrypt"; // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
        database: new Pool({ 
            connectionString: process.env.DATABASE_URL 
        }),
@@ -1017,9 +1017,9 @@ Before starting the migration process, set up Better Auth in your project. Follo
   <Step>
     ### Update your code
 
-    Update your codebase from Supabase auth calls to Better Auth API.
+    Update your codebase from Supabase auth calls to CinaAuth API.
 
-    Here's a list of the Supabase auth API calls and their Better Auth counterparts.
+    Here's a list of the Supabase auth API calls and their CinaAuth counterparts.
 
     * `supabase.auth.signUp` -> `authClient.signUp.email`
     * `supabase.auth.signInWithPassword` -> `authClient.signIn.email`
@@ -1056,21 +1056,21 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
   <Step>
     ### Install the SSO plugin
 
-    Install the Better Auth SSO package:
+    Install the CinaAuth SSO package:
 
     ```package-install
-    npm install @better-auth/sso
+    npm install @cinaauth/sso
     ```
 
     Add the SSO plugin to your auth configuration:
 
     ```ts title="auth.ts"
-    import { betterAuth } from 'better-auth';
+    import { CinaAuth } from 'cinaauth';
     import { Pool } from "pg";
-    import { admin, anonymous, phoneNumber } from 'better-auth/plugins';
-    import { sso } from '@better-auth/sso'; // [!code highlight]
+    import { admin, anonymous, phoneNumber } from 'cinaauth/plugins';
+    import { sso } from '@cinaauth/sso'; // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         database: new Pool({ 
             connectionString: process.env.DATABASE_URL 
         }),
@@ -1193,14 +1193,14 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
     // ============================================================================
 
     /**
-     * Migrates Supabase SSO providers to Better Auth format
+     * Migrates Supabase SSO providers to CinaAuth format
      * 
      * @param providers - Array of exported Supabase SSO providers
-     * @param betterAuthUrl - Your Better Auth base URL (e.g., https://app.example.com)
+     * @param CinaAuthUrl - Your CinaAuth base URL (e.g., https://app.example.com)
      */
     async function migrateSSOProviders(
       providers: SupabaseSSOProvider[], 
-      betterAuthUrl: string
+      CinaAuthUrl: string
     ) {
       console.log(`\n[SSO] Migrating ${providers.length} SSO provider(s)...\n`);
 
@@ -1211,14 +1211,14 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
         // Combine all domains into a comma-separated string
         const domains = provider.domains.map(d => d.domain).join(',');
         
-        // Transform Supabase attribute mapping to Better Auth format.
+        // Transform Supabase attribute mapping to CinaAuth format.
         // Supabase supports both { name: "attr" } and { names: ["attr1", "attr2"] };
-        // Better Auth only uses a single attribute name, so take the first match.
+        // CinaAuth only uses a single attribute name, so take the first match.
         const mapping = provider.saml.attribute_mapping?.keys || {};
         const attrName = (key: string) => mapping[key]?.name || mapping[key]?.names?.[0];
         
         // If Supabase provided a metadata URL, fetch the XML first.
-        // Better Auth requires inline metadata XML, not a URL.
+        // CinaAuth requires inline metadata XML, not a URL.
         let idpMetadataXml = provider.saml.metadata_xml;
         if (!idpMetadataXml && provider.saml.metadata_url) {
           const res = await fetch(provider.saml.metadata_url);
@@ -1245,12 +1245,12 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
             metadata: idpMetadataXml,
           },
           spMetadata: {
-            entityID: `${betterAuthUrl}/api/auth/sso/saml2/sp/metadata?providerId=${providerId}`,
+            entityID: `${CinaAuthUrl}/api/auth/sso/saml2/sp/metadata?providerId=${providerId}`,
           },
           // Name ID format from Supabase config
           identifierFormat: provider.saml.name_id_format || 
             'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
-          // Map Supabase attribute names to Better Auth fields
+          // Map Supabase attribute names to CinaAuth fields
           mapping: {
             id: 'nameID',
             email: attrName('email') || 'email',
@@ -1267,7 +1267,7 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
           domain: domains,
           oidcConfig: null,
           samlConfig: JSON.stringify(samlConfig),
-          organizationId: null, // Set this if linking to a Better Auth organization
+          organizationId: null, // Set this if linking to a CinaAuth organization
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -1354,15 +1354,15 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
       // Add more providers if you have multiple
     ];
 
-    // Your Better Auth application URL
-    const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || 'https://app.example.com';
+    // Your CinaAuth application URL
+    const CINAAUTH_URL = process.env.CINAAUTH_URL || 'https://app.example.com';
 
     async function main() {
       // First, migrate users (including SSO user accounts)
       await migrateFromSupabase();
       
       // Then, migrate SSO providers
-      await migrateSSOProviders(providers, BETTER_AUTH_URL);
+      await migrateSSOProviders(providers, CINAAUTH_URL);
     }
 
     main();
@@ -1378,11 +1378,11 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
   <Step>
     ### Update your Identity Provider
 
-    After migrating, you need to update your IdP (Okta, Azure AD, Google Workspace, etc.) with the new Better Auth endpoints.
+    After migrating, you need to update your IdP (Okta, Azure AD, Google Workspace, etc.) with the new CinaAuth endpoints.
 
     **Update these settings in your IdP:**
 
-    | Setting              | Old Value (Supabase)                                      | New Value (Better Auth)                                                      |
+    | Setting              | Old Value (Supabase)                                      | New Value (CinaAuth)                                                      |
     | -------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------- |
     | ACS URL / Reply URL  | `https://<project>.supabase.co/auth/v1/sso/saml/acs`      | `https://yourapp.com/api/auth/sso/saml2/sp/acs/<providerId>`                 |
     | Entity ID / Audience | `https://<project>.supabase.co/auth/v1/sso/saml/metadata` | `https://yourapp.com/api/auth/sso/saml2/sp/metadata?providerId=<providerId>` |
@@ -1400,7 +1400,7 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
   <Step>
     ### Update your client code
 
-    Replace Supabase SSO authentication calls with Better Auth:
+    Replace Supabase SSO authentication calls with CinaAuth:
 
     ```ts title="Before (Supabase)"
     import { createClient } from '@supabase/supabase-js';
@@ -1413,9 +1413,9 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
     });
     ```
 
-    ```ts title="After (Better Auth)"
-    import { createAuthClient } from 'better-auth/client';
-    import { ssoClient } from '@better-auth/sso/client'; // [!code highlight]
+    ```ts title="After (CinaAuth)"
+    import { createAuthClient } from 'cinaauth/client';
+    import { ssoClient } from '@cinaauth/sso/client'; // [!code highlight]
 
     const authClient = createAuthClient({
       plugins: [ssoClient()], // [!code highlight]
@@ -1474,10 +1474,10 @@ Use this checklist to ensure a complete SSO migration:
 - [ ] SSO plugin installed and configured
 - [ ] Database migration run (`ssoProvider` table created)
 - [ ] Supabase SSO providers exported
-- [ ] Providers migrated to Better Auth database
+- [ ] Providers migrated to CinaAuth database
 - [ ] User accounts linked to SSO providers
 - [ ] IdP settings updated (ACS URL, Entity ID)
-- [ ] Client code updated to use Better Auth SSO
+- [ ] Client code updated to use CinaAuth SSO
 - [ ] SP-initiated SSO flow tested
 - [ ] Existing SSO users can log in
 - [ ] New SSO users can be created
@@ -1505,6 +1505,6 @@ To protect routes with proxy(middleware), refer to the [Next.js Auth Protection 
 
 ## Wrapping Up
 
-Congratulations! You've successfully migrated from Supabase Auth to Better Auth.
+Congratulations! You've successfully migrated from Supabase Auth to CinaAuth.
 
-Better Auth offers greater flexibility and more features—be sure to explore the [documentation](/docs) to unlock its full potential.
+CinaAuth offers greater flexibility and more features—be sure to explore the [documentation](/docs) to unlock its full potential.

@@ -38,11 +38,11 @@ describe("parseProviderEmailVerified", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/7324
+ * @see https://github.com/cinagroup/cinaauth/issues/7324
  */
 describe("validateEmailDomain", () => {
 	// Tests for issue #7324: Enterprise multi-domain SSO support
-	// https://github.com/better-auth/better-auth/issues/7324
+	// https://github.com/cinagroup/cinaauth/issues/7324
 
 	describe("single domain", () => {
 		it("should validate email matches domain exactly", () => {
@@ -142,7 +142,7 @@ describe("validateEmailDomain", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8361
+ * @see https://github.com/cinagroup/cinaauth/issues/8361
  */
 describe("getHostnameFromDomain", () => {
 	it("should extract hostname from a bare domain", () => {

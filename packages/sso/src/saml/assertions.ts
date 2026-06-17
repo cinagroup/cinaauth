@@ -1,5 +1,5 @@
 import { base64 } from "@better-auth/utils/base64";
-import { APIError } from "better-auth/api";
+import { APIError } from "cinaauth/api";
 import { countAllNodes, xmlParser } from "./parser";
 
 export interface AssertionCounts {

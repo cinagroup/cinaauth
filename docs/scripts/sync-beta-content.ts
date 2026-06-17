@@ -1,11 +1,11 @@
-import { execFileSync } from "node:child_process";
+﻿import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const BRANCH = process.env.BETA_DOCS_BRANCH ?? "next";
 const REPO =
 	process.env.BETA_DOCS_REPO ??
-	"https://github.com/better-auth/better-auth.git";
+	"https://github.com/cinagroup/cinaauth.git";
 const REMOTE_PATH = "docs/content/docs";
 const DEST = "content/docs-beta";
 const TMP = ".beta-sync-tmp";

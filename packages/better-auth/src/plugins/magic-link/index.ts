@@ -1,9 +1,9 @@
 import type {
 	Awaitable,
-	BetterAuthPlugin,
+	CinaAuthPlugin,
 	GenericEndpointContext,
-} from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
+} from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import * as z from "zod";
 import { originCheck } from "../../api";
 import { setSessionCookie } from "../../cookies";
@@ -12,8 +12,8 @@ import { parseSessionOutput, parseUserOutput } from "../../db";
 import { PACKAGE_VERSION } from "../../version";
 import { defaultKeyHasher } from "./utils";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"magic-link": {
 			creator: typeof magicLink;
 		};
@@ -162,7 +162,7 @@ export const magicLink = (options: MagicLinkOptions) => {
 
 	if (options.allowedAttempts !== undefined && options.allowedAttempts !== 1) {
 		console.warn(
-			"[better-auth/magic-link] `allowedAttempts` is ignored: tokens are consumed atomically on the first verification call (GHSA-hc7v-rggr-4hvx). Any value other than `1` has no effect; remove the option to silence this warning.",
+			"[cinaauth/magic-link] `allowedAttempts` is ignored: tokens are consumed atomically on the first verification call (GHSA-hc7v-rggr-4hvx). Any value other than `1` has no effect; remove the option to silence this warning.",
 		);
 	}
 
@@ -197,7 +197,7 @@ export const magicLink = (options: MagicLinkOptions) => {
 			 * **client:**
 			 * `authClient.signIn.magicLink`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/sign-in#api-method-sign-in-magic-link)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/sign-in#api-method-sign-in-magic-link)
 			 */
 			signInMagicLink: createAuthEndpoint(
 				"/sign-in/magic-link",
@@ -287,7 +287,7 @@ export const magicLink = (options: MagicLinkOptions) => {
 			 * **client:**
 			 * `authClient.magicLink.verify`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/magic-link#api-method-magic-link-verify)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/magic-link#api-method-magic-link-verify)
 			 */
 			magicLinkVerify: createAuthEndpoint(
 				"/magic-link/verify",
@@ -448,5 +448,5 @@ export const magicLink = (options: MagicLinkOptions) => {
 			},
 		],
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

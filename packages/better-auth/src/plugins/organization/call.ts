@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { sessionMiddleware } from "../../api";
 import type { Session, User } from "../../types";
 import type { Role } from "../access";

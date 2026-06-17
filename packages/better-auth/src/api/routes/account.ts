@@ -1,9 +1,9 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import type { Account } from "@better-auth/core/db";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
-import type { OAuth2Tokens } from "@better-auth/core/oauth2";
-import { SocialProviderListEnum } from "@better-auth/core/social-providers";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import type { Account } from "@cinaauth/core/db";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
+import type { OAuth2Tokens } from "@cinaauth/core/oauth2";
+import { SocialProviderListEnum } from "@cinaauth/core/social-providers";
 
 import * as z from "zod";
 import { getAwaitableValue } from "../../context/helpers";

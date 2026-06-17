@@ -1,12 +1,12 @@
-import { BetterAuthError } from "../../error";
-import type { BetterAuthDBSchema } from "../type";
+import { CinaAuthError } from "../../error";
+import type { CinaAuthDBSchema } from "../type";
 import { initGetDefaultModelName } from "./get-default-model-name";
 
 export const initGetDefaultFieldName = ({
 	schema,
 	usePlural,
 }: {
-	schema: BetterAuthDBSchema;
+	schema: CinaAuthDBSchema;
 	usePlural: boolean | undefined;
 }) => {
 	const getDefaultModelName = initGetDefaultModelName({
@@ -31,7 +31,7 @@ export const initGetDefaultFieldName = ({
 		model: string;
 		field: string;
 	}) => {
-		// Plugin `schema`s can't define their own `id`. Better-auth auto provides `id` to every schema model.
+		// Plugin `schema`s can't define their own `id`. cinaauth auto provides `id` to every schema model.
 		// Given this, we can't just check if the `field` (that being `id`) is within the schema's fields, since it is never defined.
 		// So we check if the `field` is `id` and if so, we return `id` itself. Otherwise, we return the `field` from the schema.
 		if (field === "id" || field === "_id") {
@@ -50,7 +50,7 @@ export const initGetDefaultFieldName = ({
 			}
 		}
 		if (!f) {
-			throw new BetterAuthError(`Field ${field} not found in model ${model}`);
+			throw new CinaAuthError(`Field ${field} not found in model ${model}`);
 		}
 		return field;
 	};

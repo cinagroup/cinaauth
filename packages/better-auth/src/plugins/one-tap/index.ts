@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import * as z from "zod";
 import { APIError } from "../../api";
@@ -9,8 +9,8 @@ import { handleOAuthUserInfo } from "../../oauth2/link-account";
 import { toBoolean } from "../../utils/boolean";
 import { PACKAGE_VERSION } from "../../version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"one-tap": {
 			creator: typeof oneTap;
 		};
@@ -181,4 +181,4 @@ export const oneTap = (options?: OneTapOptions | undefined) =>
 			),
 		},
 		options,
-	}) satisfies BetterAuthPlugin;
+	}) satisfies CinaAuthPlugin;

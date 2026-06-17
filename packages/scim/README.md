@@ -1,16 +1,16 @@
-# Better Auth SCIM Plugin
+﻿# CinaAuth SCIM Plugin
 
-SCIM (System for Cross-domain Identity Management) plugin for [Better Auth](https://www.better-auth.com) — enable enterprise user provisioning.
+SCIM (System for Cross-domain Identity Management) plugin for [CinaAuth](https://www.cinagroup.com) — enable enterprise user provisioning.
 
 ## Installation
 
 ```bash
-npm install @better-auth/scim
+npm install @cinaauth/scim
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/plugins/scim](https://www.better-auth.com/docs/plugins/scim).
+For full documentation, visit [cinagroup.com/docs/plugins/scim](https://www.cinagroup.com/docs/plugins/scim).
 
 ## License
 

@@ -1,4 +1,4 @@
-# OAuth Popup (experimental)
+﻿# OAuth Popup (experimental)
 
 > **Experimental.** The API may change while this plugin is experimental.
 
@@ -15,10 +15,10 @@ for the popup when a top-level redirect is not possible (embedded / iframe).
 Server (`bearer` is required):
 
 ```ts
-import { betterAuth } from "better-auth";
-import { bearer, oauthPopup } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { bearer, oauthPopup } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   trustedOrigins: ["https://your-app.com"], // the opener app origin(s)
   plugins: [oauthPopup(), bearer()],
 });
@@ -27,8 +27,8 @@ export const auth = betterAuth({
 Client:
 
 ```ts
-import { createAuthClient } from "better-auth/client";
-import { oauthPopupClient } from "better-auth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
+import { oauthPopupClient } from "cinaauth/client/plugins";
 
 export const authClient = createAuthClient({
   baseURL: "https://your-auth-origin.com",

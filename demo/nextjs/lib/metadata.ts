@@ -1,28 +1,29 @@
-import type { Metadata } from "next/types";
+﻿import type { Metadata } from "next/types";
 
 export function createMetadata(override: Metadata): Metadata {
-	return {
-		...override,
-		openGraph: {
-			title: override.title ?? undefined,
-			description: override.description ?? undefined,
-			url: "https://demo.better-auth.com",
-			images: "https://demo.better-auth.com/og.png",
-			siteName: "Better Auth",
-			...override.openGraph,
-		},
-		twitter: {
-			card: "summary_large_image",
-			creator: "@beakcru",
-			title: override.title ?? undefined,
-			description: override.description ?? undefined,
-			images: "https://demo.better-auth.com/og.png",
-			...override.twitter,
-		},
-	};
+  return {
+    ...override,
+    openGraph: {
+      title: override.title ?? undefined,
+      description: override.description ?? undefined,
+      url: "https://demo-auth.cinagroup.com",
+      images: "https://demo-auth.cinagroup.com/og.png",
+      siteName: "CinaAuth",
+      ...override.openGraph,
+    },
+    twitter: {
+      card: "summary_large_image",
+      creator: "@cinagroup",
+      title: override.title ?? undefined,
+      description: override.description ?? undefined,
+      images: "https://demo-auth.cinagroup.com/og.png",
+      ...override.twitter,
+    },
+  };
 }
 
+// Support Cloudflare Pages environment
 export const baseUrl =
-	process.env.NODE_ENV === "development"
-		? new URL("http://localhost:3000")
-		: new URL(`https://${process.env.VERCEL_URL!}`);
+  process.env.NODE_ENV === "development"
+    ? new URL("http://localhost:3000")
+    : new URL(process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com");

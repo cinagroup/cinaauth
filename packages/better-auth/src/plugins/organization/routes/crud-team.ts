@@ -1,9 +1,9 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import {
 	getCurrentAdapter,
 	runWithTransaction,
-} from "@better-auth/core/context";
-import { APIError } from "@better-auth/core/error";
+} from "@cinaauth/core/context";
+import { APIError } from "@cinaauth/core/error";
 import * as z from "zod";
 import { getSessionFromCtx } from "../../../api";
 import { setSessionCookie } from "../../../cookies";

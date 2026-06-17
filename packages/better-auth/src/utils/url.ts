@@ -1,6 +1,6 @@
-import type { BaseURLConfig, DynamicBaseURLConfig } from "@better-auth/core";
-import { env } from "@better-auth/core/env";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { BaseURLConfig, DynamicBaseURLConfig } from "@cinaauth/core";
+import { env } from "@cinaauth/core/env";
+import { CinaAuthError } from "@cinaauth/core/error";
 import { wildcardMatch } from "./wildcard";
 
 const SLASH_CHAR_CODE = "/".charCodeAt(0);
@@ -8,12 +8,12 @@ const SLASH_CHAR_CODE = "/".charCodeAt(0);
 /**
  * Minimal loopback check for dev scheme inference only. Reachable from
  * `client/config.ts` via `getBaseURL`, so we MUST NOT import the full
- * `@better-auth/core/utils/host` classifier here: its `utils/ip` dependency
+ * `@cinaauth/core/utils/host` classifier here: its `utils/ip` dependency
  * on zod would leak into the client bundle (see `e2e/smoke/test/vite.spec.ts`).
  *
  * Server-side SSRF/loopback checks (oauth redirect matching, trusted-origin
  * resolution, electron fetch gate) continue to use the authoritative
- * `isLoopbackHost` from `@better-auth/core/utils/host`. This helper's only
+ * `isLoopbackHost` from `@cinaauth/core/utils/host`. This helper's only
  * job is picking `http` vs `https` for dev ergonomics.
  */
 function isLoopbackForDevScheme(host: string): boolean {
@@ -43,7 +43,7 @@ function checkHasPath(url: string): boolean {
 		const pathname = trimTrailingSlashes(parsedUrl.pathname) || "/";
 		return pathname !== "/";
 	} catch {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			`Invalid base URL: ${url}. Please provide a valid base URL.`,
 		);
 	}
@@ -53,15 +53,15 @@ function assertHasProtocol(url: string): void {
 	try {
 		const parsedUrl = new URL(url);
 		if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				`Invalid base URL: ${url}. URL must include 'http://' or 'https://'`,
 			);
 		}
 	} catch (error) {
-		if (error instanceof BetterAuthError) {
+		if (error instanceof CinaAuthError) {
 			throw error;
 		}
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			`Invalid base URL: ${url}. Please provide a valid base URL.`,
 			{
 				cause: error,
@@ -152,10 +152,10 @@ export function getBaseURL(
 
 	if (loadEnv !== false) {
 		const fromEnv =
-			env.BETTER_AUTH_URL ||
-			env.NEXT_PUBLIC_BETTER_AUTH_URL ||
-			env.PUBLIC_BETTER_AUTH_URL ||
-			env.NUXT_PUBLIC_BETTER_AUTH_URL ||
+			env.CINAAUTH_URL ||
+			env.NEXT_PUBLIC_CINAAUTH_URL ||
+			env.PUBLIC_CINAAUTH_URL ||
+			env.NUXT_PUBLIC_CINAAUTH_URL ||
 			env.NUXT_PUBLIC_AUTH_URL ||
 			(env.BASE_URL !== "/" ? env.BASE_URL : undefined);
 
@@ -180,7 +180,7 @@ export function getBaseURL(
 	if (request) {
 		const url = getOrigin(request.url);
 		if (!url) {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				"Could not get origin from request. Please provide a valid base URL.",
 			);
 		}
@@ -393,7 +393,7 @@ export const matchesHostPattern = (host: string, pattern: string): boolean => {
  * @param request The incoming request
  * @param basePath The base path to append
  * @returns The resolved base URL with path
- * @throws BetterAuthError if host is not in allowedHosts and no fallback is set
+ * @throws CinaAuthError if host is not in allowedHosts and no fallback is set
  */
 export function resolveDynamicBaseURL(
 	config: DynamicBaseURLConfig,
@@ -407,7 +407,7 @@ export function resolveDynamicBaseURL(
 		if (config.fallback) {
 			return withPath(config.fallback, basePath);
 		}
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"Could not determine host from request headers. " +
 				"Please provide a fallback URL in your baseURL config.",
 		);
@@ -430,7 +430,7 @@ export function resolveDynamicBaseURL(
 		return withPath(config.fallback, basePath);
 	}
 
-	throw new BetterAuthError(
+	throw new CinaAuthError(
 		`Host "${host}" is not in the allowed hosts list. ` +
 			`Allowed hosts: ${config.allowedHosts.join(", ")}. ` +
 			`Add this host to your allowedHosts config or provide a fallback URL.`,

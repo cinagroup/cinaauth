@@ -7,7 +7,7 @@ export interface BroadcastMessage {
 
 export type BroadcastListener = (message: BroadcastMessage) => void;
 
-export const kBroadcastChannel = Symbol.for("better-auth:broadcast-channel");
+export const kBroadcastChannel = Symbol.for("cinaauth:broadcast-channel");
 
 const now = () => Math.floor(Date.now() / 1000);
 
@@ -21,7 +21,7 @@ class WindowBroadcastChannel implements BroadcastChannel {
 	listeners = new Set<BroadcastListener>();
 	private name: string;
 
-	constructor(name = "better-auth.message") {
+	constructor(name = "cinaauth.message") {
 		this.name = name;
 	}
 
@@ -66,7 +66,7 @@ class WindowBroadcastChannel implements BroadcastChannel {
 	}
 }
 
-export function getGlobalBroadcastChannel(name = "better-auth.message") {
+export function getGlobalBroadcastChannel(name = "cinaauth.message") {
 	if (!(globalThis as any)[kBroadcastChannel]) {
 		(globalThis as any)[kBroadcastChannel] = new WindowBroadcastChannel(name);
 	}

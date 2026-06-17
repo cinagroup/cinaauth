@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { capitalizeFirstLetter } from "@better-auth/core/utils/string";
+import { capitalizeFirstLetter } from "@cinaauth/core/utils/string";
 import { produceSchema } from "@mrleebo/prisma-ast";
-import { initGetFieldName, initGetModelName } from "better-auth/adapters";
-import type { DBFieldType } from "better-auth/db";
-import { getAuthTables } from "better-auth/db";
+import { initGetFieldName, initGetModelName } from "cinaauth/adapters";
+import type { DBFieldType } from "cinaauth/db";
+import { getAuthTables } from "cinaauth/db";
 import { getPrismaVersion } from "../utils/get-package-info";
 import type { SchemaGenerator } from "./types";
 

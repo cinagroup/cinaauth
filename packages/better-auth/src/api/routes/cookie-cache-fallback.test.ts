@@ -3,7 +3,7 @@ import { parseCookies } from "../../cookies";
 import { getTestInstance } from "../../test-utils/test-instance";
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9233
+ * @see https://github.com/cinagroup/cinaauth/issues/9233
  *
  * When `crossSubDomainCookies` is enabled for the first time on a live deployment,
  * the browser ends up holding two cookies with the same name but different scopes:
@@ -11,7 +11,7 @@ import { getTestInstance } from "../../test-utils/test-instance";
  * - New `session_data` with Domain=.example.com (issued after the change)
  *
  * Per RFC 6265, the older cookie is listed first in the Cookie header.
- * When HMAC verification fails on the old `session_data` cookie, Better Auth
+ * When HMAC verification fails on the old `session_data` cookie, CinaAuth
  * should fall through to validate `session_token` against the database
  * instead of immediately returning null.
  */
@@ -57,7 +57,7 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 		const cookies = parseCookies(cookieStr);
 
 		// Get the valid session_token
-		const sessionToken = cookies.get("better-auth.session_token");
+		const sessionToken = cookies.get("cinaauth.session_token");
 		expect(sessionToken).toBeDefined();
 
 		// Create a new headers object with:
@@ -80,7 +80,7 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 		);
 		tampered.set(
 			"cookie",
-			`better-auth.session_data=${invalidSessionData}; better-auth.session_token=${sessionToken}`,
+			`cinaauth.session_data=${invalidSessionData}; cinaauth.session_token=${sessionToken}`,
 		);
 
 		// Should return the valid session by falling through to DB validation
@@ -130,7 +130,7 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 		);
 		tampered.set(
 			"cookie",
-			`better-auth.session_data=${invalidSessionData}; better-auth.session_token=invalid-token.invalid-signature`,
+			`cinaauth.session_data=${invalidSessionData}; cinaauth.session_token=invalid-token.invalid-signature`,
 		);
 
 		// Should return null since both cookies are invalid
@@ -165,13 +165,13 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 
 		const cookieStr = headers.get("cookie") || "";
 		const cookies = parseCookies(cookieStr);
-		const sessionToken = cookies.get("better-auth.session_token");
+		const sessionToken = cookies.get("cinaauth.session_token");
 
 		// Create tampered headers with invalid JWT but valid session_token
 		const tampered = new Headers();
 		tampered.set(
 			"cookie",
-			`better-auth.session_data=invalid.jwt.token; better-auth.session_token=${sessionToken}`,
+			`cinaauth.session_data=invalid.jwt.token; cinaauth.session_token=${sessionToken}`,
 		);
 
 		// Should fall through to DB validation
@@ -207,13 +207,13 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 
 		const cookieStr = headers.get("cookie") || "";
 		const cookies = parseCookies(cookieStr);
-		const sessionToken = cookies.get("better-auth.session_token");
+		const sessionToken = cookies.get("cinaauth.session_token");
 
 		// Create tampered headers with invalid JWE but valid session_token
 		const tampered = new Headers();
 		tampered.set(
 			"cookie",
-			`better-auth.session_data=invalid.jwe.token.here.test; better-auth.session_token=${sessionToken}`,
+			`cinaauth.session_data=invalid.jwe.token.here.test; cinaauth.session_token=${sessionToken}`,
 		);
 
 		// Should fall through to DB validation
@@ -226,7 +226,7 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9233
+	 * @see https://github.com/cinagroup/cinaauth/issues/9233
 	 *
 	 * This test emulates the exact scenario from the issue:
 	 *
@@ -275,8 +275,8 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 		const cookieStr = headers.get("cookie") || "";
 		const cookies = parseCookies(cookieStr);
 		const sessionToken =
-			cookies.get("__Secure-better-auth.session_token") ||
-			cookies.get("better-auth.session_token");
+			cookies.get("__Secure-cinaauth.session_token") ||
+			cookies.get("cinaauth.session_token");
 		expect(sessionToken).toBeDefined();
 
 		// Verify initial session works
@@ -321,7 +321,7 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 		// followed by the valid session_token
 		migrationHeaders.set(
 			"cookie",
-			`__Secure-better-auth.session_data=${staleSessionData}; __Secure-better-auth.session_token=${sessionToken}`,
+			`__Secure-cinaauth.session_data=${staleSessionData}; __Secure-cinaauth.session_token=${sessionToken}`,
 		);
 
 		// Step 3: Simulate visibilitychange -> useSession() refetch
@@ -371,7 +371,7 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 		// Get the valid session_token
 		const cookieStr = headers.get("cookie") || "";
 		const cookies = parseCookies(cookieStr);
-		const sessionToken = cookies.get("better-auth.session_token");
+		const sessionToken = cookies.get("cinaauth.session_token");
 
 		// Simulate the migration scenario with stale session_data but valid session_token
 		const migrationHeaders = new Headers();
@@ -388,7 +388,7 @@ describe("cookieCache HMAC verification failure fallback", async () => {
 		);
 		migrationHeaders.set(
 			"cookie",
-			`better-auth.session_data=${staleSessionData}; better-auth.session_token=${sessionToken}`,
+			`cinaauth.session_data=${staleSessionData}; cinaauth.session_token=${sessionToken}`,
 		);
 
 		// Even with expired/stale session_data, should fall through to DB validation

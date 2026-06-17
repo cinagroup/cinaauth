@@ -1,4 +1,4 @@
-import type { DBFieldAttribute } from "@better-auth/core/db";
+import type { DBFieldAttribute } from "@cinaauth/core/db";
 import type { ZodType } from "zod";
 import * as z from "zod";
 

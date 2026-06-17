@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import { describe, expect, it } from "vitest";
 import { emailOTP } from "../plugins/email-otp";
 import { jwt } from "../plugins/jwt";
@@ -76,7 +76,7 @@ describe("server-only endpoints", async () => {
 					async (c) => c.json({ reached: true }),
 				),
 			},
-		} satisfies BetterAuthPlugin;
+		} satisfies CinaAuthPlugin;
 		const { auth: probeAuth } = await getTestInstance({ plugins: [probe] });
 
 		const marked = await probeAuth.handler(

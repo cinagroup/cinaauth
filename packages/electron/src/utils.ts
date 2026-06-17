@@ -20,6 +20,6 @@ export function parseProtocolScheme(
 	};
 }
 
-export function getChannelPrefixWithDelimiter(ns: string = "better-auth") {
+export function getChannelPrefixWithDelimiter(ns: string = "cinaauth") {
 	return ns.length > 0 ? ns + ":" : ns;
 }

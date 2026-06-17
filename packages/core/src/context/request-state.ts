@@ -1,17 +1,17 @@
-import type { AsyncLocalStorage } from "@better-auth/core/async_hooks";
-import { getAsyncLocalStorage } from "@better-auth/core/async_hooks";
-import { __getBetterAuthGlobal } from "./global";
+import type { AsyncLocalStorage } from "@cinaauth/core/async_hooks";
+import { getAsyncLocalStorage } from "@cinaauth/core/async_hooks";
+import { __getCinaAuthGlobal } from "./global";
 
 export type RequestStateWeakMap = WeakMap<object, any>;
 
 const ensureAsyncStorage = async () => {
-	const betterAuthGlobal = __getBetterAuthGlobal();
-	if (!betterAuthGlobal.context.requestStateAsyncStorage) {
+	const CinaAuthGlobal = __getCinaAuthGlobal();
+	if (!CinaAuthGlobal.context.requestStateAsyncStorage) {
 		const AsyncLocalStorage = await getAsyncLocalStorage();
-		betterAuthGlobal.context.requestStateAsyncStorage =
+		CinaAuthGlobal.context.requestStateAsyncStorage =
 			new AsyncLocalStorage<RequestStateWeakMap>();
 	}
-	return betterAuthGlobal.context
+	return CinaAuthGlobal.context
 		.requestStateAsyncStorage as AsyncLocalStorage<RequestStateWeakMap>;
 };
 

@@ -1,9 +1,9 @@
-import { APIError } from "@better-auth/core/error";
+import { APIError } from "@cinaauth/core/error";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getTestInstance } from "../../test-utils/test-instance";
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8969
+ * @see https://github.com/cinagroup/cinaauth/issues/8969
  */
 describe("Email Verification - Request body consumption bug", () => {
 	it("should not throw 'body already consumed' error when sendVerificationEmail callback reads the request", async () => {
@@ -153,7 +153,7 @@ describe("Email Verification", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8757
+	 * @see https://github.com/cinagroup/cinaauth/issues/8757
 	 */
 	it("should return APIError status when sendVerificationEmail throws (e.g. rate limit)", async () => {
 		let sendCalls = 0;

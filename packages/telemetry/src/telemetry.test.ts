@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTelemetry } from "./index";
 import type { TelemetryEvent } from "./types";
 
@@ -46,8 +46,8 @@ vi.mock("./detectors/detect-project-info", () => ({
 
 beforeEach(() => {
 	vi.resetModules();
-	process.env.BETTER_AUTH_TELEMETRY = "";
-	process.env.BETTER_AUTH_TELEMETRY_DEBUG = "";
+	process.env.CINAAUTH_TELEMETRY = "";
+	process.env.CINAAUTH_TELEMETRY_DEBUG = "";
 });
 
 describe("telemetry", () => {
@@ -249,7 +249,7 @@ describe("telemetry", () => {
 	});
 
 	it("does not publish when disabled via env", async () => {
-		process.env.BETTER_AUTH_TELEMETRY = "false";
+		process.env.CINAAUTH_TELEMETRY = "false";
 		let event: TelemetryEvent | undefined;
 		const track = vi.fn().mockImplementation(async (e) => {
 			event = e;
@@ -318,7 +318,7 @@ describe("telemetry", () => {
 		}
 	});
 
-	it("returns noop publisher when BETTER_AUTH_TELEMETRY_ENDPOINT is undefined", async () => {
+	it("returns noop publisher when CINAAUTH_TELEMETRY_ENDPOINT is undefined", async () => {
 		// Import betterFetch mock to check it's not called
 		const { betterFetch } = await import("@better-fetch/fetch");
 
@@ -326,7 +326,7 @@ describe("telemetry", () => {
 		vi.mocked(betterFetch).mockClear();
 
 		// Ensure the environment variable is not set
-		vi.stubEnv("BETTER_AUTH_TELEMETRY_ENDPOINT", undefined);
+		vi.stubEnv("CINAAUTH_TELEMETRY_ENDPOINT", undefined);
 
 		// Create telemetry without customTrack to test actual endpoint logic
 		const telemetry = await createTelemetry(

@@ -1,17 +1,17 @@
----
+﻿---
 title: Dashboard
-description: The `dash()` plugin connects your Better Auth instance to Better Auth Infrastructure, enabling analytics tracking, activity monitoring, and admin dashboard APIs.
+description: The `dash()` plugin connects your CinaAuth instance to CinaAuth Infrastructure, enabling analytics tracking, activity monitoring, and admin dashboard APIs.
 ---
 
-The Dashboard plugin is the core connection between your Better Auth instance and Better Auth Infrastructure. It powers the web dashboard with real-time data, tracks user activity, and enables admin APIs.
+The Dashboard plugin is the core connection between your CinaAuth instance and CinaAuth Infrastructure. It powers the web dashboard with real-time data, tracks user activity, and enables admin APIs.
 
 ## Installation
 
 ```ts
-import { betterAuth } from "better-auth";
-import { dash } from "@better-auth/infra";
+import { CinaAuth } from "cinaauth";
+import { dash } from "@cinaauth/infra";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     dash(),
   ],
@@ -22,7 +22,7 @@ export const auth = betterAuth({
 
 | Option             | Type     | Description                                                           |
 | ------------------ | -------- | --------------------------------------------------------------------- |
-| `apiUrl`           | `string` | Better Auth Infrastructure API URL                                    |
+| `apiUrl`           | `string` | CinaAuth Infrastructure API URL                                    |
 | `kvUrl`            | `string` | KV store URL for caching                                              |
 | `apiKey`           | `string` | Your API key for authentication                                       |
 | `apiTimeout`       | `number` | Timeout in ms for Infra API HTTP requests (`apiUrl`). Default: `3000` |
@@ -35,7 +35,7 @@ Track when users were last active in your application. When enabled, a `lastActi
 
 ```ts
 dash({
-  apiKey: process.env.BETTER_AUTH_API_KEY,
+  apiKey: process.env.CINAAUTH_API_KEY,
   activityTracking: {
     enabled: true,
     updateInterval: 300000,  // Update interval in ms (default: 5 minutes)
@@ -62,8 +62,8 @@ Make sure to run database migrations after enabling activity tracking.
 ## Client Setup
 
 ```ts
-import { createAuthClient } from "better-auth/client";
-import { dashClient } from "@better-auth/infra/client";
+import { createAuthClient } from "cinaauth/client";
+import { dashClient } from "@cinaauth/infra/client";
 
 export const authClient = createAuthClient({
   plugins: [dashClient()],
@@ -82,7 +82,7 @@ dashClient({
 
 ## What the Dashboard Plugin Enables
 
-Once `dash()` is active, the Better Auth Infrastructure dashboard gives you:
+Once `dash()` is active, the CinaAuth Infrastructure dashboard gives you:
 
 * **User management** — view, search, ban, and delete users
 * **Session monitoring** — see active sessions and revoke them

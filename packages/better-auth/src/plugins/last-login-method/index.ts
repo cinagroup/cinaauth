@@ -1,12 +1,12 @@
 import type {
-	BetterAuthPlugin,
+	CinaAuthPlugin,
 	GenericEndpointContext,
-} from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+} from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { PACKAGE_VERSION } from "../../version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"last-login-method": {
 			creator: typeof lastLoginMethod;
 		};
@@ -18,7 +18,7 @@ declare module "@better-auth/core" {
 export interface LastLoginMethodOptions {
 	/**
 	 * Name of the cookie to store the last login method
-	 * @default "better-auth.last_used_login_method"
+	 * @default "cinaauth.last_used_login_method"
 	 */
 	cookieName?: string | undefined;
 	/**
@@ -89,7 +89,7 @@ export const lastLoginMethod = <O extends LastLoginMethodOptions>(
 	};
 
 	const config = {
-		cookieName: "better-auth.last_used_login_method",
+		cookieName: "cinaauth.last_used_login_method",
 		maxAge: 60 * 60 * 24 * 30,
 		...userConfig,
 	} satisfies LastLoginMethodOptions;
@@ -160,7 +160,7 @@ export const lastLoginMethod = <O extends LastLoginMethodOptions>(
 								cookie.includes(sessionTokenName),
 							);
 							if (hasSessionToken) {
-								// Inherit cookie attributes from Better Auth's centralized cookie system
+								// Inherit cookie attributes from CinaAuth's centralized cookie system
 								// This ensures consistency with cross-origin, cross-subdomain, and security settings
 								const cookieAttributes = {
 									...ctx.context.authCookies.sessionToken.attributes,
@@ -207,5 +207,5 @@ export const lastLoginMethod = <O extends LastLoginMethodOptions>(
 				}
 			: undefined,
 		options: userConfig as NoInfer<O>,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

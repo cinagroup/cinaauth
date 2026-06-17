@@ -1,9 +1,9 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { generateId } from "@better-auth/core/utils/id";
+} from "@cinaauth/core/api";
+import { generateId } from "@cinaauth/core/utils/id";
 import * as z from "zod";
 import {
 	APIError,
@@ -25,8 +25,8 @@ import type {
 	UserWithAnonymous,
 } from "./types";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		anonymous: {
 			creator: typeof anonymous;
 		};
@@ -359,7 +359,7 @@ export const anonymous = (options?: AnonymousOptions | undefined) => {
 		options,
 		schema: mergeSchema(schema, options?.schema),
 		$ERROR_CODES: ANONYMOUS_ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export type * from "./types";

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const proCheckoutHref = `https://dash.better-auth.com/sign-in?callbackUrl=${encodeURIComponent(
+const proCheckoutHref = `https://dash.cinagroup.com/sign-in?callbackUrl=${encodeURIComponent(
 	"/?redirectTo=/settings/billing",
 )}`;
 
@@ -47,7 +47,7 @@ const tiers: readonly Tier[] = [
 		],
 		cta: {
 			label: "Get Started",
-			href: "https://dash.better-auth.com/sign-in",
+			href: "https://dash.cinagroup.com/sign-in",
 		},
 		highlighted: false,
 	},
@@ -527,7 +527,7 @@ export function PricingContent() {
 				className="flex items-center gap-4 px-5 py-3.5 border border-foreground/10 rounded-sm bg-foreground/2"
 			>
 				<p className="flex-1 text-[13px] text-foreground/75 leading-relaxed">
-					The Better Auth framework is{" "}
+					The CinaAuth framework is{" "}
 					<span className="text-foreground">free and open source</span>. Pricing
 					below is for our managed infrastructure.
 				</p>

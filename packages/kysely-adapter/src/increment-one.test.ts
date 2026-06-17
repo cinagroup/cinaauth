@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import { Kysely } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { kyselyAdapter } from "./kysely-adapter";
@@ -20,7 +20,7 @@ interface TestDatabase {
 // Register `counters` as a known model through a plugin schema so the factory
 // recognizes the table, maps field names, and delegates to the native
 // incrementOne against the real SQLite database.
-const options: BetterAuthOptions = {
+const options: CinaAuthOptions = {
 	plugins: [
 		{
 			id: "counters-test",

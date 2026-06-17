@@ -1,9 +1,9 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { isBrowserFetchRequest } from "@better-auth/core/utils/fetch-metadata";
-import { isLoopbackHost, isLoopbackIP } from "@better-auth/core/utils/host";
-import { getSessionFromCtx } from "better-auth/api";
-import { generateRandomString, makeSignature } from "better-auth/crypto";
-import type { Verification } from "better-auth/db";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { isBrowserFetchRequest } from "@cinaauth/core/utils/fetch-metadata";
+import { isLoopbackHost, isLoopbackIP } from "@cinaauth/core/utils/host";
+import { getSessionFromCtx } from "cinaauth/api";
+import { generateRandomString, makeSignature } from "cinaauth/crypto";
+import type { Verification } from "cinaauth/db";
 import { APIError } from "better-call";
 import { oAuthState } from "./oauth";
 import {

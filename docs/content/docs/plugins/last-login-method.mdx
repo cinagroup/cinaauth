@@ -1,4 +1,4 @@
----
+﻿---
 title: Last Login Method
 description: Track and display the last authentication method used by users
 ---
@@ -12,10 +12,10 @@ The last login method plugin tracks the most recent authentication method used b
     ### Add the plugin to your auth config
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { lastLoginMethod } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { lastLoginMethod } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         // ... other config options
         plugins: [
             lastLoginMethod() // [!code highlight]
@@ -28,8 +28,8 @@ The last login method plugin tracks the most recent authentication method used b
     ### Add the client plugin to your auth client
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { lastLoginMethodClient } from "better-auth/client/plugins" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client"
+    import { lastLoginMethodClient } from "cinaauth/client/plugins" // [!code highlight]
 
     export const authClient = createAuthClient({
         plugins: [
@@ -134,10 +134,10 @@ By default, the last login method is stored only in cookies. For more persistent
     Set `storeInDatabase` to `true` in your plugin configuration:
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { lastLoginMethod } from "better-auth/plugins"
+    import { CinaAuth } from "cinaauth"
+    import { lastLoginMethod } from "cinaauth/plugins"
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
             lastLoginMethod({
                 storeInDatabase: true // [!code highlight]
@@ -208,10 +208,10 @@ export const lastLoginMethodUserTableFields = [
 You can customize the database field name:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { lastLoginMethod } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { lastLoginMethod } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         lastLoginMethod({
             storeInDatabase: true,
@@ -232,14 +232,14 @@ The last login method plugin accepts the following options:
 ### Server Options
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { lastLoginMethod } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { lastLoginMethod } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         lastLoginMethod({
             // Cookie configuration
-            cookieName: "better-auth.last_used_login_method", // Default: "better-auth.last_used_login_method"
+            cookieName: "cinaauth.last_used_login_method", // Default: "cinaauth.last_used_login_method"
             maxAge: 60 * 60 * 24 * 30, // Default: 30 days in seconds
             
             // Database persistence
@@ -269,7 +269,7 @@ export const auth = betterAuth({
 **cookieName**: `string`
 
 * The name of the cookie used to store the last login method
-* Default: `"better-auth.last_used_login_method"`
+* Default: `"cinaauth.last_used_login_method"`
 * **Note**: This cookie is `httpOnly: false` to allow client-side JavaScript access for UI features
 
 **maxAge**: `number`
@@ -297,13 +297,13 @@ export const auth = betterAuth({
 ### Client Options
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
-import { lastLoginMethodClient } from "better-auth/client/plugins"
+import { createAuthClient } from "cinaauth/client"
+import { lastLoginMethodClient } from "cinaauth/client/plugins"
 
 export const authClient = createAuthClient({
     plugins: [
         lastLoginMethodClient({
-            cookieName: "better-auth.last_used_login_method", // Default: "better-auth.last_used_login_method"
+            cookieName: "cinaauth.last_used_login_method", // Default: "cinaauth.last_used_login_method"
             domain: ".example.com" // Required for cross-subdomain cookie clearing
         })
     ]
@@ -314,7 +314,7 @@ export const authClient = createAuthClient({
 
 * The name of the cookie to read the last login method from
 * Must match the server-side `cookieName` configuration
-* Default: `"better-auth.last_used_login_method"`
+* Default: `"cinaauth.last_used_login_method"`
 
 **domain**: `string`
 
@@ -340,20 +340,20 @@ The plugin automatically detects the method from these endpoints:
 
 ## Cross-Domain Support
 
-The plugin automatically inherits cookie settings from Better Auth's centralized cookie system. This solves the problem where the last login method wouldn't persist across:
+The plugin automatically inherits cookie settings from CinaAuth's centralized cookie system. This solves the problem where the last login method wouldn't persist across:
 
 * **Cross-subdomain setups**: `auth.example.com` → `app.example.com`
 * **Cross-origin setups**: `api.company.com` → `app.different.com`
 
-When you enable `crossSubDomainCookies` or `crossOriginCookies` in your Better Auth config, the plugin will automatically use the same domain, secure, and sameSite settings as your session cookies, ensuring consistent behavior across your application.
+When you enable `crossSubDomainCookies` or `crossOriginCookies` in your CinaAuth config, the plugin will automatically use the same domain, secure, and sameSite settings as your session cookies, ensuring consistent behavior across your application.
 
 <Callout type="warn">
   When using `crossSubDomainCookies`, you must pass the `domain` option to `lastLoginMethodClient()` so that `clearLastUsedLoginMethod()` can properly expire the cookie. Without it, browsers will silently ignore the clear request because the domain doesn't match.
 </Callout>
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
-import { lastLoginMethodClient } from "better-auth/client/plugins"
+import { createAuthClient } from "cinaauth/client"
+import { lastLoginMethodClient } from "cinaauth/client/plugins"
 
 export const authClient = createAuthClient({
     plugins: [
@@ -371,10 +371,10 @@ export const authClient = createAuthClient({
 If you have custom OAuth providers or authentication methods, you can use the `customResolveMethod` option:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { lastLoginMethod } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { lastLoginMethod } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         lastLoginMethod({
             customResolveMethod: (ctx) => {
@@ -403,12 +403,12 @@ export const auth = betterAuth({
 
 ### Usage with Expo
 
-When using Better Auth with Expo, make sure to import the client plugin from `@better-auth/expo/plugins` rather than from `better-auth/plugins/client`. This ensures the last login method is stored correctly using the configured storage.
+When using CinaAuth with Expo, make sure to import the client plugin from `@cinaauth/expo/plugins` rather than from `cinaauth/plugins/client`. This ensures the last login method is stored correctly using the configured storage.
 
 ```ts
-import { createAuthClient } from "better-auth/react"
-import { expoClient } from "@better-auth/expo"
-import { lastLoginMethodClient } from "@better-auth/expo/plugins" // [!code highlight]
+import { createAuthClient } from "cinaauth/react"
+import { expoClient } from "@cinaauth/expo"
+import { lastLoginMethodClient } from "@cinaauth/expo/plugins" // [!code highlight]
 import * as SecureStore from "expo-secure-store"
 
 export const authClient = createAuthClient({

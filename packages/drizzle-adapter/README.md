@@ -1,16 +1,16 @@
-# Better Auth Drizzle Adapter
+﻿# CinaAuth Drizzle Adapter
 
-Drizzle ORM adapter for [Better Auth](https://www.better-auth.com).
+Drizzle ORM adapter for [CinaAuth](https://www.cinagroup.com).
 
 ## Installation
 
 ```bash
-npm install @better-auth/drizzle-adapter
+npm install @cinaauth/drizzle-adapter
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/adapters/drizzle](https://www.better-auth.com/docs/adapters/drizzle).
+For full documentation, visit [cinagroup.com/docs/adapters/drizzle](https://www.cinagroup.com/docs/adapters/drizzle).
 
 ## License
 

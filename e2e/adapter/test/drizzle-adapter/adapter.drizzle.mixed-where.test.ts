@@ -1,13 +1,13 @@
-/**
- * @see https://github.com/better-auth/better-auth/issues/7271
+﻿/**
+ * @see https://github.com/cinagroup/cinaauth/issues/7271
  *
  * Validates that the Drizzle adapter correctly handles mixed AND/OR
  * connectors in `where` clauses. When `convertWhereClause` returns
  * both an AND group and an OR group, the joins code path uses only
  * `clause[0]`, silently dropping the second group.
  */
-import type { User } from "@better-auth/core/db";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import type { User } from "@cinaauth/core/db";
+import { drizzleAdapter } from "@cinaauth/drizzle-adapter";
 import Database from "better-sqlite3";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
@@ -171,7 +171,7 @@ describe("drizzle adapter: mixed AND/OR connectors in where clauses", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7271
+	 * @see https://github.com/cinagroup/cinaauth/issues/7271
 	 *
 	 * WHERE (email LIKE '%company.com%') AND (name LIKE '%Admin%')
 	 *
@@ -206,7 +206,7 @@ describe("drizzle adapter: mixed AND/OR connectors in where clauses", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7271
+	 * @see https://github.com/cinagroup/cinaauth/issues/7271
 	 *
 	 * Same query on the experimental joins path.
 	 * The bug: `clause[0]` is used, dropping the OR group entirely.
@@ -240,7 +240,7 @@ describe("drizzle adapter: mixed AND/OR connectors in where clauses", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7271
+	 * @see https://github.com/cinagroup/cinaauth/issues/7271
 	 *
 	 * findOne with mixed AND/OR on the joins path.
 	 * WHERE (name LIKE '%Person%') AND (email LIKE '%other%')
@@ -284,7 +284,7 @@ describe("drizzle adapter: mixed AND/OR connectors in where clauses", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7271
+	 * @see https://github.com/cinagroup/cinaauth/issues/7271
 	 *
 	 * Negative case: mixed AND/OR where the AND clause matches but
 	 * the OR clause does NOT match. Result should be empty.
@@ -321,7 +321,7 @@ describe("drizzle adapter: mixed AND/OR connectors in where clauses", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7271
+	 * @see https://github.com/cinagroup/cinaauth/issues/7271
 	 *
 	 * Multiple AND conditions + multiple OR conditions on the joins path.
 	 *
@@ -366,7 +366,7 @@ describe("drizzle adapter: mixed AND/OR connectors in where clauses", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7271
+	 * @see https://github.com/cinagroup/cinaauth/issues/7271
 	 *
 	 * findOne (joins path) should return null when the AND clause
 	 * matches but the OR clause excludes all those matches.

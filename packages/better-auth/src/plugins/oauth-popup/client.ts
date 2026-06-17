@@ -1,8 +1,8 @@
 import type {
-	BetterAuthClientOptions,
-	BetterAuthClientPlugin,
+	CinaAuthClientOptions,
+	CinaAuthClientPlugin,
 	ClientStore,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import type { BetterFetch, BetterFetchPlugin } from "@better-fetch/fetch";
 import { getBaseURL } from "../../utils/url";
 import { PACKAGE_VERSION } from "../../version";
@@ -40,7 +40,7 @@ export interface SignInPopupResult {
 	} | null;
 }
 
-const POPUP_NAME = "better-auth-oauth";
+const POPUP_NAME = "cinaauth-oauth";
 const POPUP_WIDTH = 500;
 const POPUP_HEIGHT = 600;
 const CLOSED_POLL_MS = 500;
@@ -87,7 +87,7 @@ function clearPopupToken(): void {
  * partitioned), and clears it once the session ends so it can't be reused.
  */
 export const popupBearerFetchPlugin: BetterFetchPlugin = {
-	id: "better-auth-popup-bearer",
+	id: "cinaauth-popup-bearer",
 	name: "Popup Bearer",
 	hooks: {
 		onRequest(context) {
@@ -198,12 +198,12 @@ function waitForPopupResult(
 
 interface SignInPopupDeps {
 	$fetch: BetterFetch;
-	options?: BetterAuthClientOptions | undefined;
+	options?: CinaAuthClientOptions | undefined;
 	/** Refreshes the reactive session, as the redirect flow's atom listeners do. */
 	notifySessionSignal: () => void;
 }
 
-function resolveAuthURL(options?: BetterAuthClientOptions): URL {
+function resolveAuthURL(options?: CinaAuthClientOptions): URL {
 	// Same resolution as the client (baseURL + basePath, default `/api/auth`).
 	const configured =
 		getBaseURL(options?.baseURL, options?.basePath) ??
@@ -348,7 +348,7 @@ export const oauthPopupClient = () => {
 		getActions: (
 			$fetch: BetterFetch,
 			$store: ClientStore,
-			options: BetterAuthClientOptions | undefined,
+			options: CinaAuthClientOptions | undefined,
 		) => ({
 			signIn: {
 				popup: createSignInPopup({
@@ -358,7 +358,7 @@ export const oauthPopupClient = () => {
 				}),
 			},
 		}),
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export { POPUP_TOKEN_STORAGE_KEY } from "./constants";

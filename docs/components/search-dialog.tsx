@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type {
 	SearchItemType,
@@ -58,7 +58,7 @@ const typesenseClient = (() => {
 
 export default function CustomSearchDialog(props: SharedProps) {
 	const { search, setSearch, query } = useTypesenseSearch({
-		typesenseCollectionName: "better-auth-docs",
+		typesenseCollectionName: "cinaauth-docs",
 		client: typesenseClient!,
 		/**
 		 * Non-legacy mode leaves raw <mark> tags in content at the moment,

@@ -139,7 +139,7 @@ function getDatabaseInfo(projectRoot: string) {
 	}
 }
 
-function sanitizeBetterAuthConfig(config: any): any {
+function sanitizeCinaAuthConfig(config: any): any {
 	if (!config) return null;
 
 	const sanitized = JSON.parse(JSON.stringify(config));
@@ -311,7 +311,7 @@ function sanitizeBetterAuthConfig(config: any): any {
 	return redactSensitive(sanitized);
 }
 
-async function getBetterAuthInfo(
+async function getCinaAuthInfo(
 	projectRoot: string,
 	configPath?: string,
 	suppressLogs = false,
@@ -335,16 +335,16 @@ async function getBetterAuthInfo(
 				shouldThrowOnError: true,
 			});
 			const packageInfo = await getPackageInfo();
-			const betterAuthVersion =
-				packageInfo.dependencies?.["better-auth"] ||
-				packageInfo.devDependencies?.["better-auth"] ||
-				packageInfo.peerDependencies?.["better-auth"] ||
-				packageInfo.optionalDependencies?.["better-auth"] ||
+			const CinaAuthVersion =
+				packageInfo.dependencies?.["cinaauth"] ||
+				packageInfo.devDependencies?.["cinaauth"] ||
+				packageInfo.peerDependencies?.["cinaauth"] ||
+				packageInfo.optionalDependencies?.["cinaauth"] ||
 				"Unknown";
 
 			return {
-				version: betterAuthVersion,
-				config: sanitizeBetterAuthConfig(config),
+				version: CinaAuthVersion,
+				config: sanitizeCinaAuthConfig(config),
 			};
 		} finally {
 			// Restore console methods
@@ -361,7 +361,7 @@ async function getBetterAuthInfo(
 			error:
 				error instanceof Error
 					? error.message
-					: "Failed to load Better Auth config",
+					: "Failed to load CinaAuth config",
 		};
 	}
 }
@@ -412,9 +412,9 @@ function formatOutput(data: any, indent = 0): string {
 }
 
 export const info = new Command("info")
-	.description("Display system and Better Auth configuration information")
+	.description("Display system and CinaAuth configuration information")
 	.option("--cwd <cwd>", "The working directory", process.cwd())
-	.option("--config <config>", "Path to the Better Auth configuration file")
+	.option("--config <config>", "Path to the CinaAuth configuration file")
 	.option("-j, --json", "Output as JSON")
 	.option("-c, --copy", "Copy output to clipboard (requires pbcopy/xclip)")
 	.action(async (options) => {
@@ -426,7 +426,7 @@ export const info = new Command("info")
 		const packageManager = getPackageManager();
 		const frameworks = getFrameworkInfo(projectRoot);
 		const databases = getDatabaseInfo(projectRoot);
-		const betterAuthInfo = await getBetterAuthInfo(
+		const CinaAuthInfo = await getCinaAuthInfo(
 			projectRoot,
 			options.config,
 			options.json,
@@ -438,7 +438,7 @@ export const info = new Command("info")
 			packageManager,
 			frameworks,
 			databases,
-			betterAuth: betterAuthInfo,
+			CinaAuth: CinaAuthInfo,
 		};
 
 		if (options.json) {
@@ -466,7 +466,7 @@ export const info = new Command("info")
 		}
 
 		// Format and display output
-		console.log(chalk.bold("\n📊 Better Auth System Information\n"));
+		console.log(chalk.bold("\n📊 CinaAuth System Information\n"));
 		console.log(chalk.gray("=".repeat(50)));
 
 		console.log(chalk.bold.white("\n🖥️  System Information:"));
@@ -488,14 +488,14 @@ export const info = new Command("info")
 			console.log(formatOutput(databases, 2));
 		}
 
-		console.log(chalk.bold.white("\n🔐 Better Auth:"));
-		if (betterAuthInfo.error) {
-			console.log(`  ${chalk.red("Error:")} ${betterAuthInfo.error}`);
+		console.log(chalk.bold.white("\n🔐 CinaAuth:"));
+		if (CinaAuthInfo.error) {
+			console.log(`  ${chalk.red("Error:")} ${CinaAuthInfo.error}`);
 		} else {
-			console.log(`  ${chalk.cyan("Version")}: ${betterAuthInfo.version}`);
-			if (betterAuthInfo.config) {
+			console.log(`  ${chalk.cyan("Version")}: ${CinaAuthInfo.version}`);
+			if (CinaAuthInfo.config) {
 				console.log(`  ${chalk.cyan("Configuration")}:`);
-				console.log(formatOutput(betterAuthInfo.config, 4));
+				console.log(formatOutput(CinaAuthInfo.config, 4));
 			}
 		}
 
@@ -508,7 +508,7 @@ export const info = new Command("info")
 
 		if (options.copy) {
 			const textOutput = `
-Better Auth System Information
+CinaAuth System Information
 ==============================
 
 System Information:
@@ -526,8 +526,8 @@ ${JSON.stringify(frameworks, null, 2)}
 Database Clients:
 ${JSON.stringify(databases, null, 2)}
 
-Better Auth:
-${JSON.stringify(betterAuthInfo, null, 2)}
+CinaAuth:
+${JSON.stringify(CinaAuthInfo, null, 2)}
 `;
 
 			try {

@@ -1,4 +1,4 @@
-import { APIError } from "better-auth/api";
+import { APIError } from "cinaauth/api";
 import { findNode, xmlParser } from "./parser";
 
 export const SignatureAlgorithm = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BetterAuthOptions } from "../../types";
+import type { CinaAuthOptions } from "../../types";
 import { createAdapterFactory } from "./factory";
 import type { CleanedWhere, CustomAdapter, Where } from "./index";
 
@@ -167,12 +167,12 @@ function createMemoryAdapter(initial: Record<string, Row[]> = {}) {
 // (string selector) and `count` (number) plus `lastRequest` (number). Enabling
 // database storage registers it in the resolved schema.
 const counterModel = "rateLimit";
-const options: BetterAuthOptions = {
+const options: CinaAuthOptions = {
 	rateLimit: { storage: "database" },
 };
 
 function createTestAdapter(adapter: CustomAdapter) {
-	return createAdapterFactory<BetterAuthOptions>({
+	return createAdapterFactory<CinaAuthOptions>({
 		config: {
 			adapterId: "memory-test-adapter",
 			adapterName: "Memory Test Adapter",

@@ -124,7 +124,7 @@ describe("oauth popup server flow", async () => {
 	it("redirects to the provider and sets the opener marker cookie", async () => {
 		const { startRes } = await runPopupFlow();
 		expect(startRes.headers.get("set-cookie")).toContain(
-			"better-auth.oauth_popup",
+			"cinaauth.oauth_popup",
 		);
 	});
 
@@ -142,15 +142,15 @@ describe("oauth popup server flow", async () => {
 		// session token cookie is the one that was getting dropped when the
 		// callback also set the cookie-cached session_data.
 		const completionCookies = callbackRes.headers.get("set-cookie") ?? "";
-		expect(completionCookies).toContain("better-auth.session_token");
-		expect(completionCookies).toContain("better-auth.session_data");
+		expect(completionCookies).toContain("cinaauth.session_token");
+		expect(completionCookies).toContain("cinaauth.session_data");
 	});
 
 	it("hands off a token that authenticates via the bearer plugin", async () => {
 		const { callbackRes } = await runPopupFlow();
 		const token = parseSetCookieHeader(
 			callbackRes.headers.get("set-cookie") || "",
-		).get("better-auth.session_token")?.value;
+		).get("cinaauth.session_token")?.value;
 		expect(token).toBeTruthy();
 
 		const session = await auth.api.getSession({

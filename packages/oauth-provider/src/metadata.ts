@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import type { JWSAlgorithms, JwtOptions } from "better-auth/plugins";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import type { JWSAlgorithms, JwtOptions } from "cinaauth/plugins";
 import { validateIssuerUrl } from "./authorize";
 import type { OAuthOptions, Scope } from "./types";
 import type {

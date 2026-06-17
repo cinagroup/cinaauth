@@ -1,4 +1,4 @@
----
+﻿---
 title: Reference
 description: API Key plugin options, permissions, and schema reference.
 ---
@@ -159,7 +159,7 @@ When `storage` is `"secondary-storage"`, enable fallback to database if key is n
 Default is `false`.
 
 <Callout>
-  When `storage` is set to `"secondary-storage"`, you must configure `secondaryStorage` in your Better Auth options. API keys will be stored using key-value patterns:
+  When `storage` is set to `"secondary-storage"`, you must configure `secondaryStorage` in your CinaAuth options. API keys will be stored using key-value patterns:
 
   * `api-key:${hashedKey}` - Primary lookup by hashed key
   * `api-key:by-id:${id}` - Lookup by ID
@@ -169,10 +169,10 @@ Default is `false`.
 </Callout>
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth";
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   secondaryStorage: {
     get: async (key) => {
       return await redis.get(key);
@@ -200,10 +200,10 @@ Custom storage methods for API keys. If provided, these methods will be used ins
 Useful when you want to use a different storage backend specifically for API keys, or when you need custom logic for storage operations.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth";
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       storage: "secondary-storage",
@@ -232,7 +232,7 @@ Requires `backgroundTasks.handler` to be configured in the main auth options.
     ```ts
     import { waitUntil } from "@vercel/functions";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       advanced: { 
           backgroundTasks: {
              handler: waitUntil,
@@ -253,7 +253,7 @@ Requires `backgroundTasks.handler` to be configured in the main auth options.
 
     const execCtxStorage = new AsyncLocalStorage<ExecutionContext>();
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       advanced: { 
           backgroundTasks: {
              handler: waitUntil,
@@ -305,10 +305,10 @@ API keys can have permissions associated with them, allowing you to control acce
 You can configure default permissions that will be applied to all newly created API keys:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       permissions: {
@@ -325,10 +325,10 @@ export const auth = betterAuth({
 You can also provide a function that returns permissions dynamically:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { apiKey } from "@better-auth/api-key"
+import { CinaAuth } from "cinaauth"
+import { apiKey } from "@cinaauth/api-key"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     apiKey({
       permissions: {

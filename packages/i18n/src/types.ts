@@ -1,16 +1,16 @@
 import type {
-	BetterAuthPluginRegistry,
-	BetterAuthPluginRegistryIdentifier,
+	CinaAuthPluginRegistry,
+	CinaAuthPluginRegistryIdentifier,
 	GenericEndpointContext,
 	UnionToIntersection,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 
 type ALL_PLUGIN_ERROR_CODE_KEYS = keyof UnionToIntersection<
 	{
 		[Key in Exclude<
-			BetterAuthPluginRegistryIdentifier,
+			CinaAuthPluginRegistryIdentifier,
 			"i18n"
-		>]: BetterAuthPluginRegistry<unknown, unknown>[Key] extends {
+		>]: CinaAuthPluginRegistry<unknown, unknown>[Key] extends {
 			creator: infer C;
 		}
 			? C extends (...args: any[]) => infer P
@@ -21,7 +21,7 @@ type ALL_PLUGIN_ERROR_CODE_KEYS = keyof UnionToIntersection<
 					: {}
 				: {}
 			: {};
-	}[Exclude<BetterAuthPluginRegistryIdentifier, "i18n">]
+	}[Exclude<CinaAuthPluginRegistryIdentifier, "i18n">]
 >;
 
 type InternalTranslationDictionary = Partial<{

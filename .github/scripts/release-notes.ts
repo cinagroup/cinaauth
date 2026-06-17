@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Release Notes — deterministic stage of release note generation.
  *
  * Reads changeset files and pre.json to collect entries, resolves PR metadata
@@ -447,8 +447,8 @@ function buildChangesetIndex(branch: string): {
 
 function packageToDir(name: string): string {
 	if (name === "auth") return "packages/cli";
-	if (name === "better-auth") return "packages/better-auth";
-	return `packages/${name.replace(/^@better-auth\//, "")}`;
+	if (name === "cinaauth") return "packages/cinaauth";
+	return `packages/${name.replace(/^@cinaauth\//, "")}`;
 }
 
 function packageToChangelogUrl(name: string, ref: string): string {
@@ -748,7 +748,7 @@ function formatReleaseBody(opts: FormatOptions): string {
 	if (minorMatch) {
 		const blogSlug = `${minorMatch[1]}-${minorMatch[2]}`;
 		lines.push(
-			`**Blog post:** [Better Auth ${minorMatch[1]}.${minorMatch[2]}](https://better-auth.com/blog/${blogSlug})`,
+			`**Blog post:** [CinaAuth ${minorMatch[1]}.${minorMatch[2]}](https://cinagroup.com/blog/${blogSlug})`,
 		);
 		lines.push("");
 	}
@@ -765,11 +765,11 @@ function formatReleaseBody(opts: FormatOptions): string {
 		if (entry.author !== "unknown") contributors.add(entry.author);
 	}
 
-	// Sort packages: better-auth first, then by breaking count desc,
+	// Sort packages: cinaauth first, then by breaking count desc,
 	// then by total entry count desc, then alphabetically
 	const packageOrder = [...grouped.keys()].sort((a, b) => {
-		if (a === "better-auth") return -1;
-		if (b === "better-auth") return 1;
+		if (a === "cinaauth") return -1;
+		if (b === "cinaauth") return 1;
 		const aBreaking = grouped
 			.get(a)!
 			.filter((e) => e.changeType === "breaking").length;

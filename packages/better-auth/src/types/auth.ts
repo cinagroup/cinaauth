@@ -1,11 +1,11 @@
-import type { AuthContext, BetterAuthOptions } from "@better-auth/core";
-import type { BASE_ERROR_CODES } from "@better-auth/core/error";
+import type { AuthContext, CinaAuthOptions } from "@cinaauth/core";
+import type { BASE_ERROR_CODES } from "@cinaauth/core/error";
 import type { router } from "../api";
 import type { InferAPI } from "./api";
 import type { InferPluginTypes, Session, User } from "./models";
 import type { InferPluginContext, InferPluginErrorCodes } from "./plugins";
 
-export type Auth<Options extends BetterAuthOptions = BetterAuthOptions> = {
+export type Auth<Options extends CinaAuthOptions = CinaAuthOptions> = {
 	handler: (request: Request) => Promise<Response>;
 	api: InferAPI<ReturnType<typeof router<Options>>["endpoints"]>;
 	options: Options;

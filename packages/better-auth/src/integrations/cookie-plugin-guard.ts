@@ -1,4 +1,4 @@
-import type { AuthContext } from "@better-auth/core";
+import type { AuthContext } from "@cinaauth/core";
 
 /**
  * Warns when a cookie integration plugin is not effectively last.
@@ -25,7 +25,7 @@ export function warnIfCookiePluginNotLast(
 	if (!hasAfterHooksAfter) return;
 
 	ctx.logger.warn(
-		`[better-auth] Cookie integration plugin "${pluginId}" should be placed last in the plugins array. ` +
+		`[cinaauth] Cookie integration plugin "${pluginId}" should be placed last in the plugins array. ` +
 			"Plugins with `hooks.after` running after it may set cookies that are not forwarded to the framework cookie store. " +
 			"Move your cookie integration plugin to the end of the `plugins` array to avoid missing `Set-Cookie` headers.",
 	);

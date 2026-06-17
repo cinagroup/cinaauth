@@ -1,29 +1,29 @@
-import { RootProvider } from "fumadocs-ui/provider/next";
+﻿import { RootProvider } from "fumadocs-ui/provider/next";
 import type { Metadata } from "next";
 import { createMetadata } from "@/lib/metadata";
 
-const description = "Latest updates, articles, and insights about Better Auth";
+const description = "Latest updates, articles, and insights about CinaAuth";
 
 export const metadata: Metadata = createMetadata({
 	title: "Blog",
 	description,
 	openGraph: {
 		url: "/blog",
-		title: "Blog - Better Auth",
+		title: "Blog - CinaAuth",
 		description,
 		images: ["/api/og-release?heading=Better%20Auth%20Blog"],
 	},
 	twitter: {
 		images: ["/api/og-release?heading=Better%20Auth%20Blog"],
-		title: "Blog - Better Auth",
+		title: "Blog - CinaAuth",
 		description,
 	},
 	alternates: {
 		types: {
 			"application/rss+xml": [
 				{
-					title: "Better Auth Blog",
-					url: "https://better-auth.com/blog/rss.xml",
+					title: "CinaAuth Blog",
+					url: "https://cinagroup.com/blog/rss.xml",
 				},
 			],
 		},

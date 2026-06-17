@@ -1,14 +1,14 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { getCurrentAuthContext } from "@better-auth/core/context";
-import { defineErrorCodes } from "@better-auth/core/utils/error-codes";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { getCurrentAuthContext } from "@cinaauth/core/context";
+import { defineErrorCodes } from "@cinaauth/core/utils/error-codes";
 import { createHash } from "@better-auth/utils/hash";
 import { betterFetch } from "@better-fetch/fetch";
 import { APIError } from "../../api";
 import { isAPIError } from "../../utils/is-api-error";
 import { PACKAGE_VERSION } from "../../version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"have-i-been-pwned": {
 			creator: typeof haveIBeenPwned;
 		};
@@ -37,7 +37,7 @@ async function checkPasswordCompromise(
 			{
 				headers: {
 					"Add-Padding": "true",
-					"User-Agent": "BetterAuth Password Checker",
+					"User-Agent": "CinaAuth Password Checker",
 				},
 			},
 		);
@@ -124,5 +124,5 @@ export const haveIBeenPwned = (options?: HaveIBeenPwnedOptions | undefined) => {
 		},
 		options,
 		$ERROR_CODES: ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

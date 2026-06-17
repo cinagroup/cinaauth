@@ -1,6 +1,6 @@
-import type { Awaitable } from "@better-auth/core";
-import type { User } from "@better-auth/core/db";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { Awaitable } from "@cinaauth/core";
+import type { User } from "@cinaauth/core/db";
+import { CinaAuthError } from "@cinaauth/core/error";
 import type { BetterFetchError } from "@better-fetch/fetch";
 import electron, { contextBridge } from "electron";
 import type { ElectronRequestAuthOptions } from "./authenticate";
@@ -33,7 +33,7 @@ function exposeBridges<O extends ElectronClientOptions>(
 	opts: SetupRendererConfig<O>,
 ) {
 	if (!process.contextIsolated) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"Context isolation must be enabled to use IPC bridges securely.",
 		);
 	}
@@ -104,7 +104,7 @@ export interface SetupRendererConfig<
  */
 export function setupRenderer(options: SetupRendererConfig = {}) {
 	if (!isProcessType("renderer")) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"setupRenderer can only be called in the renderer process.",
 		);
 	}

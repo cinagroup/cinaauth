@@ -1,8 +1,8 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { defineRequestState } from "@better-auth/core/context";
-import { logger } from "@better-auth/core/env";
-import { BetterAuthError } from "@better-auth/core/error";
-import type { DispatchContext } from "better-auth/api";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { defineRequestState } from "@cinaauth/core/context";
+import { logger } from "@cinaauth/core/env";
+import { CinaAuthError } from "@cinaauth/core/error";
+import type { DispatchContext } from "cinaauth/api";
 import {
 	APIError,
 	createAuthEndpoint,
@@ -10,10 +10,10 @@ import {
 	dispatchAuthEndpoint,
 	getOAuthState,
 	sessionMiddleware,
-} from "better-auth/api";
-import { parseSetCookieHeader } from "better-auth/cookies";
-import { mergeSchema } from "better-auth/db";
-import type { BetterAuthPlugin } from "better-auth/types";
+} from "cinaauth/api";
+import { parseSetCookieHeader } from "cinaauth/cookies";
+import { mergeSchema } from "cinaauth/db";
+import type { CinaAuthPlugin } from "cinaauth/types";
 import * as z from "zod";
 import type { AuthorizeEndpointSettings } from "./authorize";
 import { authorizeEndpoint } from "./authorize";
@@ -46,8 +46,8 @@ import {
 } from "./utils";
 import { PACKAGE_VERSION } from "./version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"oauth-provider": {
 			creator: typeof oauthProvider;
 		};
@@ -62,11 +62,11 @@ export const oAuthState = defineRequestState<{
 export const getOAuthProviderState = oAuthState.get;
 
 /**
- * oAuth 2.1 provider plugin for Better Auth.
+ * oAuth 2.1 provider plugin for CinaAuth.
  *
- * @see https://better-auth.com/docs/plugins/oauth-provider
+ * @see https://cinagroup.com/docs/plugins/oauth-provider
  * @param options - The options for the oAuth Provider plugin.
- * @returns A Better Auth plugin.
+ * @returns A CinaAuth plugin.
  */
 export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 	let clientRegistrationAllowedScopes = options.clientRegistrationAllowedScopes;
@@ -89,7 +89,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 	if (clientRegistrationAllowedScopes) {
 		for (const sc of clientRegistrationAllowedScopes) {
 			if (!scopes.has(sc)) {
-				throw new BetterAuthError(
+				throw new CinaAuthError(
 					`clientRegistrationAllowedScope ${sc} not found in scopes`,
 				);
 			}
@@ -97,7 +97,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 	}
 	for (const sc of options.advertisedMetadata?.scopes_supported ?? []) {
 		if (!scopes?.has(sc)) {
-			throw new BetterAuthError(
+			throw new CinaAuthError(
 				`advertisedMetadata.scopes_supported ${sc} not found in scopes`,
 			);
 		}
@@ -138,7 +138,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 
 	// Validate pairwiseSecret minimum length
 	if (opts.pairwiseSecret && opts.pairwiseSecret.length < 32) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"pairwiseSecret must be at least 32 characters long for adequate HMAC-SHA256 security",
 		);
 	}
@@ -149,7 +149,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 		opts.grantTypes.includes("refresh_token") &&
 		!opts.grantTypes.includes("authorization_code")
 	) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"refresh_token grant requires authorization_code grant",
 		);
 	}
@@ -160,7 +160,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 			(typeof opts.storeClientSecret === "object" &&
 				"hash" in opts.storeClientSecret))
 	) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"unable to store hashed secrets because id tokens will be signed with secret",
 		);
 	}
@@ -172,13 +172,13 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 				("encrypt" in opts.storeClientSecret ||
 					"decrypt" in opts.storeClientSecret)))
 	) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"encryption method not recommended, please use 'hashed' or the 'hash' function",
 		);
 	}
 
 	const handleIssuerMetadataRequest: NonNullable<
-		BetterAuthPlugin["onRequest"]
+		CinaAuthPlugin["onRequest"]
 	> = async (request, ctx) => {
 		const requestPathname = new URL(request.url).pathname;
 		const requestPath = ctx.options.advanced?.skipTrailingSlashes
@@ -429,7 +429,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 				ctx.options.secondaryStorage &&
 				ctx.options.session?.storeSessionInDatabase !== true
 			) {
-				throw new BetterAuthError(
+				throw new CinaAuthError(
 					"OAuth Provider requires `session.storeSessionInDatabase: true` when using secondaryStorage",
 				);
 			}
@@ -1551,5 +1551,5 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 					]
 				: []),
 		],
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

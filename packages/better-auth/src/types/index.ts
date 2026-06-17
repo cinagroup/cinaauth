@@ -1,12 +1,12 @@
 export type {
-	BetterAuthAdvancedOptions,
-	BetterAuthCookies,
-	BetterAuthOptions,
-	BetterAuthPlugin,
-	BetterAuthRateLimitOptions,
+	CinaAuthAdvancedOptions,
+	CinaAuthCookies,
+	CinaAuthOptions,
+	CinaAuthPlugin,
+	CinaAuthRateLimitOptions,
 	StoreIdentifierOption,
-} from "@better-auth/core";
-export type * from "@better-auth/core/social-providers";
+} from "@cinaauth/core";
+export type * from "@cinaauth/core/social-providers";
 export * from "../client/types";
 export type * from "./adapter";
 export * from "./api";

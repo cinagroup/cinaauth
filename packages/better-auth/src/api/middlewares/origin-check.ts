@@ -1,8 +1,8 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
-import { deprecate } from "@better-auth/core/utils/deprecate";
-import { normalizePathname } from "@better-auth/core/utils/url";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { deprecate } from "@cinaauth/core/utils/deprecate";
+import { normalizePathname } from "@cinaauth/core/utils/url";
 import { matchesOriginPattern } from "../../auth/trusted-origins";
 
 /**

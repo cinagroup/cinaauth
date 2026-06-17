@@ -56,11 +56,11 @@ describe("getConfig", async () => {
 		//create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";			
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";			
 			 import {db} from "@server/db/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -110,11 +110,11 @@ describe("getConfig", async () => {
 		//create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";			
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";			
 			 import {db} from "prismaDbClient";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -165,11 +165,11 @@ describe("getConfig", async () => {
 		//create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";			
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";			
 			 import {db} from "@server/db/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -220,11 +220,11 @@ describe("getConfig", async () => {
 		//create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";			
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";			
 			 import {db} from "prismaDbClient";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -275,11 +275,11 @@ describe("getConfig", async () => {
 		//create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";			
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";			
 			 import {db} from "../db/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -329,11 +329,11 @@ describe("getConfig", async () => {
 		//create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";			
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";			
 			 import {db} from "@server/db/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -378,9 +378,9 @@ describe("getConfig", async () => {
 		//create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.js"),
-			`import  { betterAuth } from "better-auth";
+			`import  { CinaAuth } from "cinaauth";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					}
@@ -439,11 +439,11 @@ describe("getConfig", async () => {
 		// Create dummy auth.ts using both aliases
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";			
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";			
 			 import {db} from "@shared/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -498,9 +498,9 @@ describe("getConfig", async () => {
 		// Create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
+			`import {CinaAuth} from "cinaauth";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					}
@@ -554,9 +554,9 @@ describe("getConfig", async () => {
 		// Create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
+			`import {CinaAuth} from "cinaauth";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					}
@@ -615,11 +615,11 @@ describe("getConfig", async () => {
 		// Create dummy auth.ts using both aliases
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";			
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";			
 			 import {db} from "@shared/db/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -691,9 +691,9 @@ describe("getConfig", async () => {
 		// Create dummy auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
+			`import {CinaAuth} from "cinaauth";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					}
@@ -759,10 +759,10 @@ describe("getConfig", async () => {
 
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 			 import { db } from "$lib/server/database";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					}
@@ -786,9 +786,9 @@ describe("getConfig", async () => {
 
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 
-			 const auth = betterAuth({
+			 const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					},
@@ -826,9 +826,9 @@ describe("getConfig", async () => {
 
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 
-			 const auth = betterAuth({
+			 const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					},
@@ -862,15 +862,15 @@ describe("getConfig", async () => {
 		});
 	});
 
-	it("should resolve export default with inline betterAuth call", async () => {
+	it("should resolve export default with inline CinaAuth call", async () => {
 		const authPath = path.join(tmpDir, "server", "auth");
 		await fs.mkdir(authPath, { recursive: true });
 
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 
-			 export default betterAuth({
+			 export default CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					},
@@ -899,10 +899,10 @@ describe("getConfig", async () => {
 
 		await fs.writeFile(
 			path.join(tmpDir, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 			 import { env } from "cloudflare:workers";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: !!env.FLAG,
 					},
@@ -928,7 +928,7 @@ describe("getConfig", async () => {
 
 		await fs.writeFile(
 			path.join(tmpDir, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 			 import {
 				 WorkerEntrypoint,
 				 WorkflowEntrypoint,
@@ -938,7 +938,7 @@ describe("getConfig", async () => {
 			 class AuthService extends WorkerEntrypoint {}
 			 class AuthWorkflow extends WorkflowEntrypoint {}
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					appName:
 						new AuthService({}, {}) instanceof WorkerEntrypoint &&
 						new AuthWorkflow({}, {}) instanceof WorkflowEntrypoint
@@ -962,7 +962,7 @@ describe("getConfig", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/6373
+	 * @see https://github.com/cinagroup/cinaauth/issues/6373
 	 */
 	it("should resolve path aliases from extended tsconfig", async () => {
 		const authPath = path.join(tmpDir, "src", "auth");
@@ -1002,11 +1002,11 @@ describe("getConfig", async () => {
 		// Create auth.ts using the alias from extended config
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";
 			 import {db} from "@src/db/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -1028,7 +1028,7 @@ describe("getConfig", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/6373
+	 * @see https://github.com/cinagroup/cinaauth/issues/6373
 	 */
 	it("should resolve path aliases from chained extends", async () => {
 		const authPath = path.join(tmpDir, "src", "auth");
@@ -1076,11 +1076,11 @@ describe("getConfig", async () => {
 		// Create auth.ts using the alias from grandparent
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";
 			 import {db} from "@server/db/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -1102,7 +1102,7 @@ describe("getConfig", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8933
+	 * @see https://github.com/cinagroup/cinaauth/issues/8933
 	 */
 	it("should resolve extended tsconfig paths relative to the extended file's directory", async () => {
 		// Simulates SvelteKit structure: root tsconfig.json extends
@@ -1156,10 +1156,10 @@ describe("getConfig", async () => {
 
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import { betterAuth } from "better-auth";
+			`import { CinaAuth } from "cinaauth";
 			 import { db } from "$lib/server/database";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					emailAndPassword: {
 						enabled: true,
 					},
@@ -1181,7 +1181,7 @@ describe("getConfig", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/6373
+	 * @see https://github.com/cinagroup/cinaauth/issues/6373
 	 */
 	it("should let child paths override parent paths from extends", async () => {
 		const authPath = path.join(tmpDir, "server", "auth");
@@ -1228,11 +1228,11 @@ describe("getConfig", async () => {
 		// Create auth.ts
 		await fs.writeFile(
 			path.join(authPath, "auth.ts"),
-			`import {betterAuth} from "better-auth";
-			 import {prismaAdapter} from "better-auth/adapters/prisma";
+			`import {CinaAuth} from "cinaauth";
+			 import {prismaAdapter} from "cinaauth/adapters/prisma";
 			 import {db} from "@server/db/db";
 
-			 export const auth = betterAuth({
+			 export const auth = CinaAuth({
 					database: prismaAdapter(db, {
 							provider: 'sqlite'
 					}),
@@ -1275,7 +1275,7 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 	/**
 	 * SvelteKit extending `.svelte-kit/tsconfig.json`, with both default and
 	 * namespace imports against `$lib`.
-	 * @see https://github.com/better-auth/better-auth/issues/8933
+	 * @see https://github.com/cinagroup/cinaauth/issues/8933
 	 */
 	tmpdirTest(
 		"resolves $lib imports in an extends setup with default and namespace forms",
@@ -1300,11 +1300,11 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 				"my-app/src/lib/server/db.ts": `export const db = "my-app-db";`,
 				"my-app/src/lib/server/db/schema.ts": `export const usersTable = "my-app-users";`,
 				"my-app/src/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { db } from "$lib/server/db";
 					import * as schema from "$lib/server/db/schema";
 					const [version] = Object.values(schema);
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: db + ":" + version,
 						emailAndPassword: { enabled: true },
 					});
@@ -1327,7 +1327,7 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 	/**
 	 * SvelteKit nested in a monorepo subdirectory with no tsconfig at the
 	 * repo root.
-	 * @see https://github.com/better-auth/better-auth/issues/8933#issuecomment-4189080622
+	 * @see https://github.com/cinagroup/cinaauth/issues/8933#issuecomment-4189080622
 	 */
 	tmpdirTest(
 		"resolves $lib imports when SvelteKit lives in a monorepo subdirectory",
@@ -1349,9 +1349,9 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 				}`,
 				"mc-id/website/src/lib/server/email-service.ts": `export const service = "website-email-service";`,
 				"mc-id/website/src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { service } from "$lib/server/email-service";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: service,
 						emailAndPassword: { enabled: true },
 					});
@@ -1374,7 +1374,7 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 	/**
 	 * Alias key with a trailing `*` mapped to a substitution template with a
 	 * mid-path `*`, resolving across multiple sibling packages.
-	 * @see https://github.com/better-auth/better-auth/pull/9020
+	 * @see https://github.com/cinagroup/cinaauth/pull/9020
 	 */
 	tmpdirTest(
 		"resolves mid-path wildcard substitutions across multiple sibling packages",
@@ -1393,11 +1393,11 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 				// Sibling without src/index.ts — must not resolve to a candidate.
 				"libs/web/legacy/README.md": `not a package`,
 				"apps/web/src/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { name as uiKit } from "@web/ui-kit";
 					import { name as dataSdk } from "@web/data-sdk";
 					import { name as authSdk } from "@web/auth-sdk";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: [uiKit, dataSdk, authSdk].join(","),
 						emailAndPassword: { enabled: true },
 					});
@@ -1434,9 +1434,9 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 				}`,
 				"packages/feature/nested/src/index.ts": `export const name = "nested-feature";`,
 				"src/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { name } from "@scope/feature/nested";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: name,
 						emailAndPassword: { enabled: true },
 					});
@@ -1477,9 +1477,9 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 				"primary/db.ts": `export const db = "primary";`,
 				"secondary/db.ts": `export const db = "secondary";`,
 				"src/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { db } from "@db";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: db,
 						emailAndPassword: { enabled: true },
 					});
@@ -1516,9 +1516,9 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 				}`,
 				"fallback/secondary/db.ts": `export const db = "secondary-fallback";`,
 				"src/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { db } from "@db";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: db,
 						emailAndPassword: { enabled: true },
 					});
@@ -1557,10 +1557,10 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 				"packages/secondary/src/index.ts": `export const secondary = "secondary-value";`,
 				"packages/barrel/src/index.ts": `export * from "@pkg/primary";`,
 				"src/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { primary } from "@pkg/barrel";
 					const mod = await import("@pkg/secondary");
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: primary + "/" + mod.secondary,
 						emailAndPassword: { enabled: true },
 					});
@@ -1603,9 +1603,9 @@ describe("tsconfig paths resolution (user-reported scenarios)", () => {
 				}`,
 				[`src/lib${ext}`]: body,
 				"src/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { value } from "@lib";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: value,
 						emailAndPassword: { enabled: true },
 					});
@@ -1650,7 +1650,7 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 	/**
 	 * A config importing the truly-virtual `$app/environment` module (no file on
 	 * disk; synthesized by the Vite plugin at runtime).
-	 * @see https://github.com/better-auth/better-auth/issues/8933#issuecomment-4225087144
+	 * @see https://github.com/cinagroup/cinaauth/issues/8933#issuecomment-4225087144
 	 */
 	tmpdirTest(
 		"resolves $app/environment imports in a SvelteKit project",
@@ -1658,10 +1658,10 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 			await writeTree(tmpdir, {
 				"package.json": sveltekitPackageJson,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { building, dev } from "$app/environment";
 					import { getRequestEvent } from "$app/server";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: building || dev ? "build-or-dev" : "runtime",
 						emailAndPassword: { enabled: true },
 					});
@@ -1692,9 +1692,9 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 			await writeTree(tmpdir, {
 				"package.json": sveltekitPackageJson,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { browser, building, dev, version } from "$app/env";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName:
 							browser === false &&
 							building === false &&
@@ -1730,10 +1730,10 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 			await writeTree(tmpdir, {
 				"package.json": sveltekitPackageJson,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { resolve, asset, match } from "$app/paths";
 					import { read, getRequestEvent } from "$app/server";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: [resolve, asset, match, read, getRequestEvent].every(
 							(value) => typeof value === "function",
 						)
@@ -1767,9 +1767,9 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 			await writeTree(tmpdir, {
 				"package.json": sveltekitPackageJson,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { getStores, page, updated } from "$app/stores";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName:
 							typeof page.subscribe === "function" &&
 							typeof updated.check === "function" &&
@@ -1798,7 +1798,7 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 	 * A Vite `?inline` query import reached through a custom `kit.alias`. The
 	 * alias resolves to a real file, but the `?inline` suffix means there is no
 	 * literal file on disk for jiti to load.
-	 * @see https://github.com/better-auth/better-auth/issues/8933#issuecomment-4225087144
+	 * @see https://github.com/cinagroup/cinaauth/issues/8933#issuecomment-4225087144
 	 */
 	tmpdirTest(
 		"resolves Vite ?inline query imports reached through a custom kit.alias",
@@ -1808,9 +1808,9 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 				"svelte.config.js": `export default { kit: { alias: { $src: "src" } } };`,
 				"src/app.css": `body { color: red; }`,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import styles from "$src/app.css?inline";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: typeof styles,
 						emailAndPassword: { enabled: true },
 					});
@@ -1832,7 +1832,7 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 
 	/**
 	 * A Vite `?raw` query import of a relative asset.
-	 * @see https://github.com/better-auth/better-auth/pull/9107#issuecomment-4226242067
+	 * @see https://github.com/cinagroup/cinaauth/pull/9107#issuecomment-4226242067
 	 */
 	tmpdirTest(
 		"resolves Vite ?raw query imports of a relative asset",
@@ -1841,9 +1841,9 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 				"package.json": sveltekitPackageJson,
 				"src/lib/server/email.html": `<p>hello</p>`,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import template from "./email.html?raw";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: typeof template,
 						emailAndPassword: { enabled: true },
 					});
@@ -1866,7 +1866,7 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 	/**
 	 * A plain asset import with no query (Vite treats known asset extensions as
 	 * URL modules) and a side-effect-only stylesheet import.
-	 * @see https://github.com/better-auth/better-auth/pull/9107#issuecomment-4226242067
+	 * @see https://github.com/cinagroup/cinaauth/pull/9107#issuecomment-4226242067
 	 */
 	tmpdirTest(
 		"resolves plain asset and side-effect stylesheet imports",
@@ -1876,10 +1876,10 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 				"src/logo.svg": `<svg></svg>`,
 				"src/app.css": `body { color: red; }`,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import logoUrl from "../../logo.svg";
 					import "../../app.css";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName: typeof logoUrl,
 						emailAndPassword: { enabled: true },
 					});
@@ -1913,10 +1913,10 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 			await writeTree(tmpdir, {
 				"package.json": sveltekitPackageJson,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import { env as pub } from "$env/dynamic/public";
 					import { env as priv } from "$env/dynamic/private";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName:
 							pub.PUBLIC_BA_ENV_TEST === "pub" &&
 							pub.BA_ENV_TEST_SECRET === undefined &&
@@ -1953,10 +1953,10 @@ describe("SvelteKit virtual modules and Vite asset imports (user-reported scenar
 				"package.json": sveltekitPackageJson,
 				"src/lib/server/worker.ts": `export {};`,
 				"src/lib/server/auth.ts": `
-					import { betterAuth } from "better-auth";
+					import { CinaAuth } from "cinaauth";
 					import MyWorker from "./worker.ts?worker";
 					import initWasm from "./module.wasm?init";
-					export const auth = betterAuth({
+					export const auth = CinaAuth({
 						appName:
 							typeof MyWorker === "function" && typeof initWasm === "function"
 								? "ok"

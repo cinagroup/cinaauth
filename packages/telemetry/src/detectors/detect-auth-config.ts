@@ -1,8 +1,8 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
 import type { TelemetryContext } from "../types";
 
 export async function getTelemetryAuthConfig(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	context?: TelemetryContext | undefined,
 ) {
 	return {

@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { CinaAuthError } from "@cinaauth/core/error";
 import type { JWTPayload } from "jose";
 import { importJWK, SignJWT } from "jose";
 import { symmetricDecrypt } from "../../crypto";
@@ -126,7 +126,7 @@ export async function signJWT(
 				key: ctx.context.secretConfig,
 				data: JSON.parse(key.privateKey),
 			}).catch(() => {
-				throw new BetterAuthError(
+				throw new CinaAuthError(
 					"Failed to decrypt private key. Make sure the secret currently in use is the same as the one used to encrypt the private key. If you are using a different secret, either clean up your JWKS or disable private key encryption.",
 				);
 			})

@@ -1,12 +1,12 @@
-import { apiKey } from "@better-auth/api-key";
-import { betterAuth } from "better-auth";
+﻿import { apiKey } from "@cinaauth/api-key";
+import { CinaAuth } from "cinaauth";
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9757
+ * @see https://github.com/cinagroup/cinaauth/issues/9757
  *
  * Declaration emit must not produce TS4023 for MiddlewareOptions
  * when using the api-key plugin.
  */
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [apiKey()],
 });

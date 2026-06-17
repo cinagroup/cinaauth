@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "better-auth/client";
+import type { CinaAuthClientPlugin } from "cinaauth/client";
 import type { SSOPlugin } from "./index";
 import { PACKAGE_VERSION } from "./version";
 
@@ -27,5 +27,5 @@ export const ssoClient = <CO extends SSOClientOptions>(
 			"/sso/providers": "GET",
 			"/sso/get-provider": "GET",
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

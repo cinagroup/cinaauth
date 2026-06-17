@@ -1,4 +1,4 @@
-import type { GenericEndpointContext } from "@better-auth/core";
+import type { GenericEndpointContext } from "@cinaauth/core";
 
 type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };
 

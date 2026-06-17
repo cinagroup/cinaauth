@@ -1,5 +1,5 @@
-import type { User } from "better-auth";
-import { getTestInstance } from "better-auth/test";
+﻿import type { User } from "cinaauth";
+import { getTestInstance } from "cinaauth/test";
 import type Stripe from "stripe";
 import { assert, describe, expect, vi } from "vitest";
 import { stripe } from "../src";
@@ -2339,7 +2339,7 @@ describe("stripe webhook", () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/9321
+		 * @see https://github.com/cinagroup/cinaauth/issues/9321
 		 */
 		test("should pass stripeSubscription to onSubscriptionUpdate", async ({
 			memory,

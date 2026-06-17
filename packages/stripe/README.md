@@ -1,16 +1,16 @@
-# Better Auth Stripe Plugin
+﻿# CinaAuth Stripe Plugin
 
-Stripe plugin for [Better Auth](https://www.better-auth.com) — integrate Stripe billing with your authentication system.
+Stripe plugin for [CinaAuth](https://www.cinagroup.com) — integrate Stripe billing with your authentication system.
 
 ## Installation
 
 ```bash
-npm install @better-auth/stripe
+npm install @cinaauth/stripe
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/plugins/stripe](https://www.better-auth.com/docs/plugins/stripe).
+For full documentation, visit [cinagroup.com/docs/plugins/stripe](https://www.cinagroup.com/docs/plugins/stripe).
 
 ## License
 

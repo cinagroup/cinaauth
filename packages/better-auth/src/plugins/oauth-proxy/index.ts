@@ -1,13 +1,13 @@
 import type {
-	BetterAuthPlugin,
+	CinaAuthPlugin,
 	GenericEndpointContext,
 	SecretConfig,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import type { OAuth2Tokens } from "@better-auth/core/oauth2";
+} from "@cinaauth/core/api";
+import type { OAuth2Tokens } from "@cinaauth/core/oauth2";
 import { defu } from "defu";
 import * as z from "zod";
 import { originCheck } from "../../api";
@@ -25,8 +25,8 @@ import { getOrigin } from "../../utils/url";
 import { PACKAGE_VERSION } from "../../version";
 import { checkSkipProxy, resolveCurrentURL, stripTrailingSlash } from "./utils";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"oauth-proxy": {
 			creator: typeof oAuthProxy;
 		};
@@ -46,7 +46,7 @@ export interface OAuthProxyOptions {
 	/**
 	 * If a request in a production url it won't be proxied.
 	 *
-	 * default to `BETTER_AUTH_URL`
+	 * default to `CINAAUTH_URL`
 	 */
 	productionURL?: string | undefined;
 	/**
@@ -64,7 +64,7 @@ export interface OAuthProxyOptions {
 	 * servers during the OAuth proxy flow.
 	 *
 	 * When set, this secret is used **instead of** the global
-	 * `BETTER_AUTH_SECRET` for all OAuth proxy encryption operations.
+	 * `CINAAUTH_SECRET` for all OAuth proxy encryption operations.
 	 * This limits the blast radius if the secret is shared across
 	 * environments (production, preview, development): a leaked proxy
 	 * secret cannot be used to forge sessions or decrypt other data
@@ -554,7 +554,7 @@ export const oAuthProxy = <O extends OAuthProxyOptions>(opts?: O) => {
 						// Recover the plaintext OAuth state for the configured strategy,
 						// then re-encrypt it under `getEncryptionKey` (the shared/proxy
 						// secret) so production can read it back; production does not have
-						// this environment's `BETTER_AUTH_SECRET`. Any failure (malformed
+						// this environment's `CINAAUTH_SECRET`. Any failure (malformed
 						// cookie, decrypt, or encrypt) falls back to a non-proxied flow.
 						try {
 							let plaintextState: string | undefined;
@@ -666,5 +666,5 @@ export const oAuthProxy = <O extends OAuthProxyOptions>(opts?: O) => {
 				},
 			],
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

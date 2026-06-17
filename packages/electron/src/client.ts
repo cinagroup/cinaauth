@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { base64 } from "@better-auth/utils/base64";
-import type { BetterAuthClientPlugin, ClientStore } from "better-auth";
-import { isDevelopment, isTest } from "better-auth";
+import type { CinaAuthClientPlugin, ClientStore } from "cinaauth";
+import { isDevelopment, isTest } from "cinaauth";
 import electron from "electron";
 import type {
 	ElectronAuthenticateOptions,
@@ -12,7 +12,7 @@ import { setupMain, withGetWindowFallback } from "./browser";
 import {
 	getCookie,
 	getSetCookie,
-	hasBetterAuthCookies,
+	hasCinaAuthCookies,
 	hasSessionCookieChanged,
 } from "./cookies";
 import type { ExposedBridges } from "./preload";
@@ -63,9 +63,9 @@ const storageAdapter = (storage: Storage, sessionKeys: Set<string>) => {
 
 export const electronClient = <O extends ElectronClientOptions>(options: O) => {
 	const opts = {
-		storagePrefix: "better-auth",
-		cookiePrefix: "better-auth",
-		channelPrefix: "better-auth",
+		storagePrefix: "cinaauth",
+		cookiePrefix: "cinaauth",
+		channelPrefix: "cinaauth",
 		callbackPath: "/auth/callback",
 		...options,
 	};
@@ -139,7 +139,7 @@ export const electronClient = <O extends ElectronClientOptions>(options: O) => {
 						const setCookie = context.response.headers.get("set-cookie");
 
 						if (setCookie) {
-							if (hasBetterAuthCookies(setCookie, opts.cookiePrefix)) {
+							if (hasCinaAuthCookies(setCookie, opts.cookiePrefix)) {
 								const prevCookie = getDecrypted(cookieName);
 								const toSetCookie = getSetCookie(
 									setCookie || "{}",
@@ -262,7 +262,7 @@ export const electronClient = <O extends ElectronClientOptions>(options: O) => {
 				},
 			};
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export { handleDeepLink } from "./browser";

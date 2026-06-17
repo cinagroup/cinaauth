@@ -1,8 +1,8 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import path from "node:path";
-import { kyselyAdapter } from "@better-auth/kysely-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
-import { getMigrations } from "better-auth/db/migration";
+import { kyselyAdapter } from "@cinaauth/kysely-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
+import { getMigrations } from "cinaauth/db/migration";
 import Database from "better-sqlite3";
 import { Kysely, SqliteDialect } from "kysely";
 import {
@@ -30,7 +30,7 @@ const { execute } = await testAdapter({
 		});
 	},
 	prefixTests: "sqlite",
-	async runMigrations(betterAuthOptions) {
+	async runMigrations(CinaAuthOptions) {
 		database.close();
 		try {
 			await fs.unlink(dbPath);
@@ -39,7 +39,7 @@ const { execute } = await testAdapter({
 		}
 		database = new Database(dbPath);
 		kyselyDB = new Kysely({ dialect: new SqliteDialect({ database }) });
-		const opts = Object.assign(betterAuthOptions, { database });
+		const opts = Object.assign(CinaAuthOptions, { database });
 		const { runMigrations } = await getMigrations(opts);
 		await runMigrations();
 	},

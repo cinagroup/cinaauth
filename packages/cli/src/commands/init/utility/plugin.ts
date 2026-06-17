@@ -1,4 +1,4 @@
-import type { Awaitable } from "@better-auth/core";
+import type { Awaitable } from "@cinaauth/core";
 import type { Plugin, PluginConfig } from "../configs/temp-plugins.config";
 import { tempPluginsConfig } from "../configs/temp-plugins.config";
 import type { GetArgumentsFn, GetArgumentsOptions } from "../generate-auth";

@@ -846,7 +846,7 @@ describe("oidc", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/4594
+	 * @see https://github.com/cinagroup/cinaauth/issues/4594
 	 */
 	describe("cookie persistence bug (issue #4594)", () => {
 		// Reproduce issue #4594: oidc_login_prompt cookie persists after OIDC flow
@@ -1452,7 +1452,7 @@ describe("oidc token response format", async () => {
 	 * `findVerificationValue` + `deleteVerificationByIdentifier` pair makes
 	 * this test fail with two successes.
 	 *
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-7w99-5wm4-3g79
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-7w99-5wm4-3g79
 	 */
 	it("rejects concurrent redemption of the same authorization code", async () => {
 		const { server, customFetchImpl, application, code } =
@@ -1724,7 +1724,7 @@ describe("oidc-jwt", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-pw9m-5jxm-xr6h
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-pw9m-5jxm-xr6h
  */
 describe("oidc-provider refresh_token grant client authentication", () => {
 	const REFRESH_TOKEN = "pw9m-test-refresh-token";
@@ -1985,7 +1985,7 @@ describe("oidc-provider refresh_token grant client authentication", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-9h47-pqcx-hjr4
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-9h47-pqcx-hjr4
  */
 describe("oidc-provider discovery metadata and PKCE gate (security)", () => {
 	const buildInstance = async (

@@ -19,7 +19,7 @@ export const generateAuthClientConfigCode = async ({
 			? ([
 					{
 						imports: [createImport({ name: "createAuthClient" })],
-						path: "better-auth/client",
+						path: "cinaauth/client",
 						isNamedImport: false,
 					},
 				] satisfies ImportGroup[])

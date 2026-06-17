@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { mergeSchema } from "better-auth/db";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { mergeSchema } from "cinaauth/db";
 import { PASSKEY_ERROR_CODES } from "./error-codes";
 import {
 	deletePasskey,
@@ -14,8 +14,8 @@ import { schema } from "./schema";
 import type { Passkey, PasskeyOptions } from "./types";
 import { PACKAGE_VERSION } from "./version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		passkey: {
 			creator: typeof passkey;
 		};
@@ -35,7 +35,7 @@ export const passkey = (options?: PasskeyOptions | undefined) => {
 		origin: null,
 		...options,
 		advanced: {
-			webAuthnChallengeCookie: "better-auth-passkey",
+			webAuthnChallengeCookie: "cinaauth-passkey",
 			...options?.advanced,
 		},
 	};
@@ -61,7 +61,7 @@ export const passkey = (options?: PasskeyOptions | undefined) => {
 		schema: mergeSchema(schema, options?.schema),
 		$ERROR_CODES: PASSKEY_ERROR_CODES,
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export type { Passkey, PasskeyOptions };

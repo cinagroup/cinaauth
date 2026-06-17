@@ -1,6 +1,6 @@
-import type { BetterAuthPlugin, User } from "better-auth";
-import { APIError } from "better-auth";
-import type { Organization } from "better-auth/plugins/organization";
+﻿import type { CinaAuthPlugin, User } from "cinaauth";
+import { APIError } from "cinaauth";
+import type { Organization } from "cinaauth/plugins/organization";
 import { defu } from "defu";
 import type Stripe from "stripe";
 import { STRIPE_ERROR_CODES } from "./error-codes";
@@ -24,8 +24,8 @@ import type {
 import { escapeStripeSearchValue, getPlans, isActiveOrTrialing } from "./utils";
 import { PACKAGE_VERSION } from "./version";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		stripe: {
 			creator: typeof stripe;
 		};
@@ -465,7 +465,7 @@ export const stripe = <O extends StripeOptions>(options: O) => {
 		schema: getSchema(options),
 		options: options as NoInfer<O>,
 		$ERROR_CODES: STRIPE_ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export type StripePlugin<O extends StripeOptions> = ReturnType<

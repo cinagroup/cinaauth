@@ -8,7 +8,7 @@
   "include": ["./test", "./src", "./package.json"],
   "references": [
     {
-      "path": "../better-auth/tsconfig.json"
+      "path": "../cinaauth/tsconfig.json"
     }
   ]
 }

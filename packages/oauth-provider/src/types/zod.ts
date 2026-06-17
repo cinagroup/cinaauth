@@ -42,7 +42,7 @@ export const verificationValueSchema = z
 	.passthrough();
 
 /**
- * Re-exported from `@better-auth/core` so every OAuth provider plugin shares one
- * redirect-URI scheme policy. See `@better-auth/core/utils/redirect-uri`.
+ * Re-exported from `@cinaauth/core` so every OAuth provider plugin shares one
+ * redirect-URI scheme policy. See `@cinaauth/core/utils/redirect-uri`.
  */
-export { SafeUrlSchema } from "@better-auth/core/utils/redirect-uri";
+export { SafeUrlSchema } from "@cinaauth/core/utils/redirect-uri";

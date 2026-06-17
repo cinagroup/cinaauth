@@ -73,7 +73,7 @@ describe("email-otp", async () => {
 			{
 				onSuccess: (ctx) => {
 					const header = ctx.response.headers.get("set-cookie");
-					expect(header).toContain("better-auth.session_token");
+					expect(header).toContain("cinaauth.session_token");
 				},
 			},
 		);
@@ -96,7 +96,7 @@ describe("email-otp", async () => {
 			{
 				onSuccess: (ctx) => {
 					const header = ctx.response.headers.get("set-cookie");
-					expect(header).toContain("better-auth.session_token");
+					expect(header).toContain("cinaauth.session_token");
 				},
 			},
 		);
@@ -261,7 +261,7 @@ describe("email-otp", async () => {
 			{
 				onSuccess: (ctx) => {
 					const header = ctx.response.headers.get("set-cookie");
-					expect(header).toContain("better-auth.session_token");
+					expect(header).toContain("cinaauth.session_token");
 				},
 			},
 		);
@@ -2301,7 +2301,7 @@ describe("email-otp-resendStrategy", async () => {
 });
 
 describe("email-otp verify-email cookie cache isolation", async () => {
-	const secret = "better-auth-secret-1234567890-cookie-cache";
+	const secret = "cinaauth-secret-1234567890-cookie-cache";
 	let otp = "";
 	const { client, auth } = await getTestInstance(
 		{
@@ -2330,7 +2330,7 @@ describe("email-otp verify-email cookie cache isolation", async () => {
 	 * Verifying an OTP for one email must not stamp `emailVerified: true` onto the
 	 * cookie cache of a *different* user that happens to be the current session.
 	 *
-	 * @see https://github.com/better-auth/better-auth/issues/9962
+	 * @see https://github.com/cinagroup/cinaauth/issues/9962
 	 */
 	it("should not mark the current session's user as verified when a different user's email is verified", async () => {
 		// User B is signed into their own (unverified) account.
@@ -2352,11 +2352,11 @@ describe("email-otp verify-email cookie cache isolation", async () => {
 					const cookies = parseSetCookieHeader(
 						ctx.response.headers.get("set-cookie") || "",
 					);
-					const token = cookies.get("better-auth.session_token")?.value;
-					const data = cookies.get("better-auth.session_data")?.value;
+					const token = cookies.get("cinaauth.session_token")?.value;
+					const data = cookies.get("cinaauth.session_data")?.value;
 					currentUserHeaders.set(
 						"cookie",
-						`better-auth.session_token=${token}; better-auth.session_data=${data}`,
+						`cinaauth.session_token=${token}; cinaauth.session_data=${data}`,
 					);
 				},
 			},
@@ -2387,7 +2387,7 @@ describe("email-otp verify-email cookie cache isolation", async () => {
 					const cookies = parseSetCookieHeader(
 						ctx.response.headers.get("set-cookie") || "",
 					);
-					refreshedSessionData = cookies.get("better-auth.session_data")?.value;
+					refreshedSessionData = cookies.get("cinaauth.session_data")?.value;
 				},
 			},
 		);
@@ -2398,10 +2398,10 @@ describe("email-otp verify-email cookie cache isolation", async () => {
 		if (refreshedSessionData) {
 			const token = currentUserHeaders
 				.get("cookie")
-				?.match(/better-auth\.session_token=([^;]+)/)?.[1];
+				?.match(/cinaauth\.session_token=([^;]+)/)?.[1];
 			currentUserHeaders.set(
 				"cookie",
-				`better-auth.session_token=${token}; better-auth.session_data=${refreshedSessionData}`,
+				`cinaauth.session_token=${token}; cinaauth.session_data=${refreshedSessionData}`,
 			);
 		}
 

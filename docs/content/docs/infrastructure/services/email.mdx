@@ -1,6 +1,6 @@
----
+﻿---
 title: Email Service
-description: Better Auth Infrastructure provides a managed transactional email service with pre-built templates for common authentication flows. Send verification emails, password resets, invitations, and more without managing email infrastructure.
+description: CinaAuth Infrastructure provides a managed transactional email service with pre-built templates for common authentication flows. Send verification emails, password resets, invitations, and more without managing email infrastructure.
 ---
 
 ## Overview
@@ -15,10 +15,10 @@ The email service offers:
 
 ## Installation
 
-The email service is included in the `@better-auth/infra` package:
+The email service is included in the `@cinaauth/infra` package:
 
 ```ts
-import { sendEmail, createEmailSender } from "@better-auth/infra";
+import { sendEmail, createEmailSender } from "@cinaauth/infra";
 ```
 
 ## Quick Start
@@ -26,7 +26,7 @@ import { sendEmail, createEmailSender } from "@better-auth/infra";
 ### Send a Single Email
 
 ```ts
-import { sendEmail } from "@better-auth/infra";
+import { sendEmail } from "@cinaauth/infra";
 
 await sendEmail({
   template: "verify-email",
@@ -43,11 +43,11 @@ await sendEmail({
 ### Create a Reusable Sender
 
 ```ts
-import { createEmailSender } from "@better-auth/infra";
+import { createEmailSender } from "@cinaauth/infra";
 
 const emailSender = createEmailSender({
-  apiKey: process.env.BETTER_AUTH_API_KEY,
-  apiUrl: process.env.BETTER_AUTH_API_URL,
+  apiKey: process.env.CINAAUTH_API_KEY,
+  apiUrl: process.env.CINAAUTH_API_URL,
 });
 
 // Send multiple emails
@@ -312,7 +312,7 @@ await sendEmail({
 
 ```ts
 interface EmailConfig {
-  apiKey?: string;   // Your Better Auth Infrastructure API key
+  apiKey?: string;   // Your CinaAuth Infrastructure API key
   apiUrl?: string;   // Custom API URL (optional)
 }
 ```
@@ -322,8 +322,8 @@ interface EmailConfig {
 The email service automatically reads from environment variables:
 
 ```dotenv
-BETTER_AUTH_API_KEY=your_api_key_here
-BETTER_AUTH_API_URL=https://api.betterauth.com  # Optional
+CINAAUTH_API_KEY=your_api_key_here
+CINAAUTH_API_URL=https://api.cinagroup.com  # Optional
 ```
 
 ## Response Format
@@ -365,16 +365,16 @@ if (result.success) {
 
 Transactional email is available on Pro plans and above.
 
-## Integration with Better Auth
+## Integration with CinaAuth
 
-The email service integrates seamlessly with Better Auth's authentication flows. Here's a complete example:
+The email service integrates seamlessly with CinaAuth's authentication flows. Here's a complete example:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
-import { sendEmail } from "@better-auth/infra";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
+import { sendEmail } from "@cinaauth/infra";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   emailAndPassword: {
     enabled: true,
     async sendResetPassword({ user, url }) {

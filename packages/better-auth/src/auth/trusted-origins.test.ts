@@ -1,11 +1,11 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
 import { getTrustedOrigins } from "../context/helpers";
 import { getTestInstance } from "../test-utils";
-import type { BetterAuthOptions } from "../types";
+import type { CinaAuthOptions } from "../types";
 
-async function createAuthTestInstance(overrides?: Partial<BetterAuthOptions>) {
+async function createAuthTestInstance(overrides?: Partial<CinaAuthOptions>) {
 	const testServerPlugin = {
 		id: "test-plugin",
 		endpoints: {
@@ -328,7 +328,7 @@ describe("trusted origins", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9634
+	 * @see https://github.com/cinagroup/cinaauth/issues/9634
 	 */
 	describe("dynamic baseURL protocol option", () => {
 		it("should add http:// origins when protocol is 'http'", async () => {

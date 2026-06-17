@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { expoAuthorizationProxy } from "./routes";
 import { PACKAGE_VERSION } from "./version";
 
@@ -11,8 +11,8 @@ export interface ExpoOptions {
 	disableOriginOverride?: boolean | undefined;
 }
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		expo: {
 			creator: typeof expo;
 		};
@@ -109,5 +109,5 @@ export const expo = (options?: ExpoOptions | undefined) => {
 			expoAuthorizationProxy,
 		},
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

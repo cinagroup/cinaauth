@@ -1,13 +1,13 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { DBFieldAttribute, DBFieldType } from "@better-auth/core/db";
-import { getAuthTables } from "@better-auth/core/db";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import type { DBFieldAttribute, DBFieldType } from "@cinaauth/core/db";
+import { getAuthTables } from "@cinaauth/core/db";
 import {
 	initGetFieldName,
 	initGetModelName,
-} from "@better-auth/core/db/adapter";
-import { createLogger } from "@better-auth/core/env";
-import type { KyselyDatabaseType } from "@better-auth/kysely-adapter";
-import { createKyselyAdapter } from "@better-auth/kysely-adapter";
+} from "@cinaauth/core/db/adapter";
+import { createLogger } from "@cinaauth/core/env";
+import type { KyselyDatabaseType } from "@cinaauth/kysely-adapter";
+import { createKyselyAdapter } from "@cinaauth/kysely-adapter";
 import type {
 	AlterTableColumnAlteringBuilder,
 	ColumnDataType,
@@ -122,8 +122,8 @@ async function getPostgresSchema(db: Kysely<unknown>): Promise<string> {
 	return "public";
 }
 
-export async function getMigrations(config: BetterAuthOptions) {
-	const betterAuthSchema = getSchema(config);
+export async function getMigrations(config: CinaAuthOptions) {
+	const CinaAuthSchema = getSchema(config);
 	const logger = createLogger(config.logger);
 
 	let { kysely: db, databaseType: dbType } = await createKyselyAdapter(config);
@@ -223,7 +223,7 @@ export async function getMigrations(config: BetterAuthOptions) {
 		order: number;
 	}[] = [];
 
-	for (const [key, value] of Object.entries(betterAuthSchema)) {
+	for (const [key, value] of Object.entries(CinaAuthSchema)) {
 		const table = tableMetadata.find((t) => t.name === key);
 		if (!table) {
 			const tIndex = toBeCreated.findIndex((t) => t.table === key);
@@ -395,7 +395,7 @@ export async function getMigrations(config: BetterAuthOptions) {
 		}
 		if (!(type in typeMap)) {
 			throw new Error(
-				`Unsupported field type '${String(type)}' for field '${fieldName}'. Allowed types are: string, number, boolean, date, string[], number[]. If you need to store structured data, store it as a JSON string (type: "string") or split it into primitive fields. See https://better-auth.com/docs/advanced/schema#additional-fields`,
+				`Unsupported field type '${String(type)}' for field '${fieldName}'. Allowed types are: string, number, boolean, date, string[], number[]. If you need to store structured data, store it as a JSON string (type: "string") or split it into primitive fields. See https://cinagroup.com/docs/advanced/schema#additional-fields`,
 			);
 		}
 		return typeMap[type][provider];
@@ -410,7 +410,7 @@ export async function getMigrations(config: BetterAuthOptions) {
 	});
 
 	// Helper function to safely resolve model and field names, falling back to
-	// user-supplied strings for external tables not in the BetterAuth schema
+	// user-supplied strings for external tables not in the CinaAuth schema
 	function getReferencePath(model: string, field: string): string {
 		try {
 			const modelName = getModelName(model);

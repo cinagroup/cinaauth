@@ -1,6 +1,6 @@
-import { memoryAdapter } from "@better-auth/memory-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
-import { getAuthTables } from "better-auth/db";
+﻿import { memoryAdapter } from "@cinaauth/memory-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
+import { getAuthTables } from "cinaauth/db";
 import {
 	authFlowTestSuite,
 	caseInsensitiveTestSuite,

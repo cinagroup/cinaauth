@@ -1,5 +1,5 @@
-import type { BetterAuthOptions } from "../../types";
-import type { BetterAuthDBSchema, DBFieldAttribute } from "../type";
+import type { CinaAuthOptions } from "../../types";
+import type { CinaAuthDBSchema, DBFieldAttribute } from "../type";
 
 export type DBAdapterDebugLogOption =
 	| boolean
@@ -50,7 +50,7 @@ export type DBAdapterSchemaCreation = {
 };
 
 export interface DBAdapterFactoryConfig<
-	Options extends BetterAuthOptions = BetterAuthOptions,
+	Options extends CinaAuthOptions = CinaAuthOptions,
 > {
 	/**
 	 * Use plural table names.
@@ -150,7 +150,7 @@ export interface DBAdapterFactoryConfig<
 	 *
 	 * This is useful for databases that expect a different key name for a given situation.
 	 *
-	 * For example, MongoDB uses `_id` while in Better-Auth we use `id`.
+	 * For example, MongoDB uses `_id` while in CinaAuth we use `id`.
 	 *
 	 *
 	 * @example
@@ -171,7 +171,7 @@ export interface DBAdapterFactoryConfig<
 	 *
 	 * This is useful for databases that expect a different key name for a given situation.
 	 *
-	 * For example, MongoDB uses `_id` while in Better-Auth we use `id`.
+	 * For example, MongoDB uses `_id` while in CinaAuth we use `id`.
 	 *
 	 * @example
 	 * Each key represents the old key to replace.
@@ -221,11 +221,11 @@ export interface DBAdapterFactoryConfig<
 				 */
 				model: string;
 				/**
-				 * The schema of the user's Better-Auth instance.
+				 * The schema of the user's CinaAuth instance.
 				 */
-				schema: BetterAuthDBSchema;
+				schema: CinaAuthDBSchema;
 				/**
-				 * The options of the user's Better-Auth instance.
+				 * The options of the user's CinaAuth instance.
 				 */
 				options: Options;
 		  }) => any)
@@ -255,11 +255,11 @@ export interface DBAdapterFactoryConfig<
 				 */
 				model: string;
 				/**
-				 * The schema of the user's Better-Auth instance.
+				 * The schema of the user's CinaAuth instance.
 				 */
-				schema: BetterAuthDBSchema;
+				schema: CinaAuthDBSchema;
 				/**
-				 * The options of the user's Better-Auth instance.
+				 * The options of the user's CinaAuth instance.
 				 */
 				options: Options;
 		  }) => any)
@@ -273,7 +273,7 @@ export interface DBAdapterFactoryConfig<
 	 *
 	 * Notes:
 	 * - If the user enabled `useNumberId` or `generateId` set to `serial`, then this option will be ignored. Unless this adapter config has `supportsNumericIds` set to `false`.
-	 * - If `generateId` is `false` in the user's Better-Auth config, then this option will be ignored.
+	 * - If `generateId` is `false` in the user's CinaAuth config, then this option will be ignored.
 	 * - If `generateId` is a function, then it will override this option.
 	 *
 	 * @example
@@ -393,10 +393,10 @@ export type JoinConfig = {
 };
 
 export type DBTransactionAdapter<
-	Options extends BetterAuthOptions = BetterAuthOptions,
+	Options extends CinaAuthOptions = CinaAuthOptions,
 > = Omit<DBAdapter<Options>, "transaction">;
 
-export type DBAdapter<Options extends BetterAuthOptions = BetterAuthOptions> = {
+export type DBAdapter<Options extends CinaAuthOptions = CinaAuthOptions> = {
 	id: string;
 	create: <T extends Record<string, any>, R = T>(data: {
 		model: string;
@@ -628,9 +628,9 @@ export interface CustomAdapter {
 				 */
 				file?: string;
 				/**
-				 * The tables from the user's Better-Auth instance schema.
+				 * The tables from the user's CinaAuth instance schema.
 				 */
-				tables: BetterAuthDBSchema;
+				tables: CinaAuthDBSchema;
 		  }) => Promise<DBAdapterSchemaCreation>)
 		| undefined;
 	/**
@@ -640,9 +640,9 @@ export interface CustomAdapter {
 }
 
 export interface DBAdapterInstance<
-	Options extends BetterAuthOptions = BetterAuthOptions,
+	Options extends CinaAuthOptions = CinaAuthOptions,
 > {
-	(options: BetterAuthOptions): DBAdapter<Options>;
+	(options: CinaAuthOptions): DBAdapter<Options>;
 }
 
 export * from "./factory";

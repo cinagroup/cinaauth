@@ -3,7 +3,7 @@
  * name, for labeling passkeys in management UIs.
  *
  * An AAGUID identifies an authenticator *model* (not a device or a user) and is
- * present only in the registration response. Better Auth stores it on every
+ * present only in the registration response. CinaAuth stores it on every
  * passkey row and returns it from `listPasskeys`, so a display label can be
  * resolved wherever passkeys are rendered.
  *

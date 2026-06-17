@@ -525,7 +525,7 @@ describe("team", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/9237
+ * @see https://github.com/cinagroup/cinaauth/issues/9237
  */
 describe("setActiveTeam org scoping", async () => {
 	const { auth, db, signInWithTestUser } = await getTestInstance({

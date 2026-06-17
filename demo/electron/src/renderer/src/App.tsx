@@ -1,4 +1,4 @@
-import { BackgroundRippleEffect } from "./components/background-ripple-effect";
+﻿import { BackgroundRippleEffect } from "./components/background-ripple-effect";
 import { Profile } from "./components/profile";
 import { RequestAuth } from "./components/request-auth";
 import { useUser } from "./components/user-provider";
@@ -15,17 +15,17 @@ function App(): React.JSX.Element {
 
 			<div className="z-10 flex flex-col items-center gap-6">
 				<h3 className="text-3xl sm:text-4xl text-black dark:text-white text-center">
-					BETTER-AUTH.
+					CINAAUTH.
 				</h3>
 
 				<p className="text-center wrap-break-word text-sm md:text-base">
 					Official demo to showcase{" "}
 					<a
-						href="https://better-auth.com"
+						href="https://cinagroup.com"
 						target="_blank"
 						className="italic underline"
 					>
-						better-auth.
+						cinaauth.
 					</a>{" "}
 					with Electron.
 				</p>

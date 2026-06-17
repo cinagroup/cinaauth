@@ -4,16 +4,16 @@ import type {
 	DBAdapter,
 	GenericEndpointContext,
 	User,
-} from "better-auth";
-import { HIDE_METADATA } from "better-auth";
+} from "cinaauth";
+import { HIDE_METADATA } from "cinaauth";
 import {
 	APIError,
 	createAuthEndpoint,
 	sessionMiddleware,
-} from "better-auth/api";
-import { generateRandomString } from "better-auth/crypto";
-import type { Member } from "better-auth/plugins";
-import { getOrgAdapter } from "better-auth/plugins";
+} from "cinaauth/api";
+import { generateRandomString } from "cinaauth/crypto";
+import type { Member } from "cinaauth/plugins";
+import { getOrgAdapter } from "cinaauth/plugins";
 import * as z from "zod";
 import { getAccountId, getUserFullName, getUserPrimaryEmail } from "./mappings";
 import type { AuthMiddleware } from "./middlewares";
@@ -1140,7 +1140,7 @@ export const deleteSCIMUser = (authMiddleware: AuthMiddleware) =>
 				});
 			}
 
-			// Organization-scoped SCIM must not delete the *global* Better Auth
+			// Organization-scoped SCIM must not delete the *global* CinaAuth
 			// user — that would remove the person's access to every other
 			// organization and identity, well outside this token's boundary.
 			// Deprovision instead: drop their membership in this organization and

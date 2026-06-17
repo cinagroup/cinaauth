@@ -1,11 +1,11 @@
----
+﻿---
 title: state_not_found
 description: The state parameter was not found in the request.
 ---
 
 ## What is it?
 
-During the OAuth callback, Better Auth expects a `state` value to be present on the incoming request.
+During the OAuth callback, CinaAuth expects a `state` value to be present on the incoming request.
 This `state` is originally generated when the OAuth flow starts and is sent to the provider. When the
 provider redirects back to your app, it should include the same `state` value in the callback request.
 If the `state` is missing entirely in the callback request (query or body),
@@ -27,10 +27,10 @@ that initiated the flow.
 
 ## How to resolve
 
-### Start the flow via Better Auth APIs
+### Start the flow via CinaAuth APIs
 
-Always initiate OAuth through Better Auth so we can generate and send `state` correctly. Avoid manually hitting
-callback endpoints or constructing authorize URLs unless you fully mirror Better Auth's parameters.
+Always initiate OAuth through CinaAuth so we can generate and send `state` correctly. Avoid manually hitting
+callback endpoints or constructing authorize URLs unless you fully mirror CinaAuth's parameters.
 
 ### Verify the callback URL and method
 

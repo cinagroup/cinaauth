@@ -1,4 +1,4 @@
-name: Backport
+﻿name: Backport
 
 on:
   pull_request_target:
@@ -15,7 +15,7 @@ jobs:
   backport:
     runs-on: ubuntu-latest
     if: >
-      github.repository_owner == 'better-auth' && (
+      github.repository_owner == 'cinaauth' && (
         (
           github.event_name == 'pull_request_target' &&
           github.event.pull_request.merged

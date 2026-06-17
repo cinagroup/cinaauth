@@ -1,4 +1,4 @@
-import type { SecretConfig } from "@better-auth/core";
+import type { SecretConfig } from "@cinaauth/core";
 import { getWebcryptoSubtle } from "@better-auth/utils";
 import { createHash } from "@better-auth/utils/hash";
 import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
@@ -93,7 +93,7 @@ export const symmetricDecrypt = async ({
 		return rawDecrypt(key.legacySecret, data);
 	}
 	throw new Error(
-		"Cannot decrypt legacy bare-hex payload: no legacy secret available. Set BETTER_AUTH_SECRET for backwards compatibility.",
+		"Cannot decrypt legacy bare-hex payload: no legacy secret available. Set CINAAUTH_SECRET for backwards compatibility.",
 	);
 };
 

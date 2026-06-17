@@ -1,4 +1,4 @@
-import { getMigrations } from "better-auth/db/migration";
+import { getMigrations } from "cinaauth/db/migration";
 import type { SchemaGenerator } from "./types";
 
 export const generateKyselySchema: SchemaGenerator = async ({
@@ -11,7 +11,7 @@ export const generateKyselySchema: SchemaGenerator = async ({
 		code: migrations.trim() === ";" ? "" : migrations,
 		fileName:
 			file ||
-			`./better-auth_migrations/${new Date()
+			`./cinaauth_migrations/${new Date()
 				.toISOString()
 				.replace(/:/g, "-")}.sql`,
 	};

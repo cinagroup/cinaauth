@@ -1,16 +1,16 @@
 //#region Re-exports necessaries from core module
-export type { StandardSchemaV1 } from "@better-auth/core";
-export * from "@better-auth/core";
-export { getCurrentAdapter } from "@better-auth/core/context";
-export * from "@better-auth/core/db";
-export * from "@better-auth/core/env";
-export * from "@better-auth/core/error";
-export * from "@better-auth/core/oauth2";
-export * from "@better-auth/core/utils/error-codes";
-export * from "@better-auth/core/utils/id";
-export * from "@better-auth/core/utils/json";
+export type { StandardSchemaV1 } from "@cinaauth/core";
+export * from "@cinaauth/core";
+export { getCurrentAdapter } from "@cinaauth/core/context";
+export * from "@cinaauth/core/db";
+export * from "@cinaauth/core/env";
+export * from "@cinaauth/core/error";
+export * from "@cinaauth/core/oauth2";
+export * from "@cinaauth/core/utils/error-codes";
+export * from "@cinaauth/core/utils/id";
+export * from "@cinaauth/core/utils/json";
 //#endregion
-export { betterAuth } from "./auth/full";
+export { CinaAuth } from "./auth/full";
 // @ts-expect-error
 export * from "./types";
 export * from "./utils";
@@ -22,7 +22,7 @@ export {
 	createTelemetry,
 	getTelemetryAuthConfig,
 	type TelemetryEvent,
-} from "@better-auth/telemetry";
+} from "@cinaauth/telemetry";
 // re-export third party types
 // @ts-expect-error
 export type * from "better-call";

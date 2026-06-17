@@ -1,4 +1,4 @@
-import { defineErrorCodes } from "@better-auth/core/utils/error-codes";
+import { defineErrorCodes } from "@cinaauth/core/utils/error-codes";
 
 export const STRIPE_ERROR_CODES = defineErrorCodes({
 	UNAUTHORIZED: "Unauthorized access",

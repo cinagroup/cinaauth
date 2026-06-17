@@ -1,6 +1,6 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { prismaAdapter } from "@better-auth/prisma-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import { prismaAdapter } from "@cinaauth/prisma-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
 import {
 	authFlowTestSuite,
 	caseInsensitiveTestSuite,
@@ -28,7 +28,7 @@ const { execute } = await testAdapter({
 			debugLogs: { isRunningAdapterTests: true },
 		});
 	},
-	runMigrations: async (options: BetterAuthOptions) => {
+	runMigrations: async (options: CinaAuthOptions) => {
 		const db = await getPrismaClient(dialect);
 		const migrationCount = incrementMigrationCount();
 		await generateAuthConfigFile(options);

@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import { getIp } from "../../utils/get-request-ip";
 import { middlewareResponse } from "../../utils/middleware-response";
 import { PACKAGE_VERSION } from "../../version";
@@ -6,8 +6,8 @@ import { defaultEndpoints, Providers, siteVerifyMap } from "./constants";
 import { EXTERNAL_ERROR_CODES, INTERNAL_ERROR_CODES } from "./error-codes";
 import type { CaptchaOptions } from "./types";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		captcha: {
 			creator: typeof captcha;
 		};
@@ -132,4 +132,4 @@ export const captcha = (options: CaptchaOptions) =>
 			}
 		},
 		options,
-	}) satisfies BetterAuthPlugin;
+	}) satisfies CinaAuthPlugin;

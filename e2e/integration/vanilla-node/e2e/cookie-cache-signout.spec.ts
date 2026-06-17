@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 import { runClient, setup } from "./utils";
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/8273
+ * @see https://github.com/cinagroup/cinaauth/issues/8273
  */
 const { ref, start, clean } = setup({
 	session: {
@@ -37,10 +37,10 @@ test.describe("sign-out with cookieCache", () => {
 		// Verify both cookies are set
 		let cookies = await page.context().cookies();
 		expect(
-			cookies.find((c) => c.name === "better-auth.session_token"),
+			cookies.find((c) => c.name === "cinaauth.session_token"),
 		).toBeDefined();
 		expect(
-			cookies.find((c) => c.name === "better-auth.session_data"),
+			cookies.find((c) => c.name === "cinaauth.session_data"),
 		).toBeDefined();
 
 		// Verify session is valid
@@ -53,10 +53,10 @@ test.describe("sign-out with cookieCache", () => {
 		// Verify both cookies are cleared by the browser
 		cookies = await page.context().cookies();
 		expect(
-			cookies.find((c) => c.name === "better-auth.session_token"),
+			cookies.find((c) => c.name === "cinaauth.session_token"),
 		).toBeUndefined();
 		expect(
-			cookies.find((c) => c.name === "better-auth.session_data"),
+			cookies.find((c) => c.name === "cinaauth.session_data"),
 		).toBeUndefined();
 
 		// Verify session is null

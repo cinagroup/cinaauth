@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { BetterAuthOptions } from "../../types";
-import type { BetterAuthDBSchema } from "../type";
+import type { CinaAuthOptions } from "../../types";
+import type { CinaAuthDBSchema } from "../type";
 import { initGetIdField } from "./get-id-field";
 
-const minimalSchema: BetterAuthDBSchema = {
+const minimalSchema: CinaAuthDBSchema = {
 	user: {
 		modelName: "user",
 		fields: {
@@ -17,7 +17,7 @@ const uuidRegex =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function getField(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	initExtra?: Partial<Parameters<typeof initGetIdField>[0]>,
 	fieldExtra?: { customModelName?: string; forceAllowId?: boolean },
 ) {

@@ -1,16 +1,16 @@
-# Better Auth MongoDB Adapter
+﻿# CinaAuth MongoDB Adapter
 
-MongoDB adapter for [Better Auth](https://www.better-auth.com).
+MongoDB adapter for [CinaAuth](https://www.cinagroup.com).
 
 ## Installation
 
 ```bash
-npm install @better-auth/mongo-adapter
+npm install @cinaauth/mongo-adapter
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/adapters/mongodb](https://www.better-auth.com/docs/adapters/mongodb).
+For full documentation, visit [cinagroup.com/docs/adapters/mongodb](https://www.cinagroup.com/docs/adapters/mongodb).
 
 ## License
 

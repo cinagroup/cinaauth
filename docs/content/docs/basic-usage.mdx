@@ -1,9 +1,9 @@
----
+﻿---
 title: Basic Usage
-description: Getting started with Better Auth
+description: Getting started with CinaAuth
 ---
 
-Better Auth provides built-in authentication support for:
+CinaAuth provides built-in authentication support for:
 
 * **Email and password**
 * **Social provider (Google, GitHub, Apple, and more)**
@@ -15,9 +15,9 @@ But also can easily be extended using plugins, such as: [username](/docs/plugins
 To enable email and password authentication:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     emailAndPassword: {    // [!code highlight]
         enabled: true // [!code highlight]
     } // [!code highlight]
@@ -54,9 +54,9 @@ const { data, error } = await authClient.signUp.email({
 By default, the users are automatically signed in after they successfully sign up. To disable this behavior you can set `autoSignIn` to `false`.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     emailAndPassword: {
     	enabled: true,
     	autoSignIn: false //defaults to true // [!code highlight]
@@ -101,7 +101,7 @@ const { data, error } = await authClient.signIn.email({
 To authenticate a user on the server, you can use the `auth.api` methods.
 
 ```ts title="server.ts"
-import { auth } from "./auth"; // path to your Better Auth server instance
+import { auth } from "./auth"; // path to your CinaAuth server instance
 
 const response = await auth.api.signInEmail({
     body: {
@@ -118,12 +118,12 @@ const response = await auth.api.signInEmail({
 
 ## Social Sign-On
 
-Better Auth supports multiple social providers, including Google, GitHub, Apple, Discord, and more. To use a social provider, you need to configure the ones you need in the `socialProviders` option on your `auth` object.
+CinaAuth supports multiple social providers, including Google, GitHub, Apple, Discord, and more. To use a social provider, you need to configure the ones you need in the `socialProviders` option on your `auth` object.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     socialProviders: { // [!code highlight]
         github: { // [!code highlight]
             clientId: process.env.GITHUB_CLIENT_ID!, // [!code highlight]
@@ -191,13 +191,13 @@ await authClient.signOut({
 
 ## Session
 
-Once a user is signed in, you'll want to access the user session. Better Auth allows you to easily access the session data from both the server and client sides.
+Once a user is signed in, you'll want to access the user session. CinaAuth allows you to easily access the session data from both the server and client sides.
 
 ### Client Side
 
 #### Use Session
 
-Better Auth provides a `useSession` hook to easily access session data on the client side. This hook is implemented using nanostore and has support for each supported framework and vanilla client, ensuring that any changes to the session (such as signing out) are immediately reflected in your UI.
+CinaAuth provides a `useSession` hook to easily access session data on the client side. This hook is implemented using nanostore and has support for each supported framework and vanilla client, ensuring that any changes to the session (such as signing out) are immediately reflected in your UI.
 
 <Tabs items={["React", "Vue","Svelte", "Solid", "Vanilla"]} defaultValue="react">
   <Tab value="React">
@@ -299,7 +299,7 @@ The server provides a `session` object that you can use to access the session da
 <Tabs items={["Next.js", "Nuxt", "Svelte", "Astro", "Hono", "TanStack"]}>
   <Tab value="Next.js">
     ```ts title="server.ts"
-    import { auth } from "./auth"; // path to your Better Auth server instance
+    import { auth } from "./auth"; // path to your CinaAuth server instance
     import { headers } from "next/headers";
 
     const session = await auth.api.getSession({
@@ -310,7 +310,7 @@ The server provides a `session` object that you can use to access the session da
 
   <Tab value="react-router">
     ```ts title="route.ts"
-    import { auth } from "lib/auth"; // path to your Better Auth server instance
+    import { auth } from "lib/auth"; // path to your CinaAuth server instance
 
     export async function loader({ request }: LoaderFunctionArgs) {
         const session = await auth.api.getSession({
@@ -400,7 +400,7 @@ The server provides a `session` object that you can use to access the session da
 
 ## Using Plugins
 
-One of the unique features of Better Auth is a plugins ecosystem. It allows you to add complex auth related functionality with small lines of code.
+One of the unique features of CinaAuth is a plugins ecosystem. It allows you to add complex auth related functionality with small lines of code.
 
 Below is an example of how to add two factor authentication using two factor plugin.
 
@@ -411,10 +411,10 @@ Below is an example of how to add two factor authentication using two factor plu
     To add a plugin, you need to import the plugin and pass it to the `plugins` option of the auth instance. For example, to add two factor authentication, you can use the following code:
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { twoFactor } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { twoFactor } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         //...rest of the options
         plugins: [ // [!code highlight]
             twoFactor() // [!code highlight]
@@ -453,8 +453,8 @@ Below is an example of how to add two factor authentication using two factor plu
     Once we're done with the server, we need to add the plugin to the client. To do this, you need to import the plugin and pass it to the `plugins` option of the auth client. For example, to add two factor authentication, you can use the following code:
 
     ```ts title="auth-client.ts"  
-    import { createAuthClient } from "better-auth/client";
-    import { twoFactorClient } from "better-auth/client/plugins"; // [!code highlight]
+    import { createAuthClient } from "cinaauth/client";
+    import { twoFactorClient } from "cinaauth/client/plugins"; // [!code highlight]
 
     const authClient = createAuthClient({
         plugins: [ // [!code highlight]

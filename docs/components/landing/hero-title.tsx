@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -66,7 +66,7 @@ export function HeroTitle() {
 						Get Started
 					</Link>
 					<Link
-						href="https://dash.better-auth.com/sign-in"
+						href="https://dash.cinagroup.com/sign-in"
 						className="relative inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 text-neutral-600 dark:text-neutral-300 text-xs sm:text-sm font-medium transition-colors group"
 					>
 						{/* Diagonal lines background */}

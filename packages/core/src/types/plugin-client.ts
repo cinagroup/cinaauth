@@ -5,7 +5,7 @@ import type {
 } from "@better-fetch/fetch";
 import type { Atom, WritableAtom } from "nanostores";
 import type { LiteralString } from "./helper";
-import type { BetterAuthOptions } from "./init-options";
+import type { CinaAuthOptions } from "./init-options";
 
 type InferableServerPlugin = {
 	id?: LiteralString | undefined;
@@ -81,17 +81,17 @@ export interface RevalidateOptions {
 	refetchWhenOffline?: boolean | undefined;
 }
 
-export interface BetterAuthClientOptions {
+export interface CinaAuthClientOptions {
 	fetchOptions?: ClientFetchOption | undefined;
-	plugins?: BetterAuthClientPlugin[] | undefined;
+	plugins?: CinaAuthClientPlugin[] | undefined;
 	baseURL?: string | undefined;
 	basePath?: string | undefined;
 	disableDefaultFetchPlugins?: boolean | undefined;
-	$InferAuth?: BetterAuthOptions | undefined;
+	$InferAuth?: CinaAuthOptions | undefined;
 	sessionOptions?: RevalidateOptions | undefined;
 }
 
-export interface BetterAuthClientPlugin {
+export interface CinaAuthClientPlugin {
 	id: LiteralString;
 	version?: string | undefined;
 	/**
@@ -106,9 +106,9 @@ export interface BetterAuthClientPlugin {
 		$fetch: BetterFetch,
 		$store: ClientStore,
 		/**
-		 * better-auth client options
+		 * cinaauth client options
 		 */
-		options: BetterAuthClientOptions | undefined,
+		options: CinaAuthClientOptions | undefined,
 	) => Record<string, any>;
 	/**
 	 * State atoms that'll be resolved by each framework

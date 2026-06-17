@@ -1,8 +1,8 @@
-import { expo } from "@better-auth/expo";
-import { betterAuth } from "better-auth";
+﻿import { expo } from "@cinaauth/expo";
+import { CinaAuth } from "cinaauth";
 import { Pool } from "pg";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	database: new Pool({
 		connectionString: process.env.DATABASE_URL,
 	}),
@@ -24,5 +24,5 @@ export const auth = betterAuth({
 	// `exp://` development scheme automatically when NODE_ENV is development;
 	// trusting it in production could leak the session cookie to a deep link
 	// the app does not control.
-	trustedOrigins: ["better-auth://"],
+	trustedOrigins: ["cinaauth://"],
 });

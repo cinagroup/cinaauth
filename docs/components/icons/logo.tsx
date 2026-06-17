@@ -1,4 +1,4 @@
-export const BetterAuthMark = ({ className }: { className?: string }) => {
+﻿export const CinaAuthMark = ({ className }: { className?: string }) => {
 	return (
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
@@ -13,7 +13,7 @@ export const BetterAuthMark = ({ className }: { className?: string }) => {
 	);
 };
 
-export const BetterAuthWordmark = ({ className }: { className?: string }) => {
+export const CinaAuthWordmark = ({ className }: { className?: string }) => {
 	return (
 		<svg
 			xmlns="http://www.w3.org/2000/svg"

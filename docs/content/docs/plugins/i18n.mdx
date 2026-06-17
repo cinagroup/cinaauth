@@ -1,11 +1,11 @@
----
+﻿---
 title: i18n
 description: Internationalization plugin for translating error messages
 ---
 
-The i18n plugin allows you to translate error messages returned by Better Auth based on the user's locale. It supports multiple locale detection strategies including HTTP headers, cookies, session data, and custom callbacks.
+The i18n plugin allows you to translate error messages returned by CinaAuth based on the user's locale. It supports multiple locale detection strategies including HTTP headers, cookies, session data, and custom callbacks.
 
-Better Auth already provides English error messages by default, so you only need to provide translations for other languages.
+CinaAuth already provides English error messages by default, so you only need to provide translations for other languages.
 
 ## Installation
 
@@ -14,7 +14,7 @@ Better Auth already provides English error messages by default, so you only need
     ### Install the plugin
 
     ```package-install
-    @better-auth/i18n
+    @cinaauth/i18n
     ```
   </Step>
 
@@ -22,10 +22,10 @@ Better Auth already provides English error messages by default, so you only need
     ### Add the plugin to your **auth** config
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { i18n } from "@better-auth/i18n"
+    import { CinaAuth } from "cinaauth"
+    import { i18n } from "@cinaauth/i18n"
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
             i18n({
                 translations: {
@@ -108,7 +108,7 @@ i18n({
 If you store the user's locale preference in their profile, you can detect it from the session:
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         additionalFields: {
             locale: { type: "string", required: false },
@@ -166,7 +166,7 @@ Common error codes include:
 
 **Required:** Yes
 
-A dictionary of translations keyed by locale code. Each locale contains a mapping of error codes to translated messages. Since Better Auth already provides English messages, you typically only need to provide translations for other languages.
+A dictionary of translations keyed by locale code. Each locale contains a mapping of error codes to translated messages. Since CinaAuth already provides English messages, you typically only need to provide translations for other languages.
 
 ```ts
 translations: {

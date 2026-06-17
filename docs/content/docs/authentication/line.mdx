@@ -1,4 +1,4 @@
----
+﻿---
 title: LINE
 description: LINE provider setup and usage.
 ---
@@ -21,9 +21,9 @@ description: LINE provider setup and usage.
     Add your LINE credentials to `socialProviders.line` in your auth configuration.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       socialProviders: {
         line: {
           clientId: process.env.LINE_CLIENT_ID as string,
@@ -45,7 +45,7 @@ description: LINE provider setup and usage.
 Use the client `signIn.social` with `provider: "line"`.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
+import { createAuthClient } from "cinaauth/client";
 const authClient = createAuthClient();
 
 async function signInWithLINE() {
@@ -82,10 +82,10 @@ LINE requires separate OAuth channels for different countries (Japan, Thailand, 
 To support multiple countries/channels, use the [Generic OAuth plugin](/docs/plugins/generic-oauth) with the `line()` helper function. This allows you to configure multiple LINE providers with different `providerId`s:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { genericOAuth, line } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { genericOAuth, line } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     genericOAuth({
       config: [
@@ -116,8 +116,8 @@ export const auth = betterAuth({
 When signing in, use the appropriate `providerId` (e.g., `"line-jp"`, `"line-th"`, `"line-tw"`) to identify which channel to use:
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
-import { genericOAuthClient } from "better-auth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
+import { genericOAuthClient } from "cinaauth/client/plugins";
 
 const authClient = createAuthClient({
   plugins: [genericOAuthClient()],

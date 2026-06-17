@@ -1,6 +1,6 @@
 export type FocusListener = (focused: boolean) => void;
 
-export const kFocusManager = Symbol.for("better-auth:focus-manager");
+export const kFocusManager = Symbol.for("cinaauth:focus-manager");
 
 export interface FocusManager {
 	setFocused(focused: boolean): void;

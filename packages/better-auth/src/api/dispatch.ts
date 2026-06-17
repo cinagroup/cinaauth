@@ -1,15 +1,15 @@
-import type { AuthContext, HookEndpointContext } from "@better-auth/core";
-import type { AuthMiddleware } from "@better-auth/core/api";
-import { runWithEndpointContext } from "@better-auth/core/context";
-import { shouldPublishLog } from "@better-auth/core/env";
-import { APIError } from "@better-auth/core/error";
+import type { AuthContext, HookEndpointContext } from "@cinaauth/core";
+import type { AuthMiddleware } from "@cinaauth/core/api";
+import { runWithEndpointContext } from "@cinaauth/core/context";
+import { shouldPublishLog } from "@cinaauth/core/env";
+import { APIError } from "@cinaauth/core/error";
 import {
 	ATTR_CONTEXT,
 	ATTR_HOOK_TYPE,
 	ATTR_HTTP_ROUTE,
 	ATTR_OPERATION_ID,
 	withSpan,
-} from "@better-auth/core/instrumentation";
+} from "@cinaauth/core/instrumentation";
 import type { Endpoint, EndpointContext, InputContext } from "better-call";
 import { kAPIErrorHeaderSymbol, toResponse } from "better-call";
 import { createDefu } from "defu";

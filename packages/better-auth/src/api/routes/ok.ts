@@ -1,4 +1,4 @@
-import { createAuthEndpoint } from "@better-auth/core/api";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import { HIDE_METADATA } from "../../utils/hide-metadata";
 
 export const ok = createAuthEndpoint(

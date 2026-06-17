@@ -1,4 +1,4 @@
-import "./globals.css";
+﻿import "./globals.css";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
@@ -9,11 +9,11 @@ import { createMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = createMetadata({
 	title: {
-		template: "%s | Better Auth",
-		default: "Better Auth",
+		template: "%s | CinaAuth",
+		default: "CinaAuth",
 	},
-	description: "The most comprehensive authentication framework for TypeScript",
-	metadataBase: new URL("https://demo.better-auth.com"),
+	description: "CinaAuth - 企业级认证授权解决方案",
+	metadataBase: new URL("https://demo-auth.cinagroup.com"),
 });
 
 export default function RootLayout({

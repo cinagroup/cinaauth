@@ -1,4 +1,4 @@
-import { BetterAuthError } from "@better-auth/core/error";
+import { CinaAuthError } from "@cinaauth/core/error";
 import type {
 	ExactRoleStatements,
 	Role,
@@ -53,7 +53,7 @@ function normalizeActionRequest(
 	}
 
 	if (!requestedActions || typeof requestedActions !== "object") {
-		throw new BetterAuthError("Invalid access control request");
+		throw new CinaAuthError("Invalid access control request");
 	}
 
 	const { actions, connector } = requestedActions as {

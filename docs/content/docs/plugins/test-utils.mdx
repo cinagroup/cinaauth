@@ -1,9 +1,9 @@
----
+﻿---
 title: Test Utils
 description: Testing utilities for integration and E2E testing
 ---
 
-The Test Utils plugin provides helpers for writing integration and E2E tests against Better Auth. It includes factories, database helpers, authentication helpers, and OTP capture functionality.
+The Test Utils plugin provides helpers for writing integration and E2E tests against CinaAuth. It includes factories, database helpers, authentication helpers, and OTP capture functionality.
 
 <Callout type="warn">
   This plugin is designed for test environments only. It does not add public routes, but it does expose privileged helpers on `ctx.test`. Prefer keeping it out of production auth configs.
@@ -16,10 +16,10 @@ The Test Utils plugin provides helpers for writing integration and E2E tests aga
     ### Add the plugin to a test-only auth config
 
     ```ts title="auth.test.ts"
-    import { betterAuth } from "better-auth"
-    import { testUtils } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { testUtils } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         // ... other config options
         plugins: [
             testUtils() // [!code highlight]
@@ -50,13 +50,13 @@ Because of that, the recommended setup is to keep `testUtils` out of your produc
 
 ### TypeScript caveat
 
-Better Auth infers plugin helpers best from statically defined plugin arrays. If you conditionally spread `testUtils()` into `plugins`, TypeScript can stop inferring `ctx.test` correctly.
+CinaAuth infers plugin helpers best from statically defined plugin arrays. If you conditionally spread `testUtils()` into `plugins`, TypeScript can stop inferring `ctx.test` correctly.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { testUtils } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { testUtils } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         ...(process.env.NODE_ENV === "test"
             ? [testUtils()]
@@ -206,7 +206,7 @@ for (const cookie of cookies) {
 
 Each cookie object contains:
 
-* `name` - Cookie name (e.g., "better-auth.session\_token")
+* `name` - Cookie name (e.g., "cinaauth.session\_token")
 * `value` - Cookie value
 * `domain` - Cookie domain
 * `path` - Cookie path (defaults to "/")
@@ -223,10 +223,10 @@ When `captureOTP: true` is set, the plugin passively captures OTPs as they are c
 </Callout>
 
 ```ts title="auth.test.ts"
-import { betterAuth } from "better-auth"
-import { testUtils, emailOTP } from "better-auth/plugins"
+import { CinaAuth } from "cinaauth"
+import { testUtils, emailOTP } from "cinaauth/plugins"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         testUtils({ captureOTP: true }), // [!code highlight]
         emailOTP({
@@ -266,7 +266,7 @@ const otp = test.getOTP("user@example.com")
 ```ts
 import { describe, it, expect, beforeAll } from "vitest"
 import { auth } from "./auth"
-import type { TestHelpers } from "better-auth/plugins"
+import type { TestHelpers } from "cinaauth/plugins"
 
 describe("protected route", () => {
     let test: TestHelpers
@@ -334,7 +334,7 @@ test("dashboard shows user name", async ({ context, page }) => {
 ```ts
 import { describe, it, expect, beforeAll, beforeEach } from "vitest"
 import { auth } from "./auth"
-import type { TestHelpers } from "better-auth/plugins"
+import type { TestHelpers } from "cinaauth/plugins"
 
 describe("OTP verification", () => {
     let test: TestHelpers

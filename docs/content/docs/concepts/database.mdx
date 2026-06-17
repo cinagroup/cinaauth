@@ -1,21 +1,21 @@
----
+﻿---
 title: Database
 description: Learn about database adapters, migrations, secondary storage with Redis, core schema (user, session, account, verification), custom tables, extending schemas, ID generation, database hooks, and plugin schemas.
 ---
 
 ## Adapters
 
-Better Auth connects to a database to store data. The database will be used to store data such as users, sessions, and more. Plugins can also define their own database tables to store data.
+CinaAuth connects to a database to store data. The database will be used to store data such as users, sessions, and more. Plugins can also define their own database tables to store data.
 
-You can pass a database connection to Better Auth by passing a supported database instance in the database options. You can learn more about supported database adapters in the [Other relational databases](/docs/adapters/other-relational-databases) documentation.
+You can pass a database connection to CinaAuth by passing a supported database instance in the database options. You can learn more about supported database adapters in the [Other relational databases](/docs/adapters/other-relational-databases) documentation.
 
 <Callout type="info">
-  Better Auth also works without any database. For more details, see [Stateless Session Management](/docs/concepts/session-management#stateless-session-management).
+  CinaAuth also works without any database. For more details, see [Stateless Session Management](/docs/concepts/session-management#stateless-session-management).
 </Callout>
 
 ## CLI
 
-Better Auth comes with a CLI tool to manage database migrations and generate schema.
+CinaAuth comes with a CLI tool to manage database migrations and generate schema.
 
 ### Running Migrations
 
@@ -31,7 +31,7 @@ npx auth@latest migrate
 
 ### Generating Schema
 
-Better Auth also provides a `generate` command to generate the schema required by Better Auth. The `generate` command creates the schema required by Better Auth. If you're using a database adapter like Prisma or Drizzle, this command will generate the right schema for your ORM. If you're using the built-in Kysely adapter, it will generate an SQL file you can run directly on your database.
+CinaAuth also provides a `generate` command to generate the schema required by CinaAuth. The `generate` command creates the schema required by CinaAuth. If you're using a database adapter like Prisma or Drizzle, this command will generate the right schema for your ORM. If you're using the built-in Kysely adapter, it will generate an SQL file you can run directly on your database.
 
 ```package-install
 npx auth@latest generate
@@ -41,16 +41,16 @@ See the [CLI](/docs/concepts/cli) documentation for more information on the CLI.
 
 <Callout>
   If you prefer adding tables manually, you can do that as well. The core schema
-  required by Better Auth is described below and you can find additional schema
+  required by CinaAuth is described below and you can find additional schema
   required by plugins in the plugin documentation.
 </Callout>
 
 ### Programmatic Migrations
 
-In environments where the CLI isn't available (e.g. Cloudflare Workers, serverless functions), you can run migrations programmatically using `getMigrations` from `better-auth/db/migration`.
+In environments where the CLI isn't available (e.g. Cloudflare Workers, serverless functions), you can run migrations programmatically using `getMigrations` from `cinaauth/db/migration`.
 
 ```typescript
-import { getMigrations } from "better-auth/db/migration";
+import { getMigrations } from "cinaauth/db/migration";
 import { auth } from "./auth";
 
 const { toBeCreated, toBeAdded, runMigrations } = await getMigrations(auth.options);
@@ -68,9 +68,9 @@ await runMigrations();
 
     ```typescript title="auth.ts"
     import { env } from "cloudflare:workers";
-    import { betterAuth } from "better-auth";
+    import { CinaAuth } from "cinaauth";
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       database: env.DB,
       // ... rest of config
     });
@@ -79,7 +79,7 @@ await runMigrations();
     ```typescript title="src/index.ts"
     import { Hono } from "hono";
     import { auth } from "./auth";
-    import { getMigrations } from "better-auth/db/migration";
+    import { getMigrations } from "cinaauth/db/migration";
 
     const app = new Hono();
 
@@ -124,7 +124,7 @@ await runMigrations();
 
 ## Secondary Storage
 
-Secondary storage in Better Auth allows you to use key-value stores for managing session data, verification records, rate limiting counters, and other short-lived auth data. This can be useful when you want to offload the storage of intensive records to a high performance storage or even RAM.
+Secondary storage in CinaAuth allows you to use key-value stores for managing session data, verification records, rate limiting counters, and other short-lived auth data. This can be useful when you want to offload the storage of intensive records to a high performance storage or even RAM.
 
 ### Implementation
 
@@ -138,12 +138,12 @@ interface SecondaryStorage {
 }
 ```
 
-Then, provide your implementation to the `betterAuth` function:
+Then, provide your implementation to the `CinaAuth` function:
 
 ```typescript title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-betterAuth({
+CinaAuth({
   // ... other options
   secondaryStorage: {
     // Your implementation here
@@ -153,31 +153,31 @@ betterAuth({
 
 ### Redis Storage
 
-Better Auth provides an official Redis storage package that uses [ioredis](https://github.com/redis/ioredis):
+CinaAuth provides an official Redis storage package that uses [ioredis](https://github.com/redis/ioredis):
 
 ```bash
-npm install @better-auth/redis-storage ioredis
+npm install @cinaauth/redis-storage ioredis
 # or
-pnpm add @better-auth/redis-storage ioredis
+pnpm add @cinaauth/redis-storage ioredis
 ```
 
 **Usage:**
 
 ```typescript
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { Redis } from "ioredis";
-import { redisStorage } from "@better-auth/redis-storage";
+import { redisStorage } from "@cinaauth/redis-storage";
 
 const redis = new Redis({
 	host: "localhost",
 	port: 6379,
 });
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	// ... other options
 	secondaryStorage: redisStorage({
 		client: redis,
-		keyPrefix: "better-auth:", // optional, defaults to "better-auth:"
+		keyPrefix: "cinaauth:", // optional, defaults to "cinaauth:"
 	}),
 });
 ```
@@ -190,12 +190,12 @@ If you prefer to implement your own Redis secondary storage, here's a basic exam
 
 ```typescript title="auth.ts"
 import { createClient } from "redis";
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
 const redis = createClient();
 await redis.connect();
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	// ... other options
 	secondaryStorage: {
 		get: async (key) => {
@@ -212,7 +212,7 @@ export const auth = betterAuth({
 });
 ```
 
-This implementation allows Better Auth to use Redis for storing session data and rate limiting counters. You can also add prefixes to the keys names.
+This implementation allows CinaAuth to use Redis for storing session data and rate limiting counters. You can also add prefixes to the keys names.
 
 **Example: Upstash Redis Implementation**
 
@@ -239,7 +239,7 @@ After that, we can create a secondary storage implementation:
 ```typescript
 // src/lib/auth/adapters/redis-secondary-storage.ts
 
-import { SecondaryStorage } from "better-auth";
+import { SecondaryStorage } from "cinaauth";
 import { redis } from "~/lib/redis";
 
 export const redisSecondaryStorage: SecondaryStorage = {
@@ -300,13 +300,13 @@ export const redisSecondaryStorage: SecondaryStorage = {
 };
 ```
 
-Finally, we can pass the implementation to the `betterAuth` function.
+Finally, we can pass the implementation to the `CinaAuth` function.
 
 ```typescript
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { redisSecondaryStorage } from "~/lib/auth/adapters/redis-secondary-storage";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   // ... other options
   secondaryStorage: redisSecondaryStorage,
 });
@@ -314,7 +314,7 @@ export const auth = betterAuth({
 
 ## Core Schema
 
-Better Auth requires the following tables to be present in the database. The types are in `typescript` format. You can use corresponding types in your database.
+CinaAuth requires the following tables to be present in the database. The types are in `typescript` format. You can use corresponding types in your database.
 
 ### User
 
@@ -546,14 +546,14 @@ export const verificationTableFields = [
 
 ## Custom Tables
 
-Better Auth allows you to customize the table names and column names for the core schema. You can also extend the core schema by adding additional fields to the user and session tables.
+CinaAuth allows you to customize the table names and column names for the core schema. You can also extend the core schema by adding additional fields to the user and session tables.
 
 ### Custom Table Names
 
 You can customize the table names and column names for the core schema by using the `modelName` and `fields` properties in your auth config:
 
 ```ts title="auth.ts"
-export const auth = betterAuth({
+export const auth = CinaAuth({
   user: {
     modelName: "users",
     fields: {
@@ -578,10 +578,10 @@ export const auth = betterAuth({
 To customize table names and column name for plugins, you can use the `schema` property in the plugin config:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { twoFactor } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { twoFactor } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     twoFactor({
       schema: {
@@ -599,7 +599,7 @@ export const auth = betterAuth({
 
 ### Extending Core Schema
 
-Better Auth provides a type-safe way to extend the `user` and `session` schemas. You can add custom fields to your auth config, and the CLI will automatically update the database schema. These additional fields will be properly inferred in functions like `useSession`, `signUp.email`, and other endpoints that work with user or session objects.
+CinaAuth provides a type-safe way to extend the `user` and `session` schemas. You can add custom fields to your auth config, and the CLI will automatically update the database schema. These additional fields will be properly inferred in functions like `useSession`, `signUp.email`, and other endpoints that work with user or session objects.
 
 To add custom fields, use the `additionalFields` property in the `user` or `session` object of your auth config. The `additionalFields` object uses field names as keys, with each value being a `FieldAttributes` object containing:
 
@@ -611,9 +611,9 @@ To add custom fields, use the `additionalFields` property in the `user` or `sess
 Here's an example of how to extend the user schema with additional fields:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   user: {
     additionalFields: {
       role: {
@@ -662,9 +662,9 @@ If you're using social / OAuth providers, you may want to provide `mapProfileToU
 **Example: Mapping Profile to User For `firstName` and `lastName`**
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   socialProviders: {
     github: {
       clientId: "YOUR_GITHUB_CLIENT_ID",
@@ -692,7 +692,7 @@ export const auth = betterAuth({
 
 ### ID Generation
 
-Better Auth by default will generate unique IDs for users, sessions, and other entities.
+CinaAuth by default will generate unique IDs for users, sessions, and other entities.
 You can customize ID generation behavior using the `advanced.database.generateId` option.
 
 #### Option 1: Let Database Generate IDs
@@ -700,10 +700,10 @@ You can customize ID generation behavior using the `advanced.database.generateId
 Setting `generateId` to `false` allows your database handle all ID generation: (outside of `generateId` being `serial` and some cases of `generateId` being `uuid`)
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { db } from "./db";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: db,
   advanced: {
     database: {
@@ -718,10 +718,10 @@ export const auth = betterAuth({
 Use a function to generate IDs. You can return `false` or `undefined` from the function to let the database generate the ID for specific models:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { db } from "./db";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: db,
   advanced: {
     database: {
@@ -747,10 +747,10 @@ export const auth = betterAuth({
 Generate the same type of ID for all tables:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { db } from "./db";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: db,
   advanced: {
     database: {
@@ -763,17 +763,17 @@ export const auth = betterAuth({
 ### Numeric IDs
 
 If you prefer auto-incrementing numeric IDs, you can set the `advanced.database.generateId` option to `"serial"`.
-Doing this will disable Better-Auth from generating IDs for any table, and will assume your
+Doing this will disable CinaAuth from generating IDs for any table, and will assume your
 database will generate the numeric ID automatically.
 
-When enabled, the Better-Auth CLI will generate or migrate the schema with the `id` field as a numeric type for your database
+When enabled, the CinaAuth CLI will generate or migrate the schema with the `id` field as a numeric type for your database
 with auto-incrementing attributes associated with it.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { db } from "./db";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: db,
   advanced: {
     database: {
@@ -784,20 +784,20 @@ export const auth = betterAuth({
 ```
 
 <Callout type="info">
-  Better-Auth will continue to infer the type of the `id` field as a `string` for the database, but will
+  CinaAuth will continue to infer the type of the `id` field as a `string` for the database, but will
   automatically convert it to a numeric type when fetching or inserting data from the database.
 
-  It's likely when grabbing `id` values returned from Better-Auth that you'll receive a string version of a number,
-  this is normal. It's also expected that all id values passed to Better-Auth (eg via an endpoint body) is expected to be a string.
+  It's likely when grabbing `id` values returned from CinaAuth that you'll receive a string version of a number,
+  this is normal. It's also expected that all id values passed to CinaAuth (eg via an endpoint body) is expected to be a string.
 </Callout>
 
 ### UUIDs
 
 If you prefer UUIDs for the `id` field, you can set the `advanced.database.generateId` option to `"uuid"`.
-By default, Better-Auth will generate UUIDs for the `id` field for all tables, except adapters that use `PostgreSQL` where we allow the
+By default, CinaAuth will generate UUIDs for the `id` field for all tables, except adapters that use `PostgreSQL` where we allow the
 database to generate the UUID automatically.
 
-By enabling this option, the Better-Auth CLI will generate or migrate the schema with the `id` field as a UUID type for your database.
+By enabling this option, the CinaAuth CLI will generate or migrate the schema with the `id` field as a UUID type for your database.
 If the `uuid` type is not supported, we will generate a normal `string` type for the `id` field.
 
 ### Mixed ID Types
@@ -805,10 +805,10 @@ If the `uuid` type is not supported, we will generate a normal `string` type for
 If you need different ID types across tables (e.g., integer IDs for users, UUID strings for sessions/accounts/verification), use a `generateId` callback function.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { db } from "./db";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   database: db,
   user: {
     modelName: "users", // PostgreSQL: id serial primary key
@@ -842,7 +842,7 @@ This configuration allows you to:
 
 ### Database Hooks
 
-Database hooks allow you to define custom logic that can be executed during the lifecycle of core database operations in Better Auth. You can create hooks for the following models: **user**, **session**, and **account**.
+Database hooks allow you to define custom logic that can be executed during the lifecycle of core database operations in CinaAuth. You can create hooks for the following models: **user**, **session**, and **account**.
 
 <Callout type="warn">
   Additional fields are supported, however full type inference for these fields isn't yet supported.
@@ -864,9 +864,9 @@ There are two types of hooks you can define:
 **Example Usage**
 
 ```typescript title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   databaseHooks: {
     user: {
       create: {
@@ -874,7 +874,7 @@ export const auth = betterAuth({
           // Modify the user object before it is created
           return {
             data: {
-              // Ensure to return Better-Auth named fields, not the original field names in your database.
+              // Ensure to return CinaAuth named fields, not the original field names in your database.
               ...user,
               firstName: user.name.split(" ")[0],
               lastName: user.name.split(" ")[1],
@@ -919,13 +919,13 @@ export const auth = betterAuth({
 
 #### Throwing Errors
 
-If you want to stop the database hook from proceeding, you can throw errors using the `APIError` class imported from `better-auth/api`.
+If you want to stop the database hook from proceeding, you can throw errors using the `APIError` class imported from `cinaauth/api`.
 
 ```typescript title="auth.ts"
-import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { CinaAuth } from "cinaauth";
+import { APIError } from "cinaauth/api";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   databaseHooks: {
     user: {
       create: {
@@ -952,9 +952,9 @@ export const auth = betterAuth({
 The context object (`ctx`), passed as the second argument to the hook, contains useful information. For `update` hooks, this includes the current `session`, which you can use to access the logged-in user's details.
 
 ```typescript title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   databaseHooks: {
     user: {
       update: {
@@ -993,8 +993,8 @@ Both methods ensure your database schema stays up to date with your plugins' req
 
 ## Experimental Joins
 
-Since Better-Auth version `1.4` we've introduced experimental database joins support.
-This allows Better-Auth to perform multiple database queries in a single request, reducing the number of database roundtrips.
+Since CinaAuth version `1.4` we've introduced experimental database joins support.
+This allows CinaAuth to perform multiple database queries in a single request, reducing the number of database roundtrips.
 Over 50 endpoints support joins, and we're constantly adding more.
 
 Under the hood, our adapter system supports joins natively, meaning even if you don't enable experimental joins,
@@ -1003,14 +1003,14 @@ it will still fallback to making multiple database queries and combining the res
 To enable joins, update your auth config with the following:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   experimental: { joins: true }
 });
 ```
 
-The Better-Auth `1.4` CLI will generate DrizzleORM and PrismaORM relationships for you so if you do not have those already
+The CinaAuth `1.4` CLI will generate DrizzleORM and PrismaORM relationships for you so if you do not have those already
 be sure to update your schema by running our migrate or generate CLI commands to be up-to-date with the latest required schema.
 
 It's very important to read the documentation regarding experimental joins for your given adapter:

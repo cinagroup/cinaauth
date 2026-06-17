@@ -1,5 +1,5 @@
-import type { Session, User } from "@better-auth/core/db";
-import { setCookieToHeader } from "better-auth/cookies";
+﻿import type { Session, User } from "@cinaauth/core/db";
+import { setCookieToHeader } from "cinaauth/cookies";
 import { expect } from "vitest";
 import { createTestSuite } from "../create-test-suite";
 
@@ -9,7 +9,7 @@ import { createTestSuite } from "../create-test-suite";
 export const authFlowTestSuite = createTestSuite(
 	"auth-flow",
 	{
-		defaultBetterAuthOptions: {
+		defaultCinaAuthOptions: {
 			emailAndPassword: {
 				enabled: true,
 				password: {
@@ -25,9 +25,9 @@ export const authFlowTestSuite = createTestSuite(
 		{
 			generate,
 			getAuth,
-			modifyBetterAuthOptions,
+			modifyCinaAuthOptions,
 			tryCatch,
-			getBetterAuthOptions,
+			getCinaAuthOptions,
 		},
 		debug?: { showDB?: () => Promise<void> } | undefined,
 	) => ({
@@ -75,11 +75,11 @@ export const authFlowTestSuite = createTestSuite(
 			expect(result.user.id).toBe(signUpResult.user.id);
 		},
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/10054
+		 * @see https://github.com/cinagroup/cinaauth/issues/10054
 		 */
 		"should reset password with a single-use token": async () => {
 			let resetToken = "";
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{
 					emailAndPassword: {
 						enabled: true,
@@ -211,7 +211,7 @@ export const authFlowTestSuite = createTestSuite(
 				}
 			},
 		"should sign up with additional fields": async () => {
-			await modifyBetterAuthOptions(
+			await modifyCinaAuthOptions(
 				{ user: { additionalFields: { dateField: { type: "date" } } } },
 				true,
 			);

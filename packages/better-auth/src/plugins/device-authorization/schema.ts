@@ -1,4 +1,4 @@
-import type { BetterAuthPluginDBSchema } from "@better-auth/core/db";
+import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
 import * as z from "zod";
 
 export const schema = {
@@ -42,7 +42,7 @@ export const schema = {
 			},
 		},
 	},
-} satisfies BetterAuthPluginDBSchema;
+} satisfies CinaAuthPluginDBSchema;
 
 const deviceCode = z.object({
 	id: z.string(),

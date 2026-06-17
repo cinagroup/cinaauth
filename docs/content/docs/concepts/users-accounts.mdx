@@ -1,9 +1,9 @@
----
+﻿---
 title: User & Accounts
 description: Learn how to manage users and accounts, including updating user info, changing emails and passwords, deleting users with verification, token encryption, and account linking and unlinking.
 ---
 
-Beyond authenticating users, Better Auth also provides a set of methods to manage users. This includes, updating user information, changing passwords, and more.
+Beyond authenticating users, CinaAuth also provides a set of methods to manage users. This includes, updating user information, changing passwords, and more.
 
 The user table stores the authentication data of the user [Click here to view the schema](/docs/concepts/database#user).
 
@@ -29,10 +29,10 @@ await authClient.updateUser({
 To allow users to change their email, first enable the `changeEmail` feature, which is disabled by default. Set `changeEmail.enabled` to `true`:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { sendEmail } from './email'; // your email sending function
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         changeEmail: {
             enabled: true,
@@ -63,10 +63,10 @@ For added security, you can require users to confirm the change via their **curr
 the verification email is sent to the new address. To do this, provide the `sendChangeEmailConfirmation` function.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 import { sendEmail } from './email'; // your email sending function
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         changeEmail: {
             enabled: true,
@@ -88,9 +88,9 @@ export const auth = betterAuth({
 If you want to allow users to update their email immediately without verification (only if their current email is NOT verified), you can enable `updateEmailWithoutVerification`.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         changeEmail: {
             enabled: true,
@@ -176,12 +176,12 @@ await auth.api.verifyPassword({
 
 ## Delete User
 
-Better Auth provides a utility to hard delete a user from your database. It's disabled by default, but you can enable it easily by passing `enabled:true`
+CinaAuth provides a utility to hard delete a user from your database. It's disabled by default, but you can enable it easily by passing `enabled:true`
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     //...other config
     user: {
         deleteUser: { // [!code highlight]
@@ -195,15 +195,15 @@ Once enabled, you can call `authClient.deleteUser` to permanently delete user da
 
 ### Adding Verification Before Deletion
 
-For added security, you’ll likely want to confirm the user’s intent before deleting their account. A common approach is to send a verification email. Better Auth provides a `sendDeleteAccountVerification` utility for this purpose.
+For added security, you’ll likely want to confirm the user’s intent before deleting their account. A common approach is to send a verification email. CinaAuth provides a `sendDeleteAccountVerification` utility for this purpose.
 This is especially needed if you have OAuth setup and want them to be able to delete their account without forcing them to login again for a fresh session.
 
 Here’s how you can set it up:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         deleteUser: {
             enabled: true,
@@ -304,9 +304,9 @@ await authClient.deleteUser({
 **beforeDelete**: This callback is called before the user is deleted. You can use this callback to perform any cleanup or additional checks before deleting the user.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         deleteUser: {
             enabled: true,
@@ -321,10 +321,10 @@ export const auth = betterAuth({
 you can also throw `APIError` to interrupt the deletion process.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { CinaAuth } from "cinaauth";
+import { APIError } from "cinaauth/api";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         deleteUser: {
             enabled: true,
@@ -343,9 +343,9 @@ export const auth = betterAuth({
 **afterDelete**: This callback is called after the user is deleted. You can use this callback to perform any cleanup or additional actions after the user is deleted.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     user: {
         deleteUser: {
             enabled: true,
@@ -359,7 +359,7 @@ export const auth = betterAuth({
 
 ## Accounts
 
-Better Auth supports multiple authentication methods. Each authentication method is called a provider. For example, email and password authentication is a provider, Google authentication is a provider, etc.
+CinaAuth supports multiple authentication methods. Each authentication method is called a provider. For example, email and password authentication is a provider, Google authentication is a provider, etc.
 
 When a user signs in using a provider, an account is created for the user. The account stores the authentication data returned by the provider. This data includes the access token, refresh token, and other information returned by the provider.
 
@@ -377,12 +377,12 @@ const accounts = await authClient.listAccounts();
 
 ### Token Encryption
 
-Better Auth doesn’t encrypt tokens by default and that’s intentional. We want you to have full control over how encryption and decryption are handled, rather than baking in behavior that could be confusing or limiting. If you need to store encrypted tokens (like accessToken or refreshToken), you can use databaseHooks to encrypt them before they’re saved to your database.
+CinaAuth doesn’t encrypt tokens by default and that’s intentional. We want you to have full control over how encryption and decryption are handled, rather than baking in behavior that could be confusing or limiting. If you need to store encrypted tokens (like accessToken or refreshToken), you can use databaseHooks to encrypt them before they’re saved to your database.
 
 ```ts
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     databaseHooks: {
         account: {
             create: {
@@ -410,14 +410,14 @@ Then whenever you retrieve back the account make sure to decrypt the tokens befo
 
 ### Account Linking
 
-Account linking is [enabled by default](https://www.better-auth.com/docs/reference/options#accountlinking) and lets users associate multiple authentication methods with a single account. With Better Auth, users can connect additional social sign-ons or OAuth providers to their existing accounts if the provider confirms the user's email as verified.
+Account linking is [enabled by default](https://www.cinagroup.com/docs/reference/options#accountlinking) and lets users associate multiple authentication methods with a single account. With CinaAuth, users can connect additional social sign-ons or OAuth providers to their existing accounts if the provider confirms the user's email as verified.
 
 If account linking is disabled, no accounts can be linked, regardless of the provider or email verification status.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     account: {
         accountLinking: {
             enabled: false, 
@@ -431,9 +431,9 @@ export const auth = betterAuth({
 You can specify a list of "trusted providers." When a user logs in using a trusted provider, their account will be automatically linked even if the provider doesn’t confirm the email verification status. Use this with caution as it may increase the risk of account takeover.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     account: {
         accountLinking: {
             enabled: true,
@@ -497,9 +497,9 @@ Users already signed in can manually link their account to additional social pro
   If you want your users to be able to link a social account with a different email address than the user, or if you want to use a provider that does not return email addresses, you will need to enable this in the account linking settings.
 
   ```ts title="auth.ts"
-  import { betterAuth } from "better-auth";
+  import { CinaAuth } from "cinaauth";
 
-  export const auth = betterAuth({
+  export const auth = CinaAuth({
       account: {
           accountLinking: {
               allowDifferentEmails: true
@@ -511,9 +511,9 @@ Users already signed in can manually link their account to additional social pro
   By default, linking an account leaves the existing user profile untouched. Enable `updateUserInfoOnLink` to copy the provider's profile onto the user each time an account is linked. The synced fields are the same ones persisted on sign-up (`name`, `image`, and any fields your `mapProfileToUser` adds). The user's `email` and `emailVerified` are never changed on a link, so linking a provider can't rebind the account's identity.
 
   ```ts title="auth.ts"
-  import { betterAuth } from "better-auth";
+  import { CinaAuth } from "cinaauth";
 
-  export const auth = betterAuth({
+  export const auth = CinaAuth({
       account: {
           accountLinking: {
               updateUserInfoOnLink: true
@@ -560,9 +560,9 @@ await authClient.unlinkAccount({
 If the account doesn't exist, it will throw an error. Additionally, if the user only has one account, unlinking will be prevented to stop account lockout (unless `allowUnlinkingAll` is set to `true`).
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     account: {
         accountLinking: {
             allowUnlinkingAll: true

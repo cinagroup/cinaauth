@@ -1,5 +1,5 @@
 import * as z from "zod";
-import type { BetterAuthOptions, Prettify } from "../../types";
+import type { CinaAuthOptions, Prettify } from "../../types";
 import type {
 	InferDBFieldsFromOptions,
 	InferDBFieldsFromPlugins,
@@ -23,12 +23,12 @@ export const rateLimitSchema = z.object({
 export type BaseRateLimit = z.infer<typeof rateLimitSchema>;
 
 /**
- * Rate limit schema type used by better-auth for rate limiting
+ * Rate limit schema type used by cinaauth for rate limiting
  */
 export type RateLimit<
 	DBOptions extends
-		BetterAuthOptions["rateLimit"] = BetterAuthOptions["rateLimit"],
-	Plugins extends BetterAuthOptions["plugins"] = BetterAuthOptions["plugins"],
+		CinaAuthOptions["rateLimit"] = CinaAuthOptions["rateLimit"],
+	Plugins extends CinaAuthOptions["plugins"] = CinaAuthOptions["plugins"],
 > = Prettify<
 	BaseRateLimit &
 		InferDBFieldsFromOptions<DBOptions> &

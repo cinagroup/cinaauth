@@ -80,8 +80,8 @@ describe("magic link", async () => {
 			},
 		});
 		expect(response.data?.token).toBeDefined();
-		const betterAuthCookie = headers.get("set-cookie");
-		expect(betterAuthCookie).toBeDefined();
+		const CinaAuthCookie = headers.get("set-cookie");
+		expect(CinaAuthCookie).toBeDefined();
 	});
 
 	it("shouldn't verify magic link with the same token", async () => {
@@ -414,8 +414,8 @@ describe("magic link verify", async () => {
 			},
 		});
 		expect(response.data?.token).toBeDefined();
-		const betterAuthCookie = headers.get("set-cookie");
-		expect(betterAuthCookie).toBeDefined();
+		const CinaAuthCookie = headers.get("set-cookie");
+		expect(CinaAuthCookie).toBeDefined();
 	});
 });
 
@@ -560,7 +560,7 @@ describe("magic link storeToken", async () => {
  * backward compatibility but does not multiply redemptions; a token mints at
  * most one session regardless of the value.
  *
- * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-hc7v-rggr-4hvx
+ * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-hc7v-rggr-4hvx
  */
 describe("magic link single-use semantics", async () => {
 	async function setup(allowedAttempts?: number) {

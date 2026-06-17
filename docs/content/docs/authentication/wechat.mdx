@@ -1,4 +1,4 @@
----
+﻿---
 title: WeChat
 description: WeChat provider setup and usage.
 ---
@@ -7,7 +7,7 @@ description: WeChat provider setup and usage.
   <Step>
     ### Get your WeChat Credentials
 
-    To use WeChat sign in, you need to register a website application on the [WeChat Open Platform](https://open.weixin.qq.com/), set the `Authorization Callback Domain` to the better auth domain and get your App ID and App Secret.
+    To use WeChat sign in, you need to register a website application on the [WeChat Open Platform](https://open.weixin.qq.com/), set the `Authorization Callback Domain` to the CinaAuth domain and get your App ID and App Secret.
   </Step>
 
   <Step>
@@ -16,9 +16,9 @@ description: WeChat provider setup and usage.
     To configure the provider, you need to import the provider and pass it to the `socialProviders` option of the auth instance.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
+    import { CinaAuth } from "cinaauth"
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         socialProviders: {
             wechat: { // [!code highlight]
                 clientId: process.env.WECHAT_CLIENT_ID, // [!code highlight]
@@ -33,7 +33,7 @@ description: WeChat provider setup and usage.
     You can customize the WeChat provider with additional options:
 
     ```ts title="auth.ts"
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         socialProviders: {
             wechat: {
                 clientId: process.env.WECHAT_CLIENT_ID,
@@ -56,7 +56,7 @@ description: WeChat provider setup and usage.
     * `provider`: The provider to use. It should be set to `wechat`.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
+    import { createAuthClient } from "cinaauth/client"
     const authClient = createAuthClient()
 
     const signIn = async () => {

@@ -1,11 +1,11 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import {
 	runWithEndpointContext,
 	runWithRequestState,
-} from "@better-auth/core/context";
-import type { MemoryDB } from "@better-auth/memory-adapter";
-import { memoryAdapter } from "@better-auth/memory-adapter";
+} from "@cinaauth/core/context";
+import type { MemoryDB } from "@cinaauth/memory-adapter";
+import { memoryAdapter } from "@cinaauth/memory-adapter";
 import {
 	afterEach,
 	beforeEach,
@@ -43,7 +43,7 @@ describe("session", async () => {
 					const header = context.response.headers.get("set-cookie");
 					const cookies = parseSetCookieHeader(header || "");
 					cookieSetter(headers)(context);
-					const cookie = cookies.get("better-auth.session_token");
+					const cookie = cookies.get("cinaauth.session_token");
 					expect(cookie).toMatchObject({
 						value: expect.any(String),
 						"max-age": 60 * 60 * 24 * 7,
@@ -222,7 +222,7 @@ describe("session", async () => {
 						const parsed = parseSetCookieHeader(
 							context.response.headers.get("set-cookie") || "",
 						);
-						const maxAge = parsed.get("better-auth.session_token")?.["max-age"];
+						const maxAge = parsed.get("cinaauth.session_token")?.["max-age"];
 						expect(maxAge).toBe(t === 121 ? 0 : 60 * 2);
 					},
 				},
@@ -313,7 +313,7 @@ describe("session", async () => {
 				onSuccess(context) {
 					const header = context.response.headers.get("set-cookie");
 					const cookies = parseSetCookieHeader(header || "");
-					expect(cookies.get("better-auth.session_token")).toMatchObject({
+					expect(cookies.get("cinaauth.session_token")).toMatchObject({
 						value: expect.any(String),
 						"max-age": 60 * 60 * 24 * 7,
 						path: "/",
@@ -493,7 +493,7 @@ describe("session", async () => {
 	});
 
 	/**
-   @see https://github.com/better-auth/better-auth/issues/9609
+   @see https://github.com/cinagroup/cinaauth/issues/9609
    */
 	it("should not exceed the 400-day browser Max-Age ceiling on session refresh", async () => {
 		const BROWSER_MAX_AGE_CEILING = 400 * 24 * 60 * 60;
@@ -522,7 +522,7 @@ describe("session", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("set-cookie") || "",
 					);
-					refreshedMaxAge = parsed.get("better-auth.session_token")?.[
+					refreshedMaxAge = parsed.get("cinaauth.session_token")?.[
 						"max-age"
 					];
 				},
@@ -790,7 +790,7 @@ describe("cookie cache with JWT strategy", async () => {
 			},
 		});
 		const jwt = parseCookies(headers.get("cookie") || "").get(
-			"better-auth.session_data",
+			"cinaauth.session_data",
 		);
 		if (!jwt) {
 			throw new Error("JWT not found");
@@ -813,7 +813,7 @@ describe("cookie cache with JWT strategy", async () => {
 			},
 		);
 		const jwt = parseCookies(headers.get("cookie") || "").get(
-			"better-auth.session_data",
+			"cinaauth.session_data",
 		);
 		if (!jwt) {
 			throw new Error("JWT not found");
@@ -830,13 +830,13 @@ describe("cookie cache with JWT strategy", async () => {
 			"tampered-secret",
 		);
 		const sessionCookie = parseCookies(headers.get("cookie") || "").get(
-			"better-auth.session_token",
+			"cinaauth.session_token",
 		);
 		if (!sessionCookie) {
 			throw new Error("Session cookie not found");
 		}
-		headers.set("cookie", `better-auth.session_data=${newJWT}`);
-		headers.append("cookie", `better-auth.session_token=${sessionCookie}`);
+		headers.set("cookie", `cinaauth.session_data=${newJWT}`);
+		headers.append("cookie", `cinaauth.session_token=${sessionCookie}`);
 		const res = await client.getSession({
 			fetchOptions: {
 				headers,
@@ -862,7 +862,7 @@ describe("cookie cache with JWT strategy", async () => {
 			},
 		);
 		const jwt = parseCookies(headers.get("cookie") || "").get(
-			"better-auth.session_data",
+			"cinaauth.session_data",
 		);
 		if (!jwt) {
 			throw new Error("JWT not found");
@@ -1244,7 +1244,7 @@ describe("cookie cache refreshCache", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/pull/8817
+	 * @see https://github.com/cinagroup/cinaauth/pull/8817
 	 */
 	it("should preserve session expiry when refreshing stateless cookie cache", async () => {
 		const expiresIn = 60 * 60; // 1 hour
@@ -1290,7 +1290,7 @@ describe("cookie cache refreshCache", async () => {
 		).getTime();
 		const initialSessionDataCookie = parseCookies(
 			headers.get("cookie") || "",
-		).get("better-auth.session_data");
+		).get("cinaauth.session_data");
 		expect(initialSessionDataCookie).toBeDefined();
 
 		const ctx = await auth.$context;
@@ -1310,10 +1310,10 @@ describe("cookie cache refreshCache", async () => {
 						context.response.headers.get("set-cookie") || "",
 					);
 					refreshedSessionDataCookie = parsed.get(
-						"better-auth.session_data",
+						"cinaauth.session_data",
 					)?.value;
 					refreshedSessionTokenCookie = parsed.get(
-						"better-auth.session_token",
+						"cinaauth.session_token",
 					)?.value;
 					cookieSetter(headers)(context);
 				},
@@ -1396,7 +1396,7 @@ describe("cookie cache refreshCache", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8763
+	 * @see https://github.com/cinagroup/cinaauth/issues/8763
 	 */
 	it("should forward cookie cache headers from getSessionFromCtx", async () => {
 		const { client, testUser, cookieSetter, auth } = await getTestInstance({
@@ -1460,7 +1460,7 @@ describe("cookie cache refreshCache", async () => {
 		});
 	});
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7994
+	 * @see https://github.com/cinagroup/cinaauth/issues/7994
 	 */
 	it("should extend session_token cookie expiry when refreshCache threshold is reached", async () => {
 		const expiresIn = 60 * 5; // 5 minutes
@@ -1515,7 +1515,7 @@ describe("cookie cache refreshCache", async () => {
 					const parsed = parseSetCookieHeader(
 						context.response.headers.get("set-cookie") || "",
 					);
-					sessionTokenMaxAge = parsed.get("better-auth.session_token")?.[
+					sessionTokenMaxAge = parsed.get("cinaauth.session_token")?.[
 						"max-age"
 					];
 				},

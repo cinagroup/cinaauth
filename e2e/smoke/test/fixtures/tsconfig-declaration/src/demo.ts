@@ -1,8 +1,8 @@
-import { passkey } from "@better-auth/passkey";
-import { sso } from "@better-auth/sso";
-import { stripe } from "@better-auth/stripe";
-import { betterAuth } from "better-auth";
-import { nextCookies } from "better-auth/next-js";
+﻿import { passkey } from "@cinaauth/passkey";
+import { sso } from "@cinaauth/sso";
+import { stripe } from "@cinaauth/stripe";
+import { CinaAuth } from "cinaauth";
+import { nextCookies } from "cinaauth/next-js";
 import {
 	admin,
 	anonymous,
@@ -16,11 +16,11 @@ import {
 	openAPI,
 	organization,
 	twoFactor,
-} from "better-auth/plugins";
+} from "cinaauth/plugins";
 import { Stripe } from "stripe";
 
-export const auth = betterAuth({
-	appName: "Better Auth Demo",
+export const auth = CinaAuth({
+	appName: "CinaAuth Demo",
 	plugins: [
 		anonymous({}),
 		organization({}),

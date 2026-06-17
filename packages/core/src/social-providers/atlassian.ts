@@ -1,6 +1,6 @@
 import { betterFetch } from "@better-fetch/fetch";
 import { logger } from "../env";
-import { BetterAuthError } from "../error";
+import { CinaAuthError } from "../error";
 import type { OAuthProvider, ProviderOptions } from "../oauth2";
 import {
 	createAuthorizationURL,
@@ -38,10 +38,10 @@ export const atlassian = (options: AtlassianOptions) => {
 		async createAuthorizationURL({ state, scopes, codeVerifier, redirectURI }) {
 			if (!options.clientId || !options.clientSecret) {
 				logger.error("Client Id and Secret are required for Atlassian");
-				throw new BetterAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
+				throw new CinaAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
 			}
 			if (!codeVerifier) {
-				throw new BetterAuthError("codeVerifier is required for Atlassian");
+				throw new CinaAuthError("codeVerifier is required for Atlassian");
 			}
 
 			const _scopes = options.disableDefaultScope

@@ -1,4 +1,4 @@
-import type { BetterAuthClientOptions } from "@better-auth/core";
+import type { CinaAuthClientOptions } from "@cinaauth/core";
 import type { BetterFetch, BetterFetchError } from "@better-fetch/fetch";
 import { atom, onMount } from "nanostores";
 import type { Session, User } from "../types";
@@ -68,7 +68,7 @@ function isSessionAtomEqual(
 
 export function getSessionAtom(
 	$fetch: BetterFetch,
-	options?: BetterAuthClientOptions | undefined,
+	options?: CinaAuthClientOptions | undefined,
 ) {
 	const $signal = atom<boolean>(false);
 

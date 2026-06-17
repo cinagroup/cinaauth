@@ -1,13 +1,13 @@
-import type { BetterAuthPlugin, LiteralString } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
+import type { CinaAuthPlugin, LiteralString } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import { APIError } from "../../api";
 import { HIDE_METADATA } from "../../utils";
 import { PACKAGE_VERSION } from "../../version";
 import { generator } from "./generator";
 import { logo } from "./logo";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		"open-api": {
 			creator: typeof openAPI;
 		};
@@ -56,8 +56,8 @@ const getHTML = (
 	  	favicon: "data:image/svg+xml;utf8,${encodeURIComponent(logo)}",
 	   	theme: "${theme || "default"}",
         metaData: {
-			title: "Better Auth API",
-			description: "API Reference for your Better Auth Instance",
+			title: "CinaAuth API",
+			description: "API Reference for your CinaAuth Instance",
 		}
       }
 
@@ -135,7 +135,7 @@ export const openAPI = <O extends OpenAPIOptions>(options?: O | undefined) => {
 			),
 		},
 		options: options as NoInfer<O>,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export type * from "./generator";

@@ -1,8 +1,8 @@
 {
-  "name": "@better-auth-test/fixtures-esbuild",
+  "name": "@cinaauth-test/fixtures-esbuild",
   "private": true,
   "dependencies": {
-    "better-auth": "workspace:*"
+    "cinaauth": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.28.1"

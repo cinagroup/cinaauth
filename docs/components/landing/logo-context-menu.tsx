@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Code, Download, Palette, Type } from "lucide-react";
 import Link from "next/link";
@@ -55,7 +55,7 @@ export default function LogoContextMenu({ logo }: LogoContextMenuProps) {
 	const downloadAllAssets = () => {
 		const link = document.createElement("a");
 		link.href = brandAssetPaths.assetsZip;
-		link.download = "better-auth-brand-assets.zip";
+		link.download = "cinaauth-brand-assets.zip";
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);

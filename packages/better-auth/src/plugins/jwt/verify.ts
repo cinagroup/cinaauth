@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { getCurrentAuthContext } from "@better-auth/core/context";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { getCurrentAuthContext } from "@cinaauth/core/context";
 import { base64 } from "@better-auth/utils/base64";
 import type { JWTPayload } from "jose";
 import { importJWK, jwtVerify } from "jose";

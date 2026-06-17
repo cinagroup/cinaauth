@@ -3,9 +3,9 @@ import type {
 	GenericEndpointContext,
 	HookEndpointContext,
 	LiteralString,
-} from "@better-auth/core";
-import type { Statements } from "better-auth/plugins/access";
-import type { InferOptionSchema } from "better-auth/types";
+} from "@cinaauth/core";
+import type { Statements } from "cinaauth/plugins/access";
+import type { InferOptionSchema } from "cinaauth/types";
 import type { apiKeySchema } from "./schema";
 
 export interface ApiKeyOptions {

@@ -1,9 +1,9 @@
-import type { BetterAuthOptions, BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthOptions, CinaAuthPlugin } from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { APIError } from "@better-auth/core/error";
+} from "@cinaauth/core/api";
+import { APIError } from "@cinaauth/core/error";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
 import { getEndpoints, router } from "./api";
@@ -112,7 +112,7 @@ describe("call", async () => {
 				},
 			),
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 
 	const testPlugin2 = {
 		id: "test2",
@@ -211,7 +211,7 @@ describe("call", async () => {
 				},
 			],
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 	const options = {
 		baseURL: "http://localhost:3000",
 		plugins: [testPlugin, testPlugin2, bearer()],
@@ -247,7 +247,7 @@ describe("call", async () => {
 				}
 			}),
 		},
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 	const authContext = init(options);
 	const { api } = getEndpoints(authContext, options);
 

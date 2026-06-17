@@ -1,4 +1,4 @@
-import {
+﻿import {
 	ArrowLeftRight,
 	ArrowUpRight,
 	Building,
@@ -89,7 +89,7 @@ export default async function AuthorizePage({
 					</div>
 
 					<h1 className="text-3xl font-semibold text-center mb-8">
-						{clientDetails.client_name} is requesting access to your Better Auth
+						{clientDetails.client_name} is requesting access to your CinaAuth
 						account
 					</h1>
 
@@ -110,7 +110,7 @@ export default async function AuthorizePage({
 								{scope.includes("profile") && (
 									<div className="flex items-center gap-3 text-zinc-300">
 										<User className="h-5 w-5" />
-										<span>Read your Better Auth user data.</span>
+										<span>Read your CinaAuth user data.</span>
 									</div>
 								)}
 

@@ -1,6 +1,6 @@
 export type OnlineListener = (online: boolean) => void;
 
-export const kOnlineManager = Symbol.for("better-auth:online-manager");
+export const kOnlineManager = Symbol.for("cinaauth:online-manager");
 
 export interface OnlineManager {
 	setOnline(online: boolean): void;

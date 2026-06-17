@@ -1,8 +1,8 @@
-import type { Awaitable, BetterAuthOptions } from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
-import { deepmerge, initGetModelName } from "@better-auth/core/db/adapter";
-import { TTY_COLORS } from "@better-auth/core/env";
-import { getAuthTables } from "better-auth/db";
+﻿import type { Awaitable, CinaAuthOptions } from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import { deepmerge, initGetModelName } from "@cinaauth/core/db/adapter";
+import { TTY_COLORS } from "@cinaauth/core/env";
+import { getAuthTables } from "cinaauth/db";
 import { afterAll, beforeAll, describe } from "vitest";
 import type { createTestSuite, TestSuiteStats } from "./create-test-suite";
 
@@ -17,7 +17,7 @@ export type Logger = {
 export const testAdapter = async ({
 	adapter: getAdapter,
 	runMigrations,
-	overrideBetterAuthOptions,
+	overrideCinaAuthOptions,
 	additionalCleanups,
 	tests,
 	prefixTests,
@@ -37,18 +37,18 @@ export const testAdapter = async ({
 	 * })
 	 */
 	adapter: (
-		options: BetterAuthOptions,
-	) => Awaitable<(options: BetterAuthOptions) => DBAdapter<BetterAuthOptions>>;
+		options: CinaAuthOptions,
+	) => Awaitable<(options: CinaAuthOptions) => DBAdapter<CinaAuthOptions>>;
 	/**
 	 * A function that will run the database migrations.
 	 */
-	runMigrations: (betterAuthOptions: BetterAuthOptions) => Promise<void> | void;
+	runMigrations: (CinaAuthOptions: CinaAuthOptions) => Promise<void> | void;
 	/**
-	 * Any potential better-auth options overrides.
+	 * Any potential cinaauth options overrides.
 	 */
-	overrideBetterAuthOptions?: (
-		betterAuthOptions: BetterAuthOptions,
-	) => BetterAuthOptions;
+	overrideCinaAuthOptions?: (
+		CinaAuthOptions: CinaAuthOptions,
+	) => CinaAuthOptions;
 	/**
 	 * By default we will cleanup all tables automatically,
 	 * but if you have additional cleanup logic, you can pass it here.
@@ -77,24 +77,24 @@ export const testAdapter = async ({
 	 */
 	transformIdOutput?: (id: any) => any;
 }) => {
-	const defaultBAOptions = {} satisfies BetterAuthOptions;
-	let betterAuthOptions = (() => {
+	const defaultBAOptions = {} satisfies CinaAuthOptions;
+	let CinaAuthOptions = (() => {
 		return {
 			...defaultBAOptions,
-			...(overrideBetterAuthOptions?.(defaultBAOptions) || {}),
-		} satisfies BetterAuthOptions;
+			...(overrideCinaAuthOptions?.(defaultBAOptions) || {}),
+		} satisfies CinaAuthOptions;
 	})();
 
-	let adapter: DBAdapter<BetterAuthOptions> = (
-		await getAdapter(betterAuthOptions)
-	)(betterAuthOptions);
+	let adapter: DBAdapter<CinaAuthOptions> = (
+		await getAdapter(CinaAuthOptions)
+	)(CinaAuthOptions);
 
 	const adapterName = adapter.options?.adapterConfig.adapterName;
 	const adapterId = adapter.options?.adapterConfig.adapterId || adapter.id;
 	const adapterDisplayName = adapterName || adapterId;
 
-	const refreshAdapter = async (betterAuthOptions: BetterAuthOptions) => {
-		adapter = (await getAdapter(betterAuthOptions))(betterAuthOptions);
+	const refreshAdapter = async (CinaAuthOptions: CinaAuthOptions) => {
+		adapter = (await getAdapter(CinaAuthOptions))(CinaAuthOptions);
 	};
 
 	/**
@@ -135,8 +135,8 @@ export const testAdapter = async ({
 	 */
 	const cleanup = async () => {
 		const start = performance.now();
-		await refreshAdapter(betterAuthOptions);
-		const getAllModels = getAuthTables(betterAuthOptions);
+		await refreshAdapter(CinaAuthOptions);
+		const getAllModels = getAuthTables(CinaAuthOptions);
 
 		// Clean up all rows from all models
 		for (const model of Object.keys(getAllModels)) {
@@ -166,7 +166,7 @@ export const testAdapter = async ({
 				cause: error,
 			});
 		}
-		await refreshAdapter(betterAuthOptions);
+		await refreshAdapter(CinaAuthOptions);
 		log.success(
 			`${TTY_COLORS.bright}CLEAN-UP${TTY_COLORS.reset} completed successfully (${(performance.now() - start).toFixed(3)}ms)`,
 		);
@@ -179,7 +179,7 @@ export const testAdapter = async ({
 		const start = performance.now();
 
 		try {
-			await runMigrations(betterAuthOptions);
+			await runMigrations(CinaAuthOptions);
 		} catch (error) {
 			const msg = `Error while running migrations`;
 			log.error(msg, error);
@@ -353,20 +353,20 @@ export const testAdapter = async ({
 				for (const testSuite of tests) {
 					await testSuite({
 						adapter: async () => {
-							await refreshAdapter(betterAuthOptions);
+							await refreshAdapter(CinaAuthOptions);
 							return adapter;
 						},
 						adapterDisplayName,
 						log,
-						getBetterAuthOptions: () => betterAuthOptions,
-						modifyBetterAuthOptions: async (options) => {
+						getCinaAuthOptions: () => CinaAuthOptions,
+						modifyCinaAuthOptions: async (options) => {
 							const newOptions = deepmerge(defaultBAOptions, options);
-							betterAuthOptions = deepmerge(
+							CinaAuthOptions = deepmerge(
 								newOptions,
-								overrideBetterAuthOptions?.(newOptions) || {},
+								overrideCinaAuthOptions?.(newOptions) || {},
 							);
-							await refreshAdapter(betterAuthOptions);
-							return betterAuthOptions;
+							await refreshAdapter(CinaAuthOptions);
+							return CinaAuthOptions;
 						},
 						cleanup,
 						prefixTests,

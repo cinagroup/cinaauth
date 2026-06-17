@@ -1,15 +1,15 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 
-export function hasServerSessionStore(options: BetterAuthOptions): boolean {
+export function hasServerSessionStore(options: CinaAuthOptions): boolean {
 	return !!options.database || !!options.secondaryStorage;
 }
 
-function hasServerAccountStore(options: BetterAuthOptions): boolean {
+function hasServerAccountStore(options: CinaAuthOptions): boolean {
 	return !!options.database;
 }
 
 export function shouldBindAccountCookieToSessionUser(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 ): boolean {
 	return hasServerAccountStore(options);
 }

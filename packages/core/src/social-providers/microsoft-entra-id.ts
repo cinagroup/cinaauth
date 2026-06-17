@@ -2,7 +2,7 @@ import { base64 } from "@better-auth/utils/base64";
 import { betterFetch } from "@better-fetch/fetch";
 import { decodeJwt, decodeProtectedHeader, importJWK, jwtVerify } from "jose";
 import { logger } from "../env";
-import { APIError, BetterAuthError } from "../error";
+import { APIError, CinaAuthError } from "../error";
 import type { OAuthProvider, ProviderOptions } from "../oauth2";
 import {
 	createAuthorizationURL,
@@ -172,7 +172,7 @@ export const microsoft = (options: MicrosoftOptions) => {
 				logger.error(
 					"Client Id is required for Microsoft Entra ID. Make sure to provide it in the options.",
 				);
-				throw new BetterAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
+				throw new CinaAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
 			}
 			const scopes = options.disableDefaultScope
 				? []

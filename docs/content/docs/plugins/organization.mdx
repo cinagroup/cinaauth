@@ -1,4 +1,4 @@
----
+﻿---
 title: Organization
 description: The organization plugin allows you to manage your organization's members and teams.
 ---
@@ -12,10 +12,10 @@ Organizations simplifies user access and permissions management. Assign roles an
     ### Add the plugin to your **auth** config
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { organization } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { organization } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
             organization() // [!code highlight]
         ]
@@ -49,8 +49,8 @@ Organizations simplifies user access and permissions management. Assign roles an
     ### Add the client plugin
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { organizationClient } from "better-auth/client/plugins" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client"
+    import { organizationClient } from "cinaauth/client/plugins" // [!code highlight]
 
     export const authClient = createAuthClient({
         plugins: [
@@ -119,10 +119,10 @@ Once you've installed the plugin, you can start using the organization plugin to
 By default, any user can create an organization. To restrict this, set the `allowUserToCreateOrganization` option to a function that returns a boolean, or directly to `true` or `false`.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-const auth = betterAuth({
+const auth = CinaAuth({
   //...
   plugins: [
     organization({
@@ -152,7 +152,7 @@ To check if an organization slug is taken or not you can use the `checkSlug` fun
 
 ### Organization Hooks
 
-You can customize organization operations using hooks that run before and after various organization-related activities. Better Auth provides two ways to configure hooks:
+You can customize organization operations using hooks that run before and after various organization-related activities. CinaAuth provides two ways to configure hooks:
 
 1. **Legacy organizationCreation hooks** (deprecated, use `organizationHooks` instead)
 2. **Modern organizationHooks** (recommended) - provides comprehensive control over all organization-related activities
@@ -162,10 +162,10 @@ You can customize organization operations using hooks that run before and after 
 Control organization lifecycle operations:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       organizationHooks: {
@@ -221,10 +221,10 @@ export const auth = betterAuth({
 Control member operations within organizations:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       organizationHooks: {
@@ -299,10 +299,10 @@ export const auth = betterAuth({
 Control invitation lifecycle:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       organizationHooks: {
@@ -388,10 +388,10 @@ export const auth = betterAuth({
 Control team operations (when teams are enabled):
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       teams: { enabled: true },
@@ -492,11 +492,11 @@ export const auth = betterAuth({
 All hooks support error handling. Throwing an error in a `before` hook will prevent the operation from proceeding:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
-import { APIError } from "better-auth/api";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
+import { APIError } from "cinaauth/api";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       organizationHooks: {
@@ -645,9 +645,9 @@ You can set the active organization by calling the `organization.setActive` func
 To automatically set an active organization when a session is created, you can use [database hooks](/docs/concepts/database#database-hooks). You'll need to implement logic to determine which organization to set as the initial active organization.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
+import { CinaAuth } from "cinaauth";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   databaseHooks: {
     session: {
       create: {
@@ -811,10 +811,10 @@ If the user has the necessary permissions (by default: role is owner) in the spe
 You can configure how organization deletion is handled through `organizationDeletion` option:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-const auth = betterAuth({
+const auth = CinaAuth({
   plugins: [
     organization({
       disableOrganizationDeletion: true, //to disable it altogether
@@ -837,16 +837,16 @@ To add a member to an organization, we first need to send an invitation to the u
 
 ### Setup Invitation Email
 
-For member invitation to work we first need to provide `sendInvitationEmail` to the `better-auth` instance. This function is responsible for sending the invitation email to the user.
+For member invitation to work we first need to provide `sendInvitationEmail` to the `cinaauth` instance. This function is responsible for sending the invitation email to the user.
 
 You'll need to construct and send the invitation link to the user. The link should include the invitation ID, which will be used with the acceptInvitation function when the user clicks on it.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 import { sendOrganizationInvitation } from "./email";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       async sendInvitationEmail(data) {
@@ -924,15 +924,15 @@ Make sure to call the `acceptInvitation` function after the user is logged in.
 
 #### Email Verification Requirement
 
-By default, accepting an invitation requires the invitation ID from the email link and a logged-in session whose email matches the invitation. When Better Auth uses built-in opaque invitation IDs, including the default generator or `advanced.database.generateId: "uuid"`, that remains enough for the normal emailed-invitation flow. If invitation IDs are externally controlled or predictable, such as `advanced.database.generateId: "serial"` / `false` or custom ID generation, Better Auth also requires verified email unless you explicitly set `requireEmailVerificationOnInvitation` to `false`.
+By default, accepting an invitation requires the invitation ID from the email link and a logged-in session whose email matches the invitation. When CinaAuth uses built-in opaque invitation IDs, including the default generator or `advanced.database.generateId: "uuid"`, that remains enough for the normal emailed-invitation flow. If invitation IDs are externally controlled or predictable, such as `advanced.database.generateId: "serial"` / `false` or custom ID generation, CinaAuth also requires verified email unless you explicitly set `requireEmailVerificationOnInvitation` to `false`.
 
 Set `requireEmailVerificationOnInvitation` to `true` for the stricter posture. This is recommended when invitation IDs can be visible outside the invited user's mailbox, when your app exposes organization invitation lists to members, when you use custom invitation delivery, or when unverified email/password sessions are allowed and organization membership is sensitive. Requiring verified email before sign-in provides the same ownership proof earlier in the flow.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       requireEmailVerificationOnInvitation: true, // [!code highlight]
@@ -1244,7 +1244,7 @@ The plugin provides an easy way to define your own set of permissions for each r
     You first need to create access controller by calling `createAccessControl` function and passing the statement object. The statement object should have the resource name as the key and the array of actions as the value.
 
     ```ts title="permissions.ts"
-    import { createAccessControl } from "better-auth/plugins/access";
+    import { createAccessControl } from "cinaauth/plugins/access";
 
     /**
      * make sure to use `as const` so typescript can infer the type correctly
@@ -1257,7 +1257,7 @@ The plugin provides an easy way to define your own set of permissions for each r
     ```
 
     <Callout type="warning">
-      To keep bundle sizes small, make sure to import from `better-auth/plugins/access` instead of `better-auth/plugins`.
+      To keep bundle sizes small, make sure to import from `cinaauth/plugins/access` instead of `cinaauth/plugins`.
     </Callout>
   </Step>
 
@@ -1267,7 +1267,7 @@ The plugin provides an easy way to define your own set of permissions for each r
     Once you have created the access controller you can create roles with the permissions you have defined.
 
     ```ts title="permissions.ts"
-    import { createAccessControl } from "better-auth/plugins/access";
+    import { createAccessControl } from "cinaauth/plugins/access";
 
     const statement = {
         project: ["create", "share", "update", "delete"],
@@ -1296,8 +1296,8 @@ The plugin provides an easy way to define your own set of permissions for each r
     When you create custom roles for existing roles, the predefined permissions for those roles will be overridden. To add the existing permissions to the custom role, you need to import `defaultStatements` and merge it with your new statement, plus merge the roles' permissions set with the default roles.
 
     ```ts title="permissions.ts"
-    import { createAccessControl } from "better-auth/plugins/access";
-    import { defaultStatements, adminAc } from 'better-auth/plugins/organization/access'
+    import { createAccessControl } from "cinaauth/plugins/access";
+    import { defaultStatements, adminAc } from 'cinaauth/plugins/organization/access'
 
     const statement = {
         ...defaultStatements, // [!code highlight]
@@ -1319,11 +1319,11 @@ The plugin provides an easy way to define your own set of permissions for each r
     Once you have created the roles you can pass them to the organization plugin both on the client and the server.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { organization } from "better-auth/plugins"
+    import { CinaAuth } from "cinaauth"
+    import { organization } from "cinaauth/plugins"
     import { ac, owner, admin, member } from "@/auth/permissions"
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [
             organization({
                 ac,
@@ -1341,8 +1341,8 @@ The plugin provides an easy way to define your own set of permissions for each r
     You also need to pass the access controller and the roles to the client plugin.
 
     ```ts title="auth-client"
-    import { createAuthClient } from "better-auth/client"
-    import { organizationClient } from "better-auth/client/plugins"
+    import { createAuthClient } from "cinaauth/client"
+    import { organizationClient } from "cinaauth/client/plugins"
     import { ac, owner, admin, member, myCustomRole } from "@/auth/permissions"
 
     export const authClient = createAuthClient({
@@ -1456,11 +1456,11 @@ Ensure you have pre-defined an `ac` instance on the server auth plugin.
 This is important as this is how we can infer the permissions that are available for use.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 import { ac } from "@/auth/permissions";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         organization({ // [!code highlight]
             ac, // Must be defined in order for dynamic access control to work // [!code highlight]
@@ -1473,8 +1473,8 @@ export const auth = betterAuth({
 ```
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
-import { organizationClient } from "better-auth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
+import { organizationClient } from "cinaauth/client/plugins";
 
 export const authClient = createAuthClient({
     plugins: [
@@ -1698,8 +1698,8 @@ organization({
 Then, if you don't already use `inferOrgAdditionalFields` to infer the additional fields, you can use it to infer the additional fields.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
-import { organizationClient, inferOrgAdditionalFields } from "better-auth/client/plugins"
+import { createAuthClient } from "cinaauth/client"
+import { organizationClient, inferOrgAdditionalFields } from "cinaauth/client/plugins"
 import type { auth } from "@/lib/auth" // import the auth object type only
 
 export const authClient = createAuthClient({
@@ -1714,8 +1714,8 @@ export const authClient = createAuthClient({
 Otherwise, you can pass the schema values directly, the same way you do on the org plugin in the server.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client"
-import { organizationClient } from "better-auth/client/plugins"
+import { createAuthClient } from "cinaauth/client"
+import { organizationClient } from "cinaauth/client/plugins"
 
 export const authClient = createAuthClient({
     plugins: [
@@ -1746,10 +1746,10 @@ Teams allow you to group members within an organization. The teams feature provi
 To enable teams, pass the `teams` configuration option to both server and client plugins:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     organization({
       teams: {
@@ -1763,8 +1763,8 @@ export const auth = betterAuth({
 ```
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
-import { organizationClient } from "better-auth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
+import { organizationClient } from "cinaauth/client/plugins";
 
 export const authClient = createAuthClient({
   plugins: [
@@ -2390,10 +2390,10 @@ export const teamsFeatureTeamTableFields1 = [
 To change the schema table name or fields, you can pass `schema` option to the organization plugin.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-const auth = betterAuth({
+const auth = CinaAuth({
   plugins: [
     organization({
       schema: {
@@ -2419,15 +2419,15 @@ const auth = betterAuth({
 
 #### Additional Fields
 
-Starting with [Better Auth v1.3](https://github.com/better-auth/better-auth/releases/tag/v1.3.0), you can easily add custom fields to the `organization`, `invitation`, `member`, and `team` tables.
+Starting with [CinaAuth v1.3](https://github.com/cinagroup/cinaauth/releases/tag/v1.3.0), you can easily add custom fields to the `organization`, `invitation`, `member`, and `team` tables.
 
 When you add extra fields to a model, the relevant API endpoints will automatically accept and return these new properties. For instance, if you add a custom field to the `organization` table, the `createOrganization` endpoint will include this field in its request and response payloads as needed.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
+import { CinaAuth } from "cinaauth";
+import { organization } from "cinaauth/plugins";
 
-const auth = betterAuth({
+const auth = CinaAuth({
   plugins: [
     organization({
       schema: {
@@ -2450,11 +2450,11 @@ const auth = betterAuth({
 For inferring the additional fields, you can use the `inferOrgAdditionalFields` function. This function will infer the additional fields from the auth object type.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
+import { createAuthClient } from "cinaauth/client";
 import {
   inferOrgAdditionalFields,
   organizationClient,
-} from "better-auth/client/plugins";
+} from "cinaauth/client/plugins";
 import type { auth } from "@/lib/auth" // import the auth object type only
 
 const client = createAuthClient({
@@ -2469,11 +2469,11 @@ const client = createAuthClient({
 if you can't import the auth object type, you can use the `inferOrgAdditionalFields` function without the generic. This function will infer the additional fields from the schema object.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
+import { createAuthClient } from "cinaauth/client";
 import {
   inferOrgAdditionalFields,
   organizationClient,
-} from "better-auth/client/plugins";
+} from "cinaauth/client/plugins";
 
 const client = createAuthClient({
   plugins: [
@@ -2524,4 +2524,4 @@ await client.organization.create({
 
 **invitationLimit**: `number` | `((user: User) => Promise<boolean> | boolean)` - The maximum number of invitations allowed for a user. By default, it's `100`. You can set it to any number you want or a function that returns a boolean.
 
-**requireEmailVerificationOnInvitation**: `boolean | undefined` - Whether to require email verification before recipient invitation calls that carry an invitation ID (`acceptInvitation`, `rejectInvitation`, `getInvitation`). When unset, Better Auth preserves the normal emailed-invitation flow for built-in opaque invitation IDs, including the default generator and `advanced.database.generateId: "uuid"`. It requires verification for externally controlled or predictable invitation IDs, such as `advanced.database.generateId: "serial"` / `false` or custom ID generation. Set this option to `true` when invitation IDs may be visible outside the invited user's mailbox, when organization invitation lists are exposed to members, or when you want verified email to be the ownership proof for by-ID invitation actions. Client-side `listUserInvitations` always requires a verified session email because it enumerates invitation IDs from the session email.
+**requireEmailVerificationOnInvitation**: `boolean | undefined` - Whether to require email verification before recipient invitation calls that carry an invitation ID (`acceptInvitation`, `rejectInvitation`, `getInvitation`). When unset, CinaAuth preserves the normal emailed-invitation flow for built-in opaque invitation IDs, including the default generator and `advanced.database.generateId: "uuid"`. It requires verification for externally controlled or predictable invitation IDs, such as `advanced.database.generateId: "serial"` / `false` or custom ID generation. Set this option to `true` when invitation IDs may be visible outside the invited user's mailbox, when organization invitation lists are exposed to members, or when you want verified email to be the ownership proof for by-ID invitation actions. Client-side `listUserInvitations` always requires a verified session email because it enumerates invitation IDs from the session email.

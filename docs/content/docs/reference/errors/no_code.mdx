@@ -1,4 +1,4 @@
----
+﻿---
 title: no_code
 description: The code was not found in the request.
 ---
@@ -7,7 +7,7 @@ description: The code was not found in the request.
 
 This error occurs during the OAuth callback when the authorization code is missing from the request.
 In the Authorization Code flow, the provider redirects back to your `/api/auth/callback` route with a
-`code` parameter (and typically `state`). Without the `code`, Better Auth cannot exchange it for tokens,
+`code` parameter (and typically `state`). Without the `code`, CinaAuth cannot exchange it for tokens,
 so the request is rejected.
 
 ## Common Causes
@@ -23,7 +23,7 @@ so the request is rejected.
 
 ### Use the standard Authorization Code flow
 
-* Start the flow through Better Auth so the provider receives the correct parameters and the app expects a `code`.
+* Start the flow through CinaAuth so the provider receives the correct parameters and the app expects a `code`.
 * In the provider settings, ensure your app is configured for Authorization Code (with PKCE where applicable).
 
 ### Verify callback URL and parameter delivery

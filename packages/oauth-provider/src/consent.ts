@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError, getSessionFromCtx } from "better-auth/api";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError, getSessionFromCtx } from "cinaauth/api";
 import { formatErrorURL, getIssuer } from "./authorize";
 import type { AuthorizeEndpointCaller } from "./continue";
 import { oAuthState } from "./oauth";

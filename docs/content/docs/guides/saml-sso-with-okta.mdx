@@ -1,18 +1,18 @@
----
+﻿---
 title: SAML SSO with Okta
-description: A guide to integrating SAML Single Sign-On (SSO) with Better Auth, featuring Okta
+description: A guide to integrating SAML Single Sign-On (SSO) with CinaAuth, featuring Okta
 ---
 
 This guide walks you through setting up SAML Single Sign-On (SSO) with your Identity Provider (IdP), using Okta as an example. For advanced configuration details and the full API reference, check out the [SSO Plugin Documentation](/docs/plugins/sso).
 
 ## What is SAML?
 
-SAML (Security Assertion Markup Language) is an XML-based standard for exchanging authentication and authorization data between an Identity Provider (IdP) (e.g., Okta, Azure AD, OneLogin) and a Service Provider (SP) (in this case, Better Auth).
+SAML (Security Assertion Markup Language) is an XML-based standard for exchanging authentication and authorization data between an Identity Provider (IdP) (e.g., Okta, Azure AD, OneLogin) and a Service Provider (SP) (in this case, CinaAuth).
 
 In this setup:
 
 * **IdP (Okta)**: Authenticates users and sends assertions about their identity.
-* **SP (Better Auth)**: Validates assertions and logs the user in.up.
+* **SP (CinaAuth)**: Validates assertions and logs the user in.up.
 
 ### Step 1: Create a SAML Application in Okta
 
@@ -26,17 +26,17 @@ In this setup:
 
 5. Configure the following settings:
 
-   * **Single Sign-on URL**: Your Better Auth callback endpoint (e.g., `http://localhost:3000/api/auth/sso/saml2/callback/sso`). Note: `sso` is your `providerId`
-   * **Audience URI (SP Entity ID)**: Your Better Auth metadata URL (e.g., `http://localhost:3000/api/auth/sso/saml2/sp/metadata`)
+   * **Single Sign-on URL**: Your CinaAuth callback endpoint (e.g., `http://localhost:3000/api/auth/sso/saml2/callback/sso`). Note: `sso` is your `providerId`
+   * **Audience URI (SP Entity ID)**: Your CinaAuth metadata URL (e.g., `http://localhost:3000/api/auth/sso/saml2/sp/metadata`)
    * **Name ID format**: Email Address or any of your choice.
 
 6. Download the IdP metadata XML file and certificate
 
 <Callout type="info">
-  **IdP-Initiated SSO**: If you want users to access your app from the Okta dashboard, make sure the **Single Sign-on URL** points to the callback endpoint (`/api/auth/sso/saml2/callback/{providerId}`). Better Auth automatically handles both SP-initiated and IdP-initiated flows.
+  **IdP-Initiated SSO**: If you want users to access your app from the Okta dashboard, make sure the **Single Sign-on URL** points to the callback endpoint (`/api/auth/sso/saml2/callback/{providerId}`). CinaAuth automatically handles both SP-initiated and IdP-initiated flows.
 </Callout>
 
-### Step 2: Configure Better Auth
+### Step 2: Configure CinaAuth
 
 Here’s an example configuration for Okta in a dev environment:
 

@@ -1,4 +1,4 @@
----
+﻿---
 title: Device Authorization
 description: OAuth 2.0 Device Authorization Grant for limited-input devices
 ---
@@ -9,7 +9,7 @@ The Device Authorization plugin implements the OAuth 2.0 Device Authorization Gr
 
 ## Try It Out
 
-You can test the device authorization flow right now using the Better Auth CLI:
+You can test the device authorization flow right now using the CinaAuth CLI:
 
 ```package-install
 npx auth login
@@ -17,13 +17,13 @@ npx auth login
 
 This will demonstrate the complete device authorization flow by:
 
-1. Requesting a device code from the Better Auth demo server
+1. Requesting a device code from the CinaAuth demo server
 2. Displaying a user code for you to enter
 3. Opening your browser to the verification page
 4. Polling for authorization completion
 
 <Callout type="info">
-  The CLI login command is a demo feature that connects to the Better Auth demo server to showcase the device authorization flow in action.
+  The CLI login command is a demo feature that connects to the CinaAuth demo server to showcase the device authorization flow in action.
 </Callout>
 
 ## Installation
@@ -35,10 +35,10 @@ This will demonstrate the complete device authorization flow by:
     Add the device authorization plugin to your server configuration.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth";
-    import { deviceAuthorization } from "better-auth/plugins"; // [!code highlight]
+    import { CinaAuth } from "cinaauth";
+    import { deviceAuthorization } from "cinaauth/plugins"; // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       // ... other config
       plugins: [
         deviceAuthorization({ // [!code highlight]
@@ -77,8 +77,8 @@ This will demonstrate the complete device authorization flow by:
     Add the device authorization plugin to your client.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client";
-    import { deviceAuthorizationClient } from "better-auth/client/plugins"; // [!code highlight]
+    import { createAuthClient } from "cinaauth/client";
+    import { deviceAuthorizationClient } from "cinaauth/client/plugins"; // [!code highlight]
 
     export const authClient = createAuthClient({
       plugins: [
@@ -451,8 +451,8 @@ Here's a complete example for a CLI application based on the actual demo:
 </Callout>
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
-import { deviceAuthorizationClient } from "better-auth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
+import { deviceAuthorizationClient } from "cinaauth/client/plugins";
 import open from "open";
 
 const authClient = createAuthClient({
@@ -461,7 +461,7 @@ const authClient = createAuthClient({
 });
 
 async function authenticateCLI() {
-  console.log("🔐 Better Auth Device Authorization Demo");
+  console.log("🔐 CinaAuth Device Authorization Demo");
   console.log("⏳ Requesting device authorization...");
   
   try {

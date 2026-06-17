@@ -1,5 +1,5 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError } from "@better-auth/core/error";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError } from "@cinaauth/core/error";
 import { getSessionFromCtx } from "../../api";
 import { generateRandomString } from "../../crypto";
 import type { OAuthApplication } from "../oidc-provider/schema";

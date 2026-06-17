@@ -2,6 +2,7 @@ packages:
   - packages/**
   - docs
   - e2e/**
+  - demo/**
   - test
 
 overrides:
@@ -92,12 +93,13 @@ allowBuilds:
   sharp: true
   workerd: true
   electron: false
+  electron-winstaller: set this to true or false
 
 linkWorkspacePackages: true
 
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - '@better-auth/*'
+  - '@cinaauth/*'
   - '@better-fetch/fetch'
   - 'better-call'
 
@@ -107,3 +109,7 @@ patchedDependencies:
 trustPolicy: no-downgrade
 
 trustPolicyIgnoreAfter: 43200
+
+trustedDependencies:
+  - esbuild
+  - workerd

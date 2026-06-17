@@ -1,4 +1,4 @@
----
+﻿---
 title: Spotify
 description: Spotify provider setup and usage.
 ---
@@ -26,13 +26,13 @@ description: Spotify provider setup and usage.
     You must also ensure your environment variables use the correct loopback IP to match the redirect URI. Update your `.env` file:
 
     ```bash title=".env"
-    BETTER_AUTH_URL=http://127.0.0.1:3000
+    CINAAUTH_URL=http://127.0.0.1:3000
     ```
 
     ```ts title="auth.ts"  
-    import { betterAuth } from "better-auth"
+    import { CinaAuth } from "cinaauth"
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         
         socialProviders: {
             spotify: { // [!code highlight]
@@ -52,7 +52,7 @@ description: Spotify provider setup and usage.
     * `provider`: The provider to use. It should be set to `spotify`.
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
+    import { createAuthClient } from "cinaauth/client"
     const authClient =  createAuthClient()
 
     const signIn = async () => {

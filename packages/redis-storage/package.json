@@ -1,13 +1,13 @@
 {
-  "name": "@better-auth/redis-storage",
+  "name": "@cinaauth/redis-storage",
   "version": "1.6.19",
-  "description": "Redis storage for Better Auth secondary storage",
+  "description": "Redis storage for CinaAuth secondary storage",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/storage",
+  "homepage": "https://www.cinagroup.com/docs/storage",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/redis-storage"
   },
   "keywords": [
@@ -15,7 +15,7 @@
     "redis",
     "storage",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -42,11 +42,11 @@
     }
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "ioredis": "^5.0.0"
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
+    "@cinaauth/core": "workspace:*",
     "@types/node": "^25.3.2",
     "ioredis": "^5.9.3",
     "tsdown": "catalog:",

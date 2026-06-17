@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export function createMetadata(override: Metadata): Metadata {
 	return {
@@ -7,9 +7,9 @@ export function createMetadata(override: Metadata): Metadata {
 		openGraph: {
 			title: override.title ?? undefined,
 			description: override.description ?? undefined,
-			url: "https://better-auth.com",
+			url: "https://cinagroup.com",
 			images: "/og.png",
-			siteName: "Better Auth",
+			siteName: "CinaAuth",
 			...override.openGraph,
 		},
 		twitter: {

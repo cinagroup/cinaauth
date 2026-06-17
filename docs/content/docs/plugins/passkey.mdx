@@ -1,4 +1,4 @@
----
+﻿---
 title: Passkey
 description: Passkey
 ---
@@ -14,7 +14,7 @@ The passkey plugin implementation is powered by [SimpleWebAuthn](https://simplew
     ### Install the plugin
 
     ```package-install
-    npm install @better-auth/passkey
+    npm install @cinaauth/passkey
     ```
   </Step>
 
@@ -24,10 +24,10 @@ The passkey plugin implementation is powered by [SimpleWebAuthn](https://simplew
     To add the passkey plugin to your auth config, you need to import the plugin and pass it to the `plugins` option of the auth instance.
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { passkey } from "@better-auth/passkey" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { passkey } from "@cinaauth/passkey" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         plugins: [ 
             passkey(), // [!code highlight]
         ],
@@ -61,8 +61,8 @@ The passkey plugin implementation is powered by [SimpleWebAuthn](https://simplew
     ### Add the client plugin
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { passkeyClient } from "@better-auth/passkey/client" // [!code highlight]
+    import { createAuthClient } from "cinaauth/client"
+    import { passkeyClient } from "@cinaauth/passkey/client" // [!code highlight]
 
     export const authClient = createAuthClient({
         plugins: [
@@ -78,10 +78,10 @@ The passkey plugin implementation is powered by [SimpleWebAuthn](https://simplew
 You can customize the passkey plugin to support passkey-first onboarding or WebAuthn extensions.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
-import { passkey } from "@better-auth/passkey"
+import { CinaAuth } from "cinaauth"
+import { passkey } from "@cinaauth/passkey"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   plugins: [
     passkey({
       registration: {
@@ -238,12 +238,12 @@ You can list all of the passkeys for the authenticated user by calling `passkey.
 
 When a user registers a passkey without naming it, the stored `name` is left empty. You can show a friendly default in your UI instead, derived from the authenticator that created the credential.
 
-Every passkey row carries an `aaguid`, the identifier of the authenticator *model* (for example Google Password Manager or 1Password). Better Auth stores it at registration and returns it from `listPasskeys`, so you resolve a label at the point you render passkeys. Because resolution happens at read time, an updated provider list applies to passkeys that already exist.
+Every passkey row carries an `aaguid`, the identifier of the authenticator *model* (for example Google Password Manager or 1Password). CinaAuth stores it at registration and returns it from `listPasskeys`, so you resolve a label at the point you render passkeys. Because resolution happens at read time, an updated provider list applies to passkeys that already exist.
 
 The plugin ships a small, best-effort lookup for the most common authenticators:
 
 ```ts title="passkey-list.tsx"
-import { getAuthenticatorName } from "@better-auth/passkey";
+import { getAuthenticatorName } from "@cinaauth/passkey";
 
 const passkeys = await authClient.passkey.listUserPasskeys();
 
@@ -257,7 +257,7 @@ The built-in list is intentionally small and not authoritative. Many authenticat
 * [passkeydeveloper/passkey-authenticator-aaguids](https://github.com/passkeydeveloper/passkey-authenticator-aaguids)
 
 ```ts title="passkey-list.tsx"
-import { commonAuthenticatorNames } from "@better-auth/passkey";
+import { commonAuthenticatorNames } from "@cinaauth/passkey";
 
 const names = { ...commonAuthenticatorNames, "your-aaguid": "Your Provider" };
 ```
@@ -265,10 +265,10 @@ const names = { ...commonAuthenticatorNames, "your-aaguid": "Your Provider" };
 To set a default label on the server at registration time, return a `name` from `registration.afterVerification`. The AAGUID is available on `verification.registrationInfo.aaguid`, and a client-supplied name always takes precedence:
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth";
-import { passkey, getAuthenticatorName } from "@better-auth/passkey";
+import { CinaAuth } from "cinaauth";
+import { passkey, getAuthenticatorName } from "@cinaauth/passkey";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         passkey({
             registration: {
@@ -449,7 +449,7 @@ until it hits an effective TLD. So `www.example.com` can use the RP IDs `www.exa
 
 **rpName**: Human-readable title for your website.
 
-**origin**: The origin URL at which your better-auth server is hosted. `http://localhost` and `http://localhost:PORT` are also valid. Do NOT include any trailing /.
+**origin**: The origin URL at which your cinaauth server is hosted. `http://localhost` and `http://localhost:PORT` are also valid. Do NOT include any trailing /.
 
 **authenticatorSelection**: Allows customization of WebAuthn authenticator selection criteria. Leave unspecified for default settings.
 
@@ -470,23 +470,23 @@ until it hits an effective TLD. So `www.example.com` can use the RP IDs `www.exa
 
 **advanced**: Advanced options
 
-* `webAuthnChallengeCookie`: Cookie name for storing WebAuthn challenge ID during authentication flow (Default: `better-auth-passkey`)
+* `webAuthnChallengeCookie`: Cookie name for storing WebAuthn challenge ID during authentication flow (Default: `cinaauth-passkey`)
 
 ## Expo Integration
 
 When using the passkey plugin with Expo, you need to configure the `cookiePrefix` option in the Expo client to ensure passkey cookies are properly detected and stored.
 
-By default, the passkey plugin uses `"better-auth-passkey"` as the challenge cookie name. Since this starts with `"better-auth"`, it will work with the default Expo client configuration. However, if you customize the `webAuthnChallengeCookie` option, you must also update the `cookiePrefix` in your Expo client configuration.
+By default, the passkey plugin uses `"cinaauth-passkey"` as the challenge cookie name. Since this starts with `"cinaauth"`, it will work with the default Expo client configuration. However, if you customize the `webAuthnChallengeCookie` option, you must also update the `cookiePrefix` in your Expo client configuration.
 
 ### Example Configuration
 
 If you're using a custom cookie name:
 
 ```ts title="Server: auth.ts"
-import { betterAuth } from "better-auth";
-import { passkey } from "@better-auth/passkey";
+import { CinaAuth } from "cinaauth";
+import { passkey } from "@cinaauth/passkey";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     plugins: [
         passkey({
             advanced: {
@@ -500,9 +500,9 @@ export const auth = betterAuth({
 Make sure to configure your Expo client with the matching prefix:
 
 ```ts title="Client: auth-client.ts"
-import { createAuthClient } from "better-auth/react";
-import { expoClient } from "@better-auth/expo/client";
-import { passkeyClient } from "@better-auth/passkey/client";
+import { createAuthClient } from "cinaauth/react";
+import { expoClient } from "@cinaauth/expo/client";
+import { passkeyClient } from "@cinaauth/passkey/client";
 import * as SecureStore from "expo-secure-store";
 
 export const authClient = createAuthClient({
@@ -522,7 +522,7 @@ If you're using multiple authentication systems or custom cookie names, you can 
 ```ts title="Client: auth-client.ts"
 expoClient({
     storage: SecureStore,
-    cookiePrefix: ["better-auth", "my-app", "custom-auth"]
+    cookiePrefix: ["cinaauth", "my-app", "custom-auth"]
 })
 ```
 

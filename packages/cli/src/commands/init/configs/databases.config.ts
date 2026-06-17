@@ -104,7 +104,7 @@ export const databasesConfig = [
 		adapter: "prisma-sqlite",
 		imports: [
 			{
-				path: "better-auth/adapters/prisma",
+				path: "cinaauth/adapters/prisma",
 				imports: [createImport({ name: "prismaAdapter" })],
 				isNamedImport: false,
 			},
@@ -125,7 +125,7 @@ export const databasesConfig = [
 		adapter: "prisma-mysql",
 		imports: [
 			{
-				path: "better-auth/adapters/prisma",
+				path: "cinaauth/adapters/prisma",
 				imports: [createImport({ name: "prismaAdapter" })],
 				isNamedImport: false,
 			},
@@ -146,7 +146,7 @@ export const databasesConfig = [
 		adapter: "prisma-postgresql",
 		imports: [
 			{
-				path: "better-auth/adapters/prisma",
+				path: "cinaauth/adapters/prisma",
 				imports: [createImport({ name: "prismaAdapter" })],
 				isNamedImport: false,
 			},
@@ -168,7 +168,7 @@ export const databasesConfig = [
 		adapter: "drizzle-sqlite-better-sqlite3",
 		imports: [
 			{
-				path: "better-auth/adapters/drizzle",
+				path: "cinaauth/adapters/drizzle",
 				imports: [createImport({ name: "drizzleAdapter" })],
 				isNamedImport: false,
 			},
@@ -199,7 +199,7 @@ export const databasesConfig = [
 		adapter: "drizzle-sqlite-bun",
 		imports: [
 			{
-				path: "better-auth/adapters/drizzle",
+				path: "cinaauth/adapters/drizzle",
 				imports: [createImport({ name: "drizzleAdapter" })],
 				isNamedImport: false,
 			},
@@ -230,7 +230,7 @@ export const databasesConfig = [
 		adapter: "drizzle-postgresql",
 		imports: [
 			{
-				path: "better-auth/adapters/drizzle",
+				path: "cinaauth/adapters/drizzle",
 				imports: [createImport({ name: "drizzleAdapter" })],
 				isNamedImport: false,
 			},
@@ -261,7 +261,7 @@ export const databasesConfig = [
 		adapter: "drizzle-mysql",
 		imports: [
 			{
-				path: "better-auth/adapters/drizzle",
+				path: "cinaauth/adapters/drizzle",
 				imports: [createImport({ name: "drizzleAdapter" })],
 				isNamedImport: false,
 			},
@@ -425,7 +425,7 @@ export const databasesConfig = [
 		adapter: "mongodb",
 		imports: [
 			{
-				path: "better-auth/adapters/mongodb",
+				path: "cinaauth/adapters/mongodb",
 				imports: [createImport({ name: "mongodbAdapter" })],
 				isNamedImport: false,
 			},

@@ -1,12 +1,12 @@
----
-title: Better Auth Fastify Integration Guide
-description: Learn how to seamlessly integrate Better Auth with your Fastify application.
+﻿---
+title: CinaAuth Fastify Integration Guide
+description: Learn how to seamlessly integrate CinaAuth with your Fastify application.
 ---
 
 This guide provides step-by-step instructions for configuring both essential handlers and CORS settings.
 
 <Callout type="important">
-  A configured Better Auth instance is required before proceeding. If you haven't set this up yet, please consult our [Installation Guide](/docs/installation).
+  A configured CinaAuth instance is required before proceeding. If you haven't set this up yet, please consult our [Installation Guide](/docs/installation).
 </Callout>
 
 ### Prerequisites
@@ -26,12 +26,12 @@ Verify the following requirements before integration:
 
 ### Authentication Handler Setup
 
-Configure Better Auth to process authentication requests by creating a catch-all route:
+Configure CinaAuth to process authentication requests by creating a catch-all route:
 
 ```ts title="server.ts"
 import Fastify from "fastify";
-import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "./auth"; // Your configured Better Auth instance
+import { fromNodeHeaders } from "cinaauth/node";
+import { auth } from "./auth"; // Your configured CinaAuth instance
 
 const fastify = Fastify({ logger: true });
 
@@ -86,7 +86,7 @@ fastify.listen({ port: 4000 }, (err) => {
 When a request is made from a different origin, the request will be blocked by default. You can add trusted origins to the `auth` instance.
 
 ```ts
-export const auth = betterAuth({
+export const auth = CinaAuth({
   trustedOrigins: ["http://localhost:3000", "https://example.com"],
 });
 ```
@@ -119,11 +119,11 @@ fastify.register(fastifyCors, {
 
 ### Getting the User Session
 
-To retrieve the user's session in your Fastify routes, use the `auth.api.getSession` method. Better Auth provides a `fromNodeHeaders` helper function that converts Node.js request headers to the format expected by Better Auth.
+To retrieve the user's session in your Fastify routes, use the `auth.api.getSession` method. CinaAuth provides a `fromNodeHeaders` helper function that converts Node.js request headers to the format expected by CinaAuth.
 
 ```ts title="server.ts"
-import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "./auth"; // Your Better Auth instance
+import { fromNodeHeaders } from "cinaauth/node";
+import { auth } from "./auth"; // Your CinaAuth instance
 
 fastify.get("/api/me", async (request, reply) => {
   const session = await auth.api.getSession({

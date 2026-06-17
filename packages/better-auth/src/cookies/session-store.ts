@@ -1,7 +1,7 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import type { Account } from "@better-auth/core/db";
-import type { InternalLogger } from "@better-auth/core/env";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import type { Account } from "@cinaauth/core/db";
+import type { InternalLogger } from "@cinaauth/core/env";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import type { CookieOptions } from "better-call";
 import { serializeCookie } from "better-call";
 import * as z from "zod";
@@ -238,7 +238,7 @@ export async function setAccountCookie(
 	const data = await symmetricEncodeJWT(
 		accountData,
 		c.context.secretConfig,
-		"better-auth-account",
+		"cinaauth-account",
 		options.maxAge,
 	);
 
@@ -256,7 +256,7 @@ export async function getAccountCookie(c: GenericEndpointContext) {
 			await symmetricDecodeJWT(
 				accountCookie,
 				c.context.secretConfig,
-				"better-auth-account",
+				"cinaauth-account",
 			),
 		);
 		if (accountData) {

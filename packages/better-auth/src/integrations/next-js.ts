@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { setShouldSkipSessionRefresh } from "../api/state/should-session-refresh";
 import { parseSetCookieHeader, toCookieOptions } from "../cookies";
 import { PACKAGE_VERSION } from "../version";
@@ -122,5 +122,5 @@ export const nextCookies = () => {
 				},
 			],
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

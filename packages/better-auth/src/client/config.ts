@@ -1,7 +1,7 @@
 import type {
-	BetterAuthClientOptions,
+	CinaAuthClientOptions,
 	ClientAtomListener,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import { createFetch } from "@better-fetch/fetch";
 import { defu } from "defu";
 import type { WritableAtom } from "nanostores";
@@ -39,7 +39,7 @@ const resolvePublicAuthUrl = (basePath?: string) => {
 };
 
 export const getClientConfig = (
-	options?: BetterAuthClientOptions | undefined,
+	options?: CinaAuthClientOptions | undefined,
 	loadEnv?: boolean | undefined,
 ) => {
 	/* check if the credentials property is supported. Useful for cf workers */

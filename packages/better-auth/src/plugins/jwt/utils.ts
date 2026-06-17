@@ -1,4 +1,4 @@
-import type { GenericEndpointContext } from "@better-auth/core";
+import type { GenericEndpointContext } from "@cinaauth/core";
 import { exportJWK, generateKeyPair } from "jose";
 import { symmetricEncrypt } from "../../crypto";
 import type { TimeString } from "../../utils/time";

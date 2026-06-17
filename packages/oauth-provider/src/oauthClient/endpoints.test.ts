@@ -1,7 +1,7 @@
-import { createAuthClient } from "better-auth/client";
-import { makeSignature } from "better-auth/crypto";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+import { createAuthClient } from "cinaauth/client";
+import { makeSignature } from "cinaauth/crypto";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import { describe, expect, it } from "vitest";
 import { oauthProviderClient } from "../client";
 import { oauthProvider } from "../oauth";

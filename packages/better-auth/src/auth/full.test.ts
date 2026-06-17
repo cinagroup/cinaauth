@@ -1,24 +1,24 @@
-import type { AuthContext } from "@better-auth/core";
+import type { AuthContext } from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import type { router } from "better-auth/api";
+} from "@cinaauth/core/api";
+import type { router } from "cinaauth/api";
 import { describe, expect, expectTypeOf, test } from "vitest";
 import { createAuthClient } from "../client";
 import { getTestInstance } from "../test-utils";
 import type { Auth } from "../types";
-import { betterAuth } from "./full";
+import { CinaAuth } from "./full";
 
 describe("auth type", () => {
 	test("default auth type should be okay", () => {
-		const auth = betterAuth({});
+		const auth = CinaAuth({});
 		type T = typeof auth;
 		expectTypeOf<T>().toEqualTypeOf<Auth>();
 	});
 
 	test("$ERROR_CODES in auth", () => {
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			plugins: [
 				{
 					id: "custom-plugin",
@@ -54,7 +54,7 @@ describe("auth type", () => {
 			),
 		};
 
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			plugins: [
 				{
 					id: "custom-plugin",
@@ -129,7 +129,7 @@ describe("auth with trusted proxy headers", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/4151
+ * @see https://github.com/cinagroup/cinaauth/issues/4151
  */
 describe("auth with dynamic baseURL (allowedHosts)", () => {
 	test("should throw error for empty allowedHosts array", async () => {

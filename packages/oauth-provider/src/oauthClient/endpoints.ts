@@ -1,6 +1,6 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError, getSessionFromCtx } from "better-auth/api";
-import { generateRandomString } from "better-auth/crypto";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError, getSessionFromCtx } from "cinaauth/api";
+import { generateRandomString } from "cinaauth/crypto";
 import { checkOAuthClient, oauthToSchema, schemaToOAuth } from "../register";
 import type { OAuthOptions, SchemaClient, Scope } from "../types";
 import type { OAuthClient } from "../types/oauth";

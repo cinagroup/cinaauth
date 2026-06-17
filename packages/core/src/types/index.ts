@@ -1,38 +1,38 @@
 export type { StandardSchemaV1 } from "@standard-schema/spec";
 export type {
 	AuthContext,
-	BetterAuthPluginRegistry,
-	BetterAuthPluginRegistryIdentifier,
+	CinaAuthPluginRegistry,
+	CinaAuthPluginRegistryIdentifier,
 	GenericEndpointContext,
 	InfoContext,
 	InternalAdapter,
 	PluginContext,
 } from "./context";
 export type {
-	BetterAuthCookie,
-	BetterAuthCookies,
+	CinaAuthCookie,
+	CinaAuthCookies,
 } from "./cookie";
 export type * from "./helper";
 export type {
 	BaseURLConfig,
-	BetterAuthAdvancedOptions,
-	BetterAuthDBOptions,
-	BetterAuthOptions,
-	BetterAuthRateLimitOptions,
-	BetterAuthRateLimitRule,
-	BetterAuthRateLimitStorage,
+	CinaAuthAdvancedOptions,
+	CinaAuthDBOptions,
+	CinaAuthOptions,
+	CinaAuthRateLimitOptions,
+	CinaAuthRateLimitRule,
+	CinaAuthRateLimitStorage,
 	DynamicBaseURLConfig,
 	GenerateIdFn,
 	StoreIdentifierOption,
 } from "./init-options";
 export type {
-	BetterAuthPlugin,
-	BetterAuthPluginErrorCodePart,
+	CinaAuthPlugin,
+	CinaAuthPluginErrorCodePart,
 	HookEndpointContext,
 } from "./plugin";
 export type {
-	BetterAuthClientOptions,
-	BetterAuthClientPlugin,
+	CinaAuthClientOptions,
+	CinaAuthClientPlugin,
 	ClientAtomListener,
 	ClientFetchOption,
 	ClientStore,

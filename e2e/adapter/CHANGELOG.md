@@ -1,3 +1,3 @@
-# @better-auth-test/adapter-base
+﻿# @cinaauth-test/adapter-base
 
 ## null

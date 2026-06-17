@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { noopOpenTelemetryAPI } from "./noop";
 
-// @see https://github.com/better-auth/better-auth/issues/8765
+// @see https://github.com/cinagroup/cinaauth/issues/8765
 describe("instrumentation noop", () => {
 	it("exposes a SpanStatusCode enum matching @opentelemetry/api", () => {
 		expect(noopOpenTelemetryAPI.SpanStatusCode).toMatchObject({

@@ -1,4 +1,4 @@
-import type { BetterAuthClientPlugin } from "@better-auth/core";
+import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import { PACKAGE_VERSION } from "../../version";
 import type { siwe } from ".";
 
@@ -11,5 +11,5 @@ export const siweClient = () => {
 			"/siwe/nonce": "POST",
 			"/siwe/get-nonce": "POST",
 		},
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };

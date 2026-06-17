@@ -1,6 +1,6 @@
----
+﻿---
 title: Autumn Billing
-description: Better Auth Plugin for Autumn Billing
+description: CinaAuth Plugin for Autumn Billing
 ---
 
 import { HomeIcon } from "lucide-react";
@@ -60,9 +60,9 @@ import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
     <Tabs items={["User", "Organization", "User & Organization", "Custom"]}>
       <Tab value="User">
         ```ts title="auth.ts"
-        import { autumn } from "autumn-js/better-auth";
+        import { autumn } from "autumn-js/cinaauth";
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
           // ...
           plugins: [autumn()],
         });
@@ -71,10 +71,10 @@ import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
       <Tab value="Organization">
         ```ts title="auth.ts"
-        import { autumn } from "autumn-js/better-auth";
-        import { organization } from "better-auth/plugins";
+        import { autumn } from "autumn-js/cinaauth";
+        import { organization } from "cinaauth/plugins";
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
           // ...
           plugins: [organization(), autumn({ customerScope: "organization" })],
         });
@@ -83,10 +83,10 @@ import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
       <Tab value="User & Organization">
         ```ts title="auth.ts"
-        import { autumn } from "autumn-js/better-auth";
-        import { organization } from "better-auth/plugins";
+        import { autumn } from "autumn-js/cinaauth";
+        import { organization } from "cinaauth/plugins";
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
           // ...
           plugins: [
             organization(),
@@ -98,10 +98,10 @@ import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
       <Tab value="Custom">
         ```ts title="auth.ts"
-        import { autumn } from "autumn-js/better-auth";
-        import { organization } from "better-auth/plugins";
+        import { autumn } from "autumn-js/cinaauth";
+        import { organization } from "cinaauth/plugins";
 
-        export const auth = betterAuth({
+        export const auth = CinaAuth({
           // ...
           plugins: [
             organization(),
@@ -131,7 +131,7 @@ import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
   <Step>
     ### Add `<AutumnProvider />`
 
-    In your layout file, wrap your application with the AutumnProvider component, and pass in the `useBetterAuth` to true.
+    In your layout file, wrap your application with the AutumnProvider component, and pass in the `useCinaAuth` to true.
 
     ```tsx title="app/layout.tsx"
     import { AutumnProvider } from "autumn-js/react";
@@ -144,7 +144,7 @@ import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
       return (
         <html>
           <body>
-            <AutumnProvider useBetterAuth={true}>
+            <AutumnProvider useCinaAuth={true}>
               {children}
             </AutumnProvider>
           </body>

@@ -13,9 +13,9 @@ export interface OktaOptions extends BaseOAuthProviderOptions {
  *
  * @example
  * ```ts
- * import { genericOAuth, okta } from "better-auth/plugins/generic-oauth";
+ * import { genericOAuth, okta } from "cinaauth/plugins/generic-oauth";
  *
- * export const auth = betterAuth({
+ * export const auth = CinaAuth({
  *   plugins: [
  *     genericOAuth({
  *       config: [

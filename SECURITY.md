@@ -1,4 +1,4 @@
-# Security Policy
+﻿# Security Policy
 
 ### Reporting a Vulnerability
 
@@ -6,7 +6,7 @@ If you believe you’ve found a security vulnerability, please follow these step
 
 1. Do not disclose the vulnerability publicly until it has been addressed by our
    team.
-2. Email your findings to `security@better-auth.com` Include:
+2. Email your findings to `security@cinagroup.com` Include:
    * A description of the vulnerability
    * Steps to reproduce the vulnerability
    * Potential impact of the vulnerability
@@ -24,5 +24,5 @@ publicly.
 
 ## Supported Versions
 
-We only support the latest version of Better Auth.
+We only support the latest version of CinaAuth.
 Older versions are not supported.

@@ -1,6 +1,6 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError } from "@better-auth/core/error";
-import { isBrowserFetchRequest } from "@better-auth/core/utils/fetch-metadata";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError } from "@cinaauth/core/error";
+import { isBrowserFetchRequest } from "@cinaauth/core/utils/fetch-metadata";
 import { getSessionFromCtx } from "../../api";
 import { generateRandomString } from "../../crypto";
 import { InvalidClient, InvalidRequest } from "./error";

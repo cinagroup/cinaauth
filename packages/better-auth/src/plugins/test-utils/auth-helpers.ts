@@ -1,4 +1,4 @@
-import type { AuthContext } from "@better-auth/core";
+import type { AuthContext } from "@cinaauth/core";
 import { createCookieHeaders, createTestCookie } from "./cookie-builder";
 import type { LoginResult, TestCookie } from "./types";
 

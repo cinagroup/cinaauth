@@ -1,15 +1,15 @@
 import type {
-	BetterAuthOptions,
-	BetterAuthPlugin,
+	CinaAuthOptions,
+	CinaAuthPlugin,
 	GenericEndpointContext,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { isProduction, logger } from "@better-auth/core/env";
-import { safeJSONParse } from "@better-auth/core/utils/json";
-import { isSafeUrlScheme } from "@better-auth/core/utils/url";
+} from "@cinaauth/core/api";
+import { isProduction, logger } from "@cinaauth/core/env";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
+import { isSafeUrlScheme } from "@cinaauth/core/utils/url";
 import { getWebcryptoSubtle } from "@better-auth/utils";
 import { base64 } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
@@ -38,8 +38,8 @@ import { schema } from "../oidc-provider/schema";
 import { parsePrompt } from "../oidc-provider/utils/prompt";
 import { authorizeMCPOAuth } from "./authorize";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		mcp: {
 			creator: typeof mcp;
 		};
@@ -130,10 +130,10 @@ export const getMCPProtectedResourceMetadata = (
 };
 
 const registerMcpClientBodySchema = z.object({
-	// This plugin is migrating to @better-auth/oauth-provider (see the deprecation
+	// This plugin is migrating to @cinaauth/oauth-provider (see the deprecation
 	// notice in docs/plugins/mcp). It gets only the non-breaking guard that rejects
 	// code-execution schemes here; full https-or-loopback parity comes from
-	// @better-auth/oauth-provider's SafeUrlSchema, not from tightening this plugin.
+	// @cinaauth/oauth-provider's SafeUrlSchema, not from tightening this plugin.
 	redirect_uris: z.array(
 		z.string().refine(isSafeUrlScheme, {
 			message:
@@ -556,8 +556,8 @@ export const mcp = (options: MCPOptions) => {
 					// and fall through to the `invalid_grant` error path.
 					//
 					// TODO(legacy-hardening-coordinate): in-flight follow-ups at
-					// https://github.com/better-auth/better-auth/security/advisories/GHSA-9h47-pqcx-hjr4
-					// and https://github.com/better-auth/better-auth/security/advisories/GHSA-pw9m-5jxm-xr6h
+					// https://github.com/cinagroup/cinaauth/security/advisories/GHSA-9h47-pqcx-hjr4
+					// and https://github.com/cinagroup/cinaauth/security/advisories/GHSA-pw9m-5jxm-xr6h
 					// touch this same surface. Whoever lands second must rebase
 					// to keep the atomic consume + `invalid_grant` semantics in
 					// place; do not regress to a `findVerificationValue` +
@@ -1056,7 +1056,7 @@ export const mcp = (options: MCPOptions) => {
 		},
 		schema,
 		options,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };
 
 export const withMcpAuth = <
@@ -1064,7 +1064,7 @@ export const withMcpAuth = <
 		api: {
 			getMcpSession: (...args: any) => Promise<OAuthAccessToken | null>;
 		};
-		options: BetterAuthOptions;
+		options: CinaAuthOptions;
 	},
 >(
 	auth: Auth,

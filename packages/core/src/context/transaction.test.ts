@@ -28,7 +28,7 @@ function createTransactionHarness() {
 
 describe("runWithTransaction", () => {
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9869
+	 * @see https://github.com/cinagroup/cinaauth/issues/9869
 	 */
 	it("reuses the active transaction for nested calls", async () => {
 		const { adapter, transactionAdapter, getTransactionCalls } =

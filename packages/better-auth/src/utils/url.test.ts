@@ -1,4 +1,4 @@
-import type { DynamicBaseURLConfig } from "@better-auth/core";
+import type { DynamicBaseURLConfig } from "@cinaauth/core";
 import { describe, expect, it } from "vitest";
 import {
 	getBaseURL,
@@ -294,7 +294,7 @@ describe("getBaseURL", () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/4151
+ * @see https://github.com/cinagroup/cinaauth/issues/4151
  */
 describe("matchesHostPattern", () => {
 	describe("exact matches", () => {

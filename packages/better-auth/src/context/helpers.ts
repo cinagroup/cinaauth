@@ -1,12 +1,12 @@
 import type {
 	AuthContext,
 	AwaitableFunction,
-	BetterAuthOptions,
-	BetterAuthPlugin,
-} from "@better-auth/core";
-import { env } from "@better-auth/core/env";
-import { BetterAuthError } from "@better-auth/core/error";
-import { isLoopbackHost } from "@better-auth/core/utils/host";
+	CinaAuthOptions,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
+import { env } from "@cinaauth/core/env";
+import { CinaAuthError } from "@cinaauth/core/error";
+import { isLoopbackHost } from "@cinaauth/core/utils/host";
 import type { EndpointContext, InputContext } from "better-call";
 import { defu } from "defu";
 import { createCookieGetter, getCookies } from "../cookies";
@@ -24,16 +24,16 @@ export async function runPluginInit(context: AuthContext) {
 	let options = context.options;
 	const plugins = options.plugins || [];
 	const pluginTrustedOrigins: NonNullable<
-		BetterAuthOptions["trustedOrigins"]
+		CinaAuthOptions["trustedOrigins"]
 	>[] = [];
 	const dbHooks: {
 		source: string;
-		hooks: Exclude<BetterAuthOptions["databaseHooks"], undefined>;
+		hooks: Exclude<CinaAuthOptions["databaseHooks"], undefined>;
 	}[] = [];
 	for (const plugin of plugins) {
 		if (plugin.init) {
 			const initPromise = plugin.init(context);
-			let result: ReturnType<Required<BetterAuthPlugin>["init"]>;
+			let result: ReturnType<Required<CinaAuthPlugin>["init"]>;
 			if (isPromise(initPromise)) {
 				result = await initPromise;
 			} else {
@@ -97,8 +97,8 @@ export async function runPluginInit(context: AuthContext) {
 	context.options = options;
 }
 
-export function getInternalPlugins(options: BetterAuthOptions) {
-	const plugins: BetterAuthPlugin[] = [];
+export function getInternalPlugins(options: CinaAuthOptions) {
+	const plugins: CinaAuthPlugin[] = [];
 	if (options.advanced?.crossSubDomainCookies?.enabled) {
 		// TODO: add internal plugin
 	}
@@ -106,7 +106,7 @@ export function getInternalPlugins(options: BetterAuthOptions) {
 }
 
 export async function getTrustedOrigins(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	request?: Request,
 ): Promise<string[]> {
 	const trustedOrigins: (string | undefined | null)[] = [];
@@ -152,7 +152,7 @@ export async function getTrustedOrigins(
 			trustedOrigins.push(...validOrigins);
 		}
 	}
-	const envTrustedOrigins = env.BETTER_AUTH_TRUSTED_ORIGINS;
+	const envTrustedOrigins = env.CINAAUTH_TRUSTED_ORIGINS;
 	if (envTrustedOrigins) {
 		trustedOrigins.push(...envTrustedOrigins.split(","));
 	}
@@ -195,14 +195,14 @@ export function pickSource(
  * default so deployments behind a reverse proxy work without extra config.
  */
 export function resolveDynamicTrustedProxyHeaders(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 ): boolean {
 	return options.advanced?.trustedProxyHeaders ?? true;
 }
 
 /**
  * Per-request clone with `baseURL`, `trustedOrigins`, `trustedProviders`
- * and cookies rehydrated for the resolved host. Throws `BetterAuthError`
+ * and cookies rehydrated for the resolved host. Throws `CinaAuthError`
  * when the URL cannot be resolved; callers on the direct-API path convert
  * this to `APIError`.
  */
@@ -221,7 +221,7 @@ export async function resolveRequestContext(
 		trustedProxyHeaders,
 	);
 	if (!baseURL) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"Could not resolve base URL from request. Check your allowedHosts config.",
 		);
 	}
@@ -237,7 +237,7 @@ export async function resolveRequestContext(
 	};
 
 	// Pass the dynamic config so getTrustedOrigins can expand `allowedHosts`.
-	const trustedOriginOptions: BetterAuthOptions = {
+	const trustedOriginOptions: CinaAuthOptions = {
 		...resolved.options,
 		baseURL: dynamicBaseURLConfig,
 	};
@@ -289,7 +289,7 @@ export async function getAwaitableValue<T extends Record<string, any>>(
 }
 
 export async function getTrustedProviders(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	request?: Request,
 ): Promise<string[]> {
 	const trustedProviders = options.account?.accountLinking?.trustedProviders;

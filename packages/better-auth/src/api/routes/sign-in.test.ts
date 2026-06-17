@@ -1,4 +1,4 @@
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import { describe, expect, it, vi } from "vitest";
 import { parseSetCookieHeader } from "../../cookies";
 import { getTestInstance } from "../../test-utils/test-instance";
@@ -19,7 +19,7 @@ describe("sign-in", async () => {
 		});
 		const setCookie = signInRes.headers.get("set-cookie");
 		const parsed = parseSetCookieHeader(setCookie || "");
-		expect(parsed.get("better-auth.session_token")).toBeDefined();
+		expect(parsed.get("cinaauth.session_token")).toBeDefined();
 	});
 
 	it("should read the ip address and user agent from the headers", async () => {

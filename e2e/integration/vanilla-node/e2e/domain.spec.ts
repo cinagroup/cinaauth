@@ -1,4 +1,4 @@
-import { chromium, expect, test } from "@playwright/test";
+﻿import { chromium, expect, test } from "@playwright/test";
 import { runClient, setup } from "./utils";
 
 const { ref, start, clean } = setup();
@@ -34,7 +34,7 @@ test.describe("cross domain", async () => {
 		// Check that the session is not set because of we didn't set the cookie domain correctly
 		const cookies = await page.context().cookies();
 		expect(
-			cookies.find((c) => c.name === "better-auth.session_token"),
+			cookies.find((c) => c.name === "cinaauth.session_token"),
 		).not.toBeDefined();
 	});
 });

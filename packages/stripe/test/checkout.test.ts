@@ -1,4 +1,4 @@
-import { getTestInstance } from "better-auth/test";
+﻿import { getTestInstance } from "cinaauth/test";
 import type Stripe from "stripe";
 import { describe, expect, vi } from "vitest";
 import { stripe } from "../src";
@@ -942,7 +942,7 @@ describe("stripe checkout", () => {
 		});
 
 		/**
-		 * @see https://github.com/better-auth/better-auth/issues/8255
+		 * @see https://github.com/cinagroup/cinaauth/issues/8255
 		 */
 		test("should replace {CHECKOUT_SESSION_ID} placeholder in callbackURL with actual session ID", async ({
 			memory,
@@ -1051,7 +1051,7 @@ describe("stripe checkout", () => {
 			// User passes {CHECKOUT_SESSION_ID} in their successUrl, which gets
 			// URL-encoded inside callbackURL. Stripe can only replace the literal
 			// (unencoded) placeholder, so the encoded version stays as-is.
-			// Better Auth should replace it with the actual session ID before redirecting.
+			// CinaAuth should replace it with the actual session ID before redirecting.
 			const callbackURL =
 				"http://localhost:5173/billing/success?session_id={CHECKOUT_SESSION_ID}";
 			const url = `http://localhost:3000/api/auth/subscription/success?callbackURL=${encodeURIComponent(callbackURL)}&checkoutSessionId=${testCheckoutSessionId}`;
@@ -1138,7 +1138,7 @@ describe("stripe checkout", () => {
 		});
 	});
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8920
+	 * @see https://github.com/cinagroup/cinaauth/issues/8920
 	 */
 	describe("metered usage pricing", () => {
 		test("should not include quantity for metered base price in checkout session", async ({
@@ -1721,8 +1721,8 @@ describe("stripe checkout", () => {
 		});
 	});
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9129
-	 * @see https://github.com/better-auth/better-auth/issues/9130
+	 * @see https://github.com/cinagroup/cinaauth/issues/9129
+	 * @see https://github.com/cinagroup/cinaauth/issues/9130
 	 */
 	describe("getCheckoutSessionParams subscription_data merge", () => {
 		const buildTrialOptions = (mock: StripeMock): StripeOptions => ({

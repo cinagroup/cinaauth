@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "better-auth";
-import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import type { CinaAuthPlugin } from "cinaauth";
+import { createAuthMiddleware, getSessionFromCtx } from "cinaauth/api";
 import { XMLValidator } from "fast-xml-parser";
 import { SAML_SESSION_BY_ID_PREFIX } from "./constants";
 import { assignOrganizationByDomain } from "./linking";
@@ -52,8 +52,8 @@ import { PACKAGE_VERSION } from "./version";
 
 export type { SAMLConfig, OIDCConfig, SSOOptions, SSOProvider };
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		sso: {
 			creator: typeof sso;
 		};
@@ -142,7 +142,7 @@ export function sso<
 	id: "sso";
 	version: string;
 	endpoints: SSOEndpoints<O> & DomainVerificationEndpoints;
-	schema: NonNullable<BetterAuthPlugin["schema"]>;
+	schema: NonNullable<CinaAuthPlugin["schema"]>;
 	options: NoInfer<O>;
 };
 export function sso<O extends SSOOptions>(
@@ -156,7 +156,7 @@ export function sso<O extends SSOOptions>(
 
 export function sso<O extends SSOOptions>(
 	options?: O | undefined,
-): BetterAuthPlugin {
+): CinaAuthPlugin {
 	const optionsWithStore = options as O;
 
 	let endpoints = {
@@ -307,5 +307,5 @@ export function sso<O extends SSOOptions>(
 			},
 		},
 		options: options as NoInfer<O>,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 }

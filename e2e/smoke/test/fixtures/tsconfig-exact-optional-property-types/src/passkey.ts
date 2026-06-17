@@ -1,12 +1,12 @@
-/**
- * @see https://github.com/better-auth/better-auth/issues/9212
+﻿/**
+ * @see https://github.com/cinagroup/cinaauth/issues/9212
  */
-import { passkey } from "@better-auth/passkey";
-import { passkeyClient } from "@better-auth/passkey/client";
-import { betterAuth } from "better-auth";
-import { createAuthClient } from "better-auth/react";
+import { passkey } from "@cinaauth/passkey";
+import { passkeyClient } from "@cinaauth/passkey/client";
+import { CinaAuth } from "cinaauth";
+import { createAuthClient } from "cinaauth/react";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	plugins: [
 		passkey({
 			rpID: "localhost",
@@ -16,7 +16,7 @@ export const auth = betterAuth({
 	],
 });
 
-export const authWithoutSessionRequired = betterAuth({
+export const authWithoutSessionRequired = CinaAuth({
 	plugins: [
 		passkey({
 			rpID: "localhost",

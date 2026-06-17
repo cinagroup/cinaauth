@@ -1,19 +1,19 @@
 import type {
 	AuthContext,
 	Awaitable,
-	BetterAuthOptions,
-	BetterAuthPlugin,
-} from "@better-auth/core";
-import type { InternalLogger } from "@better-auth/core/env";
-import { logger } from "@better-auth/core/env";
+	CinaAuthOptions,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
+import type { InternalLogger } from "@cinaauth/core/env";
+import { logger } from "@cinaauth/core/env";
 import {
 	ATTR_CONTEXT,
 	ATTR_HOOK_TYPE,
 	ATTR_HTTP_RESPONSE_STATUS_CODE,
 	ATTR_HTTP_ROUTE,
 	withSpan,
-} from "@better-auth/core/instrumentation";
-import { normalizePathname } from "@better-auth/core/utils/url";
+} from "@cinaauth/core/instrumentation";
+import { normalizePathname } from "@cinaauth/core/utils/url";
 import type { Endpoint, Middleware } from "better-call";
 import { createRouter } from "better-call";
 import type { OverrideMerge, UnionToIntersection } from "../types";
@@ -56,7 +56,7 @@ import {
 import { toAuthEndpoints } from "./to-auth-endpoints";
 
 export function checkEndpointConflicts(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	logger: InternalLogger,
 ) {
 	const endpointRegistry = new Map<
@@ -170,7 +170,7 @@ To resolve this, you can:
 	}
 }
 
-export function getEndpoints<Option extends BetterAuthOptions>(
+export function getEndpoints<Option extends CinaAuthOptions>(
 	ctx: Awaitable<AuthContext>,
 	options: Option,
 ) {
@@ -184,7 +184,7 @@ export function getEndpoints<Option extends BetterAuthOptions>(
 
 	type PluginEndpoint = UnionToIntersection<
 		Option["plugins"] extends Array<infer T>
-			? T extends BetterAuthPlugin
+			? T extends CinaAuthPlugin
 				? T extends {
 						endpoints: infer E;
 					}
@@ -270,7 +270,7 @@ export function getEndpoints<Option extends BetterAuthOptions>(
 		middlewares,
 	};
 }
-export const router = <Option extends BetterAuthOptions>(
+export const router = <Option extends CinaAuthOptions>(
 	ctx: AuthContext,
 	options: Option,
 ) => {
@@ -406,8 +406,8 @@ export {
 	createAuthEndpoint,
 	createAuthMiddleware,
 	optionsMiddleware,
-} from "@better-auth/core/api";
-export { APIError } from "@better-auth/core/error";
+} from "@cinaauth/core/api";
+export { APIError } from "@cinaauth/core/error";
 export { getIp } from "../utils/get-request-ip";
 export { isAPIError } from "../utils/is-api-error";
 export { type DispatchContext, dispatchAuthEndpoint } from "./dispatch";

@@ -1,10 +1,10 @@
 import type { AsyncLocalStorage } from "node:async_hooks";
-import { getAsyncLocalStorage } from "@better-auth/core/async_hooks";
+import { getAsyncLocalStorage } from "@cinaauth/core/async_hooks";
 import type { DBAdapter, DBTransactionAdapter } from "../db/adapter";
-import type { BetterAuthOptions } from "../types";
-import { __getBetterAuthGlobal } from "./global";
+import type { CinaAuthOptions } from "../types";
+import { __getCinaAuthGlobal } from "./global";
 
-type StoredAdapter = DBTransactionAdapter<BetterAuthOptions>;
+type StoredAdapter = DBTransactionAdapter<CinaAuthOptions>;
 
 type HookContext = {
 	adapter: StoredAdapter;
@@ -13,12 +13,12 @@ type HookContext = {
 };
 
 const ensureAsyncStorage = async () => {
-	const betterAuthGlobal = __getBetterAuthGlobal();
-	if (!betterAuthGlobal.context.adapterAsyncStorage) {
+	const CinaAuthGlobal = __getCinaAuthGlobal();
+	if (!CinaAuthGlobal.context.adapterAsyncStorage) {
 		const AsyncLocalStorage = await getAsyncLocalStorage();
-		betterAuthGlobal.context.adapterAsyncStorage = new AsyncLocalStorage();
+		CinaAuthGlobal.context.adapterAsyncStorage = new AsyncLocalStorage();
 	}
-	return betterAuthGlobal.context
+	return CinaAuthGlobal.context
 		.adapterAsyncStorage as AsyncLocalStorage<HookContext>;
 };
 
@@ -32,7 +32,7 @@ export const getCurrentDBAdapterAsyncLocalStorage = async () => {
 };
 
 export const getCurrentAdapter = async <
-	Options extends BetterAuthOptions = BetterAuthOptions,
+	Options extends CinaAuthOptions = CinaAuthOptions,
 >(
 	fallback: DBTransactionAdapter<Options>,
 ): Promise<DBTransactionAdapter<Options>> => {
@@ -51,7 +51,7 @@ export const getCurrentAdapter = async <
 
 export const runWithAdapter = async <
 	R,
-	Options extends BetterAuthOptions = BetterAuthOptions,
+	Options extends CinaAuthOptions = CinaAuthOptions,
 >(
 	adapter: DBAdapter<Options>,
 	fn: () => R,
@@ -96,7 +96,7 @@ export const runWithAdapter = async <
 
 export const runWithTransaction = async <
 	R,
-	Options extends BetterAuthOptions = BetterAuthOptions,
+	Options extends CinaAuthOptions = CinaAuthOptions,
 >(
 	adapter: DBAdapter<Options>,
 	fn: () => R,

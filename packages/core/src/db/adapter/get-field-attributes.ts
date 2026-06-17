@@ -1,6 +1,6 @@
-import { BetterAuthError } from "../../error";
-import type { BetterAuthOptions } from "../../types";
-import type { BetterAuthDBSchema } from "../type";
+import { CinaAuthError } from "../../error";
+import type { CinaAuthOptions } from "../../types";
+import type { CinaAuthDBSchema } from "../type";
 import { initGetDefaultFieldName } from "./get-default-field-name";
 import { initGetDefaultModelName } from "./get-default-model-name";
 import { initGetIdField } from "./get-id-field";
@@ -13,8 +13,8 @@ export const initGetFieldAttributes = ({
 	disableIdGeneration,
 }: {
 	usePlural?: boolean;
-	schema: BetterAuthDBSchema;
-	options: BetterAuthOptions;
+	schema: CinaAuthDBSchema;
+	options: CinaAuthOptions;
 	disableIdGeneration?: boolean;
 	customIdGenerator?: ((props: { model: string }) => string) | undefined;
 }) => {
@@ -53,7 +53,7 @@ export const initGetFieldAttributes = ({
 		fields.id = idField({ customModelName: defaultModelName });
 		const fieldAttributes = fields[defaultFieldName];
 		if (!fieldAttributes) {
-			throw new BetterAuthError(`Field ${field} not found in model ${model}`);
+			throw new CinaAuthError(`Field ${field} not found in model ${model}`);
 		}
 		return fieldAttributes;
 	};

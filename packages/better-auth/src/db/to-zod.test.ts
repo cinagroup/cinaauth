@@ -3,7 +3,7 @@ import { toZodSchema } from "./to-zod";
 
 describe("toZodSchema", () => {
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7489
+	 * @see https://github.com/cinagroup/cinaauth/issues/7489
 	 */
 	describe("returned: false field handling (issue #7489)", () => {
 		it("should include fields with returned: false in input schema (isClientSide: true)", () => {

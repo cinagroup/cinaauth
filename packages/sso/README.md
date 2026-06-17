@@ -1,16 +1,16 @@
-# Better Auth SSO Plugin
+﻿# CinaAuth SSO Plugin
 
-Single Sign-On plugin for [Better Auth](https://www.better-auth.com) — add SAML and OIDC enterprise SSO to your application.
+Single Sign-On plugin for [CinaAuth](https://www.cinagroup.com) — add SAML and OIDC enterprise SSO to your application.
 
 ## Installation
 
 ```bash
-npm install @better-auth/sso
+npm install @cinaauth/sso
 ```
 
 ## Documentation
 
-For full documentation, visit [better-auth.com/docs/plugins/sso](https://www.better-auth.com/docs/plugins/sso).
+For full documentation, visit [cinagroup.com/docs/plugins/sso](https://www.cinagroup.com/docs/plugins/sso).
 
 ## License
 

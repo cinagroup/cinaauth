@@ -1,10 +1,10 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import {
 	ATTR_CONTEXT,
 	ATTR_DB_COLLECTION_NAME,
 	ATTR_DB_OPERATION_NAME,
 	ATTR_HOOK_TYPE,
-} from "@better-auth/core/instrumentation";
+} from "@cinaauth/core/instrumentation";
 import { trace } from "@opentelemetry/api";
 import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
 import {
@@ -242,7 +242,7 @@ describe("database instrumentation", () => {
 
 	it("emits plugin id on db hook spans when hooks come from plugin", async () => {
 		const PLUGIN_ID = "db-hooks-plugin";
-		const pluginWithDbHooks: BetterAuthPlugin = {
+		const pluginWithDbHooks: CinaAuthPlugin = {
 			id: PLUGIN_ID,
 			init: () => ({
 				options: {

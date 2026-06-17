@@ -2,13 +2,13 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import type {
 	Awaitable,
-	BetterAuthClientOptions,
-	BetterAuthOptions,
-} from "@better-auth/core";
+	CinaAuthClientOptions,
+	CinaAuthOptions,
+} from "@cinaauth/core";
 import type { SuccessContext } from "@better-fetch/fetch";
 import { sql } from "kysely";
 import { afterAll } from "vitest";
-import { betterAuth } from "../auth/full";
+import { CinaAuth } from "../auth/full";
 import { createAuthClient } from "../client";
 import { parseSetCookieHeader, setCookieToHeader } from "../cookies";
 import { getAdapter } from "../db/adapter-kysely";
@@ -32,8 +32,8 @@ afterAll(async () => {
 });
 
 export async function getTestInstance<
-	O extends Partial<BetterAuthOptions>,
-	C extends BetterAuthClientOptions,
+	O extends Partial<CinaAuthOptions>,
+	C extends CinaAuthClientOptions,
 >(
 	options?: O | undefined,
 	config?:
@@ -59,7 +59,7 @@ export async function getTestInstance<
 		const { Kysely, PostgresDialect } = await import("kysely");
 		const { Pool } = await import("pg");
 		const pool = new Pool({
-			connectionString: "postgres://user:password@localhost:5432/better_auth",
+			connectionString: "postgres://user:password@localhost:5432/cinaauth",
 			options: postgresSchema
 				? `-c search_path=${postgresSchema},public`
 				: undefined,
@@ -88,7 +88,7 @@ export async function getTestInstance<
 		const { createPool } = await import("mysql2/promise");
 		return new Kysely({
 			dialect: new MysqlDialect({
-				pool: createPool("mysql://user:password@localhost:3306/better_auth"),
+				pool: createPool("mysql://user:password@localhost:3306/cinaauth"),
 			}),
 		});
 	}
@@ -101,7 +101,7 @@ export async function getTestInstance<
 			const db = client.db(dbName);
 			return db;
 		};
-		const db = await dbClient("mongodb://127.0.0.1:27017", "better-auth");
+		const db = await dbClient("mongodb://127.0.0.1:27017", "cinaauth");
 		return db;
 	}
 
@@ -116,7 +116,7 @@ export async function getTestInstance<
 				clientSecret: "test",
 			},
 		},
-		secret: "better-auth-secret-that-is-long-enough-for-validation-test",
+		secret: "cinaauth-secret-that-is-long-enough-for-validation-test",
 		database:
 			testWith === "postgres"
 				? { db: await getPostgres(), type: "postgres" }
@@ -140,9 +140,9 @@ export async function getTestInstance<
 		logger: {
 			level: "debug",
 		},
-	} satisfies BetterAuthOptions;
+	} satisfies CinaAuthOptions;
 
-	const auth = betterAuth({
+	const auth = CinaAuth({
 		baseURL: "http://localhost:" + (config?.port || 3000),
 		...opts,
 		...options,
@@ -304,8 +304,8 @@ export async function getTestInstance<
 				onSuccess(context) {
 					const header = context.response.headers.get("set-cookie");
 					const cookies = parseSetCookieHeader(header || "");
-					const signedCookie = cookies.get("better-auth.session_token")?.value;
-					headers.set("cookie", `better-auth.session_token=${signedCookie}`);
+					const signedCookie = cookies.get("cinaauth.session_token")?.value;
+					headers.set("cookie", `cinaauth.session_token=${signedCookie}`);
 				},
 			},
 		});
@@ -332,8 +332,8 @@ export async function getTestInstance<
 				onSuccess(context) {
 					const header = context.response.headers.get("set-cookie");
 					const cookies = parseSetCookieHeader(header || "");
-					const signedCookie = cookies.get("better-auth.session_token")?.value;
-					headers.set("cookie", `better-auth.session_token=${signedCookie}`);
+					const signedCookie = cookies.get("cinaauth.session_token")?.value;
+					headers.set("cookie", `cinaauth.session_token=${signedCookie}`);
 				},
 			},
 		});
@@ -351,8 +351,8 @@ export async function getTestInstance<
 			const header = context.response.headers.get("set-cookie");
 			if (header) {
 				const cookies = parseSetCookieHeader(header || "");
-				const signedCookie = cookies.get("better-auth.session_token")?.value;
-				headers.set("cookie", `better-auth.session_token=${signedCookie}`);
+				const signedCookie = cookies.get("cinaauth.session_token")?.value;
+				headers.set("cookie", `cinaauth.session_token=${signedCookie}`);
 			}
 		};
 	}

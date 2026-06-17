@@ -1,13 +1,13 @@
-import { electronClient } from "@better-auth/electron/client";
-import { storage } from "@better-auth/electron/storage";
-import { createAuthClient } from "better-auth/client";
+﻿import { electronClient } from "@cinaauth/electron/client";
+import { storage } from "@cinaauth/electron/storage";
+import { createAuthClient } from "cinaauth/client";
 
 export const authClient = createAuthClient({
 	baseURL: "http://localhost:3000/api/auth",
 	plugins: [
 		electronClient({
 			protocol: {
-				scheme: "com.better-auth.demo",
+				scheme: "com.cinaauth.demo",
 			},
 			signInURL: "http://localhost:3000/sign-in",
 			storage: storage(),

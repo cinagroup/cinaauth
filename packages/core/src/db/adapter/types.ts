@@ -1,5 +1,5 @@
-import type { BetterAuthOptions } from "../../types";
-import type { BetterAuthDBSchema, DBFieldAttribute } from "../type";
+import type { CinaAuthOptions } from "../../types";
+import type { CinaAuthDBSchema, DBFieldAttribute } from "../type";
 import type {
 	CleanedWhere,
 	CustomAdapter,
@@ -15,7 +15,7 @@ export type AdapterFactoryOptions = {
 };
 
 export interface AdapterFactoryConfig
-	extends Omit<DBAdapterFactoryConfig<BetterAuthOptions>, "transaction"> {
+	extends Omit<DBAdapterFactoryConfig<CinaAuthOptions>, "transaction"> {
 	/**
 	 * Execute multiple operations in a transaction.
 	 *
@@ -32,11 +32,11 @@ export interface AdapterFactoryConfig
 }
 
 export type AdapterFactoryCustomizeAdapterCreator = (config: {
-	options: BetterAuthOptions;
+	options: CinaAuthOptions;
 	/**
-	 * The schema of the user's Better-Auth instance.
+	 * The schema of the user's CinaAuth instance.
 	 */
-	schema: BetterAuthDBSchema;
+	schema: CinaAuthDBSchema;
 	/**
 	 * The debug log function.
 	 *

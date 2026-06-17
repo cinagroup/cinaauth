@@ -1,5 +1,5 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { parseSetCookieHeader, toCookieOptions } from "../cookies";
 import { PACKAGE_VERSION } from "../version";
 import { warnIfCookiePluginNotLast } from "./cookie-plugin-guard";
@@ -10,13 +10,13 @@ import { warnIfCookiePluginNotLast } from "./cookie-plugin-guard";
  * This plugin automatically handles cookie setting for TanStack Start with Solid.js.
  * It uses `@tanstack/solid-start-server` to set cookies.
  *
- * For React, use `better-auth/tanstack-start` instead.
+ * For React, use `cinaauth/tanstack-start` instead.
  *
  * @example
  * ```ts
- * import { tanstackStartCookies } from "better-auth/tanstack-start/solid";
+ * import { tanstackStartCookies } from "cinaauth/tanstack-start/solid";
  *
- * const auth = betterAuth({
+ * const auth = CinaAuth({
  *   plugins: [tanstackStartCookies()],
  * });
  * ```
@@ -66,5 +66,5 @@ export const tanstackStartCookies = () => {
 				},
 			],
 		},
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

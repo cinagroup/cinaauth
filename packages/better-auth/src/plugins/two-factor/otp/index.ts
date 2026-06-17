@@ -1,6 +1,6 @@
-import type { Awaitable, GenericEndpointContext } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import type { Awaitable, GenericEndpointContext } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
 import { setSessionCookie } from "../../../cookies";
 import {
@@ -405,7 +405,7 @@ export const otp2fa = (options?: OTPOptions | undefined) => {
 			 * **client:**
 			 * `authClient.twoFactor.sendOtp`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#api-method-two-factor-send-otp)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#api-method-two-factor-send-otp)
 			 */
 			sendTwoFactorOTP: send2FaOTP,
 			/**
@@ -421,7 +421,7 @@ export const otp2fa = (options?: OTPOptions | undefined) => {
 			 * **client:**
 			 * `authClient.twoFactor.verifyOtp`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/2fa#api-method-two-factor-verify-otp)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/2fa#api-method-two-factor-verify-otp)
 			 */
 			verifyTwoFactorOTP: verifyOTP,
 		},

@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+﻿import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/useAuth";
 
@@ -17,7 +17,7 @@ const features = [
 	},
 	{
 		name: "Single Sign-On",
-		description: "SSO capabilities with Better Auth OIDC provider",
+		description: "SSO capabilities with CinaAuth OIDC provider",
 	},
 ];
 
@@ -38,17 +38,17 @@ export function Home() {
 			<main className="flex flex-col gap-4 items-center justify-center">
 				<div className="flex flex-col gap-1">
 					<h3 className="font-bold text-4xl text-black dark:text-white text-center">
-						Better Auth OIDC Client
+						CinaAuth OIDC Client
 					</h3>
 					<p className="text-center break-words text-sm md:text-base text-muted-foreground">
 						Official demo showcasing{" "}
 						<a
-							href="https://better-auth.com"
+							href="https://cinagroup.com"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="italic underline"
 						>
-							Better Auth
+							CinaAuth
 						</a>{" "}
 						as an OIDC provider with a client application.
 					</p>
@@ -58,7 +58,7 @@ export function Home() {
 						<div className="border-y py-2 border-dotted bg-secondary/60 opacity-80">
 							<div className="text-xs flex items-center gap-2 justify-center text-muted-foreground">
 								<span className="text-center">
-									This demo uses Better Auth as an OIDC provider and implements
+									This demo uses CinaAuth as an OIDC provider and implements
 									a compliant OIDC client
 								</span>
 							</div>
@@ -114,7 +114,7 @@ export function Home() {
 										d="M5 3H3v4h2V5h14v14H5v-2H3v4h18V3zm12 8h-2V9h-2V7h-2v2h2v2H3v2h10v2h-2v2h2v-2h2v-2h2z"
 									></path>
 								</svg>
-								<span>Sign In with Better Auth</span>
+								<span>Sign In with CinaAuth</span>
 							</Button>
 						)}
 					</div>

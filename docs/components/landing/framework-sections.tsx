@@ -1,4 +1,4 @@
-// cSpell:ignore SVGE SVGMFHN Galf
+﻿// cSpell:ignore SVGE SVGMFHN Galf
 "use client";
 
 import Link from "next/link";
@@ -773,14 +773,14 @@ const ormAdapters = [
 ];
 
 const dbSnippets: Record<string, string> = {
-	PostgreSQL: `import { betterAuth } from "better-auth"
+	PostgreSQL: `import { CinaAuth } from "cinaauth"
 import { Pool } from "pg"
 
 const pool = new Pool({
 	connectionString: process.env.DATABASE_URL,
 })
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
 	database: pool,
 	emailAndPassword: {
 		enabled: true,
@@ -808,9 +808,9 @@ export const auth = betterAuth({
 })`,
 };
 
-export const serverCode = `import { betterAuth } from "better-auth"
+export const serverCode = `import { CinaAuth } from "cinaauth"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
   emailAndPassword: {
     enabled: true,
   },
@@ -831,7 +831,7 @@ export const auth = betterAuth({
   ],
 })`;
 
-export const clientCode = `import { createAuthClient } from "better-auth/react"
+export const clientCode = `import { createAuthClient } from "cinaauth/react"
 
 export const authClient = createAuthClient({
   plugins: [
@@ -1248,17 +1248,17 @@ export function PluginEcosystem() {
 
 export function AiNativeSection() {
 	const steps = [
-		{ label: "mcp", text: "Connected to better-auth docs" },
-		{ label: "skill", text: "better-auth/add-provider → google" },
-		{ label: "skill", text: "better-auth/add-plugin → two-factor" },
+		{ label: "mcp", text: "Connected to cinaauth docs" },
+		{ label: "skill", text: "cinaauth/add-provider → google" },
+		{ label: "skill", text: "cinaauth/add-plugin → two-factor" },
 		{ label: "write", text: "lib/auth.ts", lines: 14 },
 		{ label: "done", text: "Google OAuth + 2FA configured" },
 	];
 
 	const mcpClients = [
-		{ name: "Claude Code", cmd: "claude mcp add better-auth" },
-		{ name: "Cursor", cmd: "cursor mcp add better-auth" },
-		{ name: "VS Code", cmd: "code --add-mcp better-auth" },
+		{ name: "Claude Code", cmd: "claude mcp add cinaauth" },
+		{ name: "Cursor", cmd: "cursor mcp add cinaauth" },
+		{ name: "VS Code", cmd: "code --add-mcp cinaauth" },
 	];
 
 	return (

@@ -1,4 +1,4 @@
-import {
+﻿import {
 	Body,
 	Button,
 	Column,
@@ -16,7 +16,7 @@ import {
 	Text,
 } from "@react-email/components";
 
-interface BetterAuthInviteUserEmailProps {
+interface CinaAuthInviteUserEmailProps {
 	username?: string;
 	invitedByUsername?: string;
 	invitedByEmail?: string;
@@ -32,8 +32,8 @@ export const InviteUserEmail = ({
 	teamName,
 	teamImage,
 	inviteLink,
-}: BetterAuthInviteUserEmailProps) => {
-	const previewText = `Join ${invitedByUsername} on BetterAuth`;
+}: CinaAuthInviteUserEmailProps) => {
+	const previewText = `Join ${invitedByUsername} on CinaAuth`;
 	return (
 		<Html>
 			<Head />
@@ -43,7 +43,7 @@ export const InviteUserEmail = ({
 					<Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] max-w-[465px]">
 						<Heading className="text-black text-[24px] font-normal text-center p-0 my-[30px] mx-0">
 							Join <strong>{invitedByUsername}</strong> on{" "}
-							<strong>Better Auth.</strong>
+							<strong>CinaAuth.</strong>
 						</Heading>
 						<Text className="text-black text-[14px] leading-[24px]">
 							Hello there,
@@ -57,7 +57,7 @@ export const InviteUserEmail = ({
 								{invitedByEmail}
 							</Link>
 							) has invited you to the <strong>{teamName}</strong> team on{" "}
-							<strong>Better Auth</strong>.
+							<strong>CinaAuth</strong>.
 						</Text>
 						<Section>
 							{teamImage ? (
@@ -101,7 +101,7 @@ export const InviteUserEmail = ({
 	);
 };
 
-export function reactInvitationEmail(props: BetterAuthInviteUserEmailProps) {
+export function reactInvitationEmail(props: CinaAuthInviteUserEmailProps) {
 	console.log(props);
 	return <InviteUserEmail {...props} />;
 }

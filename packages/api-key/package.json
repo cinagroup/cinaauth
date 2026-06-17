@@ -1,20 +1,20 @@
 {
-  "name": "@better-auth/api-key",
+  "name": "@cinaauth/api-key",
   "version": "1.6.19",
-  "description": "API Key plugin for Better Auth.",
+  "description": "API Key plugin for CinaAuth.",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://www.better-auth.com/docs/plugins/api-key",
+  "homepage": "https://www.cinagroup.com/docs/plugins/api-key",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/better-auth/better-auth.git",
+    "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/api-key"
   },
   "keywords": [
     "auth",
     "api-key",
     "typescript",
-    "better-auth"
+    "cinaauth"
   ],
   "publishConfig": {
     "access": "public"
@@ -69,14 +69,14 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@better-auth/core": "workspace:*",
-    "better-auth": "workspace:*",
+    "@cinaauth/core": "workspace:*",
+    "cinaauth": "workspace:*",
     "tsdown": "catalog:"
   },
   "peerDependencies": {
-    "@better-auth/core": "workspace:^",
+    "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:",
-    "better-auth": "workspace:^",
+    "cinaauth": "workspace:^",
     "better-call": "catalog:"
   }
 }

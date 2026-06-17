@@ -1,5 +1,5 @@
-import type { APIError } from "@better-auth/core/error";
-import { memoryAdapter } from "@better-auth/memory-adapter";
+import type { APIError } from "@cinaauth/core/error";
+import { memoryAdapter } from "@cinaauth/memory-adapter";
 import type { Prettify } from "better-call";
 import { describe, expect, expectTypeOf, it, onTestFinished, vi } from "vitest";
 import type {
@@ -34,7 +34,7 @@ describe("organization type", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9135
+	 * @see https://github.com/cinagroup/cinaauth/issues/9135
 	 */
 	it("allows dynamic roles in create invitation input", async () => {
 		const { auth } = await getTestInstance({
@@ -804,7 +804,7 @@ describe("organization", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8385
+	 * @see https://github.com/cinagroup/cinaauth/issues/8385
 	 */
 	it("should allow multi-role owner to invite with owner role", async () => {
 		const { headers } = await signInWithTestUser();
@@ -1794,7 +1794,7 @@ describe("access control", async () => {
 });
 
 /**
- * @see https://github.com/better-auth/better-auth/issues/7822
+ * @see https://github.com/cinagroup/cinaauth/issues/7822
  */
 describe("dynamic access control should merge DB permissions with built-in roles", async () => {
 	// Extend default ac with a custom resource that default roles don't cover
@@ -2064,7 +2064,7 @@ describe("cancel pending invitations on re-invite", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9452
+	 * @see https://github.com/cinagroup/cinaauth/issues/9452
 	 */
 	it("should cancel pending invitation and create a new one when re-inviting without resend", async () => {
 		const invite = await client.organization.inviteMember(
@@ -2135,7 +2135,7 @@ describe("re-invite without cancelPendingInvitationsOnReInvite still throws", as
 	);
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9452
+	 * @see https://github.com/cinagroup/cinaauth/issues/9452
 	 */
 	it("should still throw USER_IS_ALREADY_INVITED when option is disabled", async () => {
 		const invite = await client.organization.inviteMember(
@@ -2870,7 +2870,7 @@ describe("Additional Fields", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7981
+	 * @see https://github.com/cinagroup/cinaauth/issues/7981
 	 */
 	describe("active organization hook refresh", () => {
 		type QueryState<T> = {
@@ -3136,10 +3136,10 @@ describe("Additional Fields", async () => {
 			onSuccess(context) {
 				const header = context.response.headers.get("set-cookie");
 				const cookies = parseSetCookieHeader(header || "");
-				const signedCookie = cookies.get("better-auth.session_token")?.value;
+				const signedCookie = cookies.get("cinaauth.session_token")?.value;
 				addedMemberHeaders.set(
 					"cookie",
-					`better-auth.session_token=${signedCookie}`,
+					`cinaauth.session_token=${signedCookie}`,
 				);
 			},
 		},
@@ -3315,8 +3315,8 @@ describe("Additional Fields", async () => {
 				onSuccess(context) {
 					const header = context.response.headers.get("set-cookie");
 					const cookies = parseSetCookieHeader(header || "");
-					const signedCookie = cookies.get("better-auth.session_token")?.value;
-					headers.set("cookie", `better-auth.session_token=${signedCookie}`);
+					const signedCookie = cookies.get("cinaauth.session_token")?.value;
+					headers.set("cookie", `cinaauth.session_token=${signedCookie}`);
 				},
 			},
 		});

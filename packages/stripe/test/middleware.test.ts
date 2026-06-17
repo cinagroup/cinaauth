@@ -1,4 +1,4 @@
-import { getTestInstance } from "better-auth/test";
+﻿import { getTestInstance } from "cinaauth/test";
 import { describe, expect } from "vitest";
 import { stripe } from "../src";
 import { stripeClient } from "../src/client";

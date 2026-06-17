@@ -1,4 +1,4 @@
-import type { GenericEndpointContext } from "@better-auth/core";
+import type { GenericEndpointContext } from "@cinaauth/core";
 import type {
 	AuthenticationExtensionsClientInputs,
 	AuthenticationResponseJSON,
@@ -7,7 +7,7 @@ import type {
 	VerifiedAuthenticationResponse,
 	VerifiedRegistrationResponse,
 } from "@simplewebauthn/server";
-import type { InferOptionSchema } from "better-auth/types";
+import type { InferOptionSchema } from "cinaauth/types";
 import type { schema } from "./schema";
 
 /**
@@ -107,7 +107,7 @@ export interface PasskeyOptions {
 	/**
 	 * Human-readable title for your website
 	 *
-	 * @default "Better Auth"
+	 * @default "CinaAuth"
 	 */
 	rpName?: string | undefined;
 	/**
@@ -132,7 +132,7 @@ export interface PasskeyOptions {
 				/**
 				 * Cookie name for storing WebAuthn challenge ID during authentication flow
 				 *
-				 * @default "better-auth-passkey"
+				 * @default "cinaauth-passkey"
 				 */
 				webAuthnChallengeCookie?: string;
 		  }

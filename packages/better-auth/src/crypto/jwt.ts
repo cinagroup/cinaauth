@@ -37,7 +37,7 @@ export async function verifyJWT<T = any>(
 	}
 }
 
-// "BetterAuth.js Generated Encryption Key"
+// "CinaAuth.js Generated Encryption Key"
 const info: Uint8Array = new Uint8Array([
 	66, 101, 116, 116, 101, 114, 65, 117, 116, 104, 46, 106, 115, 32, 71, 101,
 	110, 101, 114, 97, 116, 101, 100, 32, 69, 110, 99, 114, 121, 112, 116, 105,

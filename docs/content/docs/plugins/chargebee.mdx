@@ -1,9 +1,9 @@
----
+﻿---
 title: Chargebee
-description: Chargebee plugin for Better Auth to manage subscriptions and payments.
+description: Chargebee plugin for CinaAuth to manage subscriptions and payments.
 ---
 
-The Chargebee plugin integrates [Chargebee's](https://www.chargebee.com) subscription management and billing functionality with Better Auth. Since payment and authentication are often tightly coupled, this plugin simplifies the integration of Chargebee into your application, handling customer creation, subscription management, and webhook processing.
+The Chargebee plugin integrates [Chargebee's](https://www.chargebee.com) subscription management and billing functionality with CinaAuth. Since payment and authentication are often tightly coupled, this plugin simplifies the integration of Chargebee into your application, handling customer creation, subscription management, and webhook processing.
 
 <Callout>
   This plugin is maintained by the Chargebee team. For bugs, issues or feature requests,
@@ -37,7 +37,7 @@ The Chargebee plugin integrates [Chargebee's](https://www.chargebee.com) subscri
     First, install the plugin:
 
     ```package-install
-    @chargebee/better-auth
+    @chargebee/cinaauth
     ```
 
     <Callout>
@@ -59,8 +59,8 @@ The Chargebee plugin integrates [Chargebee's](https://www.chargebee.com) subscri
     ### Add the plugin to your auth config
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { chargebee } from "@chargebee/better-auth"
+    import { CinaAuth } from "cinaauth"
+    import { chargebee } from "@chargebee/cinaauth"
     import Chargebee from "chargebee"
 
     const chargebeeClient = new Chargebee({
@@ -68,7 +68,7 @@ The Chargebee plugin integrates [Chargebee's](https://www.chargebee.com) subscri
         site: process.env.CHARGEBEE_SITE!,
     })
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
         // ... your existing config
         plugins: [
             chargebee({
@@ -86,8 +86,8 @@ The Chargebee plugin integrates [Chargebee's](https://www.chargebee.com) subscri
     ### Add the client plugin
 
     ```ts title="auth-client.ts"
-    import { createAuthClient } from "better-auth/client"
-    import { chargebeeClient } from "@chargebee/better-auth/client"
+    import { createAuthClient } from "cinaauth/client"
+    import { chargebeeClient } from "@chargebee/cinaauth/client"
 
     export const authClient = createAuthClient({
         // ... your existing config
@@ -170,7 +170,7 @@ chargebee({
 
 #### Passing Additional Customer Params
 
-Better Auth stores names in a single `user.name` field. If you want to pass `first_name`, `last_name`, or any other Chargebee customer field at creation time, use `getCustomerCreateParams`:
+CinaAuth stores names in a single `user.name` field. If you want to pass `first_name`, `last_name`, or any other Chargebee customer field at creation time, use `getCustomerCreateParams`:
 
 ```ts title="auth.ts"
 chargebee({
@@ -1088,10 +1088,10 @@ If you see errors like `no such column: "chargebee_customer_id"` or `no such col
 
 **Solution:**
 
-1. Run `npx better-auth generate` to regenerate your schema with the Chargebee plugin fields
+1. Run `npx cinaauth generate` to regenerate your schema with the Chargebee plugin fields
 2. Apply the migration to your database
 3. If manually migrating from another adapter, ensure your column names match your database adapter's conventions
-4. Refer to the [Better Auth adapter documentation](https://www.better-auth.com/docs/concepts/database) for field name mapping specific to your adapter (Prisma, Drizzle, Kysely, etc.)
+4. Refer to the [CinaAuth adapter documentation](https://www.cinagroup.com/docs/concepts/database) for field name mapping specific to your adapter (Prisma, Drizzle, Kysely, etc.)
 
 ### Webhook Issues
 
@@ -1129,4 +1129,4 @@ Make sure to use the same Basic Auth credentials in Chargebee and in your local 
 ## Resources
 
 * [Chargebee Documentation](https://www.chargebee.com/docs/)
-* [Better Auth Documentation](https://www.better-auth.com/)
+* [CinaAuth Documentation](https://www.cinagroup.com/)

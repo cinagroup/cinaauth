@@ -1,11 +1,11 @@
-# Postmortem: Detecting RSC Context via Request Headers in Next.js
+﻿# Postmortem: Detecting RSC Context via Request Headers in Next.js
 
 ## Issue Reference
 
-* [PR #7625](https://github.com/better-auth/better-auth/pull/7625) - first header-based detection
-* [PR #7763](https://github.com/better-auth/better-auth/pull/7763) - replaced it with a cookie probe
-* [PR #9059](https://github.com/better-auth/better-auth/pull/9059) - reverted to header-based detection
-* [PR #9851](https://github.com/better-auth/better-auth/pull/9851) - tried to forward the header from a proxy
+* [PR #7625](https://github.com/cinagroup/cinaauth/pull/7625) - first header-based detection
+* [PR #7763](https://github.com/cinagroup/cinaauth/pull/7763) - replaced it with a cookie probe
+* [PR #9059](https://github.com/cinagroup/cinaauth/pull/9059) - reverted to header-based detection
+* [PR #9851](https://github.com/cinagroup/cinaauth/pull/9851) - tried to forward the header from a proxy
 
 ## Summary
 
@@ -32,7 +32,7 @@ for another:
    requests. On Next.js 16 it is not.
 4. **#9851** (external contributor) assumed the header is only stripped
    when a proxy/middleware is present, and tried to forward it into a
-   custom `x-better-auth-is-rsc` header. The proxy never sees it either.
+   custom `x-cinaauth-is-rsc` header. The proxy never sees it either.
 
 ## Root Cause
 
@@ -55,7 +55,7 @@ differently from its HTML counterpart. The behavior is documented under
 const isRSC = (await headers()).get("RSC") === "1"
 
 // ALSO WRONG - the proxy strips it too, nothing to forward
-requestHeaders.set("x-better-auth-is-rsc", request.headers.get("RSC"))
+requestHeaders.set("x-cinaauth-is-rsc", request.headers.get("RSC"))
 ```
 
 ### Why both fixes fail differently

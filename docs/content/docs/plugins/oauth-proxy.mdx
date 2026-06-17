@@ -1,6 +1,6 @@
----
+﻿---
 title: OAuth Proxy
-description: OAuth Proxy plugin for Better Auth
+description: OAuth Proxy plugin for CinaAuth
 ---
 
 A proxy plugin that allows you to proxy OAuth requests. Useful for development and preview deployments where the redirect URL can't be known in advance to add to the OAuth provider.
@@ -12,10 +12,10 @@ A proxy plugin that allows you to proxy OAuth requests. Useful for development a
     ### Add the plugin to your auth config
 
     ```ts title="auth.ts"
-    import { betterAuth } from "better-auth"
-    import { oAuthProxy } from "better-auth/plugins" // [!code highlight]
+    import { CinaAuth } from "cinaauth"
+    import { oAuthProxy } from "cinaauth/plugins" // [!code highlight]
 
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       plugins: [
         oAuthProxy({ // [!code highlight]
           productionURL: "https://my-production-app.com", // [!code highlight]
@@ -54,7 +54,7 @@ A proxy plugin that allows you to proxy OAuth requests. Useful for development a
     Since preview and development servers redirect through production, you need to add them as `trustedOrigins` in your auth config:
 
     ```ts title="auth.ts"
-    export const auth = betterAuth({
+    export const auth = CinaAuth({
       // ...other config
       trustedOrigins: [ // [!code highlight]
         "http://localhost:3000", // [!code highlight]
@@ -77,7 +77,7 @@ A proxy plugin that allows you to proxy OAuth requests. Useful for development a
   })
   ```
 
-  If you don't configure a shared `secret`, the plugin falls back to `BETTER_AUTH_SECRET`. Since production and preview typically have different main secrets (which is correct for security), the OAuth flow will fail with a `state_mismatch` error.
+  If you don't configure a shared `secret`, the plugin falls back to `CINAAUTH_SECRET`. Since production and preview typically have different main secrets (which is correct for security), the OAuth flow will fail with a `state_mismatch` error.
 </Callout>
 
 ## How it works
@@ -107,13 +107,13 @@ The encrypted profile data is passed via URL query parameters and can only be de
 
 ## Options
 
-**productionURL**: The URL of your production server. If this value matches the `baseURL` in your auth config, requests will not be proxied. Defaults to the `BETTER_AUTH_URL` environment variable.
+**productionURL**: The URL of your production server. If this value matches the `baseURL` in your auth config, requests will not be proxied. Defaults to the `CINAAUTH_URL` environment variable.
 
 **currentURL**: The application's current URL is automatically determined by the plugin. It first checks the request URL, then vendor-specific environment variables from popular hosting providers, and finally falls back to the `baseURL` in your auth config. You only need to set this if the URL isn't being inferred correctly in your environment.
 
 **maxAge**: Maximum age in seconds for encrypted profile payloads. Payloads older than this will be rejected to prevent replay attacks. Keep this value short (e.g., 30-60 seconds) to minimize the window for potential replay attacks while still allowing normal OAuth flows. Defaults to `60` seconds.
 
-**secret**: A dedicated secret used for encrypting and decrypting data during the OAuth proxy flow. When set, this is used **instead of** the global `BETTER_AUTH_SECRET`, limiting the blast radius if the key is shared across environments — a leaked proxy secret cannot forge sessions or decrypt other data protected by the main secret. All environments participating in the proxy flow must share the same `secret` value.
+**secret**: A dedicated secret used for encrypting and decrypting data during the OAuth proxy flow. When set, this is used **instead of** the global `CINAAUTH_SECRET`, limiting the blast radius if the key is shared across environments — a leaked proxy secret cannot forge sessions or decrypt other data protected by the main secret. All environments participating in the proxy flow must share the same `secret` value.
 
 ## Troubleshooting
 
@@ -140,7 +140,7 @@ oAuthProxy({
 Make sure `OAUTH_PROXY_SECRET` has the same value on production, preview, and localhost.
 
 <Callout type="info">
-  Using a dedicated proxy secret (instead of sharing `BETTER_AUTH_SECRET`) is recommended for security. If the proxy secret is compromised, attackers cannot forge sessions or access other encrypted data — they can only potentially hijack OAuth flows during the short `maxAge` window.
+  Using a dedicated proxy secret (instead of sharing `CINAAUTH_SECRET`) is recommended for security. If the proxy secret is compromised, attackers cannot forge sessions or access other encrypted data — they can only potentially hijack OAuth flows during the short `maxAge` window.
 </Callout>
 
 ### OAuth works on production but fails on preview/localhost

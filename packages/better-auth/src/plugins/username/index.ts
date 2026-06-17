@@ -1,10 +1,10 @@
-import type { BetterAuthPlugin } from "@better-auth/core";
+import type { CinaAuthPlugin } from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import type { Account, User } from "@better-auth/core/db";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+} from "@cinaauth/core/api";
+import type { Account, User } from "@cinaauth/core/db";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
 import { createEmailVerificationToken } from "../../api";
 import { getSessionFromCtx } from "../../api/routes/session";
@@ -18,8 +18,8 @@ import { getSchema } from "./schema";
 
 export { USERNAME_ERROR_CODES } from "./error-codes";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		username: {
 			creator: typeof username;
 		};
@@ -724,5 +724,5 @@ export const username = (options?: UsernameOptions | undefined) => {
 		},
 		options,
 		$ERROR_CODES: ERROR_CODES,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 };

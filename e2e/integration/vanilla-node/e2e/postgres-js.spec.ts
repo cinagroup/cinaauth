@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
-import { betterAuth } from "better-auth";
-import { getMigrations } from "better-auth/db/migration";
-import { nextCookies } from "better-auth/next-js";
+﻿import { expect, test } from "@playwright/test";
+import { CinaAuth } from "cinaauth";
+import { getMigrations } from "cinaauth/db/migration";
+import { nextCookies } from "cinaauth/next-js";
 import { PostgresJSDialect } from "kysely-postgres-js";
 import postgres from "postgres";
 
@@ -9,12 +9,12 @@ test.describe("postgres-js", async () => {
 	test("run migration", async () => {
 		const sql = postgres(
 			process.env.DATABASE_URL ||
-				"postgres://user:password@localhost:5432/better_auth",
+				"postgres://user:password@localhost:5432/cinaauth",
 		);
 		const dialect = new PostgresJSDialect({
 			postgres: sql,
 		});
-		const auth = betterAuth({
+		const auth = CinaAuth({
 			database: {
 				dialect,
 				type: "postgres",

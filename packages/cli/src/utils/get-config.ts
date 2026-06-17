@@ -4,8 +4,8 @@ import path from "node:path";
 import babelPresetReact from "@babel/preset-react";
 // @ts-expect-error
 import babelPresetTypeScript from "@babel/preset-typescript";
-import type { BetterAuthOptions } from "@better-auth/core";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { CinaAuthError } from "@cinaauth/core/error";
 import { loadConfig } from "c12";
 import type { TsConfigResult } from "get-tsconfig";
 import { createPathsMatcher, getTsconfig, parseTsconfig } from "get-tsconfig";
@@ -117,7 +117,7 @@ function collectPathsMatchers(cwd: string): PathsMatcher[] {
 		}
 	} catch (error) {
 		console.error(error);
-		throw new BetterAuthError("Error parsing tsconfig.json");
+		throw new CinaAuthError("Error parsing tsconfig.json");
 	}
 	return matchers;
 }
@@ -291,7 +291,7 @@ const jitiOptions = (cwd: string): JitiOptions => {
 
 const isDefaultExport = (
 	object: Record<string, unknown>,
-): object is BetterAuthOptions => {
+): object is CinaAuthOptions => {
 	return (
 		typeof object === "object" &&
 		object !== null &&
@@ -310,18 +310,18 @@ export async function getConfig({
 	shouldThrowOnError?: boolean;
 }) {
 	try {
-		let configFile: BetterAuthOptions | null = null;
+		let configFile: CinaAuthOptions | null = null;
 		if (configPath) {
 			let resolvedPath: string = path.join(cwd, configPath);
 			if (existsSync(configPath)) resolvedPath = configPath; // If the configPath is a file, use it as is, as it means the path wasn't relative.
 			const { config } = await loadConfig<
 				| {
 						auth: {
-							options: BetterAuthOptions;
+							options: CinaAuthOptions;
 						};
 				  }
 				| {
-						options: BetterAuthOptions;
+						options: CinaAuthOptions;
 				  }
 			>({
 				configFile: resolvedPath,
@@ -338,7 +338,7 @@ export async function getConfig({
 					);
 				}
 				console.error(
-					`[#better-auth]: Couldn't read your auth config in ${resolvedPath}. Make sure to default export your auth instance or to export as a variable named auth.`,
+					`[#cinaauth]: Couldn't read your auth config in ${resolvedPath}. Make sure to default export your auth instance or to export as a variable named auth.`,
 				);
 				process.exit(1);
 			}
@@ -350,10 +350,10 @@ export async function getConfig({
 				try {
 					const { config } = await loadConfig<{
 						auth: {
-							options: BetterAuthOptions;
+							options: CinaAuthOptions;
 						};
 						default?: {
-							options: BetterAuthOptions;
+							options: CinaAuthOptions;
 						};
 					}>({
 						configFile: possiblePath,
@@ -373,10 +373,10 @@ export async function getConfig({
 									"Couldn't read your auth config. Make sure to default export your auth instance or to export as a variable named auth.",
 								);
 							}
-							console.error("[#better-auth]: Couldn't read your auth config.");
+							console.error("[#cinaauth]: Couldn't read your auth config.");
 							console.log("");
 							console.log(
-								"[#better-auth]: Make sure to default export your auth instance or to export as a variable named auth.",
+								"[#cinaauth]: Make sure to default export your auth instance or to export as a variable named auth.",
 							);
 							process.exit(1);
 						}
@@ -405,7 +405,7 @@ export async function getConfig({
 					if (shouldThrowOnError) {
 						throw e;
 					}
-					console.error("[#better-auth]: Couldn't read your auth config.", e);
+					console.error("[#cinaauth]: Couldn't read your auth config.", e);
 					process.exit(1);
 				}
 			}

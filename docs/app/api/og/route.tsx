@@ -1,9 +1,9 @@
-import { ImageResponse } from "@vercel/og";
+﻿import { ImageResponse } from "@vercel/og";
 import * as z from "zod";
 export const runtime = "edge";
 
 const ogSchema = z.object({
-	heading: z.string().default("Better Auth Documentation"),
+	heading: z.string().default("CinaAuth Documentation"),
 	mode: z.string().default("dark"),
 	type: z.string().default("documentation"),
 });
@@ -156,7 +156,7 @@ export async function GET(req: Request) {
 							tw="flex text-xl"
 							style={{ fontFamily: "GeistSans", fontWeight: "semibold" }}
 						>
-							Better Auth.
+							CinaAuth.
 						</div>
 						<div tw="flex gap-2 items-center text-xl">
 							<svg
@@ -176,7 +176,7 @@ export async function GET(req: Request) {
 								}}
 								tw="flex ml-2"
 							>
-								github.com/better-auth/better-auth
+								github.com/cinagroup/cinaauth
 							</span>
 						</div>
 					</div>

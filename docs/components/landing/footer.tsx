@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Icons } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -35,21 +35,21 @@ export default function Footer() {
 
 				<div className="flex items-center justify-between w-full sm:w-auto sm:gap-4 shrink-0">
 					<span className="text-[10px] text-foreground/50 font-mono">
-						© {new Date().getFullYear()} Better Auth Inc.
+						© {new Date().getFullYear()} CinaAuth Inc.
 					</span>
 					<div className="flex items-center gap-3 sm:gap-4">
 						<span className="text-foreground/10 select-none hidden sm:inline">
 							·
 						</span>
 						<Link
-							href="https://x.com/better_auth"
+							href="https://x.com/cinaauth"
 							aria-label="Twitter/X"
 							className="text-foreground/50 hover:text-foreground/80 transition-colors"
 						>
 							<Icons.XIcon className="h-3.5 w-3.5" />
 						</Link>
 						<Link
-							href="https://github.com/better-auth"
+							href="https://github.com/cinaauth"
 							aria-label="GitHub"
 							className="text-foreground/50 hover:text-foreground/80 transition-colors"
 						>

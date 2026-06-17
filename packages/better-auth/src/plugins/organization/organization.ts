@@ -1,7 +1,7 @@
-import type { AuthContext, BetterAuthPlugin } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import type { BetterAuthPluginDBSchema } from "@better-auth/core/db";
-import { APIError } from "@better-auth/core/error";
+import type { AuthContext, CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
+import { APIError } from "@cinaauth/core/error";
 import * as z from "zod";
 import { getSessionFromCtx } from "../../api";
 import { shimContext } from "../../utils/shim";
@@ -68,8 +68,8 @@ import type {
 } from "./schema";
 import type { OrganizationOptions } from "./types";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		organization: {
 			creator: OrganizationCreator;
 		};
@@ -322,12 +322,12 @@ export type OrganizationPlugin<O extends OrganizationOptions> = {
 };
 
 /**
- * Organization plugin for Better Auth. Organization allows you to create teams, members,
+ * Organization plugin for CinaAuth. Organization allows you to create teams, members,
  * and manage access control for your users.
  *
  * @example
  * ```ts
- * const auth = betterAuth({
+ * const auth = CinaAuth({
  *  plugins: [
  *    organization({
  *      allowUserToCreateOrganization: true,
@@ -457,7 +457,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.create`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-create)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-create)
 		 */
 		createOrganization: createOrganization(opts),
 		/**
@@ -473,7 +473,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.update`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-update)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-update)
 		 */
 		updateOrganization: updateOrganization(opts),
 		/**
@@ -489,7 +489,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.delete`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-delete)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-delete)
 		 */
 		deleteOrganization: deleteOrganization(opts),
 		/**
@@ -505,7 +505,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.setActive`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-set-active)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-set-active)
 		 */
 		setActiveOrganization: setActiveOrganization(opts),
 		/**
@@ -521,7 +521,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.getFullOrganization`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-get-full-organization)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-get-full-organization)
 		 */
 		getFullOrganization: getFullOrganization(opts),
 		/**
@@ -537,7 +537,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.list`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-list)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-list)
 		 */
 		listOrganizations: listOrganizations(opts),
 		/**
@@ -553,7 +553,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.inviteMember`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-invite-member)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-invite-member)
 		 */
 		createInvitation: createInvitation(opts),
 		/**
@@ -569,7 +569,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.cancelInvitation`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-cancel-invitation)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-cancel-invitation)
 		 */
 		cancelInvitation: cancelInvitation(opts),
 		/**
@@ -585,7 +585,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.acceptInvitation`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-accept-invitation)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-accept-invitation)
 		 */
 		acceptInvitation: acceptInvitation(opts),
 		/**
@@ -601,7 +601,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.getInvitation`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-get-invitation)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-get-invitation)
 		 */
 		getInvitation: getInvitation(opts),
 		/**
@@ -617,7 +617,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.rejectInvitation`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-reject-invitation)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-reject-invitation)
 		 */
 		rejectInvitation: rejectInvitation(opts),
 		/**
@@ -633,7 +633,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.listInvitations`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-list-invitations)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-list-invitations)
 		 */
 		listInvitations: listInvitations(opts),
 		/**
@@ -649,7 +649,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.getActiveMember`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-get-active-member)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-get-active-member)
 		 */
 		getActiveMember: getActiveMember(opts),
 		/**
@@ -665,7 +665,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.checkSlug`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-check-slug)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-check-slug)
 		 */
 		checkOrganizationSlug: checkOrganizationSlug(opts),
 		/**
@@ -681,7 +681,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **server:**
 		 * `auth.api.addMember`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-add-member)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-add-member)
 		 */
 
 		addMember: addMember<O>(opts),
@@ -698,7 +698,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.removeMember`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-remove-member)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-remove-member)
 		 */
 		removeMember: removeMember(opts),
 		/**
@@ -714,7 +714,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.updateMemberRole`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-update-member-role)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-update-member-role)
 		 */
 		updateMemberRole: updateMemberRole(opts),
 		/**
@@ -730,7 +730,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.leave`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-leave)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-leave)
 		 */
 		leaveOrganization: leaveOrganization(opts),
 		listUserInvitations: listUserInvitations(opts),
@@ -761,7 +761,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.getActiveMemberRole`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-get-active-member-role)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-get-active-member-role)
 		 */
 		getActiveMemberRole: getActiveMemberRole(opts),
 	};
@@ -780,7 +780,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.createTeam`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-create-team)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-create-team)
 		 */
 		createTeam: createTeam(opts),
 		/**
@@ -796,7 +796,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.listTeams`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-list-teams)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-list-teams)
 		 */
 		listOrganizationTeams: listOrganizationTeams(opts),
 		/**
@@ -812,7 +812,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.removeTeam`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-remove-team)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-remove-team)
 		 */
 		removeTeam: removeTeam(opts),
 		/**
@@ -828,7 +828,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.updateTeam`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-method-organization-update-team)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-method-organization-update-team)
 		 */
 		updateTeam: updateTeam(opts),
 		/**
@@ -844,7 +844,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.setActiveTeam`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-set-active-team)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-set-active-team)
 		 */
 		setActiveTeam: setActiveTeam(opts),
 		/**
@@ -860,7 +860,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.listUserTeams`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-set-active-team)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-set-active-team)
 		 */
 		listUserTeams: listUserTeams(opts),
 		/**
@@ -876,7 +876,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.listTeamMembers`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-set-active-team)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-set-active-team)
 		 */
 		listTeamMembers: listTeamMembers(opts),
 		/**
@@ -892,7 +892,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.addTeamMember`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-add-team-member)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-add-team-member)
 		 */
 		addTeamMember: addTeamMember(opts),
 		/**
@@ -908,7 +908,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		 * **client:**
 		 * `authClient.organization.removeTeamMember`
 		 *
-		 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/organization#api-remove-team-member)
+		 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/organization#api-remove-team-member)
 		 */
 		removeTeamMember: removeTeamMember(opts),
 	};
@@ -1002,7 +1002,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 						},
 					},
 				},
-			} satisfies BetterAuthPluginDBSchema)
+			} satisfies CinaAuthPluginDBSchema)
 		: {};
 
 	const organizationRoleSchema = opts.dynamicAccessControl?.enabled
@@ -1046,7 +1046,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 					},
 					modelName: opts.schema?.organizationRole?.modelName,
 				},
-			} satisfies BetterAuthPluginDBSchema)
+			} satisfies CinaAuthPluginDBSchema)
 		: {};
 
 	const schema = {
@@ -1086,7 +1086,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 					...(opts.schema?.organization?.additionalFields || {}),
 				},
 			},
-		} satisfies BetterAuthPluginDBSchema),
+		} satisfies CinaAuthPluginDBSchema),
 		...organizationRoleSchema,
 		...teamSchema,
 		...({
@@ -1194,7 +1194,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 					...(opts.schema?.invitation?.additionalFields || {}),
 				},
 			},
-		} satisfies BetterAuthPluginDBSchema),
+		} satisfies CinaAuthPluginDBSchema),
 	};
 
 	/**
@@ -1218,7 +1218,7 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 			hasPermission: createHasPermission(opts),
 		},
 		schema: {
-			...(schema as BetterAuthPluginDBSchema),
+			...(schema as CinaAuthPluginDBSchema),
 			session: {
 				fields: {
 					activeOrganizationId: {
@@ -1280,5 +1280,5 @@ export function organization<O extends OrganizationOptions>(options?: O) {
 		},
 		$ERROR_CODES: ORGANIZATION_ERROR_CODES,
 		options: opts as NoInfer<O>,
-	} satisfies BetterAuthPlugin;
+	} satisfies CinaAuthPlugin;
 }

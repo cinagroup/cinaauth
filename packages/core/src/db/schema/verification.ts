@@ -1,5 +1,5 @@
 import * as z from "zod";
-import type { BetterAuthOptions, Prettify } from "../../types";
+import type { CinaAuthOptions, Prettify } from "../../types";
 import type {
 	InferDBFieldsFromOptions,
 	InferDBFieldsFromPlugins,
@@ -15,12 +15,12 @@ export const verificationSchema = coreSchema.extend({
 export type BaseVerification = z.infer<typeof verificationSchema>;
 
 /**
- * Verification schema type used by better-auth, note that it's possible that verification could have additional fields
+ * Verification schema type used by cinaauth, note that it's possible that verification could have additional fields
  */
 export type Verification<
 	DBOptions extends
-		BetterAuthOptions["verification"] = BetterAuthOptions["verification"],
-	Plugins extends BetterAuthOptions["plugins"] = BetterAuthOptions["plugins"],
+		CinaAuthOptions["verification"] = CinaAuthOptions["verification"],
+	Plugins extends CinaAuthOptions["plugins"] = CinaAuthOptions["plugins"],
 > = Prettify<
 	BaseVerification &
 		InferDBFieldsFromOptions<DBOptions> &

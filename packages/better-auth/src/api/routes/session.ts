@@ -1,13 +1,13 @@
 import type {
-	BetterAuthOptions,
+	CinaAuthOptions,
 	GenericEndpointContext,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import {
 	createAuthEndpoint,
 	createAuthMiddleware,
-} from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
-import { safeJSONParse } from "@better-auth/core/utils/json";
+} from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
 import { base64Url } from "@better-auth/utils/base64";
 import { binary } from "@better-auth/utils/binary";
 import { createHMAC } from "@better-auth/utils/hmac";
@@ -29,7 +29,7 @@ import { getDate } from "../../utils/date";
 import { isAPIError } from "../../utils/is-api-error";
 import { getShouldSkipSessionRefresh } from "../state/should-session-refresh";
 
-export const getSession = <Option extends BetterAuthOptions>() =>
+export const getSession = <Option extends CinaAuthOptions>() =>
 	createAuthEndpoint(
 		"/get-session",
 		{
@@ -123,7 +123,7 @@ export const getSession = <Option extends BetterAuthOptions>() =>
 						}>(
 							sessionDataCookie,
 							ctx.context.secretConfig,
-							"better-auth-session",
+							"cinaauth-session",
 						);
 
 						if (payload && payload.session && payload.user) {
@@ -680,7 +680,7 @@ export const freshSessionMiddleware = createAuthMiddleware(async (ctx) => {
 /**
  * user active sessions list
  */
-export const listSessions = <Option extends BetterAuthOptions>() =>
+export const listSessions = <Option extends CinaAuthOptions>() =>
 	createAuthEndpoint(
 		"/list-sessions",
 		{

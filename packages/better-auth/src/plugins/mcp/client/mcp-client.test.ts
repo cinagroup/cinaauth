@@ -312,7 +312,7 @@ describe("mcp-client", async () => {
 
 		it("should throw for missing authURL", () => {
 			expect(() => mcpAuthMcpUse({ authURL: "" })).toThrow(
-				"Better Auth authURL is required",
+				"CinaAuth authURL is required",
 			);
 		});
 

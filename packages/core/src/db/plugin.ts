@@ -1,6 +1,6 @@
 import type { DBFieldAttribute } from "./type";
 
-export type BetterAuthPluginDBSchema = {
+export type CinaAuthPluginDBSchema = {
 	[table in string]: {
 		fields: {
 			[field: string]: DBFieldAttribute;

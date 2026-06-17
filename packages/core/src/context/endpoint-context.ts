@@ -1,8 +1,8 @@
-import type { AsyncLocalStorage } from "@better-auth/core/async_hooks";
-import { getAsyncLocalStorage } from "@better-auth/core/async_hooks";
+import type { AsyncLocalStorage } from "@cinaauth/core/async_hooks";
+import { getAsyncLocalStorage } from "@cinaauth/core/async_hooks";
 import type { EndpointContext, InputContext } from "better-call";
 import type { AuthContext } from "../types";
-import { __getBetterAuthGlobal } from "./global";
+import { __getCinaAuthGlobal } from "./global";
 
 export type AuthEndpointContext = Partial<
 	InputContext<string, any> & EndpointContext<string, any>
@@ -11,13 +11,13 @@ export type AuthEndpointContext = Partial<
 };
 
 const ensureAsyncStorage = async () => {
-	const betterAuthGlobal = __getBetterAuthGlobal();
-	if (!betterAuthGlobal.context.endpointContextAsyncStorage) {
+	const CinaAuthGlobal = __getCinaAuthGlobal();
+	if (!CinaAuthGlobal.context.endpointContextAsyncStorage) {
 		const AsyncLocalStorage = await getAsyncLocalStorage();
-		betterAuthGlobal.context.endpointContextAsyncStorage =
+		CinaAuthGlobal.context.endpointContextAsyncStorage =
 			new AsyncLocalStorage<AuthEndpointContext>();
 	}
-	return betterAuthGlobal.context
+	return CinaAuthGlobal.context
 		.endpointContextAsyncStorage as AsyncLocalStorage<AuthEndpointContext>;
 };
 

@@ -1,8 +1,8 @@
-import { execSync } from "node:child_process";
+﻿import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
+import { drizzleAdapter } from "@cinaauth/drizzle-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import {
@@ -32,7 +32,7 @@ const { execute } = await testAdapter({
 			provider: "sqlite",
 		});
 	},
-	async runMigrations(betterAuthOptions) {
+	async runMigrations(CinaAuthOptions) {
 		sqliteDB.close();
 		try {
 			await fs.unlink(dbFilePath);
@@ -43,13 +43,13 @@ const { execute } = await testAdapter({
 
 		const { fileName } = await generateDrizzleSchema(
 			sqliteDB,
-			betterAuthOptions,
+			CinaAuthOptions,
 			"sqlite",
 		);
 
 		const command = `npx drizzle-kit push --dialect=sqlite --schema=${fileName}.ts --url=./test.db`;
 		console.log(`Running: ${command}`);
-		console.log(`Options:`, betterAuthOptions);
+		console.log(`Options:`, CinaAuthOptions);
 		try {
 			// wait for the above console.log to be printed
 			await new Promise((resolve) => setTimeout(resolve, 10));

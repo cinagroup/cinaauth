@@ -38,7 +38,7 @@ describe("refreshAccessToken", () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/7682
+	 * @see https://github.com/cinagroup/cinaauth/issues/7682
 	 */
 	it("should set refreshTokenExpiresAt when refresh_token_expires_in is returned", async () => {
 		const now = Date.now();

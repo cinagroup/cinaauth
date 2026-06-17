@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Auto-changeset analysis — deterministic phase of changeset generation.
  *
  * Separated from the workflow so that secrets-dependent steps (AI, commit)
@@ -188,8 +188,8 @@ function main() {
 	const fallback = cubicSummary || commit.subject || pr.title;
 
 	// All packages are in one changesets fixed group — listing any one
-	// bumps them all together. "better-auth" is the representative.
-	const frontmatter = `"better-auth": ${resolvedBump}`;
+	// bumps them all together. "cinaauth" is the representative.
+	const frontmatter = `"cinaauth": ${resolvedBump}`;
 
 	console.log("Analysis complete:");
 	setOutput("skip", "false");

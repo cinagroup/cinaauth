@@ -1,5 +1,5 @@
-import type { BetterAuthPluginDBSchema } from "@better-auth/core/db";
-import { generateId } from "@better-auth/core/utils/id";
+import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
+import { generateId } from "@cinaauth/core/utils/id";
 import type { Prettify } from "better-call";
 import * as z from "zod";
 import type {
@@ -9,7 +9,7 @@ import type {
 import type { OrganizationOptions } from "./types";
 
 type InferSchema<
-	Schema extends BetterAuthPluginDBSchema,
+	Schema extends CinaAuthPluginDBSchema,
 	TableName extends string,
 	DefaultFields,
 > = {
@@ -207,14 +207,14 @@ export type OrganizationSchema<O extends OrganizationOptions> =
 	(O["dynamicAccessControl"] extends { enabled: true }
 		? {
 				organizationRole: InferSchema<
-					O["schema"] extends BetterAuthPluginDBSchema ? O["schema"] : {},
+					O["schema"] extends CinaAuthPluginDBSchema ? O["schema"] : {},
 					"organizationRole",
 					OrganizationRoleDefaultFields
 				>;
 			} & {
 				session: {
 					fields: InferSchema<
-						O["schema"] extends BetterAuthPluginDBSchema ? O["schema"] : {},
+						O["schema"] extends CinaAuthPluginDBSchema ? O["schema"] : {},
 						"session",
 						SessionDefaultFields
 					>["fields"];
@@ -224,29 +224,29 @@ export type OrganizationSchema<O extends OrganizationOptions> =
 		(O["teams"] extends { enabled: true }
 			? {
 					team: InferSchema<
-						O["schema"] extends BetterAuthPluginDBSchema ? O["schema"] : {},
+						O["schema"] extends CinaAuthPluginDBSchema ? O["schema"] : {},
 						"team",
 						TeamDefaultFields
 					>;
 					teamMember: InferSchema<
-						O["schema"] extends BetterAuthPluginDBSchema ? O["schema"] : {},
+						O["schema"] extends CinaAuthPluginDBSchema ? O["schema"] : {},
 						"teamMember",
 						TeamMemberDefaultFields
 					>;
 				}
 			: {}) & {
 			organization: InferSchema<
-				O["schema"] extends BetterAuthPluginDBSchema ? O["schema"] : {},
+				O["schema"] extends CinaAuthPluginDBSchema ? O["schema"] : {},
 				"organization",
 				OrganizationDefaultFields
 			>;
 			member: InferSchema<
-				O["schema"] extends BetterAuthPluginDBSchema ? O["schema"] : {},
+				O["schema"] extends CinaAuthPluginDBSchema ? O["schema"] : {},
 				"member",
 				MemberDefaultFields
 			>;
 			invitation: {
-				modelName: O["schema"] extends BetterAuthPluginDBSchema
+				modelName: O["schema"] extends CinaAuthPluginDBSchema
 					? InferSchema<
 							O["schema"],
 							"invitation",
@@ -254,7 +254,7 @@ export type OrganizationSchema<O extends OrganizationOptions> =
 						>["modelName"]
 					: string;
 				fields: InferSchema<
-					O["schema"] extends BetterAuthPluginDBSchema ? O["schema"] : {},
+					O["schema"] extends CinaAuthPluginDBSchema ? O["schema"] : {},
 					"invitation",
 					InvitationDefaultFields
 				>["fields"] &
@@ -270,7 +270,7 @@ export type OrganizationSchema<O extends OrganizationOptions> =
 			};
 			session: {
 				fields: InferSchema<
-					O["schema"] extends BetterAuthPluginDBSchema ? O["schema"] : {},
+					O["schema"] extends CinaAuthPluginDBSchema ? O["schema"] : {},
 					"session",
 					SessionDefaultFields
 				>["fields"] &
@@ -383,7 +383,7 @@ export type InferOrganizationRolesFromOption<
 
 export type InvitationStatus = "pending" | "accepted" | "rejected" | "canceled";
 
-import type { DBFieldAttribute } from "@better-auth/core/db";
+import type { DBFieldAttribute } from "@cinaauth/core/db";
 
 type InferAdditionalFieldsOutput<
 	SchemaName extends string,

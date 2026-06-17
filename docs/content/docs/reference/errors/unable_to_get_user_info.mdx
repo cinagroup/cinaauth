@@ -1,4 +1,4 @@
----
+﻿---
 title: unable_to_get_user_info
 description: The user info was not found in the request.
 ---
@@ -6,7 +6,7 @@ description: The user info was not found in the request.
 ## What is it?
 
 This error occurs only on the `/api/auth/callback` endpoint during an OAuth flow. After exchanging
-the authorization code for tokens, Better Auth fetches the user's profile from the provider. If the
+the authorization code for tokens, CinaAuth fetches the user's profile from the provider. If the
 provider response is incorrect, empty, or missing required fields (like id or email when needed),
 no usable user info can be derived and the request is rejected.
 
@@ -22,7 +22,7 @@ no usable user info can be derived and the request is rejected.
 
 ### Request the right data
 
-* Start the OAuth flow using Better Auth methods so the correct scopes and parameters are used.
+* Start the OAuth flow using CinaAuth methods so the correct scopes and parameters are used.
 * Ensure your provider app is configured to return basic profile details needed by your app.
 
 ### Verify configuration and environment

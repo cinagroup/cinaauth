@@ -1,4 +1,4 @@
-import { isAPIError } from "@better-auth/core/utils/is-api-error";
+import { isAPIError } from "@cinaauth/core/utils/is-api-error";
 import { BetterFetchError, betterFetch } from "@better-fetch/fetch";
 import {
 	createAuthorizationURL,
@@ -7,16 +7,16 @@ import {
 	parseState,
 	validateAuthorizationCode,
 	validateToken,
-} from "better-auth";
+} from "cinaauth";
 import {
 	APIError,
 	createAuthEndpoint,
 	getSessionFromCtx,
 	sessionMiddleware,
-} from "better-auth/api";
-import { deleteSessionCookie, setSessionCookie } from "better-auth/cookies";
-import { generateRandomString } from "better-auth/crypto";
-import { handleOAuthUserInfo } from "better-auth/oauth2";
+} from "cinaauth/api";
+import { deleteSessionCookie, setSessionCookie } from "cinaauth/cookies";
+import { generateRandomString } from "cinaauth/crypto";
+import { handleOAuthUserInfo } from "cinaauth/oauth2";
 import { decodeJwt } from "jose";
 import type { BindingContext } from "samlify/types/src/entity";
 import type { IdentityProvider } from "samlify/types/src/entity-idp";

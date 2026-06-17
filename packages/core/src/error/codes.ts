@@ -1,7 +1,7 @@
 import { defineErrorCodes } from "../utils/error-codes";
 
-declare module "@better-auth/core" {
-	interface BetterAuthPluginRegistry<AuthOptions, Options> {
+declare module "@cinaauth/core" {
+	interface CinaAuthPluginRegistry<AuthOptions, Options> {
 		/**
 		 * This plugin does not exist, do not use it in runtime.
 		 */

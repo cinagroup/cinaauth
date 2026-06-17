@@ -1,5 +1,5 @@
 import { readdirSync } from "node:fs";
-import type { Awaitable } from "@better-auth/core";
+import type { Awaitable } from "@cinaauth/core";
 import type { PackageJson } from "type-fest";
 import { hasDependency } from "../../../utils/get-package-info";
 import type { Framework } from "../configs/frameworks.config";

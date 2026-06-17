@@ -1,5 +1,5 @@
-/**
- * @see https://github.com/better-auth/better-auth/issues/9375
+﻿/**
+ * @see https://github.com/cinagroup/cinaauth/issues/9375
  *
  * Reporter: in stateless mode (no `options.database`), the first-time
  * generic-oauth sign-in does not set the `account_data` cookie on the
@@ -8,7 +8,7 @@
  *
  * The reporter notes the bug only reproduces against the published
  * package, not when linking source. This file lives under `/test/unit/`
- * because workspace deps resolve `better-auth` through the package's
+ * because workspace deps resolve `cinaauth` through the package's
  * `exports` map (built dist) — exercising the same artifact path.
  *
  * Targeted invariant: in stateless mode, the OAuth callback for a
@@ -16,11 +16,11 @@
  * decodes to the freshly created account.
  */
 
-import { genericOAuthClient } from "better-auth/client/plugins";
-import { parseSetCookieHeader } from "better-auth/cookies";
-import { symmetricDecodeJWT } from "better-auth/crypto";
-import { genericOAuth } from "better-auth/plugins";
-import { getTestInstance } from "better-auth/test";
+import { genericOAuthClient } from "cinaauth/client/plugins";
+import { parseSetCookieHeader } from "cinaauth/cookies";
+import { symmetricDecodeJWT } from "cinaauth/crypto";
+import { genericOAuth } from "cinaauth/plugins";
+import { getTestInstance } from "cinaauth/test";
 import type { Dispatcher } from "undici";
 import { getGlobalDispatcher, MockAgent, setGlobalDispatcher } from "undici";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -170,7 +170,7 @@ describe("stateless mode account_data cookie (issue #9375)", () => {
 			symmetricDecodeJWT(
 				accountDataCookie!.value,
 				ctx.secret,
-				"better-auth-account",
+				"cinaauth-account",
 			),
 		).resolves.toMatchObject({
 			providerId: PROVIDER_ID,

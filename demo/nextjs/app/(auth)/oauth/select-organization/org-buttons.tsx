@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import type { Organization } from "better-auth/plugins";
+import type { Organization } from "cinaauth/plugins";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

@@ -1,24 +1,24 @@
-import type { BetterAuthOptions } from "@better-auth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import type {
 	BaseModelNames,
-	BetterAuthPluginDBSchema,
+	CinaAuthPluginDBSchema,
 	DBFieldAttribute,
-} from "@better-auth/core/db";
-import { getAuthTables } from "@better-auth/core/db";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
-import { filterOutputFields } from "@better-auth/core/utils/db";
+} from "@cinaauth/core/db";
+import { getAuthTables } from "@cinaauth/core/db";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
+import { filterOutputFields } from "@cinaauth/core/utils/db";
 import type { Account, Session, User } from "../types";
 
 type Mode = "input" | "output";
 
 // Cache for parsed schemas to avoid reparsing on every request
 const cache = new WeakMap<
-	BetterAuthOptions,
+	CinaAuthOptions,
 	Map<`${BaseModelNames}:${Mode}`, Record<string, DBFieldAttribute>>
 >();
 
 function getFields(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	modelName: BaseModelNames,
 	mode: Mode,
 ) {
@@ -58,7 +58,7 @@ function getFields(
 }
 
 export function parseUserOutput<T extends User>(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	user: T,
 ) {
 	const schema = getFields(options, "user", "output");
@@ -78,7 +78,7 @@ export function parseUserOutput<T extends User>(
  * - Always includes the 'id' field (not part of schema but always present)
  */
 export function buildSyntheticUserOutput(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	data: Record<string, unknown>,
 ): Record<string, unknown> {
 	const schema = getFields(options, "user", "output");
@@ -113,7 +113,7 @@ export function buildSyntheticUserOutput(
 }
 
 export function parseSessionOutput<T extends Session>(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	session: T,
 ) {
 	const schema = getFields(options, "session", "output");
@@ -121,7 +121,7 @@ export function parseSessionOutput<T extends Session>(
 }
 
 export function parseAccountOutput<T extends Account>(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	account: T,
 ) {
 	const schema = getFields(options, "account", "output");
@@ -214,7 +214,7 @@ export function parseInputData<T extends Record<string, any>>(
 }
 
 export function parseUserInput(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	user: Record<string, any> = {},
 	action: "create" | "update",
 ) {
@@ -223,7 +223,7 @@ export function parseUserInput(
 }
 
 export function parseAdditionalUserInput(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	user?: Record<string, any> | undefined,
 ) {
 	const schema = getFields(options, "user", "input");
@@ -231,7 +231,7 @@ export function parseAdditionalUserInput(
 }
 
 export function parseAccountInput(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	account: Partial<Account>,
 ) {
 	const schema = getFields(options, "account", "input");
@@ -239,7 +239,7 @@ export function parseAccountInput(
 }
 
 export function parseSessionInput(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	session: Partial<Session>,
 	action?: "create" | "update",
 ) {
@@ -247,7 +247,7 @@ export function parseSessionInput(
 	return parseInputData(session, { fields: schema, action });
 }
 
-export function getSessionDefaultFields(options: BetterAuthOptions) {
+export function getSessionDefaultFields(options: CinaAuthOptions) {
 	const fields = getFields(options, "session", "input");
 	const defaults: Record<string, any> = {};
 	for (const key in fields) {
@@ -261,7 +261,7 @@ export function getSessionDefaultFields(options: BetterAuthOptions) {
 	return defaults;
 }
 
-export function mergeSchema<S extends BetterAuthPluginDBSchema>(
+export function mergeSchema<S extends CinaAuthPluginDBSchema>(
 	schema: S,
 	newSchema?:
 		| {

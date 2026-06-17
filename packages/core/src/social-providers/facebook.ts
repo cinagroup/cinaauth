@@ -1,7 +1,7 @@
 import { betterFetch } from "@better-fetch/fetch";
 import { createRemoteJWKSet, decodeJwt, jwtVerify } from "jose";
 import { logger } from "../env";
-import { BetterAuthError } from "../error";
+import { CinaAuthError } from "../error";
 import type { OAuthProvider, ProviderOptions } from "../oauth2";
 import {
 	createAuthorizationURL,
@@ -100,7 +100,7 @@ export const facebook = (options: FacebookOptions) => {
 				logger.error(
 					"Client ID and client secret are required for Facebook. Make sure to provide them in the options.",
 				);
-				throw new BetterAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
+				throw new CinaAuthError("CLIENT_ID_AND_SECRET_REQUIRED");
 			}
 			const _scopes = options.disableDefaultScope
 				? []

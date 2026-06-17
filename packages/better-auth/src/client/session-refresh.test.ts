@@ -16,9 +16,9 @@ describe("session-refresh", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.restoreAllMocks();
-		delete (globalThis as any)[Symbol.for("better-auth:broadcast-channel")];
-		delete (globalThis as any)[Symbol.for("better-auth:focus-manager")];
-		delete (globalThis as any)[Symbol.for("better-auth:online-manager")];
+		delete (globalThis as any)[Symbol.for("cinaauth:broadcast-channel")];
+		delete (globalThis as any)[Symbol.for("cinaauth:focus-manager")];
+		delete (globalThis as any)[Symbol.for("cinaauth:online-manager")];
 	});
 
 	it("should call fetchSession when refetchInterval fires", async () => {
@@ -319,7 +319,7 @@ describe("session-refresh", () => {
 		const mockFetchSession = vi.fn(async () => {});
 		const storageEvent = () =>
 			new StorageEvent("storage", {
-				key: "better-auth.message",
+				key: "cinaauth.message",
 				newValue: JSON.stringify({
 					event: "session",
 					data: { trigger: "getSession" },

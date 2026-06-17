@@ -1,15 +1,15 @@
----
+﻿---
 title: TypeScript
-description: Learn about TypeScript configuration for Better Auth, including strict mode, inferring types for sessions and users, defining additional fields, and inferring additional fields on the client.
+description: Learn about TypeScript configuration for CinaAuth, including strict mode, inferring types for sessions and users, defining additional fields, and inferring additional fields on the client.
 ---
 
-Better Auth is designed to be type-safe. Both the client and server are built with TypeScript, allowing you to easily infer types.
+CinaAuth is designed to be type-safe. Both the client and server are built with TypeScript, allowing you to easily infer types.
 
 ## TypeScript Config
 
 ### Strict Mode
 
-Better Auth is designed to work with TypeScript's strict mode. We recommend enabling strict mode in your TypeScript config file:
+CinaAuth is designed to work with TypeScript's strict mode. We recommend enabling strict mode in your TypeScript config file:
 
 ```json title="tsconfig.json"
 {
@@ -41,7 +41,7 @@ When `strict` is `true`, `strictNullChecks` is enabled as well. If you explicitl
 Both the client SDK and the server offer types that can be inferred using the `$Infer` property. Plugins can extend base types like `User` and `Session`, and you can use `$Infer` to infer these types. Additionally, plugins can provide extra types that can also be inferred through `$Infer`.
 
 ```ts title="auth-client.ts" 
-import { createAuthClient } from "better-auth/client"
+import { createAuthClient } from "cinaauth/client"
 
 const authClient = createAuthClient()
 
@@ -53,10 +53,10 @@ The `Session` type includes both `session` and `user` properties. The user prope
 You can also infer types on the server side.
 
 ```ts title="auth.ts" 
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 import Database from "better-sqlite3"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     database: new Database("database.db")
 })
 
@@ -65,13 +65,13 @@ type Session = typeof auth.$Infer.Session
 
 ## Additional Fields
 
-Better Auth allows you to add additional fields to the user and session objects. All additional fields are properly inferred and available on the server and client side.
+CinaAuth allows you to add additional fields to the user and session objects. All additional fields are properly inferred and available on the server and client side.
 
 ```ts title="auth.ts"
-import { betterAuth } from "better-auth"
+import { CinaAuth } from "cinaauth"
 import Database from "better-sqlite3"
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     database: new Database("database.db"),
     user: {
        additionalFields: {
@@ -117,8 +117,8 @@ To make sure proper type inference for additional fields on the client side, you
 If your server and client code reside in the same project, you can use the `inferAdditionalFields` plugin to automatically infer the additional fields from your server configuration.
 
 ```ts title="auth-client.ts"
-import { inferAdditionalFields } from "better-auth/client/plugins";
-import { createAuthClient } from "better-auth/client";
+import { inferAdditionalFields } from "cinaauth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
 import type { auth } from "@/lib/auth"; // Import the auth instance as a type
 
 export const authClient = createAuthClient({
@@ -131,8 +131,8 @@ export const authClient = createAuthClient({
 If your client and server are in separate projects, you'll need to manually specify the additional fields when creating the auth client.
 
 ```ts title="auth-client.ts"
-import { createAuthClient } from "better-auth/client";
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import { createAuthClient } from "cinaauth/client";
+import { inferAdditionalFields } from "cinaauth/client/plugins";
 
 export const authClient = createAuthClient({
   plugins: [inferAdditionalFields({

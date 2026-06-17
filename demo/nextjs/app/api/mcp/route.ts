@@ -1,10 +1,10 @@
-import { mcpHandler } from "@better-auth/oauth-provider";
+﻿import { mcpHandler } from "@cinaauth/oauth-provider";
 import { createMcpHandler } from "mcp-handler";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import * as z from "zod";
 
-const baseUrl = process.env.BETTER_AUTH_URL || "https://demo.better-auth.com";
+const baseUrl = process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com";
 
 /**
  * Example derived from https://www.npmjs.com/package/mcp-handler
@@ -30,7 +30,7 @@ const handler = mcpHandler(
 					},
 					async ({ message }) => {
 						const baseUrl =
-							process.env.BETTER_AUTH_URL || "https://demo.better-auth.com";
+							process.env.CINAAUTH_URL || "https://demo-auth.cinagroup.com";
 						const org = jwt?.[baseUrl + "/org"];
 						return {
 							content: [
@@ -47,7 +47,7 @@ const handler = mcpHandler(
 			},
 			{
 				serverInfo: {
-					name: "demo-better-auth",
+					name: "demo-cinaauth",
 					version: "1.0.0",
 				},
 			},

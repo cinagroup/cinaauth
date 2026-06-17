@@ -1,4 +1,4 @@
-import { defineRequestState } from "@better-auth/core/context";
+import { defineRequestState } from "@cinaauth/core/context";
 
 type OAuthState = {
 	callbackURL: string;

@@ -1,5 +1,5 @@
-import { createAuthMiddleware } from "@better-auth/core/api";
-import { APIError } from "@better-auth/core/error";
+import { createAuthMiddleware } from "@cinaauth/core/api";
+import { APIError } from "@cinaauth/core/error";
 
 /**
  * Middleware that verifies the authenticated user owns a resource.

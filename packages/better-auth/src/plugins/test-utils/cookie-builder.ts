@@ -1,4 +1,4 @@
-import type { AuthContext } from "@better-auth/core";
+import type { AuthContext } from "@cinaauth/core";
 import { makeSignature } from "../../crypto";
 import type { TestCookie } from "./types";
 

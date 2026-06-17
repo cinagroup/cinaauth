@@ -1,16 +1,16 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { getAuthTables } from "@better-auth/core/db";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
-import { logger } from "@better-auth/core/env";
-import type { MemoryDB } from "@better-auth/memory-adapter";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import { getAuthTables } from "@cinaauth/core/db";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import { logger } from "@cinaauth/core/env";
+import type { MemoryDB } from "@cinaauth/memory-adapter";
 
 export async function getBaseAdapter(
-	options: BetterAuthOptions,
+	options: CinaAuthOptions,
 	handleDirectDatabase: (
-		options: BetterAuthOptions,
-	) => Promise<DBAdapter<BetterAuthOptions>>,
-): Promise<DBAdapter<BetterAuthOptions>> {
-	let adapter: DBAdapter<BetterAuthOptions>;
+		options: CinaAuthOptions,
+	) => Promise<DBAdapter<CinaAuthOptions>>,
+): Promise<DBAdapter<CinaAuthOptions>> {
+	let adapter: DBAdapter<CinaAuthOptions>;
 
 	if (!options.database) {
 		const tables = getAuthTables(options);
@@ -18,7 +18,7 @@ export async function getBaseAdapter(
 			acc[key] = [];
 			return acc;
 		}, {});
-		const { memoryAdapter } = await import("@better-auth/memory-adapter");
+		const { memoryAdapter } = await import("@cinaauth/memory-adapter");
 		adapter = memoryAdapter(memoryDB)(options);
 	} else if (typeof options.database === "function") {
 		adapter = options.database(options);

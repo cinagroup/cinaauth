@@ -30,7 +30,7 @@ describe("one-tap implicit linking gate", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-g38m-r43w-p2q7
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-g38m-r43w-p2q7
 	 */
 	it("rejects implicit linking when the local user is unverified", async () => {
 		const { client } = await getTestInstance({
@@ -62,7 +62,7 @@ describe("one-tap implicit linking gate", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-g38m-r43w-p2q7
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-g38m-r43w-p2q7
 	 */
 	it("allows implicit linking once the local user is verified", async () => {
 		const { auth, client } = await getTestInstance({
@@ -114,7 +114,7 @@ describe("one-tap implicit linking gate", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-g38m-r43w-p2q7
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-g38m-r43w-p2q7
 	 */
 	it("links the account when requireLocalEmailVerified is opted out, even for an unverified local user", async () => {
 		const { auth, client } = await getTestInstance({
@@ -162,7 +162,7 @@ describe("one-tap implicit linking gate", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9502
+	 * @see https://github.com/cinagroup/cinaauth/issues/9502
 	 */
 	it("links Google One Tap when another provider has the same account ID", async () => {
 		verifiedPayload.email = "one-tap-provider-collision@example.com";
@@ -221,7 +221,7 @@ describe("one-tap implicit linking gate", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9502
+	 * @see https://github.com/cinagroup/cinaauth/issues/9502
 	 */
 	it("does not duplicate the Google account when the same user signs in again", async () => {
 		verifiedPayload.email = "one-tap-returning-user@example.com";
@@ -265,7 +265,7 @@ describe("one-tap implicit linking gate", async () => {
 	});
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/9502
+	 * @see https://github.com/cinagroup/cinaauth/issues/9502
 	 *
 	 * Identity must resolve by the Google `sub`, not the token email. A Google
 	 * credential already linked to user A must sign in A, even when the token's

@@ -1,19 +1,19 @@
-import type { BetterAuthClientOptions } from "@better-auth/core";
-import type { User } from "@better-auth/core/db";
-import { BetterAuthError } from "@better-auth/core/error";
+import type { CinaAuthClientOptions } from "@cinaauth/core";
+import type { User } from "@cinaauth/core/db";
+import { CinaAuthError } from "@cinaauth/core/error";
 import { base64Url } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
 import type { BetterFetch, CreateFetchOption } from "@better-fetch/fetch";
-import { APIError, getBaseURL, safeJSONParse } from "better-auth";
-import { signInSocial } from "better-auth/api";
-import { generateRandomString } from "better-auth/crypto";
+import { APIError, getBaseURL, safeJSONParse } from "cinaauth";
+import { signInSocial } from "cinaauth/api";
+import { generateRandomString } from "cinaauth/crypto";
 import { shell } from "electron";
 import * as z from "zod";
 import type { ElectronClientOptions } from "./types/client";
 import { normalizeUserOutput } from "./user";
 import { getChannelPrefixWithDelimiter, isProcessType } from "./utils";
 
-export const kElectron = Symbol.for("better-auth:electron");
+export const kElectron = Symbol.for("cinaauth:electron");
 
 const requestAuthOptionsSchema = (() => {
 	const { provider, idToken, loginHint, ...signInSocialBody } =
@@ -32,12 +32,12 @@ export type ElectronRequestAuthOptions = z.infer<
  * Opens the system browser to request user authentication.
  */
 export async function requestAuth(
-	clientOptions: BetterAuthClientOptions | undefined,
+	clientOptions: CinaAuthClientOptions | undefined,
 	options: ElectronClientOptions,
 	cfg?: ElectronRequestAuthOptions | undefined,
 ) {
 	if (!isProcessType("browser")) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"`requestAuth` can only be called in the main process",
 		);
 	}
@@ -111,7 +111,7 @@ export async function authenticate({
 	getWindow: () => Electron.BrowserWindow | null | undefined;
 }) {
 	if (!isProcessType("browser")) {
-		throw new BetterAuthError(
+		throw new CinaAuthError(
 			"`authenticate` can only be called in the main process.",
 		);
 	}
@@ -124,7 +124,7 @@ export async function authenticate({
 	(globalThis as any)[kElectron]?.delete(decoded?.state);
 
 	if (!codeVerifier) {
-		throw new BetterAuthError("Code verifier not found.");
+		throw new CinaAuthError("Code verifier not found.");
 	}
 
 	return await $fetch<{

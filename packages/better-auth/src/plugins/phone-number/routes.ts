@@ -1,6 +1,6 @@
-import type { GenericEndpointContext } from "@better-auth/core";
-import { createAuthEndpoint } from "@better-auth/core/api";
-import { APIError, BASE_ERROR_CODES } from "@better-auth/core/error";
+import type { GenericEndpointContext } from "@cinaauth/core";
+import { createAuthEndpoint } from "@cinaauth/core/api";
+import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
 import { getSessionFromCtx } from "../../api";
 import { setSessionCookie } from "../../cookies";
@@ -49,7 +49,7 @@ const signInPhoneNumberBodySchema = z.object({
  * **client:**
  * `authClient.signIn.phoneNumber`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/phone-number#api-method-sign-in-phone-number)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/phone-number#api-method-sign-in-phone-number)
  */
 export const signInPhoneNumber = (opts: RequiredPhoneNumberOptions) =>
 	createAuthEndpoint(
@@ -220,7 +220,7 @@ const sendPhoneNumberOTPBodySchema = z.object({
  * **client:**
  * `authClient.phoneNumber.sendOtp`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/phone-number#api-method-phone-number-send-otp)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/phone-number#api-method-phone-number-send-otp)
  */
 export const sendPhoneNumberOTP = (opts: RequiredPhoneNumberOptions) =>
 	createAuthEndpoint(
@@ -358,7 +358,7 @@ const verifyPhoneNumberBodySchema = z
  * **client:**
  * `authClient.phoneNumber.verify`
  *
- * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/phone-number#api-method-phone-number-verify)
+ * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/phone-number#api-method-phone-number-verify)
  */
 export const verifyPhoneNumber = (opts: RequiredPhoneNumberOptions) =>
 	createAuthEndpoint(

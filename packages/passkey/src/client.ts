@@ -1,8 +1,8 @@
 import type {
-	BetterAuthClientPlugin,
+	CinaAuthClientPlugin,
 	ClientFetchOption,
 	ClientStore,
-} from "@better-auth/core";
+} from "@cinaauth/core";
 import type { BetterFetch } from "@better-fetch/fetch";
 import type {
 	PublicKeyCredentialCreationOptionsJSON,
@@ -19,8 +19,8 @@ import type {
 	AuthenticationResponseJSON,
 	RegistrationResponseJSON,
 } from "@simplewebauthn/server";
-import { useAuthQuery } from "better-auth/client";
-import type { Session, User } from "better-auth/types";
+import { useAuthQuery } from "cinaauth/client";
+import type { Session, User } from "cinaauth/types";
 import { atom } from "nanostores";
 import type { passkey } from ".";
 import { PASSKEY_ERROR_CODES } from "./error-codes";
@@ -116,7 +116,7 @@ export const getPasskeyActions = (
 			return verified;
 		} catch (err) {
 			// Error logs ran on the front-end
-			console.error(`[Better Auth] Error verifying passkey`, err);
+			console.error(`[CinaAuth] Error verifying passkey`, err);
 			return {
 				data: null,
 				error: {
@@ -349,7 +349,7 @@ export const passkeyClient = () => {
 			},
 		],
 		$ERROR_CODES: PASSKEY_ERROR_CODES,
-	} satisfies BetterAuthClientPlugin;
+	} satisfies CinaAuthClientPlugin;
 };
 
 export type * from "@simplewebauthn/server";

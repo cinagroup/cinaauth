@@ -1,7 +1,7 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import { kyselyAdapter } from "@better-auth/kysely-adapter";
-import { testAdapter } from "@better-auth/test-utils/adapter";
-import { getMigrations } from "better-auth/db/migration";
+﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import { kyselyAdapter } from "@cinaauth/kysely-adapter";
+import { testAdapter } from "@cinaauth/test-utils/adapter";
+import { getMigrations } from "cinaauth/db/migration";
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import {
@@ -20,7 +20,7 @@ import {
 } from "./schema-reference-test-suite";
 
 const pgDB = new Pool({
-	connectionString: "postgres://user:password@localhost:5433/better_auth",
+	connectionString: "postgres://user:password@localhost:5433/cinaauth",
 });
 
 const kyselyDB = new Kysely({
@@ -41,11 +41,11 @@ const { execute } = await testAdapter({
 			debugLogs: { isRunningAdapterTests: true },
 		}),
 	prefixTests: "pg",
-	async runMigrations(betterAuthOptions) {
+	async runMigrations(CinaAuthOptions) {
 		await cleanupDatabase();
-		const opts = Object.assign(betterAuthOptions, {
+		const opts = Object.assign(CinaAuthOptions, {
 			database: pgDB,
-		} satisfies BetterAuthOptions);
+		} satisfies CinaAuthOptions);
 		const { runMigrations } = await getMigrations(opts);
 		await runMigrations();
 	},

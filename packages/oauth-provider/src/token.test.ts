@@ -1,15 +1,15 @@
-import { createClientCredentialsTokenRequest } from "@better-auth/core/oauth2";
-import { createAuthClient } from "better-auth/client";
-import { jwtClient } from "better-auth/client/plugins";
-import { generateRandomString } from "better-auth/crypto";
-import type { ProviderOptions } from "better-auth/oauth2";
+import { createClientCredentialsTokenRequest } from "@cinaauth/core/oauth2";
+import { createAuthClient } from "cinaauth/client";
+import { jwtClient } from "cinaauth/client/plugins";
+import { generateRandomString } from "cinaauth/crypto";
+import type { ProviderOptions } from "cinaauth/oauth2";
 import {
 	createAuthorizationCodeRequest,
 	createAuthorizationURL,
 	createRefreshAccessTokenRequest,
-} from "better-auth/oauth2";
-import { jwt } from "better-auth/plugins/jwt";
-import { getTestInstance } from "better-auth/test";
+} from "cinaauth/oauth2";
+import { jwt } from "cinaauth/plugins/jwt";
+import { getTestInstance } from "cinaauth/test";
 import { createLocalJWKSet, decodeJwt, jwtVerify } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 import { oauthProviderClient } from "./client";
@@ -406,7 +406,7 @@ describe("oauth token - authorization_code", async () => {
 	 * find/delete pair makes this test fail with two successes (verified
 	 * empirically), so a synthetic scheduling barrier is unnecessary.
 	 *
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-7w99-5wm4-3g79
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-7w99-5wm4-3g79
 	 */
 	it("rejects concurrent redemption of the same authorization code", async () => {
 		if (!oauthClient?.client_id || !oauthClient?.client_secret) {
@@ -1042,7 +1042,7 @@ describe("oauth token - refresh_token", async () => {
 	 * so any subsequent replay of the original token trips the existing
 	 * family-invalidation guard in `handleRefreshTokenGrant`.
 	 *
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-392p-2q2v-4372
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-392p-2q2v-4372
 	 */
 	it("rejects concurrent rotation of the same refresh token", async () => {
 		if (!oauthClient?.client_id || !oauthClient?.client_secret) {
@@ -1100,7 +1100,7 @@ describe("oauth token - refresh_token", async () => {
 	 * usable for a subsequent rotation. The CAS only revokes the parent row; it
 	 * must not poison the rest of the legitimate user's session.
 	 *
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-392p-2q2v-4372
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-392p-2q2v-4372
 	 */
 	it("winner's child token is usable for a subsequent rotation", async () => {
 		if (!oauthClient?.client_id || !oauthClient?.client_secret) {
@@ -1150,7 +1150,7 @@ describe("oauth token - refresh_token", async () => {
 	 * `revoked` (via the same CAS used in rotation) so that subsequent reuse
 	 * trips the family-invalidation guard.
 	 *
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-392p-2q2v-4372
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-392p-2q2v-4372
 	 */
 	it("revoke endpoint marks the refresh row revoked and blocks reuse", async () => {
 		if (!oauthClient?.client_id || !oauthClient?.client_secret) {
@@ -1216,7 +1216,7 @@ describe("oauth token - refresh_token", async () => {
 	 * through the same CAS so exactly one wins; the loser fails closed and
 	 * the parent stays revoked.
 	 *
-	 * @see https://github.com/better-auth/better-auth/security/advisories/GHSA-392p-2q2v-4372
+	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-392p-2q2v-4372
 	 */
 	it("concurrent revoke + rotate against the same refresh token: exactly one wins", async () => {
 		if (!oauthClient?.client_id || !oauthClient?.client_secret) {
@@ -2084,7 +2084,7 @@ describe("oauth token - client secret validation", async () => {
 	}
 
 	/**
-	 * @see https://github.com/better-auth/better-auth/issues/8016
+	 * @see https://github.com/cinagroup/cinaauth/issues/8016
 	 */
 	it("should return invalid_client for encrypted client secret format mismatch", async () => {
 		const storedClientSecret = "Mda8BIefhR8eFkYfFq8H7XAW-fj8GNjQYKPfN8LZ6u8";

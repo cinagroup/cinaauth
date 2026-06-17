@@ -1,4 +1,4 @@
-import type { DBFieldAttribute } from "@better-auth/core/db";
+import type { DBFieldAttribute } from "@cinaauth/core/db";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createAuthClient } from "../../../client";
 import { parseSetCookieHeader } from "../../../cookies";
@@ -131,10 +131,10 @@ describe("dynamic access control", async () => {
 				onSuccess: (context) => {
 					const header = context.response.headers.get("set-cookie");
 					const cookies = parseSetCookieHeader(header || "");
-					const signedCookie = cookies.get("better-auth.session_token")?.value;
+					const signedCookie = cookies.get("cinaauth.session_token")?.value;
 					userHeaders.set(
 						"cookie",
-						`better-auth.session_token=${signedCookie}`,
+						`cinaauth.session_token=${signedCookie}`,
 					);
 				},
 			},

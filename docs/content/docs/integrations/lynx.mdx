@@ -1,26 +1,26 @@
----
+﻿---
 title: Lynx Integration
-description: Integrate Better Auth with Lynx cross-platform framework.
+description: Integrate CinaAuth with Lynx cross-platform framework.
 ---
 
-This integration guide is for using Better Auth with [Lynx](https://lynxjs.org), a cross-platform rendering framework that enables developers to build applications for Android, iOS, and Web platforms with native rendering performance.
+This integration guide is for using CinaAuth with [Lynx](https://lynxjs.org), a cross-platform rendering framework that enables developers to build applications for Android, iOS, and Web platforms with native rendering performance.
 
-Before you start, make sure you have a Better Auth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
+Before you start, make sure you have a CinaAuth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
 
 ## Installation
 
-Install Better Auth and the Lynx React dependency:
+Install CinaAuth and the Lynx React dependency:
 
 ```package-install
-better-auth @lynx-js/react
+cinaauth @lynx-js/react
 ```
 
 ## Create Client Instance
 
-Import `createAuthClient` from `better-auth/lynx` to create your client instance:
+Import `createAuthClient` from `cinaauth/lynx` to create your client instance:
 
 ```ts title="lib/auth-client.ts"
-import { createAuthClient } from "better-auth/lynx"
+import { createAuthClient } from "cinaauth/lynx"
 
 export const authClient = createAuthClient({
     baseURL: "http://localhost:3000" // The base URL of your auth server
@@ -29,7 +29,7 @@ export const authClient = createAuthClient({
 
 ## Usage
 
-The Lynx client provides the same API as other Better Auth clients, with optimized integration for Lynx's reactive system.
+The Lynx client provides the same API as other CinaAuth clients, with optimized integration for Lynx's reactive system.
 
 ### Authentication Methods
 
@@ -98,7 +98,7 @@ export function User() {
 The Lynx client uses [nanostores](https://github.com/nanostores/nanostores) for state management and provides a `useStore` hook for accessing reactive state:
 
 ```tsx title="components/session-info.tsx"
-import { useStore } from "better-auth/lynx"
+import { useStore } from "cinaauth/lynx"
 import { authClient } from "../lib/auth-client"
 
 export function SessionInfo() {
@@ -120,7 +120,7 @@ export function SessionInfo() {
 You can use the store with selective key watching for optimized re-renders:
 
 ```tsx title="components/optimized-user.tsx"
-import { useStore } from "better-auth/lynx"
+import { useStore } from "cinaauth/lynx"
 import { authClient } from "../lib/auth-client"
 
 export function OptimizedUser() {
@@ -144,11 +144,11 @@ export function OptimizedUser() {
 
 ## Plugin Support
 
-The Lynx client supports all Better Auth plugins:
+The Lynx client supports all CinaAuth plugins:
 
 ```ts title="lib/auth-client.ts"
-import { createAuthClient } from "better-auth/lynx"
-import { magicLinkClient } from "better-auth/client/plugins"
+import { createAuthClient } from "cinaauth/lynx"
+import { magicLinkClient } from "cinaauth/client/plugins"
 
 const authClient = createAuthClient({
     plugins: [
@@ -164,7 +164,7 @@ await authClient.signIn.magicLink({
 
 ## Error Handling
 
-Error handling works the same as other Better Auth clients:
+Error handling works the same as other CinaAuth clients:
 
 ```tsx title="components/login-form.tsx"
 import { authClient } from "../lib/auth-client"
@@ -206,7 +206,7 @@ The Lynx client provides:
 * **Optimized Performance**: Built specifically for Lynx's reactive system
 * **Nanostores Integration**: Uses nanostores for efficient state management
 * **Selective Re-rendering**: Watch specific store keys to minimize unnecessary updates
-* **Full API Compatibility**: All Better Auth methods and plugins work seamlessly
+* **Full API Compatibility**: All CinaAuth methods and plugins work seamlessly
 * **TypeScript Support**: Full type safety with TypeScript inference
 
-The Lynx integration maintains all the features and benefits of Better Auth while providing optimal performance and developer experience within Lynx's cross-platform ecosystem.
+The Lynx integration maintains all the features and benefits of CinaAuth while providing optimal performance and developer experience within Lynx's cross-platform ecosystem.

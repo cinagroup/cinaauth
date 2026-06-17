@@ -1,5 +1,5 @@
-import type { BetterAuthOptions } from "@better-auth/core";
-import type { DBAdapter } from "@better-auth/core/db/adapter";
+import type { CinaAuthOptions } from "@cinaauth/core";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import { generateDrizzleSchema } from "./drizzle";
 import { generateKyselySchema } from "./kysely";
 import { generatePrismaSchema } from "./prisma";
@@ -13,7 +13,7 @@ export const adapters = {
 export const generateSchema = (opts: {
 	adapter: DBAdapter;
 	file?: string;
-	options: BetterAuthOptions;
+	options: CinaAuthOptions;
 }) => {
 	const adapter = opts.adapter;
 	const generator =

@@ -1,21 +1,21 @@
----
+﻿---
 title: TanStack Start Integration
-description: Integrate Better Auth with TanStack Start.
+description: Integrate CinaAuth with TanStack Start.
 ---
 
 This integration guide is assuming you are using TanStack Start.
 
-Before you start, make sure you have a Better Auth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
+Before you start, make sure you have a CinaAuth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
 
 ## Quick Start
 
-You can create a new TanStack Start project with Better Auth integrated using the following command. This CLI sets up a project with an auth instance configured with the plugin and mounted handlers.
+You can create a new TanStack Start project with CinaAuth integrated using the following command. This CLI sets up a project with an auth instance configured with the plugin and mounted handlers.
 
 ```package-install
 npm create @tanstack/start
 
 ◇  What add-ons would you like for your project?
-│  Better Auth
+│  CinaAuth
 ```
 
 ## Usage
@@ -46,15 +46,15 @@ export const Route = createFileRoute('/api/auth/$')({
 ### Usage tips
 
 * We recommend using the client SDK or `authClient` to handle authentication, rather than server actions with `auth.api`.
-* When you call functions that need to set cookies (like `signInEmail` or `signUpEmail`), you'll need to handle cookie setting for TanStack Start. Better Auth provides a `tanstackStartCookies` plugin to automatically handle this for you.
+* When you call functions that need to set cookies (like `signInEmail` or `signUpEmail`), you'll need to handle cookie setting for TanStack Start. CinaAuth provides a `tanstackStartCookies` plugin to automatically handle this for you.
 
 For React (TanStack Start with React):
 
 ```ts title="src/lib/auth.ts"
-import { betterAuth } from "better-auth";
-import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { CinaAuth } from "cinaauth";
+import { tanstackStartCookies } from "cinaauth/tanstack-start";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     //...your config
     plugins: [tanstackStartCookies()] // make sure this is the last plugin in the array
 })
@@ -63,10 +63,10 @@ export const auth = betterAuth({
 For Solid.js (TanStack Start with Solid):
 
 ```ts title="src/lib/auth.ts"
-import { betterAuth } from "better-auth";
-import { tanstackStartCookies } from "better-auth/tanstack-start/solid";
+import { CinaAuth } from "cinaauth";
+import { tanstackStartCookies } from "cinaauth/tanstack-start/solid";
 
-export const auth = betterAuth({
+export const auth = CinaAuth({
     //...your config
     plugins: [tanstackStartCookies()] // make sure this is the last plugin in the array
 })

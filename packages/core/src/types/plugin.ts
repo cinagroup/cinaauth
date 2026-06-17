@@ -6,11 +6,11 @@ import type {
 } from "better-call";
 import type { Migration } from "kysely";
 import type { AuthMiddleware } from "../api";
-import type { BetterAuthPluginDBSchema } from "../db";
+import type { CinaAuthPluginDBSchema } from "../db";
 import type { RawError } from "../utils/error-codes";
 import type { AuthContext } from "./context";
 import type { Awaitable, LiteralString } from "./helper";
-import type { BetterAuthOptions } from "./init-options";
+import type { CinaAuthOptions } from "./init-options";
 
 type DeepPartial<T> = T extends Function
 	? T
@@ -29,14 +29,14 @@ export type HookEndpointContext = Partial<
 	headers?: Headers | undefined;
 };
 
-export type BetterAuthPluginErrorCodePart = {
+export type CinaAuthPluginErrorCodePart = {
 	/**
 	 * The error codes returned by the plugin
 	 */
 	$ERROR_CODES?: Record<string, RawError>;
 };
 
-export type BetterAuthPlugin = BetterAuthPluginErrorCodePart & {
+export type CinaAuthPlugin = CinaAuthPluginErrorCodePart & {
 	id: LiteralString;
 	version?: string | undefined;
 	/**
@@ -48,7 +48,7 @@ export type BetterAuthPlugin = BetterAuthPluginErrorCodePart & {
 				| Awaitable<{
 						context?: DeepPartial<Omit<AuthContext, "options">> &
 							Record<string, unknown>;
-						options?: Partial<BetterAuthOptions>;
+						options?: Partial<CinaAuthOptions>;
 				  }>
 				| void
 				| Promise<void>)
@@ -125,7 +125,7 @@ export type BetterAuthPlugin = BetterAuthPluginErrorCodePart & {
 	 * } as AuthPluginSchema
 	 * ```
 	 */
-	schema?: BetterAuthPluginDBSchema | undefined;
+	schema?: CinaAuthPluginDBSchema | undefined;
 	/**
 	 * The migrations of the plugin. If you define schema that will automatically create
 	 * migrations for you.
