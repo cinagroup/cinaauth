@@ -1,4 +1,4 @@
-{
+﻿{
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["esnext", "dom", "dom.iterable"],
@@ -8,7 +8,7 @@
   "include": ["./test", "./src", "./package.json"],
   "references": [
     {
-      "path": "../cinaauth/tsconfig.json"
+      "path": "../better-auth/tsconfig.json"
     }
   ]
 }

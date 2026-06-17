@@ -1,4 +1,4 @@
-﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import type { TelemetryContext } from "../types";
 
 export async function getTelemetryAuthConfig(

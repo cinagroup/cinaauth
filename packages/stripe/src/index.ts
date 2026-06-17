@@ -1,4 +1,4 @@
-﻿import type { CinaAuthPlugin, User } from "cinaauth";
+import type { CinaAuthPlugin, User } from "cinaauth";
 import { APIError } from "cinaauth";
 import type { Organization } from "cinaauth/plugins/organization";
 import { defu } from "defu";

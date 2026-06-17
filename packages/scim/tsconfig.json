@@ -3,7 +3,7 @@
   "include": ["./src", "./package.json"],
   "references": [
     {
-      "path": "../cinaauth/tsconfig.json"
+      "path": "../better-auth/tsconfig.json"
     },
     {
       "path": "../core/tsconfig.json"

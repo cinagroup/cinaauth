@@ -44,12 +44,8 @@ const dialect = (() => {
 			});
 		}
 	}
-	return null;
+	return new LibsqlDialect({ url: "file:local.db" });
 })();
-
-if (!dialect) {
-	throw new Error("No dialect found");
-}
 
 const authOptions = {
 	appName: "CinaAuth Demo",

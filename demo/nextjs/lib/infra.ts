@@ -43,3 +43,13 @@ export async function sendEmail(_data: {
   //   }),
   // });
 }
+
+/**
+ * Client-side stub for the dashboard plugin.
+ */
+export function dashClient() {
+  return {
+    id: "dash-client",
+    $InferClientPlugin: {} as any,
+  };
+}

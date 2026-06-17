@@ -1,4 +1,4 @@
-﻿import type { GenericEndpointContext } from "@cinaauth/core";
+import type { GenericEndpointContext } from "@cinaauth/core";
 import type { User } from "@cinaauth/core/db";
 import type { Organization } from "cinaauth/plugins/organization";
 import type Stripe from "stripe";
