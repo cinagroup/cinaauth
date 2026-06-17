@@ -1,4 +1,4 @@
-﻿import { createAuthEndpoint } from "@cinaauth/core/api";
+import { createAuthEndpoint } from "@cinaauth/core/api";
 import { APIError } from "@cinaauth/core/error";
 import type { GenericEndpointContext, User } from "cinaauth";
 import { HIDE_METADATA } from "cinaauth";

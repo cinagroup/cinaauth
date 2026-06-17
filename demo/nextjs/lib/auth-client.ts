@@ -1,5 +1,5 @@
 ﻿import { electronProxyClient } from "@cinaauth/electron/proxy";
-import { dashClient } from "@cinaauth/infra/client";
+import { dashClient } from "./infra";
 import { oauthProviderClient } from "@cinaauth/oauth-provider/client";
 import { passkeyClient } from "@cinaauth/passkey/client";
 import { stripeClient } from "@cinaauth/stripe/client";

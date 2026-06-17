@@ -1,4 +1,4 @@
-﻿import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
+import type { CinaAuthPluginDBSchema } from "@cinaauth/core/db";
 import { mergeSchema } from "cinaauth/db";
 import type { StripeOptions } from "./types";
 

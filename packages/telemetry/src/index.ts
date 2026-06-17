@@ -1,4 +1,4 @@
-﻿import type { CinaAuthOptions } from "@cinaauth/core";
+import type { CinaAuthOptions } from "@cinaauth/core";
 import { ENV, getBooleanEnvVar, isTest, logger } from "@cinaauth/core/env";
 import { betterFetch } from "@better-fetch/fetch";
 import { getTelemetryAuthConfig } from "./detectors/detect-auth-config";

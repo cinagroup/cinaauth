@@ -1,4 +1,4 @@
-﻿import type { CinaAuthClientPlugin } from "cinaauth/client";
+import type { CinaAuthClientPlugin } from "cinaauth/client";
 import { STRIPE_ERROR_CODES } from "./error-codes";
 import type { StripePlan, stripe } from "./index";
 import { PACKAGE_VERSION } from "./version";
