@@ -29,6 +29,7 @@ import {
 	statsSignups,
 	statsSecurityToday,
 } from "./stats";
+import { listUserWallets, unbindWallet } from "./wallets";
 import type {
 	AdminOptions,
 	SessionWithImpersonatedBy,
@@ -171,6 +172,8 @@ export const admin = <O extends AdminOptions>(options?: O | undefined) => {
 			statsOverview: statsOverview(opts),
 			statsSignups: statsSignups(opts),
 			statsSecurityToday: statsSecurityToday(opts),
+			listUserWallets: listUserWallets(opts),
+			unbindWallet: unbindWallet(opts),
 		},
 		$ERROR_CODES: ADMIN_ERROR_CODES,
 		schema: mergeSchema(schema, opts.schema),
