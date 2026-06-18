@@ -1,4 +1,5 @@
 import { createAuthEndpoint } from "@cinaauth/core/api";
+import type { CleanedWhere } from "@cinaauth/core/db/adapter";
 import { APIError } from "@cinaauth/core/error";
 import * as z from "zod";
 import { ADMIN_ERROR_CODES } from "./error-codes";
@@ -6,10 +7,20 @@ import { hasPermission } from "./has-permission";
 import { adminMiddleware } from "./routes";
 import type { AdminOptions } from "./types";
 
+/** Build a fully-populated CleanedWhere eq clause. */
+function eq(field: string, value: string | number | boolean): CleanedWhere {
+	return { field, operator: "eq", value, connector: "AND", mode: "sensitive" };
+}
+
+/** Build a fully-populated CleanedWhere gte clause. */
+function gte(field: string, value: Date): CleanedWhere {
+	return { field, operator: "gte", value, connector: "AND", mode: "sensitive" };
+}
+
 /** Throw FORBIDDEN if the session role lacks stats:read. */
 function requireStatsRead(
 	opts: AdminOptions,
-	ctx: { context: { session: { user: { id: string; role: string } } } },
+	ctx: { context: { session: { user: { id: string; role?: string } } } },
 ): void {
 	const ok = hasPermission({
 		userId: ctx.context.session.user.id,
@@ -22,6 +33,20 @@ function requireStatsRead(
 			"FORBIDDEN",
 			ADMIN_ERROR_CODES.YOU_ARE_NOT_ALLOWED_TO_LIST_USERS,
 		);
+	}
+}
+
+/** Count rows in a model, returning 0 if the model's table is absent (the
+ *  owning plugin — e.g. organization — may not be installed). */
+async function safeCount(
+	adapter: { count: (args: { model: string; where?: CleanedWhere[] }) => Promise<number> },
+	model: string,
+	where?: CleanedWhere[],
+): Promise<number> {
+	try {
+		return await adapter.count({ model, where });
+	} catch {
+		return 0;
 	}
 }
 
@@ -41,13 +66,21 @@ const DAY_MS = 86_400_000;
 export const statsOverview = (opts: AdminOptions) =>
 	createAuthEndpoint(
 		"/admin/stats/overview",
-		{ method: "GET", use: [adminMiddleware] },
+		{
+			method: "GET",
+			use: [adminMiddleware],
+			metadata: {
+				openapi: {
+					operationId: "statsOverview",
+					summary: "Dashboard overview stats",
+				},
+			},
+		},
 		async (ctx) => {
 			requireStatsRead(opts, ctx);
 			const adapter = ctx.context.adapter;
 			const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS);
 
-			// `count` returns a number directly.
 			const [
 				totalUsers,
 				newUsers30d,
@@ -57,45 +90,12 @@ export const statsOverview = (opts: AdminOptions) =>
 				usersWithout2FA,
 				accounts,
 			] = await Promise.all([
-				adapter.count({ model: "user" }),
-				adapter.count({
-					model: "user",
-					where: [
-						{
-							field: "createdAt",
-							operator: "gte",
-							value: thirtyDaysAgo,
-							connector: "AND",
-							mode: "sensitive",
-						},
-					],
-				}),
-				adapter.count({ model: "session" }),
-				adapter.count({ model: "organization" }),
-				adapter.count({
-					model: "user",
-					where: [
-						{
-							field: "banned",
-							operator: "eq",
-							value: true,
-							connector: "AND",
-							mode: "sensitive",
-						},
-					],
-				}),
-				adapter.count({
-					model: "user",
-					where: [
-						{
-							field: "twoFactorEnabled",
-							operator: "eq",
-							value: false,
-							connector: "AND",
-							mode: "sensitive",
-						},
-					],
-				}),
+				safeCount(adapter, "user"),
+				safeCount(adapter, "user", [gte("createdAt", thirtyDaysAgo)]),
+				safeCount(adapter, "session"),
+				safeCount(adapter, "organization"),
+				safeCount(adapter, "user", [eq("banned", true)]),
+				safeCount(adapter, "user", [eq("twoFactorEnabled", false)]),
 				adapter.findMany<{ providerId: string }>({
 					model: "account",
 					limit: 100000,
@@ -103,16 +103,11 @@ export const statsOverview = (opts: AdminOptions) =>
 				}),
 			]);
 
-			const loginChannels: Record<string, number> = {
-				emailPassword: 0,
-				github: 0,
-				siwe: 0,
-			};
+			const loginChannels = { emailPassword: 0, github: 0, siwe: 0 };
 			for (const acc of accounts) {
-				const p = acc.providerId;
-				if (p === "credential") loginChannels.emailPassword += 1;
-				else if (p === "github") loginChannels.github += 1;
-				else if (p === "siwe") loginChannels.siwe += 1;
+				if (acc.providerId === "credential") loginChannels.emailPassword += 1;
+				else if (acc.providerId === "github") loginChannels.github += 1;
+				else if (acc.providerId === "siwe") loginChannels.siwe += 1;
 			}
 
 			return ctx.json({
@@ -144,7 +139,17 @@ const signupsQuerySchema = z.object({
 export const statsSignups = (opts: AdminOptions) =>
 	createAuthEndpoint(
 		"/admin/stats/signups",
-		{ method: "GET", use: [adminMiddleware], query: signupsQuerySchema },
+		{
+			method: "GET",
+			use: [adminMiddleware],
+			query: signupsQuerySchema,
+			metadata: {
+				openapi: {
+					operationId: "statsSignups",
+					summary: "Signup trend",
+				},
+			},
+		},
 		async (ctx) => {
 			requireStatsRead(opts, ctx);
 			const days = ctx.query?.range === "7d" ? 7 : 30;
@@ -155,15 +160,7 @@ export const statsSignups = (opts: AdminOptions) =>
 				model: "user",
 				limit: 100000,
 				select: ["createdAt"],
-				where: [
-					{
-						field: "createdAt",
-						operator: "gte",
-						value: since,
-						connector: "AND",
-						mode: "sensitive",
-					},
-				],
+				where: [gte("createdAt", since)],
 			});
 			// Pre-seed all days in the window with 0 so the chart has no gaps.
 			const buckets = new Map<string, number>();
@@ -204,7 +201,16 @@ export const statsSignups = (opts: AdminOptions) =>
 export const statsSecurityToday = (opts: AdminOptions) =>
 	createAuthEndpoint(
 		"/admin/stats/security-today",
-		{ method: "GET", use: [adminMiddleware] },
+		{
+			method: "GET",
+			use: [adminMiddleware],
+			metadata: {
+				openapi: {
+					operationId: "statsSecurityToday",
+					summary: "Today's security metrics",
+				},
+			},
+		},
 		async (ctx) => {
 			requireStatsRead(opts, ctx);
 			const since = new Date();
@@ -213,29 +219,12 @@ export const statsSecurityToday = (opts: AdminOptions) =>
 
 			// The auditLog table only exists if the audit-log plugin is loaded.
 			// Treat a missing table as "no data" (0) rather than erroring.
-			const safeCount = async (
-				filters: {
-					field: string;
-					operator: "eq";
-					value: string;
-					connector: "AND";
-					mode: "sensitive";
-				}[],
-			): Promise<number> => {
+			const safeCount = async (filters: CleanedWhere[]): Promise<number> => {
 				try {
 					const rows = await adapter.findMany({
 						model: "auditLog",
 						limit: 100000,
-						where: [
-							...filters,
-							{
-								field: "timestamp",
-								operator: "gte",
-								value: since,
-								connector: "AND",
-								mode: "sensitive",
-							},
-						],
+						where: [...filters, gte("timestamp", since)],
 					});
 					return rows.length;
 				} catch {
@@ -244,50 +233,13 @@ export const statsSecurityToday = (opts: AdminOptions) =>
 			};
 
 			const [failedLogins, otpRequests, geoAnomaly] = await Promise.all([
-				safeCount([{ field: "action", operator: "eq", value: "user.login" }]),
-				safeCount([
-					{ field: "action", operator: "eq", value: "user.otp_send" },
-				]),
-				safeCount([{ field: "category", operator: "eq", value: "risk" }]),
+				safeCount([eq("action", "user.login"), eq("result", "failure")]),
+				safeCount([eq("action", "user.otp_send")]),
+				safeCount([eq("category", "risk")]),
 			]);
-			// failedLogins counts ALL login rows; narrow to failures by re-querying.
-			const failedOnly = await (async () => {
-				try {
-					const rows = await adapter.findMany({
-						model: "auditLog",
-						limit: 100000,
-						where: [
-							{
-								field: "action",
-								operator: "eq",
-								value: "user.login",
-								connector: "AND",
-								mode: "sensitive",
-							},
-							{
-								field: "result",
-								operator: "eq",
-								value: "failure",
-								connector: "AND",
-								mode: "sensitive",
-							},
-							{
-								field: "timestamp",
-								operator: "gte",
-								value: since,
-								connector: "AND",
-								mode: "sensitive",
-							},
-						],
-					});
-					return rows.length;
-				} catch {
-					return 0;
-				}
-			})();
 
 			return ctx.json({
-				failedLoginsToday: failedOnly,
+				failedLoginsToday: failedLogins,
 				otpRequestsToday: otpRequests,
 				geoAnomalyCount: geoAnomaly,
 			});

@@ -30,7 +30,7 @@ import type {
  * Ensures a valid session, if not will throw.
  * Will also provide additional types on the user to include role types.
  */
-const adminMiddleware = createAuthMiddleware(async (ctx) => {
+export const adminMiddleware = createAuthMiddleware(async (ctx) => {
 	const session = await getSessionFromCtx(ctx);
 	if (!session) {
 		throw APIError.fromStatus("UNAUTHORIZED");

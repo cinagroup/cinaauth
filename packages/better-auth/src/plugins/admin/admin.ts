@@ -24,6 +24,11 @@ import {
 	userHasPermission,
 } from "./routes";
 import { schema } from "./schema";
+import {
+	statsOverview,
+	statsSignups,
+	statsSecurityToday,
+} from "./stats";
 import type {
 	AdminOptions,
 	SessionWithImpersonatedBy,
@@ -163,6 +168,9 @@ export const admin = <O extends AdminOptions>(options?: O | undefined) => {
 			removeUser: removeUser(opts),
 			setUserPassword: setUserPassword(opts),
 			userHasPermission: userHasPermission(opts as O),
+			statsOverview: statsOverview(opts),
+			statsSignups: statsSignups(opts),
+			statsSecurityToday: statsSecurityToday(opts),
 		},
 		$ERROR_CODES: ADMIN_ERROR_CODES,
 		schema: mergeSchema(schema, opts.schema),
