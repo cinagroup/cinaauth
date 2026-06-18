@@ -39,6 +39,18 @@ export const adminAc = defaultAc.newRole({
 	wallet: ["list", "unbind"],
 });
 
+/**
+ * security_admin: a scoped admin role for the CinaGroup console. Can manage
+ * user bans, sessions, wallets, and read stats/audit — but cannot create or
+ * delete users, set roles, impersonate, set passwords, or edit security policy.
+ */
+export const securityAdminAc = defaultAc.newRole({
+	user: ["list", "get", "ban"],
+	session: ["list", "revoke", "delete"],
+	stats: ["read"],
+	wallet: ["list", "unbind"],
+});
+
 export const userAc = defaultAc.newRole({
 	user: [],
 	session: [],
@@ -46,5 +58,6 @@ export const userAc = defaultAc.newRole({
 
 export const defaultRoles = {
 	admin: adminAc,
+	security_admin: securityAdminAc,
 	user: userAc,
 };
