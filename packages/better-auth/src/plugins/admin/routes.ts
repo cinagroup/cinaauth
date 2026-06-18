@@ -813,6 +813,8 @@ export const listUsers = (opts: AdminOptions) =>
 				if (ctx.query.searchField === "wallet") {
 					// Wallet address search: resolve matching userIds from the
 					// SIWE walletAddress table first, then filter users by id.
+					// Case-insensitive: addresses are stored checksummed (mixed
+					// case) but users typically type lowercase.
 					const wallets = await ctx.context.adapter.findMany<{
 						userId: string;
 					}>({
@@ -825,7 +827,7 @@ export const listUsers = (opts: AdminOptions) =>
 								operator: ctx.query.searchOperator || "contains",
 								value: ctx.query.searchValue,
 								connector: "AND",
-								mode: "sensitive",
+								mode: "insensitive",
 							},
 						],
 					});
