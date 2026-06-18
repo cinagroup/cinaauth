@@ -40,24 +40,49 @@ export const auditLog = (options?: AuditLogPluginOptions) => {
 					matcher(context) {
 						return matchCapturePath(context.path) !== null;
 					},
-					handler: createAuthMiddleware(async (ctx) => {
-						const mapped = matchCapturePath(ctx.path as string);
-						if (!mapped) {
-							return;
-						}
-						// `getEndpointResponse` returns null for non-200 responses or
-						// APIErrors (see utils/plugin-helper.ts), so a null result is a
-						// reliable failure signal without guessing status fields.
-						const ok = (await getEndpointResponse(ctx)) !== null;
-						const actor = extractActorFromCtx(ctx);
-						await writeAuditLog(ctx, {
-							...mapped,
-							...actor,
-							result: ok ? "success" : "failure",
-						});
-						// hooks.after handlers return the (possibly modified) response;
-						// we did not alter it, so return nothing to pass through.
-					}),
+				handler: createAuthMiddleware(async (ctx) => {
+					const mapped = matchCapturePath(ctx.path as string);
+					if (!mapped) {
+						return;
+					}
+					// `getEndpointResponse` returns null for non-200 responses or
+					// APIErrors (see utils/plugin-helper.ts), so a null result is a
+					// reliable failure signal without guessing status fields.
+					const response = await getEndpointResponse<{
+						user?: { id?: string };
+						walletAddress?: string;
+						chainId?: number;
+					}>(ctx);
+					const ok = response !== null;
+					const actor = extractActorFromCtx(ctx);
+
+					// For wallet binds, populate targetId (the bound user) and
+					// metadata.address/chainId so list-user-wallets can enrich
+					// each wallet with its binding IP/site. The siwe /verify
+					// response carries {user.id, walletAddress, chainId}.
+					let targetType: string | null = null;
+					let targetId: string | null = null;
+					let metadata: Record<string, unknown> | null = null;
+					if (mapped.action === "siwe.bind" && response) {
+						targetType = "wallet";
+						targetId = response.user?.id ?? actor.actorId ?? null;
+						metadata = {
+							address: response.walletAddress ?? null,
+							chainId: response.chainId ?? null,
+						};
+					}
+
+					await writeAuditLog(ctx, {
+						...mapped,
+						...actor,
+						result: ok ? "success" : "failure",
+						targetType,
+						targetId,
+						metadata,
+					});
+					// hooks.after handlers return the (possibly modified) response;
+					// we did not alter it, so return nothing to pass through.
+				}),
 				},
 			],
 		},

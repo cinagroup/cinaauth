@@ -8,9 +8,15 @@ import { adminMiddleware } from "./routes";
 import { writeAuditLog } from "../audit-log/capture";
 import type { AdminOptions } from "./types";
 
-/** Build a fully-populated CleanedWhere eq clause. */
+/** Build a fully-populated CleanedWhere eq clause (case-sensitive). */
 function eq(field: string, value: string | number | boolean): CleanedWhere {
 	return { field, operator: "eq", value, connector: "AND", mode: "sensitive" };
+}
+
+/** Case-insensitive eq — for wallet address matching (stored checksummed,
+ *  callers may pass lowercase). */
+function eqCI(field: string, value: string): CleanedWhere {
+	return { field, operator: "eq", value, connector: "AND", mode: "insensitive" };
 }
 
 const listWalletsQuerySchema = z.object({
@@ -51,7 +57,7 @@ export const listUserWallets = (opts: AdminOptions) =>
 			if (!ok) {
 				throw APIError.from(
 					"FORBIDDEN",
-					ADMIN_ERROR_CODES.YOU_ARE_NOT_ALLOWED_TO_LIST_USERS,
+					ADMIN_ERROR_CODES.YOU_ARE_NOT_ALLOWED_TO_LIST_USER_WALLETS,
 				);
 			}
 
@@ -170,20 +176,17 @@ export const unbindWallet = (opts: AdminOptions) =>
 			if (!ok) {
 				throw APIError.from(
 					"FORBIDDEN",
-					ADMIN_ERROR_CODES.YOU_ARE_NOT_ALLOWED_TO_LIST_USERS,
+					ADMIN_ERROR_CODES.YOU_ARE_NOT_ALLOWED_TO_UNBIND_WALLETS,
 				);
 			}
 
 			const { userId, address, chainId } = ctx.body;
 
-			// Delete the walletAddress row.
+			// Delete the walletAddress row (case-insensitive on address: stored
+			// checksummed, callers may pass lowercase).
 			await ctx.context.adapter.delete({
 				model: "walletAddress",
-				where: [
-					eq("userId", userId),
-					eq("address", address),
-					eq("chainId", chainId),
-				],
+				where: [eq("userId", userId), eqCI("address", address), eq("chainId", chainId)],
 			});
 
 			// Delete the matching SIWE account row (accountId "<address>:<chainId>").

@@ -31,6 +31,11 @@ export const ADMIN_ERROR_CODES = defineErrorCodes({
 	INVALID_ROLE_TYPE: "Invalid role type",
 	YOU_ARE_NOT_ALLOWED_TO_SET_USERS_EMAIL:
 		"You are not allowed to update users email",
+	YOU_ARE_NOT_ALLOWED_TO_LIST_USER_WALLETS:
+		"You are not allowed to list user wallets",
+	YOU_ARE_NOT_ALLOWED_TO_UNBIND_WALLETS:
+		"You are not allowed to unbind wallets",
+	YOU_ARE_NOT_ALLOWED_TO_READ_STATS: "You are not allowed to read stats",
 	PASSWORD_CANNOT_BE_UPDATED_VIA_UPDATE_USER:
 		"Password cannot be updated through update-user. Use the set-user-password endpoint instead",
 });
