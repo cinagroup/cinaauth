@@ -1,1 +1,0 @@
-This folder contains the built output assets for the worker "cinaauth-demo" generated at 2026-06-17T13:37:41.362Z.
