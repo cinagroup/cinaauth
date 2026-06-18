@@ -236,6 +236,11 @@
       "types": "./dist/plugins/email-otp/index.d.mts",
       "default": "./dist/plugins/email-otp/index.mjs"
     },
+    "./plugins/email-otp/client": {
+      "dev-source": "./src/plugins/email-otp/client.ts",
+      "types": "./dist/plugins/email-otp/client.d.mts",
+      "default": "./dist/plugins/email-otp/client.mjs"
+    },
     "./plugins/generic-oauth": {
       "dev-source": "./src/plugins/generic-oauth/index.ts",
       "types": "./dist/plugins/generic-oauth/index.d.mts",
@@ -437,6 +442,9 @@
       ],
       "plugins/email-otp": [
         "./dist/plugins/email-otp/index.d.mts"
+      ],
+      "plugins/email-otp/client": [
+        "./dist/plugins/email-otp/client.d.mts"
       ],
       "plugins/generic-oauth": [
         "./dist/plugins/generic-oauth/index.d.mts"

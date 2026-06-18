@@ -82,9 +82,12 @@ export function SignUpForm({
 	};
 
 	return (
-		<form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-2">
-			<FieldGroup>
-				<div className="grid grid-cols-2 gap-4">
+		<form
+			onSubmit={form.handleSubmit(onSubmit)}
+			className="flex flex-col gap-4"
+		>
+			<FieldGroup className="gap-4">
+				<div className="grid grid-cols-2 gap-3">
 					<Controller
 						name="firstName"
 						control={form.control}
@@ -142,57 +145,54 @@ export function SignUpForm({
 						</Field>
 					)}
 				/>
-				<div className="grid grid-cols-2 gap-4">
-					<Controller
-						name="password"
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor="sign-up-password">Password</FieldLabel>
-								<Input
-									{...field}
-									id="sign-up-password"
-									type="password"
-									placeholder="Password"
-									aria-invalid={fieldState.invalid}
-									autoComplete="new-password"
-								/>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-					<Controller
-						name="passwordConfirmation"
-						control={form.control}
-						render={({ field, fieldState }) => (
-							<Field data-invalid={fieldState.invalid}>
-								<FieldLabel htmlFor="sign-up-password-confirmation">
-									Confirm Password
-								</FieldLabel>
-								<Input
-									{...field}
-									id="sign-up-password-confirmation"
-									type="password"
-									placeholder="Confirm Password"
-									aria-invalid={fieldState.invalid}
-									autoComplete="new-password"
-								/>
-								{fieldState.invalid && (
-									<FieldError errors={[fieldState.error]} />
-								)}
-							</Field>
-						)}
-					/>
-				</div>
+				<Controller
+					name="password"
+					control={form.control}
+					render={({ field, fieldState }) => (
+						<Field data-invalid={fieldState.invalid}>
+							<FieldLabel htmlFor="sign-up-password">Password</FieldLabel>
+							<Input
+								{...field}
+								id="sign-up-password"
+								type="password"
+								placeholder="At least 8 characters"
+								aria-invalid={fieldState.invalid}
+								autoComplete="new-password"
+							/>
+							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+						</Field>
+					)}
+				/>
+				<Controller
+					name="passwordConfirmation"
+					control={form.control}
+					render={({ field, fieldState }) => (
+						<Field data-invalid={fieldState.invalid}>
+							<FieldLabel htmlFor="sign-up-password-confirmation">
+								Confirm Password
+							</FieldLabel>
+							<Input
+								{...field}
+								id="sign-up-password-confirmation"
+								type="password"
+								placeholder="Confirm your password"
+								aria-invalid={fieldState.invalid}
+								autoComplete="new-password"
+							/>
+							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+						</Field>
+					)}
+				/>
 				<Field>
 					<FieldLabel htmlFor="sign-up-image">
-						Profile Image (optional)
+						Profile Image{" "}
+						<span className="text-muted-foreground font-normal">
+							(optional)
+						</span>
 					</FieldLabel>
-					<div className="flex items-end gap-4">
+					<div className="flex items-end gap-3">
 						{imagePreview && (
-							<div className="relative w-16 h-16 rounded-sm overflow-hidden">
+							<div className="relative w-14 h-14 rounded-md overflow-hidden border">
 								<img
 									src={imagePreview}
 									alt="Profile preview"
@@ -209,17 +209,20 @@ export function SignUpForm({
 								className="w-full"
 							/>
 							{imagePreview && (
-								<X className="cursor-pointer" onClick={clearImage} />
+								<X
+									className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+									onClick={clearImage}
+								/>
 							)}
 						</div>
 					</div>
 				</Field>
 			</FieldGroup>
-			<Button type="submit" className="w-full" disabled={loading}>
+			<Button type="submit" className="w-full mt-2" disabled={loading}>
 				{loading ? (
 					<Loader2 size={16} className="animate-spin" />
 				) : (
-					"Create an account"
+					"Create account"
 				)}
 			</Button>
 		</form>

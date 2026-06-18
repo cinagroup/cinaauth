@@ -190,7 +190,7 @@ var DOQueueHandler = class extends DurableObject {
 				method: "HEAD",
 				headers: {
 					// This is defined during build
-					"x-prerender-revalidate": "990c3d63d16d33b33a8d8669065109bf",
+					"x-prerender-revalidate": "f7e6bbf330a43def568c18716c5e3788",
 					"x-isr": "1",
 				},
 				// This one is kind of problematic, it will always show the wall time of the revalidation to `this.revalidationTimeout`
@@ -225,7 +225,7 @@ var DOQueueHandler = class extends DurableObject {
 					"INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
 					// We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
 					`${host}${url}`,
-					"BFkpY5Jwd8Mc96zhemdyq",
+					"xAKBJdzjEexQ2TgELm5BK",
 				);
 			}
 			this.routeInFailedState.delete(msg.MessageDeduplicationId);
@@ -297,7 +297,7 @@ var DOQueueHandler = class extends DurableObject {
 				"INSERT OR REPLACE INTO failed_state (id, data, buildId) VALUES (?, ?, ?)",
 				msg.MessageDeduplicationId,
 				JSON.stringify(updatedFailedState),
-				"BFkpY5Jwd8Mc96zhemdyq",
+				"xAKBJdzjEexQ2TgELm5BK",
 			);
 		}
 		await this.addAlarm();
@@ -331,11 +331,11 @@ var DOQueueHandler = class extends DurableObject {
 		);
 		this.sql.exec(
 			"DELETE FROM failed_state WHERE buildId != ?",
-			"BFkpY5Jwd8Mc96zhemdyq",
+			"xAKBJdzjEexQ2TgELm5BK",
 		);
 		this.sql.exec(
 			"DELETE FROM sync WHERE buildId != ?",
-			"BFkpY5Jwd8Mc96zhemdyq",
+			"xAKBJdzjEexQ2TgELm5BK",
 		);
 		const failedStateCursor = this.sql.exec("SELECT * FROM failed_state");
 		for (const row of failedStateCursor) {

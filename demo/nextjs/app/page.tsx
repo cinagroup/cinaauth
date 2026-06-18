@@ -1,5 +1,6 @@
 ﻿import { headers } from "next/headers";
 import EntryButton from "@/components/entry-button";
+import { FeatureCard } from "@/components/feature-card";
 import { auth } from "@/lib/auth";
 
 const features: { name: string; link: string }[] = [
@@ -63,49 +64,47 @@ export default async function Page() {
 	});
 
 	return (
-		<div className="min-h-[80vh] flex items-center justify-center overflow-hidden no-visible-scrollbar">
-			<main className="flex flex-col gap-4 row-start-2 items-center justify-center">
-				<div className="flex flex-col gap-1">
-					<h3 className="text-3xl sm:text-4xl text-black dark:text-white text-center">
-						CINAAUTH.
-					</h3>
-					<p className="text-center wrap-break-word text-sm md:text-base">
+		<div className="min-h-[80vh] flex flex-col items-center justify-center overflow-hidden no-visible-scrollbar">
+			<main className="flex flex-col gap-8 items-center justify-center py-16 md:py-24">
+				<div className="flex flex-col gap-4 text-center max-w-2xl">
+					<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50 border border-border/50 text-xs text-muted-foreground w-fit mx-auto mb-2">
+						<span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+						<span>Enterprise-grade authentication</span>
+					</div>
+					<h1 className="text-5xl md:text-6xl font-semibold text-foreground tracking-[-2.4px] leading-[1.1]">
+						CinaAuth.
+					</h1>
+					<p className="text-base md:text-lg text-muted-foreground leading-relaxed">
 						Official demo to showcase{" "}
 						<a
 							href="https://cinagroup.com"
 							target="_blank"
-							className="italic underline"
+							className="text-foreground underline underline-offset-4 hover:text-foreground/80 transition-colors"
 						>
-							cinaauth.
+							cinaauth
 						</a>{" "}
-						features and capabilities. <br />
+						features and capabilities.
 					</p>
 				</div>
-				<div className="max-w-xl w-full flex flex-col gap-4">
-					<div className="flex flex-col gap-3 pt-2 flex-wrap">
-						<div className="border p-2 border-dashed bg-secondary/70">
-							<div className="text-xs flex items-center gap-2 justify-center text-muted-foreground">
-								<span className="text-center">
-									All features on this demo are implemented with CinaAuth
-									without any custom backend code
-								</span>
-							</div>
-						</div>
-						<div className="flex gap-2 justify-center flex-wrap">
-							{features.map((feature) => (
-								<a
-									className="border-b pb-1 text-muted-foreground text-xs cursor-pointer hover:text-foreground duration-150 ease-in-out transition-all hover:border-foreground flex items-center gap-1"
-									key={feature.name}
-									href={feature.link}
-								>
-									{feature.name}
-								</a>
-							))}
-						</div>
-					</div>
 
+				<div className="w-full max-w-3xl flex flex-col gap-6 px-4">
 					<div className="flex items-center justify-center">
 						<EntryButton session={session} />
+					</div>
+
+					<div className="relative">
+						<div className="text-xs font-mono uppercase tracking-wider text-muted-foreground text-center mb-4">
+							Features
+						</div>
+						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+							{features.map((feature) => (
+								<FeatureCard
+									key={feature.name}
+									name={feature.name}
+									link={feature.link}
+								/>
+							))}
+						</div>
 					</div>
 				</div>
 			</main>

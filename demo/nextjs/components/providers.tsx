@@ -18,26 +18,34 @@ const Providers = ({ children }: Props) => {
 	const queryClient = getQueryClient();
 
 	useEffect(() => {
-		const authorizationCode = authClient.electron.getAuthorizationCode();
-		if (authorizationCode) {
-			setTimeout(() => {
-				toast.custom(
-					(t) => (
-						<ElectronManualSignInToast
-							t={t}
-							authorizationCode={authorizationCode}
-						/>
-					),
-					{
-						duration: 4_000,
-					},
-				);
-			}, 1000);
+		try {
+			const authorizationCode = authClient.electron.getAuthorizationCode();
+			if (authorizationCode) {
+				setTimeout(() => {
+					toast.custom(
+						(t) => (
+							<ElectronManualSignInToast
+								t={t}
+								authorizationCode={authorizationCode}
+							/>
+						),
+						{
+							duration: 4_000,
+						},
+					);
+				}, 1000);
+			}
+		} catch (error) {
+			// Silently ignore electron-related errors in web context
 		}
 	}, []);
 	useEffect(() => {
-		const id = authClient.ensureElectronRedirect();
-		return () => clearInterval(id);
+		try {
+			const id = authClient.ensureElectronRedirect();
+			return () => clearInterval(id);
+		} catch (error) {
+			// Silently ignore electron-related errors in web context
+		}
 	}, []);
 
 	return (
