@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { getTestInstance } from "../../test-utils/test-instance";
+import { admin } from "../admin/admin";
 import { auditLog } from "./index";
 import { writeAuditLog } from "./capture";
 
@@ -150,6 +151,79 @@ describe("audit-log endpoints", () => {
 		});
 		expect(walletRows.length).toBe(1);
 		expect((walletRows[0] as { action: string }).action).toBe("siwe.bind");
+	});
+});
+
+describe("audit-log export + alerts", () => {
+	it("auditAlerts flags actors exceeding the failure threshold", async () => {
+		// Load the admin plugin so the test user is assigned a `role` ("user"
+		// by default), then allow that role to query audit. Without admin, the
+		// user has no `role` field and the audit role gate cannot match.
+		const { auth, signInWithTestUser } = await getTestInstance({
+			plugins: [admin(), auditLog({ allowedRoles: ["user"] })],
+		});
+		const { headers } = await signInWithTestUser();
+		const ctx = await auth.$context;
+		// Seed 11 failures for one actor (threshold 10) + 2 for another.
+		for (let i = 0; i < 11; i++) {
+			await ctx.adapter.create({
+				model: "auditLog",
+				data: {
+					timestamp: new Date(),
+					category: "auth",
+					action: "user.login",
+					result: "failure",
+					actorId: "suspicious-1",
+				},
+			});
+		}
+		for (let i = 0; i < 2; i++) {
+			await ctx.adapter.create({
+				model: "auditLog",
+				data: {
+					timestamp: new Date(),
+					category: "auth",
+					action: "user.login",
+					result: "failure",
+					actorId: "low-volume",
+				},
+			});
+		}
+		const res = (await auth.api.auditAlerts({
+			headers,
+			query: { windowHours: 24, failThreshold: 10 },
+		})) as { flagged: { actor: string; failures: number }[] };
+		const hit = res.flagged.find((f) => f.actor === "suspicious-1");
+		expect(hit).toBeDefined();
+		expect(hit?.failures).toBe(11);
+		expect(res.flagged.find((f) => f.actor === "low-volume")).toBeUndefined();
+	});
+
+	it("exportAudit returns a CSV attachment", async () => {
+		const { auth, signInWithTestUser } = await getTestInstance({
+			plugins: [admin(), auditLog({ allowedRoles: ["user"] })],
+		});
+		const { headers } = await signInWithTestUser();
+		const ctx = await auth.$context;
+		await ctx.adapter.create({
+			model: "auditLog",
+			data: {
+				timestamp: new Date(),
+				category: "wallet",
+				action: "siwe.bind",
+				result: "success",
+			},
+		});
+		const res = (await auth.api.exportAudit({
+			headers,
+			query: {},
+		})) as unknown as Response;
+		expect(res).toBeInstanceOf(Response);
+		expect(res.headers.get("content-type")).toContain("text/csv");
+		expect(res.headers.get("content-disposition")).toContain("attachment");
+		const text = await res.text();
+		expect(text).toContain("category");
+		expect(text).toContain("siwe.bind");
 	});
 });
 
