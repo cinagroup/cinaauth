@@ -423,15 +423,93 @@ Hard deletes a user from the database.
   ```
 </APIMethod>
 
+## Stats & Wallet Endpoints (CinaGroup Console)
+
+The admin plugin additionally exposes read/aggregation endpoints for the
+`admin.cinagroup.com` dashboard, plus SIWE wallet management. All require the
+`admin` (or, where noted, `security_admin`) role via the `stats:read` and
+`wallet:list`/`wallet:unbind` permission statements.
+
+### Stats Overview
+
+**Server:** `auth.api.statsOverview({ headers })`
+
+```
+GET /admin/stats/overview
+```
+
+Returns `{ totalUsers, newUsers30d, activeSessions, organizationCount,
+bannedCount, usersWithout2FA, loginChannels: { emailPassword, github, siwe } }`.
+Counts that depend on an optional plugin (e.g. `organization`) gracefully
+return 0 when that plugin is absent. Requires `stats:read`.
+
+### Stats Signups
+
+**Server:** `auth.api.statsSignups({ headers, query: { range } })`
+
+```
+GET /admin/stats/signups?range=7d|30d
+```
+
+Returns `{ range, data: [{ date, count }] }` — one bucket per day in the window
+(pre-seeded with 0 so the chart has no gaps). Requires `stats:read`.
+
+### Stats Security Today
+
+**Server:** `auth.api.statsSecurityToday({ headers })`
+
+```
+GET /admin/stats/security-today
+```
+
+Returns `{ failedLoginsToday, otpRequestsToday, geoAnomalyCount }` from the
+audit log (0 when the audit-log plugin is not installed). Requires `stats:read`.
+
+### List User Wallets
+
+**Server:** `auth.api.listUserWallets({ headers, query: { userId } })`
+
+```
+GET /admin/list-user-wallets?userId=
+```
+
+Returns `{ wallets: [{ address, chainId, isPrimary, boundAt, boundIp, boundSite }] }`.
+`boundIp`/`boundSite` are enriched from the audit log's `siwe.bind` rows.
+Requires `wallet:list`.
+
+### Unbind Wallet
+
+**Server:** `auth.api.unbindWallet({ headers, body })`
+
+```
+POST /admin/unbind-wallet
+body: { userId, address, chainId }
+```
+
+Force-unbinds a SIWE wallet: deletes the `walletAddress` row and the matching
+`account` row (best-effort), then writes a `siwe.unbind` audit row. Address
+matching is case-insensitive (addresses are stored checksummed). Requires
+`wallet:unbind`.
+
+### Wallet address search in list-users
+
+`list-users` now accepts `searchField=wallet` to find users by SIWE wallet
+address substring (case-insensitive).
+
 ## Access Control
 
 The admin plugin offers a highly flexible access control system, allowing you to manage user permissions based on their role. You can define custom permission sets to fit your needs.
 
 ### Roles
 
-By default, there are two roles:
+By default, there are three roles:
 
 `admin`: Users with the admin role have full control over other users.
+
+`security_admin`: A scoped admin role for the CinaGroup console. Can list/get
+users, ban/unban, manage sessions (revoke), manage SIWE wallets (list/unbind),
+and read stats — but cannot create or delete users, set roles, impersonate,
+set passwords, or edit security policy. Intended for security operators.
 
 `user`: Users with the user role have no control over other users.
 
