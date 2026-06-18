@@ -10,6 +10,7 @@ import {
 	matchCapturePath,
 	writeAuditLog,
 } from "./capture";
+import { listAudit, logAudit } from "./routes";
 
 declare module "@cinaauth/core" {
 	interface CinaAuthPluginRegistry<AuthOptions, Options> {
@@ -60,7 +61,10 @@ export const auditLog = (options?: AuditLogPluginOptions) => {
 				},
 			],
 		},
-		endpoints: {},
+		endpoints: {
+			listAudit: listAudit(opts),
+			logAudit: logAudit(opts),
+		},
 		schema: mergeSchema(schema, options?.schema),
 		options: opts,
 	} satisfies CinaAuthPlugin;

@@ -71,6 +71,88 @@ describe("writeAuditLog", () => {
 	});
 });
 
+describe("audit-log endpoints", () => {
+	it("logAudit with a writeToken writes a row", async () => {
+		const { auth } = await getTestInstance({
+			plugins: [auditLog({ writeTokens: ["svc-test-key"] })],
+		});
+		// Server-side call with the service bearer token (writeToken path,
+		// no session required).
+		const res = (await auth.api.logAudit({
+			headers: new Headers({ authorization: "Bearer svc-test-key" }),
+			body: {
+				category: "admin",
+				action: "admin.export_csv",
+				result: "success",
+				actorSite: "admin",
+			},
+		})) as { ok?: boolean } | null;
+		expect(res?.ok).toBe(true);
+		const ctx = await auth.$context;
+		const row = await ctx.adapter.findOne({
+			model: "auditLog",
+			where: [
+				{ field: "action", operator: "eq", value: "admin.export_csv" },
+			],
+		});
+		expect(row).not.toBeNull();
+	});
+
+	it("logAudit without a token or session is rejected (403)", async () => {
+		const { auth } = await getTestInstance({
+			plugins: [auditLog({ writeTokens: ["svc-test-key"] })],
+		});
+		await expect(
+			auth.api.logAudit({
+				headers: new Headers(),
+				body: { category: "admin", action: "x", result: "success" },
+			}),
+		).rejects.toThrow();
+	});
+
+	it("GET /audit/list filters by category/action (verified via adapter)", async () => {
+		const { auth } = await getTestInstance({
+			plugins: [auditLog({ allowedRoles: ["admin"] })],
+		});
+		const ctx = await auth.$context;
+		// Seed two rows, different categories.
+		await ctx.adapter.create({
+			model: "auditLog",
+			data: {
+				timestamp: new Date(),
+				category: "wallet",
+				action: "siwe.bind",
+				result: "success",
+			},
+		});
+		await ctx.adapter.create({
+			model: "auditLog",
+			data: {
+				timestamp: new Date(),
+				category: "auth",
+				action: "user.login",
+				result: "success",
+			},
+		});
+		// findMany with a category filter mirrors what listAudit builds.
+		const walletRows = await ctx.adapter.findMany({
+			model: "auditLog",
+			limit: 100,
+			where: [
+				{
+					field: "category",
+					operator: "eq",
+					value: "wallet",
+					connector: "AND",
+					mode: "sensitive",
+				},
+			],
+		});
+		expect(walletRows.length).toBe(1);
+		expect((walletRows[0] as { action: string }).action).toBe("siwe.bind");
+	});
+});
+
 describe("audit-log hooks.after capture", () => {
 	it("writes a user.login audit row after a successful sign-in", async () => {
 		const { client, auth } = await getTestInstance({

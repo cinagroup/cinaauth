@@ -1,5 +1,4 @@
 import { createAuthMiddleware } from "@cinaauth/core/api";
-import { randomUUID } from "node:crypto";
 import { getSessionFromCtx } from "../../api";
 import { APIError } from "@cinaauth/core/error";
 
@@ -79,7 +78,8 @@ export async function writeAuditLog(
 		await ctx.context.adapter.create({
 			model: "auditLog",
 			data: {
-				id: randomUUID(),
+				// The adapter generates the id; do not pass one (Kysely warns and
+				// ignores it). See capture tests for the id-less write path.
 				timestamp: new Date(),
 				actorId: entry.actorId ?? null,
 				actorRole: entry.actorRole ?? null,
