@@ -10,7 +10,7 @@
     "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/stripe"
   },
-  "author": "Bereket Engida",
+  "author": "CinaGroup",
   "keywords": [
     "stripe",
     "auth",
