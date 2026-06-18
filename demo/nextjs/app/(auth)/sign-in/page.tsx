@@ -1,87 +1,32 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { toast } from "sonner";
-import SignIn from "@/app/(auth)/sign-in/_components/sign-in";
-import { SignUp } from "@/app/(auth)/sign-in/_components/sign-up";
-import { Tabs } from "@/components/ui/tabs2";
-import { authClient } from "@/lib/auth-client";
-import { getCallbackURL } from "@/lib/shared";
-import { cn } from "@/lib/utils";
-import { ElectronTransferUser } from "./_components/electron";
+import Link from "next/link";
+import SignIn from "./_components/sign-in";
 
 export default function Page() {
-	const [isLoading, startTransition] = useTransition();
-	const [session, setSession] = useState<
-		typeof authClient.$Infer.Session | null
-	>(null);
-	const router = useRouter();
-	const params = useSearchParams();
-
-	useEffect(() => {
-		authClient.oneTap({
-			fetchOptions: {
-				query: params,
-				onError: ({ error }) => {
-					toast.error(error.message || "An error occurred");
-				},
-				onSuccess: () => {
-					toast.success("Successfully signed in");
-					router.push(getCallbackURL(params));
-				},
-			},
-		});
-	}, []);
-
-	useEffect(() => {
-		if (params.get("client_id") === "electron") {
-			startTransition(async () => {
-				const { data: session } = await authClient.getSession();
-				if (session) {
-					setSession(session);
-				}
-			});
-		}
-	}, [params]);
-
 	return (
-		<div className="w-full">
-			<div
-				className={cn(
-					"flex items-center flex-col justify-center w-full md:py-10",
-					(isLoading || session !== null) && "max-h-[calc(100vh-6.4688rem)]",
-				)}
-			>
-				{!isLoading ? (
-					<>
-						{session !== null ? (
-							<ElectronTransferUser session={session} />
-						) : (
-							<div className="w-full max-w-md">
-								<Tabs
-									tabs={[
-										{
-											title: "Sign In",
-											value: "sign-in",
-											content: <SignIn />,
-										},
-										{
-											title: "Sign Up",
-											value: "sign-up",
-											content: <SignUp />,
-										},
-									]}
-								/>
-							</div>
-						)}
-					</>
-				) : (
-					<div className="text-center">
-						<div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900 mx-auto"></div>
-						<p className="mt-4 text-gray-600">Loading...</p>
+		<div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
+			<div className="w-full max-w-[400px]">
+				<div className="flex flex-col gap-6">
+					{/* Header */}
+					<h1 className="text-3xl font-semibold tracking-tight text-center">
+						Log in to CinaAuth
+					</h1>
+
+					{/* Sign In Form */}
+					<SignIn />
+
+					{/* Footer Link */}
+					<div className="text-center text-sm text-muted-foreground">
+						Don't have an account?{" "}
+						<Link
+							href="/sign-up"
+							className="text-foreground underline underline-offset-4 hover:no-underline"
+						>
+							Sign Up
+						</Link>
 					</div>
-				)}
+				</div>
 			</div>
 		</div>
 	);

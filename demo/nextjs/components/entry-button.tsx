@@ -16,12 +16,12 @@ export default EntryButton;
 
 const SignInButton = () => {
 	return (
-		<Button className="gap-2" variant="default" asChild>
+		<Button className="gap-2" variant="default" size="pill" asChild>
 			<Link href="/sign-in">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					width="1.2em"
-					height="1.2em"
+					width="1.1em"
+					height="1.1em"
 					viewBox="0 0 24 24"
 				>
 					<path
@@ -37,12 +37,12 @@ const SignInButton = () => {
 
 const DashboardButton = () => {
 	return (
-		<Button className="gap-2" variant="default" asChild>
+		<Button className="gap-2" variant="default" size="pill" asChild>
 			<Link href="/dashboard">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					width="1.2em"
-					height="1.2em"
+					width="1.1em"
+					height="1.1em"
 					viewBox="0 0 24 24"
 				>
 					<path fill="currentColor" d="M2 3h20v18H2zm18 16V7H4v12z" />

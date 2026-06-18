@@ -12,6 +12,7 @@ import {
 	organizationClient,
 	twoFactorClient,
 } from "cinaauth/client/plugins";
+import { emailOTPClient } from "cinaauth/plugins/email-otp/client";
 import { createAuthClient } from "cinaauth/react";
 import { toast } from "sonner";
 import type { auth } from "./auth";
@@ -36,6 +37,7 @@ export const authClient = createAuthClient({
 		customSessionClient<typeof auth>(),
 		deviceAuthorizationClient(),
 		lastLoginMethodClient(),
+		emailOTPClient(),
 		electronProxyClient({
 			protocol: {
 				scheme: "com.cinaauth.demo",

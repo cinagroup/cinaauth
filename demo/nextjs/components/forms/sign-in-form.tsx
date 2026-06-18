@@ -81,8 +81,11 @@ export function SignInForm({
 	};
 
 	return (
-		<form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-2">
-			<FieldGroup>
+		<form
+			onSubmit={form.handleSubmit(onSubmit)}
+			className="flex flex-col gap-4"
+		>
+			<FieldGroup className="gap-4">
 				<Controller
 					name="email"
 					control={form.control}
@@ -110,16 +113,16 @@ export function SignInForm({
 								<FieldLabel htmlFor="sign-in-password">Password</FieldLabel>
 								<Link
 									href="/forgot-password"
-									className="ml-auto inline-block text-sm underline text-foreground"
+									className="ml-auto inline-block text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
 								>
-									Forgot your password?
+									Forgot password?
 								</Link>
 							</div>
 							{showPasswordToggle ? (
 								<PasswordInput
 									{...field}
 									id="sign-in-password"
-									placeholder="Password"
+									placeholder="Enter your password"
 									aria-invalid={fieldState.invalid}
 									autoComplete="current-password"
 								/>
@@ -128,7 +131,7 @@ export function SignInForm({
 									{...field}
 									id="sign-in-password"
 									type="password"
-									placeholder="password"
+									placeholder="Enter your password"
 									aria-invalid={fieldState.invalid}
 									autoComplete="current-password"
 								/>
@@ -154,8 +157,8 @@ export function SignInForm({
 					)}
 				/>
 			</FieldGroup>
-			<Button type="submit" className="w-full relative" disabled={loading}>
-				{loading ? <Loader2 size={16} className="animate-spin" /> : "Login"}
+			<Button type="submit" className="w-full relative mt-2" disabled={loading}>
+				{loading ? <Loader2 size={16} className="animate-spin" /> : "Sign in"}
 				{isMounted && authClient.isLastUsedLoginMethod("email") && (
 					<LastUsedIndicator />
 				)}

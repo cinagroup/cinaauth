@@ -28,7 +28,7 @@ export default function RootLayout({
 			</head>
 			<body className={`${GeistSans.variable} ${GeistMono.variable} font-sans`}>
 				<Providers>
-					<div className="min-h-[calc(100vh-3.5rem)] mt-14 w-full relative">
+					<div className="min-h-[calc(100vh-4rem)] mt-16 w-full relative">
 						{/* Site Header */}
 						<Header />
 
@@ -38,7 +38,7 @@ export default function RootLayout({
 						</div>
 
 						{/* Content */}
-						<div className="relative z-10 max-w-4xl w-full p-6 mx-auto">
+						<div className="relative z-10 max-w-[1400px] w-full px-6 mx-auto">
 							{children}
 						</div>
 					</div>

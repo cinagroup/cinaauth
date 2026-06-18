@@ -1,0 +1,854 @@
+(globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push([
+	"object" == typeof document ? document.currentScript : void 0,
+	49139,
+	(e) => {
+		"use strict";
+		var t = e.i(62613),
+			r = e.i(49696);
+		const s = ({ className: e, ...s }) =>
+			(0, t.jsx)("div", {
+				className: (0, r.cn)(
+					"rounded-xl border bg-card text-card-foreground shadow",
+					e,
+				),
+				...s,
+			});
+		s.displayName = "Card";
+		const i = ({ className: e, ...s }) =>
+			(0, t.jsx)("div", {
+				className: (0, r.cn)("flex flex-col space-y-1.5 p-6", e),
+				...s,
+			});
+		i.displayName = "CardHeader";
+		const a = ({ className: e, ...s }) =>
+			(0, t.jsx)("h3", {
+				className: (0, r.cn)("font-semibold leading-none tracking-tight", e),
+				...s,
+			});
+		a.displayName = "CardTitle";
+		const n = ({ className: e, ...s }) =>
+			(0, t.jsx)("p", {
+				className: (0, r.cn)("text-sm text-muted-foreground", e),
+				...s,
+			});
+		n.displayName = "CardDescription";
+		const l = ({ className: e, ...s }) =>
+			(0, t.jsx)("div", { className: (0, r.cn)("p-6 pt-0", e), ...s });
+		l.displayName = "CardContent";
+		const u = ({ className: e, ...s }) =>
+			(0, t.jsx)("div", {
+				className: (0, r.cn)("flex items-center p-6 pt-0", e),
+				...s,
+			});
+		(u.displayName = "CardFooter"),
+			e.s([
+				"Card",
+				0,
+				s,
+				"CardContent",
+				0,
+				l,
+				"CardDescription",
+				0,
+				n,
+				"CardFooter",
+				0,
+				u,
+				"CardHeader",
+				0,
+				i,
+				"CardTitle",
+				0,
+				a,
+			]);
+	},
+	69016,
+	(e) => {
+		"use strict";
+		const t = (0, e.i(10283).default)("loader-circle", [
+			["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }],
+		]);
+		e.s(["Loader2", 0, t], 69016);
+	},
+	81799,
+	(e) => {
+		"use strict";
+		var t = e.i(98591);
+		e.s(["Check", () => t.default]);
+	},
+	77542,
+	(e) => {
+		"use strict";
+		var t = e.i(62613),
+			r = e.i(67283),
+			s = e.i(49696);
+		const i = (0, r.cva)(
+			"relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
+			{
+				variants: {
+					variant: {
+						default: "bg-background text-foreground",
+						destructive:
+							"text-destructive-foreground [&>svg]:text-current *:data-[slot=alert-description]:text-destructive-foreground/80",
+					},
+				},
+				defaultVariants: { variant: "default" },
+			},
+		);
+		e.s([
+			"Alert",
+			0,
+			function ({ className: e, variant: r, ...a }) {
+				return (0, t.jsx)("div", {
+					"data-slot": "alert",
+					role: "alert",
+					className: (0, s.cn)(i({ variant: r }), e),
+					...a,
+				});
+			},
+			"AlertDescription",
+			0,
+			function ({ className: e, ...r }) {
+				return (0, t.jsx)("div", {
+					"data-slot": "alert-description",
+					className: (0, s.cn)(
+						"text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed",
+						e,
+					),
+					...r,
+				});
+			},
+			"AlertTitle",
+			0,
+			function ({ className: e, ...r }) {
+				return (0, t.jsx)("div", {
+					"data-slot": "alert-title",
+					className: (0, s.cn)(
+						"col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight",
+						e,
+					),
+					...r,
+				});
+			},
+		]);
+	},
+	25653,
+	(e) => {
+		"use strict";
+		var t = e.i(40798);
+		e.s(["X", () => t.default]);
+	},
+	59597,
+	(e) => {
+		"use strict";
+		let t;
+		var r = e.i(28529),
+			s = e.i(71790),
+			i = e.i(61286),
+			a = e.i(16339),
+			n = e.i(84520),
+			l = e.i(71335),
+			u = e.i(89498),
+			o = e.i(49479),
+			c = class extends n.Subscribable {
+				constructor(e, t) {
+					super(),
+						(this.options = t),
+						(this.#e = e),
+						(this.#t = null),
+						(this.#r = (0, l.pendingThenable)()),
+						this.bindMethods(),
+						this.setOptions(t);
+				}
+				#e;
+				#s = void 0;
+				#i = void 0;
+				#a = void 0;
+				#n;
+				#l;
+				#r;
+				#t;
+				#u;
+				#o;
+				#c;
+				#h;
+				#d;
+				#p;
+				#f = new Set();
+				bindMethods() {
+					this.refetch = this.refetch.bind(this);
+				}
+				onSubscribe() {
+					1 === this.listeners.size &&
+						(this.#s.addObserver(this),
+						h(this.#s, this.options) ? this.#m() : this.updateResult(),
+						this.#y());
+				}
+				onUnsubscribe() {
+					this.hasListeners() || this.destroy();
+				}
+				shouldFetchOnReconnect() {
+					return d(this.#s, this.options, this.options.refetchOnReconnect);
+				}
+				shouldFetchOnWindowFocus() {
+					return d(this.#s, this.options, this.options.refetchOnWindowFocus);
+				}
+				destroy() {
+					(this.listeners = new Set()),
+						this.#v(),
+						this.#g(),
+						this.#s.removeObserver(this);
+				}
+				setOptions(e) {
+					const t = this.options,
+						r = this.#s;
+					if (
+						((this.options = this.#e.defaultQueryOptions(e)),
+						void 0 !== this.options.enabled &&
+							"boolean" != typeof this.options.enabled &&
+							"function" != typeof this.options.enabled &&
+							"boolean" !=
+								typeof (0, u.resolveQueryBoolean)(
+									this.options.enabled,
+									this.#s,
+								))
+					)
+						throw Error(
+							"Expected enabled to be a boolean or a callback that returns a boolean",
+						);
+					this.#R(),
+						this.#s.setOptions(this.options),
+						t._defaulted &&
+							!(0, u.shallowEqualObjects)(this.options, t) &&
+							this.#e.getQueryCache().notify({
+								type: "observerOptionsUpdated",
+								query: this.#s,
+								observer: this,
+							});
+					const s = this.hasListeners();
+					s && p(this.#s, r, this.options, t) && this.#m(),
+						this.updateResult(),
+						s &&
+							(this.#s !== r ||
+								(0, u.resolveQueryBoolean)(this.options.enabled, this.#s) !==
+									(0, u.resolveQueryBoolean)(t.enabled, this.#s) ||
+								(0, u.resolveStaleTime)(this.options.staleTime, this.#s) !==
+									(0, u.resolveStaleTime)(t.staleTime, this.#s)) &&
+							this.#x();
+					const i = this.#b();
+					s &&
+						(this.#s !== r ||
+							(0, u.resolveQueryBoolean)(this.options.enabled, this.#s) !==
+								(0, u.resolveQueryBoolean)(t.enabled, this.#s) ||
+							i !== this.#p) &&
+						this.#Q(i);
+				}
+				getOptimisticResult(e) {
+					var t, r;
+					const s = this.#e.getQueryCache().build(this.#e, e),
+						i = this.createResult(s, e);
+					return (
+						(t = this),
+						(r = i),
+						(0, u.shallowEqualObjects)(t.getCurrentResult(), r) ||
+							((this.#a = i),
+							(this.#l = this.options),
+							(this.#n = this.#s.state)),
+						i
+					);
+				}
+				getCurrentResult() {
+					return this.#a;
+				}
+				trackResult(e, t) {
+					return new Proxy(e, {
+						get: (e, r) => (
+							this.trackProp(r),
+							t?.(r),
+							"promise" === r &&
+								(this.trackProp("data"),
+								this.options.experimental_prefetchInRender ||
+									"pending" !== this.#r.status ||
+									this.#r.reject(
+										Error(
+											"experimental_prefetchInRender feature flag is not enabled",
+										),
+									)),
+							Reflect.get(e, r)
+						),
+					});
+				}
+				trackProp(e) {
+					this.#f.add(e);
+				}
+				getCurrentQuery() {
+					return this.#s;
+				}
+				refetch({ ...e } = {}) {
+					return this.fetch({ ...e });
+				}
+				fetchOptimistic(e) {
+					const t = this.#e.defaultQueryOptions(e),
+						r = this.#e.getQueryCache().build(this.#e, t);
+					return r.fetch().then(() => this.createResult(r, t));
+				}
+				fetch(e) {
+					return this.#m({ ...e, cancelRefetch: e.cancelRefetch ?? !0 }).then(
+						() => (this.updateResult(), this.#a),
+					);
+				}
+				#m(e) {
+					this.#R();
+					let t = this.#s.fetch(this.options, e);
+					return e?.throwOnError || (t = t.catch(u.noop)), t;
+				}
+				#x() {
+					this.#v();
+					const e = (0, u.resolveStaleTime)(this.options.staleTime, this.#s);
+					if (
+						s.environmentManager.isServer() ||
+						this.#a.isStale ||
+						!(0, u.isValidTimeout)(e)
+					)
+						return;
+					const t = (0, u.timeUntilStale)(this.#a.dataUpdatedAt, e);
+					this.#h = o.timeoutManager.setTimeout(() => {
+						this.#a.isStale || this.updateResult();
+					}, t + 1);
+				}
+				#b() {
+					return (
+						("function" == typeof this.options.refetchInterval
+							? this.options.refetchInterval(this.#s)
+							: this.options.refetchInterval) ?? !1
+					);
+				}
+				#Q(e) {
+					this.#g(),
+						(this.#p = e),
+						!s.environmentManager.isServer() &&
+							!1 !==
+								(0, u.resolveQueryBoolean)(this.options.enabled, this.#s) &&
+							(0, u.isValidTimeout)(this.#p) &&
+							0 !== this.#p &&
+							(this.#d = o.timeoutManager.setInterval(() => {
+								(this.options.refetchIntervalInBackground ||
+									r.focusManager.isFocused()) &&
+									this.#m();
+							}, this.#p));
+				}
+				#y() {
+					this.#x(), this.#Q(this.#b());
+				}
+				#v() {
+					void 0 !== this.#h &&
+						(o.timeoutManager.clearTimeout(this.#h), (this.#h = void 0));
+				}
+				#g() {
+					void 0 !== this.#d &&
+						(o.timeoutManager.clearInterval(this.#d), (this.#d = void 0));
+				}
+				createResult(e, t) {
+					let r,
+						s = this.#s,
+						i = this.options,
+						n = this.#a,
+						o = this.#n,
+						c = this.#l,
+						d = e !== s ? e.state : this.#i,
+						{ state: m } = e,
+						y = { ...m },
+						v = !1;
+					if (t._optimisticResults) {
+						const r = this.hasListeners(),
+							n = !r && h(e, t),
+							l = r && p(e, s, t, i);
+						(n || l) && (y = { ...y, ...(0, a.fetchState)(m.data, e.options) }),
+							"isRestoring" === t._optimisticResults &&
+								(y.fetchStatus = "idle");
+					}
+					let { error: g, errorUpdatedAt: R, status: x } = y;
+					r = y.data;
+					let b = !1;
+					if (void 0 !== t.placeholderData && void 0 === r && "pending" === x) {
+						let e;
+						n?.isPlaceholderData && t.placeholderData === c?.placeholderData
+							? ((e = n.data), (b = !0))
+							: (e =
+									"function" == typeof t.placeholderData
+										? t.placeholderData(this.#c?.state.data, this.#c)
+										: t.placeholderData),
+							void 0 !== e &&
+								((x = "success"),
+								(r = (0, u.replaceData)(n?.data, e, t)),
+								(v = !0));
+					}
+					if (t.select && void 0 !== r && !b)
+						if (n && r === o?.data && t.select === this.#u) r = this.#o;
+						else
+							try {
+								(this.#u = t.select),
+									(r = t.select(r)),
+									(r = (0, u.replaceData)(n?.data, r, t)),
+									(this.#o = r),
+									(this.#t = null);
+							} catch (e) {
+								this.#t = e;
+							}
+					this.#t &&
+						((g = this.#t), (r = this.#o), (R = Date.now()), (x = "error"));
+					const Q = "fetching" === y.fetchStatus,
+						T = "pending" === x,
+						C = "error" === x,
+						S = T && Q,
+						I = void 0 !== r,
+						j = {
+							status: x,
+							fetchStatus: y.fetchStatus,
+							isPending: T,
+							isSuccess: "success" === x,
+							isError: C,
+							isInitialLoading: S,
+							isLoading: S,
+							data: r,
+							dataUpdatedAt: y.dataUpdatedAt,
+							error: g,
+							errorUpdatedAt: R,
+							failureCount: y.fetchFailureCount,
+							failureReason: y.fetchFailureReason,
+							errorUpdateCount: y.errorUpdateCount,
+							isFetched: e.isFetched(),
+							isFetchedAfterMount:
+								y.dataUpdateCount > d.dataUpdateCount ||
+								y.errorUpdateCount > d.errorUpdateCount,
+							isFetching: Q,
+							isRefetching: Q && !T,
+							isLoadingError: C && !I,
+							isPaused: "paused" === y.fetchStatus,
+							isPlaceholderData: v,
+							isRefetchError: C && I,
+							isStale: f(e, t),
+							refetch: this.refetch,
+							promise: this.#r,
+							isEnabled: !1 !== (0, u.resolveQueryBoolean)(t.enabled, e),
+						};
+					if (this.options.experimental_prefetchInRender) {
+						const t = void 0 !== j.data,
+							r = "error" === j.status && !t,
+							i = (e) => {
+								r ? e.reject(j.error) : t && e.resolve(j.data);
+							},
+							a = () => {
+								i((this.#r = j.promise = (0, l.pendingThenable)()));
+							},
+							n = this.#r;
+						switch (n.status) {
+							case "pending":
+								e.queryHash === s.queryHash && i(n);
+								break;
+							case "fulfilled":
+								(r || j.data !== n.value) && a();
+								break;
+							case "rejected":
+								(r && j.error === n.reason) || a();
+						}
+					}
+					return j;
+				}
+				updateResult() {
+					const e = this.#a,
+						t = this.createResult(this.#s, this.options);
+					if (
+						((this.#n = this.#s.state),
+						(this.#l = this.options),
+						void 0 !== this.#n.data && (this.#c = this.#s),
+						(0, u.shallowEqualObjects)(t, e))
+					)
+						return;
+					this.#a = t;
+					const r = () => {
+						if (!e) return !0;
+						const { notifyOnChangeProps: t } = this.options,
+							r = "function" == typeof t ? t() : t;
+						if ("all" === r || (!r && !this.#f.size)) return !0;
+						const s = new Set(r ?? this.#f);
+						return (
+							this.options.throwOnError && s.add("error"),
+							Object.keys(this.#a).some((t) => this.#a[t] !== e[t] && s.has(t))
+						);
+					};
+					this.#T({ listeners: r() });
+				}
+				#R() {
+					const e = this.#e.getQueryCache().build(this.#e, this.options);
+					if (e === this.#s) return;
+					const t = this.#s;
+					(this.#s = e),
+						(this.#i = e.state),
+						this.hasListeners() &&
+							(t?.removeObserver(this), e.addObserver(this));
+				}
+				onQueryUpdate() {
+					this.updateResult(), this.hasListeners() && this.#y();
+				}
+				#T(e) {
+					i.notifyManager.batch(() => {
+						e.listeners &&
+							this.listeners.forEach((e) => {
+								e(this.#a);
+							}),
+							this.#e
+								.getQueryCache()
+								.notify({ query: this.#s, type: "observerResultsUpdated" });
+					});
+				}
+			};
+		function h(e, t) {
+			return (
+				(!1 !== (0, u.resolveQueryBoolean)(t.enabled, e) &&
+					void 0 === e.state.data &&
+					("error" !== e.state.status ||
+						!1 !== (0, u.resolveQueryBoolean)(t.retryOnMount, e))) ||
+				(void 0 !== e.state.data && d(e, t, t.refetchOnMount))
+			);
+		}
+		function d(e, t, r) {
+			if (
+				!1 !== (0, u.resolveQueryBoolean)(t.enabled, e) &&
+				"static" !== (0, u.resolveStaleTime)(t.staleTime, e)
+			) {
+				const s = "function" == typeof r ? r(e) : r;
+				return "always" === s || (!1 !== s && f(e, t));
+			}
+			return !1;
+		}
+		function p(e, t, r, s) {
+			return (
+				(e !== t || !1 === (0, u.resolveQueryBoolean)(s.enabled, e)) &&
+				(!r.suspense || "error" !== e.state.status) &&
+				f(e, r)
+			);
+		}
+		function f(e, t) {
+			return (
+				!1 !== (0, u.resolveQueryBoolean)(t.enabled, e) &&
+				e.isStaleByTime((0, u.resolveStaleTime)(t.staleTime, e))
+			);
+		}
+		e.i(8343);
+		var m = e.i(57319),
+			y = e.i(82537);
+		e.i(62613);
+		var v = m.createContext(
+				((t = !1),
+				{
+					clearReset: () => {
+						t = !1;
+					},
+					reset: () => {
+						t = !0;
+					},
+					isReset: () => t,
+				}),
+			),
+			g = m.createContext(!1);
+		g.Provider;
+		var R = (e, t, r) =>
+			t.fetchOptimistic(e).catch(() => {
+				r.clearReset();
+			});
+		e.s(
+			[
+				"useQuery",
+				0,
+				function (e, t) {
+					return (function (e, t, r) {
+						let a,
+							n = m.useContext(g),
+							l = m.useContext(v),
+							o = (0, y.useQueryClient)(r),
+							c = o.defaultQueryOptions(e);
+						o.getDefaultOptions().queries?._experimental_beforeQuery?.(c);
+						const h = o.getQueryCache().get(c.queryHash),
+							d = !1 !== e.subscribed;
+						if (
+							((c._optimisticResults = n
+								? "isRestoring"
+								: d
+									? "optimistic"
+									: void 0),
+							c.suspense)
+						) {
+							const e = (e) => ("static" === e ? e : Math.max(e ?? 1e3, 1e3)),
+								t = c.staleTime;
+							(c.staleTime =
+								"function" == typeof t ? (...r) => e(t(...r)) : e(t)),
+								"number" == typeof c.gcTime &&
+									(c.gcTime = Math.max(c.gcTime, 1e3));
+						}
+						(a =
+							h?.state.error && "function" == typeof c.throwOnError
+								? (0, u.shouldThrowError)(c.throwOnError, [h.state.error, h])
+								: c.throwOnError),
+							(c.suspense || c.experimental_prefetchInRender || a) &&
+								!l.isReset() &&
+								(c.retryOnMount = !1),
+							m.useEffect(() => {
+								l.clearReset();
+							}, [l]);
+						const p = !o.getQueryCache().get(c.queryHash),
+							[f] = m.useState(() => new t(o, c)),
+							x = f.getOptimisticResult(c),
+							b = !n && d;
+						if (
+							(m.useSyncExternalStore(
+								m.useCallback(
+									(e) => {
+										const t = b
+											? f.subscribe(i.notifyManager.batchCalls(e))
+											: u.noop;
+										return f.updateResult(), t;
+									},
+									[f, b],
+								),
+								() => f.getCurrentResult(),
+								() => f.getCurrentResult(),
+							),
+							m.useEffect(() => {
+								f.setOptions(c);
+							}, [c, f]),
+							c?.suspense && x.isPending)
+						)
+							throw R(c, f, l);
+						if (
+							(({
+								result: e,
+								errorResetBoundary: t,
+								throwOnError: r,
+								query: s,
+								suspense: i,
+							}) =>
+								e.isError &&
+								!t.isReset() &&
+								!e.isFetching &&
+								s &&
+								((i && void 0 === e.data) ||
+									(0, u.shouldThrowError)(r, [e.error, s])))({
+								result: x,
+								errorResetBoundary: l,
+								throwOnError: c.throwOnError,
+								query: h,
+								suspense: c.suspense,
+							})
+						)
+							throw x.error;
+						if (
+							(o.getDefaultOptions().queries?._experimental_afterQuery?.(c, x),
+							c.experimental_prefetchInRender &&
+								!s.environmentManager.isServer() &&
+								x.isLoading &&
+								x.isFetching &&
+								!n)
+						) {
+							const e = p ? R(c, f, l) : h?.promise;
+							e?.catch(u.noop).finally(() => {
+								f.updateResult();
+							});
+						}
+						return c.notifyOnChangeProps ? x : f.trackResult(x);
+					})(e, c, t);
+				},
+			],
+			59597,
+		);
+	},
+	46483,
+	40609,
+	(e) => {
+		"use strict";
+		var t = e.i(59597),
+			r = e.i(76706);
+		const s = { all: () => ["user"], session: () => [...s.all(), "session"] };
+		async function i() {
+			const { data: e, error: t } = await r.authClient.getSession();
+			if (t) throw Error(t.message);
+			return e;
+		}
+		e.s(["userKeys", 0, s], 40609),
+			e.s(
+				[
+					"useSessionQuery",
+					0,
+					(e) =>
+						(0, t.useQuery)({
+							queryFn: async () => await i(),
+							queryKey: s.session(),
+							initialData: e,
+							retry: 1,
+						}),
+				],
+				46483,
+			);
+	},
+	85766,
+	(e) => {
+		"use strict";
+		var t = e.i(62613),
+			r = e.i(81799),
+			s = e.i(69016),
+			i = e.i(25653),
+			a = e.i(95360),
+			n = e.i(57319),
+			l = e.i(77542),
+			u = e.i(88642),
+			o = e.i(49139),
+			c = e.i(46483),
+			h = e.i(76706);
+		e.s([
+			"default",
+			0,
+			function () {
+				const e = (0, a.useRouter)(),
+					d = (0, a.useSearchParams)().get("user_code"),
+					{ data: p } = (0, c.useSessionQuery)(),
+					[f, m] = (0, n.useTransition)(),
+					[y, v] = (0, n.useTransition)(),
+					[g, R] = (0, n.useState)(null);
+				return p
+					? (0, t.jsx)("div", {
+							className: "flex min-h-screen items-center justify-center p-4",
+							children: (0, t.jsx)(o.Card, {
+								className: "w-full max-w-md p-6",
+								children: (0, t.jsxs)("div", {
+									className: "space-y-4",
+									children: [
+										(0, t.jsxs)("div", {
+											className: "text-center",
+											children: [
+												(0, t.jsx)("h1", {
+													className: "text-2xl font-bold",
+													children: "Approve Device",
+												}),
+												(0, t.jsx)("p", {
+													className: "text-muted-foreground mt-2",
+													children:
+														"A device is requesting access to your account",
+												}),
+											],
+										}),
+										(0, t.jsxs)("div", {
+											className: "space-y-4",
+											children: [
+												(0, t.jsxs)("div", {
+													className: "rounded-lg bg-muted p-4",
+													children: [
+														(0, t.jsx)("p", {
+															className: "text-sm font-medium",
+															children: "Device Code",
+														}),
+														(0, t.jsx)("p", {
+															className: "font-mono text-lg",
+															children: d,
+														}),
+													],
+												}),
+												(0, t.jsxs)("div", {
+													className: "rounded-lg bg-muted p-4",
+													children: [
+														(0, t.jsx)("p", {
+															className: "text-sm font-medium",
+															children: "Signed in as",
+														}),
+														(0, t.jsx)("p", { children: p.user.email }),
+													],
+												}),
+												g &&
+													(0, t.jsx)(l.Alert, {
+														variant: "destructive",
+														children: (0, t.jsx)(l.AlertDescription, {
+															children: g,
+														}),
+													}),
+												(0, t.jsxs)("div", {
+													className: "flex gap-3",
+													children: [
+														(0, t.jsx)(u.Button, {
+															onClick: () => {
+																d &&
+																	(R(null),
+																	v(async () => {
+																		try {
+																			await h.authClient.device.deny({
+																				userCode: d,
+																			}),
+																				e.push("/device/denied");
+																		} catch (e) {
+																			R(
+																				e.error?.message ||
+																					"Failed to deny device",
+																			);
+																		}
+																	}));
+															},
+															variant: "outline",
+															className: "flex-1",
+															disabled: y,
+															children: y
+																? (0, t.jsx)(s.Loader2, {
+																		className: "h-4 w-4 animate-spin",
+																	})
+																: (0, t.jsxs)(t.Fragment, {
+																		children: [
+																			(0, t.jsx)(i.X, {
+																				className: "mr-2 h-4 w-4",
+																			}),
+																			"Deny",
+																		],
+																	}),
+														}),
+														(0, t.jsx)(u.Button, {
+															onClick: () => {
+																d &&
+																	(R(null),
+																	m(async () => {
+																		try {
+																			await h.authClient.device.approve({
+																				userCode: d,
+																			}),
+																				e.push("/device/success");
+																		} catch (e) {
+																			R(
+																				e.error?.message ||
+																					"Failed to approve device",
+																			);
+																		}
+																	}));
+															},
+															className: "flex-1",
+															disabled: f,
+															children: f
+																? (0, t.jsx)(s.Loader2, {
+																		className: "h-4 w-4 animate-spin",
+																	})
+																: (0, t.jsxs)(t.Fragment, {
+																		children: [
+																			(0, t.jsx)(r.Check, {
+																				className: "mr-2 h-4 w-4",
+																			}),
+																			"Approve",
+																		],
+																	}),
+														}),
+													],
+												}),
+											],
+										}),
+									],
+								}),
+							}),
+						})
+					: null;
+			},
+		]);
+	},
+]);
