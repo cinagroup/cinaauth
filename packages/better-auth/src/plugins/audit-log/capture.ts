@@ -116,3 +116,51 @@ export const auditSessionMiddleware = createAuthMiddleware(async (ctx) => {
 		};
 	};
 });
+
+/**
+ * Whitelist of core auth endpoints to capture via `hooks.after`, mapping each
+ * endpoint path to the (category, action) of the audit row it should produce.
+ * Paths are exact (verified against each plugin's route registration). This is
+ * an explicit allow-list — NOT a catch-all — so future endpoints are never
+ * audited by accident and cannot conflict.
+ */
+export const CAPTURE_PATH_MAP: Record<string, { category: string; action: string }> = {
+	// core auth
+	"/sign-in/email": { category: "auth", action: "user.login" },
+	"/sign-in/social": { category: "auth", action: "user.login_social" },
+	"/sign-up/email": { category: "auth", action: "user.register" },
+	"/sign-out": { category: "auth", action: "user.logout" },
+	"/change-password": { category: "auth", action: "user.password_change" },
+	// two-factor plugin
+	"/two-factor/enable": { category: "auth", action: "user.2fa_enable" },
+	"/two-factor/disable": { category: "auth", action: "user.2fa_disable" },
+	// email-otp plugin
+	"/email-otp/send-verification-otp": { category: "auth", action: "user.otp_send" },
+	"/email-otp/verify-email": { category: "auth", action: "user.otp_verify" },
+	// siwe plugin (wallet bind)
+	"/siwe/verify": { category: "wallet", action: "siwe.bind" },
+	// admin plugin mutations
+	"/admin/set-role": { category: "admin", action: "admin.set_role" },
+	"/admin/create-user": { category: "admin", action: "admin.user_create" },
+	"/admin/update-user": { category: "admin", action: "admin.user_update" },
+	"/admin/ban-user": { category: "admin", action: "admin.user_ban" },
+	"/admin/unban-user": { category: "admin", action: "admin.user_unban" },
+	"/admin/remove-user": { category: "admin", action: "admin.user_delete" },
+	"/admin/set-user-password": { category: "admin", action: "admin.user_set_password" },
+	"/admin/impersonate-user": { category: "admin", action: "admin.impersonate" },
+	"/admin/revoke-user-session": { category: "session", action: "session.revoke" },
+	"/admin/revoke-user-sessions": { category: "session", action: "session.revoke_all" },
+};
+
+/**
+ * Resolve a request path to its audit mapping, or null if not on the
+ * capture whitelist. Accepts undefined for type-safety with cinaauth's hook
+ * matcher context (whose `path` may be undefined).
+ */
+export function matchCapturePath(path: string | undefined): {
+	category: string;
+	action: string;
+} | null {
+	if (!path) return null;
+	return CAPTURE_PATH_MAP[path] ?? null;
+}

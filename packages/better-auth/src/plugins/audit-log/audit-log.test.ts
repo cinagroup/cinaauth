@@ -70,3 +70,42 @@ describe("writeAuditLog", () => {
 		errSpy.mockRestore();
 	});
 });
+
+describe("audit-log hooks.after capture", () => {
+	it("writes a user.login audit row after a successful sign-in", async () => {
+		const { client, auth } = await getTestInstance({
+			plugins: [auditLog()],
+		});
+		await client.signIn.email({
+			email: "test@test.com",
+			password: "test123456",
+		});
+		const ctx = await auth.$context;
+		const row = await ctx.adapter.findOne({
+			model: "auditLog",
+			where: [{ field: "action", operator: "eq", value: "user.login" }],
+		});
+		expect(row).not.toBeNull();
+		expect((row as { result: string }).result).toBe("success");
+	});
+
+	it("writes a failure audit row after a failed sign-in", async () => {
+		const { client, auth } = await getTestInstance({
+			plugins: [auditLog()],
+		});
+		// Wrong password → endpoint returns an APIError → failure row.
+		await client.signIn.email({
+			email: "test@test.com",
+			password: "wrong-password",
+		});
+		const ctx = await auth.$context;
+		const row = await ctx.adapter.findOne({
+			model: "auditLog",
+			where: [
+				{ field: "action", operator: "eq", value: "user.login" },
+				{ field: "result", operator: "eq", value: "failure" },
+			],
+		});
+		expect(row).not.toBeNull();
+	});
+});

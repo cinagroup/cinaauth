@@ -1,8 +1,15 @@
 import type { CinaAuthPlugin } from "@cinaauth/core";
+import { createAuthMiddleware } from "@cinaauth/core/api";
 import { mergeSchema } from "../../db/schema";
+import { getEndpointResponse } from "../../utils/plugin-helper";
 import { PACKAGE_VERSION } from "../../version";
 import { schema } from "./schema";
 import type { AuditLogPluginOptions } from "./types";
+import {
+	extractActorFromCtx,
+	matchCapturePath,
+	writeAuditLog,
+} from "./capture";
 
 declare module "@cinaauth/core" {
 	interface CinaAuthPluginRegistry<AuthOptions, Options> {
@@ -26,6 +33,33 @@ export const auditLog = (options?: AuditLogPluginOptions) => {
 	return {
 		id: "audit-log",
 		version: PACKAGE_VERSION,
+		hooks: {
+			after: [
+				{
+					matcher(context) {
+						return matchCapturePath(context.path) !== null;
+					},
+					handler: createAuthMiddleware(async (ctx) => {
+						const mapped = matchCapturePath(ctx.path as string);
+						if (!mapped) {
+							return;
+						}
+						// `getEndpointResponse` returns null for non-200 responses or
+						// APIErrors (see utils/plugin-helper.ts), so a null result is a
+						// reliable failure signal without guessing status fields.
+						const ok = (await getEndpointResponse(ctx)) !== null;
+						const actor = extractActorFromCtx(ctx);
+						await writeAuditLog(ctx, {
+							...mapped,
+							...actor,
+							result: ok ? "success" : "failure",
+						});
+						// hooks.after handlers return the (possibly modified) response;
+						// we did not alter it, so return nothing to pass through.
+					}),
+				},
+			],
+		},
 		endpoints: {},
 		schema: mergeSchema(schema, options?.schema),
 		options: opts,
