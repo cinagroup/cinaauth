@@ -65,11 +65,8 @@ const OrganizationCard = (props: { session: Session | null }) => {
 				<div className="flex justify-between">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<div className="flex items-center gap-1 cursor-pointer">
-								<p className="text-sm">
-									<span className="font-bold"></span>{" "}
-									{activeOrganization?.name || "Personal"}
-								</p>
+								<div className="flex items-center gap-1 cursor-pointer">
+									<p className="text-sm text-ink">{activeOrganization?.name || "Personal"}</p>
 
 								<ChevronDownIcon />
 							</div>
@@ -103,19 +100,19 @@ const OrganizationCard = (props: { session: Session | null }) => {
 						<CreateOrganizationDialog />
 					</div>
 				</div>
-				<div className="flex items-center gap-2">
-					<Avatar className="rounded-none">
-						<AvatarImage
-							className="object-cover w-full h-full rounded-none"
-							src={activeOrganization?.logo || undefined}
-						/>
-						<AvatarFallback className="rounded-none">
+					<div className="flex items-center gap-2">
+						<Avatar className="rounded-full">
+							<AvatarImage
+								className="object-cover w-full h-full rounded-full"
+								src={activeOrganization?.logo || undefined}
+							/>
+							<AvatarFallback className="rounded-full">
 							{activeOrganization?.name?.charAt(0) || "P"}
 						</AvatarFallback>
 					</Avatar>
 					<div>
 						<p>{activeOrganization?.name || "Personal"}</p>
-						<p className="text-xs text-muted-foreground">
+						<p className="text-xs text-body">
 							{activeOrganization?.members?.length || 1} members
 						</p>
 					</div>
@@ -150,7 +147,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 											</Avatar>
 											<div>
 												<p className="text-sm">{member.user.name}</p>
-												<p className="text-xs text-muted-foreground">
+												<p className="text-xs text-body">
 													{member.role}
 												</p>
 											</div>
@@ -191,7 +188,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 										</Avatar>
 										<div>
 											<p className="text-sm">{session?.user.name}</p>
-											<p className="text-xs text-muted-foreground">Owner</p>
+											<p className="text-xs text-body">Owner</p>
 										</div>
 									</div>
 								</div>
@@ -228,7 +225,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 											>
 												<div>
 													<p className="text-sm">{invitation.email}</p>
-													<p className="text-xs text-muted-foreground">
+													<p className="text-xs text-body">
 														{invitation.role}
 													</p>
 												</div>
@@ -272,7 +269,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 								</motion.p>
 							)}
 							{!activeOrganization?.id && (
-								<Label className="text-xs text-muted-foreground">
+								<Label className="text-xs text-body">
 									You can&apos;t invite members to your personal workspace.
 								</Label>
 							)}

@@ -200,11 +200,11 @@ function AdminDashboard() {
 	};
 
 	return (
-		<div className="container mx-auto p-4 space-y-8">
+		<div className="py-16 px-4 md:px-6 space-y-8">
 			<Toaster richColors />
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between">
-					<CardTitle className="text-2xl">Admin Dashboard</CardTitle>
+						<CardTitle className="text-2xl">Admin dashboard.</CardTitle>
 					<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 						<DialogTrigger asChild>
 							<Button>
