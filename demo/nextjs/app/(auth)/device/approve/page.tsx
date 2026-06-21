@@ -60,23 +60,26 @@ export default function Page() {
 		<div className="flex min-h-screen items-center justify-center p-4">
 			<Card className="w-full max-w-md p-6">
 				<div className="space-y-4">
-					<div className="text-center">
-						<h1 className="text-2xl font-bold">Approve Device</h1>
-						<p className="text-muted-foreground mt-2">
-							A device is requesting access to your account
-						</p>
-					</div>
-
-					<div className="space-y-4">
-						<div className="rounded-lg bg-muted p-4">
-							<p className="text-sm font-medium">Device Code</p>
-							<p className="font-mono text-lg">{userCode}</p>
+						<div className="text-center">
+							{/* Spec: display-md (24/600/-0.96px), sentence-case + period. */}
+							<h1 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-ink">
+								Approve device.
+							</h1>
+							<p className="text-body mt-2">
+								A device is requesting access to your account.
+							</p>
 						</div>
 
-						<div className="rounded-lg bg-muted p-4">
-							<p className="text-sm font-medium">Signed in as</p>
-							<p>{session.user.email}</p>
-						</div>
+						<div className="space-y-4">
+							<div className="rounded-md bg-canvas-soft p-4">
+								<p className="text-sm font-medium text-ink">Device code</p>
+								<p className="font-mono text-lg text-ink">{userCode}</p>
+							</div>
+
+							<div className="rounded-md bg-canvas-soft p-4">
+								<p className="text-sm font-medium text-ink">Signed in as</p>
+								<p className="text-body">{session.user.email}</p>
+							</div>
 
 						{error && (
 							<Alert variant="destructive">

@@ -12,18 +12,19 @@ export default function EmailSignUpPage() {
 					{/* Back Link */}
 					<Link
 						href="/sign-up"
-						className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 w-fit"
+						className="text-sm text-body hover:text-ink flex items-center gap-1 w-fit"
 					>
 						<ArrowLeft size={16} />
-						Back to sign up
+						Back to sign up.
 					</Link>
 
 					{/* Header */}
-					<h1 className="text-3xl font-semibold tracking-tight">
-						Sign up with Email
+					{/* Spec: display-lg (32/600/-1.28px), sentence-case + period. */}
+					<h1 className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-ink">
+						Sign up with email.
 					</h1>
 
-					<p className="text-sm text-muted-foreground">
+					<p className="text-sm text-body">
 						We'll send you a verification code to create your account.
 					</p>
 

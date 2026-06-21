@@ -2,13 +2,14 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+// Spec: card-marketing — rounded-md (8px), p-6, shadow-l2 (stacked + inset hairline).
 const Card = ({
 	className,
 	...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
 	<div
 		className={cn(
-			"rounded-xl border bg-card text-card-foreground shadow",
+			"rounded-md bg-card text-card-foreground shadow-l2",
 			className,
 		)}
 		{...props}
@@ -28,8 +29,12 @@ const CardTitle = ({
 	className,
 	...props
 }: React.HTMLAttributes<HTMLHeadingElement>) => (
+	// Spec: display-sm (20/600/-0.6px) for card-level headings.
 	<h3
-		className={cn("font-semibold leading-none tracking-tight", className)}
+		className={cn(
+			"text-[20px] font-semibold leading-[28px] tracking-[-0.6px]",
+			className,
+		)}
 		{...props}
 	/>
 );
@@ -39,7 +44,8 @@ const CardDescription = ({
 	className,
 	...props
 }: React.HTMLAttributes<HTMLParagraphElement>) => (
-	<p className={cn("text-sm text-muted-foreground", className)} {...props} />
+	// Spec: body text uses --body (#4d4d4d) for secondary copy.
+	<p className={cn("text-sm text-body", className)} {...props} />
 );
 CardDescription.displayName = "CardDescription";
 

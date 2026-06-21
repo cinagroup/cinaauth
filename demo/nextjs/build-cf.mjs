@@ -15,49 +15,38 @@ const nestedNextDir = path.join(
 const expectedNextDir = path.join(standaloneDir, ".next");
 
 // Step 1: Build with Next.js
-console.log("[build-cf] Building with Next.js...");
 execSync("npx next build", { stdio: "inherit", cwd: appDir });
 
-// Step 2: Create symlink from .next/standalone/.next -> nested path
-console.log("[build-cf] Creating symlink for standalone .next directory...");
-try {
-	if (fs.existsSync(expectedNextDir)) {
-		const stat = fs.lstatSync(expectedNextDir);
-		if (stat.isSymbolicLink()) {
-			fs.unlinkSync(expectedNextDir);
-		} else if (stat.isDirectory()) {
-			fs.rmSync(expectedNextDir, { recursive: true });
-		}
-	}
+// Step 2: Create symlink for standalone .next directory
+// Monorepo causes Next.js to output to .next/standalone/cinaauth/demo/nextjs/.next
+// instead of .next/standalone/.next
+if (fs.existsSync(expectedNextDir)) {
+	fs.rmSync(expectedNextDir, { recursive: true, force: true });
+}
 
-	if (fs.existsSync(nestedNextDir)) {
-		fs.symlinkSync(nestedNextDir, expectedNextDir, "dir");
-		console.log(
-			"[build-cf] Symlink created:",
-			expectedNextDir,
-			"->",
-			nestedNextDir,
-		);
-	} else {
-		console.warn(
-			"[build-cf] Warning: Nested .next directory not found at",
-			nestedNextDir,
-		);
-	}
-} catch (err) {
-	console.error("[build-cf] Failed to create symlink:", err.message);
-	process.exit(1);
+if (fs.existsSync(nestedNextDir)) {
+	// Create the expected directory structure
+	fs.mkdirSync(path.dirname(expectedNextDir), { recursive: true });
+
+	// Create symlink to the nested .next directory
+	fs.symlinkSync(nestedNextDir, expectedNextDir, "dir");
+
+	console.log(`Created symlink: ${expectedNextDir} -> ${nestedNextDir}`);
+} else {
+	console.warn(
+		`Warning: Expected nested directory not found at ${nestedNextDir}`,
+	);
 }
 
 // Step 3: Run OpenNext bundling
-console.log("[build-cf] Running OpenNext bundling...");
-try {
-	execSync("npx @opennextjs/cloudflare build --skipNextBuild", {
-		stdio: "inherit",
-		cwd: appDir,
-	});
-	console.log("[build-cf] Build completed successfully!");
-} catch (err) {
-	console.error("[build-cf] OpenNext bundling failed");
-	process.exit(1);
-}
+execSync("npx @opennextjs/cloudflare build --skipNextBuild", {
+	stdio: "inherit",
+	cwd: appDir,
+});
+
+// Step 4: Apply post-build patches for Cloudflare Workers compatibility
+console.log("\n[build-cf] Applying post-build patches...");
+execSync("node post-build-patch.js", {
+	stdio: "inherit",
+	cwd: appDir,
+});

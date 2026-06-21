@@ -76,39 +76,41 @@ export default function Page() {
 			<div className="absolute pointer-events-none inset-0 flex items-center justify-center dark:bg-black bg-white mask-[radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
 			{invitation && (
 				<Card className="w-full max-w-md">
-					<CardHeader>
-						<CardTitle>Organization Invitation</CardTitle>
-						<CardDescription>
-							You've been invited to join an organization
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{invitation.status === "accepted" ? (
-							<div className="space-y-4">
-								<div className="flex items-center justify-center w-16 h-16 mx-auto bg-green-100 rounded-full">
-									<CheckIcon className="w-8 h-8 text-green-600" />
+						<CardHeader>
+							<CardTitle>Organization invitation</CardTitle>
+							<CardDescription>
+								You've been invited to join an organization.
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							{invitation.status === "accepted" ? (
+								<div className="space-y-4">
+									<div className="flex items-center justify-center w-16 h-16 mx-auto bg-cyan-soft rounded-full">
+										<CheckIcon className="w-8 h-8 text-cyan-deep" />
+									</div>
+									{/* Spec: display-md (24/600/-0.96px), sentence-case + period. */}
+									<h2 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-ink text-center">
+										Welcome to {invitation.organizationName}.
+									</h2>
+									<p className="text-center text-body">
+										You've successfully joined the organization. We're excited to
+										have you on board.
+									</p>
 								</div>
-								<h2 className="text-2xl font-bold text-center">
-									Welcome to {invitation.organizationName}!
-								</h2>
-								<p className="text-center">
-									You've successfully joined the organization. We're excited to
-									have you on board!
-								</p>
-							</div>
-						) : invitation.status === "rejected" ? (
-							<div className="space-y-4">
-								<div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full">
-									<XIcon className="w-8 h-8 text-red-600" />
+							) : invitation.status === "rejected" ? (
+								<div className="space-y-4">
+									<div className="flex items-center justify-center w-16 h-16 mx-auto bg-error-soft rounded-full">
+										<XIcon className="w-8 h-8 text-error" />
+									</div>
+									{/* Spec: display-md (24/600/-0.96px), sentence-case + period. */}
+									<h2 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-ink text-center">
+										Invitation declined.
+									</h2>
+									<p className="text-center text-body">
+										You&lsquo;ve declined the invitation to join{" "}
+										{invitation.organizationName}.
+									</p>
 								</div>
-								<h2 className="text-2xl font-bold text-center">
-									Invitation Declined
-								</h2>
-								<p className="text-center">
-									You&lsquo;ve declined the invitation to join{" "}
-									{invitation.organizationName}.
-								</p>
-							</div>
 						) : (
 							<div className="space-y-4">
 								<p>

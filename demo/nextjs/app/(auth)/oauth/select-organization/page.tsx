@@ -19,10 +19,10 @@ export default async function SelectOrganizationPage() {
 		<div className="w-full">
 			<div className="flex items-center flex-col justify-center w-full md:py-10">
 				<div className="md:w-[400px]">
-					<Card className="w-full bg-zinc-900 border-zinc-800 rounded-none">
+					<Card className="w-full bg-canvas-soft-2 border-hairline rounded-md">
 						<CardHeader>
 							<CardTitle className="text-lg md:text-xl">
-								Select Organization
+								Select organization.
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="p-6">

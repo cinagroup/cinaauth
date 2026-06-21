@@ -47,16 +47,19 @@ export default function Page() {
 		<div className="flex min-h-screen items-center justify-center p-4">
 			<Card className="w-full max-w-md p-6">
 				<div className="space-y-4">
-					<div className="text-center">
-						<h1 className="text-2xl font-bold">Device Authorization</h1>
-						<p className="text-muted-foreground mt-2">
-							Enter the code displayed on your device
-						</p>
-					</div>
+						<div className="text-center">
+							{/* Spec: display-md (24/600/-0.96px), sentence-case + period. */}
+							<h1 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-ink">
+								Device authorization.
+							</h1>
+							<p className="text-body mt-2">
+								Enter the code displayed on your device.
+							</p>
+						</div>
 
-					<form onSubmit={handleSubmit} className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="userCode">Device Code</Label>
+						<form onSubmit={handleSubmit} className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="userCode">Device code</Label>
 							<Input
 								id="userCode"
 								type="text"

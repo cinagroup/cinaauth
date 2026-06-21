@@ -1,4 +1,5 @@
-﻿import { headers } from "next/headers";
+import Link from "next/link";
+import { headers } from "next/headers";
 import EntryButton from "@/components/entry-button";
 import { FeatureCard } from "@/components/feature-card";
 import { auth } from "@/lib/auth";
@@ -64,22 +65,37 @@ export default async function Page() {
 	});
 
 	return (
-		<div className="min-h-[80vh] flex flex-col items-center justify-center overflow-hidden no-visible-scrollbar">
-			<main className="flex flex-col gap-8 items-center justify-center py-16 md:py-24">
+		<div className="min-h-[80vh] flex flex-col items-center justify-center overflow-hidden no-visible-scrollbar relative">
+			{/* Spec: hero-band — mesh gradient atmospheric backdrop.
+			 * Fixed behind content, full viewport, blurred + faded. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 z-0 mesh-gradient-hero"
+			/>
+
+			<main
+				id="main"
+				className="relative z-10 flex flex-col gap-8 items-center justify-center py-48 px-4 md:px-6"
+			>
 				<div className="flex flex-col gap-4 text-center max-w-2xl">
-					<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50 border border-border/50 text-xs text-muted-foreground w-fit mx-auto mb-2">
-						<span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-						<span>Enterprise-grade authentication</span>
+					{/* Spec: banner-marketing — rounded-full, canvas-soft bg, body-sm, body text.
+					 * Badge uses caption-mono per spec (technical voice). */}
+					<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-canvas-soft shadow-inset-hairline text-sm text-body w-fit mx-auto mb-2">
+						<span className="text-xs font-mono uppercase tracking-wider">
+							Enterprise-grade authentication
+						</span>
 					</div>
-					<h1 className="text-5xl md:text-6xl font-semibold text-foreground tracking-[-2.4px] leading-[1.1]">
+					{/* Spec: display-xl — 48/600/48/-2.4px, sentence-case, period-terminated. */}
+					<h1 className="text-[48px] font-semibold text-ink tracking-[-2.4px] leading-[48px]">
 						CinaAuth.
 					</h1>
-					<p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+					<p className="text-[18px] leading-[28px] text-body">
 						Official demo to showcase{" "}
 						<a
 							href="https://cinagroup.com"
 							target="_blank"
-							className="text-foreground underline underline-offset-4 hover:text-foreground/80 transition-colors"
+							rel="noopener noreferrer"
+							className="text-link hover:text-link-deep underline underline-offset-4 transition-colors"
 						>
 							cinaauth
 						</a>{" "}
@@ -87,24 +103,33 @@ export default async function Page() {
 					</p>
 				</div>
 
-				<div className="w-full max-w-3xl flex flex-col gap-6 px-4">
-					<div className="flex items-center justify-center">
-						<EntryButton session={session} />
-					</div>
+				{/* Spec: CTA row = button-primary + button-secondary. */}
+				<div className="flex items-center gap-3">
+					<EntryButton session={session} />
+					<Link
+						href="https://www.cinagroup.com/docs"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex h-12 items-center justify-center rounded-pill px-3 text-base font-medium text-ink bg-canvas shadow-inset-hairline hover:bg-canvas-soft transition-colors"
+					>
+						View docs
+					</Link>
+				</div>
 
-					<div className="relative">
-						<div className="text-xs font-mono uppercase tracking-wider text-muted-foreground text-center mb-4">
-							Features
-						</div>
-						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-							{features.map((feature) => (
-								<FeatureCard
-									key={feature.name}
-									name={feature.name}
-									link={feature.link}
-								/>
-							))}
-						</div>
+				<div className="w-full max-w-4xl flex flex-col gap-6">
+					{/* Spec: section eyebrow = caption-mono uppercase mono. */}
+					<div className="text-xs font-mono uppercase tracking-wider text-body text-center">
+						Features.
+					</div>
+					{/* Spec: feature grid 3-up desktop → 1-up mobile. gap-3 (12px) per spec. */}
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+						{features.map((feature) => (
+							<FeatureCard
+								key={feature.name}
+								name={feature.name}
+								link={feature.link}
+							/>
+						))}
 					</div>
 				</div>
 			</main>

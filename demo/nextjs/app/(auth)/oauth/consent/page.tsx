@@ -55,14 +55,16 @@ export default async function AuthorizePage({
 		: undefined;
 
 	return (
-		<div className="container mx-auto py-10">
-			<h1 className="text-2xl font-bold mb-6 text-center">
-				Authorize Application
+		<div className="py-16 md:py-24 px-4 md:px-6">
+			{/* Spec: display-md (24/600/-0.96px), sentence-case + period. */}
+			<h1 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-ink mb-6 text-center">
+				Authorize application.
 			</h1>
-			<div className="min-h-screen bg-black text-white flex flex-col">
+			{/* Spec: showcase-band-dark — polarity-flipped (ink bg, on-primary text). */}
+			<div className="min-h-screen bg-ink text-on-primary flex flex-col">
 				<div className="flex flex-col items-center justify-center max-w-2xl mx-auto px-4">
 					<div className="flex items-center gap-8 mb-8">
-						<div className="w-16 h-16 border rounded-full flex items-center justify-center">
+						<div className="w-16 h-16 border border-on-primary/20 rounded-full flex items-center justify-center">
 							{clientDetails.logo_uri ? (
 								<Image
 									src={clientDetails.logo_uri}
@@ -88,41 +90,43 @@ export default async function AuthorizePage({
 						</div>
 					</div>
 
-					<h1 className="text-3xl font-semibold text-center mb-8">
+					{/* Spec: display-lg (32/600/-1.28px), sentence-case + period. */}
+					<h1 className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-on-primary text-center mb-8">
 						{clientDetails.client_name} is requesting access to your CinaAuth
-						account
+						account.
 					</h1>
 
-					<Card className="w-full bg-zinc-900 border-zinc-800 rounded-none">
+					{/* Spec: canvas-soft-2 surface inside polarity-flipped band. */}
+					<Card className="w-full bg-canvas-soft-2 text-ink rounded-md shadow-l4">
 						<CardContent className="p-6">
-							<div className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg mb-6">
+							<div className="flex items-center justify-between p-4 bg-canvas-soft rounded-md mb-6">
 								<div>
-									<div className="font-medium">{session?.user.name}</div>
-									<div className="text-zinc-400">{session?.user.email}</div>
+									<div className="font-medium text-ink">{session?.user.name}</div>
+									<div className="text-body">{session?.user.email}</div>
 								</div>
-								<ArrowUpRight className="h-5 w-5 text-zinc-400" />
+								<ArrowUpRight className="h-5 w-5 text-mute" />
 							</div>
 							<div className="flex flex-col gap-1">
-								<div className="text-lg mb-4">
+								<div className="text-lg mb-4 text-ink">
 									Continuing will allow Sign in with {clientDetails.client_name}{" "}
 									to:
 								</div>
 								{scope.includes("profile") && (
-									<div className="flex items-center gap-3 text-zinc-300">
+									<div className="flex items-center gap-3 text-body">
 										<User className="h-5 w-5" />
 										<span>Read your CinaAuth user data.</span>
 									</div>
 								)}
 
 								{scope.includes("email") && (
-									<div className="flex items-center gap-3 text-zinc-300">
+									<div className="flex items-center gap-3 text-body">
 										<Mail className="h-5 w-5" />
 										<span>Read your email address.</span>
 									</div>
 								)}
 
 								{scope.includes("read:organization") && (
-									<div className="flex items-center gap-3 text-zinc-300">
+									<div className="flex items-center gap-3 text-body">
 										<Building className="h-5 w-5" />
 										<span>
 											Read your organization {organization?.name ?? ""}.
