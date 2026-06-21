@@ -1,7 +1,6 @@
 "use client";
 
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { ElectronManualSignInToast } from "@/app/(auth)/sign-in/_components/electron";
@@ -10,11 +9,8 @@ import { authClient } from "@/lib/auth-client";
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "./ui/sonner";
 
-type Props = {
-	children: React.ReactNode;
-};
-
-const Providers = ({ children }: Props) => {
+// Spec: Vercel design is light-first. Default theme = "light".
+const Providers = ({ children }: { children: React.ReactNode }) => {
 	const queryClient = getQueryClient();
 
 	useEffect(() => {
@@ -49,19 +45,30 @@ const Providers = ({ children }: Props) => {
 	}, []);
 
 	return (
-		<ThemeProvider attribute="class" defaultTheme="dark">
+		<ThemeProvider attribute="class" defaultTheme="light">
 			<QueryClientProvider client={queryClient}>
-				<ReactQueryDevtools
-					client={queryClient}
-					initialIsOpen={false}
-					buttonPosition="bottom-right"
-					position="bottom"
-				/>
+				{/* Devtools are dev-only — keep out of production bundle. */}
+				{process.env.NODE_ENV === "development" && <DevtoolsLazy />}
 				<Toaster richColors closeButton />
 				{children}
 			</QueryClientProvider>
 		</ThemeProvider>
 	);
 };
+
+// Lazy-loaded devtools (only resolved in dev builds).
+function DevtoolsLazy() {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { ReactQueryDevtools } = require("@tanstack/react-query-devtools");
+	const { getQueryClient } = require("@/data/query-client");
+	return (
+		<ReactQueryDevtools
+			client={getQueryClient()}
+			initialIsOpen={false}
+			buttonPosition="bottom-right"
+			position="bottom"
+		/>
+	);
+}
 
 export default Providers;

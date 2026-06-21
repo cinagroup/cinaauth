@@ -8,6 +8,15 @@ routes = [
   { pattern = "demo-auth.cinagroup.com/*", zone_name = "cinagroup.com" }
 ]
 
+# Service binding to the auth Worker API for internal server-side calls.
+[[services]]
+binding = "AUTH_WORKER"
+service = "cinaauth-api"
+
 [vars]
-CINAAUTH_URL = "https://demo-auth.cinagroup.com"
+# Server route handlers call the real auth Worker API, not this demo domain.
+CINAAUTH_URL = "https://auth.cinagroup.com"
+# Client-side auth API URL — points back at this demo domain, which proxies
+# to the auth worker via the AUTH_WORKER service binding.
+NEXT_PUBLIC_CINAAUTH_API_URL = "https://demo-auth.cinagroup.com"
 # CINAAUTH_SECRET is injected via `wrangler secret put` (see CI workflow)
