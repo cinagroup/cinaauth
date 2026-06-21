@@ -1,9 +1,59 @@
 ﻿import { CinaAuth } from "cinaauth";
 import { drizzleAdapter } from "cinaauth/adapters/drizzle";
+import { createAccessControl } from "cinaauth/plugins/access";
+import { admin } from "cinaauth/plugins/admin";
 import { auditLog } from "cinaauth/plugins/audit-log";
 import { jwt } from "cinaauth/plugins/jwt";
 import { createDrizzle } from "./db";
 import type { CloudflareBindings } from "./env";
+
+/**
+ * Access-control statements for the admin plugin.
+ *
+ * Roles mirror cinaadmin's two-tier model (spec §3.1):
+ *   - super_admin:     full CRUD across every module
+ *   - security_admin:  read + ban/unban + session revoke + audit read;
+ *                      NO create/delete/set-role/set-password/impersonate
+ */
+const ac = createAccessControl({
+	user: [
+		"create",
+		"list",
+		"set-role",
+		"ban",
+		"impersonate",
+		"delete",
+		"set-password",
+		"set-email",
+		"get",
+		"update",
+	],
+	session: ["list", "revoke", "delete"],
+});
+
+const roles = {
+	super_admin: ac.newRole({
+		user: [
+			"create",
+			"list",
+			"set-role",
+			"ban",
+			"impersonate",
+			"delete",
+			"set-password",
+			"set-email",
+			"get",
+			"update",
+		],
+		session: ["list", "revoke", "delete"],
+	}),
+	security_admin: ac.newRole({
+		// read + ban/unban + sessions; NO create/delete/role/password/impersonate
+		user: ["list", "ban", "get", "update"],
+		session: ["list", "revoke", "delete"],
+	}),
+	user: ac.newRole({ user: [], session: [] }),
+};
 
 /**
  * Creates a CinaAuth instance per-request with the current D1 binding.
@@ -20,6 +70,14 @@ export const createAuth = (env: CloudflareBindings) =>
 		},
 		plugins: [
 			jwt(),
+			admin({
+				// Roles recognized by the admin console's whitelist
+				// (CINAADMIN_ALLOWED_ROLES = super_admin,security_admin).
+				defaultRole: "user",
+				adminRoles: ["super_admin", "security_admin"],
+				ac,
+				roles,
+			}),
 			auditLog({
 				// Service token for the admin console (cinaadmin) to call
 				// POST /audit/log without a user session.
