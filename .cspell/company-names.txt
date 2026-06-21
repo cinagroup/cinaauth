@@ -29,3 +29,6 @@ payu
 PayU
 Mikro
 anthropics
+cinagroup
+cinaauth
+cinaadmin
