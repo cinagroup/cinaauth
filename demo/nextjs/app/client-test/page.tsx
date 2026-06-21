@@ -48,9 +48,10 @@ export default function Page() {
 	};
 
 	return (
-		<div className="container mx-auto py-10 space-y-8">
-			<h1 className="text-2xl font-bold text-center">
-				Client Authentication Test
+		<div className="py-16 md:py-24 px-4 md:px-6 space-y-8">
+			{/* Spec: display-md (24/600/-0.96px), sentence-case + period. */}
+			<h1 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-ink text-center">
+				Client authentication test.
 			</h1>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-8">

@@ -157,7 +157,7 @@ const UserCard = (props: {
 
 							return (
 								<div key={session.id}>
-									<div className="flex items-center gap-2 text-sm  text-black font-medium dark:text-white">
+									<div className="flex items-center gap-2 text-sm text-ink font-medium">
 										{new UAParser(session.userAgent || "").getDevice().type ===
 										"mobile" ? (
 											<MobileIcon />
@@ -168,7 +168,7 @@ const UserCard = (props: {
 											session.userAgent}
 										, {new UAParser(session.userAgent || "").getBrowser().name}
 										<button
-											className="text-red-500 opacity-80 cursor-pointer text-xs underline"
+											className="text-error opacity-80 cursor-pointer text-xs underline"
 											onClick={() => {
 												revokeSessionMutation.mutate(
 													{ token: session.token },
@@ -535,7 +535,7 @@ function ListPasskeys() {
 											) : (
 												<Trash
 													size={15}
-													className="cursor-pointer text-red-600"
+													className="cursor-pointer text-error"
 												/>
 											)}
 										</button>

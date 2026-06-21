@@ -43,11 +43,12 @@ export function FeatureCard({ name, link }: FeatureCardProps) {
 			target="_blank"
 			rel="noopener noreferrer"
 			className={cn(
-				"group relative flex flex-col gap-2 p-4",
-				"bg-card rounded-lg border border-border",
-				"shadow-[0_1px_1px_rgba(0,0,0,0.02),0_2px_2px_rgba(0,0,0,0.04)]",
-				"hover:shadow-[0_2px_2px_rgba(0,0,0,0.04),0_8px_8px_-8px_rgba(0,0,0,0.04)]",
-				"hover:border-border/80 transition-all duration-200",
+				// Spec: template-card / feature card — rounded-md (8px), p-6 (24px).
+				// Spec: Level 3 soft-stack shadow (stacked + inset hairline).
+				"group relative flex flex-col gap-2 p-6",
+				"bg-card rounded-md",
+				"shadow-l3",
+				"hover:shadow-l4 transition-all duration-200",
 			)}
 		>
 			{iconPath && (
@@ -57,13 +58,13 @@ export function FeatureCard({ name, link }: FeatureCardProps) {
 						width="1em"
 						height="1em"
 						viewBox="0 0 24 24"
-						className="text-muted-foreground group-hover:text-foreground transition-colors"
+						className="text-mute group-hover:text-ink transition-colors"
 					>
 						<path fill="currentColor" d={iconPath} />
 					</svg>
 				</div>
 			)}
-			<div className="text-sm font-medium leading-tight tracking-tight text-foreground group-hover:text-foreground/80 transition-colors">
+			<div className="text-sm font-medium leading-tight tracking-tight text-ink group-hover:text-ink/80 transition-colors">
 				{name}
 			</div>
 		</a>
