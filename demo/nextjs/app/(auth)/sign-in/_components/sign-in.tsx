@@ -2,16 +2,24 @@
 
 import { Key } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 export default function SignIn() {
+	// Preserve the caller's callbackURL (e.g. an admin console redirect) across
+	// every login method so users land where they started after auth.
+	const searchParams = useSearchParams();
+	const callbackURL = searchParams.get("callbackURL") ?? "/dashboard";
+
 	return (
 		<div className="flex flex-col gap-3">
 			{/* Email Link */}
-			<Link href="/sign-in/email">
+			<Link
+				href={`/sign-in/email?callbackURL=${encodeURIComponent(callbackURL)}`}
+			>
 				<Button
 					variant="outline"
 					className={cn("w-full gap-2 flex relative justify-center")}
@@ -33,7 +41,9 @@ export default function SignIn() {
 			</Link>
 
 			{/* Password (email + password credentials) */}
-			<Link href="/sign-in/password">
+			<Link
+				href={`/sign-in/password?callbackURL=${encodeURIComponent(callbackURL)}`}
+			>
 				<Button
 					variant="outline"
 					className={cn("w-full gap-2 flex relative justify-center")}
@@ -69,7 +79,7 @@ export default function SignIn() {
 				onClick={async () => {
 					await authClient.signIn.social({
 						provider: "google",
-						callbackURL: "/dashboard",
+						callbackURL,
 					});
 				}}
 			>
@@ -105,7 +115,7 @@ export default function SignIn() {
 				onClick={async () => {
 					await authClient.signIn.social({
 						provider: "github",
-						callbackURL: "/dashboard",
+						callbackURL,
 					});
 				}}
 			>
@@ -129,7 +139,7 @@ export default function SignIn() {
 				onClick={async () => {
 					await authClient.signIn.social({
 						provider: "microsoft",
-						callbackURL: "/dashboard",
+						callbackURL,
 					});
 				}}
 			>
@@ -153,7 +163,7 @@ export default function SignIn() {
 				onClick={async () => {
 					await authClient.signIn.social({
 						provider: "vercel",
-						callbackURL: "/dashboard",
+						callbackURL,
 					});
 				}}
 			>
@@ -178,7 +188,7 @@ export default function SignIn() {
 						fetchOptions: {
 							onSuccess() {
 								toast.success("Successfully signed in");
-								window.location.href = "/dashboard";
+								window.location.href = callbackURL;
 							},
 							onError(context) {
 								toast.error("Authentication failed: " + context.error.message);
