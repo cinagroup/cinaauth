@@ -1,6 +1,5 @@
-"use client";
-
 import Link from "next/link";
+import { Suspense } from "react";
 import SignIn from "./_components/sign-in";
 
 export default function Page() {
@@ -9,21 +8,25 @@ export default function Page() {
 			<div className="w-full max-w-[400px]">
 				<div className="flex flex-col gap-6">
 					{/* Header */}
-					<h1 className="text-3xl font-semibold tracking-tight text-center">
-						Log in to CinaAuth
+					{/* Spec: display-lg (32/600/-1.28px), sentence-case + period. */}
+					<h1 className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-ink text-center">
+						Log in to CinaAuth.
 					</h1>
 
-					{/* Sign In Form */}
-					<SignIn />
+					{/* Sign In Form — Suspense boundary required because SignIn
+					    uses useSearchParams (Next 15). */}
+					<Suspense>
+						<SignIn />
+					</Suspense>
 
 					{/* Footer Link */}
-					<div className="text-center text-sm text-muted-foreground">
+					<div className="text-center text-sm text-body">
 						Don't have an account?{" "}
 						<Link
 							href="/sign-up"
-							className="text-foreground underline underline-offset-4 hover:no-underline"
+							className="text-link hover:text-link-deep underline underline-offset-4"
 						>
-							Sign Up
+							Sign up.
 						</Link>
 					</div>
 				</div>
