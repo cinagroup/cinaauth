@@ -1,10 +1,10 @@
-# AuthFramework REST API Design Rationale
+# Cinaauth REST API Design Rationale
 
 > Historical design note: this document captures rationale, gaps, and proposed API evolution ideas at the time it was written. It is not a route-by-route description of the currently mounted REST router. For the current implementation, use `docs/api/README.md`, `docs/api/complete-reference.md`, and the live `/api/openapi.json` output.
 
 ## Document Purpose
 
-This document explains the **why** behind every design decision in the AuthFramework REST API. It serves as:
+This document explains the **why** behind every design decision in the Cinaauth REST API. It serves as:
 
 1. **Architectural Decision Record (ADR)** - documenting why things are structured as they are
 2. **SDK Development Guide** - helping implementers understand intent, not just mechanics
@@ -823,7 +823,7 @@ The Rust SDK should be:
 Example desired API:
 
 ```rust
-let client = AuthFrameworkClient::builder()
+let client = CinaauthClient::builder()
     .base_url("https://auth.example.com")
     .build()?;
 

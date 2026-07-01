@@ -1,6 +1,6 @@
 # Configuration Examples and Usage
 
-# Practical examples for using auth-framework configuration
+# Practical examples for using cinaauth configuration
 
 ## Quick Start Examples
 
@@ -94,7 +94,7 @@ log_to_file = true
 
 ```rust
 use clap::{Arg, Command};
-use auth_framework::config::AuthFrameworkConfigManager;
+use cinaauth::config::CinaauthConfigManager;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = Command::new("myapp")
@@ -113,7 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
              .help("Server port"))
         .get_matches();
 
-    let config_manager = AuthFrameworkConfigManager::builder()
+    let config_manager = CinaauthConfigManager::builder()
         .with_file(matches.get_one::<String>("config").unwrap_or(&"config.toml"))
         .with_env_prefix("MYAPP")
         .build()?;
@@ -175,7 +175,7 @@ data:
 ```ini
 # /etc/systemd/system/myapp.service
 [Unit]
-Description=My Application with Auth Framework
+Description=My Application with cinaauth
 After=network.target
 
 [Service]
@@ -276,7 +276,7 @@ cache_key_prefix = "auth:threat:"
 #[cfg(test)]
 mod config_tests {
     use super::*;
-    use auth_framework::config::AuthFrameworkConfigManager;
+    use cinaauth::config::CinaauthConfigManager;
     use tempfile::NamedTempFile;
     use std::io::Write;
 
@@ -289,7 +289,7 @@ secret_key = "test-secret"
 algorithm = "HS256"
         "#).unwrap();
 
-        let config = AuthFrameworkConfigManager::from_files(&[
+        let config = CinaauthConfigManager::from_files(&[
             temp_file.path().to_str().unwrap()
         ]).expect("Should load minimal config");
 
@@ -302,7 +302,7 @@ algorithm = "HS256"
         // SAFETY: Single-threaded test; no concurrent env access.
         unsafe { std::env::set_var("AUTH_JWT_SECRET_KEY", "env-secret"); }
 
-        let config = AuthFrameworkConfigManager::builder()
+        let config = CinaauthConfigManager::builder()
             .with_env_prefix("AUTH")
             .build()
             .unwrap();
@@ -320,7 +320,7 @@ algorithm = "HS256"
 algorithm = "INVALID_ALGORITHM"
         "#).unwrap();
 
-        let result = AuthFrameworkConfigManager::from_files(&[
+        let result = CinaauthConfigManager::from_files(&[
             temp_file.path().to_str().unwrap()
         ]);
 
@@ -338,7 +338,7 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_oauth2_flow_with_config() {
-        let config = AuthFrameworkConfigManager::from_files(&[
+        let config = CinaauthConfigManager::from_files(&[
             "tests/fixtures/oauth2-test-config.toml"
         ]).unwrap();
 
@@ -351,7 +351,7 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_jwt_validation_with_config() {
-        let config = AuthFrameworkConfigManager::from_files(&[
+        let config = CinaauthConfigManager::from_files(&[
             "tests/fixtures/jwt-test-config.toml"
         ]).unwrap();
 
@@ -420,4 +420,4 @@ fn migrate_config_v1_to_v2(v1_path: &str, v2_path: &str) -> Result<(), Box<dyn s
 }
 ```
 
-These examples demonstrate the flexibility and power of the config crate integration, allowing auth-framework to adapt to various deployment scenarios while maintaining security and best practices.
+These examples demonstrate the flexibility and power of the config crate integration, allowing cinaauth to adapt to various deployment scenarios while maintaining security and best practices.

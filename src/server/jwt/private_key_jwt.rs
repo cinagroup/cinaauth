@@ -17,8 +17,8 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::jwt::private_key_jwt::{PrivateKeyJwtManager, ClientJwtConfig};
-//! use auth_framework::{SecureJwtValidator, SecureJwtConfig};
+//! use cinaauth::server::jwt::private_key_jwt::{PrivateKeyJwtManager, ClientJwtConfig};
+//! use cinaauth::{SecureJwtValidator, SecureJwtConfig};
 //! use chrono::Duration;
 //! use jsonwebtoken::Algorithm;
 //!

@@ -1,10 +1,10 @@
-# AuthFramework Development Roadmap
+# Cinaauth Development Roadmap
 
 Last updated: March 21, 2026 (release-readiness audit follow-up)
 
 ## Strategic Vision
 
-AuthFramework aims to become the premier authentication and authorization solution in the Rust ecosystem and a strong foundation for a broader multi-language SDK ecosystem.
+Cinaauth aims to become the premier authentication and authorization solution in the Rust ecosystem and a strong foundation for a broader multi-language SDK ecosystem.
 
 The project remains guided by the same core principles:
 
@@ -17,7 +17,7 @@ The project remains guided by the same core principles:
 
 ## Product Direction: Batteries-Included Defaults
 
-AuthFramework should trend toward a default experience where the product largely
+Cinaauth should trend toward a default experience where the product largely
 "just works" out of the box with minimal configuration and minimal feature
 selection burden on end users.
 
@@ -44,7 +44,7 @@ This means the roadmap should optimize for:
 
 ### Major Capabilities Already Present
 
-- Core `AuthFramework` library with multiple authentication methods
+- Core `Cinaauth` library with multiple authentication methods
 - OAuth 2.0 / OAuth 2.1 server functionality
 - OpenID Connect provider support
 - JWT issuance and validation
@@ -131,12 +131,12 @@ This is now a first-class workstream, not a secondary polish task.
 
 - [x] Add API orientation guidance to `README.md`, `src/lib.rs`, and `src/prelude.rs`
 - [x] Add canonical root aliases to reduce naming ambiguity:
-  - `ModularAuthFramework`
+  - `ModularCinaauth`
   - `AppConfigBuilder`
   - `LayeredConfigBuilder`
   - `CoreUserInfo`
 - [x] Expose a canonical `SessionManager` export alongside the legacy alias
-- [x] Begin splitting the oversized `AuthFramework` surface into grouped accessors:
+- [x] Begin splitting the oversized `Cinaauth` surface into grouped accessors:
   - `auth.users()`
   - `auth.sessions()`
   - `auth.tokens()`
@@ -149,7 +149,7 @@ This is now a first-class workstream, not a secondary polish task.
   - `auth.monitoring()`
   - `auth.audit()`
   - `auth.admin()`
-- [x] Document the canonical entry path for new users: `AuthFramework` + `prelude`
+- [x] Document the canonical entry path for new users: `Cinaauth` + `prelude`
 - [x] Create a deprecation plan for duplicate builder names and legacy aliases
 - [x] Consolidate or clearly namespace duplicate `UserInfo`-style types across core, API, integration, and OIDC layers
 - [x] Reduce module overlap between `auth`, `auth_modular`, and `authentication`
@@ -216,7 +216,7 @@ This phase is focused on making the project not just feature-rich, but the easie
 - [x] Narrow the default public surface so auto-complete and docs steer users toward the right abstractions — advanced RFC types (`DpopManager`, `PARManager`, `PrivateKeyJwtManager`, `TokenIntrospectionService`, `ServerOAuth2Server`, WS-Security/WS-Trust, OIDC backchannel/frontchannel logout) now carry `#[doc(hidden)]` at root; fully accessible via sub-module paths
 - [x] Establish a stable public API map with migration guidance for legacy entry points — canonical names, grouped accessors, deprecated aliases, and type disambiguation tables were completed as part of the API maturity work
 - [x] Keep advanced internals available without letting them dominate the onboarding path — `#[doc(hidden)]` on root re-exports keeps advanced types programmatically accessible while removing them from the default docs/autocomplete surface
-- [x] Ensure the canonical public API is fully usable on the default build without requiring users to discover extra feature flags first — `AuthFramework`, `prelude::*`, grouped accessors, and all core types work on default features
+- [x] Ensure the canonical public API is fully usable on the default build without requiring users to discover extra feature flags first — `Cinaauth`, `prelude::*`, grouped accessors, and all core types work on default features
 
 ### Ecosystem Expansion
 

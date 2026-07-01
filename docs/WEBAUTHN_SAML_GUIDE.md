@@ -41,7 +41,7 @@ Current response shape:
     "challenge": "base64url-challenge",
     "rp": {
       "id": "localhost",
-      "name": "AuthFramework"
+      "name": "Cinaauth"
     },
     "user": {
       "id": "dXNlckBleGFtcGxlLmNvbQ",

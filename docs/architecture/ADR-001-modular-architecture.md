@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The AuthFramework needed to support multiple deployment scenarios and use cases:
+The Cinaauth needed to support multiple deployment scenarios and use cases:
 
 - Microservice architectures requiring individual component deployment
 - Monolithic applications needing all authentication features
@@ -67,7 +67,7 @@ This approach follows the Single Responsibility Principle and enables better sep
 
 ### Alternative 1: Monolithic Design
 
-- **Description**: Single large AuthFramework class with all functionality
+- **Description**: Single large Cinaauth class with all functionality
 - **Why Not Chosen**: Tight coupling, difficult testing, large memory footprint
 - **Trade-offs**: Simpler integration but less flexibility and scalability
 
@@ -89,8 +89,8 @@ The modular architecture was implemented through:
 
 1. **Manager Separation**: Created distinct manager structs for each concern
 2. **Shared Interfaces**: Common storage and configuration abstractions
-3. **Composition Pattern**: ModularAuthFramework composes individual managers
-4. **API Compatibility**: Maintained existing AuthFramework API for migration
+3. **Composition Pattern**: ModularCinaauth composes individual managers
+4. **API Compatibility**: Maintained existing Cinaauth API for migration
 5. **Documentation**: Comprehensive examples for both architectures
 
 Key implementation milestones:
@@ -111,5 +111,5 @@ Key implementation milestones:
 ---
 
 **Decision Date**: 2025-08-17
-**Decision Maker(s)**: AuthFramework Development Team
+**Decision Maker(s)**: Cinaauth Development Team
 **Review Date**: 2026-02-17

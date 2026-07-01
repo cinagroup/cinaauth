@@ -1,10 +1,10 @@
 # Custom Storage Backend Implementation Guide
 
-This guide shows you how to create a custom storage backend for AuthFramework, using SurrealDB as an example. This follows the Dependency Inversion Principle (DIP) by depending on the `AuthStorage` abstraction.
+This guide shows you how to create a custom storage backend for Cinaauth, using SurrealDB as an example. This follows the Dependency Inversion Principle (DIP) by depending on the `AuthStorage` abstraction.
 
 ## Overview
 
-AuthFramework uses the `AuthStorage` trait to abstract storage operations. Any storage backend that implements this trait can be used with the framework, providing maximum flexibility while maintaining type safety.
+Cinaauth uses the `AuthStorage` trait to abstract storage operations. Any storage backend that implements this trait can be used with the framework, providing maximum flexibility while maintaining type safety.
 
 ## Step 1: Understand the AuthStorage Trait
 
@@ -72,7 +72,7 @@ pub trait AuthStorage: Send + Sync {
 Here's a complete SurrealDB implementation example:
 
 ```rust
-use auth_framework::{
+use cinaauth::{
     errors::{AuthError, Result},
     storage::{AuthStorage, SessionData},
     tokens::AuthToken,
@@ -82,7 +82,7 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use surrealdb::{Surreal, engine::remote::ws::{Client, Ws}};
 
-/// SurrealDB storage backend for AuthFramework
+/// SurrealDB storage backend for Cinaauth
 #[derive(Clone)]
 pub struct SurrealStorage {
     db: Surreal<Client>,
@@ -555,7 +555,7 @@ surrealdb-storage = ["surrealdb", "serde_json"]
 [dependencies]
 surrealdb = { version = "1.0", optional = true }
 serde_json = { version = "1.0", optional = true }
-auth-framework = "0.4.2"
+cinaauth = "0.4.2"
 async-trait = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -577,9 +577,9 @@ pub use surrealdb::SurrealStorage;
 Implement proper error conversion:
 
 ```rust
-impl From<surrealdb::Error> for auth_framework::errors::AuthError {
+impl From<surrealdb::Error> for cinaauth::errors::AuthError {
     fn from(err: surrealdb::Error) -> Self {
-        auth_framework::errors::AuthError::internal(format!(
+        cinaauth::errors::AuthError::internal(format!(
             "SurrealDB error: {}", err
         ))
     }
@@ -594,7 +594,7 @@ Create comprehensive tests:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use auth_framework::testing::helpers;
+    use cinaauth::testing::helpers;
     use std::sync::Arc;
 
     async fn setup_test_storage() -> Arc<SurrealStorage> {
@@ -699,12 +699,12 @@ mod tests {
 }
 ```
 
-## Step 6: Integration with AuthFramework
+## Step 6: Integration with Cinaauth
 
-Your storage is now ready to use with AuthFramework:
+Your storage is now ready to use with Cinaauth:
 
 ```rust
-use auth_framework::{AuthFramework, AuthConfig};
+use cinaauth::{Cinaauth, AuthConfig};
 use std::sync::Arc;
 
 #[tokio::main]
@@ -712,11 +712,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create your custom storage
     let storage = Arc::new(SurrealStorage::connect("ws://localhost:8000").await?);
 
-    // Create AuthFramework with your custom storage
+    // Create Cinaauth with your custom storage
     let mut config = AuthConfig::default();
     config.security.secret_key = Some("your-jwt-secret-key-32-chars-min".to_string());
 
-    let auth = AuthFramework::builder()
+    let auth = Cinaauth::builder()
         .customize(|c| {
             c.secret = config.security.secret_key;
             c
@@ -753,4 +753,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Consider implementing read replicas for scaling
 - Add migration scripts for schema changes
 
-This implementation provides a solid foundation for integrating any database with AuthFramework while maintaining the framework's security and performance standards.
+This implementation provides a solid foundation for integrating any database with Cinaauth while maintaining the framework's security and performance standards.

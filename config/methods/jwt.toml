@@ -12,7 +12,7 @@ clock_skew_seconds = 300     # 5 minutes
 
 # Issuer validation
 validate_issuer = true
-valid_issuers = ["auth-framework", "myapp"]
+valid_issuers = ["cinaauth", "myapp"]
 
 # Audience validation
 validate_audience = true

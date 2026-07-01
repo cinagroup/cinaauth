@@ -1,5 +1,5 @@
 /**
- * Administrative module for AuthFramework SDK
+ * Administrative module for cinaauth SDK
  */
 
 import { BaseClient } from '../base-client';

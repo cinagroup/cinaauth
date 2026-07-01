@@ -3,7 +3,7 @@
 //! Tests to verify that the authentication bypass vulnerability has been fixed
 //! and that proper password validation is enforced.
 
-use auth_framework::{
+use cinaauth::{
     errors::AuthError,
     oauth2_enhanced_storage::UserCredentials,
     oauth2_server::{OAuth2Config, OAuth2Server},

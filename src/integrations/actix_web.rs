@@ -1,11 +1,11 @@
-//! Actix-web integration for auth-framework.
+//! Actix-web integration for cinaauth.
 //!
 //! This module provides middleware and extractors for seamless
 //! integration with Actix-web applications.
 
 #[cfg(feature = "actix-integration")]
 use crate::{
-    AuthError, AuthFramework, Result,
+    AuthError, Cinaauth, Result,
     authorization::{AbacPermission, AuthorizationEngine, AuthorizationStorage},
     tokens::AuthToken,
 };
@@ -32,7 +32,7 @@ use std::{future::Future, pin::Pin, rc::Rc, sync::Arc};
 /// let mw = AuthMiddleware::new(fw.clone()).skip_path("/public");
 /// ```
 pub struct AuthMiddleware {
-    auth_framework: Arc<AuthFramework>,
+    cinaauth: Arc<Cinaauth>,
     skip_paths: Vec<String>,
 }
 
@@ -43,9 +43,9 @@ impl AuthMiddleware {
     /// ```rust,ignore
     /// let mw = AuthMiddleware::new(fw.clone());
     /// ```
-    pub fn new(auth_framework: Arc<AuthFramework>) -> Self {
+    pub fn new(cinaauth: Arc<Cinaauth>) -> Self {
         Self {
-            auth_framework,
+            cinaauth,
             skip_paths: vec!["/health".to_string(), "/metrics".to_string()],
         }
     }
@@ -92,7 +92,7 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthMiddlewareService {
             service: Rc::new(service),
-            auth_framework: self.auth_framework.clone(),
+            cinaauth: self.cinaauth.clone(),
             skip_paths: self.skip_paths.clone(),
         }))
     }
@@ -106,7 +106,7 @@ where
 /// ```
 pub struct AuthMiddlewareService<S> {
     service: Rc<S>,
-    auth_framework: Arc<AuthFramework>,
+    cinaauth: Arc<Cinaauth>,
     skip_paths: Vec<String>,
 }
 
@@ -129,7 +129,7 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let service = self.service.clone();
-        let auth_framework = self.auth_framework.clone();
+        let cinaauth = self.cinaauth.clone();
         let skip_paths = self.skip_paths.clone();
 
         Box::pin(async move {
@@ -160,8 +160,8 @@ where
             // Extract and validate token
             match extract_token_from_request(req.request()) {
                 Ok(token_str) => {
-                    // Parse and validate JWT token using AuthFramework
-                    match auth_framework
+                    // Parse and validate JWT token using Cinaauth
+                    match cinaauth
                         .token_manager()
                         .validate_jwt_token(&token_str)
                     {
@@ -347,11 +347,11 @@ impl<S: AuthorizationStorage + 'static> RequirePermission<S> {
         &self,
         token: &AuthToken,
         request: &HttpRequest,
-        auth_framework: &AuthFramework,
+        cinaauth: &Cinaauth,
     ) -> Result<(), AuthError> {
         // SECURITY FIX: Use proper JWT validation instead of insecure extraction
         // Validate the JWT token signature before trusting any claims
-        let claims = match auth_framework
+        let claims = match cinaauth
             .token_manager()
             .validate_jwt_token(&token.access_token)
         {
@@ -418,7 +418,7 @@ impl<S: AuthorizationStorage + 'static> FromRequest for RequirePermission<S> {
                 // SECURITY FIX: Use proper JWT validation instead of insecure extraction
                 // Validate the JWT token signature before trusting any claims
                 let claims = match app_data
-                    .auth_framework
+                    .cinaauth
                     .token_manager()
                     .validate_jwt_token(&token.access_token)
                 {
@@ -486,7 +486,7 @@ fn extract_token_from_request(req: &HttpRequest) -> Result<String> {
 /// let config = ActixConfig::new(fw.clone()).with_authorization(engine);
 /// ```
 pub struct ActixConfig<S: AuthorizationStorage> {
-    pub auth_framework: Arc<AuthFramework>,
+    pub cinaauth: Arc<Cinaauth>,
     pub authorization_engine: Option<Arc<AuthorizationEngine<S>>>,
 }
 
@@ -497,9 +497,9 @@ impl<S: AuthorizationStorage + 'static> ActixConfig<S> {
     /// ```rust,ignore
     /// let cfg = ActixConfig::new(fw.clone());
     /// ```
-    pub fn new(auth_framework: Arc<AuthFramework>) -> Self {
+    pub fn new(cinaauth: Arc<Cinaauth>) -> Self {
         Self {
-            auth_framework,
+            cinaauth,
             authorization_engine: None,
         }
     }
@@ -525,7 +525,7 @@ impl<S: AuthorizationStorage + 'static> ActixConfig<S> {
     where
         T: 'static,
     {
-        cfg.app_data(web::Data::new(self.auth_framework.clone()));
+        cfg.app_data(web::Data::new(self.cinaauth.clone()));
 
         if let Some(authz) = &self.authorization_engine {
             cfg.app_data(web::Data::new(authz.clone()));
@@ -571,16 +571,16 @@ mod tests {
     async fn test_auth_middleware() {
         // Use TestEnvironmentGuard for proper env isolation (restored on drop)
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
-            .with_jwt_secret("auth-framework");
+            .with_jwt_secret("cinaauth");
         let config = AuthConfig::new()
-            .secret("auth-framework".to_string())
-            .issuer("auth-framework".to_string())
-            .audience("auth-framework".to_string());
-        let auth_framework = Arc::new(AuthFramework::new(config));
+            .secret("cinaauth".to_string())
+            .issuer("cinaauth".to_string())
+            .audience("cinaauth".to_string());
+        let cinaauth = Arc::new(Cinaauth::new(config));
 
         let app = test::init_service(
             App::new()
-                .wrap(AuthMiddleware::new(auth_framework.clone()))
+                .wrap(AuthMiddleware::new(cinaauth.clone()))
                 .route("/protected", web::get().to(test_handler)),
         )
         .await;
@@ -594,12 +594,12 @@ mod tests {
     #[actix_web::test]
     async fn test_skip_path_health() {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
-            .with_jwt_secret("auth-framework");
+            .with_jwt_secret("cinaauth");
         let config = AuthConfig::new()
-            .secret("auth-framework".to_string());
-        let auth_framework = Arc::new(AuthFramework::new(config));
+            .secret("cinaauth".to_string());
+        let cinaauth = Arc::new(Cinaauth::new(config));
 
-        let middleware = AuthMiddleware::new(auth_framework.clone());
+        let middleware = AuthMiddleware::new(cinaauth.clone());
         // Default skip paths include "/health"
         let app = test::init_service(
             App::new()
@@ -616,12 +616,12 @@ mod tests {
     #[actix_web::test]
     async fn test_skip_paths_custom() {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
-            .with_jwt_secret("auth-framework");
+            .with_jwt_secret("cinaauth");
         let config = AuthConfig::new()
-            .secret("auth-framework".to_string());
-        let auth_framework = Arc::new(AuthFramework::new(config));
+            .secret("cinaauth".to_string());
+        let cinaauth = Arc::new(Cinaauth::new(config));
 
-        let middleware = AuthMiddleware::new(auth_framework.clone())
+        let middleware = AuthMiddleware::new(cinaauth.clone())
             .skip_path("/public".to_string());
 
         let app = test::init_service(
@@ -639,14 +639,14 @@ mod tests {
     #[actix_web::test]
     async fn test_invalid_bearer_token() {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
-            .with_jwt_secret("auth-framework");
+            .with_jwt_secret("cinaauth");
         let config = AuthConfig::new()
-            .secret("auth-framework".to_string());
-        let auth_framework = Arc::new(AuthFramework::new(config));
+            .secret("cinaauth".to_string());
+        let cinaauth = Arc::new(Cinaauth::new(config));
 
         let app = test::init_service(
             App::new()
-                .wrap(AuthMiddleware::new(auth_framework.clone()))
+                .wrap(AuthMiddleware::new(cinaauth.clone()))
                 .route("/protected", web::get().to(test_handler)),
         )
         .await;
@@ -663,14 +663,14 @@ mod tests {
     #[actix_web::test]
     async fn test_missing_bearer_prefix() {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
-            .with_jwt_secret("auth-framework");
+            .with_jwt_secret("cinaauth");
         let config = AuthConfig::new()
-            .secret("auth-framework".to_string());
-        let auth_framework = Arc::new(AuthFramework::new(config));
+            .secret("cinaauth".to_string());
+        let cinaauth = Arc::new(Cinaauth::new(config));
 
         let app = test::init_service(
             App::new()
-                .wrap(AuthMiddleware::new(auth_framework.clone()))
+                .wrap(AuthMiddleware::new(cinaauth.clone()))
                 .route("/protected", web::get().to(test_handler)),
         )
         .await;
@@ -689,7 +689,7 @@ mod tests {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
             .with_jwt_secret("test-actix-config");
         let config = AuthConfig::new().secret("test-actix-config".to_string());
-        let fw = Arc::new(AuthFramework::new(config));
+        let fw = Arc::new(Cinaauth::new(config));
 
         let actix_config: ActixConfig<crate::storage::MemoryStorage> = ActixConfig::new(fw);
         assert!(actix_config.authorization_engine.is_none());

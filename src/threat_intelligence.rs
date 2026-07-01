@@ -382,7 +382,7 @@ impl ThreatFeedManager {
 
         let client = Client::builder()
             .timeout(Duration::from_secs(config.download_timeout_seconds))
-            .user_agent("AuthFramework-ThreatIntel/1.0")
+            .user_agent("cinaauth-ThreatIntel/1.0")
             .build()?;
 
         let scheduler = Some(tokio_cron_scheduler::JobScheduler::new().await?);
@@ -405,7 +405,7 @@ impl ThreatFeedManager {
 
         let client = Client::builder()
             .timeout(Duration::from_secs(config.download_timeout_seconds))
-            .user_agent("AuthFramework-ThreatIntel/1.0")
+            .user_agent("cinaauth-ThreatIntel/1.0")
             .build()?;
 
         // Scheduler is not initialized in the simple constructor

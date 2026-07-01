@@ -80,7 +80,7 @@ fn is_test_env() -> bool {
 
 /// The primary authentication and authorization framework for Rust applications.
 ///
-/// `AuthFramework` is the central component that orchestrates all authentication
+/// `Cinaauth` is the central component that orchestrates all authentication
 /// and authorization operations. It provides a unified interface for multiple
 /// authentication methods, token management, session handling, and security monitoring.
 ///
@@ -96,7 +96,7 @@ fn is_test_env() -> bool {
 /// # Thread Safety
 ///
 /// The framework is designed for concurrent use and can be safely shared across
-/// multiple threads using `Arc<AuthFramework>`.
+/// multiple threads using `Arc<Cinaauth>`.
 ///
 /// # Storage Backends
 ///
@@ -109,15 +109,15 @@ fn is_test_env() -> bool {
 /// # Example
 ///
 /// ```rust,no_run
-/// use auth_framework::{AuthFramework, AuthConfig};
-/// use auth_framework::authentication::credentials::Credential;
-/// use auth_framework::methods::AuthMethodEnum;
+/// use cinaauth::{Cinaauth, AuthConfig};
+/// use cinaauth::authentication::credentials::Credential;
+/// use cinaauth::methods::AuthMethodEnum;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// // Create framework with default configuration
 /// let config = AuthConfig::default();
-/// let mut auth = AuthFramework::new(config);
+/// let mut auth = Cinaauth::new(config);
 ///
 /// // Register an authentication method
 /// # let password_method: AuthMethodEnum = unimplemented!();
@@ -137,7 +137,7 @@ fn is_test_env() -> bool {
 /// - Rate limiting prevents brute force attacks
 /// - Audit logging captures all security-relevant events
 /// - Configurable security policies for enterprise compliance
-pub struct AuthFramework {
+pub struct Cinaauth {
     /// Configuration
     config: AuthConfig,
 
@@ -227,7 +227,7 @@ fn resolve_jwt_secret_bytes(config: &AuthConfig) -> Result<Vec<u8>> {
     ))
 }
 
-impl AuthFramework {
+impl Cinaauth {
     /// Access focused user-management operations.
     pub fn users(&self) -> UserOperations<'_> {
         UserOperations { framework: self }
@@ -334,11 +334,11 @@ impl AuthFramework {
             let rng = ring::rand::SystemRandom::new();
             let mut buf = [0u8; 32];
             ring::rand::SecureRandom::fill(&rng, &mut buf)
-                .expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+                .expect("cinaauth fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
             buf
         };
         let token_manager =
-            TokenManager::new_hmac(&ephemeral_secret, "auth-framework", "auth-framework");
+            TokenManager::new_hmac(&ephemeral_secret, "cinaauth", "cinaauth");
 
         let user_manager = crate::auth_modular::user_manager::UserManager::new(storage.clone());
         let session_manager =
@@ -388,13 +388,13 @@ impl AuthFramework {
         let current_secret_bytes = resolve_jwt_secret_bytes(&config)?;
 
         let mut token_manager =
-            TokenManager::new_hmac(&current_secret_bytes, "auth-framework", "auth-framework");
+            TokenManager::new_hmac(&current_secret_bytes, "cinaauth", "cinaauth");
 
         // Handle gracefully retained old secret for zero-downtime key rotation
         if let Some(prev_secret) = &config.security.previous_secret_key {
             // Initialize with previous key, then rotate to the new key
             token_manager =
-                TokenManager::new_hmac(prev_secret.as_bytes(), "auth-framework", "auth-framework");
+                TokenManager::new_hmac(prev_secret.as_bytes(), "cinaauth", "cinaauth");
             token_manager.rotate_hmac_key(&current_secret_bytes);
         }
 
@@ -519,7 +519,7 @@ impl AuthFramework {
         } else {
             Err(AuthError::configuration(
                 "Framework not initialized. Call `initialize().await` first, \
-                 or use `AuthFramework::builder().build().await` which initializes automatically.",
+                 or use `Cinaauth::builder().build().await` which initializes automatically.",
             ))
         }
     }
@@ -547,7 +547,7 @@ impl AuthFramework {
 
         // Set up proper token manager with validated configuration
         let token_manager = match resolve_jwt_secret_bytes(&self.config) {
-            Ok(bytes) => TokenManager::new_hmac(&bytes, "auth-framework", "auth-framework"),
+            Ok(bytes) => TokenManager::new_hmac(&bytes, "cinaauth", "cinaauth"),
             Err(_) => {
                 if Self::is_production_environment() {
                     return Err(AuthError::configuration(
@@ -611,10 +611,10 @@ impl AuthFramework {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # use auth_framework::authentication::credentials::Credential;
-    /// # use auth_framework::auth::AuthResult;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # use cinaauth::authentication::credentials::Credential;
+    /// # use cinaauth::auth::AuthResult;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// let result = auth.authenticate("password", Credential::password("alice", "S3cur3P@ss!")).await?;
     /// match result {
     ///     AuthResult::Success(token) => println!("Token: {}", token.access_token),
@@ -1203,8 +1203,8 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework, token: &AuthToken) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth, token: &AuthToken) -> Result<(), AuthError> {
     /// if auth.check_permission(token, "read", "documents").await? {
     ///     println!("User can read documents");
     /// } else {
@@ -1317,9 +1317,9 @@ impl AuthFramework {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::{prelude::*, auth_operations::SessionCreateRequest};
+    /// # use cinaauth::{prelude::*, auth_operations::SessionCreateRequest};
     /// # use std::time::Duration;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), auth_framework::errors::AuthError> {
+    /// # async fn example(auth: &Cinaauth) -> Result<(), cinaauth::errors::AuthError> {
     /// let session_id = auth.create_session_with_request(
     ///     SessionCreateRequest::new("user_123", Duration::from_secs(3600))
     ///         .ip_address("192.168.1.1")
@@ -1795,8 +1795,8 @@ impl AuthFramework {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// let user_id = auth.users().register("alice", "alice@example.com", "S3cur3P@ss!").await?;
     /// println!("Created user: {user_id}");
     /// # Ok(())
@@ -1829,8 +1829,8 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// // Get first 10 active users
     /// let users = auth.list_users(Some(10), None, true).await?;
     /// println!("Found {} active users", users.len());
@@ -1864,8 +1864,8 @@ impl AuthFramework {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::{prelude::*, auth_operations::UserListQuery};
-    /// # async fn example(auth: &AuthFramework) -> Result<(), auth_framework::errors::AuthError> {
+    /// # use cinaauth::{prelude::*, auth_operations::UserListQuery};
+    /// # async fn example(auth: &Cinaauth) -> Result<(), cinaauth::errors::AuthError> {
     /// let users = auth.list_users_with_query(
     ///     UserListQuery::new()
     ///         .limit(50)
@@ -2167,8 +2167,8 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// // Set user attributes for policy evaluation
     /// auth.map_user_attribute("example_user", "department", "engineering").await?;
     /// auth.map_user_attribute("example_user", "clearance_level", "confidential").await?;
@@ -2201,8 +2201,8 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// if let Some(dept) = auth.get_user_attribute("example_user", "department").await? {
     ///     println!("User is in department: {}", dept);
     /// }
@@ -2236,9 +2236,9 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
+    /// # use cinaauth::prelude::*;
     /// # use std::collections::HashMap;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// let mut context = HashMap::new();
     /// context.insert("time_of_day".to_string(), "business_hours".to_string());
     /// context.insert("ip_location".to_string(), "office".to_string());
@@ -2268,8 +2268,8 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use auth_framework::{prelude::*, auth_operations::PermissionContext};
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::{prelude::*, auth_operations::PermissionContext};
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// let context = PermissionContext::new()
     ///     .with_attribute("time_of_day", "business_hours")
     ///     .with_attribute("ip_location", "office");
@@ -2304,10 +2304,10 @@ impl AuthFramework {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::{AuthFramework, AuthConfig};
-    /// # use auth_framework::auth_operations::DelegationRequest;
+    /// # use cinaauth::{Cinaauth, AuthConfig};
+    /// # use cinaauth::auth_operations::DelegationRequest;
     /// # use std::time::Duration;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), auth_framework::errors::AuthError> {
+    /// # async fn example(auth: &Cinaauth) -> Result<(), cinaauth::errors::AuthError> {
     /// let req = DelegationRequest::new("admin_1", "user_2", "write", "reports")
     ///     .duration(Duration::from_secs(3600));
     /// auth.delegate_permission_with_request(req).await?;
@@ -2371,8 +2371,8 @@ impl AuthFramework {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::{prelude::*, auth_operations::AuditLogQuery};
-    /// # async fn example(auth: &AuthFramework) -> Result<(), auth_framework::errors::AuthError> {
+    /// # use cinaauth::{prelude::*, auth_operations::AuditLogQuery};
+    /// # async fn example(auth: &Cinaauth) -> Result<(), cinaauth::errors::AuthError> {
     /// let logs = auth.get_permission_audit_logs_with_query(
     ///     AuditLogQuery::new()
     ///         .user("user_123")
@@ -2473,7 +2473,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         assert!(framework.initialize().await.is_ok());
         assert!(framework.initialized);
@@ -2497,7 +2497,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let framework = AuthFramework::new(config);
+        let framework = Cinaauth::new(config);
 
         // Verify framework initialization works without dynamic method registration
         assert!(!framework.initialized);
@@ -2520,7 +2520,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         let token = framework
@@ -2548,7 +2548,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         let session_id = framework
@@ -2583,7 +2583,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         let user_id = framework
@@ -2663,7 +2663,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         // This test would need expired data to be meaningful

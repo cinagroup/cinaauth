@@ -3,7 +3,7 @@
 //! These tests verify that both managers work correctly with the common trait
 //! and that the factory pattern provides the right recommendations.
 
-use auth_framework::server::{
+use cinaauth::server::{
     ServiceComplexityLevel, TokenExchangeFactory, TokenExchangeManagerFactory,
     TokenExchangeService, TokenExchangeUseCase,
 };
@@ -29,8 +29,8 @@ async fn test_basic_manager_trait_implementation() {
 
 #[tokio::test]
 async fn test_advanced_manager_trait_implementation() {
-    use auth_framework::server::SessionManager;
-    use auth_framework::server::{AdvancedTokenExchangeConfig, AdvancedTokenExchangeManager};
+    use cinaauth::server::SessionManager;
+    use cinaauth::server::{AdvancedTokenExchangeConfig, AdvancedTokenExchangeManager};
     use std::sync::Arc;
 
     // Create a valid config - the default config has placeholder JWT keys that may not work
@@ -114,7 +114,7 @@ fn test_factory_recommendations() {
 
 #[test]
 fn test_validation_utilities() {
-    use auth_framework::server::ValidationUtils;
+    use cinaauth::server::ValidationUtils;
 
     // Test grant type validation
     assert!(
@@ -162,7 +162,7 @@ fn test_validation_utilities() {
 
 #[test]
 fn test_manager_type_determination() {
-    use auth_framework::server::ExchangeRequirements;
+    use cinaauth::server::ExchangeRequirements;
 
     // Simple requirements should use basic manager
     let simple_req = ExchangeRequirements {

@@ -22,7 +22,7 @@
 //! # Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::core::stepped_up_auth::{
+//! use cinaauth::server::core::stepped_up_auth::{
 //!     SteppedUpAuthManager, StepUpConfig, AuthenticationLevel, StepUpContext
 //! };
 //!
@@ -162,7 +162,7 @@ impl StepUpConfig {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use auth_framework::server::core::stepped_up_auth::StepUpConfig;
+    /// use cinaauth::server::core::stepped_up_auth::StepUpConfig;
     /// use chrono::Duration;
     ///
     /// let config = StepUpConfig::builder()
@@ -266,7 +266,7 @@ impl StepUpContext {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use auth_framework::server::core::stepped_up_auth::{StepUpContext, AuthenticationLevel};
+    /// use cinaauth::server::core::stepped_up_auth::{StepUpContext, AuthenticationLevel};
     ///
     /// let ctx = StepUpContext::new("user123", "sensitive-resource", "session-1", AuthenticationLevel::Basic)
     ///     .with_risk_score(0.8);
@@ -339,7 +339,7 @@ impl AuthenticationLevel {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::server::core::stepped_up_auth::AuthenticationLevel;
+    /// use cinaauth::server::core::stepped_up_auth::AuthenticationLevel;
     /// assert!(AuthenticationLevel::High.meets_requirement(AuthenticationLevel::Enhanced));
     /// ```
     pub fn meets_requirement(&self, required: AuthenticationLevel) -> bool {
@@ -350,7 +350,7 @@ impl AuthenticationLevel {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::server::core::stepped_up_auth::AuthenticationLevel;
+    /// use cinaauth::server::core::stepped_up_auth::AuthenticationLevel;
     /// assert_eq!(AuthenticationLevel::Basic.next_level(), Some(AuthenticationLevel::Enhanced));
     /// ```
     pub fn next_level(&self) -> Option<AuthenticationLevel> {

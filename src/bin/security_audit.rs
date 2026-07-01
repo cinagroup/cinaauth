@@ -1,12 +1,12 @@
-//! Security Audit Tool for AuthFramework v0.4.0
+//! Security Audit Tool for cinaauth v0.4.0
 //!
-//! This script analyzes the AuthFramework codebase for security configurations,
+//! This script analyzes the cinaauth codebase for security configurations,
 //! potential vulnerabilities, and compliance with security best practices.
 
 use std::process::Command;
 
 fn main() {
-    println!("🔒 AuthFramework v0.4.0 Security Audit");
+    println!("🔒 cinaauth v0.4.0 Security Audit");
     println!("=====================================\n");
 
     // 1. Check for hardcoded secrets

@@ -70,8 +70,8 @@ impl Default for ClientConfig {
 /// # Example
 ///
 /// ```rust
-/// use auth_framework::client::{ClientConfig, ClientType};
-/// use auth_framework::types::{RedirectUris, Scopes, GrantTypes, ResponseTypes};
+/// use cinaauth::client::{ClientConfig, ClientType};
+/// use cinaauth::types::{RedirectUris, Scopes, GrantTypes, ResponseTypes};
 ///
 /// let config = ClientConfig::builder("client123", ClientType::Confidential)
 ///     .client_secret("secret456")
@@ -109,7 +109,7 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
     ///
     /// let builder = ClientConfigBuilder::new("my-app", ClientType::Public);
     /// let config = builder.build();
@@ -137,7 +137,7 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Confidential)
     ///     .client_secret("s3cret")
@@ -154,8 +154,8 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
-    /// use auth_framework::types::RedirectUris;
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::types::RedirectUris;
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Public)
     ///     .redirect_uris(RedirectUris::new(vec!["https://example.com/cb".into()]))
@@ -171,8 +171,8 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
-    /// use auth_framework::types::Scopes;
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::types::Scopes;
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Public)
     ///     .authorized_scopes(Scopes::new(vec!["read".into(), "write".into()]))
@@ -188,8 +188,8 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
-    /// use auth_framework::types::GrantTypes;
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::types::GrantTypes;
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Confidential)
     ///     .authorized_grant_types(GrantTypes::new(vec!["client_credentials".into()]))
@@ -208,8 +208,8 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
-    /// use auth_framework::types::ResponseTypes;
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::types::ResponseTypes;
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Public)
     ///     .authorized_response_types(ResponseTypes::new(vec!["code".into()]))
@@ -228,7 +228,7 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Public)
     ///     .client_name("My Application")
@@ -245,7 +245,7 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Public)
     ///     .client_description("OAuth 2.0 demo app")
@@ -262,7 +262,7 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
     /// use std::collections::HashMap;
     ///
     /// let mut meta = HashMap::new();
@@ -282,7 +282,7 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Public)
     ///     .with_metadata("tos_uri", serde_json::json!("https://example.com/tos"))
@@ -299,7 +299,7 @@ impl ClientConfigBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfigBuilder, ClientType};
+    /// use cinaauth::client::{ClientConfigBuilder, ClientType};
     ///
     /// let config = ClientConfigBuilder::new("app", ClientType::Public).build();
     /// assert_eq!(config.client_id, "app");
@@ -326,7 +326,7 @@ impl ClientConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::client::{ClientConfig, ClientType};
+    /// use cinaauth::client::{ClientConfig, ClientType};
     ///
     /// let config = ClientConfig::builder("client123", ClientType::Public)
     ///     .client_name("My SPA")

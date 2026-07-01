@@ -96,14 +96,14 @@ async fn test_failing_mock_storage() {
 
 #[test]
 fn test_secret_loading_from_env() {
-    use crate::auth::AuthFramework;
+    use crate::auth::Cinaauth;
     use crate::config::AuthConfig;
     use crate::testing::test_infrastructure::TestEnvironmentGuard;
 
     let _env = TestEnvironmentGuard::new().with_jwt_secret("env_secret_value");
 
     let config = AuthConfig::default().secret("config_secret_value");
-    let framework = AuthFramework::new(config.clone());
+    let framework = Cinaauth::new(config.clone());
     let token = framework
         .token_manager()
         .create_jwt_token("user", vec!["read".to_string()], None);
@@ -112,7 +112,7 @@ fn test_secret_loading_from_env() {
 
 #[test]
 fn test_secret_loading_from_config() {
-    use crate::auth::AuthFramework;
+    use crate::auth::Cinaauth;
     use crate::config::AuthConfig;
     use crate::testing::test_infrastructure::TestEnvironmentGuard;
 
@@ -120,7 +120,7 @@ fn test_secret_loading_from_config() {
     let _env = TestEnvironmentGuard::new();
 
     let config = AuthConfig::default().secret("config_secret_value");
-    let framework = AuthFramework::new(config.clone());
+    let framework = Cinaauth::new(config.clone());
     let token = framework
         .token_manager()
         .create_jwt_token("user", vec!["read".to_string()], None);
@@ -129,7 +129,7 @@ fn test_secret_loading_from_config() {
 
 #[test]
 fn test_secret_missing_returns_error() {
-    use crate::auth::AuthFramework;
+    use crate::auth::Cinaauth;
     use crate::config::AuthConfig;
     use crate::testing::test_infrastructure::TestEnvironmentGuard;
 
@@ -139,7 +139,7 @@ fn test_secret_missing_returns_error() {
     let _env = TestEnvironmentGuard::new();
 
     let config = AuthConfig::default().force_production_mode();
-    match AuthFramework::new_validated(config) {
+    match Cinaauth::new_validated(config) {
         Err(e) => {
             // Should fail with proper error message about JWT secret
             assert!(

@@ -850,7 +850,7 @@ impl FapiManager {
             return Err(AuthError::Configuration {
                 message: "JARM not enabled".to_string(),
                 help: Some("Enable JARM in your configuration to use this feature".to_string()),
-                docs_url: Some("https://docs.auth-framework.com/fapi#jarm".to_string()),
+                docs_url: Some("https://docs.cinaauth.com/fapi#jarm".to_string()),
                 source: None,
                 suggested_fix: Some("Set enable_jarm to true in your FAPIConfig".to_string()),
             });
@@ -1420,7 +1420,7 @@ impl Default for FapiConfig {
                     use ring::rand::{SecureRandom, SystemRandom};
                     let rng = SystemRandom::new();
                     let mut bytes = [0u8; 32];
-                    rng.fill(&mut bytes).expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+                    rng.fill(&mut bytes).expect("cinaauth fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
                     EncodingKey::from_secret(&bytes)
                 })
         } else {
@@ -1434,7 +1434,7 @@ impl Default for FapiConfig {
             use ring::rand::{SecureRandom, SystemRandom};
             let rng = SystemRandom::new();
             let mut bytes = [0u8; 32];
-            rng.fill(&mut bytes).expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+            rng.fill(&mut bytes).expect("cinaauth fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
             EncodingKey::from_secret(&bytes)
         };
 
@@ -1455,7 +1455,7 @@ impl Default for FapiConfig {
                     use ring::rand::{SecureRandom, SystemRandom};
                     let rng = SystemRandom::new();
                     let mut secret = [0u8; 32];
-                    rng.fill(&mut secret).expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+                    rng.fill(&mut secret).expect("cinaauth fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
                     DecodingKey::from_secret(&secret)
                 })
         } else {
@@ -1467,7 +1467,7 @@ impl Default for FapiConfig {
             use ring::rand::{SecureRandom, SystemRandom};
             let rng = SystemRandom::new();
             let mut secret = [0u8; 32];
-            rng.fill(&mut secret).expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+            rng.fill(&mut secret).expect("cinaauth fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
             DecodingKey::from_secret(&secret)
         };
 

@@ -1,14 +1,14 @@
 # Distributed and Large-Scale Deployment Guide
 
 This guide covers the architectural decisions and configuration adjustments required when
-running AuthFramework across multiple nodes — for example, in a Kubernetes cluster, across
+running Cinaauth across multiple nodes — for example, in a Kubernetes cluster, across
 multiple data-centre regions, or behind a load balancer.
 
 ---
 
 ## Overview
 
-AuthFramework is designed to work correctly in single-node deployments with minimal
+Cinaauth is designed to work correctly in single-node deployments with minimal
 configuration. When you scale out to multiple nodes you must ensure that:
 
 1. **Shared secrets are consistent** — all nodes must use the same JWT signing secret.
@@ -31,7 +31,7 @@ issued on Node A would be rejected on Node B.
 **Solution — set the secret explicitly from a shared source:**
 
 ```rust
-use auth_framework::security::SecureJwtConfig;
+use cinaauth::security::SecureJwtConfig;
 
 // Read from an environment variable set the same on all nodes.
 // In production, prefer a secrets manager (Vault, AWS Secrets Manager, etc.).
@@ -56,7 +56,7 @@ When `cryptoki` (PKCS#11) support is enabled the JWT signing key can be stored i
 cloud KMS:
 
 ```bash
-# Configure these in the process environment before starting AuthFramework.
+# Configure these in the process environment before starting Cinaauth.
 export CRYPTOKI_LIB="/usr/lib/softhsm/libsofthsm2.so"
 export PKCS11_PIN="<token-pin>"
 ```
@@ -72,7 +72,7 @@ write the same state.
 ### PostgreSQL (recommended for persistent state)
 
 ```rust
-use auth_framework::{AuthFramework, AppConfig};
+use cinaauth::{Cinaauth, AppConfig};
 
 let config = AppConfig::builder()
     .storage(StorageConfig::Postgres {
@@ -82,7 +82,7 @@ let config = AppConfig::builder()
     })
     .build();
 
-let auth = AuthFramework::new(config).await?;
+let auth = Cinaauth::new(config).await?;
 ```
 
 **Connection pooling considerations:**
@@ -120,7 +120,7 @@ persistence layer:
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", features = ["tiered-storage"] }
+cinaauth = { version = "0.5", features = ["tiered-storage"] }
 ```
 
 This is the recommended configuration for high-throughput deployments where session lookups are
@@ -163,7 +163,7 @@ Enable `distributed-rate-limiting` to use Redis as the shared counter store:
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", features = ["distributed-rate-limiting"] }
+cinaauth = { version = "0.5", features = ["distributed-rate-limiting"] }
 ```
 
 This feature requires `redis-storage` or a Redis connection in the storage configuration. Once
@@ -189,7 +189,7 @@ cache; all session reads go to the configured storage backend.
 ## 6. Admin Web UI in Clustered Deployments
 
 The admin web UI (`web-gui` feature) serves stateless HTML pages generated from shared
-AuthFramework state. Any node can serve the admin UI as long as it connects to the shared
+Cinaauth state. Any node can serve the admin UI as long as it connects to the shared
 storage backend. There is no admin-UI-specific state that needs to be synchronized.
 
 The admin UI login reads credentials from the `ADMIN_GUI_USERNAME` and `ADMIN_GUI_PASSWORD`
@@ -204,28 +204,28 @@ The `k8s/` directory contains baseline Kubernetes manifests. Key points for mult
 deployments:
 
 ```yaml
-# k8s/auth-framework-deployment.yaml (excerpt)
+# k8s/cinaauth-deployment.yaml (excerpt)
 spec:
   replicas: 3   # horizontal scale — all pods connect to the same DB
   template:
     spec:
       containers:
-        - name: auth-framework
+        - name: cinaauth
           env:
             - name: AUTH_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: auth-framework-secrets
+                  name: cinaauth-secrets
                   key: jwt_secret
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: auth-framework-secrets
+                  name: cinaauth-secrets
                   key: database_url
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: auth-framework-secrets
+                  name: cinaauth-secrets
                   key: redis_url
 ```
 
@@ -253,10 +253,10 @@ reachable.
 
 - **Connection pool size**: Default `max_connections = 10`; tune based on query latency and
   database capacity. Increase gradually and watch `pg_stat_activity` for idle connections.
-- **Redis pipeline mode**: AuthFramework uses single-command Redis calls. For very high
+- **Redis pipeline mode**: Cinaauth uses single-command Redis calls. For very high
   throughput (> 50 000 req/s per node) consider enabling Redis cluster mode and partitioning
   session keys by user ID prefix.
-- **Tokio worker threads**: AuthFramework is `async`/`await` throughout. Set
+- **Tokio worker threads**: Cinaauth is `async`/`await` throughout. Set
   `TOKIO_WORKER_THREADS` to the number of available CPU cores. The default (`num_cpus`) is
   usually optimal.
 - **Memory pools**: For latency-sensitive deployments enable the `performance-optimization`

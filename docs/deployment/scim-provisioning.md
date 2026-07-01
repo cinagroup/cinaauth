@@ -1,6 +1,6 @@
 # SCIM Provisioning Deployment Guide
 
-This guide covers deploying AuthFramework's SCIM 2.0 (System for Cross-domain Identity Management) client for automated user and group provisioning with identity providers.
+This guide covers deploying Cinaauth's SCIM 2.0 (System for Cross-domain Identity Management) client for automated user and group provisioning with identity providers.
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ This guide covers deploying AuthFramework's SCIM 2.0 (System for Cross-domain Id
 ### Example Configuration
 
 ```rust
-use auth_framework::protocols::scim::{ScimClientConfig, ScimClient};
+use cinaauth::protocols::scim::{ScimClientConfig, ScimClient};
 
 let config = ScimClientConfig {
     base_url: "https://idp.example.com/scim/v2".to_string(),
@@ -38,7 +38,7 @@ let client = ScimClient::new(config);
 
 1. In the Azure Portal, navigate to **Enterprise Applications → Your App → Provisioning**
 2. Set provisioning mode to **Automatic**
-3. Enter your AuthFramework SCIM endpoint URL as the **Tenant URL**
+3. Enter your Cinaauth SCIM endpoint URL as the **Tenant URL**
 4. Enter the bearer token as the **Secret Token**
 5. Click **Test Connection** to verify
 6. Configure attribute mappings as needed

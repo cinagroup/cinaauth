@@ -1,19 +1,19 @@
 # Third-Party Storage Backend Usage Guide
 
-This guide shows you how to use third-party storage backends with AuthFramework, including the integration patterns and best practices.
+This guide shows you how to use third-party storage backends with Cinaauth, including the integration patterns and best practices.
 
 ## Overview
 
-AuthFramework's builder pattern makes it easy to integrate any storage backend that implements the `AuthStorage` trait. This guide covers the two primary integration methods: the builder API and convenience constructors.
+Cinaauth's builder pattern makes it easy to integrate any storage backend that implements the `AuthStorage` trait. This guide covers the two primary integration methods: the builder API and convenience constructors.
 
 ## Integration Methods
 
 ### Method 1: Builder Pattern with Custom Storage (Recommended)
 
-The builder pattern provides the most flexibility and follows AuthFramework's fluent API design:
+The builder pattern provides the most flexibility and follows Cinaauth's fluent API design:
 
 ```rust
-use auth_framework::{AuthFramework, AuthConfig};
+use cinaauth::{Cinaauth, AuthConfig};
 use std::sync::Arc;
 
 #[tokio::main]
@@ -21,12 +21,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Create your storage backend
     let storage = Arc::new(YourCustomStorage::connect("connection-string").await?);
 
-    // Step 2: Configure AuthFramework
+    // Step 2: Configure Cinaauth
     let mut config = AuthConfig::default();
     config.security.secret_key = Some("your-jwt-secret-32-chars-or-more".to_string());
 
     // Step 3: Build with custom storage
-    let auth = AuthFramework::builder()
+    let auth = Cinaauth::builder()
         .customize(|c| {
             c.secret = config.security.secret_key;
             c
@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     // Step 4: Use normally - all operations will use your storage
-    println!("AuthFramework initialized with custom storage!");
+    println!("Cinaauth initialized with custom storage!");
 
     Ok(())
 }
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 For simpler use cases, use the convenience constructor:
 
 ```rust
-use auth_framework::{AuthFramework, AuthConfig};
+use cinaauth::{Cinaauth, AuthConfig};
 use std::sync::Arc;
 
 #[tokio::main]
@@ -58,10 +58,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut config = AuthConfig::default();
     config.security.secret_key = Some("your-jwt-secret-32-chars-or-more".to_string());
 
-    // This returns an initialized AuthFramework instance
-    let auth = AuthFramework::new_initialized_with_storage(config, storage).await?;
+    // This returns an initialized Cinaauth instance
+    let auth = Cinaauth::new_initialized_with_storage(config, storage).await?;
 
-    println!("AuthFramework ready to use!");
+    println!("Cinaauth ready to use!");
 
     Ok(())
 }
@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Example 1: SurrealDB Integration
 
 ```rust
-use auth_framework::{AuthFramework, AuthConfig, errors::Result as AuthResult};
+use cinaauth::{Cinaauth, AuthConfig, errors::Result as AuthResult};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -81,7 +81,7 @@ use your_surreal_crate::SurrealStorage;
 
 #[derive(Clone)]
 pub struct AuthService {
-    auth: Arc<AuthFramework>,
+    auth: Arc<Cinaauth>,
 }
 
 impl AuthService {
@@ -100,7 +100,7 @@ impl AuthService {
         let storage = Arc::new(
             SurrealStorage::new(storage_config)
                 .await
-                .map_err(|e| auth_framework::errors::AuthError::config(
+                .map_err(|e| cinaauth::errors::AuthError::config(
                     format!("Failed to initialize SurrealDB: {}", e)
                 ))?
         );
@@ -108,14 +108,14 @@ impl AuthService {
         // Configure authentication
         let mut config = AuthConfig::default();
         config.security.secret_key = Some(std::env::var("JWT_SECRET").map_err(|_| {
-            auth_framework::errors::AuthError::config(
+            cinaauth::errors::AuthError::config(
                 "JWT_SECRET environment variable is required"
             )
         })?);
 
         // Build the authentication framework
         let auth = Arc::new(
-            AuthFramework::builder()
+            Cinaauth::builder()
                 .customize(|c| {
                     c.secret = config.security.secret_key.clone();
                     c
@@ -136,20 +136,20 @@ impl AuthService {
         password: &str,
     ) -> AuthResult<String> {
         // Use the auth framework normally
-        let credential = auth_framework::authentication::credentials::Credential::Password {
+        let credential = cinaauth::authentication::credentials::Credential::Password {
             username: email.to_string(),
             password: password.to_string(),
         };
 
         // This will use your SurrealDB backend for all storage operations
         match self.auth.authenticate("password", credential).await? {
-            auth_framework::authentication::AuthResult::Success(token) => {
+            cinaauth::authentication::AuthResult::Success(token) => {
                 Ok(token.access_token)
             }
-            auth_framework::authentication::AuthResult::Failed(reason) => {
-                Err(auth_framework::errors::AuthError::authentication_failed(reason))
+            cinaauth::authentication::AuthResult::Failed(reason) => {
+                Err(cinaauth::errors::AuthError::authentication_failed(reason))
             }
-            _ => Err(auth_framework::errors::AuthError::authentication_failed(
+            _ => Err(cinaauth::errors::AuthError::authentication_failed(
                 "Authentication method not configured".to_string()
             ))
         }
@@ -160,7 +160,7 @@ impl AuthService {
 ### Example 2: Web Application Integration
 
 ```rust
-use auth_framework::{AuthFramework, AuthConfig};
+use cinaauth::{Cinaauth, AuthConfig};
 use axum::{
     extract::State,
     http::StatusCode,
@@ -176,7 +176,7 @@ use your_storage_crate::CustomStorage;
 
 #[derive(Clone)]
 struct AppState {
-    auth: Arc<AuthFramework>,
+    auth: Arc<Cinaauth>,
 }
 
 #[tokio::main]
@@ -192,13 +192,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?
     );
 
-    // Configure AuthFramework
+    // Configure Cinaauth
     let mut config = AuthConfig::default();
     config.security.secret_key = Some(std::env::var("JWT_SECRET")?);
 
     // Build with advanced configuration
     let auth = Arc::new(
-        AuthFramework::builder()
+        Cinaauth::builder()
             .customize(|c| {
                 c.secret = config.security.secret_key.clone();
                 c
@@ -230,13 +230,13 @@ async fn login_handler(
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, StatusCode> {
-    let credential = auth_framework::authentication::credentials::Credential::Password {
+    let credential = cinaauth::authentication::credentials::Credential::Password {
         username: payload.email,
         password: payload.password,
     };
 
     match state.auth.authenticate("password", credential).await {
-        Ok(auth_framework::authentication::AuthResult::Success(token)) => {
+        Ok(cinaauth::authentication::AuthResult::Success(token)) => {
             Ok(Json(LoginResponse {
                 access_token: token.access_token,
                 refresh_token: token.refresh_token,
@@ -282,7 +282,7 @@ struct UserProfile {
 ### Example 3: Microservice Architecture
 
 ```rust
-use auth_framework::{AuthFramework, AuthConfig};
+use cinaauth::{Cinaauth, AuthConfig};
 use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -290,7 +290,7 @@ use tonic::{transport::Server, Request, Response, Status};
 use your_distributed_storage::DistributedStorage;
 
 pub struct AuthService {
-    auth: Arc<AuthFramework>,
+    auth: Arc<Cinaauth>,
 }
 
 impl AuthService {
@@ -312,7 +312,7 @@ impl AuthService {
         config.security.secret_key = Some(std::env::var("JWT_SECRET")?);
 
         let auth = Arc::new(
-            AuthFramework::builder()
+            Cinaauth::builder()
                 .customize(|c| {
                     c.secret = config.security.secret_key.clone();
                     c
@@ -345,7 +345,7 @@ impl AuthService {
 ### Environment-Based Configuration
 
 ```rust
-use auth_framework::AuthConfig;
+use cinaauth::AuthConfig;
 use std::env;
 use std::time::Duration;
 
@@ -379,7 +379,7 @@ pub fn create_auth_config() -> Result<AuthConfig, Box<dyn std::error::Error>> {
 ```rust
 use your_storage_crate::{StorageConfig, ConnectionPool};
 
-pub async fn create_storage_backend() -> Result<Arc<dyn auth_framework::storage::AuthStorage>, Box<dyn std::error::Error>> {
+pub async fn create_storage_backend() -> Result<Arc<dyn cinaauth::storage::AuthStorage>, Box<dyn std::error::Error>> {
     let storage_type = std::env::var("STORAGE_TYPE").unwrap_or_else(|_| "memory".to_string());
 
     match storage_type.as_str() {
@@ -422,7 +422,7 @@ pub async fn create_storage_backend() -> Result<Arc<dyn auth_framework::storage:
         }
         _ => {
             // Fallback to memory storage for development
-            Ok(Arc::new(auth_framework::storage::MemoryStorage::new()))
+            Ok(Arc::new(cinaauth::storage::MemoryStorage::new()))
         }
     }
 }
@@ -433,9 +433,9 @@ pub async fn create_storage_backend() -> Result<Arc<dyn auth_framework::storage:
 ### Robust Error Handling
 
 ```rust
-use auth_framework::errors::{AuthError, Result as AuthResult};
+use cinaauth::errors::{AuthError, Result as AuthResult};
 
-pub async fn initialize_auth_service() -> AuthResult<Arc<AuthFramework>> {
+pub async fn initialize_auth_service() -> AuthResult<Arc<Cinaauth>> {
     let storage = create_custom_storage().await.map_err(|e| {
         AuthError::config_with_help(
             format!("Failed to initialize storage: {}", e),
@@ -452,7 +452,7 @@ pub async fn initialize_auth_service() -> AuthResult<Arc<AuthFramework>> {
         )
     })?;
 
-    AuthFramework::builder()
+    Cinaauth::builder()
         .customize(|c| {
             c.secret = config.security.secret_key.clone();
             c
@@ -465,7 +465,7 @@ pub async fn initialize_auth_service() -> AuthResult<Arc<AuthFramework>> {
         .map(Arc::new)
 }
 
-async fn create_custom_storage() -> Result<Arc<dyn auth_framework::storage::AuthStorage>, Box<dyn std::error::Error>> {
+async fn create_custom_storage() -> Result<Arc<dyn cinaauth::storage::AuthStorage>, Box<dyn std::error::Error>> {
     // Your storage creation logic with proper error handling
     Ok(Arc::new(YourStorage::new().await?))
 }
@@ -474,9 +474,9 @@ async fn create_custom_storage() -> Result<Arc<dyn auth_framework::storage::Auth
 ### Graceful Degradation
 
 ```rust
-use auth_framework::storage::MemoryStorage;
+use cinaauth::storage::MemoryStorage;
 
-pub async fn create_resilient_storage() -> Arc<dyn auth_framework::storage::AuthStorage> {
+pub async fn create_resilient_storage() -> Arc<dyn cinaauth::storage::AuthStorage> {
     // Try primary storage first
     if let Ok(storage) = YourPrimaryStorage::connect(&primary_url).await {
         tracing::info!("Connected to primary storage");
@@ -503,14 +503,14 @@ pub async fn create_resilient_storage() -> Arc<dyn auth_framework::storage::Auth
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use auth_framework::testing::helpers;
+    use cinaauth::testing::helpers;
 
-    async fn setup_test_auth() -> AuthFramework {
+    async fn setup_test_auth() -> Cinaauth {
         let storage = Arc::new(YourStorage::new_for_testing().await.unwrap());
         let mut config = AuthConfig::default();
         config.security.secret_key = Some("test-secret-32-characters-long!".to_string());
 
-        AuthFramework::builder()
+        Cinaauth::builder()
             .customize(|c| {
                 c.secret = config.security.secret_key.clone();
                 c
@@ -528,11 +528,11 @@ mod integration_tests {
         let auth = setup_test_auth().await;
 
         // Register authentication method
-        let jwt_method = auth_framework::methods::JwtMethod::new()
+        let jwt_method = cinaauth::methods::JwtMethod::new()
             .secret_key("test-secret-32-characters-long!");
 
         auth.register_method("jwt",
-            auth_framework::methods::AuthMethodEnum::Jwt(jwt_method)
+            cinaauth::methods::AuthMethodEnum::Jwt(jwt_method)
         );
 
         // Test token creation and validation
@@ -648,7 +648,7 @@ spec:
 ### Storage Migration
 
 ```rust
-use auth_framework::storage::StorageMigration;
+use cinaauth::storage::StorageMigration;
 
 pub async fn migrate_storage() -> Result<(), Box<dyn std::error::Error>> {
     let old_storage = Arc::new(OldStorage::connect(&old_config).await?);
@@ -722,7 +722,7 @@ pub async fn migrate_storage() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Summary
 
-This guide covers the complete integration of third-party storage backends with AuthFramework. The builder pattern provides flexibility while maintaining type safety and following Rust best practices. The key points to remember:
+This guide covers the complete integration of third-party storage backends with Cinaauth. The builder pattern provides flexibility while maintaining type safety and following Rust best practices. The key points to remember:
 
 - Use `Arc<dyn AuthStorage>` for your storage instances
 - Prefer the builder pattern for complex configurations
@@ -730,4 +730,4 @@ This guide covers the complete integration of third-party storage backends with 
 - Test thoroughly in both unit and integration scenarios
 - Plan for production deployment and monitoring
 
-With these patterns, you can integrate any storage backend while maintaining AuthFramework's security, performance, and reliability standards.
+With these patterns, you can integrate any storage backend while maintaining Cinaauth's security, performance, and reliability standards.

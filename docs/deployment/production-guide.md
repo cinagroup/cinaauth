@@ -1,4 +1,4 @@
-# AuthFramework v0.5.0-rc24 - Production Deployment Guide
+# Cinaauth v0.5.0-rc24 - Production Deployment Guide
 
 ## Prerequisites
 
@@ -22,8 +22,8 @@
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/ciresnave/auth-framework.git
-cd auth-framework
+git clone https://github.com/cinagroup/cinaauth.git
+cd cinaauth
 ```
 
 ### 2. Generate Secrets
@@ -159,8 +159,8 @@ default_statistics_target = 100
 BACKUP_DIR="/backups/postgres"
 DATE=$(date +%Y%m%d_%H%M%S)
 
-docker exec postgres pg_dump -U auth_user auth_framework | \
-  gzip > "$BACKUP_DIR/auth_framework_$DATE.sql.gz"
+docker exec postgres pg_dump -U auth_user cinaauth | \
+  gzip > "$BACKUP_DIR/cinaauth_$DATE.sql.gz"
 
 # Keep only last 7 days
 find "$BACKUP_DIR" -name "*.sql.gz" -mtime +7 -delete
@@ -204,7 +204,7 @@ worker_threads = 4
 max_connections = 100
 
 [database]
-url = "postgresql://auth_user@postgres:5432/auth_framework"
+url = "postgresql://auth_user@postgres:5432/cinaauth"
 max_connections = 20
 min_connections = 5
 connect_timeout = 30
@@ -294,7 +294,7 @@ docker run --rm --net host --pid host --userns host --cap-add audit_control \
 1. Access Grafana: `https://auth.yourdomain.com:3000`
 2. Login with admin credentials from `secrets/grafana_password.txt`
 3. Import dashboards:
-   - AuthFramework Application Metrics
+   - Cinaauth Application Metrics
    - Infrastructure Monitoring
    - Security Events
 
@@ -345,7 +345,7 @@ groups:
 
 ```bash
 # Optimize for production
-export RUST_LOG=auth_framework=info
+export RUST_LOG=cinaauth=info
 export TOKIO_WORKER_THREADS=4
 export DATABASE_POOL_SIZE=20
 export REDIS_POOL_SIZE=10
@@ -439,7 +439,7 @@ BACKUP_DIR="/backups/authframework"
 DATE=$(date +%Y%m%d_%H%M%S)
 
 # Database backup
-docker exec postgres pg_dump -U auth_user auth_framework | \
+docker exec postgres pg_dump -U auth_user cinaauth | \
   gzip > "$BACKUP_DIR/db_$DATE.sql.gz"
 
 # Redis backup
@@ -512,7 +512,7 @@ openssl s_client -connect auth.yourdomain.com:443 -servername auth.yourdomain.co
 ```bash
 # Enable debug logging
 docker-compose -f docker-compose.production.yml \
-  exec auth-server sh -c 'RUST_LOG=debug /usr/local/bin/auth-framework'
+  exec auth-server sh -c 'RUST_LOG=debug /usr/local/bin/cinaauth'
 ```
 
 ## Maintenance
@@ -528,8 +528,8 @@ docker-compose -f docker-compose.production.yml pull
 docker-compose -f docker-compose.production.yml up -d
 
 # Database maintenance
-docker exec postgres vacuumdb -U auth_user auth_framework
-docker exec postgres reindexdb -U auth_user auth_framework
+docker exec postgres vacuumdb -U auth_user cinaauth
+docker exec postgres reindexdb -U auth_user cinaauth
 
 # Log rotation
 docker-compose -f docker-compose.production.yml logs --no-color | \
@@ -558,7 +558,7 @@ apt update && apt upgrade -y
 
 ### Community
 
-- **GitHub Issues**: <https://github.com/ciresnave/auth-framework/issues>
+- **GitHub Issues**: <https://github.com/cinagroup/cinaauth/issues>
 - **Discord Community**: <https://discord.gg/authframework>
 - **Stack Overflow**: Tag `authframework`
 

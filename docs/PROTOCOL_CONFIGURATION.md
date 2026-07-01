@@ -1,7 +1,7 @@
 # Protocol & Feature Configuration Guide
 
 This guide covers how to enable and configure each protocol and feature available
-in AuthFramework. Each section documents the relevant feature flag (if any),
+in Cinaauth. Each section documents the relevant feature flag (if any),
 configuration struct, key fields, and a minimal working example.
 
 > **Tip:** Most protocols listed here are enabled by default.
@@ -39,7 +39,7 @@ configuration struct, key fields, and a minimal working example.
 ### Configuration
 
 ```rust,no_run
-use auth_framework::server::oauth::OAuth2Config;
+use cinaauth::server::oauth::OAuth2Config;
 use std::time::Duration;
 
 let config = OAuth2Config::builder()
@@ -68,16 +68,16 @@ let config = OAuth2Config::builder()
 ### Server Initialization
 
 ```rust,no_run
-use auth_framework::server::oauth::OAuth2Server;
+use cinaauth::server::oauth::OAuth2Server;
 # use std::sync::Arc;
-# let storage: Arc<dyn auth_framework::storage::AuthStorage> = unimplemented!();
+# let storage: Arc<dyn cinaauth::storage::AuthStorage> = unimplemented!();
 
 // With default config
 let server = OAuth2Server::new(storage.clone()).await?;
 
 // With custom config
 let server = OAuth2Server::new_with_config(storage, config).await?;
-# Ok::<(), auth_framework::errors::AuthError>(())
+# Ok::<(), cinaauth::errors::AuthError>(())
 ```
 
 ---
@@ -90,8 +90,8 @@ let server = OAuth2Server::new_with_config(storage, config).await?;
 ### Configuration
 
 ```rust,no_run
-use auth_framework::server::oidc::OidcConfig;
-use auth_framework::server::oauth::OAuth2Config;
+use cinaauth::server::oidc::OidcConfig;
+use cinaauth::server::oauth::OAuth2Config;
 use std::time::Duration;
 
 let config = OidcConfig::builder()
@@ -126,14 +126,14 @@ let config = OidcConfig::builder()
 
 ```toml
 [dependencies]
-auth_framework = { version = "0.5", features = ["saml"] }
+cinaauth = { version = "0.5", features = ["saml"] }
 ```
 
 ### Identity Provider Configuration
 
 ```rust,ignore
-use auth_framework::server::core::SamlIdpConfig;
-use auth_framework::server::core::SamlIdentityProvider;
+use cinaauth::server::core::SamlIdpConfig;
+use cinaauth::server::core::SamlIdentityProvider;
 
 let idp_config = SamlIdpConfig {
     entity_id: "https://idp.example.com".to_string(),
@@ -168,7 +168,7 @@ storage.store_kv(
 Register SAML via `AuthConfig::method_config()`:
 
 ```rust,ignore
-use auth_framework::config::AuthConfig;
+use cinaauth::config::AuthConfig;
 
 let config = AuthConfig::new()
     .method_config("saml", serde_json::json!({
@@ -189,13 +189,13 @@ let config = AuthConfig::new()
 
 ```toml
 [dependencies]
-auth_framework = { version = "0.5", features = ["passkeys"] }
+cinaauth = { version = "0.5", features = ["passkeys"] }
 ```
 
 ### Auth Method Configuration
 
 ```rust,ignore
-use auth_framework::config::AuthConfig;
+use cinaauth::config::AuthConfig;
 
 let config = AuthConfig::new()
     .method_config("passkey", serde_json::json!({
@@ -236,8 +236,8 @@ let config = AuthConfig::new()
 ### Configuration
 
 ```rust,ignore
-use auth_framework::server::security::DpopManager;
-use auth_framework::security::SecureJwtValidator;
+use cinaauth::server::security::DpopManager;
+use cinaauth::security::SecureJwtValidator;
 
 let jwt_validator = SecureJwtValidator::new(jwt_config)?;
 let dpop_manager = DpopManager::new(jwt_validator);
@@ -274,7 +274,7 @@ let result = dpop_manager
 ### Configuration
 
 ```rust,ignore
-use auth_framework::server::oauth::PARManager;
+use cinaauth::server::oauth::PARManager;
 use std::time::Duration;
 
 // Default 90-second expiration (per RFC 9126)
@@ -309,8 +309,8 @@ let stored = par_manager.get_request(&response.request_uri).await?;
 ### Configuration
 
 ```rust,ignore
-use auth_framework::server::core::DeviceFlowConfig;
-use auth_framework::server::core::DeviceFlowManager;
+use cinaauth::server::core::DeviceFlowConfig;
+use cinaauth::server::core::DeviceFlowManager;
 
 let config = DeviceFlowConfig {
     user_code_length: 8,
@@ -345,8 +345,8 @@ let mgr = DeviceFlowManager::new_with_storage(config, storage);
 ### Configuration
 
 ```rust,ignore
-use auth_framework::server::token_exchange::AdvancedTokenExchangeConfig;
-use auth_framework::server::token_exchange::AdvancedTokenExchangeManager;
+use cinaauth::server::token_exchange::AdvancedTokenExchangeConfig;
+use cinaauth::server::token_exchange::AdvancedTokenExchangeManager;
 use std::time::Duration;
 
 let config = AdvancedTokenExchangeConfig {
@@ -391,9 +391,9 @@ let manager = AdvancedTokenExchangeManager::new(config);
 ### Configuration
 
 ```rust,ignore
-use auth_framework::server::oidc::EnhancedCibaConfig;
-use auth_framework::server::oidc::EnhancedCibaManager;
-use auth_framework::security::SecureJwtConfig;
+use cinaauth::server::oidc::EnhancedCibaConfig;
+use cinaauth::server::oidc::EnhancedCibaManager;
+use cinaauth::security::SecureJwtConfig;
 use std::time::Duration;
 
 let ciba_config = EnhancedCibaConfig {
@@ -436,8 +436,8 @@ let ciba_manager = EnhancedCibaManager::new(ciba_config, storage)?;
 ### Configuration
 
 ```rust,ignore
-use auth_framework::server::oidc::AdvancedJarmConfig;
-use auth_framework::server::oidc::AdvancedJarmManager;
+use cinaauth::server::oidc::AdvancedJarmConfig;
+use cinaauth::server::oidc::AdvancedJarmManager;
 use jsonwebtoken::Algorithm;
 
 let jarm_config = AdvancedJarmConfig {
@@ -475,9 +475,9 @@ let jarm_manager = AdvancedJarmManager::new(jarm_config)?;
 ## Additional Implemented Protocol Modules
 
 The sections above cover the first-class server and runtime features that have
-top-level configuration paths in the framework. AuthFramework also ships a
-broader set of implemented protocol modules under `auth_framework::protocols::*`
-and selected API endpoints under `auth_framework::api::advanced_protocols`.
+top-level configuration paths in the framework. Cinaauth also ships a
+broader set of implemented protocol modules under `cinaauth::protocols::*`
+and selected API endpoints under `cinaauth::api::advanced_protocols`.
 
 Use these modules directly when you need lower-level protocol building blocks or
 specialized integration points that are not routed through `AuthConfig`.
@@ -486,40 +486,40 @@ specialized integration points that are not routed through `AuthConfig`.
 
 | Protocol   | Source                        | Entry Point                                                     | Enablement / Configuration                                                                                     |
 | ---------- | ----------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| OpenID4VCI | `src/protocols/openid4vci.rs` | `auth_framework::protocols::openid4vci`                         | Always enabled; construct protocol types directly. API endpoints also live in `src/api/advanced_protocols.rs`. |
-| OpenID4VP  | `src/protocols/openid4vp.rs`  | `auth_framework::protocols::openid4vp`                          | Always enabled; direct module usage. API endpoints also live in `src/api/advanced_protocols.rs`.               |
-| SD-JWT     | `src/protocols/sd_jwt.rs`     | `auth_framework::protocols::sd_jwt::{SdJwtIssuer, SdJwtConfig}` | Always enabled; create issuer / verifier types directly from the module.                                       |
-| GNAP       | `src/protocols/gnap.rs`       | `auth_framework::protocols::gnap`                               | Always enabled; use the GNAP module APIs directly.                                                             |
-| UMA        | `src/protocols/uma.rs`        | `auth_framework::protocols::uma`                                | Always enabled; use the UMA types and handlers directly.                                                       |
-| SCIM       | `src/protocols/scim.rs`       | `auth_framework::protocols::scim`                               | Always enabled; integrate through the SCIM module for provisioning flows.                                      |
-| SIWE       | `src/protocols/siwe.rs`       | `auth_framework::protocols::siwe`                               | Always enabled; direct module integration for Sign-In with Ethereum.                                           |
+| OpenID4VCI | `src/protocols/openid4vci.rs` | `cinaauth::protocols::openid4vci`                         | Always enabled; construct protocol types directly. API endpoints also live in `src/api/advanced_protocols.rs`. |
+| OpenID4VP  | `src/protocols/openid4vp.rs`  | `cinaauth::protocols::openid4vp`                          | Always enabled; direct module usage. API endpoints also live in `src/api/advanced_protocols.rs`.               |
+| SD-JWT     | `src/protocols/sd_jwt.rs`     | `cinaauth::protocols::sd_jwt::{SdJwtIssuer, SdJwtConfig}` | Always enabled; create issuer / verifier types directly from the module.                                       |
+| GNAP       | `src/protocols/gnap.rs`       | `cinaauth::protocols::gnap`                               | Always enabled; use the GNAP module APIs directly.                                                             |
+| UMA        | `src/protocols/uma.rs`        | `cinaauth::protocols::uma`                                | Always enabled; use the UMA types and handlers directly.                                                       |
+| SCIM       | `src/protocols/scim.rs`       | `cinaauth::protocols::scim`                               | Always enabled; integrate through the SCIM module for provisioning flows.                                      |
+| SIWE       | `src/protocols/siwe.rs`       | `cinaauth::protocols::siwe`                               | Always enabled; direct module integration for Sign-In with Ethereum.                                           |
 
 ### Token, Credential, and Capability Formats
 
 | Protocol         | Source                             | Entry Point                                  | Enablement / Configuration                                                               |
 | ---------------- | ---------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| PASETO           | `src/protocols/paseto.rs`          | `auth_framework::protocols::paseto`          | Always enabled; use the PASETO module directly.                                          |
-| Macaroons        | `src/protocols/macaroons.rs`       | `auth_framework::protocols::macaroons`       | Always enabled; direct module integration.                                               |
-| HOTP             | `src/protocols/hotp.rs`            | `auth_framework::protocols::hotp`            | Always enabled; direct module usage for HOTP generation / verification.                  |
-| FIDO U2F / FIDO1 | `src/protocols/fido1.rs`           | `auth_framework::protocols::fido1`           | Always enabled; use alongside passkeys when legacy U2F support is required.              |
-| SAML Assertions  | `src/protocols/saml_assertions.rs` | `auth_framework::protocols::saml_assertions` | Always enabled; lower-level assertion handling separate from the top-level SAML feature. |
+| PASETO           | `src/protocols/paseto.rs`          | `cinaauth::protocols::paseto`          | Always enabled; use the PASETO module directly.                                          |
+| Macaroons        | `src/protocols/macaroons.rs`       | `cinaauth::protocols::macaroons`       | Always enabled; direct module integration.                                               |
+| HOTP             | `src/protocols/hotp.rs`            | `cinaauth::protocols::hotp`            | Always enabled; direct module usage for HOTP generation / verification.                  |
+| FIDO U2F / FIDO1 | `src/protocols/fido1.rs`           | `cinaauth::protocols::fido1`           | Always enabled; use alongside passkeys when legacy U2F support is required.              |
+| SAML Assertions  | `src/protocols/saml_assertions.rs` | `cinaauth::protocols::saml_assertions` | Always enabled; lower-level assertion handling separate from the top-level SAML feature. |
 
 ### Infrastructure, Federation, and Enterprise Protocols
 
 | Protocol      | Source                           | Entry Point                                                 | Enablement / Configuration                                                                                                  |
 | ------------- | -------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| SPIFFE        | `src/protocols/spiffe.rs`        | `auth_framework::protocols::spiffe`                         | Always enabled; API endpoint support also exists in `src/api/advanced_protocols.rs`.                                        |
-| ACME          | `src/protocols/acme.rs`          | `auth_framework::protocols::acme::{AcmeClient, AcmeConfig}` | Always enabled; direct module configuration. API directory endpoint support also exists in `src/api/advanced_protocols.rs`. |
-| CAEP          | `src/protocols/caep.rs`          | `auth_framework::protocols::caep`                           | Always enabled; continuous access event APIs also exist in `src/api/advanced_protocols.rs`.                                 |
-| Kerberos      | `src/protocols/kerberos.rs`      | `auth_framework::protocols::kerberos`                       | Always enabled; use the Kerberos module directly.                                                                           |
-| RADIUS        | `src/protocols/radius.rs`        | `auth_framework::protocols::radius`                         | Always enabled; direct module usage.                                                                                        |
-| TACACS+       | `src/protocols/tacacs.rs`        | `auth_framework::protocols::tacacs`                         | Always enabled; direct module usage.                                                                                        |
-| WS-Federation | `src/protocols/ws_federation.rs` | `auth_framework::protocols::ws_federation`                  | Always enabled; direct module usage.                                                                                        |
-| WS-Trust      | `src/protocols/ws_trust.rs`      | `auth_framework::protocols::ws_trust`                       | Always enabled; direct module usage.                                                                                        |
-| WS-Security   | `src/protocols/ws_security.rs`   | `auth_framework::protocols::ws_security`                    | Always enabled; direct module usage.                                                                                        |
-| CAS           | `src/protocols/cas.rs`           | `auth_framework::protocols::cas`                            | Always enabled; direct module usage.                                                                                        |
-| OAuth 1.0     | `src/protocols/oauth1.rs`        | `auth_framework::protocols::oauth1`                         | Always enabled; direct module usage for legacy interop.                                                                     |
-| IndieAuth     | `src/protocols/indieauth.rs`     | `auth_framework::protocols::indieauth`                      | Always enabled; direct module usage.                                                                                        |
+| SPIFFE        | `src/protocols/spiffe.rs`        | `cinaauth::protocols::spiffe`                         | Always enabled; API endpoint support also exists in `src/api/advanced_protocols.rs`.                                        |
+| ACME          | `src/protocols/acme.rs`          | `cinaauth::protocols::acme::{AcmeClient, AcmeConfig}` | Always enabled; direct module configuration. API directory endpoint support also exists in `src/api/advanced_protocols.rs`. |
+| CAEP          | `src/protocols/caep.rs`          | `cinaauth::protocols::caep`                           | Always enabled; continuous access event APIs also exist in `src/api/advanced_protocols.rs`.                                 |
+| Kerberos      | `src/protocols/kerberos.rs`      | `cinaauth::protocols::kerberos`                       | Always enabled; use the Kerberos module directly.                                                                           |
+| RADIUS        | `src/protocols/radius.rs`        | `cinaauth::protocols::radius`                         | Always enabled; direct module usage.                                                                                        |
+| TACACS+       | `src/protocols/tacacs.rs`        | `cinaauth::protocols::tacacs`                         | Always enabled; direct module usage.                                                                                        |
+| WS-Federation | `src/protocols/ws_federation.rs` | `cinaauth::protocols::ws_federation`                  | Always enabled; direct module usage.                                                                                        |
+| WS-Trust      | `src/protocols/ws_trust.rs`      | `cinaauth::protocols::ws_trust`                       | Always enabled; direct module usage.                                                                                        |
+| WS-Security   | `src/protocols/ws_security.rs`   | `cinaauth::protocols::ws_security`                    | Always enabled; direct module usage.                                                                                        |
+| CAS           | `src/protocols/cas.rs`           | `cinaauth::protocols::cas`                            | Always enabled; direct module usage.                                                                                        |
+| OAuth 1.0     | `src/protocols/oauth1.rs`        | `cinaauth::protocols::oauth1`                         | Always enabled; direct module usage for legacy interop.                                                                     |
+| IndieAuth     | `src/protocols/indieauth.rs`     | `cinaauth::protocols::indieauth`                      | Always enabled; direct module usage.                                                                                        |
 
 ### Usage Pattern
 
@@ -527,7 +527,7 @@ When a protocol is listed in this section rather than in a top-level config
 section above, the usual integration pattern is:
 
 ```rust,ignore
-use auth_framework::protocols::acme::{AcmeClient, AcmeConfig};
+use cinaauth::protocols::acme::{AcmeClient, AcmeConfig};
 
 let config = AcmeConfig::default();
 let client = AcmeClient::new(config)?;
@@ -536,7 +536,7 @@ let client = AcmeClient::new(config)?;
 For Kerberos, use the builder or an environment preset:
 
 ```rust,ignore
-use auth_framework::protocols::kerberos::KerberosConfig;
+use cinaauth::protocols::kerberos::KerberosConfig;
 
 let config = KerberosConfig::builder("HTTP/server@EXAMPLE.COM", "EXAMPLE.COM")
     .keytab_path("/etc/krb5.keytab")
@@ -550,7 +550,7 @@ let config = KerberosConfig::active_directory("HTTP/server@CORP.COM", "CORP.COM"
 For RADIUS, use the convenience constructor (validates the shared secret):
 
 ```rust,ignore
-use auth_framework::protocols::radius::RadiusConfig;
+use cinaauth::protocols::radius::RadiusConfig;
 
 let config = RadiusConfig::with_server("radius.corp:1812", "s3cret-key")?;
 ```
@@ -569,7 +569,7 @@ of the library surface even when they are not yet wired through `AuthConfig`.
 ### Configuration
 
 ```rust
-use auth_framework::config::RateLimitConfig;
+use cinaauth::config::RateLimitConfig;
 use std::time::Duration;
 
 // Custom rate limiting
@@ -592,11 +592,11 @@ let config = RateLimitConfig::per_hour(10000); // 10 000 req/h
 ### Via the Builder
 
 ```rust,no_run
-use auth_framework::prelude::*;
+use cinaauth::prelude::*;
 use std::time::Duration;
 
 # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-let auth = AuthFramework::builder()
+let auth = Cinaauth::builder()
     .with_jwt().secret("long-secret-key-at-least-32-chars!!").done()
     .with_storage().memory().done()
     .with_rate_limiting()
@@ -625,7 +625,7 @@ let auth = AuthFramework::builder()
 ### Enabling MFA
 
 ```rust,no_run
-use auth_framework::config::AuthConfig;
+use cinaauth::config::AuthConfig;
 
 let config = AuthConfig::new()
     .enable_multi_factor(true);
@@ -645,8 +645,8 @@ let valid = mfa_manager.totp.verify_code(&user_id, "123456").await?;
 ### SMS MFA (via SMSKit)
 
 ```rust,ignore
-use auth_framework::auth_modular::mfa::SmsKitConfig;
-use auth_framework::auth_modular::mfa::SmsKitProvider;
+use cinaauth::auth_modular::mfa::SmsKitConfig;
+use cinaauth::auth_modular::mfa::SmsKitProvider;
 
 let sms_config = SmsKitConfig {
     provider: SmsKitProvider::Twilio,
@@ -693,7 +693,7 @@ let valid = mfa_manager.backup_codes.verify(&user_id, "ABCD-EFGH").await?;
 ### Configuration
 
 ```rust,ignore
-use auth_framework::session::SessionConfig;
+use cinaauth::session::SessionConfig;
 use std::time::Duration;
 
 let config = SessionConfig::builder()
@@ -714,7 +714,7 @@ let session_manager = SessionManager::new(config, storage).await?;
 For common deployment scenarios you can start from a preset and override individual fields:
 
 ```rust,ignore
-use auth_framework::session::manager::SessionConfigBuilder;
+use cinaauth::session::manager::SessionConfigBuilder;
 
 // Typical web application (1h default, 24h max, 30min idle, 5 concurrent)
 let config = SessionConfigBuilder::for_web_app().build();
@@ -762,7 +762,7 @@ let config = SessionConfig::builder()
 ### Basic RBAC Setup
 
 ```rust,ignore
-use auth_framework::authorization::{AuthorizationEngine, AbacRole, AbacPermission};
+use cinaauth::authorization::{AuthorizationEngine, AbacRole, AbacPermission};
 
 let auth_engine = AuthorizationEngine::new(storage);
 
@@ -780,7 +780,7 @@ auth_engine.store_role(&admin_role).await?;
 ### Assigning Roles
 
 ```rust,ignore
-use auth_framework::authorization::UserRole;
+use cinaauth::authorization::UserRole;
 use std::time::SystemTime;
 
 let user_role = UserRole {
@@ -796,7 +796,7 @@ auth_engine.assign_role(&user_role).await?;
 ### ABAC Access Control
 
 ```rust,ignore
-use auth_framework::authorization::{AccessContext, AccessCondition};
+use cinaauth::authorization::{AccessContext, AccessCondition};
 
 // Build context with attributes
 let context = AccessContext::new("user123")

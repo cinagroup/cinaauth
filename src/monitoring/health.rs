@@ -101,7 +101,7 @@ impl HealthChecker {
         // Verify core cryptographic primitives are operational by computing a short hash.
         // If SHA-256 is broken/panics, the auth system cannot function.
         let mut hasher = Sha256::new();
-        hasher.update(b"auth-framework-health-probe");
+        hasher.update(b"cinaauth-health-probe");
         let digest = hasher.finalize();
 
         // Sanity check: SHA-256 always produces 32 bytes.

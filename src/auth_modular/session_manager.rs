@@ -28,7 +28,7 @@ pub struct SessionCoordinationStats {
 ///
 /// # Example
 /// ```rust,ignore
-/// use auth_framework::auth_modular::SessionManager;
+/// use cinaauth::auth_modular::SessionManager;
 /// use std::sync::Arc;
 ///
 /// let mgr = SessionManager::new(storage.clone());
@@ -44,7 +44,7 @@ impl SessionManager {
     ///
     /// # Example
     /// ```rust,ignore
-    /// use auth_framework::auth_modular::SessionManager;
+    /// use cinaauth::auth_modular::SessionManager;
     /// let mgr = SessionManager::new(storage.clone());
     /// ```
     pub fn new(storage: Arc<dyn AuthStorage>) -> Self {

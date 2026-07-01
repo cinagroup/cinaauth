@@ -1,9 +1,9 @@
 //! Production Deployment Configuration Examples
 //!
 //! This example demonstrates production-ready OAuth 2.0 server configurations
-//! using working components of the Auth Framework.
+//! using working components of the cinaauth.
 
-use auth_framework::oauth2_server::OAuth2Config;
+use cinaauth::oauth2_server::OAuth2Config;
 use std::time::Duration;
 
 #[tokio::main]

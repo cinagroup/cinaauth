@@ -1,11 +1,11 @@
-//! Comprehensive API and Integration Tests for AuthFramewo        let mut framework = AuthFramework::new(config);
+//! Comprehensive API and Integration Tests for AuthFramewo        let mut framework = Cinaauth::new(config);
 // Framework not yet initialized
 //!
 //! This test suite validates all public APIs, edge cases, and integration scenarios
-//! for the current AuthFramework implementation.
+//! for the current Cinaauth implementation.
 
-use auth_framework::{
-    auth::AuthFramework,
+use cinaauth::{
+    auth::Cinaauth,
     authentication::credentials::{Credential, CredentialMetadata},
     config::{
         AuthConfig, CookieSameSite, JwtAlgorithm, PasswordHashAlgorithm, RateLimitConfig,
@@ -17,7 +17,7 @@ use auth_framework::{
 };
 use std::time::Duration;
 
-/// Test suite for AuthFramework initialization and configuration
+/// Test suite for Cinaauth initialization and configuration
 #[cfg(test)]
 mod framework_lifecycle_tests {
     use super::*;
@@ -26,7 +26,7 @@ mod framework_lifecycle_tests {
     async fn test_new_framework_with_minimal_config() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
 
-        let framework = AuthFramework::new(config);
+        let framework = Cinaauth::new(config);
         // Framework created successfully (can't test initialization state)
         let credential = Credential::password("test", "pass");
         assert!(
@@ -63,7 +63,7 @@ mod framework_lifecycle_tests {
                 burst: 150,
             });
 
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         assert!(framework.initialize().await.is_ok());
         // Framework successfully initialized
     }
@@ -71,7 +71,7 @@ mod framework_lifecycle_tests {
     #[tokio::test]
     async fn test_framework_initialization_success() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         let result = framework.initialize().await;
         assert!(result.is_ok());
@@ -81,7 +81,7 @@ mod framework_lifecycle_tests {
     #[tokio::test]
     async fn test_framework_double_initialization() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         // First initialization
         assert!(framework.initialize().await.is_ok());
@@ -98,17 +98,17 @@ mod framework_lifecycle_tests {
         let config = AuthConfig::new().secret("short".to_string());
 
         // This should not panic but should show a warning
-        let _framework = AuthFramework::new(config);
+        let _framework = Cinaauth::new(config);
     }
 
     #[test]
     fn test_framework_new_with_env_var_fallback() {
         // Test JWT_SECRET environment variable fallback
-        let _env = auth_framework::testing::test_infrastructure::TestEnvironmentGuard::new()
+        let _env = cinaauth::testing::test_infrastructure::TestEnvironmentGuard::new()
             .with_jwt_secret("env_secret_key_32_bytes_long!!!!!");
 
         let config = AuthConfig::new(); // No explicit secret
-        let _framework = AuthFramework::new(config);
+        let _framework = Cinaauth::new(config);
     }
 }
 
@@ -120,7 +120,7 @@ mod method_registration_tests {
     #[tokio::test]
     async fn test_register_password_method() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
 
@@ -130,7 +130,7 @@ mod method_registration_tests {
     #[tokio::test]
     async fn test_register_multiple_methods() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
@@ -143,7 +143,7 @@ mod method_registration_tests {
     #[tokio::test]
     async fn test_register_method_overwrite() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         // Register method twice - should overwrite
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
@@ -158,9 +158,9 @@ mod method_registration_tests {
 mod authentication_tests {
     use super::*;
 
-    async fn setup_framework_with_methods() -> AuthFramework {
+    async fn setup_framework_with_methods() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
@@ -173,7 +173,7 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_authenticate_with_uninitialized_framework() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let framework = AuthFramework::new(config); // Not initialized
+        let framework = Cinaauth::new(config); // Not initialized
 
         let credential = Credential::password("user", "password");
         let result = framework.authenticate("password", credential).await;
@@ -216,7 +216,7 @@ mod authentication_tests {
         // Should succeed but return failure result from method
         assert!(result.is_ok());
         match result.unwrap() {
-            auth_framework::AuthResult::Failure(reason) => {
+            cinaauth::AuthResult::Failure(reason) => {
                 assert!(reason.contains("empty"));
             }
             _ => panic!("Expected failure result"),
@@ -232,7 +232,7 @@ mod authentication_tests {
 
         assert!(result.is_ok());
         match result.unwrap() {
-            auth_framework::AuthResult::Failure(reason) => {
+            cinaauth::AuthResult::Failure(reason) => {
                 assert!(reason.contains("empty"));
             }
             _ => panic!("Expected failure result"),
@@ -248,7 +248,7 @@ mod authentication_tests {
 
         assert!(result.is_ok());
         match result.unwrap() {
-            auth_framework::AuthResult::Failure(reason) => {
+            cinaauth::AuthResult::Failure(reason) => {
                 assert!(reason.contains("empty"));
             }
             _ => panic!("Expected failure result"),
@@ -271,7 +271,7 @@ mod authentication_tests {
         assert!(result.is_ok());
         // With no registered users, password auth yields a Failure variant
         match result.unwrap() {
-            auth_framework::AuthResult::Failure(_) => {}
+            cinaauth::AuthResult::Failure(_) => {}
             other => panic!("Expected Failure for unknown user, got {:?}", other),
         }
     }
@@ -289,7 +289,7 @@ mod authentication_tests {
         assert!(result.is_ok());
         // Localhost IP should still be processed; no registered user → Failure
         match result.unwrap() {
-            auth_framework::AuthResult::Failure(_) => {}
+            cinaauth::AuthResult::Failure(_) => {}
             other => panic!("Expected Failure for localhost auth, got {:?}", other),
         }
     }
@@ -300,9 +300,9 @@ mod authentication_tests {
 mod token_management_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -310,7 +310,7 @@ mod token_management_tests {
     #[tokio::test]
     async fn test_create_auth_token_success() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
         framework.initialize().await.unwrap();
 
@@ -326,7 +326,7 @@ mod token_management_tests {
         assert!(result.is_ok());
         let token = result.unwrap();
         assert_eq!(token.user_id, "user123");
-        assert_eq!(token.scopes, auth_framework::types::Scopes::new(vec!["read".to_string(), "write".to_string()]));
+        assert_eq!(token.scopes, cinaauth::types::Scopes::new(vec!["read".to_string(), "write".to_string()]));
         assert_eq!(token.auth_method, "password");
     }
 
@@ -352,7 +352,7 @@ mod token_management_tests {
     #[tokio::test]
     async fn test_validate_token_uninitialized_framework() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let framework = AuthFramework::new(config); // Not initialized
+        let framework = Cinaauth::new(config); // Not initialized
 
         let token = AuthToken::new("user", "token", Duration::from_secs(3600), "test");
         let result = framework.validate_token(&token).await;
@@ -383,9 +383,9 @@ mod token_management_tests {
 mod user_management_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -462,9 +462,9 @@ mod user_management_tests {
 mod mfa_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -571,9 +571,9 @@ mod mfa_tests {
 mod api_key_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -601,9 +601,9 @@ mod api_key_tests {
 mod session_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -650,7 +650,7 @@ mod rate_limiting_tests {
                 window: Duration::from_secs(60),
                 burst: 15,
             });
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         let result = framework.check_ip_rate_limit("192.168.1.1").await;
@@ -668,7 +668,7 @@ mod rate_limiting_tests {
                 window: Duration::from_secs(60),
                 burst: 10,
             });
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         let result = framework.check_ip_rate_limit("192.168.1.1").await;
@@ -682,9 +682,9 @@ mod rate_limiting_tests {
 mod monitoring_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -745,7 +745,7 @@ mod edge_case_tests {
     #[tokio::test]
     async fn test_concurrent_initialization() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         // Try to initialize from multiple tasks simultaneously
         let handles: Vec<_> = (0..5)
@@ -775,6 +775,6 @@ mod edge_case_tests {
             .issuer(large_string.clone())
             .audience(large_string);
 
-        let _framework = AuthFramework::new(config);
+        let _framework = Cinaauth::new(config);
     }
 }

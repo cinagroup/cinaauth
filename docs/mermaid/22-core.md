@@ -1,4 +1,4 @@
-# Package: core (AuthFramework root)
+# Package: core (Cinaauth root)
 
 > `src/lib.rs` — the root public API type
 > [← 21-admin](21-admin.md) · [index](23-cross-package.md) · [23-cross-package →](23-cross-package.md)
@@ -11,7 +11,7 @@ classDiagram
         MfaRequired
         Unauthorized
     }
-    class AuthFramework {
+    class Cinaauth {
         -Arc~AuthStorage~ storage
         -Arc~TokenManager~ token_manager
         -Arc~AuthConfig~ config
@@ -58,19 +58,19 @@ classDiagram
         +bool require_pkce
         +bool active
     }
-    AuthFramework ..> AuthResult
-    AuthFramework ..> AuthConfig
-    AuthFramework ..> TokenManager
-    AuthFramework ..> AuthStorage
-    AuthFramework ..> OAuth2Server
-    AuthFramework ..> AuthorizationService
-    AuthFramework ..> SessionManager
-    AuthFramework ..> SecureSessionManager
-    AuthFramework ..> AuditLogger
-    AuthFramework ..> SecurityManager
-    AuthFramework ..> PermissionChecker
-    AuthFramework ..> DistributedRateLimiter
-    AuthFramework ..> ServerOAuth2Server
+    Cinaauth ..> AuthResult
+    Cinaauth ..> AuthConfig
+    Cinaauth ..> TokenManager
+    Cinaauth ..> AuthStorage
+    Cinaauth ..> OAuth2Server
+    Cinaauth ..> AuthorizationService
+    Cinaauth ..> SessionManager
+    Cinaauth ..> SecureSessionManager
+    Cinaauth ..> AuditLogger
+    Cinaauth ..> SecurityManager
+    Cinaauth ..> PermissionChecker
+    Cinaauth ..> DistributedRateLimiter
+    Cinaauth ..> ServerOAuth2Server
     ClientModule *-- ClientType
     ClientModule *-- ClientConfig
     ClientConfig ..> ClientType

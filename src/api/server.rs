@@ -2,7 +2,7 @@
 //!
 //! Main server that hosts all API endpoints
 
-use crate::AuthFramework;
+use crate::Cinaauth;
 #[cfg(feature = "saml")]
 use crate::api::saml;
 use crate::api::{
@@ -157,29 +157,29 @@ impl ApiServerConfigBuilder {
 /// ```
 pub struct ApiServer {
     config: ApiServerConfig,
-    auth_framework: Arc<AuthFramework>,
+    cinaauth: Arc<Cinaauth>,
 }
 
 impl ApiServer {
     /// Create a server with the default [`ApiServerConfig`].
-    pub fn new(auth_framework: Arc<AuthFramework>) -> Self {
+    pub fn new(cinaauth: Arc<Cinaauth>) -> Self {
         Self {
             config: ApiServerConfig::default(),
-            auth_framework,
+            cinaauth,
         }
     }
 
     /// Create a server with a custom [`ApiServerConfig`].
-    pub fn with_config(auth_framework: Arc<AuthFramework>, config: ApiServerConfig) -> Self {
+    pub fn with_config(cinaauth: Arc<Cinaauth>, config: ApiServerConfig) -> Self {
         Self {
             config,
-            auth_framework,
+            cinaauth,
         }
     }
 
     /// Assemble the Axum [`Router`] with all route groups and middleware.
     pub async fn build_router(&self) -> crate::errors::Result<Router> {
-        let state = ApiState::new(self.auth_framework.clone()).await?;
+        let state = ApiState::new(self.cinaauth.clone()).await?;
 
         // Create nested router for API v1
         let api_v1 = Router::new()
@@ -416,7 +416,7 @@ impl ApiServer {
 
         let addr = SocketAddr::new(self.config.host.parse()?, self.config.port);
 
-        info!("🚀 AuthFramework API server starting on http://{}", addr);
+        info!("🚀 cinaauth API server starting on http://{}", addr);
         info!("📖 API documentation available at http://{}/docs", addr);
         info!("📘 OpenAPI JSON available at http://{}/api/openapi.json", addr);
         info!("🏥 Health check available at http://{}/health", addr);
@@ -440,13 +440,13 @@ impl ApiServer {
 }
 
 /// Create a basic API server with default configuration
-pub async fn create_api_server(auth_framework: Arc<AuthFramework>) -> ApiServer {
-    ApiServer::new(auth_framework)
+pub async fn create_api_server(cinaauth: Arc<Cinaauth>) -> ApiServer {
+    ApiServer::new(cinaauth)
 }
 
 /// Create an API server with custom host and port
 pub async fn create_api_server_with_address(
-    auth_framework: Arc<AuthFramework>,
+    cinaauth: Arc<Cinaauth>,
     host: impl Into<String>,
     port: u16,
 ) -> ApiServer {
@@ -455,14 +455,14 @@ pub async fn create_api_server_with_address(
         port,
         ..Default::default()
     };
-    ApiServer::with_config(auth_framework, config)
+    ApiServer::with_config(cinaauth, config)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::storage::memory::InMemoryStorage;
-    use crate::{AuthConfig, AuthFramework};
+    use crate::{AuthConfig, Cinaauth};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
@@ -470,8 +470,8 @@ mod tests {
     async fn create_test_api_server() -> ApiServer {
         let _storage = Arc::new(InMemoryStorage::new());
         let config = AuthConfig::default();
-        let auth_framework = Arc::new(AuthFramework::new(config));
-        ApiServer::new(auth_framework)
+        let cinaauth = Arc::new(Cinaauth::new(config));
+        ApiServer::new(cinaauth)
     }
 
     #[tokio::test]
@@ -508,7 +508,7 @@ mod tests {
     #[tokio::test]
     async fn test_cors_headers() {
         let config = AuthConfig::default();
-        let auth_framework = Arc::new(AuthFramework::new(config));
+        let cinaauth = Arc::new(Cinaauth::new(config));
         let api_config = ApiServerConfig {
             cors: crate::config::CorsConfig {
                 enabled: true,
@@ -517,7 +517,7 @@ mod tests {
             },
             ..ApiServerConfig::default()
         };
-        let api_server = ApiServer::with_config(auth_framework, api_config);
+        let api_server = ApiServer::with_config(cinaauth, api_config);
         let router = api_server.build_router().await.unwrap();
 
         let request = Request::builder()
@@ -660,8 +660,8 @@ mod tests {
     #[tokio::test]
     async fn test_create_api_server_with_address() {
         let config = AuthConfig::default();
-        let auth_framework = Arc::new(AuthFramework::new(config));
-        let api_server = create_api_server_with_address(auth_framework, "0.0.0.0", 8080).await;
+        let cinaauth = Arc::new(Cinaauth::new(config));
+        let api_server = create_api_server_with_address(cinaauth, "0.0.0.0", 8080).await;
         assert_eq!(api_server.address(), "0.0.0.0:8080");
     }
 

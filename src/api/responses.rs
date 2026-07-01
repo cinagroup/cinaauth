@@ -16,7 +16,7 @@ use serde::Serialize;
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::responses::ApiResponse;
+/// use cinaauth::api::responses::ApiResponse;
 ///
 /// let resp = ApiResponse::success("hello");
 /// assert!(resp.success);
@@ -40,7 +40,7 @@ pub struct ApiResponse<T> {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::responses::ApiResponse;
+/// use cinaauth::api::responses::ApiResponse;
 ///
 /// let resp = ApiResponse::<()>::error("BAD_INPUT", "missing field");
 /// let err = resp.error.unwrap();
@@ -58,7 +58,7 @@ pub struct ApiError {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::responses::Pagination;
+/// use cinaauth::api::responses::Pagination;
 ///
 /// let page = Pagination { page: 1, limit: 25, total: 100, pages: 4 };
 /// assert_eq!(page.pages, 4);
@@ -79,7 +79,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::success(42u32);
     /// assert!(resp.success);
@@ -100,7 +100,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let err = ApiResponse::<()>::error("FAIL", "oops");
     /// let typed: ApiResponse<String> = err.cast();
@@ -119,7 +119,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<String> = ApiResponse::forbidden_typed();
     /// assert!(!resp.success);
@@ -132,7 +132,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<Vec<u8>> = ApiResponse::unauthorized_typed();
     /// assert!(!resp.success);
@@ -145,7 +145,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<i32> = ApiResponse::error_typed("FAIL", "bad input");
     /// assert!(!resp.success);
@@ -158,7 +158,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<()> = ApiResponse::validation_error_typed("bad field");
     /// assert!(!resp.success);
@@ -171,7 +171,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<String> = ApiResponse::not_found_typed("user");
     /// assert!(!resp.success);
@@ -184,7 +184,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<()> = ApiResponse::forbidden_with_message_typed("admin only");
     /// assert!(!resp.success);
@@ -197,7 +197,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<()> = ApiResponse::error_with_message_typed("QUOTA", "exceeded");
     /// assert_eq!(resp.error.unwrap().code, "QUOTA");
@@ -210,7 +210,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<()> = ApiResponse::not_found_with_message_typed("gone");
     /// assert!(!resp.success);
@@ -223,7 +223,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp: ApiResponse<()> = ApiResponse::internal_error_typed();
     /// assert!(!resp.success);
@@ -236,7 +236,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::success_with_message("done", "operation complete");
     /// assert!(resp.success);
@@ -255,7 +255,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::ok();
     /// assert!(resp.success);
@@ -274,7 +274,7 @@ impl<T> ApiResponse<T> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::ok_with_message("saved");
     /// assert!(resp.success);
@@ -295,7 +295,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::error("BAD_REQUEST", "missing param");
     /// assert!(!resp.success);
@@ -318,7 +318,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let details = serde_json::json!({"fields": ["name"]});
     /// let resp = ApiResponse::<()>::error_with_details("VALIDATION", "invalid", details);
@@ -345,7 +345,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::validation_error("email is invalid");
     /// assert_eq!(resp.error.as_ref().unwrap().code, "VALIDATION_ERROR");
@@ -358,7 +358,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::unauthorized();
     /// assert_eq!(resp.error.as_ref().unwrap().code, "UNAUTHORIZED");
@@ -371,7 +371,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::forbidden();
     /// assert_eq!(resp.error.as_ref().unwrap().code, "FORBIDDEN");
@@ -384,7 +384,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::forbidden_with_message("admin area");
     /// assert_eq!(resp.error.as_ref().unwrap().message, "admin area");
@@ -397,7 +397,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::not_found("User");
     /// assert!(resp.error.as_ref().unwrap().message.contains("not found"));
@@ -410,7 +410,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::not_found_with_message("deleted");
     /// assert_eq!(resp.error.as_ref().unwrap().code, "NOT_FOUND");
@@ -423,7 +423,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::error_with_message("LIMIT", "rate exceeded");
     /// assert_eq!(resp.error.as_ref().unwrap().code, "LIMIT");
@@ -436,7 +436,7 @@ impl ApiResponse<()> {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::responses::ApiResponse;
+    /// use cinaauth::api::responses::ApiResponse;
     ///
     /// let resp = ApiResponse::<()>::internal_error();
     /// assert_eq!(resp.error.as_ref().unwrap().code, "SERVER_ERROR");

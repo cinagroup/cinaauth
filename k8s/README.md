@@ -1,7 +1,7 @@
 # Kubernetes Deployment Manifests
 
-This directory contains Kubernetes manifests for deploying AuthFramework as a
-standalone server (`auth-framework` binary).
+This directory contains Kubernetes manifests for deploying cinaauth as a
+standalone server (`cinaauth` binary).
 
 ## Prerequisites
 
@@ -21,8 +21,8 @@ kubectl apply -f namespace.yaml
 ### 2. Create secrets
 
 ```bash
-kubectl create secret generic auth-framework-secrets \
-  --namespace=auth-framework \
+kubectl create secret generic cinaauth-secrets \
+  --namespace=cinaauth \
   --from-literal=JWT_SECRET="$(openssl rand -base64 48)" \
   --from-literal=DATABASE_URL="postgresql://user:password@postgres:5432/authdb"
 ```
@@ -46,7 +46,7 @@ kubectl apply -f ingress.yaml
 
 | File | Purpose |
 | ---- | ------- |
-| `namespace.yaml` | Dedicated namespace for auth-framework |
+| `namespace.yaml` | Dedicated namespace for cinaauth |
 | `configmap.yaml` | Non-sensitive runtime configuration |
 | `deployment.yaml` | Main server deployment |
 | `service.yaml` | ClusterIP + optional LoadBalancer service |
@@ -59,6 +59,6 @@ Override `HEALTH_PORT` in the ConfigMap if you change the default port.
 
 ## Scaling
 
-The default deployment runs 2 replicas. AuthFramework is stateless with respect
+The default deployment runs 2 replicas. cinaauth is stateless with respect
 to request handling — scale horizontally by increasing `replicas` or enabling
 an HPA.

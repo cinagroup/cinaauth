@@ -172,7 +172,7 @@ pub enum ThreatLevel {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::observability::ObservabilityConfig;
+/// use cinaauth::observability::ObservabilityConfig;
 /// let config = ObservabilityConfig::default();
 /// assert!(config.enable_prometheus);
 /// ```

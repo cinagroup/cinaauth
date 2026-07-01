@@ -52,7 +52,7 @@ impl Session {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use auth_framework::session::Session;
+    /// use cinaauth::session::Session;
     /// use std::time::{Duration, SystemTime};
     ///
     /// let session = Session::new("user-123", Duration::from_secs(3600));
@@ -886,7 +886,7 @@ impl<S: SessionStorage, A: AuditStorage> SessionManager<S, A> {
     /// List sessions for a user with a typed [`SessionFilter`](crate::auth_operations::SessionFilter).
     ///
     /// ```rust,ignore
-    /// use auth_framework::auth_operations::SessionFilter;
+    /// use cinaauth::auth_operations::SessionFilter;
     ///
     /// let active = mgr.list_user_sessions(user_id, SessionFilter::ActiveOnly).await?;
     /// ```

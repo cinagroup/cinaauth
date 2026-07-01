@@ -1,4 +1,4 @@
-//! Utility modules for the AuthFramework.
+//! Utility modules for the Cinaauth.
 
 pub mod breach_check;
 pub mod crypto;

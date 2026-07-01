@@ -22,7 +22,7 @@
 //! # Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oidc::oidc_enhanced_ciba::{
+//! use cinaauth::server::oidc::oidc_enhanced_ciba::{
 //!     EnhancedCibaManager, EnhancedCibaConfig, AuthenticationMode, BackchannelAuthParams, UserIdentifierHint
 //! };
 //!
@@ -161,7 +161,7 @@ impl Default for EnhancedCibaConfig {
             max_binding_message_length: 1024,
             enable_advanced_context: true,
             jwt_config,
-            issuer: "auth-framework-ciba".to_string(),
+            issuer: "cinaauth-ciba".to_string(),
             encoding_key: None,            // Will be set during initialization
             decoding_key: None,            // Will be set during initialization
             access_token_lifetime: 3600,   // 1 hour
@@ -179,7 +179,7 @@ impl EnhancedCibaConfig {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use auth_framework::server::oidc::oidc_enhanced_ciba::EnhancedCibaConfig;
+    /// use cinaauth::server::oidc::oidc_enhanced_ciba::EnhancedCibaConfig;
     ///
     /// let config = EnhancedCibaConfig::builder()
     ///     .issuer("https://auth.example.com/ciba")
@@ -970,7 +970,7 @@ impl EnhancedCibaManager {
                     self.config.notification_timeout,
                 ))
                 .header("Content-Type", "application/json")
-                .header("User-Agent", "AuthFramework-CIBA/1.0")
+                .header("User-Agent", "cinaauth-CIBA/1.0")
                 // CIBA spec §11: forward the client-supplied notification token verbatim.
                 .header(
                     "Authorization",

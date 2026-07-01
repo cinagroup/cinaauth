@@ -16,7 +16,7 @@ use std::{
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::metrics::ApiMetrics;
+/// use cinaauth::api::metrics::ApiMetrics;
 /// use std::time::Duration;
 /// use axum::http::StatusCode;
 ///
@@ -46,7 +46,7 @@ impl ApiMetrics {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::metrics::ApiMetrics;
+    /// use cinaauth::api::metrics::ApiMetrics;
     /// let m = ApiMetrics::new();
     /// assert_eq!(m.get_metrics().total_requests, 0);
     /// ```
@@ -68,7 +68,7 @@ impl ApiMetrics {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::metrics::ApiMetrics;
+    /// use cinaauth::api::metrics::ApiMetrics;
     /// let m = ApiMetrics::new();
     /// m.record_request("/health");
     /// ```
@@ -87,7 +87,7 @@ impl ApiMetrics {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::metrics::ApiMetrics;
+    /// use cinaauth::api::metrics::ApiMetrics;
     /// use std::time::Duration;
     /// use axum::http::StatusCode;
     ///
@@ -119,7 +119,7 @@ impl ApiMetrics {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::metrics::ApiMetrics;
+    /// use cinaauth::api::metrics::ApiMetrics;
     ///
     /// let m = ApiMetrics::new();
     /// let snap = m.get_metrics();
@@ -181,7 +181,7 @@ impl ApiMetrics {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::metrics::ApiMetrics;
+    /// use cinaauth::api::metrics::ApiMetrics;
     /// use std::time::Duration;
     /// use axum::http::StatusCode;
     ///
@@ -216,7 +216,7 @@ impl Default for ApiMetrics {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::metrics::ApiMetrics;
+/// use cinaauth::api::metrics::ApiMetrics;
 ///
 /// let snap = ApiMetrics::new().get_metrics();
 /// assert_eq!(snap.active_requests, 0);
@@ -233,7 +233,7 @@ pub struct MetricsSnapshot {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::metrics::{ApiMetrics, EndpointMetrics};
+/// use cinaauth::api::metrics::{ApiMetrics, EndpointMetrics};
 /// use std::time::Duration;
 /// use axum::http::StatusCode;
 ///
@@ -275,7 +275,7 @@ fn calculate_percentile(durations: &[Duration], percentile: f64) -> Duration {
 /// # Example
 /// ```rust,ignore
 /// use axum::{Router, middleware};
-/// use auth_framework::api::metrics::metrics_middleware;
+/// use cinaauth::api::metrics::metrics_middleware;
 ///
 /// let app = Router::new()
 ///     .layer(middleware::from_fn(metrics_middleware));
@@ -306,33 +306,33 @@ impl MetricsSnapshot {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::api::metrics::ApiMetrics;
+    /// use cinaauth::api::metrics::ApiMetrics;
     ///
     /// let prom = ApiMetrics::new().get_metrics().to_prometheus_format();
-    /// assert!(prom.contains("auth_framework_uptime_seconds"));
+    /// assert!(prom.contains("cinaauth_uptime_seconds"));
     /// ```
     pub fn to_prometheus_format(&self) -> String {
         let mut output = String::new();
 
         // System metrics
         output.push_str(&format!(
-            "# HELP auth_framework_uptime_seconds Total uptime in seconds\n\
-             # TYPE auth_framework_uptime_seconds counter\n\
-             auth_framework_uptime_seconds {}\n\n",
+            "# HELP cinaauth_uptime_seconds Total uptime in seconds\n\
+             # TYPE cinaauth_uptime_seconds counter\n\
+             cinaauth_uptime_seconds {}\n\n",
             self.uptime.as_secs()
         ));
 
         output.push_str(&format!(
-            "# HELP auth_framework_requests_total Total number of requests\n\
-             # TYPE auth_framework_requests_total counter\n\
-             auth_framework_requests_total {}\n\n",
+            "# HELP cinaauth_requests_total Total number of requests\n\
+             # TYPE cinaauth_requests_total counter\n\
+             cinaauth_requests_total {}\n\n",
             self.total_requests
         ));
 
         output.push_str(&format!(
-            "# HELP auth_framework_active_requests Current number of active requests\n\
-             # TYPE auth_framework_active_requests gauge\n\
-             auth_framework_active_requests {}\n\n",
+            "# HELP cinaauth_active_requests Current number of active requests\n\
+             # TYPE cinaauth_active_requests gauge\n\
+             cinaauth_active_requests {}\n\n",
             self.active_requests
         ));
 
@@ -341,23 +341,23 @@ impl MetricsSnapshot {
             let _safe_endpoint = endpoint.replace(['/', '-'], "_");
 
             output.push_str(&format!(
-                "auth_framework_endpoint_requests_total{{endpoint=\"{}\"}} {}\n",
+                "cinaauth_endpoint_requests_total{{endpoint=\"{}\"}} {}\n",
                 endpoint, metrics.request_count
             ));
 
             output.push_str(&format!(
-                "auth_framework_endpoint_errors_total{{endpoint=\"{}\"}} {}\n",
+                "cinaauth_endpoint_errors_total{{endpoint=\"{}\"}} {}\n",
                 endpoint, metrics.error_count
             ));
 
             output.push_str(&format!(
-                "auth_framework_endpoint_response_time_avg{{endpoint=\"{}\"}} {}\n",
+                "cinaauth_endpoint_response_time_avg{{endpoint=\"{}\"}} {}\n",
                 endpoint,
                 metrics.avg_response_time.as_secs_f64()
             ));
 
             output.push_str(&format!(
-                "auth_framework_endpoint_response_time_p95{{endpoint=\"{}\"}} {}\n",
+                "cinaauth_endpoint_response_time_p95{{endpoint=\"{}\"}} {}\n",
                 endpoint,
                 metrics.p95_response_time.as_secs_f64()
             ));
@@ -423,8 +423,8 @@ mod tests {
         let snapshot = metrics.get_metrics();
         let prometheus = snapshot.to_prometheus_format();
 
-        assert!(prometheus.contains("auth_framework_requests_total"));
-        assert!(prometheus.contains("auth_framework_active_requests"));
+        assert!(prometheus.contains("cinaauth_requests_total"));
+        assert!(prometheus.contains("cinaauth_active_requests"));
         assert!(prometheus.contains("endpoint=\"/api/test\""));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * AuthFramework - Unified Web Framework Integration
+ * Cinaauth - Unified Web Framework Integration
  *
  * This module provides a unified authentication configuration and validation logic
  * that can be used across multiple web frameworks. While we keep the web-server-abstraction
@@ -7,7 +7,7 @@
  * logic that framework-specific integrations can leverage.
  */
 
-use crate::{AuthError, AuthFramework, providers::ProviderProfile};
+use crate::{AuthError, Cinaauth, providers::ProviderProfile};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -15,7 +15,7 @@ use std::sync::Arc;
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::integrations::unified::AuthMiddlewareConfig;
+/// use cinaauth::integrations::unified::AuthMiddlewareConfig;
 /// let config = AuthMiddlewareConfig::default();
 /// assert_eq!(config.header_name, "Authorization");
 /// ```
@@ -62,7 +62,7 @@ impl Default for AuthMiddlewareConfig {
 /// let v = UnifiedAuthValidator::with_defaults(fw.clone());
 /// ```
 pub struct UnifiedAuthValidator {
-    auth_framework: Arc<AuthFramework>,
+    cinaauth: Arc<Cinaauth>,
     config: AuthMiddlewareConfig,
 }
 
@@ -73,9 +73,9 @@ impl UnifiedAuthValidator {
     /// ```rust,ignore
     /// let v = UnifiedAuthValidator::new(fw.clone(), AuthMiddlewareConfig::default());
     /// ```
-    pub fn new(auth_framework: Arc<AuthFramework>, config: AuthMiddlewareConfig) -> Self {
+    pub fn new(cinaauth: Arc<Cinaauth>, config: AuthMiddlewareConfig) -> Self {
         Self {
-            auth_framework,
+            cinaauth,
             config,
         }
     }
@@ -86,8 +86,8 @@ impl UnifiedAuthValidator {
     /// ```rust,ignore
     /// let v = UnifiedAuthValidator::with_defaults(fw.clone());
     /// ```
-    pub fn with_defaults(auth_framework: Arc<AuthFramework>) -> Self {
-        Self::new(auth_framework, AuthMiddlewareConfig::default())
+    pub fn with_defaults(cinaauth: Arc<Cinaauth>) -> Self {
+        Self::new(cinaauth, AuthMiddlewareConfig::default())
     }
 
     /// Extract authentication token from authorization header.
@@ -155,13 +155,13 @@ impl UnifiedAuthValidator {
     pub async fn validate_token(&self, token: &str) -> Result<ProviderProfile, AuthError> {
         // Validate JWT token string and extract claims
         let jwt_claims = self
-            .auth_framework
+            .cinaauth
             .token_manager()
             .validate_jwt_token(token)?;
 
         // Get user profile using the user_id from JWT claims
         let user_profile = self
-            .auth_framework
+            .cinaauth
             .get_user_profile(&jwt_claims.sub)
             .await?;
 
@@ -176,12 +176,12 @@ impl UnifiedAuthValidator {
     /// ```
     pub async fn validate_access(&self, user_id: &str) -> Result<(), AuthError> {
         // Verify the user profile exists as a basic existence check
-        let _user_profile = self.auth_framework.get_user_profile(user_id).await?;
+        let _user_profile = self.cinaauth.get_user_profile(user_id).await?;
 
         // Enforce required roles: user must have ALL required roles
         if !self.config.required_roles.is_empty() {
             for role in &self.config.required_roles {
-                let has_role = self.auth_framework.user_has_role(user_id, role).await.unwrap_or(false);
+                let has_role = self.cinaauth.user_has_role(user_id, role).await.unwrap_or(false);
                 if !has_role {
                     return Err(AuthError::Permission(
                         crate::errors::PermissionError::InsufficientPermissions {
@@ -196,7 +196,7 @@ impl UnifiedAuthValidator {
         // Enforce required permissions: user must have ALL required permissions
         if !self.config.required_permissions.is_empty() {
             let effective_perms = self
-                .auth_framework
+                .cinaauth
                 .get_effective_permissions(user_id)
                 .await
                 .unwrap_or_default();
@@ -224,20 +224,20 @@ impl UnifiedAuthValidator {
 /// let v = UnifiedAuthBuilder::new(fw.clone()).skip_paths(vec!["/public".into()]).build();
 /// ```
 pub struct UnifiedAuthBuilder {
-    auth_framework: Arc<AuthFramework>,
+    cinaauth: Arc<Cinaauth>,
     config: AuthMiddlewareConfig,
 }
 
 impl UnifiedAuthBuilder {
-    /// Create a new builder with the given AuthFramework instance.
+    /// Create a new builder with the given Cinaauth instance.
     ///
     /// # Example
     /// ```rust,ignore
     /// let builder = UnifiedAuthBuilder::new(fw.clone());
     /// ```
-    pub fn new(auth_framework: Arc<AuthFramework>) -> Self {
+    pub fn new(cinaauth: Arc<Cinaauth>) -> Self {
         Self {
-            auth_framework,
+            cinaauth,
             config: AuthMiddlewareConfig::default(),
         }
     }
@@ -316,7 +316,7 @@ impl UnifiedAuthBuilder {
     /// let v = builder.build();
     /// ```
     pub fn build(self) -> UnifiedAuthValidator {
-        UnifiedAuthValidator::new(self.auth_framework, self.config)
+        UnifiedAuthValidator::new(self.cinaauth, self.config)
     }
 }
 
@@ -326,8 +326,8 @@ impl UnifiedAuthBuilder {
 /// ```rust,ignore
 /// let v = create_auth_validator(fw.clone());
 /// ```
-pub fn create_auth_validator(auth_framework: Arc<AuthFramework>) -> UnifiedAuthValidator {
-    UnifiedAuthValidator::with_defaults(auth_framework)
+pub fn create_auth_validator(cinaauth: Arc<Cinaauth>) -> UnifiedAuthValidator {
+    UnifiedAuthValidator::with_defaults(cinaauth)
 }
 
 /// Convenience function to create a builder for more complex configurations.
@@ -336,8 +336,8 @@ pub fn create_auth_validator(auth_framework: Arc<AuthFramework>) -> UnifiedAuthV
 /// ```rust,ignore
 /// let builder = auth_validator_builder(fw.clone());
 /// ```
-pub fn auth_validator_builder(auth_framework: Arc<AuthFramework>) -> UnifiedAuthBuilder {
-    UnifiedAuthBuilder::new(auth_framework)
+pub fn auth_validator_builder(cinaauth: Arc<Cinaauth>) -> UnifiedAuthBuilder {
+    UnifiedAuthBuilder::new(cinaauth)
 }
 
 #[cfg(test)]
@@ -441,7 +441,7 @@ mod tests {
             ..Default::default()
         };
         let validator = UnifiedAuthValidator {
-            auth_framework: Arc::new(AuthFramework::new(
+            cinaauth: Arc::new(Cinaauth::new(
                 crate::config::AuthConfig::default().secret("test-secret-for-unified-tests"),
             )),
             config,
@@ -458,7 +458,7 @@ mod tests {
             ..Default::default()
         };
         let validator = UnifiedAuthValidator {
-            auth_framework: Arc::new(AuthFramework::new(
+            cinaauth: Arc::new(Cinaauth::new(
                 crate::config::AuthConfig::default().secret("test-secret-for-unified-tests"),
             )),
             config,
@@ -471,7 +471,7 @@ mod tests {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
             .with_jwt_secret("test-secret-builder");
 
-        let fw = Arc::new(AuthFramework::new(
+        let fw = Arc::new(Cinaauth::new(
             crate::config::AuthConfig::default().secret("test-secret-builder"),
         ));
 
@@ -498,7 +498,7 @@ mod tests {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
             .with_jwt_secret("test-secret-convenience");
 
-        let fw = Arc::new(AuthFramework::new(
+        let fw = Arc::new(Cinaauth::new(
             crate::config::AuthConfig::default().secret("test-secret-convenience"),
         ));
 

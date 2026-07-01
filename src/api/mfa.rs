@@ -127,7 +127,7 @@ pub async fn setup_mfa(
 ) -> ApiResponse<MfaSetupResponse> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Generate a 20-byte (160-bit) random TOTP secret.
                     let mut secret_bytes = [0u8; 20];
@@ -140,7 +140,7 @@ pub async fn setup_mfa(
 
                     // Store both as pending with a 10-minute TTL so they are
                     // discarded if the user never completes verification.
-                    let storage = state.auth_framework.storage();
+                    let storage = state.cinaauth.storage();
                     let pending_secret_key = format!("mfa_pending_secret:{}", auth_token.user_id);
                     let pending_backup_key =
                         format!("mfa_pending_backup_codes:{}", auth_token.user_id);
@@ -165,7 +165,7 @@ pub async fn setup_mfa(
 
                     // Build the standard otpauth:// URI understood by all
                     // major authenticator apps (Google Authenticator, Authy, …).
-                    let issuer = "AuthFramework";
+                    let issuer = "cinaauth";
                     let account = urlencoding::encode(&auth_token.user_id);
                     let qr_code = format!(
                         "otpauth://totp/{issuer}:{account}?secret={secret_b32}&issuer={issuer}&digits=6&period=30"
@@ -206,9 +206,9 @@ pub async fn verify_mfa(
 
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
-                    let storage = state.auth_framework.storage();
+                    let storage = state.cinaauth.storage();
                     let pending_key = format!("mfa_pending_secret:{}", auth_token.user_id);
 
                     // Retrieve the pending (not-yet-activated) secret.
@@ -302,12 +302,12 @@ pub async fn disable_mfa(
 
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Verify the user's password before allowing MFA to be
                     // disabled; this protects against token-theft attacks.
                     match state
-                        .auth_framework
+                        .cinaauth
                         .verify_user_password(&auth_token.user_id, &req.password)
                         .await
                     {
@@ -326,7 +326,7 @@ pub async fn disable_mfa(
                         }
                     }
 
-                    let storage = state.auth_framework.storage();
+                    let storage = state.cinaauth.storage();
                     let active_key = format!("mfa_secret:{}", auth_token.user_id);
 
                     // Fetch the active TOTP secret to verify the code.
@@ -386,9 +386,9 @@ pub async fn get_mfa_status(
     headers: HeaderMap,
 ) -> ApiResponse<MfaStatusResponse> {
     match extract_bearer_token(&headers) {
-        Some(token) => match validate_api_token(&state.auth_framework, &token).await {
+        Some(token) => match validate_api_token(&state.cinaauth, &token).await {
             Ok(auth_token) => {
-                let storage = state.auth_framework.storage();
+                let storage = state.cinaauth.storage();
                 let mfa_enabled = check_mfa_enabled(storage.as_ref(), &auth_token.user_id).await;
                 let backup_codes_remaining =
                     count_backup_codes(storage.as_ref(), &auth_token.user_id).await;
@@ -421,9 +421,9 @@ pub async fn regenerate_backup_codes(
 ) -> ApiResponse<Vec<String>> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
-                    let storage = state.auth_framework.storage();
+                    let storage = state.cinaauth.storage();
 
                     // Only allow regeneration if MFA is active.
                     if !check_mfa_enabled(storage.as_ref(), &auth_token.user_id).await {
@@ -488,9 +488,9 @@ pub async fn verify_backup_code(
 
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
-                    let storage = state.auth_framework.storage();
+                    let storage = state.cinaauth.storage();
                     let backup_key = format!("mfa_backup_codes:{}", auth_token.user_id);
 
                     // Load stored hashes.
@@ -562,10 +562,10 @@ pub async fn verify_backup_code(
 ///
 /// Uses the `mfa_enabled:{user_id}` KV key set by [`verify_mfa`].
 pub async fn check_user_mfa_status(
-    auth_framework: &std::sync::Arc<crate::AuthFramework>,
+    cinaauth: &std::sync::Arc<crate::Cinaauth>,
     user_id: &str,
 ) -> bool {
-    check_mfa_enabled(auth_framework.storage().as_ref(), user_id).await
+    check_mfa_enabled(cinaauth.storage().as_ref(), user_id).await
 }
 
 /// Low-level helper that works directly with an `AuthStorage` reference.

@@ -2,8 +2,8 @@
 //!
 //! Tests basic functionality that is currently working
 
-use auth_framework::{
-    AuthConfig, AuthFramework,
+use cinaauth::{
+    AuthConfig, Cinaauth,
     audit::DeviceInfo,
     methods::{AuthMethodEnum, JwtMethod},
     permissions::{Permission, PermissionChecker},
@@ -13,8 +13,8 @@ use auth_framework::{
 use std::time::Duration;
 
 #[tokio::test]
-async fn test_basic_auth_framework_integration() {
-    println!("🔍 Testing Basic Auth Framework Integration");
+async fn test_basic_cinaauth_integration() {
+    println!("🔍 Testing Basic cinaauth Integration");
 
     // Set JWT secret for testing via serialized guard
     let _env = TestEnvironmentGuard::new()
@@ -29,23 +29,23 @@ async fn test_basic_auth_framework_integration() {
         .refresh_token_lifetime(Duration::from_secs(86400 * 7));
 
     // Create auth framework
-    let mut auth_framework = AuthFramework::new(config);
+    let mut cinaauth = Cinaauth::new(config);
 
     // Register JWT method
     let jwt_method = JwtMethod::new()
         .secret_key("test-secret")
         .issuer("https://test.localhost");
 
-    auth_framework.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
+    cinaauth.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
 
     // Initialize framework
-    auth_framework
+    cinaauth
         .initialize()
         .await
         .expect("Failed to initialize auth framework");
 
     // Create a token with proper action:resource scope format
-    let token = auth_framework
+    let token = cinaauth
         .create_auth_token(
             "test_user",
             vec!["read:documents".to_string(), "write:documents".to_string()],
@@ -59,7 +59,7 @@ async fn test_basic_auth_framework_integration() {
     assert_eq!(token.user_id, "test_user", "User ID should match");
 
     // Validate the token
-    let is_valid = auth_framework
+    let is_valid = cinaauth
         .validate_token(&token)
         .await
         .expect("Failed to validate token");
@@ -67,13 +67,13 @@ async fn test_basic_auth_framework_integration() {
     assert!(is_valid, "Token should be valid");
 
     // Grant permission to the user
-    auth_framework
+    cinaauth
         .grant_permission("test_user", "read", "documents")
         .await
         .expect("Failed to grant permission");
 
     // Check permissions
-    let has_permission = auth_framework
+    let has_permission = cinaauth
         .check_permission(&token, "read", "documents")
         .await
         .expect("Failed to check permission");
@@ -163,29 +163,29 @@ async fn test_jwt_token_lifecycle() {
         .token_lifetime(Duration::from_secs(60)); // Short lifetime for testing
 
     // Create auth framework
-    let mut auth_framework = AuthFramework::new(config);
+    let mut cinaauth = Cinaauth::new(config);
 
     // Register JWT method
     let jwt_method = JwtMethod::new()
         .secret_key("lifecycle-secret")
         .issuer("https://lifecycle.test");
 
-    auth_framework.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
+    cinaauth.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
 
     // Initialize framework
-    auth_framework
+    cinaauth
         .initialize()
         .await
         .expect("Failed to initialize");
 
     // Create token
-    let token = auth_framework
+    let token = cinaauth
         .create_auth_token("lifecycle_user", vec!["test".to_string()], "jwt", None)
         .await
         .expect("Failed to create token");
 
     // Validate token immediately
-    let is_valid = auth_framework
+    let is_valid = cinaauth
         .validate_token(&token)
         .await
         .expect("Failed to validate token");
@@ -200,7 +200,7 @@ async fn test_jwt_token_lifecycle() {
     assert_eq!(token.user_id, "lifecycle_user", "User ID should match");
     assert_eq!(
         token.scopes,
-        auth_framework::types::Scopes::new(vec!["test".to_string()]),
+        cinaauth::types::Scopes::new(vec!["test".to_string()]),
         "Scopes should match"
     );
 

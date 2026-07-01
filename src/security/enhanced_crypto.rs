@@ -251,7 +251,7 @@ mod tests {
     fn test_chacha_round_trip() {
         let key = [42u8; 32];
         let enc = ChaChaEncryption::from_key(&key);
-        let plaintext = b"Hello, AuthFramework!";
+        let plaintext = b"Hello, cinaauth!";
 
         let encrypted = enc.encrypt(plaintext).unwrap();
         assert_eq!(encrypted.algorithm, "ChaCha20-Poly1305");

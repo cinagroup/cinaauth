@@ -50,8 +50,8 @@
 //! # Example Usage
 //!
 //! ```rust,no_run
-//! use auth_framework::methods::passkey::{PasskeyAuthMethod, PasskeyConfig};
-//! use auth_framework::tokens::TokenManager;
+//! use cinaauth::methods::passkey::{PasskeyAuthMethod, PasskeyConfig};
+//! use cinaauth::tokens::TokenManager;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -208,8 +208,8 @@ impl UserValidationMethod for PasskeyUserValidation {
 /// # Example
 ///
 /// ```rust,no_run
-/// use auth_framework::methods::passkey::{PasskeyAuthMethod, PasskeyConfig};
-/// use auth_framework::tokens::TokenManager;
+/// use cinaauth::methods::passkey::{PasskeyAuthMethod, PasskeyConfig};
+/// use cinaauth::tokens::TokenManager;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -298,7 +298,7 @@ impl Default for PasskeyConfig {
     fn default() -> Self {
         Self {
             rp_id: "localhost".to_string(),
-            rp_name: "Auth Framework Demo".to_string(),
+            rp_name: "cinaauth Demo".to_string(),
             origin: "http://localhost:3000".to_string(),
             timeout_ms: 60000, // 60 seconds
             user_verification: "preferred".to_string(),

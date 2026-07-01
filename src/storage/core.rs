@@ -13,7 +13,7 @@ use crate::errors::StorageError;
 
 /// Trait for authentication data storage backends.
 ///
-/// All persistence in `AuthFramework` goes through this trait — tokens,
+/// All persistence in `Cinaauth` goes through this trait — tokens,
 /// sessions, and arbitrary key-value data.  Implement it to plug in a
 /// custom database while keeping the rest of the framework unchanged.
 ///
@@ -45,9 +45,9 @@ use crate::errors::StorageError;
 /// # Example (skeleton)
 ///
 /// ```rust,no_run
-/// use auth_framework::storage::{AuthStorage, SessionData};
-/// use auth_framework::tokens::AuthToken;
-/// use auth_framework::errors::Result;
+/// use cinaauth::storage::{AuthStorage, SessionData};
+/// use cinaauth::tokens::AuthToken;
+/// use cinaauth::errors::Result;
 /// use async_trait::async_trait;
 /// use std::time::Duration;
 ///

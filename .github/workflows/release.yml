@@ -22,50 +22,50 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-latest
-            name: auth-framework-linux-x86_64
-            admin_name: auth-framework-admin-linux-x86_64
+            name: cinaauth-linux-x86_64
+            admin_name: cinaauth-admin-linux-x86_64
             ext: tar.gz
             cross: false
             native_musl: false
           - target: x86_64-unknown-linux-musl
             runner: ubuntu-latest
-            name: auth-framework-linux-x86_64-musl
-            admin_name: auth-framework-admin-linux-x86_64-musl
+            name: cinaauth-linux-x86_64-musl
+            admin_name: cinaauth-admin-linux-x86_64-musl
             ext: tar.gz
             cross: true
             native_musl: false
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm
-            name: auth-framework-linux-aarch64
-            admin_name: auth-framework-admin-linux-aarch64
+            name: cinaauth-linux-aarch64
+            admin_name: cinaauth-admin-linux-aarch64
             ext: tar.gz
             cross: false
             native_musl: false
           - target: aarch64-unknown-linux-musl
             runner: ubuntu-24.04-arm
-            name: auth-framework-linux-aarch64-musl
-            admin_name: auth-framework-admin-linux-aarch64-musl
+            name: cinaauth-linux-aarch64-musl
+            admin_name: cinaauth-admin-linux-aarch64-musl
             ext: tar.gz
             cross: false
             native_musl: true
           - target: x86_64-apple-darwin
             runner: macos-latest
-            name: auth-framework-macos-x86_64
-            admin_name: auth-framework-admin-macos-x86_64
+            name: cinaauth-macos-x86_64
+            admin_name: cinaauth-admin-macos-x86_64
             ext: tar.gz
             cross: false
             native_musl: false
           - target: aarch64-apple-darwin
             runner: macos-latest
-            name: auth-framework-macos-aarch64
-            admin_name: auth-framework-admin-macos-aarch64
+            name: cinaauth-macos-aarch64
+            admin_name: cinaauth-admin-macos-aarch64
             ext: tar.gz
             cross: false
             native_musl: false
           - target: x86_64-pc-windows-msvc
             runner: windows-latest
-            name: auth-framework-windows-x86_64
-            admin_name: auth-framework-admin-windows-x86_64
+            name: cinaauth-windows-x86_64
+            admin_name: cinaauth-admin-windows-x86_64
             ext: zip
             cross: false
             native_musl: false
@@ -120,8 +120,8 @@ jobs:
             fi
           }
 
-          build_release_binary "api-server,postgres-storage" "auth-framework"
-          build_release_binary "admin-binary" "auth-framework-admin"
+          build_release_binary "api-server,postgres-storage" "cinaauth"
+          build_release_binary "admin-binary" "cinaauth-admin"
 
       - name: Archive binaries
         shell: bash
@@ -143,8 +143,8 @@ jobs:
             fi
           }
 
-          archive_binary auth-framework ${{ matrix.name }}
-          archive_binary auth-framework-admin ${{ matrix.admin_name }}
+          archive_binary cinaauth ${{ matrix.name }}
+          archive_binary cinaauth-admin ${{ matrix.admin_name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -165,15 +165,15 @@ jobs:
         include:
           - platform: linux/amd64
             runner: ubuntu-latest
-            artifact_name: binary-auth-framework-linux-x86_64-musl
-            archive_name: auth-framework-linux-x86_64-musl.tar.gz
-            binary_name: auth-framework-linux-x86_64-musl
+            artifact_name: binary-cinaauth-linux-x86_64-musl
+            archive_name: cinaauth-linux-x86_64-musl.tar.gz
+            binary_name: cinaauth-linux-x86_64-musl
             digest_artifact: docker-digest-linux-amd64
           - platform: linux/arm64
             runner: ubuntu-24.04-arm
-            artifact_name: binary-auth-framework-linux-aarch64-musl
-            archive_name: auth-framework-linux-aarch64-musl.tar.gz
-            binary_name: auth-framework-linux-aarch64-musl
+            artifact_name: binary-cinaauth-linux-aarch64-musl
+            archive_name: cinaauth-linux-aarch64-musl.tar.gz
+            binary_name: cinaauth-linux-aarch64-musl
             digest_artifact: docker-digest-linux-arm64
 
     runs-on: ${{ matrix.runner }}
@@ -194,10 +194,10 @@ jobs:
       - name: Prepare runtime binary
         shell: bash
         run: |
-          rm -f docker/.release-binary/auth-framework
+          rm -f docker/.release-binary/cinaauth
           tar xzf docker/.release-binary/dist/${{ matrix.archive_name }} -C docker/.release-binary/dist
-          cp docker/.release-binary/dist/${{ matrix.binary_name }} docker/.release-binary/auth-framework
-          chmod +x docker/.release-binary/auth-framework
+          cp docker/.release-binary/dist/${{ matrix.binary_name }} docker/.release-binary/cinaauth
+          chmod +x docker/.release-binary/cinaauth
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -362,7 +362,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
-          name: AuthFramework ${{ steps.get_version.outputs.version }}
+          name: cinaauth ${{ steps.get_version.outputs.version }}
           body_path: release-notes.md
           draft: false
           fail_on_unmatched_files: false

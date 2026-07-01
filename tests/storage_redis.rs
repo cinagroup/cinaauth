@@ -10,10 +10,10 @@
 
 #![cfg(feature = "redis-storage")]
 
-use auth_framework::storage::core::AuthStorage;
-use auth_framework::storage::core::SessionData;
-use auth_framework::storage::redis::RedisStorage;
-use auth_framework::tokens::AuthToken;
+use cinaauth::storage::core::AuthStorage;
+use cinaauth::storage::core::SessionData;
+use cinaauth::storage::redis::RedisStorage;
+use cinaauth::tokens::AuthToken;
 use std::time::Duration;
 
 async fn setup() -> RedisStorage {

@@ -1,18 +1,18 @@
 use anyhow::{Context, Result, anyhow, bail};
-use auth_framework::{
-    ApiKeyMethod, ApiServer, ApiServerSettings, AuthConfig, AuthFramework,
-    AuthFrameworkSettings, JwtMethod, LayeredConfigBuilder, OAuth2Method, PasswordMethod,
+use cinaauth::{
+    ApiKeyMethod, ApiServer, ApiServerSettings, AuthConfig, Cinaauth,
+    CinaauthSettings, JwtMethod, LayeredConfigBuilder, OAuth2Method, PasswordMethod,
 };
 use std::{env, path::PathBuf, sync::Arc};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-use auth_framework::api::server::ApiServerConfig;
-use auth_framework::config::StorageConfig;
-use auth_framework::methods::AuthMethodEnum;
+use cinaauth::api::server::ApiServerConfig;
+use cinaauth::config::StorageConfig;
+use cinaauth::methods::AuthMethodEnum;
 
-const DEFAULT_ENV_PREFIX: &str = "AUTH_FRAMEWORK";
-const HELP_TEXT: &str = "auth-framework standalone server\n\nUsage:\n  auth-framework [--config <path>] [--env-prefix <prefix>] [--host <host>] [--port <port>]\n\nOptions:\n  -c, --config <path>        Load an explicit configuration file\n      --env-prefix <prefix>  Environment prefix for layered config (default: AUTH_FRAMEWORK)\n      --host <host>          Override the bind host\n  -p, --port <port>          Override the bind port\n  -h, --help                 Show this help text\n\nEnvironment:\n  JWT_SECRET, DATABASE_URL, REDIS_URL, AUTH_ISSUER, AUTH_AUDIENCE\n  AUTH_FRAMEWORK_API_SERVER__HOST\n  AUTH_FRAMEWORK_API_SERVER__PORT\n  AUTH_FRAMEWORK_API_SERVER__MAX_BODY_SIZE\n  AUTH_FRAMEWORK_API_SERVER__ENABLE_TRACING\n";
+const DEFAULT_ENV_PREFIX: &str = "CINAAUTH";
+const HELP_TEXT: &str = "cinaauth standalone server\n\nUsage:\n  cinaauth [--config <path>] [--env-prefix <prefix>] [--host <host>] [--port <port>]\n\nOptions:\n  -c, --config <path>        Load an explicit configuration file\n      --env-prefix <prefix>  Environment prefix for layered config (default: CINAAUTH)\n      --host <host>          Override the bind host\n  -p, --port <port>          Override the bind port\n  -h, --help                 Show this help text\n\nEnvironment:\n  JWT_SECRET, DATABASE_URL, REDIS_URL, AUTH_ISSUER, AUTH_AUDIENCE\n  CINAAUTH_API_SERVER__HOST\n  CINAAUTH_API_SERVER__PORT\n  CINAAUTH_API_SERVER__MAX_BODY_SIZE\n  CINAAUTH_API_SERVER__ENABLE_TRACING\n";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ServerCliArgs {
@@ -65,7 +65,7 @@ async fn run_server(args: ServerCliArgs) -> Result<()> {
     let auth_config = settings.auth.clone();
     let runtime_settings = apply_cli_overrides(settings.api_server.unwrap_or_default(), &args);
 
-    let mut framework = AuthFramework::new(auth_config.clone());
+    let mut framework = Cinaauth::new(auth_config.clone());
     register_default_methods(&mut framework);
     framework.initialize().await?;
 
@@ -73,7 +73,7 @@ async fn run_server(args: ServerCliArgs) -> Result<()> {
     info!(
         host = %runtime_settings.host,
         port = runtime_settings.port,
-        "Starting auth-framework API server"
+        "Starting cinaauth API server"
     );
 
     let server = ApiServer::with_config(Arc::new(framework), api_config);
@@ -155,7 +155,7 @@ fn parse_port(value: &str) -> Result<u16> {
         .with_context(|| format!("Invalid port '{value}'"))
 }
 
-fn load_settings(args: &ServerCliArgs) -> Result<AuthFrameworkSettings> {
+fn load_settings(args: &ServerCliArgs) -> Result<CinaauthSettings> {
     let mut builder = LayeredConfigBuilder::new().with_env_prefix(&args.env_prefix);
     if let Some(config_path) = &args.config {
         builder = builder.add_file(config_path, true);
@@ -234,7 +234,7 @@ fn build_api_server_config(
     }
 }
 
-fn register_default_methods(framework: &mut AuthFramework) {
+fn register_default_methods(framework: &mut Cinaauth) {
     framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
     framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
     framework.register_method("api_key", AuthMethodEnum::ApiKey(ApiKeyMethod::new()));
@@ -247,18 +247,18 @@ mod tests {
 
     #[test]
     fn parse_help_flag() {
-        let command = parse_cli_args(["auth-framework", "--help"]).expect("help should parse");
+        let command = parse_cli_args(["cinaauth", "--help"]).expect("help should parse");
         assert!(matches!(command, ServerCommand::Help));
     }
 
     #[test]
     fn parse_cli_overrides() {
         let command = parse_cli_args([
-            "auth-framework",
+            "cinaauth",
             "--config",
-            "config/auth-framework.toml",
+            "config/cinaauth.toml",
             "--env-prefix",
-            "AUTH_FRAMEWORK_STAGING",
+            "CINAAUTH_STAGING",
             "--host=127.0.0.1",
             "--port",
             "9090",
@@ -271,9 +271,9 @@ mod tests {
 
         assert_eq!(
             args.config,
-            Some(PathBuf::from("config/auth-framework.toml"))
+            Some(PathBuf::from("config/cinaauth.toml"))
         );
-        assert_eq!(args.env_prefix, "AUTH_FRAMEWORK_STAGING");
+        assert_eq!(args.env_prefix, "CINAAUTH_STAGING");
         assert_eq!(args.host.as_deref(), Some("127.0.0.1"));
         assert_eq!(args.port, Some(9090));
     }

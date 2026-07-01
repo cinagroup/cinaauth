@@ -1,23 +1,23 @@
 # API Reference Guide
 
 This comprehensive API reference covers the public interfaces, traits, and
-structures in auth-framework.
+structures in cinaauth.
 
 ## Core Framework
 
-### AuthFramework
+### Cinaauth
 
 The main entry point for the authentication framework.
 
 ```rust
-pub struct AuthFramework {
+pub struct Cinaauth {
     // private fields — storage is managed internally
 }
 ```
 
 #### Constructors
 
-##### `AuthFramework::new`
+##### `Cinaauth::new`
 
 ```rust
 pub fn new(config: AuthConfig) -> Self
@@ -27,13 +27,13 @@ Creates a new framework instance with in-memory storage. Configuration
 validation and component initialization is deferred to `initialize()`.
 
 ```rust
-use auth_framework::{AuthFramework, config::AuthConfig};
+use cinaauth::{Cinaauth, config::AuthConfig};
 
 let config = AuthConfig::new();
-let mut auth = AuthFramework::new(config);
+let mut auth = Cinaauth::new(config);
 ```
 
-##### `AuthFramework::new_validated`
+##### `Cinaauth::new_validated`
 
 ```rust
 pub fn new_validated(config: AuthConfig) -> Result<Self>
@@ -42,7 +42,7 @@ pub fn new_validated(config: AuthConfig) -> Result<Self>
 Like `new`, but validates the configuration eagerly and returns an error
 on invalid settings.
 
-##### `AuthFramework::new_with_storage`
+##### `Cinaauth::new_with_storage`
 
 ```rust
 pub fn new_with_storage(config: AuthConfig, storage: Arc<dyn AuthStorage>) -> Self
@@ -51,7 +51,7 @@ pub fn new_with_storage(config: AuthConfig, storage: Arc<dyn AuthStorage>) -> Se
 Creates a framework with an externally provided storage backend
 (e.g. Redis, PostgreSQL).
 
-##### `AuthFramework::quick_start`
+##### `Cinaauth::quick_start`
 
 ```rust
 pub fn quick_start() -> QuickStartBuilder
@@ -60,7 +60,7 @@ pub fn quick_start() -> QuickStartBuilder
 One-liner initialization with sensible defaults:
 
 ```rust
-let auth = AuthFramework::quick_start()
+let auth = Cinaauth::quick_start()
     .jwt_auth("your-32-character-secret-key-here!!")
     .build()
     .await?;
@@ -110,7 +110,7 @@ Authenticates a credential using the specified method.
 - `Failure(String)` — Authentication failed
 
 ```rust
-use auth_framework::authentication::credentials::Credential;
+use cinaauth::authentication::credentials::Credential;
 
 let credential = Credential::jwt(token_string);
 match auth.authenticate("jwt", credential).await? {
@@ -225,7 +225,7 @@ let roles = auth.list_user_roles("alice").await?;
 
 ### Façade Operations
 
-`AuthFramework` exposes grouped operations via accessor methods:
+`Cinaauth` exposes grouped operations via accessor methods:
 
 ```rust
 auth.users()         // UserOperations — register, profile, list, validate, update, delete
@@ -262,7 +262,7 @@ let session_id = auth.sessions()
 ##### SessionFilter
 
 ```rust
-use auth_framework::auth_operations::SessionFilter;
+use cinaauth::auth_operations::SessionFilter;
 
 // List only active (non-expired) sessions for a user
 let active = auth.sessions()
@@ -315,7 +315,7 @@ auth.admin()
 ##### TokenCreateRequest
 
 ```rust
-use auth_framework::auth_operations::TokenCreateRequest;
+use cinaauth::auth_operations::TokenCreateRequest;
 
 let token = auth.tokens().create_token(
     TokenCreateRequest::new("user123", "jwt")
@@ -399,7 +399,7 @@ pub trait AuthStorage: Send + Sync {
 #### InMemoryStorage
 
 ```rust
-use auth_framework::storage::MemoryStorage;
+use cinaauth::storage::MemoryStorage;
 
 let storage = MemoryStorage::new();
 ```
@@ -407,7 +407,7 @@ let storage = MemoryStorage::new();
 #### InMemoryConfig Builder
 
 ```rust
-use auth_framework::storage::InMemoryConfig;
+use cinaauth::storage::InMemoryConfig;
 use std::time::Duration;
 
 let storage = InMemoryConfig::new()
@@ -421,7 +421,7 @@ let storage = InMemoryConfig::new()
 Requires the `postgres-storage` feature (enabled by default).
 
 ```rust
-use auth_framework::storage::PostgresStorage;
+use cinaauth::storage::PostgresStorage;
 use sqlx::PgPool;
 
 let pool = PgPool::connect("postgres://user:pass@localhost/auth_db").await?;
@@ -434,7 +434,7 @@ storage.migrate().await?; // Creates tables if they don't exist
 Requires the `redis-storage` feature.
 
 ```rust
-use auth_framework::storage::RedisStorage;
+use cinaauth::storage::RedisStorage;
 use std::time::Duration;
 
 // Basic
@@ -454,7 +454,7 @@ High-performance DashMap-based storage with background cleanup. Requires the
 `performance-optimization` feature.
 
 ```rust
-use auth_framework::storage::{UnifiedStorage, UnifiedStorageConfig};
+use cinaauth::storage::{UnifiedStorage, UnifiedStorageConfig};
 
 let storage = UnifiedStorage::new();
 
@@ -589,7 +589,7 @@ pattern.
 #### Builder Pattern (Recommended)
 
 ```rust
-use auth_framework::config::AuthConfig;
+use cinaauth::config::AuthConfig;
 use std::time::Duration;
 
 let config = AuthConfig::builder()
@@ -635,7 +635,7 @@ Both PKCS#1 (`BEGIN RSA PRIVATE KEY`) and PKCS#8 (`BEGIN PRIVATE KEY`) formats
 are auto-detected:
 
 ```rust
-use auth_framework::tokens::TokenManager;
+use cinaauth::tokens::TokenManager;
 
 let token_manager = TokenManager::new_rsa(
     &private_key_bytes,
@@ -654,10 +654,10 @@ let token_manager = TokenManager::new_rsa(
 The default API server uses Axum. See `src/api/` for the full router.
 
 ```rust
-use auth_framework::api::ApiServer;
+use cinaauth::api::ApiServer;
 use std::sync::Arc;
 
-let auth = Arc::new(auth_framework);
+let auth = Arc::new(cinaauth);
 let server = ApiServer::new(auth.clone());
 server.start().await?;
 // Server provides routes: /auth/login, /auth/register, /auth/refresh, etc.
@@ -666,7 +666,7 @@ server.start().await?;
 ### Actix-web Integration (Feature: `actix-integration`)
 
 ```rust
-use auth_framework::integrations::actix_web::configure_actix_app;
+use cinaauth::integrations::actix_web::configure_actix_app;
 
 HttpServer::new(move || {
     App::new()
@@ -677,7 +677,7 @@ HttpServer::new(move || {
 ### Warp Integration (Feature: `warp-integration`)
 
 ```rust
-use auth_framework::integrations::warp::*;
+use cinaauth::integrations::warp::*;
 
 let auth_filter = with_auth(auth.clone());
 let protected = warp::path("profile")
@@ -713,7 +713,7 @@ Key variants:
 Every `AuthError` exposes framework-agnostic helpers for programmatic handling:
 
 ```rust
-use auth_framework::AuthError;
+use cinaauth::AuthError;
 
 let err = AuthError::rate_limit("slow down");
 
@@ -750,7 +750,7 @@ pub type Result<T> = std::result::Result<T, AuthError>;
 ## Testing Utilities
 
 ```rust
-use auth_framework::testing::{MockAuthMethod, TestEnvironment};
+use cinaauth::testing::{MockAuthMethod, TestEnvironment};
 
 // Create a mock auth method that always succeeds
 let mock = MockAuthMethod::new_success();
@@ -786,9 +786,9 @@ let _env = TestEnvironment::new()
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", features = ["redis-storage", "actix-integration"] }
+cinaauth = { version = "0.5", features = ["redis-storage", "actix-integration"] }
 ```
 
-This API reference covers the primary public interfaces in auth-framework. For
+This API reference covers the primary public interfaces in cinaauth. For
 protocol-specific configuration, see [PROTOCOL_CONFIGURATION.md](PROTOCOL_CONFIGURATION.md).
 For deployment guidance, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This guide provides system administrators with comprehensive instructions for deploying, configuring, and managing AuthFramework in production environments. AuthFramework is designed to be a secure, scalable, and maintainable authentication and authorization solution.
+This guide provides system administrators with comprehensive instructions for deploying, configuring, and managing Cinaauth in production environments. Cinaauth is designed to be a secure, scalable, and maintainable authentication and authorization solution.
 
 ## Production Deployment
 
@@ -41,8 +41,8 @@ Create a `docker-compose.yml` file:
 version: '3.8'
 
 services:
-  auth-framework:
-    image: authframework/auth-framework:0.4.0
+  cinaauth:
+    image: authframework/cinaauth:0.4.0
     ports:
       - "8080:8080"
       - "8443:8443"
@@ -102,7 +102,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./certs:/etc/nginx/certs
     depends_on:
-      - auth-framework
+      - cinaauth
     restart: unless-stopped
 
 volumes:
@@ -119,7 +119,7 @@ Create Kubernetes manifests:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: auth-framework
+  name: cinaauth
 
 ---
 # configmap.yaml
@@ -127,7 +127,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: auth-config
-  namespace: auth-framework
+  namespace: cinaauth
 data:
   auth-config.toml: |
     [database]
@@ -142,7 +142,7 @@ data:
 
     [jwt]
     secret_key = "${JWT_SECRET}"
-    issuer = "auth-framework"
+    issuer = "cinaauth"
     audience = "api"
     access_token_ttl_seconds = 3600
     refresh_token_ttl_seconds = 604800
@@ -166,7 +166,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: auth-secrets
-  namespace: auth-framework
+  namespace: cinaauth
 type: Opaque
 stringData:
   JWT_SECRET: "your-jwt-secret-here"
@@ -178,21 +178,21 @@ stringData:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: auth-framework
-  namespace: auth-framework
+  name: cinaauth
+  namespace: cinaauth
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: auth-framework
+      app: cinaauth
   template:
     metadata:
       labels:
-        app: auth-framework
+        app: cinaauth
     spec:
       containers:
-      - name: auth-framework
-        image: authframework/auth-framework:0.4.0
+      - name: cinaauth
+        image: authframework/cinaauth:0.4.0
         ports:
         - containerPort: 8080
         - containerPort: 8443
@@ -246,11 +246,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: auth-framework
-  namespace: auth-framework
+  name: cinaauth
+  namespace: cinaauth
 spec:
   selector:
-    app: auth-framework
+    app: cinaauth
   ports:
   - name: http
     port: 80
@@ -265,8 +265,8 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: auth-framework
-  namespace: auth-framework
+  name: cinaauth
+  namespace: cinaauth
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -283,7 +283,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: auth-framework
+            name: cinaauth
             port:
               number: 80
 ```
@@ -307,7 +307,7 @@ pool_size = 10
 
 [jwt]
 secret_key = "${JWT_SECRET}"
-issuer = "auth-framework"
+issuer = "cinaauth"
 audience = "api"
 access_token_ttl_seconds = 900
 refresh_token_ttl_seconds = 604800
@@ -511,7 +511,7 @@ chmod 644 server.crt
 Configure Nginx as reverse proxy:
 
 ```nginx
-# /etc/nginx/sites-available/auth-framework
+# /etc/nginx/sites-available/cinaauth
 upstream auth_backend {
     server 127.0.0.1:8080;
     server 127.0.0.1:8081;  # If running multiple instances
@@ -580,7 +580,7 @@ server {
 
 #### Prometheus Monitoring
 
-Configure Prometheus to scrape AuthFramework metrics:
+Configure Prometheus to scrape Cinaauth metrics:
 
 ```yaml
 # prometheus.yml
@@ -588,7 +588,7 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'auth-framework'
+  - job_name: 'cinaauth'
     static_configs:
       - targets: ['localhost:9090']
     scrape_interval: 5s
@@ -597,12 +597,12 @@ scrape_configs:
 
 #### Grafana Dashboard
 
-Import the AuthFramework Grafana dashboard:
+Import the Cinaauth Grafana dashboard:
 
 ```json
 {
   "dashboard": {
-    "title": "AuthFramework Monitoring",
+    "title": "Cinaauth Monitoring",
     "panels": [
       {
         "title": "Authentication Rate",
@@ -641,15 +641,15 @@ filebeat.inputs:
   paths:
     - /app/logs/*.log
   fields:
-    service: auth-framework
+    service: cinaauth
   fields_under_root: true
 
 output.elasticsearch:
   hosts: ["elasticsearch:9200"]
-  index: "auth-framework-%{+yyyy.MM.dd}"
+  index: "cinaauth-%{+yyyy.MM.dd}"
 
-setup.template.name: "auth-framework"
-setup.template.pattern: "auth-framework-*"
+setup.template.name: "cinaauth"
+setup.template.pattern: "cinaauth-*"
 ```
 
 ### Backup and Recovery
@@ -774,9 +774,9 @@ chmod 644 /app/certs/*.crt
 chmod 600 /app/certs/*.key
 
 # Configure systemd service
-sudo tee /etc/systemd/system/auth-framework.service << EOF
+sudo tee /etc/systemd/system/cinaauth.service << EOF
 [Unit]
-Description=AuthFramework Authentication Service
+Description=Cinaauth Authentication Service
 After=network.target postgresql.service redis.service
 
 [Service]
@@ -784,7 +784,7 @@ Type=simple
 User=authframework
 Group=authframework
 WorkingDirectory=/app
-ExecStart=/app/bin/auth-framework
+ExecStart=/app/bin/cinaauth
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -802,8 +802,8 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable auth-framework
-sudo systemctl start auth-framework
+sudo systemctl enable cinaauth
+sudo systemctl start cinaauth
 ```
 
 ### Operations and Maintenance
@@ -817,14 +817,14 @@ Configure comprehensive health checks:
 # /usr/local/bin/health-check.sh
 
 # Check service status
-if ! systemctl is-active --quiet auth-framework; then
-    echo "CRITICAL: AuthFramework service is not running"
+if ! systemctl is-active --quiet cinaauth; then
+    echo "CRITICAL: Cinaauth service is not running"
     exit 2
 fi
 
 # Check HTTP endpoint
 if ! curl -sf http://localhost:8080/health > /dev/null; then
-    echo "CRITICAL: AuthFramework health endpoint not responding"
+    echo "CRITICAL: Cinaauth health endpoint not responding"
     exit 2
 fi
 
@@ -849,7 +849,7 @@ exit 0
 Configure log rotation:
 
 ```bash
-# /etc/logrotate.d/auth-framework
+# /etc/logrotate.d/cinaauth
 /app/logs/*.log {
     daily
     missingok
@@ -859,7 +859,7 @@ Configure log rotation:
     notifempty
     copytruncate
     postrotate
-        systemctl reload auth-framework
+        systemctl reload cinaauth
     endscript
 }
 ```
@@ -869,7 +869,7 @@ Configure log rotation:
 System-level optimizations:
 
 ```bash
-# /etc/sysctl.d/99-auth-framework.conf
+# /etc/sysctl.d/99-cinaauth.conf
 # Network optimizations
 net.core.somaxconn = 1024
 net.core.netdev_max_backlog = 5000
@@ -901,13 +901,13 @@ authframework hard nproc 32768
 
 ```bash
 # Check service status
-sudo systemctl status auth-framework
+sudo systemctl status cinaauth
 
 # Check logs
-sudo journalctl -u auth-framework -f
+sudo journalctl -u cinaauth -f
 
 # Verify configuration
-auth-framework --config /app/config/auth-config.toml --validate
+cinaauth --config /app/config/auth-config.toml --validate
 ```
 
 #### Issue: Database connection failures
@@ -924,10 +924,10 @@ sudo tail -f /var/log/postgresql/postgresql-*.log
 
 ```bash
 # Monitor memory usage
-top -p $(pgrep auth-framework)
+top -p $(pgrep cinaauth)
 
 # Check for memory leaks
-valgrind --leak-check=full /app/bin/auth-framework
+valgrind --leak-check=full /app/bin/cinaauth
 ```
 
 ### Performance Monitoring
@@ -944,10 +944,10 @@ Monitor key performance metrics:
 ## Support and Resources
 
 - **Documentation**: [docs.authframework.dev](https://docs.authframework.dev)
-- **GitHub**: [github.com/ciresnave/auth-framework](https://github.com/ciresnave/auth-framework)
+- **GitHub**: [github.com/cinagroup/cinaauth](https://github.com/cinagroup/cinaauth)
 - **Community**: [Discord](https://discord.gg/authframework)
 - **Enterprise Support**: [enterprise@authframework.dev](mailto:enterprise@authframework.dev)
 
 ---
 
-AuthFramework v0.5.0-rc24 - THE premier authentication and authorization solution
+Cinaauth v0.5.0-rc24 - THE premier authentication and authorization solution

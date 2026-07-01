@@ -1,4 +1,4 @@
-/// PostgreSQL storage implementation for auth-framework.
+/// PostgreSQL storage implementation for cinaauth.
 /// This module provides a production-ready PostgreSQL backend for storing
 /// authentication tokens, sessions, and audit logs.
 use crate::errors::{AuthError, Result};

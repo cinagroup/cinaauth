@@ -1,5 +1,5 @@
 """
-Exception classes for the AuthFramework SDK.
+Exception classes for the cinaauth SDK.
 """
 
 from __future__ import annotations
@@ -7,8 +7,8 @@ from __future__ import annotations
 from typing import Any
 
 
-class AuthFrameworkError(Exception):
-    """Base exception for AuthFramework SDK errors."""
+class CinaauthError(Exception):
+    """Base exception for cinaauth SDK errors."""
 
     def __init__(
         self,
@@ -24,14 +24,14 @@ class AuthFrameworkError(Exception):
         self.status_code = status_code
 
 
-class ValidationError(AuthFrameworkError):
+class ValidationError(CinaauthError):
     """Raised when request validation fails."""
 
     def __init__(self, message: str, details: Any | None = None) -> None:
         super().__init__(message, "VALIDATION_ERROR", details, 400)
 
 
-class AuthenticationError(AuthFrameworkError):
+class AuthenticationError(CinaauthError):
     """Raised when authentication fails."""
 
     def __init__(
@@ -40,7 +40,7 @@ class AuthenticationError(AuthFrameworkError):
         super().__init__(message, "AUTHENTICATION_ERROR", details, 401)
 
 
-class AuthorizationError(AuthFrameworkError):
+class AuthorizationError(CinaauthError):
     """Raised when authorization fails."""
 
     def __init__(
@@ -49,7 +49,7 @@ class AuthorizationError(AuthFrameworkError):
         super().__init__(message, "AUTHORIZATION_ERROR", details, 403)
 
 
-class NotFoundError(AuthFrameworkError):
+class NotFoundError(CinaauthError):
     """Raised when a resource is not found."""
 
     def __init__(
@@ -58,7 +58,7 @@ class NotFoundError(AuthFrameworkError):
         super().__init__(message, "NOT_FOUND_ERROR", details, 404)
 
 
-class ConflictError(AuthFrameworkError):
+class ConflictError(CinaauthError):
     """Raised when a resource conflict occurs."""
 
     def __init__(
@@ -67,7 +67,7 @@ class ConflictError(AuthFrameworkError):
         super().__init__(message, "CONFLICT_ERROR", details, 409)
 
 
-class RateLimitError(AuthFrameworkError):
+class RateLimitError(CinaauthError):
     """Raised when rate limit is exceeded."""
 
     def __init__(
@@ -80,7 +80,7 @@ class RateLimitError(AuthFrameworkError):
         self.retry_after = retry_after
 
 
-class ServerError(AuthFrameworkError):
+class ServerError(CinaauthError):
     """Raised when a server error occurs."""
 
     def __init__(
@@ -92,7 +92,7 @@ class ServerError(AuthFrameworkError):
         super().__init__(message, "SERVER_ERROR", details, status_code)
 
 
-class NetworkError(AuthFrameworkError):
+class NetworkError(CinaauthError):
     """Raised when a network error occurs."""
 
     def __init__(
@@ -101,7 +101,7 @@ class NetworkError(AuthFrameworkError):
         super().__init__(message, "NETWORK_ERROR", details)
 
 
-class TimeoutError(AuthFrameworkError):  # noqa: A001
+class TimeoutError(CinaauthError):  # noqa: A001
     """Raised when a request times out."""
 
     def __init__(
@@ -114,7 +114,7 @@ def create_error_from_response(
     status_code: int,
     error_response: dict[str, Any | None] | None = None,
     default_message: str | None = None,
-) -> AuthFrameworkError:
+) -> CinaauthError:
     """Create an appropriate error instance based on HTTP status code and error response."""
     message = (error_response or {}).get(
         "message", default_message or "An error occurred"
@@ -141,7 +141,7 @@ def create_error_from_response(
     elif status_code >= 500:
         return ServerError(message_str, details, status_code)
     else:
-        return AuthFrameworkError(message_str, code_str, details, status_code)
+        return CinaauthError(message_str, code_str, details, status_code)
 
 
 def is_retryable_error(error: Exception) -> bool:
@@ -149,7 +149,7 @@ def is_retryable_error(error: Exception) -> bool:
     if isinstance(error, (NetworkError, TimeoutError)):
         return True
 
-    if isinstance(error, AuthFrameworkError) and error.status_code:
+    if isinstance(error, CinaauthError) and error.status_code:
         return error.status_code >= 500
 
     return False

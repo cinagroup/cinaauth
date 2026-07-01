@@ -1,7 +1,7 @@
 //! Critical security validation test to ensure JWT signature bypass vulnerability is fixed
 
-use auth_framework::{
-    AuthConfig, AuthFramework, testing::test_infrastructure::TestEnvironmentGuard,
+use cinaauth::{
+    AuthConfig, Cinaauth, testing::test_infrastructure::TestEnvironmentGuard,
 };
 use chrono::{Duration, Utc};
 use jsonwebtoken::{EncodingKey, Header, encode};
@@ -28,18 +28,18 @@ async fn test_jwt_signature_validation() {
 
     let config = AuthConfig::new()
         .secret("test-secret-for-security-validation-32chars".to_string())
-        .issuer("auth-framework".to_string())
-        .audience("auth-framework".to_string());
+        .issuer("cinaauth".to_string())
+        .audience("cinaauth".to_string());
 
     // initialize() replaces the temporary default secret with the configured one.
-    let mut auth_framework = AuthFramework::new(config);
-    auth_framework.initialize().await.unwrap();
+    let mut cinaauth = Cinaauth::new(config);
+    cinaauth.initialize().await.unwrap();
 
     let now = Utc::now().timestamp();
     let claims = TestClaims {
         sub: "admin".to_string(),
-        iss: "auth-framework".to_string(),
-        aud: "auth-framework".to_string(),
+        iss: "cinaauth".to_string(),
+        aud: "cinaauth".to_string(),
         exp: (Utc::now() + Duration::hours(1)).timestamp(),
         iat: now,
         nbf: now,
@@ -51,7 +51,7 @@ async fn test_jwt_signature_validation() {
     let wrong_key = EncodingKey::from_secret(b"wrong-key");
     let malicious_jwt = encode(&Header::default(), &claims, &wrong_key).unwrap();
 
-    let validation_result = auth_framework
+    let validation_result = cinaauth
         .token_manager()
         .validate_jwt_token(&malicious_jwt);
 
@@ -65,7 +65,7 @@ async fn test_jwt_signature_validation() {
     let correct_key = EncodingKey::from_secret(b"test-secret-for-security-validation-32chars");
     let valid_jwt = encode(&Header::default(), &claims, &correct_key).unwrap();
 
-    let valid_result = auth_framework
+    let valid_result = cinaauth
         .token_manager()
         .validate_jwt_token(&valid_jwt);
 

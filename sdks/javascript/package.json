@@ -1,7 +1,7 @@
 {
-  "name": "@authframework/js-sdk",
+  "name": "@cinaauth/js-sdk",
   "version": "1.0.0",
-  "description": "Official JavaScript/TypeScript SDK for AuthFramework REST API",
+  "description": "Official JavaScript/TypeScript SDK for cinaauth REST API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.esm.js",
@@ -34,17 +34,17 @@
     "typescript",
     "javascript"
   ],
-  "author": "AuthFramework Team",
+  "author": "cinaauth Team",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cires/AuthFramework.git",
+    "url": "https://github.com/cinagroup/cinaauth.git",
     "directory": "sdks/javascript"
   },
   "bugs": {
-    "url": "https://github.com/cires/AuthFramework/issues"
+    "url": "https://github.com/cinagroup/cinaauth/issues"
   },
-  "homepage": "https://github.com/cires/AuthFramework#readme",
+  "homepage": "https://github.com/cinagroup/cinaauth#readme",
   "devDependencies": {
     "@types/jest": "^29.5.8",
     "@types/node": "^20.9.0",

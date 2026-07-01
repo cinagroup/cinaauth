@@ -1,10 +1,10 @@
 # Docker Deployment Guide
 
-Complete guide for deploying AuthFramework with Docker, featuring PostgreSQL as the recommended database backend.
+Complete guide for deploying Cinaauth with Docker, featuring PostgreSQL as the recommended database backend.
 
 ## Quick Start with Docker Compose
 
-The fastest way to get AuthFramework running with PostgreSQL:
+The fastest way to get Cinaauth running with PostgreSQL:
 
 ```yaml
 # docker-compose.yml
@@ -45,7 +45,7 @@ services:
       
       # Security Configuration
       # Configure CORS through the mounted application config file or your own
-      # entrypoint wrapper; AuthFramework does not provide a built-in
+      # entrypoint wrapper; Cinaauth does not provide a built-in
       # CORS environment-variable loader for ApiServerConfig.
       RATE_LIMIT_REQUESTS_PER_MINUTE: 100
       
@@ -72,8 +72,8 @@ Create a `.env` file:
 # .env
 DB_PASSWORD=your_secure_database_password
 JWT_SECRET=your-super-secret-jwt-key-minimum-32-characters-long
-DATABASE_URL=postgresql://auth_user:${DB_PASSWORD}@postgres:5432/auth_framework
-JWT_ISSUER=auth-framework
+DATABASE_URL=postgresql://auth_user:${DB_PASSWORD}@postgres:5432/cinaauth
+JWT_ISSUER=cinaauth
 JWT_AUDIENCE=api
 ```
 
@@ -151,7 +151,7 @@ COPY src ./src
 COPY examples ./examples
 
 # Build the application
-RUN cargo build --release --features api-server,postgres-storage --bin auth-framework
+RUN cargo build --release --features api-server,postgres-storage --bin cinaauth
 
 # Runtime stage
 FROM alpine:3.19
@@ -168,7 +168,7 @@ RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
 # Copy binary from builder
-COPY --from=builder /app/target/release/auth-framework /usr/local/bin/auth-framework
+COPY --from=builder /app/target/release/cinaauth /usr/local/bin/cinaauth
 
 # Create directories
 RUN mkdir -p /app/config /app/logs && \
@@ -183,7 +183,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 EXPOSE 8080
 
-CMD ["auth-framework", "--config", "/app/config/auth.toml"]
+CMD ["cinaauth", "--config", "/app/config/auth.toml"]
 ```
 
 ### Production Docker Compose

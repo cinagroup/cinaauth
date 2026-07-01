@@ -11,7 +11,7 @@ backup_codes_count = 10
 # TOTP (Time-based One-Time Password) configuration
 [methods.mfa.totp]
 enabled = true
-issuer = "AuthFramework"
+issuer = "Cinaauth"
 algorithm = "SHA1"       # SHA1, SHA256, or SHA512
 digits = 6               # Number of digits in the code
 period = 30              # Time period in seconds
@@ -42,7 +42,7 @@ template = "default"    # Email template to use
 
 [methods.mfa.webauthn]
 enabled = false                             # Disabled by default (requires HTTPS)
-rp_name = "AuthFramework"                   # Relying Party name
+rp_name = "Cinaauth"                   # Relying Party name
 rp_id = "localhost"                         # Relying Party identifier (your domain)
 require_user_verification = false
 user_verification = "preferred"             # required, preferred, or discouraged

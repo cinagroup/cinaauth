@@ -11,7 +11,7 @@ use axum::{
 ///
 /// # Example
 /// ```rust,no_run
-/// use auth_framework::api::advanced_protocols::credential_issuer_metadata;
+/// use cinaauth::api::advanced_protocols::credential_issuer_metadata;
 ///
 /// // This endpoint is automatically mounted by the advanced protocol router
 /// // and returns metadata detailing supported verifiable credentials.
@@ -30,7 +30,7 @@ pub async fn credential_issuer_metadata() -> Json<serde_json::Value> {
 ///
 /// # Example
 /// ```rust,no_run
-/// use auth_framework::api::advanced_protocols::issue_credential;
+/// use cinaauth::api::advanced_protocols::issue_credential;
 ///
 /// // Clients POST their presentation definitions here to receive a Verifiable Credential.
 /// ```
@@ -44,7 +44,7 @@ pub async fn issue_credential() -> Json<serde_json::Value> {
 ///
 /// # Example
 /// ```rust,no_run
-/// use auth_framework::api::advanced_protocols::presentation_request;
+/// use cinaauth::api::advanced_protocols::presentation_request;
 ///
 /// // Provides the Presentation Definition specifying exactly which claims
 /// // the user needs to share with the relying party.
@@ -59,7 +59,7 @@ pub async fn presentation_request() -> Json<serde_json::Value> {
 ///
 /// # Example
 /// ```rust,no_run
-/// use auth_framework::api::advanced_protocols::presentation_response;
+/// use cinaauth::api::advanced_protocols::presentation_response;
 ///
 /// // Validates the JSON Web Signature (JWS) or EdDSA proof submitted
 /// // by the digital wallet.
@@ -75,7 +75,7 @@ pub async fn presentation_response() -> Json<serde_json::Value> {
 ///
 /// # Example
 /// ```rust,no_run
-/// use auth_framework::api::advanced_protocols::spiffe_trust_bundle;
+/// use cinaauth::api::advanced_protocols::spiffe_trust_bundle;
 ///
 /// // Other workloads pull keys from here to securely authenticate service identities.
 /// ```
@@ -89,7 +89,7 @@ pub async fn spiffe_trust_bundle() -> Json<serde_json::Value> {
 ///
 /// # Example
 /// ```rust,no_run
-/// use auth_framework::api::advanced_protocols::caep_events;
+/// use cinaauth::api::advanced_protocols::caep_events;
 ///
 /// // Accepts SSE (Shared Signals and Events) payload confirming compromised
 /// // user devices to sever existing active tokens immediately.
@@ -105,7 +105,7 @@ pub async fn caep_events() -> Json<serde_json::Value> {
 ///
 /// # Example
 /// ```rust,no_run
-/// use auth_framework::api::advanced_protocols::acme_directory;
+/// use cinaauth::api::advanced_protocols::acme_directory;
 ///
 /// // Returns directory mappings enabling automated TLS cert renewals.
 /// ```
@@ -124,7 +124,7 @@ pub async fn acme_directory() -> Json<serde_json::Value> {
 ///
 /// # Example
 /// ```rust,ignore
-/// use auth_framework::api::advanced_protocols;
+/// use cinaauth::api::advanced_protocols;
 /// use axum::Router;
 ///
 /// // Within server.rs builder:

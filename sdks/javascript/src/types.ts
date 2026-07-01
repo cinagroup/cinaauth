@@ -1,5 +1,5 @@
 /**
- * Type definitions for the AuthFramework API
+ * Type definitions for the cinaauth API
  */
 
 // Base API Response Types

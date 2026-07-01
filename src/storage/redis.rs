@@ -1,4 +1,4 @@
-//! Redis storage backend for auth-framework.
+//! Redis storage backend for cinaauth.
 //!
 //! This module provides a production-ready Redis storage implementation
 //! with connection pooling, serialization, and error handling.

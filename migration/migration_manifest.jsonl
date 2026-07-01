@@ -741,3 +741,10 @@
 {"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-04-11T20:28:12.637147400+00:00"}
 {"op":"create_role","role_id":"test_role","name":"Test Role","description":null,"permissions":["read"],"parent_role":null,"timestamp":"2026-04-11T20:28:12.653875400+00:00"}
 {"op":"assign_user_role","user_id":"user1","role_id":"test_role","expiration":null,"timestamp":"2026-04-11T20:28:12.650072400+00:00"}
+{"action":"read","conditions":{},"op":"create_permission","permission_id":"read_users","resource":"users","timestamp":"2026-07-01T02:27:08.547474514+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read_users"],"role_id":"test_role","timestamp":"2026-07-01T02:27:08.547677407+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-07-01T02:27:08.550567752+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-07-01T02:27:08.551471197+00:00"}
+{"expiration":null,"op":"assign_user_role","role_id":"test_role","timestamp":"2026-07-01T02:27:08.551590938+00:00","user_id":"user1"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-07-01T02:27:08.553876707+00:00"}
+{"description":null,"name":"Test Role","op":"create_role","parent_role":null,"permissions":["read"],"role_id":"test_role","timestamp":"2026-07-01T02:27:08.556566071+00:00"}

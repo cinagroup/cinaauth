@@ -1,4 +1,4 @@
-//! Builder patterns and ergonomic helpers for the Auth Framework
+//! Builder patterns and ergonomic helpers for the cinaauth
 //!
 //! This module provides fluent builder APIs and helper functions to make
 //! common authentication setup tasks easier and more discoverable.
@@ -10,15 +10,15 @@
 //! ```rust,no_run
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! use auth_framework::prelude::*;
+//! use cinaauth::prelude::*;
 //!
 //! // Simple JWT auth with environment variables
-//! let auth = AuthFramework::quick_start()
+//! let auth = Cinaauth::quick_start()
 //!     .jwt_auth_from_env()
 //!     .build().await?;
 //!
 //! // Web app with database
-//! let auth = AuthFramework::quick_start()
+//! let auth = Cinaauth::quick_start()
 //!     .jwt_auth("your-secret-key")
 //!     .with_postgres("postgresql://...")
 //!     .with_axum()
@@ -34,9 +34,9 @@
 //! ```rust,no_run
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! use auth_framework::prelude::*;
+//! use cinaauth::prelude::*;
 //!
-//! let auth = AuthFramework::builder()
+//! let auth = Cinaauth::builder()
 //!     .security_preset(SecurityPreset::HighSecurity)
 //!     .performance_preset(PerformancePreset::LowLatency)
 //!     .build().await?;
@@ -51,10 +51,10 @@
 //! ```rust,no_run
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! use auth_framework::prelude::*;
+//! use cinaauth::prelude::*;
 //!
 //! // Configure for web application
-//! let auth = AuthFramework::for_use_case(UseCasePreset::WebApp)
+//! let auth = Cinaauth::for_use_case(UseCasePreset::WebApp)
 //!     .customize(|config| {
 //!         config.token_lifetime = hours(24);
 //!         config
@@ -65,7 +65,7 @@
 //! ```
 
 use crate::{
-    AuthConfig, AuthError, AuthFramework,
+    AuthConfig, AuthError, Cinaauth,
     config::{RateLimitConfig, SecurityConfig, StorageConfig},
     prelude::{PerformancePreset, UseCasePreset, days, hours, minutes},
     security::SecurityPreset,
@@ -74,9 +74,9 @@ use std::time::Duration;
 #[cfg(not(feature = "redis-storage"))]
 use tracing::warn;
 
-/// Main builder for constructing an [`AuthFramework`] instance.
+/// Main builder for constructing an [`Cinaauth`] instance.
 ///
-/// Start with [`AuthFramework::builder()`] and chain sub-builders for
+/// Start with [`Cinaauth::builder()`] and chain sub-builders for
 /// JWT, storage, security, rate limiting, and audit configuration.
 ///
 /// # Example
@@ -84,9 +84,9 @@ use tracing::warn;
 /// ```rust,no_run
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use auth_framework::prelude::*;
+/// use cinaauth::prelude::*;
 ///
-/// let auth = AuthFramework::builder()
+/// let auth = Cinaauth::builder()
 ///     .with_jwt().secret("my-secret-key-that-is-long-enough!!").issuer("myapp").done()
 ///     .with_storage().memory().done()
 ///     .security_preset(SecurityPreset::Balanced)
@@ -106,18 +106,18 @@ pub struct AuthBuilder {
 
 /// Quick start builder for common authentication setups.
 ///
-/// Provides the fastest path to a working [`AuthFramework`] by combining
+/// Provides the fastest path to a working [`Cinaauth`] by combining
 /// authentication method, storage, and framework integrations in a single
-/// fluent chain.  Start via [`AuthFramework::quick_start()`].
+/// fluent chain.  Start via [`Cinaauth::quick_start()`].
 ///
 /// # Example
 ///
 /// ```rust,no_run
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use auth_framework::prelude::*;
+/// use cinaauth::prelude::*;
 ///
-/// let auth = AuthFramework::quick_start()
+/// let auth = Cinaauth::quick_start()
 ///     .jwt_auth("my-secret-key-that-is-long-enough!!")
 ///     .build().await?;
 /// # Ok(())
@@ -167,7 +167,7 @@ pub enum QuickStartFramework {
     Warp,
 }
 
-impl AuthFramework {
+impl Cinaauth {
     /// Create a new builder for the authentication framework
     pub fn builder() -> AuthBuilder {
         AuthBuilder::new()
@@ -195,7 +195,7 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::builders::AuthBuilder;
+    /// use cinaauth::builders::AuthBuilder;
     ///
     /// let builder = AuthBuilder::new();
     /// ```
@@ -215,9 +215,9 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .security_preset(SecurityPreset::HighSecurity);
     /// ```
     pub fn security_preset(mut self, preset: SecurityPreset) -> Self {
@@ -230,9 +230,9 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .performance_preset(PerformancePreset::LowLatency);
     /// ```
     pub fn performance_preset(mut self, preset: PerformancePreset) -> Self {
@@ -245,9 +245,9 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .use_case_preset(UseCasePreset::WebApp);
     /// ```
     pub fn use_case_preset(mut self, preset: UseCasePreset) -> Self {
@@ -262,9 +262,9 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt().secret("my-long-secret-key-32-chars-min!!").done();
     /// ```
     pub fn with_jwt(self) -> JwtBuilder {
@@ -278,9 +278,9 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_oauth2().client_id("id").client_secret("secret").done();
     /// ```
     pub fn with_oauth2(self) -> OAuth2Builder {
@@ -294,9 +294,9 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_storage().memory().done();
     /// ```
     pub fn with_storage(self) -> StorageBuilder {
@@ -310,10 +310,10 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     /// use std::time::Duration;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_rate_limiting().per_ip((200, Duration::from_secs(60))).done();
     /// ```
     pub fn with_rate_limiting(self) -> RateLimitBuilder {
@@ -327,9 +327,9 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_security().min_password_length(12).secure_cookies(true).done();
     /// ```
     pub fn with_security(self) -> SecurityBuilder {
@@ -343,9 +343,9 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_audit().enabled(true).log_success(true).done();
     /// ```
     pub fn with_audit(self) -> AuditBuilder {
@@ -357,10 +357,10 @@ impl AuthBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     /// use std::time::Duration;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .customize(|config| {
     ///         config.token_lifetime = Duration::from_secs(7200);
     ///         config
@@ -377,21 +377,21 @@ impl AuthBuilder {
     /// Build the authentication framework.
     ///
     /// Applies presets, validates configuration, initializes storage,
-    /// and returns a ready-to-use [`AuthFramework`] instance.
+    /// and returns a ready-to-use [`Cinaauth`] instance.
     ///
     /// # Example
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::builder()
+    /// let auth = Cinaauth::builder()
     ///     .with_jwt().secret("my-long-secret-key-32-chars-min!!").done()
     ///     .with_storage().memory().done()
     ///     .build().await?;
     /// # Ok(()) }
     /// ```
-    pub async fn build(mut self) -> Result<AuthFramework, AuthError> {
+    pub async fn build(mut self) -> Result<Cinaauth, AuthError> {
         // Apply presets before building
         if let Some(preset) = self.security_preset.take() {
             self.config.security = self.apply_security_preset(preset);
@@ -412,7 +412,7 @@ impl AuthBuilder {
         // If a custom storage was provided via the builder, we'll construct a framework
         // and replace its storage before initialization so managers use the custom storage.
         let config = self.config.clone();
-        let mut framework = AuthFramework::new(self.config);
+        let mut framework = Cinaauth::new(self.config);
         if let Some(storage) = self.custom_storage.take() {
             framework.replace_storage(storage);
         } else if let Some(pool_size) = self.storage_pool_size {
@@ -509,9 +509,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .build().await?;
     /// # Ok(()) }
@@ -529,10 +529,10 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
     /// // Reads JWT_SECRET from the environment
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth_from_env()
     ///     .build().await?;
     /// # Ok(()) }
@@ -548,9 +548,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .oauth2_auth("client-id", "client-secret")
     ///     .build().await?;
     /// # Ok(()) }
@@ -573,9 +573,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .combined_auth("jwt-secret-long-enough-32chars!!", "client-id", "secret")
     ///     .build().await?;
     /// # Ok(()) }
@@ -600,9 +600,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .with_postgres("postgresql://user:pass@localhost/auth")
     ///     .build().await?;
@@ -619,9 +619,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .with_postgres_from_env()
     ///     .build().await?;
@@ -638,9 +638,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .with_redis("redis://localhost:6379")
     ///     .build().await?;
@@ -657,9 +657,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .with_redis_from_env()
     ///     .build().await?;
@@ -676,9 +676,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .with_memory_storage()
     ///     .build().await?;
@@ -695,9 +695,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .with_axum()
     ///     .build().await?;
@@ -714,9 +714,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .with_actix()
     ///     .build().await?;
@@ -733,9 +733,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .with_warp()
     ///     .build().await?;
@@ -752,9 +752,9 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .security_level(SecurityPreset::HighSecurity)
     ///     .build().await?;
@@ -774,14 +774,14 @@ impl QuickStartBuilder {
     ///
     /// ```rust,no_run
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let auth = AuthFramework::quick_start()
+    /// let auth = Cinaauth::quick_start()
     ///     .jwt_auth("my-long-secret-key-32-chars-min!!")
     ///     .build().await?;
     /// # Ok(()) }
     /// ```
-    pub async fn build(self) -> Result<AuthFramework, AuthError> {
+    pub async fn build(self) -> Result<Cinaauth, AuthError> {
         let mut builder = AuthBuilder::new().security_preset(self.security_level);
 
         // Configure authentication method
@@ -932,9 +932,9 @@ impl JwtBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt().secret("my-long-secret-key-32-chars-min!!").done();
     /// ```
     pub fn secret(mut self, secret: impl Into<String>) -> Self {
@@ -947,9 +947,9 @@ impl JwtBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt().secret_from_env("MY_JWT_SECRET").done();
     /// ```
     pub fn secret_from_env(mut self, env_var: &str) -> Self {
@@ -964,9 +964,9 @@ impl JwtBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt().secret("secret-key-at-least-32-characters!!").issuer("my-service").done();
     /// ```
     pub fn issuer(mut self, issuer: impl Into<String>) -> Self {
@@ -979,9 +979,9 @@ impl JwtBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt().secret("secret-key-at-least-32-characters!!").audience("my-api").done();
     /// ```
     pub fn audience(mut self, audience: impl Into<String>) -> Self {
@@ -994,10 +994,10 @@ impl JwtBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     /// use std::time::Duration;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt()
     ///     .secret("secret-key-at-least-32-characters!!")
     ///     .token_lifetime(Duration::from_secs(1800))
@@ -1013,10 +1013,10 @@ impl JwtBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     /// use std::time::Duration;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt()
     ///     .secret("secret-key-at-least-32-characters!!")
     ///     .refresh_token_lifetime(Duration::from_secs(86400))
@@ -1032,10 +1032,10 @@ impl JwtBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
-    /// use auth_framework::config::JwtAlgorithm;
+    /// use cinaauth::prelude::*;
+    /// use cinaauth::config::JwtAlgorithm;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt()
     ///     .secret("secret-key-at-least-32-characters!!")
     ///     .algorithm(JwtAlgorithm::HS512)
@@ -1051,9 +1051,9 @@ impl JwtBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_jwt().secret("secret-key-at-least-32-characters!!").done()
     ///     .with_storage().memory().done();
     /// ```
@@ -1106,9 +1106,9 @@ impl OAuth2Builder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_oauth2().client_id("my-client-id").done();
     /// ```
     pub fn client_id(mut self, client_id: impl Into<String>) -> Self {
@@ -1121,9 +1121,9 @@ impl OAuth2Builder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_oauth2().client_id("id").client_secret("secret").done();
     /// ```
     pub fn client_secret(mut self, client_secret: impl Into<String>) -> Self {
@@ -1136,9 +1136,9 @@ impl OAuth2Builder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_oauth2()
     ///     .client_id("id")
     ///     .redirect_uri("https://example.com/callback")
@@ -1156,9 +1156,9 @@ impl OAuth2Builder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_oauth2().google_client_id("123.apps.googleusercontent.com").done();
     /// ```
     pub fn google_client_id(self, client_id: impl Into<String>) -> Self {
@@ -1172,9 +1172,9 @@ impl OAuth2Builder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_oauth2().github_client_id("Iv1.abc123").done();
     /// ```
     pub fn github_client_id(self, client_id: impl Into<String>) -> Self {
@@ -1186,9 +1186,9 @@ impl OAuth2Builder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_oauth2().client_id("id").client_secret("secret").done();
     /// ```
     pub fn done(mut self) -> AuthBuilder {
@@ -1243,15 +1243,15 @@ impl StorageBuilder {
     ///
     /// ```rust,ignore
     /// use std::sync::Arc;
-    /// use auth_framework::prelude::*;
-    /// use auth_framework::storage::AuthStorage;
+    /// use cinaauth::prelude::*;
+    /// use cinaauth::storage::AuthStorage;
     ///
     /// // Implement `AuthStorage` for your backend, then:
     /// let storage: Arc<dyn AuthStorage> = Arc::new(
     ///     MySurrealStorage::connect("ws://localhost:8000").await?,
     /// );
     ///
-    /// let auth = AuthFramework::builder()
+    /// let auth = Cinaauth::builder()
     ///     .with_storage()
     ///     .custom(storage)
     ///     .done()
@@ -1268,9 +1268,9 @@ impl StorageBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_storage().memory().done();
     /// ```
     pub fn memory(mut self) -> Self {
@@ -1283,9 +1283,9 @@ impl StorageBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_storage().postgres("postgresql://user:pass@localhost/db").done();
     /// ```
     #[cfg(feature = "postgres-storage")]
@@ -1304,9 +1304,9 @@ impl StorageBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_storage().postgres_from_env().done();
     /// ```
     #[cfg(feature = "postgres-storage")]
@@ -1322,9 +1322,9 @@ impl StorageBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_storage().redis("redis://localhost:6379").done();
     /// ```
     #[cfg(feature = "redis-storage")]
@@ -1343,9 +1343,9 @@ impl StorageBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_storage().redis_from_env().done();
     /// ```
     #[cfg(feature = "redis-storage")]
@@ -1370,9 +1370,9 @@ impl StorageBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_storage().memory().connection_pool_size(20).done();
     /// ```
     pub fn connection_pool_size(mut self, size: u32) -> Self {
@@ -1404,10 +1404,10 @@ impl RateLimitBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     /// use std::time::Duration;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_rate_limiting().per_ip((200, Duration::from_secs(60))).done();
     /// ```
     pub fn per_ip(mut self, (requests, window): (u32, Duration)) -> Self {
@@ -1425,9 +1425,9 @@ impl RateLimitBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_rate_limiting().disabled().done();
     /// ```
     pub fn disabled(mut self) -> Self {
@@ -1459,9 +1459,9 @@ impl SecurityBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_security().min_password_length(12).done();
     /// ```
     pub fn min_password_length(mut self, length: usize) -> Self {
@@ -1474,9 +1474,9 @@ impl SecurityBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_security().require_password_complexity(false).done();
     /// ```
     pub fn require_password_complexity(mut self, required: bool) -> Self {
@@ -1489,9 +1489,9 @@ impl SecurityBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_security().secure_cookies(true).done();
     /// ```
     pub fn secure_cookies(mut self, enabled: bool) -> Self {
@@ -1523,9 +1523,9 @@ impl AuditBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_audit().enabled(true).done();
     /// ```
     pub fn enabled(mut self, enabled: bool) -> Self {
@@ -1538,9 +1538,9 @@ impl AuditBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_audit().log_success(true).done();
     /// ```
     pub fn log_success(mut self, enabled: bool) -> Self {
@@ -1553,9 +1553,9 @@ impl AuditBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
-    /// let builder = AuthFramework::builder()
+    /// let builder = Cinaauth::builder()
     ///     .with_audit().log_failures(true).done();
     /// ```
     pub fn log_failures(mut self, enabled: bool) -> Self {

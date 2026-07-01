@@ -140,7 +140,7 @@ impl OAuth2Config {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::oauth2_server::OAuth2Config;
+    /// use cinaauth::oauth2_server::OAuth2Config;
     /// use std::time::Duration;
     ///
     /// let config = OAuth2Config::builder()
@@ -244,7 +244,7 @@ impl OAuth2ConfigBuilder {
 /// every field manually:
 ///
 /// ```rust,no_run
-/// use auth_framework::server::oauth::oauth2_server::TokenRequest;
+/// use cinaauth::server::oauth::oauth2_server::TokenRequest;
 ///
 /// // Authorization code exchange
 /// let req = TokenRequest::authorization_code("my_code")
@@ -365,7 +365,7 @@ pub struct TokenResponse {
 /// Use [`AuthorizationRequest::new`] for a concise starting point:
 ///
 /// ```rust,no_run
-/// use auth_framework::server::oauth::oauth2_server::AuthorizationRequest;
+/// use cinaauth::server::oauth::oauth2_server::AuthorizationRequest;
 ///
 /// let req = AuthorizationRequest::new("client123", "code", "https://app.example.com/cb")
 ///     .scope("openid profile")

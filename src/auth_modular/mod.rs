@@ -2,7 +2,7 @@
 //!
 //! This module provides a modular approach to authentication and authorization,
 //! allowing fine-grained control over individual components while maintaining
-//! the same high-level API as the main `AuthFramework`.
+//! the same high-level API as the main `Cinaauth`.
 //!
 //! # Architecture
 //!
@@ -33,12 +33,12 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use auth_framework::auth_modular::AuthFramework;
-//! use auth_framework::config::AuthConfig;
+//! use cinaauth::auth_modular::Cinaauth;
+//! use cinaauth::config::AuthConfig;
 //!
 //! // Create modular framework
 //! let config = AuthConfig::default();
-//! let auth = AuthFramework::new(config).expect("valid modular auth framework config");
+//! let auth = Cinaauth::new(config).expect("valid modular auth framework config");
 //!
 //! // Access individual managers
 //! let mfa_manager = auth.mfa_manager();
@@ -53,8 +53,8 @@
 //!
 //! # When To Use This Module
 //!
-//! Prefer [`crate::AuthFramework`] for most applications.
-//! Reach for [`crate::ModularAuthFramework`] only when you need direct access
+//! Prefer [`crate::Cinaauth`] for most applications.
+//! Reach for [`crate::ModularCinaauth`] only when you need direct access
 //! to manager-level composition such as `session_manager()` or `user_manager()`.
 
 pub mod authorization_manager;
@@ -84,7 +84,7 @@ pub use user_manager::{UserInfo, UserManager};
 pub use crate::auth::AuthResult;
 
 /// Main authentication framework - now focused and modular
-pub struct AuthFramework {
+pub struct Cinaauth {
     /// Configuration
     config: AuthConfig,
 
@@ -116,19 +116,19 @@ pub struct AuthFramework {
     initialized: bool,
 }
 
-impl AuthFramework {
+impl Cinaauth {
     /// Create a new authentication framework.
     ///
     /// Returns a descriptive error if the configuration is invalid rather than
     /// panicking, so callers can decide how to handle startup failures.
     ///
-    /// Equivalent to [`AuthFramework::try_new`].
+    /// Equivalent to [`Cinaauth::try_new`].
     ///
     /// # Example
     /// ```rust,ignore
-    /// use auth_framework::{AuthFramework, config::AuthConfig};
+    /// use cinaauth::{Cinaauth, config::AuthConfig};
     ///
-    /// let fw = AuthFramework::new(AuthConfig::default())?;
+    /// let fw = Cinaauth::new(AuthConfig::default())?;
     /// ```
     pub fn new(config: AuthConfig) -> crate::errors::Result<Self> {
         Self::try_new(config)
@@ -141,7 +141,7 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,ignore
-    /// let fw = AuthFramework::try_new(AuthConfig::default())?;
+    /// let fw = Cinaauth::try_new(AuthConfig::default())?;
     /// ```
     pub fn try_new(config: AuthConfig) -> crate::errors::Result<Self> {
         // Validate configuration
@@ -156,21 +156,21 @@ impl AuthFramework {
                     "JWT secret is shorter than 32 characters. Consider using a longer secret for better security."
                 );
             }
-            TokenManager::new_hmac(secret.as_bytes(), "auth-framework", "auth-framework")
+            TokenManager::new_hmac(secret.as_bytes(), "cinaauth", "cinaauth")
         } else if let Some(secret) = &config.secret {
             if secret.len() < 32 {
                 tracing::warn!(
                     "JWT secret is shorter than 32 characters. Consider using a longer secret for better security."
                 );
             }
-            TokenManager::new_hmac(secret.as_bytes(), "auth-framework", "auth-framework")
+            TokenManager::new_hmac(secret.as_bytes(), "cinaauth", "cinaauth")
         } else if let Ok(jwt_secret) = std::env::var("JWT_SECRET") {
             if jwt_secret.len() < 32 {
                 tracing::warn!(
                     "JWT_SECRET is shorter than 32 characters. Consider using a longer secret for better security."
                 );
             }
-            TokenManager::new_hmac(jwt_secret.as_bytes(), "auth-framework", "auth-framework")
+            TokenManager::new_hmac(jwt_secret.as_bytes(), "cinaauth", "cinaauth")
         } else {
             return Err(crate::errors::AuthError::configuration(
                 "JWT secret not set! Please set JWT_SECRET env variable or provide in config.\n\
@@ -239,7 +239,7 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,ignore
-    /// let fw = AuthFramework::new_with_storage(config, Arc::new(MyStorage::new()))?;
+    /// let fw = Cinaauth::new_with_storage(config, Arc::new(MyStorage::new()))?;
     /// ```
     pub fn new_with_storage(
         config: AuthConfig,
@@ -254,7 +254,7 @@ impl AuthFramework {
     ///
     /// # Example
     /// ```rust,ignore
-    /// let fw = AuthFramework::new_with_smskit_config(config, smskit_cfg)?;
+    /// let fw = Cinaauth::new_with_smskit_config(config, smskit_cfg)?;
     /// ```
     #[cfg(feature = "smskit")]
     pub fn new_with_smskit_config(
@@ -1015,8 +1015,8 @@ mod tests {
     use crate::config::{AuthConfig, SecurityConfig};
     use std::time::Duration;
 
-    async fn initialized_framework(config: AuthConfig) -> AuthFramework {
-        let mut framework = AuthFramework::new(config).expect("test config should be valid");
+    async fn initialized_framework(config: AuthConfig) -> Cinaauth {
+        let mut framework = Cinaauth::new(config).expect("test config should be valid");
         framework
             .initialize()
             .await
@@ -1042,7 +1042,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let mut framework = AuthFramework::new(config).expect("test config should be valid");
+        let mut framework = Cinaauth::new(config).expect("test config should be valid");
 
         assert!(framework.initialize().await.is_ok());
         assert!(framework.initialized);
@@ -1062,7 +1062,7 @@ mod tests {
             session_timeout: Duration::from_secs(3600),
             previous_secret_key: None,
         });
-        let framework = AuthFramework::new(config).expect("test config should be valid");
+        let framework = Cinaauth::new(config).expect("test config should be valid");
 
         // Test that we can access specialized managers
         let _mfa_manager = framework.mfa_manager();

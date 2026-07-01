@@ -71,11 +71,11 @@ classDiagram
     class ConfigManager {
         +Vec~String~ sources
         +String env_prefix
-        +load() Result~AuthFrameworkSettings~
+        +load() Result~CinaauthSettings~
         +reload() Result
         +get(key) Result~T~
     }
-    class AuthFrameworkSettings {
+    class CinaauthSettings {
         +AuthConfig auth
         +Option~SessionSettings~ session
         +HashMap~String, Value~ custom
@@ -92,9 +92,9 @@ classDiagram
     AuthConfig *-- StorageConfig
     SecurityConfig ..> JwtAlgorithm
     SecurityConfig ..> PasswordHashAlgorithm
-    AuthFrameworkSettings *-- AuthConfig
-    AuthFrameworkSettings *-- SessionSettings
-    ConfigManager ..> AuthFrameworkSettings : produces
+    CinaauthSettings *-- AuthConfig
+    CinaauthSettings *-- SessionSettings
+    ConfigManager ..> CinaauthSettings : produces
 ```
 
 ---

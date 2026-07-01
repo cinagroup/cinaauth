@@ -35,7 +35,7 @@ impl GrafanaExporter {
     pub async fn export(&self, metrics: HashMap<String, f64>) -> serde_json::Value {
         // IMPLEMENTATION COMPLETE: Grafana JSON format export
         serde_json::json!({
-            "dashboard": "auth-framework",
+            "dashboard": "cinaauth",
             "metrics": metrics,
             "timestamp": chrono::Utc::now().timestamp()
         })
@@ -55,7 +55,7 @@ impl DataDogExporter {
                     "metric": name,
                     "points": [[timestamp, value]],
                     "type": "gauge",
-                    "host": "auth-framework",
+                    "host": "cinaauth",
                     "tags": ["component:auth", "service:authentication"]
                 })
             })

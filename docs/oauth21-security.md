@@ -1,6 +1,6 @@
 # OAuth 2.1 & Enhanced Security Features
 
-This document provides an overview of the new OAuth 2.1 and enhanced security features implemented in Auth Framework v0.3.0.
+This document provides an overview of the new OAuth 2.1 and enhanced security features implemented in cinaauth v0.3.0.
 
 ## 1. OAuth 2.1 Authorization Framework
 
@@ -226,4 +226,4 @@ These implementations provide substantial security benefits:
 4. **Enhanced Client Authentication**: mTLS provides strong client authentication
 5. **Discovery Security**: Metadata enables secure client configuration
 
-With these features, Auth Framework now provides one of the most comprehensive and secure OAuth implementations available in Rust.
+With these features, cinaauth now provides one of the most comprehensive and secure OAuth implementations available in Rust.

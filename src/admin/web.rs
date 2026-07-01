@@ -1,4 +1,4 @@
-//! Web GUI Interface for Auth Framework Administration
+//! Web GUI Interface for cinaauth Administration
 
 #[cfg(feature = "web-gui")]
 use crate::admin::{AppState, HealthStatus};
@@ -549,7 +549,7 @@ struct RuntimeConfigUpdate {
 
 #[cfg(feature = "web-gui")]
 async fn current_runtime_config(state: &AppState) -> RuntimeConfig {
-    if let Some(ref af) = state.auth_framework {
+    if let Some(ref af) = state.cinaauth {
         af.runtime_config().await
     } else {
         let config = state.config.read().await;
@@ -818,9 +818,9 @@ async fn apply_runtime_config_update(
         current.audit_log_tokens = value;
     }
 
-    let Some(ref af) = state.auth_framework else {
+    let Some(ref af) = state.cinaauth else {
         return Err(AuthError::config(
-            "Live runtime configuration updates require an attached AuthFramework instance",
+            "Live runtime configuration updates require an attached cinaauth instance",
         ));
     };
 
@@ -832,7 +832,7 @@ async fn apply_runtime_config_update(
 
 #[cfg(feature = "web-gui")]
 async fn load_user_count(state: &AppState) -> usize {
-    if let Some(ref af) = state.auth_framework {
+    if let Some(ref af) = state.cinaauth {
         match af.storage().get_kv("users:index").await {
             Ok(Some(bytes)) => serde_json::from_slice::<Vec<String>>(&bytes)
                 .map(|user_ids| user_ids.len())
@@ -847,7 +847,7 @@ async fn load_user_count(state: &AppState) -> usize {
 
 #[cfg(feature = "web-gui")]
 async fn load_active_session_count(state: &AppState) -> u64 {
-    if let Some(ref af) = state.auth_framework {
+    if let Some(ref af) = state.cinaauth {
         af.storage()
             .count_active_sessions()
             .await
@@ -891,7 +891,7 @@ fn security_event_from_log_line(index: usize, log_line: String) -> SecurityEvent
 
 #[cfg(feature = "web-gui")]
 async fn load_security_events(state: &AppState, limit: usize) -> Vec<SecurityEvent> {
-    if let Some(ref af) = state.auth_framework
+    if let Some(ref af) = state.cinaauth
         && let Ok(logs) = af
             .get_permission_audit_logs(None, None, None, Some(limit))
             .await
@@ -908,7 +908,7 @@ async fn load_security_events(state: &AppState, limit: usize) -> Vec<SecurityEve
 
 #[cfg(feature = "web-gui")]
 async fn load_users(state: &AppState) -> Vec<User> {
-    let Some(ref af) = state.auth_framework else {
+    let Some(ref af) = state.cinaauth else {
         return Vec::new();
     };
 
@@ -1040,7 +1040,7 @@ async fn config_handler(
     let runtime_config = current_runtime_config(&state).await;
     let template = ConfigTemplate {
         items: config_items_from_runtime_config(&runtime_config),
-        live_updates_enabled: state.auth_framework.is_some(),
+        live_updates_enabled: state.cinaauth.is_some(),
         csrf_token: csrf.0,
     };
     Html(template.render().unwrap_or_else(|e| {
@@ -1183,10 +1183,10 @@ async fn create_user_handler(
 ) -> impl IntoResponse {
     use axum::http::StatusCode;
 
-    let Some(ref af) = state.auth_framework else {
+    let Some(ref af) = state.cinaauth else {
         tracing::warn!(
             email = %form.email,
-            "User creation attempted but no AuthFramework instance is wired into AppState."
+            "User creation attempted but no cinaauth instance is wired into AppState."
         );
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -1194,7 +1194,7 @@ async fn create_user_handler(
                 "<html><body>\
                  <h2>User Creation Unavailable</h2>\
                  <p>The admin GUI does not have access to the auth storage backend. \
-                 Please use the CLI (<code>auth-framework users add</code>) \
+                 Please use the CLI (<code>cinaauth users add</code>) \
                  or the REST API to manage users.</p>\
                  <a href='/users'>&#8592; Back to Users</a>\
                  </body></html>"
@@ -1269,7 +1269,7 @@ async fn delete_user_handler(
 ) -> impl IntoResponse {
     use axum::http::StatusCode;
 
-    let Some(ref af) = state.auth_framework else {
+    let Some(ref af) = state.cinaauth else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             Html(
@@ -1604,12 +1604,12 @@ mod tests {
     }
 
     async fn create_test_state(with_framework: bool) -> AppState {
-        let state = AppState::new(crate::config::AuthFrameworkSettings::default()).unwrap();
+        let state = AppState::new(crate::config::CinaauthSettings::default()).unwrap();
 
         let state = if with_framework {
-            let mut framework = crate::AuthFramework::new(crate::config::AuthConfig::default());
+            let mut framework = crate::Cinaauth::new(crate::config::AuthConfig::default());
             framework.initialize().await.unwrap();
-            state.with_auth_framework(Arc::new(framework))
+            state.with_cinaauth(Arc::new(framework))
         } else {
             state
         };
@@ -1729,7 +1729,7 @@ mod tests {
     #[tokio::test]
     async fn test_protected_html_routes_render_with_live_data() {
         let state = create_test_state(true).await;
-        if let Some(ref af) = state.auth_framework {
+        if let Some(ref af) = state.cinaauth {
             let _ = af
                 .register_user("alice", "alice@example.com", "Password123!")
                 .await
@@ -1771,7 +1771,7 @@ mod tests {
     #[tokio::test]
     async fn test_dashboard_uses_real_user_count() {
         let state = create_test_state(true).await;
-        if let Some(ref af) = state.auth_framework {
+        if let Some(ref af) = state.cinaauth {
             af.register_user("alice", "alice@example.com", "Password123!")
                 .await
                 .unwrap();
@@ -1807,7 +1807,7 @@ mod tests {
     async fn test_config_edit_updates_runtime_config() {
         let state = create_test_state(true).await;
         let session_token = insert_admin_session(&state);
-        let framework = state.auth_framework.as_ref().unwrap().clone();
+        let framework = state.cinaauth.as_ref().unwrap().clone();
         let app = create_web_app(state, "127.0.0.1", 9090, true)
             .await
             .unwrap();
@@ -1840,7 +1840,7 @@ mod tests {
     async fn test_create_user_route_can_assign_admin_role() {
         let state = create_test_state(true).await;
         let session_token = insert_admin_session(&state);
-        let framework = state.auth_framework.as_ref().unwrap().clone();
+        let framework = state.cinaauth.as_ref().unwrap().clone();
         let app = create_web_app(state, "127.0.0.1", 9090, true)
             .await
             .unwrap();
@@ -1869,9 +1869,9 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let verification_state = AppState::new(crate::config::AuthFrameworkSettings::default())
+        let verification_state = AppState::new(crate::config::CinaauthSettings::default())
             .unwrap()
-            .with_auth_framework(framework.clone());
+            .with_cinaauth(framework.clone());
         let users = load_users(&verification_state).await;
         assert!(users.iter().any(|user| {
             user.email == "bob@example.com" && user.roles.iter().any(|role| role == "admin")
@@ -1881,7 +1881,7 @@ mod tests {
     #[tokio::test]
     async fn test_admin_api_routes_return_real_data() {
         let state = create_test_state(true).await;
-        if let Some(ref af) = state.auth_framework {
+        if let Some(ref af) = state.cinaauth {
             af.register_user("carol", "carol@example.com", "Password123!")
                 .await
                 .unwrap();
@@ -1915,7 +1915,7 @@ mod tests {
     async fn test_api_config_update_applies_runtime_changes() {
         let state = create_test_state(true).await;
         let session_token = insert_admin_session(&state);
-        let framework = state.auth_framework.as_ref().unwrap().clone();
+        let framework = state.cinaauth.as_ref().unwrap().clone();
         let app = create_web_app(state, "127.0.0.1", 9090, true)
             .await
             .unwrap();

@@ -2,10 +2,10 @@
 
 #[cfg(all(test, feature = "api-server"))]
 mod auth_flow_tests {
-    use auth_framework::api::ApiState;
-    use auth_framework::api::users::{self, ChangePasswordRequest};
-    use auth_framework::authentication::credentials::Credential;
-    use auth_framework::{AuthConfig, AuthFramework};
+    use cinaauth::api::ApiState;
+    use cinaauth::api::users::{self, ChangePasswordRequest};
+    use cinaauth::authentication::credentials::Credential;
+    use cinaauth::{AuthConfig, Cinaauth};
     use axum::Json;
     use axum::extract::State;
     use axum::http::{HeaderMap, HeaderValue, header::AUTHORIZATION};
@@ -14,9 +14,9 @@ mod auth_flow_tests {
     async fn setup_api_state() -> ApiState {
         let config = AuthConfig::new()
             .secret("test_auth_flow_secret_key_that_is_long_enough_for_jwt".to_string());
-        let mut auth_framework = AuthFramework::new(config);
-        auth_framework.initialize().await.unwrap();
-        ApiState::new(Arc::new(auth_framework)).await.unwrap()
+        let mut cinaauth = Cinaauth::new(config);
+        cinaauth.initialize().await.unwrap();
+        ApiState::new(Arc::new(cinaauth)).await.unwrap()
     }
 
     async fn register_and_auth(state: &ApiState, suffix: &str) -> (String, HeaderMap) {
@@ -24,13 +24,13 @@ mod auth_flow_tests {
         let email = format!("{}@test.example.com", username);
 
         let user_id = state
-            .auth_framework
+            .cinaauth
             .register_user(&username, &email, "SecurePass123!")
             .await
             .expect("user registration should succeed");
 
         let token = state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .create_auth_token(
                 &user_id,
@@ -148,7 +148,7 @@ mod auth_flow_tests {
         });
         let refresh_key = format!("oauth2_refresh_token:{}", refresh_token);
         state
-            .auth_framework
+            .cinaauth
             .storage()
             .store_kv(
                 &refresh_key,
@@ -159,10 +159,10 @@ mod auth_flow_tests {
             .unwrap();
 
         // Exchange the refresh token
-        use auth_framework::server::oauth::oauth2_server::TokenRequest;
+        use cinaauth::server::oauth::oauth2_server::TokenRequest;
         let req = TokenRequest::refresh(refresh_token.clone());
 
-        let resp = auth_framework::api::oauth2::token(State(state.clone()), Json(req)).await;
+        let resp = cinaauth::api::oauth2::token(State(state.clone()), Json(req)).await;
         assert!(
             resp.success,
             "refresh grant should succeed: {:?}",
@@ -178,7 +178,7 @@ mod auth_flow_tests {
 
         // Old refresh token should be consumed (deleted)
         let old = state
-            .auth_framework
+            .cinaauth
             .storage()
             .get_kv(&refresh_key)
             .await
@@ -201,7 +201,7 @@ mod auth_flow_tests {
         });
         let refresh_key = format!("oauth2_refresh_token:{}", refresh_token);
         state
-            .auth_framework
+            .cinaauth
             .storage()
             .store_kv(
                 &refresh_key,
@@ -211,42 +211,42 @@ mod auth_flow_tests {
             .await
             .unwrap();
 
-        use auth_framework::server::oauth::oauth2_server::TokenRequest;
+        use cinaauth::server::oauth::oauth2_server::TokenRequest;
         let make_req = || TokenRequest::refresh(refresh_token.clone());
 
         // First use succeeds
         let resp1 =
-            auth_framework::api::oauth2::token(State(state.clone()), Json(make_req())).await;
+            cinaauth::api::oauth2::token(State(state.clone()), Json(make_req())).await;
         assert!(resp1.success, "first refresh should succeed");
 
         // Second use should fail (single-use rotation)
         let resp2 =
-            auth_framework::api::oauth2::token(State(state.clone()), Json(make_req())).await;
+            cinaauth::api::oauth2::token(State(state.clone()), Json(make_req())).await;
         assert!(!resp2.success, "reused refresh token should be rejected");
     }
 
     #[tokio::test]
     async fn test_refresh_token_missing() {
         let state = setup_api_state().await;
-        use auth_framework::server::oauth::oauth2_server::TokenRequest;
+        use cinaauth::server::oauth::oauth2_server::TokenRequest;
 
         let req = TokenRequest {
             grant_type: "refresh_token".to_string(),
             ..Default::default()
         };
 
-        let resp = auth_framework::api::oauth2::token(State(state.clone()), Json(req)).await;
+        let resp = cinaauth::api::oauth2::token(State(state.clone()), Json(req)).await;
         assert!(!resp.success, "missing refresh_token should fail");
     }
 
     #[tokio::test]
     async fn test_refresh_token_invalid() {
         let state = setup_api_state().await;
-        use auth_framework::server::oauth::oauth2_server::TokenRequest;
+        use cinaauth::server::oauth::oauth2_server::TokenRequest;
 
         let req = TokenRequest::refresh("nonexistent_token_value");
 
-        let resp = auth_framework::api::oauth2::token(State(state.clone()), Json(req)).await;
+        let resp = cinaauth::api::oauth2::token(State(state.clone()), Json(req)).await;
         assert!(!resp.success, "invalid refresh_token should fail");
     }
 
@@ -254,7 +254,7 @@ mod auth_flow_tests {
 
     #[test]
     fn test_lockout_config_defaults() {
-        let config = auth_framework::security::LockoutConfig::default();
+        let config = cinaauth::security::LockoutConfig::default();
         assert!(!config.enabled, "lockout should be disabled by default");
         assert_eq!(config.max_failed_attempts, 0);
         assert_eq!(config.lockout_duration_seconds, 0);
@@ -262,7 +262,7 @@ mod auth_flow_tests {
 
     #[test]
     fn test_lockout_config_custom() {
-        let config = auth_framework::security::LockoutConfig {
+        let config = cinaauth::security::LockoutConfig {
             enabled: true,
             max_failed_attempts: 5,
             lockout_duration_seconds: 300,
@@ -276,7 +276,7 @@ mod auth_flow_tests {
 
     #[test]
     fn test_lockout_config_serialization_roundtrip() {
-        let config = auth_framework::security::LockoutConfig {
+        let config = cinaauth::security::LockoutConfig {
             enabled: true,
             max_failed_attempts: 10,
             lockout_duration_seconds: 600,
@@ -284,7 +284,7 @@ mod auth_flow_tests {
             max_lockout_duration_seconds: 7200,
         };
         let json = serde_json::to_string(&config).unwrap();
-        let deserialized: auth_framework::security::LockoutConfig =
+        let deserialized: cinaauth::security::LockoutConfig =
             serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.enabled, config.enabled);
         assert_eq!(deserialized.max_failed_attempts, config.max_failed_attempts);
@@ -305,7 +305,7 @@ mod auth_flow_tests {
 
         // Register a user
         state
-            .auth_framework
+            .cinaauth
             .register_user("lockout_user", "lockout@test.com", "SecurePass123!")
             .await
             .unwrap();
@@ -314,7 +314,7 @@ mod auth_flow_tests {
         // (lockout is not enabled by default)
         for _ in 0..10 {
             let _ = state
-                .auth_framework
+                .cinaauth
                 .authenticate(
                     "password",
                     Credential::password("lockout_user", "WrongPassword!"),
@@ -324,7 +324,7 @@ mod auth_flow_tests {
 
         // Should still be able to authenticate with correct password
         let result = state
-            .auth_framework
+            .cinaauth
             .authenticate(
                 "password",
                 Credential::password("lockout_user", "SecurePass123!"),

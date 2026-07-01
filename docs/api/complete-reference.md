@@ -385,7 +385,7 @@ Success response:
 {
   "success": true,
   "data": {
-    "qr_code": "otpauth://totp/AuthFramework:user_123?secret=JBSWY3DPEHPK3PXP&issuer=AuthFramework&digits=6&period=30",
+    "qr_code": "otpauth://totp/Cinaauth:user_123?secret=JBSWY3DPEHPK3PXP&issuer=Cinaauth&digits=6&period=30",
     "secret": "JBSWY3DPEHPK3PXP",
     "backup_codes": ["ABCD2345", "EFGH6789"]
   }
@@ -498,7 +498,7 @@ Success response:
     "challenge": "base64url-challenge",
     "rp": {
       "id": "localhost",
-      "name": "AuthFramework"
+      "name": "Cinaauth"
     },
     "user": {
       "id": "dXNlckBleGFtcGxlLmNvbQ",

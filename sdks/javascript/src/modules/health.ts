@@ -1,5 +1,5 @@
 /**
- * Health monitoring module for AuthFramework SDK
+ * Health monitoring module for cinaauth SDK
  */
 
 import { BaseClient } from '../base-client';

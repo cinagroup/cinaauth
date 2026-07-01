@@ -1,10 +1,10 @@
 # Feature Flags Guide
 
-AuthFramework uses Cargo feature flags to control optional functionality. This document explains each feature, its purpose, and when to use it.
+Cinaauth uses Cargo feature flags to control optional functionality. This document explains each feature, its purpose, and when to use it.
 
 ## Default Features
 
-The following features are enabled by default when you add `auth-framework` to your `Cargo.toml`:
+The following features are enabled by default when you add `cinaauth` to your `Cargo.toml`:
 
 | Feature            | Purpose                                                                                                    |
 | ------------------ | ---------------------------------------------------------------------------------------------------------- |
@@ -96,7 +96,7 @@ These capabilities are always available regardless of feature flags:
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", default-features = false }
+cinaauth = { version = "0.5", default-features = false }
 ```
 
 Gives you the core library with in-memory storage, JWT tokens, password hashing,
@@ -107,7 +107,7 @@ backends, admin surfaces, and web framework integrations stay disabled.
 
 ```toml
 [dependencies]
-auth-framework = "0.5"
+cinaauth = "0.5"
 ```
 
 Adds PostgreSQL storage and enterprise RBAC with a built-in API server.
@@ -116,14 +116,14 @@ Adds PostgreSQL storage and enterprise RBAC with a built-in API server.
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", default-features = false, features = ["sqlite-storage", "api-server"] }
+cinaauth = { version = "0.5", default-features = false, features = ["sqlite-storage", "api-server"] }
 ```
 
 ### Full-Featured Production
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", features = [
+cinaauth = { version = "0.5", features = [
     "redis-storage",
     "ldap-auth",
     "saml",
@@ -137,7 +137,7 @@ auth-framework = { version = "0.5", features = [
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", features = ["fips-compliance", "enhanced-crypto"] }
+cinaauth = { version = "0.5", features = ["fips-compliance", "enhanced-crypto"] }
 ```
 
 ## Notes

@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-This directory contains Architecture Decision Records for the AuthFramework project. ADRs document important architectural decisions made during the project's development, providing context for future maintainers and developers.
+This directory contains Architecture Decision Records for the Cinaauth project. ADRs document important architectural decisions made during the project's development, providing context for future maintainers and developers.
 
 ## ADR Format
 

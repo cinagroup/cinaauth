@@ -19,7 +19,7 @@ HealthStatus:
             additionalProperties:
                 type: string
             example:
-                auth_framework: "healthy"
+                cinaauth: "healthy"
                 storage: "healthy"
                 token_manager: "healthy"
                 memory: "healthy"

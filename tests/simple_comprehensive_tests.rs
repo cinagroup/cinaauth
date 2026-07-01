@@ -1,10 +1,10 @@
-//! Simple Comprehensive Tests for AuthFramework Current API
+//! Simple Comprehensive Tests for Cinaauth Current API
 //!
 //! This test suite validates the current working API without using deprecated methods.
 
-use auth_framework::{
+use cinaauth::{
     AuthResult,
-    auth::AuthFramework,
+    auth::Cinaauth,
     authentication::credentials::Credential,
     config::AuthConfig,
     errors::AuthError,
@@ -24,7 +24,7 @@ mod basic_framework_tests {
             .issuer("test-issuer".to_string())
             .audience("test-audience".to_string());
 
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         // Register methods
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
@@ -39,7 +39,7 @@ mod basic_framework_tests {
     async fn test_minimal_config() {
         let config = AuthConfig::new().secret("minimal_secret_key_32_bytes_long!!".to_string());
 
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
 
         let result = framework.initialize().await;
@@ -52,9 +52,9 @@ mod basic_framework_tests {
 mod authentication_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
@@ -235,9 +235,9 @@ mod authentication_tests {
 mod token_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
         framework.initialize().await.unwrap();
         framework
@@ -260,7 +260,7 @@ mod token_tests {
 
         let token = result.unwrap();
         assert_eq!(token.user_id, "test_user");
-        assert_eq!(token.scopes, auth_framework::types::Scopes(vec!["read".to_string(), "write".to_string()]));
+        assert_eq!(token.scopes, cinaauth::types::Scopes(vec!["read".to_string(), "write".to_string()]));
         assert_eq!(token.auth_method, "jwt");
     }
 
@@ -312,9 +312,9 @@ mod token_tests {
 mod mfa_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -414,9 +414,9 @@ mod mfa_tests {
 mod validation_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -583,9 +583,9 @@ mod validation_tests {
 mod session_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -627,9 +627,9 @@ mod session_tests {
 mod monitoring_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -677,9 +677,9 @@ mod monitoring_tests {
 mod csrf_tests {
     use super::*;
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
         framework
     }
@@ -740,7 +740,7 @@ async fn test_comprehensive_integration() {
         .audience("test-audience".to_string())
         .token_lifetime(Duration::from_secs(3600));
 
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
 
     // Register all methods
     framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));

@@ -1,4 +1,4 @@
-//! Basic usage example demonstrating core functionality of auth_framework
+//! Basic usage example demonstrating core functionality of cinaauth
 //!
 //! This example shows how to:
 //! - Set up the auth framework
@@ -6,8 +6,8 @@
 //! - Validate tokens
 //! - Manage sessions
 
-use auth_framework::{
-    AuthConfig, AuthFramework, AuthToken,
+use cinaauth::{
+    AuthConfig, Cinaauth, AuthToken,
     methods::{AuthMethodEnum, JwtMethod},
     providers::ProviderProfile,
     storage::{AuthStorage, MemoryStorage, SessionData},
@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing for logging
     tracing_subscriber::fmt::init();
 
-    println!("🔐 Auth Framework - Basic Usage Example");
+    println!("🔐 cinaauth - Basic Usage Example");
     println!("=====================================\n");
 
     // Set environment to test mode to allow memory storage
@@ -42,12 +42,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let storage = Arc::new(MemoryStorage::new());
 
     // 3. Initialize auth framework
-    let mut auth = AuthFramework::new(config);
+    let mut auth = Cinaauth::new(config);
 
     // 4. Register JWT authentication method
     let jwt_method = JwtMethod::new()
         .secret_key("demo-secret-key")
-        .issuer("auth-framework-demo");
+        .issuer("cinaauth-demo");
 
     auth.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
     auth.initialize().await?;
@@ -126,7 +126,7 @@ fn create_test_token(
         access_token: format!("demo_token_{}", uuid::Uuid::new_v4()),
         token_type: Some("Bearer".to_string()),
         subject: Some(user_id),
-        issuer: Some("auth-framework-demo".to_string()),
+        issuer: Some("cinaauth-demo".to_string()),
         refresh_token: Some(format!("refresh_{}", uuid::Uuid::new_v4())),
         issued_at: now,
         expires_at: now + chrono::Duration::hours(1),

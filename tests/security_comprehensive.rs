@@ -1,10 +1,10 @@
-use auth_framework::auth::AuthFramework;
-use auth_framework::auth::AuthResult;
-use auth_framework::authentication::credentials::Credential;
-use auth_framework::config::AuthConfig;
-use auth_framework::testing::test_infrastructure::TestEnvironmentGuard;
-use auth_framework::tokens::AuthToken;
-use auth_framework::{SecureJwtClaims, SecureJwtConfig, SecureJwtValidator};
+use cinaauth::auth::Cinaauth;
+use cinaauth::auth::AuthResult;
+use cinaauth::authentication::credentials::Credential;
+use cinaauth::config::AuthConfig;
+use cinaauth::testing::test_infrastructure::TestEnvironmentGuard;
+use cinaauth::tokens::AuthToken;
+use cinaauth::{SecureJwtClaims, SecureJwtConfig, SecureJwtValidator};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, encode};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -16,7 +16,7 @@ async fn test_timing_attack_resistance() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test that authentication timing is consistent regardless of user existence
@@ -78,7 +78,7 @@ async fn test_dos_protection_mechanisms() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -133,7 +133,7 @@ async fn test_jwt_manipulation_attacks() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test various JWT manipulation attacks
@@ -185,7 +185,7 @@ async fn test_session_hijacking_prevention() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Create multiple sessions to increase chance of collision
@@ -283,7 +283,7 @@ async fn test_resource_exhaustion_protection() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test memory exhaustion protection
@@ -332,7 +332,7 @@ async fn test_input_injection_attacks() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test SQL injection patterns (even though we use in-memory storage)
@@ -370,7 +370,7 @@ async fn test_unicode_normalization_attacks() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test Unicode normalization attacks
@@ -409,7 +409,7 @@ async fn test_concurrent_session_limits() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -464,7 +464,7 @@ async fn test_error_information_disclosure() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test that error messages don't leak sensitive information
@@ -529,7 +529,7 @@ async fn test_rate_limiting_boundary_conditions() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -574,7 +574,7 @@ async fn test_session_validation_strictness() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Create a session with a known ID pattern
@@ -657,7 +657,7 @@ async fn test_jwt_signature_validation_security() {
     // Test 2: Valid JWT should be accepted
     let claims = SecureJwtClaims {
         sub: "user123".to_string(),
-        iss: "auth-framework".to_string(),
+        iss: "cinaauth".to_string(),
         aud: "api".to_string(),
         exp: SystemTime::now()
             .duration_since(UNIX_EPOCH)

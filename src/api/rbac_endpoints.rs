@@ -775,7 +775,7 @@ pub async fn get_audit_logs(
     let limit = Some(offset + per_page);
 
     let logs = match state
-        .auth_framework
+        .cinaauth
         .get_permission_audit_logs(
             query.user_id.as_deref(),
             query.action.as_deref(),
@@ -867,7 +867,7 @@ mod tests {
             access_token: "test_access_token".to_string(),
             token_type: Some("bearer".to_string()),
             subject: Some("test_user".to_string()),
-            issuer: Some("auth-framework".to_string()),
+            issuer: Some("cinaauth".to_string()),
             refresh_token: Some("test_refresh_token".to_string()),
             issued_at: Utc::now(),
             expires_at: Utc::now() + chrono::Duration::hours(1),

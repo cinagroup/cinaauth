@@ -1,6 +1,6 @@
 # Migration Guide: v0.4.x → v0.5.x
 
-This guide covers breaking changes and migration steps for upgrading from AuthFramework v0.4.x to v0.5.x.
+This guide covers breaking changes and migration steps for upgrading from Cinaauth v0.4.x to v0.5.x.
 
 ## Minimum Supported Rust Version
 
@@ -12,7 +12,7 @@ rustup update stable
 
 ## Rust Edition
 
-AuthFramework v0.5.x uses **Rust Edition 2024**. This does not affect downstream crates directly, but some re-exported types may require Edition 2021+ in your code.
+Cinaauth v0.5.x uses **Rust Edition 2024**. This does not affect downstream crates directly, but some re-exported types may require Edition 2021+ in your code.
 
 ## Breaking Changes
 
@@ -52,7 +52,7 @@ let config = ApiServerConfig {
 **After (v0.5.x)**:
 
 ```rust
-use auth_framework::config::CorsConfig;
+use cinaauth::config::CorsConfig;
 
 let config = ApiServerConfig {
     cors: CorsConfig::for_origins(["https://app.example.com"]),
@@ -83,7 +83,7 @@ If you have custom storage implementations, add these methods.
 If you were relying on a minimal build, explicitly disable defaults:
 
 ```toml
-auth-framework = { version = "0.5", default-features = false, features = ["..."] }
+cinaauth = { version = "0.5", default-features = false, features = ["..."] }
 ```
 
 ### 5. Role System API
@@ -187,7 +187,7 @@ If you are using PostgreSQL, ensure the database user has permissions for new ta
 ## Step-by-Step Upgrade
 
 1. **Update Rust toolchain** to 1.88+
-2. **Update Cargo.toml**: `auth-framework = "0.5"`
+2. **Update Cargo.toml**: `cinaauth = "0.5"`
 3. **Set `JWT_SECRET`** environment variable (critical for production)
 4. **Update CORS config** — set `cors.enabled` and `cors.allowed_origins`
 5. **Update custom storage implementations** — add new trait methods

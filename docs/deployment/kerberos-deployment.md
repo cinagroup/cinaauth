@@ -1,13 +1,13 @@
 # Kerberos / SPNEGO Deployment Guide
 
-This guide covers deploying AuthFramework with Kerberos (SPNEGO) authentication for enterprise Single Sign-On through Active Directory or MIT Kerberos.
+This guide covers deploying Cinaauth with Kerberos (SPNEGO) authentication for enterprise Single Sign-On through Active Directory or MIT Kerberos.
 
 ## Prerequisites
 
 - A working Kerberos realm (Active Directory or MIT KDC)
-- A service principal registered for the AuthFramework server
+- A service principal registered for the Cinaauth server
 - A keytab file generated for the service principal
-- Network access from the AuthFramework host to the KDC (TCP/UDP 88)
+- Network access from the Cinaauth host to the KDC (TCP/UDP 88)
 - Time synchronization (NTP) between all hosts
 
 ## Configuration
@@ -29,13 +29,13 @@ This guide covers deploying AuthFramework with Kerberos (SPNEGO) authentication 
 Preferred — use the builder:
 
 ```rust
-use auth_framework::protocols::kerberos::KerberosConfig;
+use cinaauth::protocols::kerberos::KerberosConfig;
 
 let config = KerberosConfig::builder(
         "HTTP/auth.example.com@EXAMPLE.COM",
         "EXAMPLE.COM",
     )
-    .keytab_path("/etc/krb5/auth-framework.keytab")
+    .keytab_path("/etc/krb5/cinaauth.keytab")
     .add_kdc("kdc1.example.com")
     .add_kdc("kdc2.example.com")
     .build();
@@ -53,12 +53,12 @@ let config = KerberosConfig::active_directory(
 Manual struct construction is still supported:
 
 ```rust
-use auth_framework::protocols::kerberos::KerberosConfig;
+use cinaauth::protocols::kerberos::KerberosConfig;
 
 let config = KerberosConfig {
     service_principal: "HTTP/auth.example.com@EXAMPLE.COM".to_string(),
     realm: "EXAMPLE.COM".to_string(),
-    keytab_path: Some("/etc/krb5/auth-framework.keytab".to_string()),
+    keytab_path: Some("/etc/krb5/cinaauth.keytab".to_string()),
     kdc_addresses: vec!["kdc1.example.com".to_string(), "kdc2.example.com".to_string()],
     max_clock_skew_secs: 300,
     allow_delegation: false,
@@ -94,20 +94,20 @@ ktpass -princ HTTP/auth.example.com@EXAMPLE.COM `
     -pass "StrongPassword!" `
     -crypto AES256-SHA1 `
     -ptype KRB5_NT_PRINCIPAL `
-    -out auth-framework.keytab
+    -out cinaauth.keytab
 ```
 
-Transfer the keytab to the AuthFramework host securely and set appropriate permissions:
+Transfer the keytab to the Cinaauth host securely and set appropriate permissions:
 
 ```bash
-chmod 600 /etc/krb5/auth-framework.keytab
-chown authframework:authframework /etc/krb5/auth-framework.keytab
+chmod 600 /etc/krb5/cinaauth.keytab
+chown authframework:authframework /etc/krb5/cinaauth.keytab
 ```
 
 ### 4. Verify the Keytab
 
 ```bash
-klist -kt /etc/krb5/auth-framework.keytab
+klist -kt /etc/krb5/cinaauth.keytab
 ```
 
 ## MIT Kerberos Setup
@@ -116,7 +116,7 @@ klist -kt /etc/krb5/auth-framework.keytab
 
 ```bash
 kadmin -q "addprinc -randkey HTTP/auth.example.com@EXAMPLE.COM"
-kadmin -q "ktadd -k /etc/krb5/auth-framework.keytab HTTP/auth.example.com@EXAMPLE.COM"
+kadmin -q "ktadd -k /etc/krb5/cinaauth.keytab HTTP/auth.example.com@EXAMPLE.COM"
 ```
 
 ### 2. Configure `/etc/krb5.conf`
@@ -146,7 +146,7 @@ kadmin -q "ktadd -k /etc/krb5/auth-framework.keytab HTTP/auth.example.com@EXAMPL
 2. Server responds with `401 Unauthorized` and `WWW-Authenticate: Negotiate`
 3. Client obtains a Kerberos service ticket from the KDC
 4. Client sends the ticket as a Base64 SPNEGO token in `Authorization: Negotiate <token>`
-5. AuthFramework validates the token using `KerberosAuthenticator::authenticate()`
+5. Cinaauth validates the token using `KerberosAuthenticator::authenticate()`
 6. On success, returns `KerberosAuthResult` with the client principal and ticket details
 
 ### Authenticating a Request

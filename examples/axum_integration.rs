@@ -1,13 +1,13 @@
-//! Axum Web Server with AuthFramework Integration
+//! Axum Web Server with Cinaauth Integration
 //!
 //! Demonstrates the first-class Axum integration included in the default
-//! `auth-framework` build.  Key patterns shown:
+//! `cinaauth` build.  Key patterns shown:
 //!
 //! - `AuthenticatedUser` extractor — validates the `Authorization: Bearer`
 //!   header automatically; use it as a handler parameter and it just works.
 //! - Grouped accessor pattern (`auth.users()`, `auth.tokens()`,
 //!   `auth.authorization()`) for all framework operations.
-//! - Shared `Arc<AuthFramework>` state via `axum::extract::State`.
+//! - Shared `Arc<Cinaauth>` state via `axum::extract::State`.
 //!
 //! Run with in-memory storage (development):
 //! ```bash
@@ -38,7 +38,7 @@
 //! curl -s http://127.0.0.1:3000/profile -H "Authorization: Bearer $TOKEN"
 //! ```
 
-use auth_framework::{integrations::axum::AuthenticatedUser, prelude::*};
+use cinaauth::{integrations::axum::AuthenticatedUser, prelude::*};
 use axum::{
     Json, Router,
     extract::State,
@@ -50,7 +50,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 
-type AppState = Arc<AuthFramework>;
+type AppState = Arc<Cinaauth>;
 
 // ---------------------------------------------------------------------------
 // Request / response types
@@ -84,7 +84,7 @@ struct LoginResponse {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
-        .with_env_filter("auth_framework=info,axum_integration=debug")
+        .with_env_filter("cinaauth=info,axum_integration=debug")
         .init();
 
     let config = AuthConfig::new()
@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config
     };
 
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await?;
 
     let state: AppState = Arc::new(framework);

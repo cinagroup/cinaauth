@@ -1,6 +1,6 @@
-"""Admin service for AuthFramework.
+"""Admin service for cinaauth.
 
-Copyright (c) 2025 AuthFramework. All rights reserved.
+Copyright (c) 2025 cinaauth. All rights reserved.
 """
 
 from __future__ import annotations

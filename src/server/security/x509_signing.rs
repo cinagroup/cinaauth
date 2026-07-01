@@ -878,7 +878,7 @@ impl X509CertificateManager {
 
             // In production, this should be replaced with proper root CA management
             let (root_cert, root_key) = self.generate_self_signed_root_ca().await?;
-            let subject = "CN=AuthFramework Dev Root CA,O=Auth Framework,C=US".to_string();
+            let subject = "CN=cinaauth Dev Root CA,O=cinaauth,C=US".to_string();
 
             // Store the generated root CA for future use
             if let Err(e) = tokio::fs::write(&ca_cert_path, &root_cert).await {
@@ -950,8 +950,8 @@ impl X509CertificateManager {
                 cert_id: "intermediate_ca".to_string(),
                 certificate_pem: cert_content.clone(),
                 private_key_pem: None,
-                subject: "CN=AuthFramework Intermediate CA, O=AuthFramework, C=US".to_string(),
-                issuer: "CN=AuthFramework Root CA, O=AuthFramework, C=US".to_string(),
+                subject: "CN=cinaauth Intermediate CA, O=cinaauth, C=US".to_string(),
+                issuer: "CN=cinaauth Root CA, O=cinaauth, C=US".to_string(),
                 serial_number: "2".to_string(),
                 not_before: Utc::now() - Duration::days(30),
                 not_after: Utc::now() + Duration::days(365 * 5), // 5 years
@@ -965,7 +965,7 @@ impl X509CertificateManager {
             let intermediate_ca = CACertificate {
                 ca_id: "intermediate_ca".to_string(),
                 certificate: intermediate_cert,
-                subject: "CN=AuthFramework Intermediate CA".to_string(), // Parse from actual cert in production
+                subject: "CN=cinaauth Intermediate CA".to_string(), // Parse from actual cert in production
                 private_key: vec![],                                     // Load from secure storage
                 ca_type: CAType::Intermediate,
                 issued_count: 0,
@@ -1468,10 +1468,10 @@ impl X509CertificateManager {
         // Set distinguished name for root CA
         params
             .distinguished_name
-            .push(DnType::CommonName, "AuthFramework Dev Root CA");
+            .push(DnType::CommonName, "cinaauth Dev Root CA");
         params
             .distinguished_name
-            .push(DnType::OrganizationName, "Auth Framework");
+            .push(DnType::OrganizationName, "cinaauth");
         params.distinguished_name.push(DnType::CountryName, "US");
 
         // Root CAs have long validity

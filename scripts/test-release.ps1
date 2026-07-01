@@ -1,4 +1,4 @@
-# Release Testing Script for AuthFramework
+# Release Testing Script for cinaauth
 # This script validates that the release automation will work correctly
 
 param(
@@ -6,7 +6,7 @@ param(
     [switch]$Verbose
 )
 
-Write-Host '🚀 AuthFramework Release Testing Script' -ForegroundColor Green
+Write-Host '🚀 cinaauth Release Testing Script' -ForegroundColor Green
 Write-Host '=======================================' -ForegroundColor Green
 
 # Test 1: Validate Cargo.toml version and dependencies
@@ -44,13 +44,13 @@ if (-not $SkipBuild) {
     Write-Host "`n🔨 Test 2: Testing release build..." -ForegroundColor Yellow
     try {
         Write-Host 'Building with admin-binary,api-server,postgres-storage features...'
-        $buildOutput = cargo build --release --features admin-binary, api-server, postgres-storage --bin auth-framework 2>&1
+        $buildOutput = cargo build --release --features admin-binary, api-server, postgres-storage --bin cinaauth 2>&1
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host '✅ Release build successful' -ForegroundColor Green
             
             # Check if binary exists
-            $binaryPath = 'target\release\auth-framework.exe'
+            $binaryPath = 'target\release\cinaauth.exe'
             if (Test-Path $binaryPath) {
                 $binaryInfo = Get-Item $binaryPath
                 Write-Host "✅ Binary created: $($binaryInfo.Length) bytes" -ForegroundColor Green
@@ -136,11 +136,11 @@ try {
             exit 1
         }
         
-        if ($dockerfile -match 'auth-framework') {
-            Write-Host '✅ Dockerfile builds auth-framework binary' -ForegroundColor Green
+        if ($dockerfile -match 'cinaauth') {
+            Write-Host '✅ Dockerfile builds cinaauth binary' -ForegroundColor Green
         }
         else {
-            Write-Host "❌ Dockerfile doesn't specify auth-framework binary" -ForegroundColor Red
+            Write-Host "❌ Dockerfile doesn't specify cinaauth binary" -ForegroundColor Red
             exit 1
         }
     }

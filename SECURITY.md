@@ -57,7 +57,7 @@ For detailed technical analysis, see [`RUSTSEC-2023-0071_COMPREHENSIVE_ANALYSIS.
 
 ## Supported Versions
 
-Currently supported versions of the Auth Framework with security updates:
+Currently supported versions of the cinaauth with security updates:
 
 | Version    | Supported          |
 | ---------- | ------------------ |
@@ -67,7 +67,7 @@ Currently supported versions of the Auth Framework with security updates:
 
 ## Security Considerations
 
-The Auth Framework is designed with security as a primary concern. However, security is a shared responsibility between the library maintainers and the users implementing it.
+The cinaauth is designed with security as a primary concern. However, security is a shared responsibility between the library maintainers and the users implementing it.
 
 ### Library Security Features
 

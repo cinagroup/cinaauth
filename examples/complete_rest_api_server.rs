@@ -1,10 +1,10 @@
 //! Complete REST API Server Example
 //!
 //! This example demonstrates how to set up and run the comprehensive REST API server
-//! that exposes all AuthFramework functionality through HTTP endpoints.
+//! that exposes all Cinaauth functionality through HTTP endpoints.
 
-use auth_framework::{
-    AuthFramework,
+use cinaauth::{
+    Cinaauth,
     api::{ApiServer, server::ApiServerConfig},
     config::AuthConfig,
     storage::memory::InMemoryStorage,
@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
-    info!("🚀 Starting AuthFramework REST API Server Example");
+    info!("🚀 Starting Cinaauth REST API Server Example");
 
     // Create storage backend (currently unused but available for future expansion)
     let _storage = Arc::new(InMemoryStorage::new());
@@ -28,26 +28,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .token_lifetime(chrono::Duration::hours(1).to_std().unwrap())
         .refresh_token_lifetime(chrono::Duration::days(7).to_std().unwrap());
 
-    // Initialize AuthFramework
-    let auth_framework = Arc::new(AuthFramework::new(auth_config));
+    // Initialize Cinaauth
+    let cinaauth = Arc::new(Cinaauth::new(auth_config));
 
-    info!("✅ AuthFramework initialized successfully");
+    info!("✅ Cinaauth initialized successfully");
 
     // Create API server configuration
     let api_config = ApiServerConfig {
         host: "127.0.0.1".to_string(),
         port: 8080,
-        cors: auth_framework::CorsConfig {
+        cors: cinaauth::CorsConfig {
             enabled: true,
             allowed_origins: vec!["http://localhost:3000".to_string()],
-            ..auth_framework::CorsConfig::default()
+            ..cinaauth::CorsConfig::default()
         },
         max_body_size: 1024 * 1024, // 1MB
         enable_tracing: true,
     };
 
     // Create and configure the API server
-    let api_server = ApiServer::with_config(auth_framework, api_config);
+    let api_server = ApiServer::with_config(cinaauth, api_config);
 
     info!("📊 API Server Configuration:");
     info!("   Host: {}", api_server.config().host);

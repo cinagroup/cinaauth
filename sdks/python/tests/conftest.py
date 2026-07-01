@@ -1,6 +1,6 @@
 """Test configuration and common utilities.
 
-Copyright (c) 2025 AuthFramework. All rights reserved.
+Copyright (c) 2025 cinaauth. All rights reserved.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import respx
-from authframework import AuthFrameworkClient
+from cinaauth import CinaauthClient
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -23,7 +23,7 @@ def base_url() -> str:
         str: The base URL for testing.
 
     """
-    return "https://api.authframework.test"
+    return "https://api.cinaauth.test"
 
 
 @pytest.fixture
@@ -41,14 +41,14 @@ def api_key() -> str:
 async def client(
     base_url: str,
     api_key: str,
-) -> AsyncGenerator[AuthFrameworkClient, None]:
+) -> AsyncGenerator[CinaauthClient, None]:
     """Create test client.
 
     Yields:
-        AuthFrameworkClient: Configured test client.
+        CinaauthClient: Configured test client.
 
     """
-    async with AuthFrameworkClient(
+    async with CinaauthClient(
         base_url=base_url,
         api_key=api_key,
         timeout=5.0,

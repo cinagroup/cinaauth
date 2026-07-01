@@ -501,7 +501,7 @@ impl AuthMethod for SamlAuthMethod {
                 source: None,
                 help: Some("Set a valid entity_id in the SAML configuration".to_string()),
                 docs_url: Some(
-                    "https://docs.rs/auth-framework/latest/auth_framework/methods/saml/"
+                    "https://docs.rs/cinaauth/latest/cinaauth/methods/saml/"
                         .to_string(),
                 ),
                 suggested_fix: Some(
@@ -519,7 +519,7 @@ impl AuthMethod for SamlAuthMethod {
                         .to_string(),
                 ),
                 docs_url: Some(
-                    "https://docs.rs/auth-framework/latest/auth_framework/methods/saml/"
+                    "https://docs.rs/cinaauth/latest/cinaauth/methods/saml/"
                         .to_string(),
                 ),
                 suggested_fix: Some(

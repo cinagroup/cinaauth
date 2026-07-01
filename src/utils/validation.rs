@@ -1,4 +1,4 @@
-//! Validation utilities for the AuthFramework.
+//! Validation utilities for the Cinaauth.
 //!
 //! This module provides comprehensive input validation functions for
 //! authentication-related data including passwords, usernames, emails, and more.
@@ -78,7 +78,7 @@ impl PasswordPolicy {
     /// focus on length and entropy. Banned password list still applies.
     ///
     /// ```rust
-    /// use auth_framework::utils::validation::PasswordPolicy;
+    /// use cinaauth::utils::validation::PasswordPolicy;
     /// let policy = PasswordPolicy::nist_800_63b();
     /// assert_eq!(policy.min_length, 8);
     /// assert!(!policy.require_special);
@@ -98,7 +98,7 @@ impl PasswordPolicy {
     /// Suitable for admin accounts and sensitive systems.
     ///
     /// ```rust
-    /// use auth_framework::utils::validation::PasswordPolicy;
+    /// use cinaauth::utils::validation::PasswordPolicy;
     /// let policy = PasswordPolicy::high_security();
     /// assert_eq!(policy.min_length, 12);
     /// assert!(policy.require_special);
@@ -134,7 +134,7 @@ impl PasswordPolicy {
 /// # Example
 ///
 /// ```rust
-/// use auth_framework::utils::validation::PasswordPolicy;
+/// use cinaauth::utils::validation::PasswordPolicy;
 ///
 /// let policy = PasswordPolicy::builder()
 ///     .min_length(10)

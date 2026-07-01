@@ -1,5 +1,5 @@
-use auth_framework::{
-    auth::AuthFramework,
+use cinaauth::{
+    auth::Cinaauth,
     config::{AuditConfig, AuthConfig, RateLimitConfig, SecurityConfig, StorageConfig},
     storage::{AuthStorage, SessionData},
     testing::MockStorage,
@@ -218,7 +218,7 @@ fn bench_concurrent_operations(c: &mut Criterion) {
 fn bench_framework_init(c: &mut Criterion) {
     let mut group = c.benchmark_group("framework_init");
 
-    group.bench_function("auth_framework_new", |b| {
+    group.bench_function("cinaauth_new", |b| {
         b.iter(|| {
             let config = AuthConfig {
                 token_lifetime: std::time::Duration::from_secs(3600),
@@ -236,9 +236,10 @@ fn bench_framework_init(c: &mut Criterion) {
                 audit: AuditConfig::default(),
                 method_configs: std::collections::HashMap::new(),
                 force_production_mode: false,
+                ..Default::default()
             };
 
-            let _framework = black_box(AuthFramework::new(config));
+            let _framework = black_box(Cinaauth::new(config));
         });
     });
     group.finish();

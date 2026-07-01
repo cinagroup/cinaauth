@@ -3,16 +3,16 @@
 //! This example demonstrates how to use the new SMSKit integration for SMS-based MFA
 //! instead of the deprecated SMS manager.
 
-use auth_framework::errors::Result;
+use cinaauth::errors::Result;
 
 #[cfg(feature = "smskit")]
-use auth_framework::storage::memory::InMemoryStorage;
+use cinaauth::storage::memory::InMemoryStorage;
 #[cfg(feature = "smskit")]
 use std::sync::Arc;
 
 // Import SMSKit types directly from the modules
 #[cfg(feature = "smskit")]
-use auth_framework::auth_modular::mfa::SmsKitManager;
+use cinaauth::auth_modular::mfa::SmsKitManager;
 
 #[tokio::main]
 async fn main() -> Result<()> {

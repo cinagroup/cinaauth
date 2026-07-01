@@ -1,4 +1,4 @@
-//! Multi-tenant support for AuthFramework
+//! Multi-tenant support for Cinaauth
 //!
 //! This module provides native multi-tenant capabilities, allowing multiple
 //! isolated authentication and authorization contexts to coexist within

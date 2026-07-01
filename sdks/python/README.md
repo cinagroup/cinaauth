@@ -1,6 +1,6 @@
-# AuthFramework Python SDK
+# cinaauth Python SDK
 
-The official Python client library for AuthFramework authentication and authorization services.
+The official Python client library for cinaauth authentication and authorization services.
 
 ## Features
 
@@ -9,7 +9,7 @@ The official Python client library for AuthFramework authentication and authoriz
 - **Automatic token management** with refresh handling
 - **Error handling** with custom exceptions and retry logic
 - **Context manager support** for proper resource cleanup
-- **Full API coverage** for all AuthFramework endpoints
+- **Full API coverage** for all cinaauth endpoints
 
 ## Installation
 
@@ -30,11 +30,11 @@ pip install -e .
 
 ```python
 import asyncio
-from authframework import AuthFrameworkClient
+from authframework import CinaauthClient
 
 async def main():
     # Create client instance
-    client = AuthFrameworkClient('http://localhost:8080')
+    client = CinaauthClient('http://localhost:8080')
 
     try:
         # Login
@@ -59,10 +59,10 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from authframework import AuthFrameworkClient
+from authframework import CinaauthClient
 
 async def main():
-    async with AuthFrameworkClient('http://localhost:8080') as client:
+    async with CinaauthClient('http://localhost:8080') as client:
         # Login
         await client.login('user@example.com', 'password')
 
@@ -78,7 +78,7 @@ asyncio.run(main())
 ### Basic Login
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     # Login with username/password
     response = await client.login('user@example.com', 'password')
 
@@ -90,7 +90,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 
 ```python
 # For server-to-server authentication
-client = AuthFrameworkClient(
+client = CinaauthClient(
     'http://localhost:8080',
     api_key='your-api-key'
 )
@@ -99,7 +99,7 @@ client = AuthFrameworkClient(
 ### Token Refresh
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     await client.login('user@example.com', 'password')
 
     # Tokens are automatically refreshed when needed
@@ -112,7 +112,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 ### Profile Management
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     await client.login('user@example.com', 'password')
 
     # Get current user profile
@@ -139,7 +139,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 ### Setup MFA
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     await client.login('user@example.com', 'password')
 
     # Setup MFA
@@ -155,7 +155,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 ### Disable MFA
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     await client.login('user@example.com', 'password')
 
     # Disable MFA (requires password and current MFA code)
@@ -170,7 +170,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 ### Authorization Code Flow
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     # Generate authorization URL
     auth_url = client.get_oauth_authorize_url(
         response_type="code",
@@ -197,7 +197,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 ### Client Credentials Flow
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     # Server-to-server authentication
     token_response = await client.get_oauth_token(
         grant_type="client_credentials",
@@ -215,7 +215,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 ### User Management (Admin Only)
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     # Login as admin
     await client.login('admin@example.com', 'admin_password')
 
@@ -248,7 +248,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 ### Basic Health Check
 
 ```python
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     # Basic health status
     health = await client.get_health()
     print(f"Status: {health.status}")
@@ -267,7 +267,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 
 ```python
 from authframework.exceptions import (
-    AuthFrameworkError,     # Base exception
+    CinaauthError,     # Base exception
     AuthenticationError,    # 401 errors
     AuthorizationError,     # 403 errors
     ValidationError,        # 400 errors
@@ -278,7 +278,7 @@ from authframework.exceptions import (
     TimeoutError           # Request timeouts
 )
 
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     try:
         await client.login('invalid@email.com', 'wrong_password')
     except AuthenticationError as e:
@@ -288,7 +288,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
         print(f"Details: {e.details}")
     except RateLimitError as e:
         print(f"Rate limited. Retry after: {e.retry_after} seconds")
-    except AuthFrameworkError as e:
+    except CinaauthError as e:
         print(f"API error: {e.message} (Status: {e.status_code})")
 ```
 
@@ -296,7 +296,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 
 ```python
 # Client automatically retries on transient errors
-client = AuthFrameworkClient(
+client = CinaauthClient(
     'http://localhost:8080',
     retries=3,  # Number of retry attempts
     timeout=30.0  # Request timeout in seconds
@@ -308,7 +308,7 @@ client = AuthFrameworkClient(
 ### Client Options
 
 ```python
-client = AuthFrameworkClient(
+client = CinaauthClient(
     base_url='http://localhost:8080',
     timeout=30.0,           # Request timeout in seconds
     retries=3,              # Number of retry attempts
@@ -328,10 +328,10 @@ export AUTHFRAMEWORK_API_KEY=your-api-key
 
 ```python
 import os
-from authframework import AuthFrameworkClient
+from authframework import CinaauthClient
 
 # Use environment variables as defaults
-client = AuthFrameworkClient(
+client = CinaauthClient(
     base_url=os.getenv('AUTHFRAMEWORK_BASE_URL', 'http://localhost:8080'),
     timeout=float(os.getenv('AUTHFRAMEWORK_TIMEOUT', '30.0')),
     retries=int(os.getenv('AUTHFRAMEWORK_RETRIES', '3')),
@@ -346,7 +346,7 @@ The SDK is fully typed with Pydantic models:
 ```python
 from authframework.models import UserInfo, LoginResponse
 
-async with AuthFrameworkClient('http://localhost:8080') as client:
+async with CinaauthClient('http://localhost:8080') as client:
     # Return types are properly typed
     response: LoginResponse = await client.login('user@example.com', 'password')
     profile: UserInfo = await client.get_profile()
@@ -363,7 +363,7 @@ async with AuthFrameworkClient('http://localhost:8080') as client:
 
 ```python
 import httpx
-from authframework import AuthFrameworkClient
+from authframework import CinaauthClient
 
 # Create custom HTTP client
 http_client = httpx.AsyncClient(
@@ -372,7 +372,7 @@ http_client = httpx.AsyncClient(
     proxies={'http://': 'http://proxy:8080'}
 )
 
-client = AuthFrameworkClient('http://localhost:8080')
+client = CinaauthClient('http://localhost:8080')
 client._client = http_client
 ```
 
@@ -380,10 +380,10 @@ client._client = http_client
 
 ```python
 import asyncio
-from authframework import AuthFrameworkClient
+from authframework import CinaauthClient
 
 async def process_users():
-    async with AuthFrameworkClient('http://localhost:8080') as client:
+    async with CinaauthClient('http://localhost:8080') as client:
         await client.login('admin@example.com', 'password')
 
         # Make concurrent requests
@@ -407,11 +407,11 @@ async def process_users():
 
 ```python
 from unittest.mock import AsyncMock
-from authframework import AuthFrameworkClient
+from authframework import CinaauthClient
 
 # Mock the client for testing
 async def test_user_login():
-    client = AuthFrameworkClient('http://localhost:8080')
+    client = CinaauthClient('http://localhost:8080')
     client.login = AsyncMock(return_value=MockLoginResponse())
 
     # Test your code that uses the client
@@ -459,7 +459,7 @@ All request and response models are available in `authframework.models`:
 
 All custom exceptions are available in `authframework.exceptions`:
 
-- `AuthFrameworkError` - Base exception class
+- `CinaauthError` - Base exception class
 - `AuthenticationError` - Authentication failures (401)
 - `AuthorizationError` - Authorization failures (403)
 - `ValidationError` - Validation errors (400)
@@ -471,10 +471,10 @@ All custom exceptions are available in `authframework.exceptions`:
 
 ## Support
 
-- **Documentation**: [AuthFramework Docs](https://authframework.dev/docs)
+- **Documentation**: [cinaauth Docs](https://authframework.dev/docs)
 - **API Reference**: [API Documentation](https://authframework.dev/api)
-- **Issues**: [GitHub Issues](https://github.com/ciresnave/auth-framework/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ciresnave/auth-framework/discussions)
+- **Issues**: [GitHub Issues](https://github.com/cinagroup/cinaauth/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/cinagroup/cinaauth/discussions)
 
 ## License
 

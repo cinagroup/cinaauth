@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying AuthFramework in production environments.
+This guide covers deploying Cinaauth in production environments.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ This guide covers deploying AuthFramework in production environments.
 
 ```toml
 [dependencies]
-auth-framework = "0.5"
+cinaauth = "0.5"
 ```
 
 The default feature set includes `enhanced-rbac` and `postgres-storage`, which covers the most common deployment scenario.
@@ -24,8 +24,8 @@ The default feature set includes `enhanced-rbac` and `postgres-storage`, which c
 ```rust
 use std::sync::Arc;
 
-use auth_framework::{
-    AuthFramework,
+use cinaauth::{
+    Cinaauth,
     api::server::{ApiServer, ApiServerConfig},
     config::{AuthConfig, CorsConfig, StorageConfig},
 };
@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             table_prefix: "auth_".to_string(),
         });
 
-    let mut auth = AuthFramework::new(auth_config);
+    let mut auth = Cinaauth::new(auth_config);
     auth.initialize().await?;
 
     // API server
@@ -75,7 +75,7 @@ export MYSQL_URL="mysql://user:password@localhost:3306/authdb"
 Feature: `mysql-storage` (add to your `Cargo.toml`)
 
 ```toml
-auth-framework = { version = "0.5", features = ["mysql-storage"] }
+cinaauth = { version = "0.5", features = ["mysql-storage"] }
 ```
 
 ### Redis
@@ -93,7 +93,7 @@ Feature: `redis-storage`
 Suitable only for development and testing. Data is lost on restart.
 
 ```rust
-use auth_framework::storage::MemoryStorage;
+use cinaauth::storage::MemoryStorage;
 let storage = MemoryStorage::new();
 ```
 
@@ -117,7 +117,7 @@ export JWT_SECRET="<your-generated-secret>"
 
 ### TLS
 
-AuthFramework enforces secure defaults — TLS is required for all production endpoints. Configure your reverse proxy (nginx, Caddy, etc.) or use Rust TLS directly:
+Cinaauth enforces secure defaults — TLS is required for all production endpoints. Configure your reverse proxy (nginx, Caddy, etc.) or use Rust TLS directly:
 
 ```bash
 export TLS_CERT_PATH="/etc/certs/server.pem"
@@ -130,7 +130,7 @@ CORS is disabled by default. When enabling it, always specify `cors.allowed_orig
 
 ```rust
 let config = ApiServerConfig {
-    cors: auth_framework::config::CorsConfig::for_origins([
+    cors: cinaauth::config::CorsConfig::for_origins([
         "https://app.example.com",
         "https://admin.example.com",
     ]),
@@ -145,7 +145,7 @@ let config = ApiServerConfig {
 The web-based admin GUI is available with the `web-gui` feature.
 
 ```toml
-auth-framework = { version = "0.5", features = ["web-gui"] }
+cinaauth = { version = "0.5", features = ["web-gui"] }
 ```
 
 Login credentials are configured via environment variables:
@@ -215,7 +215,7 @@ The default build includes:
 For resource-constrained environments, disable default features and opt in:
 
 ```toml
-auth-framework = { version = "0.5", default-features = false, features = ["enhanced-rbac"] }
+cinaauth = { version = "0.5", default-features = false, features = ["enhanced-rbac"] }
 ```
 
 ## Multi-Node Deployment
@@ -265,7 +265,7 @@ For horizontal scaling:
 Use `RUST_LOG` to control log verbosity:
 
 ```bash
-export RUST_LOG="auth_framework=info,tower_http=debug"
+export RUST_LOG="cinaauth=info,tower_http=debug"
 ```
 
 ### Health Check

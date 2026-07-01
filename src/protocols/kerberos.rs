@@ -989,7 +989,7 @@ impl KerberosConfig {
     ///
     /// # Example
     /// ```rust,ignore
-    /// use auth_framework::protocols::kerberos::KerberosConfig;
+    /// use cinaauth::protocols::kerberos::KerberosConfig;
     ///
     /// let config = KerberosConfig::builder(
     ///         "HTTP/server.example.com@EXAMPLE.COM",

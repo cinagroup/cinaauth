@@ -21,17 +21,17 @@
 //! 11. Secret key security
 //! 12. QR code generation
 
-use auth_framework::authentication::mfa::{MfaMethodType, TotpProvider};
-use auth_framework::methods::MfaType;
-use auth_framework::security::TotpConfig;
-use auth_framework::security::secure_mfa::SecureMfaService;
-use auth_framework::storage::MemoryStorage;
+use cinaauth::authentication::mfa::{MfaMethodType, TotpProvider};
+use cinaauth::methods::MfaType;
+use cinaauth::security::TotpConfig;
+use cinaauth::security::secure_mfa::SecureMfaService;
+use cinaauth::storage::MemoryStorage;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Helper: Create test TOTP provider
 fn create_test_totp_provider() -> TotpProvider {
     let config = TotpConfig {
-        issuer: "AuthFramework".to_string(),
+        issuer: "Cinaauth".to_string(),
         digits: 6,
         period: 30,
         skew: 1,
@@ -747,7 +747,7 @@ async fn test_totp_configuration_flexibility() {
 
     for (digits, period, description) in configs {
         let config = TotpConfig {
-            issuer: "AuthFramework".to_string(),
+            issuer: "Cinaauth".to_string(),
             digits,
             period,
             skew: 1,

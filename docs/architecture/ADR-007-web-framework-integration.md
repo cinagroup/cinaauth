@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-AuthFramework needs to integrate seamlessly with popular web frameworks while maintaining flexibility:
+Cinaauth needs to integrate seamlessly with popular web frameworks while maintaining flexibility:
 
 - **Multi-Framework Support**: Different projects use different web frameworks (Axum, Actix-web, Warp, Rocket)
 - **Framework Agnostic Core**: Authentication logic should not depend on specific web frameworks
@@ -156,5 +156,5 @@ impl FromRequest for AuthUser {
 ---
 
 **Decision Date**: 2025-08-17
-**Decision Maker(s)**: AuthFramework Development Team
+**Decision Maker(s)**: Cinaauth Development Team
 **Review Date**: 2026-02-17

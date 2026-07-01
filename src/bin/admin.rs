@@ -1,28 +1,28 @@
-//! Comprehensive Auth Framework Administration Binary
+//! Comprehensive cinaauth Administration Binary
 //!
-//! This binary provides three interfaces for managing the auth-framework:
+//! This binary provides three interfaces for managing cinaauth:
 //! 1. CLI - Command-line interface for scripting and automation
 //! 2. TUI - Terminal-based user interface for interactive management
 //! 3. Web GUI - Web-based interface for remote administration
 
-use auth_framework::{
+use cinaauth::{
     admin::{AppState, CliCommand},
-    config::AuthFrameworkSettings,
+    config::CinaauthSettings,
     errors::Result,
 };
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "auth-framework-admin")]
-#[command(about = "Auth Framework Administration - CLI, TUI, and Web GUI")]
+#[command(name = "cinaauth-admin")]
+#[command(about = "cinaauth Administration - CLI, TUI, and Web GUI")]
 #[command(version)]
 pub struct Args {
     /// Configuration file path
-    #[arg(short, long, default_value = "config/auth-framework.toml")]
+    #[arg(short, long, default_value = "config/cinaauth.toml")]
     pub config: String,
 
     /// Environment variable prefix
-    #[arg(long, default_value = "AUTH_FRAMEWORK")]
+    #[arg(long, default_value = "CINAAUTH")]
     pub env_prefix: String,
 
     /// Verbose logging
@@ -74,25 +74,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load configuration
     let settings = load_config(&args.config, &args.env_prefix).await?;
 
-    // Build an AuthFramework from the loaded configuration so that admin GUI
+    // Build a cinaauth instance from the loaded configuration so that admin GUI
     // handlers can query live storage (users, audit events, etc.).
-    let auth_framework = {
-        let mut af = auth_framework::AuthFramework::new(settings.auth.clone());
+    let cinaauth = {
+        let mut af = cinaauth::Cinaauth::new(settings.auth.clone());
         // Initialise storage connections; ignore errors so the admin CLI can
         // still function even when no storage backend is reachable.
         if let Err(e) = af.initialize().await {
-            tracing::warn!(error = %e, "AuthFramework initialisation failed; storage queries will return empty results");
+            tracing::warn!(error = %e, "cinaauth initialisation failed; storage queries will return empty results");
         }
         std::sync::Arc::new(af)
     };
 
-    let app_state = AppState::new(settings)?.with_auth_framework(auth_framework);
+    let app_state = AppState::new(settings)?.with_cinaauth(cinaauth);
 
     match args.interface {
         Interface::Cli { command } => {
             #[cfg(feature = "cli")]
             {
-                use auth_framework::admin::cli;
+                use cinaauth::admin::cli;
                 cli::run_cli(app_state, command).await?;
             }
             #[cfg(not(feature = "cli"))]
@@ -103,12 +103,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         #[cfg(feature = "tui")]
         Interface::Tui { readonly } => {
-            use auth_framework::admin::tui;
+            use cinaauth::admin::tui;
             tui::run_tui(app_state, readonly).await?;
         }
         #[cfg(feature = "web-gui")]
         Interface::WebGui { port, host, daemon } => {
-            use auth_framework::admin::web;
+            use cinaauth::admin::web;
             web::run_web_gui(app_state, &host, port, daemon, true).await?;
         }
     }
@@ -127,10 +127,10 @@ fn init_logging(verbose: bool) {
 async fn load_config(
     config_path: &str,
     env_prefix: &str,
-) -> Result<AuthFrameworkSettings, Box<dyn std::error::Error>> {
+) -> Result<CinaauthSettings, Box<dyn std::error::Error>> {
     // Simple configuration loading - in a real implementation this would
     // use the ConfigManager to load from various sources
-    let settings = AuthFrameworkSettings::default();
+    let settings = CinaauthSettings::default();
     println!("✅ Configuration loaded from {}", config_path);
     println!("🔧 Environment prefix: {}", env_prefix);
     Ok(settings)

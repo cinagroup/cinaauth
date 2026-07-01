@@ -290,7 +290,7 @@ impl AuthMethod for AuthMethodEnum {
                         return Self::failure("Username or password cannot be empty");
                     }
                     return Self::failure(
-                        "Password authentication is handled by AuthFramework's built-in storage-backed password flow",
+                        "Password authentication is handled by cinaauth's built-in storage-backed password flow",
                     );
                 }
                 _ => {
@@ -303,7 +303,7 @@ impl AuthMethod for AuthMethodEnum {
                         return Self::failure("JWT token cannot be empty");
                     }
                     return Self::failure(
-                        "JWT authentication must be performed through AuthFramework so the active TokenManager can validate the token signature",
+                        "JWT authentication must be performed through cinaauth so the active TokenManager can validate the token signature",
                     );
                 }
                 _ => {
@@ -318,7 +318,7 @@ impl AuthMethod for AuthMethodEnum {
                         return Self::failure("API key cannot be empty");
                     }
                     return Self::failure(
-                        "API key authentication must be performed through AuthFramework so the stored key can be resolved to a user and session token",
+                        "API key authentication must be performed through cinaauth so the stored key can be resolved to a user and session token",
                     );
                 }
                 _ => {
@@ -353,7 +353,7 @@ impl AuthMethod for AuthMethodEnum {
                         return Self::failure("OAuth token cannot be empty");
                     }
                     return Self::failure(
-                        "OAuth 2.0 token authentication must be performed through AuthFramework so token validation and auditing use the active framework state",
+                        "OAuth 2.0 token authentication must be performed through cinaauth so token validation and auditing use the active framework state",
                     );
                 }
                 _ => {
@@ -380,7 +380,7 @@ impl AuthMethod for AuthMethodEnum {
             }
             AuthMethodEnum::OpenIdConnect(_) => {
                 return Self::failure(
-                    "OpenID Connect authentication should be performed through the OIDC provider or AuthFramework integrations",
+                    "OpenID Connect authentication should be performed through the OIDC provider or cinaauth integrations",
                 );
             }
             AuthMethodEnum::AdvancedMfa(_) => {

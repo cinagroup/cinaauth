@@ -148,7 +148,7 @@ async fn verify_client_credentials(
     client_secret: &str,
 ) -> Result<bool, (StatusCode, Json<JsonValue>)> {
     let client_key = format!("oauth2_client:{}", client_id);
-    let client_data = match state.auth_framework.storage().get_kv(&client_key).await {
+    let client_data = match state.cinaauth.storage().get_kv(&client_key).await {
         Ok(Some(bytes)) => match serde_json::from_slice::<serde_json::Value>(&bytes) {
             Ok(v) => v,
             Err(_) => {
@@ -291,7 +291,7 @@ pub async fn introspect_token(
     }
 
     // --- Token validation ---
-    let token_manager = state.auth_framework.token_manager();
+    let token_manager = state.cinaauth.token_manager();
 
     match token_manager.validate_jwt_token(&form.token) {
         Ok(claims) => {
@@ -299,7 +299,7 @@ pub async fn introspect_token(
             // Tokens revoked via POST /oauth/revoke or POST /auth/logout are stored
             // under revoked_token:{jti}; return active=false without revealing why.
             let revocation_key = format!("revoked_token:{}", claims.jti);
-            if let Ok(Some(_)) = state.auth_framework.storage().get_kv(&revocation_key).await {
+            if let Ok(Some(_)) = state.cinaauth.storage().get_kv(&revocation_key).await {
                 debug!(
                     "Token introspection: token has been revoked (jti: {})",
                     claims.jti
@@ -400,7 +400,7 @@ pub async fn pushed_authorization_request(
     });
     let storage_key = format!("par_request:{}", request_id);
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &storage_key,
@@ -464,7 +464,7 @@ pub async fn device_authorization(
         "authorized": false
     });
     state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &format!("device:{}", device_code),
@@ -538,7 +538,7 @@ pub async fn ciba_backchannel_auth(
         "status":          "pending"
     });
     state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &format!("ciba:{}", auth_req_id),

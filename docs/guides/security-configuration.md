@@ -2,13 +2,13 @@
 
 ## Introduction
 
-This guide provides comprehensive security configuration and hardening procedures for AuthFramework deployments. Security is built into AuthFramework's core design, but proper configuration and operational practices are essential for maintaining a secure authentication and authorization system.
+This guide provides comprehensive security configuration and hardening procedures for Cinaauth deployments. Security is built into Cinaauth's core design, but proper configuration and operational practices are essential for maintaining a secure authentication and authorization system.
 
 ## Security Architecture
 
 ### Defense in Depth Strategy
 
-AuthFramework implements multiple layers of security:
+Cinaauth implements multiple layers of security:
 
 1. **Network Security**: TLS encryption, firewall configuration, network segmentation
 2. **Application Security**: Secure coding practices, input validation, output encoding
@@ -19,7 +19,7 @@ AuthFramework implements multiple layers of security:
 
 ### Security by Default
 
-AuthFramework follows security-by-default principles:
+Cinaauth follows security-by-default principles:
 
 - **Secure Configuration**: All defaults prioritize security over convenience
 - **Fail Closed**: System fails to secure state when encountering errors
@@ -151,7 +151,7 @@ api_burst_limit = 20
 Configure secure session management:
 
 ```rust,ignore
-use auth_framework::security::SecureSessionConfig;
+use cinaauth::security::SecureSessionConfig;
 use std::time::Duration;
 
 let session_config = SecureSessionConfig {
@@ -173,7 +173,7 @@ let session_config = SecureSessionConfig {
 For programmatic configuration, `SecureSessionConfig` provides presets:
 
 ```rust,ignore
-use auth_framework::prelude::*;
+use cinaauth::prelude::*;
 
 // Balanced default (8h lifetime, 30min idle, 3 concurrent)
 let config = SecureSessionConfig::default();
@@ -257,7 +257,7 @@ region = "us-west-2"
 key_id = "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
 
 # Encryption context
-encryption_context = { "service" = "auth-framework", "environment" = "production" }
+encryption_context = { "service" = "cinaauth", "environment" = "production" }
 
 # Key rotation
 auto_rotation = true
@@ -419,7 +419,7 @@ allowed_ip_ranges = [
 # User agent restrictions
 block_suspicious_user_agents = true
 allowed_user_agents = [
-    "AuthFramework-Client/*",
+    "Cinaauth-Client/*",
     "YourApp-Mobile/*"
 ]
 ```
@@ -680,19 +680,19 @@ USER_ID=$1
 INCIDENT_ID=$2
 
 # 1. Immediately disable account
-auth-framework-admin users disable --user-id $USER_ID --reason "Security incident $INCIDENT_ID"
+cinaauth-admin users disable --user-id $USER_ID --reason "Security incident $INCIDENT_ID"
 
 # 2. Invalidate all sessions
-auth-framework-admin sessions revoke-all --user-id $USER_ID
+cinaauth-admin sessions revoke-all --user-id $USER_ID
 
 # 3. Reset password
-auth-framework-admin users reset-password --user-id $USER_ID --force
+cinaauth-admin users reset-password --user-id $USER_ID --force
 
 # 4. Enable MFA requirement
-auth-framework-admin users require-mfa --user-id $USER_ID
+cinaauth-admin users require-mfa --user-id $USER_ID
 
 # 5. Log incident
-auth-framework-admin incidents log --type "compromised-account" --user-id $USER_ID --incident-id $INCIDENT_ID
+cinaauth-admin incidents log --type "compromised-account" --user-id $USER_ID --incident-id $INCIDENT_ID
 
 # 6. Notify security team
 curl -X POST https://alerts.yourdomain.com/api/incidents \
@@ -710,13 +710,13 @@ IP_ADDRESS=$1
 INCIDENT_ID=$2
 
 # 1. Block IP address
-auth-framework-admin ip-filter block --ip $IP_ADDRESS --duration "24h" --reason "Suspicious activity $INCIDENT_ID"
+cinaauth-admin ip-filter block --ip $IP_ADDRESS --duration "24h" --reason "Suspicious activity $INCIDENT_ID"
 
 # 2. Analyze recent requests
-auth-framework-admin logs query --ip $IP_ADDRESS --since "1h" --format json > /tmp/suspicious-activity-$INCIDENT_ID.json
+cinaauth-admin logs query --ip $IP_ADDRESS --since "1h" --format json > /tmp/suspicious-activity-$INCIDENT_ID.json
 
 # 3. Check for affected users
-auth-framework-admin users list-by-ip --ip $IP_ADDRESS --since "1h" > /tmp/affected-users-$INCIDENT_ID.txt
+cinaauth-admin users list-by-ip --ip $IP_ADDRESS --since "1h" > /tmp/affected-users-$INCIDENT_ID.txt
 
 # 4. Notify security team with details
 curl -X POST https://alerts.yourdomain.com/api/incidents \
@@ -736,19 +736,19 @@ curl -X POST https://alerts.yourdomain.com/api/incidents \
 # /opt/security/daily-tasks.sh
 
 # Check for security alerts
-auth-framework-admin security alerts --since "24h"
+cinaauth-admin security alerts --since "24h"
 
 # Verify backup integrity
-auth-framework-admin backup verify --date "yesterday"
+cinaauth-admin backup verify --date "yesterday"
 
 # Check failed login attempts
-auth-framework-admin logs failed-logins --since "24h" | grep -c "FAILED" > /tmp/failed-logins.count
+cinaauth-admin logs failed-logins --since "24h" | grep -c "FAILED" > /tmp/failed-logins.count
 
 # Monitor suspicious IPs
-auth-framework-admin ip-analysis suspicious --since "24h"
+cinaauth-admin ip-analysis suspicious --since "24h"
 
 # Generate daily security report
-auth-framework-admin reports security --type daily --output /reports/security-daily-$(date +%Y%m%d).json
+cinaauth-admin reports security --type daily --output /reports/security-daily-$(date +%Y%m%d).json
 ```
 
 #### Weekly Tasks
@@ -758,19 +758,19 @@ auth-framework-admin reports security --type daily --output /reports/security-da
 # /opt/security/weekly-tasks.sh
 
 # Update threat intelligence
-auth-framework-admin threat-intel update
+cinaauth-admin threat-intel update
 
 # Review user permissions
-auth-framework-admin audit permissions --output /reports/permissions-audit-$(date +%Y%m%d).json
+cinaauth-admin audit permissions --output /reports/permissions-audit-$(date +%Y%m%d).json
 
 # Check for unused accounts
-auth-framework-admin users inactive --days 90
+cinaauth-admin users inactive --days 90
 
 # Review security configuration
-auth-framework-admin config audit --output /reports/config-audit-$(date +%Y%m%d).json
+cinaauth-admin config audit --output /reports/config-audit-$(date +%Y%m%d).json
 
 # Generate weekly security metrics
-auth-framework-admin reports security --type weekly --output /reports/security-weekly-$(date +%Y%m%d).json
+cinaauth-admin reports security --type weekly --output /reports/security-weekly-$(date +%Y%m%d).json
 ```
 
 #### Monthly Tasks
@@ -780,19 +780,19 @@ auth-framework-admin reports security --type weekly --output /reports/security-w
 # /opt/security/monthly-tasks.sh
 
 # Review and rotate API keys
-auth-framework-admin api-keys rotate --older-than "30d"
+cinaauth-admin api-keys rotate --older-than "30d"
 
 # Update security policies
-auth-framework-admin policies review --output /reports/policy-review-$(date +%Y%m%d).json
+cinaauth-admin policies review --output /reports/policy-review-$(date +%Y%m%d).json
 
 # Conduct access review
-auth-framework-admin audit access-review --output /reports/access-review-$(date +%Y%m%d).json
+cinaauth-admin audit access-review --output /reports/access-review-$(date +%Y%m%d).json
 
 # Update security documentation
-auth-framework-admin docs security-update
+cinaauth-admin docs security-update
 
 # Generate monthly compliance report
-auth-framework-admin reports compliance --type monthly --output /reports/compliance-$(date +%Y%m%d).json
+cinaauth-admin reports compliance --type monthly --output /reports/compliance-$(date +%Y%m%d).json
 ```
 
 ## Security Checklist
@@ -870,4 +870,4 @@ auth-framework-admin reports compliance --type monthly --output /reports/complia
 
 ---
 
-AuthFramework v0.5.0-rc24 - THE premier authentication and authorization solution
+Cinaauth v0.5.0-rc24 - THE premier authentication and authorization solution

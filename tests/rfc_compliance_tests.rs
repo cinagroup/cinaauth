@@ -1,9 +1,9 @@
-//! RFC Compliance Test Suite for AuthFramework - Fixed Version
+//! RFC Compliance Test Suite for Cinaauth - Fixed Version
 //!
 //! Simple tests that verify the framework compiles and basic functionality works.
 
-use auth_framework::{
-    auth::AuthFramework,
+use cinaauth::{
+    auth::Cinaauth,
     config::AuthConfig,
     methods::{AuthMethodEnum, JwtMethod},
     oauth2_server::{GrantType, OAuth2Config, OAuth2Server},
@@ -75,7 +75,7 @@ mod jwt_tests {
             .secret("test_secret_key_32_bytes_long!!!!".to_string())
             .token_lifetime(Duration::from_secs(3600));
 
-        let mut auth = AuthFramework::new(config);
+        let mut auth = Cinaauth::new(config);
 
         let jwt_method = JwtMethod::new()
             .secret_key("test-secret-32-bytes-long")
@@ -85,6 +85,6 @@ mod jwt_tests {
         auth.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
         let result = auth.initialize().await;
         assert!(result.is_ok());
-        println!("✅ AuthFramework with JWT initialization working");
+        println!("✅ Cinaauth with JWT initialization working");
     }
 }

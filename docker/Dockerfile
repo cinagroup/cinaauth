@@ -1,5 +1,5 @@
 # Runtime image for release publishing. The workflow places the prebuilt musl
-# server binary at .release-binary/auth-framework inside this Docker context.
+# server binary at .release-binary/cinaauth inside this Docker context.
 FROM alpine:3.19
 
 # Install runtime dependencies
@@ -16,10 +16,10 @@ RUN addgroup -g 1001 -S appgroup && \
 WORKDIR /app
 
 # Copy binary
-COPY .release-binary/auth-framework /usr/local/bin/auth-framework
+COPY .release-binary/cinaauth /usr/local/bin/cinaauth
 
 # Create directories and set permissions
-RUN chmod +x /usr/local/bin/auth-framework && \
+RUN chmod +x /usr/local/bin/cinaauth && \
     mkdir -p /app/config /app/logs && \
     chown -R appuser:appgroup /app
 
@@ -30,4 +30,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["auth-framework"]
+CMD ["cinaauth"]

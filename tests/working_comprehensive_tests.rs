@@ -1,8 +1,8 @@
 //! Working comprehensive API-compatible tests for auth framework
 //! This test suite correctly uses the current API and compiles without errors
 
-use auth_framework::{
-    auth::{AuthFramework, AuthResult},
+use cinaauth::{
+    auth::{Cinaauth, AuthResult},
     authentication::credentials::{Credential, CredentialMetadata},
     config::{AuditConfig, AuthConfig, RateLimitConfig, SecurityConfig, StorageConfig},
     methods::{
@@ -33,11 +33,11 @@ fn create_working_config() -> AuthConfig {
         security: SecurityConfig {
             min_password_length: 8,
             require_password_complexity: false,
-            password_hash_algorithm: auth_framework::config::PasswordHashAlgorithm::Argon2,
-            jwt_algorithm: auth_framework::config::JwtAlgorithm::HS256,
+            password_hash_algorithm: cinaauth::config::PasswordHashAlgorithm::Argon2,
+            jwt_algorithm: cinaauth::config::JwtAlgorithm::HS256,
             secret_key: Some("test-secret-key-with-sufficient-length-for-security".to_string()),
             secure_cookies: true,
-            cookie_same_site: auth_framework::config::CookieSameSite::Lax,
+            cookie_same_site: cinaauth::config::CookieSameSite::Lax,
             csrf_protection: false,
             session_timeout: Duration::from_secs(1800),
             previous_secret_key: None,
@@ -48,7 +48,7 @@ fn create_working_config() -> AuthConfig {
             log_failures: true,
             log_permissions: true,
             log_tokens: false,
-            storage: auth_framework::config::AuditStorage::Tracing,
+            storage: cinaauth::config::AuditStorage::Tracing,
         },
         enable_caching: false,
         max_failed_attempts: 5,
@@ -56,7 +56,7 @@ fn create_working_config() -> AuthConfig {
         enable_middleware: false,
         method_configs: HashMap::new(),
         force_production_mode: false,
-        cors: auth_framework::CorsConfig::default(),
+        cors: cinaauth::CorsConfig::default(),
     }
 }
 
@@ -64,7 +64,7 @@ fn create_working_config() -> AuthConfig {
 #[tokio::test]
 async fn test_framework_creation_and_initialization() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
 
     // Test initialization
     let init_result = framework.initialize().await;
@@ -82,7 +82,7 @@ async fn test_framework_creation_and_initialization() {
 #[tokio::test]
 async fn test_method_registration_all_types() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework
         .initialize()
         .await
@@ -125,7 +125,7 @@ async fn test_method_registration_all_types() {
 #[tokio::test]
 async fn test_authentication_flows() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework
         .initialize()
         .await
@@ -168,7 +168,7 @@ async fn test_authentication_flows() {
 #[tokio::test]
 async fn test_token_operations() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Register a test method for token creation (simplified for working example)
@@ -221,7 +221,7 @@ async fn test_token_operations() {
 #[tokio::test]
 async fn test_session_management() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Create session with correct signature: user_id, duration, client_ip, user_agent
@@ -268,7 +268,7 @@ async fn test_session_management() {
 #[tokio::test]
 async fn test_api_key_management() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Create API key
@@ -327,7 +327,7 @@ async fn test_api_key_management() {
 #[tokio::test]
 async fn test_mfa_operations() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Generate TOTP secret
@@ -439,7 +439,7 @@ async fn test_credential_types() {
 #[tokio::test]
 async fn test_error_handling() {
     let config = create_working_config();
-    let framework = AuthFramework::new(config);
+    let framework = Cinaauth::new(config);
     // Don't initialize framework to test uninitialized state
 
     // Test operations on uninitialized framework
@@ -475,7 +475,7 @@ async fn test_error_handling() {
 #[tokio::test]
 async fn test_validation_functions() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test valid usernames
@@ -534,7 +534,7 @@ async fn test_validation_functions() {
 #[tokio::test]
 async fn test_cleanup_operations() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test cleanup
@@ -591,7 +591,7 @@ async fn test_mfa_challenge_handling() {
 #[tokio::test]
 async fn test_end_to_end_integration() {
     let config = create_working_config();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Register authentication method (simplified for working example)

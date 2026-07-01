@@ -1,7 +1,7 @@
 # Build API Documentation with Dark Theme
-# This script builds the AuthFramework API documentation with a dark theme optimized for developers
+# This script builds the cinaauth API documentation with a dark theme optimized for developers
 
-Write-Host 'Building AuthFramework API Documentation with Dark Theme...' -ForegroundColor Cyan
+Write-Host 'Building cinaauth API Documentation with Dark Theme...' -ForegroundColor Cyan
 
 # Define theme options
 $themeOptions = @(

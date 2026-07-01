@@ -11,16 +11,16 @@ pub fn generate_openapi_spec() -> Value {
     json!({
         "openapi": "3.0.3",
         "info": {
-            "title": "AuthFramework API",
-            "description": "Lightweight generated overview of the core authentication and health routes exposed by AuthFramework",
+            "title": "cinaauth API",
+            "description": "Lightweight generated overview of the core authentication and health routes exposed by cinaauth",
             "version": "0.5.0-rc24",
             "contact": {
-                "name": "AuthFramework Team",
-                "url": "https://github.com/ciresnave/auth-framework"
+                "name": "cinaauth Team",
+                "url": "https://github.com/cinagroup/cinaauth"
             },
             "license": {
                 "name": "MIT OR Apache-2.0",
-                "url": "https://github.com/ciresnave/auth-framework/blob/main/LICENSE"
+                "url": "https://github.com/cinagroup/cinaauth/blob/main/LICENSE"
             }
         },
         "servers": [
@@ -306,7 +306,7 @@ pub fn generate_swagger_ui() -> String {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuthFramework API Documentation</title>
+    <title>cinaauth API Documentation</title>
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
     <style>
         html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
@@ -352,7 +352,7 @@ mod tests {
     fn test_openapi_spec_generation() {
         let spec = generate_openapi_spec();
         assert_eq!(spec["openapi"], "3.0.3");
-        assert_eq!(spec["info"]["title"], "AuthFramework API");
+        assert_eq!(spec["info"]["title"], "cinaauth API");
         assert!(spec["paths"].is_object());
         assert!(spec["components"]["schemas"].is_object());
     }

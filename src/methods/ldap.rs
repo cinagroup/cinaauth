@@ -60,7 +60,7 @@ impl LdapConfig {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::methods::ldap::LdapConfig;
+    /// use cinaauth::methods::ldap::LdapConfig;
     ///
     /// let cfg = LdapConfig::active_directory(
     ///     "ldaps://ad.corp.example.com:636",
@@ -99,7 +99,7 @@ impl LdapConfig {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::methods::ldap::LdapConfig;
+    /// use cinaauth::methods::ldap::LdapConfig;
     ///
     /// let cfg = LdapConfig::openldap(
     ///     "ldap://ldap.example.com:389",

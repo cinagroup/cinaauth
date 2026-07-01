@@ -1,4 +1,4 @@
-"""Pydantic models for AuthFramework API responses and requests."""
+"""Pydantic models for cinaauth API responses and requests."""
 
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 //! Storage adapters for role-system integration
 //!
 //! This module provides storage adapters that integrate role-system with
-//! AuthFramework's existing storage infrastructure. It defines its own
+//! Cinaauth's existing storage infrastructure. It defines its own
 //! serializable types (`StoredRole`, `StoredPermission`) for persistence,
 //! with conversions to/from the `role_system` crate's types.
 

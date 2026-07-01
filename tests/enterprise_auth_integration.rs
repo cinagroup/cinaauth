@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod tests {
-    use auth_framework::protocols::{
+    use cinaauth::protocols::{
         saml_assertions::{SamlAssertionBuilder, SamlAssertionValidator, SamlNameId, SamlSubject},
         ws_security::{PasswordType, WsSecurityClient, WsSecurityConfig},
         ws_trust::{

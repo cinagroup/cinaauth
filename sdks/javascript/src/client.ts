@@ -1,5 +1,5 @@
 /**
- * Main AuthFramework client
+ * Main cinaauth client
  */
 
 import { BaseClient } from './base-client';
@@ -12,9 +12,9 @@ import { AdminModule } from './modules/admin';
 import { HealthModule } from './modules/health';
 
 /**
- * Main AuthFramework API client
+ * Main cinaauth API client
  */
-export class AuthFrameworkClient extends BaseClient {
+export class CinaauthClient extends BaseClient {
   public readonly auth: AuthModule;
   public readonly users: UsersModule;
   public readonly mfa: MFAModule;

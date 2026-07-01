@@ -28,7 +28,7 @@
 //! # Usage Examples
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oidc::oidc_user_registration::{RegistrationManager, RegistrationConfig, RegistrationRequest};
+//! use cinaauth::server::oidc::oidc_user_registration::{RegistrationManager, RegistrationConfig, RegistrationRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let mut manager = RegistrationManager::new(RegistrationConfig::default());
@@ -667,7 +667,7 @@ impl RegistrationManager {
     ///
     /// When a storage backend has been provided via [`RegistrationManager::storage`],
     /// the newly registered user is persisted to storage using the same key layout as
-    /// `AuthFramework::register_user` so that downstream endpoints (e.g. `userinfo`) can
+    /// `Cinaauth::register_user` so that downstream endpoints (e.g. `userinfo`) can
     /// retrieve the profile immediately after registration.
     ///
     /// If no storage backend is configured the session is still consumed and an

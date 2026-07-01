@@ -23,7 +23,7 @@
 //! # Usage Examples
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oidc::oidc_error_extensions::{OidcErrorManager, OidcErrorCode, OidcErrorResponse};
+//! use cinaauth::server::oidc::oidc_error_extensions::{OidcErrorManager, OidcErrorCode, OidcErrorResponse};
 //!
 //! // Parse error codes from strings (e.g. from HTTP query params):
 //! let code: OidcErrorCode = "invalid_request".parse().unwrap();
@@ -184,7 +184,7 @@ impl OidcErrorResponse {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::server::oidc::oidc_error_extensions::{OidcErrorCode, OidcErrorResponse};
+    /// use cinaauth::server::oidc::oidc_error_extensions::{OidcErrorCode, OidcErrorResponse};
     ///
     /// let resp = OidcErrorResponse::new(OidcErrorCode::LoginRequired)
     ///     .description("Session expired")

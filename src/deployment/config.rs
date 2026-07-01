@@ -466,7 +466,7 @@ impl Default for AppConfig {
         let rng = SystemRandom::new();
         let mut bytes = [0u8; 32];
         rng.fill(&mut bytes)
-            .expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+            .expect("cinaauth fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
         let jwt_secret = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
             s.push_str(&format!("{b:02x}"));
             s

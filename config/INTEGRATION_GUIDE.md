@@ -1,15 +1,15 @@
 # Configuration Integration Guide
 
-# How to integrate auth-framework configuration into parent applications
+# How to integrate cinaauth configuration into parent applications
 
 This guide demonstrates how parent applications can seamlessly integrate
-auth-framework configuration while maintaining modularity and flexibility.
+cinaauth configuration while maintaining modularity and flexibility.
 
 ## Basic Integration Patterns
 
 ### 1. Include Pattern
 
-The simplest way to integrate auth-framework into your application configuration:
+The simplest way to integrate cinaauth into your application configuration:
 
 ```toml
 # your-app.toml
@@ -17,8 +17,8 @@ The simplest way to integrate auth-framework into your application configuration
 name = "MyApplication"
 version = "1.0.0"
 
-# Include auth-framework configuration
-include = ["auth-framework.toml"]
+# Include cinaauth configuration
+include = ["cinaauth.toml"]
 
 # Override specific auth settings
 [auth.jwt]
@@ -28,7 +28,7 @@ issuer = "myapp.com"
 
 ### 2. Nested Configuration Pattern
 
-Organize auth-framework as a subsection of your application config:
+Organize cinaauth as a subsection of your application config:
 
 ```toml
 # your-app.toml
@@ -36,8 +36,8 @@ Organize auth-framework as a subsection of your application config:
 name = "MyApplication"
 
 [auth]
-# Include entire auth-framework config as a subsection
-include = ["config/auth-framework.toml"]
+# Include entire cinaauth config as a subsection
+include = ["config/cinaauth.toml"]
 
 # Application-specific auth overrides
 [auth.session]
@@ -57,7 +57,7 @@ environment = "${APP_ENV:development}"
 
 # Conditional includes based on environment
 include = [
-    "auth-framework.toml",
+    "cinaauth.toml",
     "auth-${APP_ENV}.toml"  # auth-development.toml, auth-production.toml, etc.
 ]
 ```
@@ -67,13 +67,13 @@ include = [
 ### Using ConfigManager in Rust Applications
 
 ```rust
-use auth_framework::config::{ConfigManager, AuthFrameworkConfigManager};
+use cinaauth::config::{ConfigManager, CinaauthConfigManager};
 use config::Config;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Method 1: Load auth-framework config independently
-    let auth_config = AuthFrameworkConfigManager::from_files(&[
-        "config/auth-framework.toml"
+    // Method 1: Load cinaauth config independently
+    let auth_config = CinaauthConfigManager::from_files(&[
+        "config/cinaauth.toml"
     ])?;
 
     // Method 2: Merge into your application config
@@ -81,10 +81,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_source(config::File::with_name("your-app"))
         .build()?;
 
-    // Merge auth-framework config under "auth" key
-    let auth_manager = AuthFrameworkConfigManager::new();
+    // Merge cinaauth config under "auth" key
+    let auth_manager = CinaauthConfigManager::new();
     let auth_config = auth_manager.merge_configs(&[
-        "config/auth-framework.toml"
+        "config/cinaauth.toml"
     ])?;
 
     app_config.merge(auth_config.nested("auth"))?;
@@ -96,11 +96,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Using Builder Pattern for Custom Configuration
 
 ```rust
-use auth_framework::config::AuthFrameworkConfigManager;
+use cinaauth::config::CinaauthConfigManager;
 
 fn configure_auth() -> Result<(), Box<dyn std::error::Error>> {
-    let config = AuthFrameworkConfigManager::builder()
-        .with_file("config/auth-framework.toml")
+    let config = CinaauthConfigManager::builder()
+        .with_file("config/cinaauth.toml")
         .with_env_prefix("MYAPP_AUTH")  // Environment variables with MYAPP_AUTH_ prefix
         .with_cli_args()               // Command line argument parsing
         .with_overrides([
@@ -192,7 +192,7 @@ kind: ConfigMap
 metadata:
   name: auth-config
 data:
-  auth-framework.toml: |
+  cinaauth.toml: |
     [jwt]
     algorithm = "RS256"
     expiry = "1h"
@@ -236,18 +236,18 @@ spec:
 ### Validating Parent App Integration
 
 ```rust
-use auth_framework::config::{ConfigManager, AuthFrameworkConfigManager};
+use cinaauth::config::{ConfigManager, CinaauthConfigManager};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct AppConfig {
     app: AppSettings,
-    auth: auth_framework::config::AuthConfig,
+    auth: cinaauth::config::AuthConfig,
     database: DatabaseConfig,
 }
 
 fn validate_integration() -> Result<(), Box<dyn std::error::Error>> {
-    let config_manager = AuthFrameworkConfigManager::new();
+    let config_manager = CinaauthConfigManager::new();
 
     // Load and validate auth configuration
     let auth_config = config_manager.from_files(&[
@@ -273,7 +273,7 @@ fn validate_integration() -> Result<(), Box<dyn std::error::Error>> {
 your-app/
 ├── config/
 │   ├── your-app.toml              # Main app config
-│   ├── auth-framework.toml        # Auth framework config
+│   ├── cinaauth.toml        # Auth framework config
 │   ├── environments/
 │   │   ├── development.toml       # Dev-specific overrides
 │   │   ├── staging.toml          # Staging overrides
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_config_integration() {
-        let config = AuthFrameworkConfigManager::from_files(&[
+        let config = CinaauthConfigManager::from_files(&[
             "tests/fixtures/test-config.toml"
         ]).expect("Should load test config");
 
@@ -317,4 +317,4 @@ mod tests {
 }
 ```
 
-This integration approach ensures that auth-framework remains flexible and easy to adopt while providing powerful configuration management capabilities.
+This integration approach ensures that cinaauth remains flexible and easy to adopt while providing powerful configuration management capabilities.

@@ -131,7 +131,7 @@ impl OidcConfig {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::server::oidc::core::OidcConfig;
+    /// use cinaauth::server::oidc::core::OidcConfig;
     /// use std::time::Duration;
     ///
     /// let config = OidcConfig::builder()
@@ -483,7 +483,7 @@ impl<S: ?Sized + AuthStorage> OidcProvider<S> {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use auth_framework::server::oidc::core::IdTokenRequest;
+/// # use cinaauth::server::oidc::core::IdTokenRequest;
 /// let request = IdTokenRequest::new("user123", "client456")
 ///     .with_nonce("abc");
 /// ```
@@ -1065,7 +1065,7 @@ impl OidcAuthorizationRequest {
 /// # Example
 ///
 /// ```rust
-/// use auth_framework::server::oidc::core::OidcAuthorizationRequest;
+/// use cinaauth::server::oidc::core::OidcAuthorizationRequest;
 ///
 /// let req = OidcAuthorizationRequest::builder("my-client", "https://app.example/callback")
 ///     .scope("openid profile email")

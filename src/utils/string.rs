@@ -1,4 +1,4 @@
-//! String utility functions for the AuthFramework.
+//! String utility functions for the Cinaauth.
 
 use rand::{RngExt, rng};
 

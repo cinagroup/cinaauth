@@ -1,6 +1,6 @@
-# Contributing to Auth Framework
+# Contributing to cinaauth
 
-Thank you for your interest in contributing to the Auth Framework project! This guide will help you get started with making contributions.
+Thank you for your interest in contributing to the cinaauth project! This guide will help you get started with making contributions.
 
 ## Code of Conduct
 
@@ -53,8 +53,8 @@ Enhancement suggestions are welcome! When proposing an enhancement:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/ciresnave/auth-framework.git
-   cd auth-framework
+   git clone https://github.com/cinagroup/cinaauth.git
+   cd cinaauth
    ```
 
 2. Install dependencies:
@@ -78,7 +78,7 @@ Enhancement suggestions are welcome! When proposing an enhancement:
 ### Project Structure
 
 ```text
-auth-framework/
+cinaauth/
 ├── src/
 │   ├── lib.rs               # Library entry point and module declarations
 │   ├── auth.rs              # Core authentication framework
@@ -233,4 +233,4 @@ This is a security-focused library. When contributing:
 
 Contributors will be recognized in the project's README and changelog.
 
-Thank you for contributing to Auth Framework!
+Thank you for contributing to cinaauth!

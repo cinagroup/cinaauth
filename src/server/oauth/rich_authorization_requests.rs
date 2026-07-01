@@ -30,8 +30,8 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oauth::rich_authorization_requests::*;
-//! use auth_framework::server::SessionManager;
+//! use cinaauth::server::oauth::rich_authorization_requests::*;
+//! use cinaauth::server::SessionManager;
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -174,7 +174,7 @@ impl RarConfig {
     /// The type name is also added to `supported_types` if not already present.
     ///
     /// ```rust,no_run
-    /// use auth_framework::server::oauth::rich_authorization_requests::RarConfig;
+    /// use cinaauth::server::oauth::rich_authorization_requests::RarConfig;
     ///
     /// let config = RarConfig::empty()
     ///     .with_type("file_access", &["read", "write", "delete"])

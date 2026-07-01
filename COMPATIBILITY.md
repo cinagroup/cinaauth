@@ -22,7 +22,7 @@ release cycle of advance notice.
 
 ## Versioning Policy
 
-AuthFramework follows [Semantic Versioning 2.0](https://semver.org/):
+Cinaauth follows [Semantic Versioning 2.0](https://semver.org/):
 
 | Change type                                                      | Version bump                        |
 | ---------------------------------------------------------------- | ----------------------------------- |
@@ -49,7 +49,7 @@ default build:
 
 | Feature / Capability                     | Default build | Feature flag                   |
 | ---------------------------------------- | :-----------: | ------------------------------ |
-| Core authentication (`AuthFramework`)    |       ✅       | *(always on)*                  |
+| Core authentication (`Cinaauth`)    |       ✅       | *(always on)*                  |
 | Password authentication (Argon2, bcrypt) |       ✅       | *(always on)*                  |
 | JWT issuance and validation              |       ✅       | *(always on)*                  |
 | Session management                       |       ✅       | *(always on)*                  |
@@ -133,8 +133,8 @@ before building stable integrations on top of them.
 | Capability                                       | Replacement                                               | Removal target |
 | ------------------------------------------------ | --------------------------------------------------------- | -------------- |
 | `AppConfigBuilder` (legacy)                      | `LayeredConfigBuilder`                                    | `0.6.0`        |
-| `ModularAuthFramework` (legacy alias)            | `AuthFramework`                                           | `0.6.0`        |
-| Direct monolithic `AuthFramework` method surface | Grouped accessors (`auth.users()`, `auth.tokens()`, etc.) | `0.7.0`        |
+| `ModularCinaauth` (legacy alias)            | `Cinaauth`                                           | `0.6.0`        |
+| Direct monolithic `Cinaauth` method surface | Grouped accessors (`auth.users()`, `auth.tokens()`, etc.) | `0.7.0`        |
 
 Deprecated items emit a `#[deprecated]` warning at compile time and will be removed in the
 target release. Migration guidance is published in the [changelog](CHANGELOG.md).
@@ -219,7 +219,7 @@ documented path; Actix Web and Warp are maintained alternatives.
   you can drop them.
 - `AppConfigBuilder` is deprecated in favour of `LayeredConfigBuilder`.
 - Grouped accessor methods (`auth.users()`, `auth.tokens()`, `auth.authorization()`, etc.) are
-  now the preferred API surface; the flat `AuthFramework` methods remain available but are
+  now the preferred API surface; the flat `Cinaauth` methods remain available but are
   soft-deprecated.
 - SAML tests require the `saml` feature flag and a working IdP; the feature is no longer
   compiled by default.

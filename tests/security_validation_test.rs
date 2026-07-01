@@ -3,8 +3,8 @@
 //! This test verifies that the authentication framework properly validates JWT signatures
 //! and does not allow bypass through unsigned tokens.
 
-use auth_framework::{
-    AuthConfig, AuthFramework,
+use cinaauth::{
+    AuthConfig, Cinaauth,
     errors::{AuthError, TokenError},
     testing::test_infrastructure::TestEnvironmentGuard,
 };
@@ -35,20 +35,20 @@ async fn test_jwt_signature_bypass_prevention() {
     // Create a secure authentication framework
     let config = AuthConfig::new()
         .secret("test-secret-for-security-validation-32chars".to_string())
-        .issuer("auth-framework".to_string())
-        .audience("auth-framework".to_string());
+        .issuer("cinaauth".to_string())
+        .audience("cinaauth".to_string());
 
     // initialize() replaces the temporary default secret with the configured one.
-    let mut auth_framework = AuthFramework::new(config);
-    auth_framework.initialize().await.unwrap();
-    println!("✅ AuthFramework initialized with secure configuration");
+    let mut cinaauth = Cinaauth::new(config);
+    cinaauth.initialize().await.unwrap();
+    println!("✅ Cinaauth initialized with secure configuration");
 
     // Test 1: Attempt to create a malicious JWT without proper signing
     let now = Utc::now().timestamp();
     let malicious_claims = MaliciousJwtClaims {
         sub: "admin".to_string(),
-        iss: "auth-framework".to_string(),
-        aud: "auth-framework".to_string(),
+        iss: "cinaauth".to_string(),
+        aud: "cinaauth".to_string(),
         exp: (Utc::now() + Duration::hours(1)).timestamp(),
         iat: now,
         nbf: now,
@@ -66,7 +66,7 @@ async fn test_jwt_signature_bypass_prevention() {
     );
 
     // Test 2: Verify the framework REJECTS the malicious JWT
-    let validation_result = auth_framework
+    let validation_result = cinaauth
         .token_manager()
         .validate_jwt_token(&malicious_jwt);
 
@@ -99,7 +99,7 @@ async fn test_jwt_signature_bypass_prevention() {
 
     println!("🚨 Testing unsigned JWT: {}", &unsigned_jwt[0..50]);
 
-    let unsigned_result = auth_framework
+    let unsigned_result = cinaauth
         .token_manager()
         .validate_jwt_token(&unsigned_jwt);
 
@@ -118,7 +118,7 @@ async fn test_jwt_signature_bypass_prevention() {
 
     println!("✅ Testing properly signed JWT...");
 
-    let valid_result = auth_framework
+    let valid_result = cinaauth
         .token_manager()
         .validate_jwt_token(&valid_jwt);
 

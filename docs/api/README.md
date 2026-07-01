@@ -1,4 +1,4 @@
-# AuthFramework REST API
+# Cinaauth REST API
 
 This directory documents the REST API surface mounted by `ApiServer`.
 
@@ -35,7 +35,7 @@ This directory documents the REST API surface mounted by `ApiServer`.
 ## Running the API Server
 
 ```bash
-cargo run --bin auth-framework --features api-server,postgres-storage
+cargo run --bin cinaauth --features api-server,postgres-storage
 ```
 
 With the example server running locally, the main entry points are:
@@ -59,7 +59,7 @@ curl http://localhost:8080/api/v1/health
     "status": "healthy",
     "timestamp": "2026-01-20T15:30:45Z",
     "services": {
-      "auth_framework": "healthy",
+      "cinaauth": "healthy",
       "storage": "healthy",
       "token_manager": "healthy",
       "memory": "healthy"

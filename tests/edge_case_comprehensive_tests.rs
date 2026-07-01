@@ -1,10 +1,10 @@
-//! Comprehensive Edge Case and Security Tests for AuthFramework
+//! Comprehensive Edge Case and Security Tests for Cinaauth
 //!
 //! This test suite covers all edge cases, error conditions, and security scenarios
-//! that could occur in real-world usage of the AuthFramework.
+//! that could occur in real-world usage of the Cinaauth.
 
-use auth_framework::{
-    auth::AuthFramework,
+use cinaauth::{
+    auth::Cinaauth,
     authentication::credentials::Credential,
     config::{
         AuthConfig, CookieSameSite, JwtAlgorithm, PasswordHashAlgorithm, RateLimitConfig,
@@ -19,7 +19,7 @@ use std::{sync::Arc, time::Duration};
 mod authentication_edge_cases {
     use super::*;
 
-    async fn setup_complete_framework() -> AuthFramework {
+    async fn setup_complete_framework() -> Cinaauth {
         let config = AuthConfig::new()
             .secret("test_secret_key_32_bytes_long!!!!".to_string())
             .issuer("test-issuer".to_string())
@@ -44,7 +44,7 @@ mod authentication_edge_cases {
                 burst: 10,
             });
 
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         // Register all available authentication methods
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
@@ -105,9 +105,9 @@ mod authentication_edge_cases {
             assert!(result.is_ok());
             // Should either succeed or fail gracefully, never crash
             match result.unwrap() {
-                auth_framework::AuthResult::Success(_)
-                | auth_framework::AuthResult::Failure(_)
-                | auth_framework::AuthResult::MfaRequired(_) => {
+                cinaauth::AuthResult::Success(_)
+                | cinaauth::AuthResult::Failure(_)
+                | cinaauth::AuthResult::MfaRequired(_) => {
                     // All outcomes are acceptable - just shouldn't crash
                 }
             }
@@ -175,7 +175,7 @@ mod authentication_edge_cases {
     #[tokio::test]
     async fn test_authentication_during_framework_shutdown() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
         framework.initialize().await.unwrap();
 
@@ -187,7 +187,7 @@ mod authentication_edge_cases {
         assert!(result.is_ok());
         // No registered users → Failure variant
         match result.unwrap() {
-            auth_framework::AuthResult::Failure(_) => {}
+            cinaauth::AuthResult::Failure(_) => {}
             other => panic!("Expected Failure for unknown user, got {:?}", other),
         }
     }
@@ -217,13 +217,13 @@ mod authentication_edge_cases {
             assert!(result.is_ok(), "Malformed JWT should be handled gracefully");
             // Should return failure, not crash
             match result.unwrap() {
-                auth_framework::AuthResult::Failure(_) => {
+                cinaauth::AuthResult::Failure(_) => {
                     // Expected for malformed tokens
                 }
-                auth_framework::AuthResult::Success(_) => {
+                cinaauth::AuthResult::Success(_) => {
                     // Unexpected but shouldn't crash
                 }
-                auth_framework::AuthResult::MfaRequired(_) => {
+                cinaauth::AuthResult::MfaRequired(_) => {
                     // Also unexpected but handle gracefully
                 }
             }
@@ -278,9 +278,9 @@ mod resource_management_tests {
         // Either succeed or fail gracefully, but don't crash
     }
 
-    async fn setup_complete_framework() -> AuthFramework {
+    async fn setup_complete_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
         framework.initialize().await.unwrap();
         framework
@@ -293,7 +293,7 @@ mod resource_management_tests {
             .secret("test_secret_key_32_bytes_long!!!!".to_string())
             .storage(StorageConfig::Memory);
 
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         // Test operations when storage might fail
@@ -348,9 +348,9 @@ mod concurrency_tests {
         }
     }
 
-    async fn setup_framework() -> AuthFramework {
+    async fn setup_framework() -> Cinaauth {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
         framework.initialize().await.unwrap();
         framework
@@ -489,7 +489,7 @@ mod error_handling_tests {
                 burst: 5,
             });
 
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
         framework.initialize().await.unwrap();
 
@@ -531,7 +531,7 @@ mod error_handling_tests {
             let config = AuthConfig::new().secret(secret.to_string());
 
             // Should not panic when creating framework with invalid config
-            let framework = AuthFramework::new(config);
+            let framework = Cinaauth::new(config);
 
             // Should handle initialization gracefully
             let mut framework_mut = framework;
@@ -545,7 +545,7 @@ mod error_handling_tests {
     #[tokio::test]
     async fn test_partial_system_failure_recovery() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
 
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
@@ -558,7 +558,7 @@ mod error_handling_tests {
         assert!(result1.is_ok());
         // No registered users → should be a Failure variant
         match result1.unwrap() {
-            auth_framework::AuthResult::Failure(_) => {}
+            cinaauth::AuthResult::Failure(_) => {}
             other => panic!("Expected Failure for unknown user, got {:?}", other),
         }
 
@@ -574,7 +574,7 @@ mod error_handling_tests {
         let result3 = framework.authenticate("password", valid_credential2).await;
         assert!(result3.is_ok());
         match result3.unwrap() {
-            auth_framework::AuthResult::Failure(_) => {}
+            cinaauth::AuthResult::Failure(_) => {}
             other => panic!("Expected Failure for unknown user, got {:?}", other),
         }
     }
@@ -588,7 +588,7 @@ mod security_edge_cases {
     #[tokio::test]
     async fn test_timing_attack_resistance() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));
         framework.initialize().await.unwrap();
 
@@ -631,7 +631,7 @@ mod security_edge_cases {
     #[tokio::test]
     async fn test_jwt_signature_tampering_detection() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
         framework.initialize().await.unwrap();
 
@@ -713,7 +713,7 @@ mod security_edge_cases {
     #[tokio::test]
     async fn test_session_fixation_prevention() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         // Test that session IDs are properly regenerated and validated
@@ -736,7 +736,7 @@ mod security_edge_cases {
     #[tokio::test]
     async fn test_csrf_token_uniqueness() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         // Generate multiple CSRF tokens and ensure they're unique
@@ -771,7 +771,7 @@ mod security_edge_cases {
     #[tokio::test]
     async fn test_input_validation_against_injection_attacks() {
         let config = AuthConfig::new().secret("test_secret_key_32_bytes_long!!!!".to_string());
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.initialize().await.unwrap();
 
         // Test various injection attack patterns
@@ -910,7 +910,7 @@ mod configuration_edge_cases {
         let initial_config =
             AuthConfig::new().secret("initial_secret_key_32_bytes_long!!".to_string());
 
-        let mut framework = AuthFramework::new(initial_config);
+        let mut framework = Cinaauth::new(initial_config);
         framework.initialize().await.unwrap();
 
         // Create a token with initial config
@@ -959,7 +959,7 @@ async fn test_comprehensive_edge_case_integration() {
             burst: 100,
         });
 
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
 
     // Register multiple authentication methods
     framework.register_method("password", AuthMethodEnum::Password(PasswordMethod::new()));

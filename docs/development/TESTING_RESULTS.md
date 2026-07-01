@@ -8,7 +8,7 @@
 
 ## 📊 Executive Summary
 
-AuthFramework v0.5.0-rc24 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed Docker release, release-publication, container build, and standalone server paths were revalidated with targeted Rust commands and Docker smoke builds.
+Cinaauth v0.5.0-rc24 retains the broader scoped rc18 validation snapshot below. During the current remediation pass, the changed Docker release, release-publication, container build, and standalone server paths were revalidated with targeted Rust commands and Docker smoke builds.
 
 ```text
 +-------------------------------------------------------------+
@@ -434,7 +434,7 @@ This document records the suites exercised during the rc18 remediation pass. It 
 
 ### Confidence Level
 
-AuthFramework v0.5.0-rc18 has high confidence for the Rust targets exercised in this remediation pass, with remaining release confidence still depending on deployment configuration, optional feature combinations, and final packaging cleanup.
+Cinaauth v0.5.0-rc18 has high confidence for the Rust targets exercised in this remediation pass, with remaining release confidence still depending on deployment configuration, optional feature combinations, and final packaging cleanup.
 
 ---
 
@@ -482,7 +482,7 @@ jobs:
 
 ## ✅ Conclusion
 
-### AuthFramework v0.5.0-rc24 Validation: Targeted Release Prep Complete
+### Cinaauth v0.5.0-rc24 Validation: Targeted Release Prep Complete
 
 ### Summary
 

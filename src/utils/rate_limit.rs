@@ -1,4 +1,4 @@
-//! Rate limiting utilities for the AuthFramework.
+//! Rate limiting utilities for the Cinaauth.
 
 use crate::errors::{AuthError, Result};
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::utils::rate_limit::RateLimiter;
+/// use cinaauth::utils::rate_limit::RateLimiter;
 /// use std::time::Duration;
 /// let limiter = RateLimiter::new(5, Duration::from_secs(60));
 /// assert!(limiter.is_allowed("client-1"));
@@ -26,7 +26,7 @@ impl RateLimiter {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::utils::rate_limit::RateLimiter;
+    /// use cinaauth::utils::rate_limit::RateLimiter;
     /// use std::time::Duration;
     /// let limiter = RateLimiter::new(100, Duration::from_secs(60));
     /// ```
@@ -42,7 +42,7 @@ impl RateLimiter {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::utils::rate_limit::RateLimiter;
+    /// use cinaauth::utils::rate_limit::RateLimiter;
     /// use std::time::Duration;
     /// let limiter = RateLimiter::new(2, Duration::from_secs(60));
     /// assert_eq!(limiter.check_rate_limit("k").unwrap(), true);
@@ -74,7 +74,7 @@ impl RateLimiter {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::utils::rate_limit::RateLimiter;
+    /// use cinaauth::utils::rate_limit::RateLimiter;
     /// use std::time::Duration;
     /// let limiter = RateLimiter::new(1, Duration::from_secs(60));
     /// assert!(limiter.is_allowed("k"));
@@ -88,7 +88,7 @@ impl RateLimiter {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::utils::rate_limit::RateLimiter;
+    /// use cinaauth::utils::rate_limit::RateLimiter;
     /// use std::time::Duration;
     /// let limiter = RateLimiter::new(5, Duration::from_secs(60));
     /// assert_eq!(limiter.remaining_requests("k").unwrap(), 5);
@@ -101,7 +101,7 @@ impl RateLimiter {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::utils::rate_limit::RateLimiter;
+    /// use cinaauth::utils::rate_limit::RateLimiter;
     /// use std::time::Duration;
     /// let limiter = RateLimiter::new(10, Duration::from_secs(60));
     /// limiter.is_allowed("k");
@@ -129,7 +129,7 @@ impl RateLimiter {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::utils::rate_limit::RateLimiter;
+    /// use cinaauth::utils::rate_limit::RateLimiter;
     /// use std::time::Duration;
     /// let limiter = RateLimiter::new(10, Duration::from_secs(60));
     /// let removed = limiter.cleanup().unwrap();
@@ -161,7 +161,7 @@ impl RateLimiter {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::utils::rate_limit::RateLimiter;
+    /// use cinaauth::utils::rate_limit::RateLimiter;
     /// use std::time::Duration;
     /// let limiter = RateLimiter::new(1, Duration::from_secs(60));
     /// limiter.is_allowed("k");
@@ -182,7 +182,7 @@ impl RateLimiter {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::utils::rate_limit::RateLimiter;
+    /// use cinaauth::utils::rate_limit::RateLimiter;
     /// use std::time::Duration;
     /// let limiter = RateLimiter::new(5, Duration::from_secs(60));
     /// limiter.is_allowed("k");

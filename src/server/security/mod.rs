@@ -40,8 +40,8 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::security::{DpopManager, FapiManager};
-//! use auth_framework::{SecureJwtValidator, SecureJwtConfig};
+//! use cinaauth::server::security::{DpopManager, FapiManager};
+//! use cinaauth::{SecureJwtValidator, SecureJwtConfig};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -61,9 +61,9 @@
 //! ).await?;
 //!
 //! // FAPI compliance validation
-//! # let config: auth_framework::server::security::fapi::FapiConfig = unimplemented!();
+//! # let config: cinaauth::server::security::fapi::FapiConfig = unimplemented!();
 //! // FapiManager requires dpop_manager, mtls_manager, par_manager, private_key_jwt_manager, and jwt_validator
-//! # let fapi_manager: auth_framework::server::security::FapiManager = unimplemented!();
+//! # let fapi_manager: cinaauth::server::security::FapiManager = unimplemented!();
 //! # Ok(())
 //! # }
 //! ```

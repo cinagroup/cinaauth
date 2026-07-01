@@ -7,7 +7,7 @@ MFASetupResponse:
         qr_code:
             type: string
             description: otpauth:// URI that the client can render as a QR code.
-            example: "otpauth://totp/AuthFramework:user_123?secret=JBSWY3DPEHPK3PXP&issuer=AuthFramework&digits=6&period=30"
+            example: "otpauth://totp/Cinaauth:user_123?secret=JBSWY3DPEHPK3PXP&issuer=Cinaauth&digits=6&period=30"
         secret:
             type: string
             description: Base32-encoded TOTP secret for manual entry.

@@ -2,23 +2,23 @@
 //!
 //! This example demonstrates the key optimizations working together.
 
-use auth_framework::{
-    AuthConfig, AuthFramework, Result,
+use cinaauth::{
+    AuthConfig, Cinaauth, Result,
     methods::{AuthMethodEnum, JwtMethod},
 };
 
 #[cfg(feature = "performance-optimization")]
-use auth_framework::storage::unified::UnifiedStorage;
+use cinaauth::storage::unified::UnifiedStorage;
 
 #[cfg(feature = "enhanced-observability")]
-use auth_framework::observability::ObservabilityManager;
+use cinaauth::observability::ObservabilityManager;
 
 use std::time::Duration;
 use tokio::time::Instant;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🚀 AuthFramework Performance Demo");
+    println!("🚀 Cinaauth Performance Demo");
     println!("==================================");
 
     // Test unified storage performance
@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         test_observability().await?;
     }
 
-    // Test basic AuthFramework performance
+    // Test basic Cinaauth performance
     println!("\n⚡ Testing Core Framework Performance...");
     test_core_performance().await?;
 
@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
 
 #[cfg(feature = "performance-optimization")]
 async fn test_unified_storage() -> Result<()> {
-    use auth_framework::storage::AuthStorage;
+    use cinaauth::storage::AuthStorage;
 
     let storage = UnifiedStorage::new();
 
@@ -54,7 +54,7 @@ async fn test_unified_storage() -> Result<()> {
 
     // Create some test tokens
     for i in 0..100 {
-        let token = auth_framework::tokens::AuthToken {
+        let token = cinaauth::tokens::AuthToken {
             token_id: format!("test-token-{}", i),
             user_id: format!("user-{}", i),
             access_token: format!("access-{}", i),
@@ -70,7 +70,7 @@ async fn test_unified_storage() -> Result<()> {
             user_profile: None,
             permissions: vec!["read".to_string(), "write".to_string()].into(),
             roles: vec!["user".to_string()].into(),
-            metadata: auth_framework::tokens::TokenMetadata {
+            metadata: cinaauth::tokens::TokenMetadata {
                 issued_ip: Some("127.0.0.1".to_string()),
                 user_agent: Some("test-agent".to_string()),
                 device_id: None,
@@ -153,7 +153,7 @@ async fn test_core_performance() -> Result<()> {
         .refresh_token_lifetime(Duration::from_secs(86400 * 7))
         .secret("test_secret_key_for_demo_purposes_that_is_long_enough_to_be_secure_and_valid");
 
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
 
     // Register JWT method
     let jwt_method = JwtMethod::new();
@@ -170,13 +170,13 @@ async fn test_core_performance() -> Result<()> {
         let user_id = format!("user-{}", i);
 
         // Create a basic credential for testing
-        use auth_framework::authentication::credentials::Credential;
+        use cinaauth::authentication::credentials::Credential;
         let credential = Credential::password(&user_id, "test-password");
 
         // Attempt authentication
         let auth_result = framework.authenticate("jwt", credential).await;
 
-        if let Ok(auth_framework::auth::AuthResult::Success(token)) = auth_result {
+        if let Ok(cinaauth::auth::AuthResult::Success(token)) = auth_result {
             // Test token validation
             let _is_valid = framework.tokens().validate(&token).await.unwrap_or(false);
         }

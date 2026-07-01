@@ -1,6 +1,6 @@
 # Supported Protocols and Standards
 
-AuthFramework implements 35+ authentication and authorization protocols.
+Cinaauth implements 35+ authentication and authorization protocols.
 Most are compiled unconditionally; a few require opt-in feature flags for
 platform-specific dependencies.
 

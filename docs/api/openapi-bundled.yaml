@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: AuthFramework Static OpenAPI Note (Bundled)
+  title: Cinaauth Static OpenAPI Note (Bundled)
   version: 0.5.0-rc24
   description: |
     Older bundled snapshots in this repository had drifted substantially from the live router.

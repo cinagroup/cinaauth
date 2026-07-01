@@ -1,4 +1,4 @@
-//! Security presets for the Auth Framework
+//! Security presets for the cinaauth
 //!
 //! This module provides pre-configured security levels that automatically
 //! apply appropriate security settings for different environments and use cases.
@@ -15,10 +15,10 @@
 //! ```rust,no_run
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! use auth_framework::prelude::*;
+//! use cinaauth::prelude::*;
 //!
 //! // Quick setup with security preset
-//! let auth = AuthFramework::quick_start()
+//! let auth = Cinaauth::quick_start()
 //!     .jwt_auth_from_env()
 //!     .security_level(SecurityPreset::HighSecurity)
 //!     .build().await?;
@@ -38,7 +38,7 @@
 //! ```rust,no_run
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! use auth_framework::prelude::*;
+//! use cinaauth::prelude::*;
 //!
 //! // Validate security configuration
 //! let issues = SecurityPreset::HighSecurity
@@ -58,7 +58,7 @@ use crate::{
         AuditConfig, AuditStorage, CookieSameSite, JwtAlgorithm, PasswordHashAlgorithm,
         RateLimitConfig, SecurityConfig,
     },
-    prelude::{AuthFrameworkResult, hours, minutes},
+    prelude::{CinaauthResult, hours, minutes},
 };
 use std::time::Duration;
 
@@ -266,7 +266,7 @@ impl SecurityPreset {
     }
 
     /// Validate the current environment against this security preset
-    pub async fn validate_environment(&self) -> AuthFrameworkResult<Vec<SecurityIssue>> {
+    pub async fn validate_environment(&self) -> CinaauthResult<Vec<SecurityIssue>> {
         let mut issues = Vec::new();
 
         // Check environment type
@@ -317,7 +317,7 @@ impl SecurityPreset {
     }
 
     /// Perform a security audit of the current configuration
-    pub async fn security_audit(&self) -> AuthFrameworkResult<SecurityAuditReport> {
+    pub async fn security_audit(&self) -> CinaauthResult<SecurityAuditReport> {
         let issues = self.validate_environment().await?;
 
         let critical_count = issues

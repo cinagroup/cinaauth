@@ -1,7 +1,7 @@
-use auth_framework::storage::core::AuthStorage;
-use auth_framework::storage::dashmap_memory::DashMapMemoryStorage;
-use auth_framework::testing::test_infrastructure::TestEnvironmentGuard;
-use auth_framework::tokens::{AuthToken, TokenMetadata};
+use cinaauth::storage::core::AuthStorage;
+use cinaauth::storage::dashmap_memory::DashMapMemoryStorage;
+use cinaauth::testing::test_infrastructure::TestEnvironmentGuard;
+use cinaauth::tokens::{AuthToken, TokenMetadata};
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::sync::Arc;
 

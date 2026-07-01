@@ -1,6 +1,6 @@
-"""Base HTTP client for AuthFramework API operations.
+"""Base HTTP client for cinaauth API operations.
 
-Copyright (c) 2025 AuthFramework. All rights reserved.
+Copyright (c) 2025 cinaauth. All rights reserved.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from urllib.parse import urljoin
 import httpx
 
 from .exceptions import (
-    AuthFrameworkError,
+    CinaauthError,
     NetworkError,
     TimeoutError as AuthTimeoutError,
     create_error_from_response,
@@ -60,7 +60,7 @@ class BaseClient:
         self._access_token: str | None = None
 
         # Create HTTP client
-        headers = {"User-Agent": "AuthFramework-Python-SDK/1.0.0"}
+        headers = {"User-Agent": "cinaauth-Python-SDK/1.0.0"}
         if api_key:
             headers["X-API-Key"] = api_key
 
@@ -133,7 +133,7 @@ class BaseClient:
             Parsed JSON response data.
 
         Raises:
-            AuthFrameworkError: For authentication/authorization errors
+            CinaauthError: For authentication/authorization errors
             NetworkError: For network-related errors
             AuthTimeoutError: For timeout errors
 
@@ -165,7 +165,7 @@ class BaseClient:
                 await asyncio.sleep(min(2**attempt, 10))
 
         retries_msg = "Max retries exceeded"
-        raise AuthFrameworkError(retries_msg)
+        raise CinaauthError(retries_msg)
 
     async def _attempt_request(
         self,
@@ -206,13 +206,13 @@ class BaseClient:
         except httpx.NetworkError as e:
             network_msg = "Network error"
             raise NetworkError(network_msg) from e
-        except AuthFrameworkError:
-            # Don't retry AuthFramework errors
+        except CinaauthError:
+            # Don't retry cinaauth errors
             raise
         except Exception as e:
             if not is_retryable_error(e):
                 failed_msg = "Request failed"
-                raise AuthFrameworkError(failed_msg) from e
+                raise CinaauthError(failed_msg) from e
             return None
 
         return None

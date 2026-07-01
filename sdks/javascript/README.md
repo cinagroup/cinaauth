@@ -1,15 +1,15 @@
-# AuthFramework JavaScript/TypeScript SDK
+# cinaauth JavaScript/TypeScript SDK
 
-Official JavaScript/TypeScript client library for the AuthFramework REST API.
+Official JavaScript/TypeScript client library for the cinaauth REST API.
 
 ## Installation
 
 ```bash
-npm install @authframework/js-sdk
+npm install @cinaauth/js-sdk
 # or
-yarn add @authframework/js-sdk
+yarn add @cinaauth/js-sdk
 # or
-pnpm add @authframework/js-sdk
+pnpm add @cinaauth/js-sdk
 ```
 
 ## Quick Start
@@ -17,10 +17,10 @@ pnpm add @authframework/js-sdk
 ### Basic Usage
 
 ```typescript
-import { AuthFrameworkClient } from '@authframework/js-sdk';
+import { CinaauthClient } from '@cinaauth/js-sdk';
 
 // Initialize the client
-const client = new AuthFrameworkClient({
+const client = new CinaauthClient({
   baseUrl: 'http://localhost:8080',
   timeout: 30000, // 30 seconds (optional)
   retries: 3, // Retry failed requests (optional)
@@ -51,7 +51,7 @@ try {
 ### With API Key
 
 ```typescript
-const client = new AuthFrameworkClient({
+const client = new CinaauthClient({
   baseUrl: 'https://api.yourdomain.com',
   apiKey: 'your-api-key', // For endpoints that support API key auth
 });
@@ -281,19 +281,19 @@ The SDK provides specific error types for different scenarios:
 
 ```typescript
 import {
-  AuthFrameworkError,
+  CinaauthError,
   AuthenticationError,
   AuthorizationError,
   ValidationError,
   NotFoundError,
   RateLimitError,
-  isAuthFrameworkError
-} from '@authframework/js-sdk';
+  isCinaauthError
+} from '@cinaauth/js-sdk';
 
 try {
   await client.auth.login({ username: 'invalid', password: 'wrong' });
 } catch (error) {
-  if (isAuthFrameworkError(error)) {
+  if (isCinaauthError(error)) {
     console.log('Error code:', error.code);
     console.log('Status code:', error.statusCode);
     console.log('Details:', error.details);
@@ -312,7 +312,7 @@ try {
 The SDK automatically retries failed requests for network errors and 5xx server errors:
 
 ```typescript
-const client = new AuthFrameworkClient({
+const client = new CinaauthClient({
   baseUrl: 'https://api.example.com',
   retries: 5, // Retry up to 5 times
   timeout: 10000 // 10 second timeout
@@ -339,7 +339,7 @@ import {
   LoginResponse,
   ApiResponse,
   PaginatedResponse
-} from '@authframework/js-sdk';
+} from '@cinaauth/js-sdk';
 
 // Type-safe responses
 const loginResponse: LoginResponse = await client.auth.login({
@@ -399,9 +399,9 @@ The SDK works in modern browsers and Node.js environments:
 
 ```html
 <!-- Include via CDN -->
-<script src="https://unpkg.com/@authframework/js-sdk@latest/dist/index.umd.js"></script>
+<script src="https://unpkg.com/@cinaauth/js-sdk@latest/dist/index.umd.js"></script>
 <script>
-  const client = new AuthFramework.AuthFrameworkClient({
+  const client = new cinaauth.CinaauthClient({
     baseUrl: 'https://api.example.com'
   });
 </script>
@@ -413,9 +413,9 @@ Example React hook for authentication:
 
 ```typescript
 import { useState, useEffect } from 'react';
-import { AuthFrameworkClient, UserInfo } from '@authframework/js-sdk';
+import { CinaauthClient, UserInfo } from '@cinaauth/js-sdk';
 
-const client = new AuthFrameworkClient({
+const client = new CinaauthClient({
   baseUrl: process.env.REACT_APP_API_URL!
 });
 

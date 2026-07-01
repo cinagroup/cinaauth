@@ -215,5 +215,5 @@ pub async fn authenticate_user(
 ---
 
 **Decision Date**: 2025-08-17
-**Decision Maker(s)**: AuthFramework Development Team
+**Decision Maker(s)**: Cinaauth Development Team
 **Review Date**: 2026-02-17

@@ -171,13 +171,13 @@ pub async fn list_users(
     Query(query): Query<UserListQuery>,
 ) -> ApiResponse<UserListResponse> {
     match extract_bearer_token(&headers) {
-        Some(token) => match validate_api_token(&state.auth_framework, &token).await {
+        Some(token) => match validate_api_token(&state.cinaauth, &token).await {
             Ok(auth_token) => {
                 if let Err(resp) = verify_admin_role::<UserListResponse>(&auth_token) {
                     return resp;
                 }
 
-                let storage = state.auth_framework.storage();
+                let storage = state.cinaauth.storage();
                 let all_ids = load_user_ids(&storage).await;
 
                 let mut users: Vec<UserListItem> = Vec::new();
@@ -298,7 +298,7 @@ pub async fn create_user(
 
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
                     if let Err(resp) = verify_admin_role(&auth_token) {
@@ -306,7 +306,7 @@ pub async fn create_user(
                     }
 
                     match state
-                        .auth_framework
+                        .cinaauth
                         .register_user(&req.username, &req.email, &req.password)
                         .await
                     {
@@ -315,7 +315,7 @@ pub async fn create_user(
                                 || req.roles.len() == 1 && req.roles[0] == "user")
                             {
                                 if let Err(e) = state
-                                    .auth_framework
+                                    .cinaauth
                                     .update_user_roles(&user_id, &req.roles)
                                     .await
                                 {
@@ -323,7 +323,7 @@ pub async fn create_user(
                                 }
                             }
                             if !req.active {
-                                if let Err(e) = state.auth_framework.set_user_active(&user_id, false).await {
+                                if let Err(e) = state.cinaauth.set_user_active(&user_id, false).await {
                                     tracing::warn!("Failed to deactivate new user {}: {}", user_id, e);
                                 }
                             }
@@ -380,7 +380,7 @@ pub async fn update_user_roles(
 ) -> ApiResponse<()> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
                     if let Err(resp) = verify_admin_role(&auth_token) {
@@ -388,7 +388,7 @@ pub async fn update_user_roles(
                     }
 
                     match state
-                        .auth_framework
+                        .cinaauth
                         .update_user_roles(&user_id, &req.roles)
                         .await
                     {
@@ -419,7 +419,7 @@ pub async fn delete_user(
 ) -> ApiResponse<()> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
                     if let Err(resp) = verify_admin_role(&auth_token) {
@@ -431,8 +431,8 @@ pub async fn delete_user(
                         return ApiResponse::validation_error("Cannot delete your own account");
                     }
 
-                    match state.auth_framework.get_username_by_id(&user_id).await {
-                        Ok(username) => match state.auth_framework.delete_user(&username).await {
+                    match state.cinaauth.get_username_by_id(&user_id).await {
+                        Ok(username) => match state.cinaauth.delete_user(&username).await {
                             Ok(()) => {
                                 tracing::info!("Admin deleted user: {} ({})", username, user_id);
                                 ApiResponse::<()>::ok_with_message("User deleted successfully")
@@ -464,7 +464,7 @@ pub async fn activate_user(
 ) -> ApiResponse<()> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
                     if !auth_token.roles.contains(&"admin".to_string()) {
@@ -472,7 +472,7 @@ pub async fn activate_user(
                     }
 
                     match state
-                        .auth_framework
+                        .cinaauth
                         .set_user_active(&user_id, req.active)
                         .await
                     {
@@ -506,14 +506,14 @@ pub async fn get_system_stats(
 ) -> ApiResponse<SystemStats> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
                     if !auth_token.roles.contains(&"admin".to_string()) {
                         return ApiResponse::forbidden_typed();
                     }
 
-                    let storage = state.auth_framework.storage();
+                    let storage = state.cinaauth.storage();
                     let total_users = load_user_ids(&storage).await.len() as u64;
                     let active_sessions = storage.count_active_sessions().await.unwrap_or(0);
 
@@ -628,7 +628,7 @@ pub async fn get_audit_logs(
 ) -> ApiResponse<AuditLogResponse> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Check admin permissions
                     if !auth_token.roles.contains(&"admin".to_string()) {
@@ -645,7 +645,7 @@ pub async fn get_audit_logs(
                     let fetch_limit = offset + limit as usize;
 
                     match state
-                        .auth_framework
+                        .cinaauth
                         .get_permission_audit_logs(
                             query.user_id.as_deref(),
                             query.action.as_deref(),
@@ -820,13 +820,13 @@ pub async fn get_audit_log_stats(
     headers: HeaderMap,
 ) -> ApiResponse<AuditLogStats> {
     match extract_bearer_token(&headers) {
-        Some(token) => match validate_api_token(&state.auth_framework, &token).await {
+        Some(token) => match validate_api_token(&state.cinaauth, &token).await {
             Ok(auth_token) => {
                 if !auth_token.roles.contains(&"admin".to_string()) {
                     return ApiResponse::forbidden_typed();
                 }
 
-                match state.auth_framework.get_security_audit_stats().await {
+                match state.cinaauth.get_security_audit_stats().await {
                     Ok(sec_stats) => ApiResponse::success(AuditLogStats {
                         total_events_24h: sec_stats.failed_logins_24h
                             + sec_stats.successful_logins_24h
@@ -963,12 +963,12 @@ pub async fn get_config(
     headers: HeaderMap,
 ) -> ApiResponse<AdminConfigView> {
     match extract_bearer_token(&headers) {
-        Some(token) => match validate_api_token(&state.auth_framework, &token).await {
+        Some(token) => match validate_api_token(&state.cinaauth, &token).await {
             Ok(auth_token) => {
                 if !auth_token.roles.contains(&"admin".to_string()) {
                     return ApiResponse::forbidden_typed();
                 }
-                let cfg = state.auth_framework.runtime_config().await;
+                let cfg = state.cinaauth.runtime_config().await;
                 ApiResponse::success(AdminConfigView::from(cfg))
             }
             Err(e) => {
@@ -995,14 +995,14 @@ pub async fn update_config(
     Json(update): Json<AdminConfigUpdate>,
 ) -> ApiResponse<AdminConfigView> {
     match extract_bearer_token(&headers) {
-        Some(token) => match validate_api_token(&state.auth_framework, &token).await {
+        Some(token) => match validate_api_token(&state.cinaauth, &token).await {
             Ok(auth_token) => {
                 if !auth_token.roles.contains(&"admin".to_string()) {
                     return ApiResponse::forbidden_typed();
                 }
 
                 // Load current config, merge, then validate via update_runtime_config.
-                let mut current = state.auth_framework.runtime_config().await;
+                let mut current = state.cinaauth.runtime_config().await;
                 if let Some(v) = update.token_lifetime_secs {
                     current.token_lifetime_secs = v;
                 }
@@ -1055,7 +1055,7 @@ pub async fn update_config(
                     current.audit_log_tokens = v;
                 }
 
-                match state.auth_framework.update_runtime_config(current).await {
+                match state.cinaauth.update_runtime_config(current).await {
                     Ok(updated) => ApiResponse::success(AdminConfigView::from(updated)),
                     Err(e) => {
                         let error_response = ApiResponse::<()>::from(e);

@@ -1,8 +1,8 @@
-use auth_framework::auth::AuthFramework;
-use auth_framework::authentication::credentials::Credential;
-use auth_framework::config::AuthConfig;
-use auth_framework::testing::test_infrastructure::TestEnvironmentGuard;
-use auth_framework::tokens::AuthToken;
+use cinaauth::auth::Cinaauth;
+use cinaauth::authentication::credentials::Credential;
+use cinaauth::config::AuthConfig;
+use cinaauth::testing::test_infrastructure::TestEnvironmentGuard;
+use cinaauth::tokens::AuthToken;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -14,7 +14,7 @@ async fn test_uninitialized_framework_operations() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let framework = AuthFramework::new(config);
+    let framework = Cinaauth::new(config);
     // Deliberately NOT calling framework.initialize()
 
     // Test authenticate on uninitialized framework
@@ -57,7 +57,7 @@ async fn test_malformed_input_handling() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test extreme input sizes
@@ -94,7 +94,7 @@ async fn test_invalid_jwt_token_handling() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test various malformed JWT tokens as token values
@@ -133,7 +133,7 @@ async fn test_concurrent_operation_safety() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -193,7 +193,7 @@ async fn test_session_storage_error_recovery() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test session operations with invalid session IDs
@@ -229,7 +229,7 @@ async fn test_authentication_method_error_paths() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test non-existent authentication methods
@@ -266,7 +266,7 @@ async fn test_token_expiration_edge_cases() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test token with zero duration (immediate expiration)
@@ -298,7 +298,7 @@ async fn test_cleanup_operations_error_handling() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test cleanup operations multiple times to ensure idempotency
@@ -338,7 +338,7 @@ async fn test_credential_validation_edge_cases() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test various credential edge cases
@@ -368,7 +368,7 @@ async fn test_memory_pressure_scenarios() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -404,7 +404,7 @@ async fn test_boundary_conditions() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test session duration boundaries
@@ -437,7 +437,7 @@ async fn test_double_initialization_error() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
 
     // First initialization should succeed
     framework.initialize().await.unwrap();
@@ -470,7 +470,7 @@ async fn test_invalid_config_handling() {
 
     // Test framework creation with potentially problematic configs
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
 
     // Initialization should handle any config issues gracefully
     match framework.initialize().await {
@@ -487,7 +487,7 @@ async fn test_resource_exhaustion_recovery() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -548,7 +548,7 @@ async fn test_error_message_consistency() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test that similar error conditions produce consistent error messages

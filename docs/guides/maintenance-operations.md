@@ -1,6 +1,6 @@
 # Maintenance Operations Guide
 
-This guide documents the logical maintenance flows implemented in the AuthFramework maintenance layer:
+This guide documents the logical maintenance flows implemented in the Cinaauth maintenance layer:
 
 - `db reset`
 - `db create-migration`
@@ -9,7 +9,7 @@ This guide documents the logical maintenance flows implemented in the AuthFramew
 
 ## Scope
 
-The maintenance layer operates on logical AuthFramework state rather than backend-native dump formats.
+The maintenance layer operates on logical Cinaauth state rather than backend-native dump formats.
 
 The snapshot contains:
 
@@ -94,13 +94,13 @@ cargo test --lib maintenance_admin_cli_smoke_test_roundtrip --features "admin-bi
 
 ## Release Binary Usage
 
-The shipped `auth-framework-admin` binary exposes maintenance commands through the admin CLI surface in `src/bin/admin.rs` and `src/admin/cli.rs`.
+The shipped `cinaauth-admin` binary exposes maintenance commands through the admin CLI surface in `src/bin/admin.rs` and `src/admin/cli.rs`.
 
 Example forms:
 
 ```powershell
-cargo run --bin auth-framework-admin --features "admin-binary sqlite-storage" -- cli maintenance backup snapshot.json
-cargo run --bin auth-framework-admin --features "admin-binary sqlite-storage" -- cli maintenance reset --confirm
-cargo run --bin auth-framework-admin --features "admin-binary sqlite-storage" -- cli maintenance restore snapshot.json --confirm
-cargo run --bin auth-framework-admin --features "admin-binary sqlite-storage" -- cli maintenance create-migration add_audit_table
+cargo run --bin cinaauth-admin --features "admin-binary sqlite-storage" -- cli maintenance backup snapshot.json
+cargo run --bin cinaauth-admin --features "admin-binary sqlite-storage" -- cli maintenance reset --confirm
+cargo run --bin cinaauth-admin --features "admin-binary sqlite-storage" -- cli maintenance restore snapshot.json --confirm
+cargo run --bin cinaauth-admin --features "admin-binary sqlite-storage" -- cli maintenance create-migration add_audit_table
 ```

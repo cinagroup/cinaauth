@@ -4,12 +4,12 @@
 
 #[cfg(all(test, feature = "api-server"))]
 mod users_api_tests {
-    use auth_framework::api::ApiState;
-    use auth_framework::api::admin::{self, CreateUserRequest};
-    use auth_framework::api::auth::{self as auth_handlers};
-    use auth_framework::api::mfa::{self, MfaVerifyRequest};
-    use auth_framework::api::users::{self, ChangePasswordRequest, UpdateProfileRequest};
-    use auth_framework::{AuthConfig, AuthFramework};
+    use cinaauth::api::ApiState;
+    use cinaauth::api::admin::{self, CreateUserRequest};
+    use cinaauth::api::auth::{self as auth_handlers};
+    use cinaauth::api::mfa::{self, MfaVerifyRequest};
+    use cinaauth::api::users::{self, ChangePasswordRequest, UpdateProfileRequest};
+    use cinaauth::{AuthConfig, Cinaauth};
     use axum::Json;
     use axum::extract::State;
     use axum::http::{HeaderMap, HeaderValue, StatusCode, header::AUTHORIZATION};
@@ -19,9 +19,9 @@ mod users_api_tests {
     async fn setup_api_state() -> ApiState {
         let config =
             AuthConfig::new().secret("test_users_api_secret_key_that_is_long_enough".to_string());
-        let mut auth_framework = AuthFramework::new(config);
-        auth_framework.initialize().await.unwrap();
-        ApiState::new(Arc::new(auth_framework)).await.unwrap()
+        let mut cinaauth = Cinaauth::new(config);
+        cinaauth.initialize().await.unwrap();
+        ApiState::new(Arc::new(cinaauth)).await.unwrap()
     }
 
     fn unique_registration_password() -> String {
@@ -34,13 +34,13 @@ mod users_api_tests {
         let email = format!("{}@test.example.com", username);
 
         let user_id = state
-            .auth_framework
+            .cinaauth
             .register_user(&username, &email, "SecurePass123!")
             .await
             .expect("test user registration should succeed");
 
         let token = state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .create_auth_token(
                 &user_id,
@@ -65,20 +65,20 @@ mod users_api_tests {
         let email = format!("{}@test.example.com", username);
 
         let user_id = state
-            .auth_framework
+            .cinaauth
             .register_user(&username, &email, "SecurePass123!")
             .await
             .expect("admin user registration should succeed");
 
         // Elevate to admin role so the admin endpoint authorization check passes.
         state
-            .auth_framework
+            .cinaauth
             .update_user_roles(&user_id, &["admin".to_string()])
             .await
             .expect("role update should succeed");
 
         let token = state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .create_auth_token(
                 &user_id,
@@ -381,13 +381,13 @@ mod users_api_tests {
     /// to the refresh endpoint.
     #[tokio::test]
     async fn test_refresh_rejects_revoked_token() {
-        use auth_framework::api::auth::{LogoutRequest, RefreshRequest};
+        use cinaauth::api::auth::{LogoutRequest, RefreshRequest};
 
         let state = setup_api_state().await;
 
         // Register a user and obtain tokens.
         let user_id = state
-            .auth_framework
+            .cinaauth
             .register_user(
                 "refresh_test_user",
                 "refresh@test.example.com",
@@ -398,14 +398,14 @@ mod users_api_tests {
 
         // Create an access token.
         let access_token_pair = state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .create_auth_token(&user_id, vec![], "test", None)
             .expect("access token creation should succeed");
 
         // Create a refresh token (scope = ["refresh"], 7-day lifetime).
         let refresh_token = state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .create_jwt_token(
                 &user_id,
@@ -458,7 +458,7 @@ mod users_api_tests {
     /// Registration with a username starting with a digit must be rejected.
     #[tokio::test]
     async fn test_register_rejects_username_starting_with_digit() {
-        use auth_framework::api::auth::RegisterRequest;
+        use cinaauth::api::auth::RegisterRequest;
 
         let state = setup_api_state().await;
 
@@ -482,7 +482,7 @@ mod users_api_tests {
     /// Registration with special characters in the username must be rejected.
     #[tokio::test]
     async fn test_register_rejects_username_with_special_chars() {
-        use auth_framework::api::auth::RegisterRequest;
+        use cinaauth::api::auth::RegisterRequest;
 
         let state = setup_api_state().await;
 
@@ -568,12 +568,12 @@ mod users_api_tests {
     /// HIGH-1: Login response must include the user's actual assigned roles.
     #[tokio::test]
     async fn test_login_response_includes_roles() {
-        use auth_framework::api::auth::LoginRequest;
+        use cinaauth::api::auth::LoginRequest;
 
         let state = setup_api_state().await;
 
         let user_id = state
-            .auth_framework
+            .cinaauth
             .register_user(
                 "login_roles_user",
                 "login_roles_user@test.example.com",
@@ -583,7 +583,7 @@ mod users_api_tests {
             .expect("registration should succeed");
 
         state
-            .auth_framework
+            .cinaauth
             .update_user_roles(&user_id, &["viewer".to_string()])
             .await
             .expect("role assignment should succeed");
@@ -613,7 +613,7 @@ mod users_api_tests {
     /// CRITICAL-2: A user must not be able to revoke another user's session.
     #[tokio::test]
     async fn test_revoke_session_requires_ownership() {
-        use auth_framework::storage::core::SessionData;
+        use cinaauth::storage::core::SessionData;
         use axum::extract::Path;
 
         let state = setup_api_state().await;
@@ -635,7 +635,7 @@ mod users_api_tests {
             data: Default::default(),
         };
         state
-            .auth_framework
+            .cinaauth
             .storage()
             .store_session(&session_id, &session_data)
             .await
@@ -657,7 +657,7 @@ mod users_api_tests {
     /// or the email was the conflicting field.
     #[tokio::test]
     async fn test_register_conflict_message_is_generic() {
-        use auth_framework::api::auth::RegisterRequest;
+        use cinaauth::api::auth::RegisterRequest;
 
         let state = setup_api_state().await;
         let password = unique_registration_password();
@@ -716,7 +716,7 @@ mod users_api_tests {
     ///   (b) the new email blocks duplicate registrations.
     #[tokio::test]
     async fn test_update_profile_maintains_email_index() {
-        use auth_framework::api::auth::RegisterRequest;
+        use cinaauth::api::auth::RegisterRequest;
 
         let state = setup_api_state().await;
         let old_email_password = unique_registration_password();
@@ -796,7 +796,7 @@ mod users_api_tests {
         // Create a regular user and assign them a specific role.
         let (target_uid, _headers) = make_auth_headers(&state, "profile_target").await;
         state
-            .auth_framework
+            .cinaauth
             .update_user_roles(&target_uid, &["editor".to_string()])
             .await
             .expect("role assignment should succeed");
@@ -918,7 +918,7 @@ mod users_api_tests {
     /// MFA-enabled users must not receive tokens until they complete the MFA step.
     #[tokio::test]
     async fn test_login_requires_mfa_for_enabled_user() {
-        use auth_framework::api::auth::LoginRequest;
+        use cinaauth::api::auth::LoginRequest;
 
         let state = setup_api_state().await;
         let (_uid, headers) = make_auth_headers(&state, "mfa_required").await;
@@ -960,7 +960,7 @@ mod users_api_tests {
     /// MFA-enabled users can complete login when they provide the current TOTP code.
     #[tokio::test]
     async fn test_login_completes_with_valid_mfa_code() {
-        use auth_framework::api::auth::LoginRequest;
+        use cinaauth::api::auth::LoginRequest;
 
         let state = setup_api_state().await;
         let (_uid, headers) = make_auth_headers(&state, "mfa_complete").await;

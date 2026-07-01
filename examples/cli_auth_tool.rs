@@ -1,10 +1,10 @@
 //! Command Line Authentication Tool
 //!
-//! This example demonstrates how to use auth_framework in a CLI application
+//! This example demonstrates how to use cinaauth in a CLI application
 //! for user authentication, token management, and session handling.
 
-use auth_framework::{
-    AuthConfig, AuthFramework, AuthToken,
+use cinaauth::{
+    AuthConfig, Cinaauth, AuthToken,
     config::SecurityConfig,
     methods::{AuthMethodEnum, JwtMethod},
     providers::ProviderProfile,
@@ -20,7 +20,7 @@ use std::{
 use uuid::Uuid;
 
 struct AuthCli {
-    auth: AuthFramework,
+    auth: Cinaauth,
     storage: Arc<MemoryStorage>,
     current_user: Option<AuthToken>,
 }
@@ -38,7 +38,7 @@ impl AuthCli {
                 ..security_config
             });
 
-        let mut auth = AuthFramework::new(config);
+        let mut auth = Cinaauth::new(config);
 
         // Register JWT method
         let jwt_method = JwtMethod::new()
@@ -58,7 +58,7 @@ impl AuthCli {
     }
 
     async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        println!("🔐 Auth Framework CLI Demo");
+        println!("🔐 cinaauth CLI Demo");
         println!("==========================\n");
 
         // Create some demo users

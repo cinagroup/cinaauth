@@ -1,5 +1,5 @@
 /**
- * OAuth 2.0 module for AuthFramework SDK
+ * OAuth 2.0 module for cinaauth SDK
  */
 
 import { BaseClient } from '../base-client';

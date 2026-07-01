@@ -15,7 +15,7 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use auth_framework::protocols::sd_jwt::{SdJwtIssuer, SdJwtConfig};
+//! use cinaauth::protocols::sd_jwt::{SdJwtIssuer, SdJwtConfig};
 //!
 //! let config = SdJwtConfig::default();
 //! let issuer = SdJwtIssuer::new(config);
@@ -89,7 +89,7 @@ impl Default for SdJwtConfig {
         Self {
             hash_algorithm: SdHashAlgorithm::default(),
             signing_algorithm: jsonwebtoken::Algorithm::HS256,
-            issuer: "auth-framework".to_string(),
+            issuer: "cinaauth".to_string(),
             lifetime_secs: 3600,
             salt_length: 16,
         }

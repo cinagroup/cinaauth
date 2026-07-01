@@ -1,8 +1,8 @@
-# AuthFramework OpenAPI Specification - Modular Structure
+# Cinaauth OpenAPI Specification - Modular Structure
 
 ## Overview
 
-The AuthFramework OpenAPI specification has been modularized for better maintainability, collaboration, and clarity. Instead of a single 1400+ line file, the specification is now split into focused modules organized by domain and component type.
+The Cinaauth OpenAPI specification has been modularized for better maintainability, collaboration, and clarity. Instead of a single 1400+ line file, the specification is now split into focused modules organized by domain and component type.
 
 ## Structure
 

@@ -1,6 +1,6 @@
 # Storage Backends Guide
 
-This guide covers the various storage backends available in auth-framework and
+This guide covers the various storage backends available in cinaauth and
 how to configure them for different use cases.
 
 ## Quick Decision Guide
@@ -37,7 +37,7 @@ To opt out of PostgreSQL (e.g. for a read-only CLI tool), use
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", default-features = false, features = ["redis-storage"] }
+cinaauth = { version = "0.5", default-features = false, features = ["redis-storage"] }
 ```
 
 ---
@@ -90,7 +90,7 @@ development, testing, and single-instance applications.
 ### Setup
 
 ```rust
-use auth_framework::storage::MemoryStorage;
+use cinaauth::storage::MemoryStorage;
 
 // Basic — uses default cleanup interval and TTL
 let storage = MemoryStorage::new();
@@ -99,7 +99,7 @@ let storage = MemoryStorage::new();
 ### Builder Pattern
 
 ```rust
-use auth_framework::storage::InMemoryConfig;
+use cinaauth::storage::InMemoryConfig;
 use std::time::Duration;
 
 let storage = InMemoryConfig::new()
@@ -115,16 +115,16 @@ let storage = InMemoryConfig::new()
 | `cleanup_interval` | 5 minutes | How often to remove expired data |
 | `default_ttl` | 1 hour | Default expiration time for stored data |
 
-### Using with AuthFramework
+### Using with Cinaauth
 
-`AuthFramework::new(config)` uses in-memory storage by default — no extra
+`Cinaauth::new(config)` uses in-memory storage by default — no extra
 setup required:
 
 ```rust
-use auth_framework::{AuthFramework, config::AuthConfig};
+use cinaauth::{Cinaauth, config::AuthConfig};
 
 let config = AuthConfig::new();
-let mut auth = AuthFramework::new(config);
+let mut auth = Cinaauth::new(config);
 auth.initialize().await?;
 ```
 
@@ -148,11 +148,11 @@ Add the feature to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", features = ["redis-storage"] }
+cinaauth = { version = "0.5", features = ["redis-storage"] }
 ```
 
 ```rust
-use auth_framework::storage::RedisStorage;
+use cinaauth::storage::RedisStorage;
 use std::time::Duration;
 
 // Basic setup
@@ -166,16 +166,16 @@ let storage = RedisStorage::with_config(
 ).await?;
 ```
 
-### Using with AuthFramework
+### Using with Cinaauth
 
 ```rust
-use auth_framework::{AuthFramework, config::AuthConfig};
-use auth_framework::storage::RedisStorage;
+use cinaauth::{Cinaauth, config::AuthConfig};
+use cinaauth::storage::RedisStorage;
 use std::sync::Arc;
 
 let storage = RedisStorage::new("redis://localhost:6379").await?;
 let config = AuthConfig::new();
-let mut auth = AuthFramework::new_with_storage(config, Arc::new(storage));
+let mut auth = Cinaauth::new_with_storage(config, Arc::new(storage));
 auth.initialize().await?;
 ```
 
@@ -210,11 +210,11 @@ default).
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5" }  # postgres-storage is on by default
+cinaauth = { version = "0.5" }  # postgres-storage is on by default
 ```
 
 ```rust
-use auth_framework::storage::PostgresStorage;
+use cinaauth::storage::PostgresStorage;
 use sqlx::PgPool;
 
 let pool = PgPool::connect("postgres://user:pass@localhost/auth_db").await?;
@@ -222,11 +222,11 @@ let storage = PostgresStorage::new(pool);
 storage.migrate().await?;  // Creates tables if they don't exist
 ```
 
-### Using with AuthFramework
+### Using with Cinaauth
 
 ```rust
-use auth_framework::{AuthFramework, config::AuthConfig};
-use auth_framework::storage::PostgresStorage;
+use cinaauth::{Cinaauth, config::AuthConfig};
+use cinaauth::storage::PostgresStorage;
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -235,7 +235,7 @@ let storage = PostgresStorage::new(pool);
 storage.migrate().await?;
 
 let config = AuthConfig::new();
-let mut auth = AuthFramework::new_with_storage(config, Arc::new(storage));
+let mut auth = Cinaauth::new_with_storage(config, Arc::new(storage));
 auth.initialize().await?;
 ```
 
@@ -285,11 +285,11 @@ MySQL/MariaDB infrastructure. Requires the `mysql-storage` feature.
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", features = ["mysql-storage"] }
+cinaauth = { version = "0.5", features = ["mysql-storage"] }
 ```
 
 ```rust
-use auth_framework::storage::MySqlStorage;
+use cinaauth::storage::MySqlStorage;
 use sqlx::MySqlPool;
 
 let pool = MySqlPool::connect("mysql://user:pass@localhost/auth_db").await?;
@@ -308,11 +308,11 @@ Requires the `performance-optimization` feature.
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.5", features = ["performance-optimization"] }
+cinaauth = { version = "0.5", features = ["performance-optimization"] }
 ```
 
 ```rust
-use auth_framework::storage::{UnifiedStorage, UnifiedStorageConfig};
+use cinaauth::storage::{UnifiedStorage, UnifiedStorageConfig};
 use std::time::Duration;
 
 // Default configuration
@@ -352,7 +352,7 @@ println!("Hits: {}, Misses: {}", stats.hits, stats.misses);
 data at rest. Always available — no feature flag required.
 
 ```rust
-use auth_framework::storage::{EncryptedStorage, MemoryStorage};
+use cinaauth::storage::{EncryptedStorage, MemoryStorage};
 
 let inner = MemoryStorage::new();
 let storage = EncryptedStorage::new(inner, encryption_key);
@@ -406,14 +406,14 @@ let storage = EncryptedStorage::new(inner, encryption_key);
 ```rust
 #[cfg(test)]
 mod tests {
-    use auth_framework::{AuthFramework, config::AuthConfig};
-    use auth_framework::storage::MemoryStorage;
+    use cinaauth::{Cinaauth, config::AuthConfig};
+    use cinaauth::storage::MemoryStorage;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_with_memory_storage() {
         let config = AuthConfig::new();
-        let mut auth = AuthFramework::new(config);
+        let mut auth = Cinaauth::new(config);
         auth.initialize().await.unwrap();
 
         let user_id = auth

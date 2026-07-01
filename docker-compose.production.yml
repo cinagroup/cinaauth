@@ -1,4 +1,4 @@
-# Production-optimized Docker Compose for AuthFramework v0.4.0
+# Production-optimized Docker Compose for cinaauth v0.4.0
 # Includes security hardening, performance optimization, and monitoring
 
 version: '3.8'
@@ -13,7 +13,7 @@ services:
     image: postgres:15-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: auth_framework
+      POSTGRES_DB: cinaauth
       POSTGRES_USER: auth_user
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       # Performance optimizations
@@ -29,7 +29,7 @@ services:
     secrets:
       - db_password
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_framework"]
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d cinaauth"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -80,8 +80,8 @@ services:
   # Application Layer
   #############################################################################
 
-  # AuthFramework CLI for migrations and admin tasks
-  auth-migrator:
+  # cinaauth CLI for migrations and admin tasks
+  cinaauth-migrator:
     build:
       context: .
       dockerfile: Dockerfile.optimized
@@ -93,11 +93,11 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://auth_user@postgres:5432/auth_framework
+      DATABASE_URL: postgresql://auth_user@postgres:5432/cinaauth
       REDIS_URL: redis://redis:6379
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       LOG_LEVEL: info
-      RUST_LOG: auth_framework=info
+      RUST_LOG: cinaauth=info
     volumes:
       - ./config:/app/config:ro
       - ./logs:/app/logs
@@ -107,28 +107,28 @@ services:
       - db_password
       - redis_password
       - jwt_secret
-    command: ["auth-framework-admin", "db", "migrate"]
+    command: ["cinaauth-admin", "db", "migrate"]
     deploy:
       resources:
         limits:
           memory: 256M
           cpus: '0.25'
 
-  # Main AuthFramework server
-  auth-server:
+  # Main cinaauth server
+  cinaauth-server:
     build:
       context: .
       dockerfile: Dockerfile.optimized
       target: runtime
     restart: unless-stopped
     depends_on:
-      auth-migrator:
+      cinaauth-migrator:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: postgresql://auth_user@postgres:5432/auth_framework
+      DATABASE_URL: postgresql://auth_user@postgres:5432/cinaauth
       REDIS_URL: redis://redis:6379
       JWT_SECRET_FILE: /run/secrets/jwt_secret
-      RUST_LOG: auth_framework=info,tower_http=debug
+      RUST_LOG: cinaauth=info,tower_http=debug
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 8080
       # Security settings
@@ -179,7 +179,7 @@ services:
     image: nginx:1.25-alpine
     restart: unless-stopped
     depends_on:
-      - auth-server
+      - cinaauth-server
     ports:
       - "80:80"
       - "443:443"

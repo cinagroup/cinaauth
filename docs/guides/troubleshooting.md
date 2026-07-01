@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This guide provides comprehensive troubleshooting procedures for common issues encountered when deploying, configuring, and operating AuthFramework. It includes diagnostic techniques, resolution steps, and preventive measures to maintain a healthy authentication system.
+This guide provides comprehensive troubleshooting procedures for common issues encountered when deploying, configuring, and operating Cinaauth. It includes diagnostic techniques, resolution steps, and preventive measures to maintain a healthy authentication system.
 
 ## Quick Diagnostic Steps
 
@@ -11,11 +11,11 @@ This guide provides comprehensive troubleshooting procedures for common issues e
 Run these commands to quickly assess system health:
 
 ```bash
-# Check AuthFramework service status
-systemctl status auth-framework
+# Check Cinaauth service status
+systemctl status cinaauth
 
 # Verify process is running
-ps aux | grep auth-framework
+ps aux | grep cinaauth
 
 # Check listening ports
 netstat -tlnp | grep :8080
@@ -30,7 +30,7 @@ df -h
 free -h
 
 # Check recent logs
-journalctl -u auth-framework --since "10 minutes ago"
+journalctl -u cinaauth --since "10 minutes ago"
 ```
 
 ### Configuration Validation
@@ -39,7 +39,7 @@ Validate your configuration before troubleshooting:
 
 ```bash
 # Validate configuration file
-auth-framework --config /app/config/auth-config.toml --validate
+cinaauth --config /app/config/auth-config.toml --validate
 
 # Check environment variables
 env | grep -E "(JWT_SECRET|DATABASE_URL|REDIS_URL)"
@@ -62,7 +62,7 @@ openssl x509 -in /app/certs/server.crt -text -noout
 
 **Symptoms:**
 
-- `systemctl start auth-framework` fails
+- `systemctl start cinaauth` fails
 - No process running on expected ports
 - Error messages in system logs
 
@@ -70,11 +70,11 @@ openssl x509 -in /app/certs/server.crt -text -noout
 
 ```bash
 # Check service status and logs
-systemctl status auth-framework -l
-journalctl -u auth-framework --since "1 hour ago"
+systemctl status cinaauth -l
+journalctl -u cinaauth --since "1 hour ago"
 
 # Check configuration syntax
-auth-framework --config /app/config/auth-config.toml --validate
+cinaauth --config /app/config/auth-config.toml --validate
 
 # Verify file permissions
 ls -la /app/config/
@@ -90,7 +90,7 @@ netstat -tlnp | grep :8080
 
    ```bash
    # Check for syntax errors
-   auth-framework --config /app/config/auth-config.toml --validate
+   cinaauth --config /app/config/auth-config.toml --validate
 
    # Common fixes:
    # - Fix TOML syntax errors
@@ -141,18 +141,18 @@ netstat -tlnp | grep :8080
 
 ```bash
 # Check resource usage
-top -p $(pgrep auth-framework)
-htop -p $(pgrep auth-framework)
+top -p $(pgrep cinaauth)
+htop -p $(pgrep cinaauth)
 
 # Check file descriptors
-ls /proc/$(pgrep auth-framework)/fd | wc -l
-cat /proc/$(pgrep auth-framework)/limits | grep "Max open files"
+ls /proc/$(pgrep cinaauth)/fd | wc -l
+cat /proc/$(pgrep cinaauth)/limits | grep "Max open files"
 
 # Check network connections
-netstat -an | grep $(pgrep auth-framework)
+netstat -an | grep $(pgrep cinaauth)
 
 # Generate stack trace (if compiled with debug symbols)
-gdb -p $(pgrep auth-framework) --batch --ex "thread apply all bt" --ex "quit"
+gdb -p $(pgrep cinaauth) --batch --ex "thread apply all bt" --ex "quit"
 ```
 
 **Solutions:**
@@ -162,12 +162,12 @@ gdb -p $(pgrep auth-framework) --batch --ex "thread apply all bt" --ex "quit"
    ```bash
    # Monitor memory usage over time
    while true; do
-     ps -p $(pgrep auth-framework) -o pid,vsz,rss,pmem,time
+     ps -p $(pgrep cinaauth) -o pid,vsz,rss,pmem,time
      sleep 60
    done
 
    # Restart service and monitor
-   systemctl restart auth-framework
+   systemctl restart cinaauth
    ```
 
 2. **File Descriptor Exhaustion**
@@ -178,7 +178,7 @@ gdb -p $(pgrep auth-framework) --batch --ex "thread apply all bt" --ex "quit"
    authframework hard nofile 65536
 
    # Restart service
-   systemctl restart auth-framework
+   systemctl restart cinaauth
    ```
 
 3. **Database Connection Pool Exhaustion**
@@ -411,7 +411,7 @@ redis-cli CONFIG GET "*"
 
 ```bash
 # Check authentication logs
-journalctl -u auth-framework | grep -i "auth"
+journalctl -u cinaauth | grep -i "auth"
 
 # Test with curl
 curl -X POST http://localhost:8080/auth/login \
@@ -433,7 +433,7 @@ psql -h localhost -U auth_user -d authframework -c \
 
    ```bash
    # Reset user password
-   auth-framework-admin users reset-password --email test@example.com --password newpassword123
+   cinaauth-admin users reset-password --email test@example.com --password newpassword123
 
    # Or via SQL
    psql -h localhost -U auth_user -d authframework -c \
@@ -444,10 +444,10 @@ psql -h localhost -U auth_user -d authframework -c \
 
    ```bash
    # Check for locked accounts
-   auth-framework-admin users list --status locked
+   cinaauth-admin users list --status locked
 
    # Unlock account
-   auth-framework-admin users unlock --email test@example.com
+   cinaauth-admin users unlock --email test@example.com
 
    # Or via SQL
    psql -h localhost -U auth_user -d authframework -c \
@@ -498,7 +498,7 @@ echo "TOKEN" | cut -d. -f2 | base64 -d | jq .
    export JWT_SECRET=$(openssl rand -base64 32)
 
    # Update configuration and restart
-   systemctl restart auth-framework
+   systemctl restart cinaauth
    ```
 
 2. **Clock Skew Issues**
@@ -615,17 +615,17 @@ psql -h localhost -U auth_user -d authframework -c \
 
 ```bash
 # Monitor memory usage
-ps -p $(pgrep auth-framework) -o pid,vsz,rss,pmem
-cat /proc/$(pgrep auth-framework)/status | grep -E "(VmSize|VmRSS|VmPeak)"
+ps -p $(pgrep cinaauth) -o pid,vsz,rss,pmem
+cat /proc/$(pgrep cinaauth)/status | grep -E "(VmSize|VmRSS|VmPeak)"
 
 # Check for memory leaks
-valgrind --tool=massif --pages-as-heap=yes ./auth-framework &
+valgrind --tool=massif --pages-as-heap=yes ./cinaauth &
 # Let run for a while, then:
 ms_print massif.out.*
 
 # Monitor over time
 while true; do
-  ps -p $(pgrep auth-framework) -o pid,rss,pmem --no-headers
+  ps -p $(pgrep cinaauth) -o pid,rss,pmem --no-headers
   sleep 60
 done
 ```
@@ -656,7 +656,7 @@ done
 
    ```bash
    # Clean up expired sessions
-   auth-framework-admin sessions cleanup --expired
+   cinaauth-admin sessions cleanup --expired
 
    # Configure automatic cleanup
    [security.session]
@@ -705,7 +705,7 @@ curl -v https://auth.yourdomain.com/health
    sudo cp /etc/letsencrypt/live/auth.yourdomain.com/privkey.pem /app/certs/server.key
 
    # Restart service
-   systemctl restart auth-framework
+   systemctl restart cinaauth
    ```
 
 2. **Certificate Chain Issues**
@@ -825,9 +825,9 @@ promtool check rules /etc/prometheus/rules/*.yml
    ```yaml
    # Fix scrape configuration
    scrape_configs:
-   - job_name: 'auth-framework'
+   - job_name: 'cinaauth'
      static_configs:
-     - targets: ['auth-framework:9090']
+     - targets: ['cinaauth:9090']
      scrape_interval: 15s
      metrics_path: /metrics
    ```
@@ -871,13 +871,13 @@ security_events = true
 sudo apt install linux-tools-common linux-tools-generic
 
 # Profile CPU usage
-sudo perf record -g -p $(pgrep auth-framework)
+sudo perf record -g -p $(pgrep cinaauth)
 # Let run for 30 seconds, then Ctrl+C
 sudo perf report
 
 # Generate flame graph
 git clone https://github.com/brendangregg/FlameGraph
-sudo perf script | ./FlameGraph/stackcollapse-perf.pl | ./FlameGraph/flamegraph.pl > auth-framework-cpu.svg
+sudo perf script | ./FlameGraph/stackcollapse-perf.pl | ./FlameGraph/flamegraph.pl > cinaauth-cpu.svg
 ```
 
 #### Memory Profiling
@@ -885,11 +885,11 @@ sudo perf script | ./FlameGraph/stackcollapse-perf.pl | ./FlameGraph/flamegraph.
 ```bash
 # Use valgrind for memory analysis
 valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
-  ./auth-framework --config /app/config/auth-config.toml
+  ./cinaauth --config /app/config/auth-config.toml
 
 # Use heaptrack for heap profiling
-heaptrack ./auth-framework --config /app/config/auth-config.toml
-heaptrack_gui heaptrack.auth-framework.*
+heaptrack ./cinaauth --config /app/config/auth-config.toml
+heaptrack_gui heaptrack.cinaauth.*
 ```
 
 ### Database Troubleshooting
@@ -940,10 +940,10 @@ WHERE NOT blocked_locks.granted;
 
 ```bash
 # Monitor network connections
-ss -tulpn | grep auth-framework
+ss -tulpn | grep cinaauth
 
 # Check for connection leaks
-lsof -p $(pgrep auth-framework) | grep TCP
+lsof -p $(pgrep cinaauth) | grep TCP
 
 # Monitor connection states
 netstat -an | grep :8080 | awk '{print $6}' | sort | uniq -c
@@ -975,8 +975,8 @@ log_message() {
 }
 
 # Check service status
-if ! systemctl is-active --quiet auth-framework; then
-    log_message "CRITICAL: AuthFramework service is down"
+if ! systemctl is-active --quiet cinaauth; then
+    log_message "CRITICAL: Cinaauth service is down"
     exit 2
 fi
 
@@ -1022,7 +1022,7 @@ exit 0
 #!/bin/bash
 # /opt/monitoring/analyze-logs.sh
 
-LOG_FILE="/app/logs/auth-framework.log"
+LOG_FILE="/app/logs/cinaauth.log"
 ALERT_EMAIL="admin@yourdomain.com"
 
 # Check for authentication failures
@@ -1064,7 +1064,7 @@ if [ "$CONNECTIONS" -gt 15 ]; then
 fi
 
 # Monitor memory usage
-MEMORY_MB=$(ps -p $(pgrep auth-framework) -o rss= | awk '{print $1/1024}')
+MEMORY_MB=$(ps -p $(pgrep cinaauth) -o rss= | awk '{print $1/1024}')
 if (( $(echo "$MEMORY_MB > 1024" | bc -l) )); then
     echo "High memory usage: ${MEMORY_MB}MB"
 fi
@@ -1079,17 +1079,17 @@ fi
 # /opt/emergency/service-recovery.sh
 
 # Stop service gracefully
-systemctl stop auth-framework
+systemctl stop cinaauth
 
 # Kill if still running
-if pgrep auth-framework; then
-    pkill -TERM auth-framework
+if pgrep cinaauth; then
+    pkill -TERM cinaauth
     sleep 10
-    pkill -KILL auth-framework
+    pkill -KILL cinaauth
 fi
 
 # Clear any locks
-rm -f /var/lock/auth-framework.lock
+rm -f /var/lock/cinaauth.lock
 
 # Check and fix file permissions
 chown -R authframework:authframework /app
@@ -1098,7 +1098,7 @@ chmod 644 /app/config/*.toml
 chmod 600 /app/certs/*.key
 
 # Start service
-systemctl start auth-framework
+systemctl start cinaauth
 
 # Wait and verify
 sleep 30
@@ -1117,7 +1117,7 @@ fi
 # /opt/emergency/database-recovery.sh
 
 # Stop application
-systemctl stop auth-framework
+systemctl stop cinaauth
 
 # Create backup before recovery
 pg_dump -U auth_user -h localhost authframework > /tmp/pre-recovery-backup.sql
@@ -1129,15 +1129,15 @@ psql -U auth_user -h localhost authframework -c "SELECT pg_database_size('authfr
 psql -U auth_user -h localhost authframework -c "VACUUM FULL ANALYZE;"
 
 # Restart application
-systemctl start auth-framework
+systemctl start cinaauth
 ```
 
 ## Support Resources
 
 ### Log Locations
 
-- **Application Logs**: `/app/logs/auth-framework.log`
-- **System Logs**: `journalctl -u auth-framework`
+- **Application Logs**: `/app/logs/cinaauth.log`
+- **System Logs**: `journalctl -u cinaauth`
 - **PostgreSQL Logs**: `/var/log/postgresql/postgresql-*.log`
 - **Redis Logs**: `/var/log/redis/redis-server.log`
 - **Nginx Logs**: `/var/log/nginx/access.log`, `/var/log/nginx/error.log`
@@ -1146,7 +1146,7 @@ systemctl start auth-framework
 
 - **Main Config**: `/app/config/auth-config.toml`
 - **Environment**: `/app/config/.env`
-- **Systemd Service**: `/etc/systemd/system/auth-framework.service`
+- **Systemd Service**: `/etc/systemd/system/cinaauth.service`
 - **PostgreSQL**: `/etc/postgresql/*/main/postgresql.conf`
 - **Redis**: `/etc/redis/redis.conf`
 
@@ -1154,13 +1154,13 @@ systemctl start auth-framework
 
 ```bash
 # Quick service restart
-sudo systemctl restart auth-framework
+sudo systemctl restart cinaauth
 
 # Watch logs in real-time
-journalctl -u auth-framework -f
+journalctl -u cinaauth -f
 
 # Check configuration
-auth-framework --config /app/config/auth-config.toml --validate
+cinaauth --config /app/config/auth-config.toml --validate
 
 # Database connection test
 psql -h localhost -U auth_user -d authframework -c "SELECT NOW();"
@@ -1169,25 +1169,25 @@ psql -h localhost -U auth_user -d authframework -c "SELECT NOW();"
 redis-cli ping
 
 # Generate configuration template
-auth-framework --generate-config > new-config.toml
+cinaauth --generate-config > new-config.toml
 
 # Export metrics
 curl -s http://localhost:9090/metrics | grep auth_
 
 # List active sessions
-auth-framework-admin sessions list --active
+cinaauth-admin sessions list --active
 ```
 
 ### Getting Help
 
 - **Documentation**: [docs.authframework.dev](https://docs.authframework.dev)
-- **GitHub Issues**: [github.com/ciresnave/auth-framework/issues](https://github.com/ciresnave/auth-framework/issues)
+- **GitHub Issues**: [github.com/cinagroup/cinaauth/issues](https://github.com/cinagroup/cinaauth/issues)
 - **Community Forum**: [forum.authframework.dev](https://forum.authframework.dev)
 - **Emergency Support**: [emergency@authframework.dev](mailto:emergency@authframework.dev)
 
 When reporting issues, please include:
 
-- AuthFramework version
+- Cinaauth version
 - Operating system and version
 - Configuration file (with secrets redacted)
 - Relevant log entries
@@ -1195,4 +1195,4 @@ When reporting issues, please include:
 
 ---
 
-AuthFramework v0.5.0-rc24 - THE premier authentication and authorization solution
+Cinaauth v0.5.0-rc24 - THE premier authentication and authorization solution

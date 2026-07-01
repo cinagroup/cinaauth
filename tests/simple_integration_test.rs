@@ -5,9 +5,9 @@
 //! 2. Device Fingerprinting System
 //! 3. Database Migration System
 
-use auth_framework::audit::RequestMetadata;
-use auth_framework::permissions::PermissionChecker;
-use auth_framework::session::DeviceFingerprintGenerator;
+use cinaauth::audit::RequestMetadata;
+use cinaauth::permissions::PermissionChecker;
+use cinaauth::session::DeviceFingerprintGenerator;
 
 #[tokio::test]
 async fn test_resource_hierarchy_works() {

@@ -2,7 +2,7 @@
 
 This guide focuses on patterns that match the current crate surface.
 
-AuthFramework does not currently expose a general-purpose Rust `AuthClient` or `ServiceAuthClient` type for the REST API. The recommended integration model is:
+Cinaauth does not currently expose a general-purpose Rust `AuthClient` or `ServiceAuthClient` type for the REST API. The recommended integration model is:
 
 1. Run `ApiServer` inside your auth service.
 2. Build a small application-specific HTTP adapter around the routes you use.
@@ -88,7 +88,7 @@ impl AuthApiClient {
 
 ## 2. Axum Middleware Pattern
 
-For services that need to trust AuthFramework bearer tokens, call `GET /api/v1/auth/validate` once near the edge and stash the resulting identity in request extensions.
+For services that need to trust Cinaauth bearer tokens, call `GET /api/v1/auth/validate` once near the edge and stash the resulting identity in request extensions.
 
 ```rust,ignore
 use axum::{
@@ -188,8 +188,8 @@ For Rust integration tests, test the mounted HTTP routes directly instead of dep
 ```rust,ignore
 #[tokio::test]
 async fn login_returns_wrapped_tokens() {
-    let auth = std::sync::Arc::new(setup_auth_framework().await);
-    let server = auth_framework::api::ApiServer::new(auth);
+    let auth = std::sync::Arc::new(setup_cinaauth().await);
+    let server = cinaauth::api::ApiServer::new(auth);
     let router = server.build_router().await.unwrap();
 
     let response = tower::ServiceExt::oneshot(

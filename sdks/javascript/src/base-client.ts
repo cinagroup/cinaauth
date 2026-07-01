@@ -1,5 +1,5 @@
 /**
- * Base HTTP client for AuthFramework API
+ * Base HTTP client for cinaauth API
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
@@ -10,7 +10,7 @@ import {
   RequestOptions
 } from './types';
 import {
-  AuthFrameworkError,
+  CinaauthError,
   createErrorFromResponse,
   NetworkError,
   TimeoutError,
@@ -33,7 +33,7 @@ export class BaseClient {
     this.config = {
       timeout: 30000,
       retries: 3,
-      userAgent: 'AuthFramework-JS-SDK/1.0.0',
+      userAgent: 'cinaauth-JS-SDK/1.0.0',
       ...config,
     };
 
@@ -174,11 +174,11 @@ export class BaseClient {
     }
 
     // This should never be reached, but TypeScript requires it
-    throw new AuthFrameworkError('Max retries exceeded');
+    throw new CinaauthError('Max retries exceeded');
   }
 
   /**
-   * Handle axios response errors and convert to AuthFramework errors
+   * Handle axios response errors and convert to cinaauth errors
    */
   private handleResponseError(error: any): never {
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {

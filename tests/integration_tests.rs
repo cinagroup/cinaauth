@@ -2,7 +2,7 @@
 //!
 //! Tests basic functionality that is currently working
 
-use auth_framework::{
+use cinaauth::{
     audit::{DeviceInfo, RequestMetadata},
     permissions::{Permission, PermissionChecker},
 };
@@ -74,7 +74,7 @@ async fn test_device_fingerprinting_integration() {
     println!("🔍 Testing Device Fingerprinting Integration");
 
     // Test that device fingerprinting components are available and functional
-    use auth_framework::session::DeviceFingerprintGenerator;
+    use cinaauth::session::DeviceFingerprintGenerator;
 
     let generator = DeviceFingerprintGenerator::new();
 
@@ -144,7 +144,7 @@ async fn test_database_migration_integration() {
     println!("🔍 Testing Database Migration Contract");
 
     // This validates the public migration contract without needing a live database.
-    use auth_framework::migrations::MigrationManager;
+    use cinaauth::migrations::MigrationManager;
 
     // Test migration creation
     let migration = MigrationManager::create_migration(
@@ -173,11 +173,11 @@ async fn test_database_migration_integration() {
 async fn test_oidc_rp_initiated_logout_integration() {
     println!("🔍 Testing OIDC RP-Initiated Logout Integration");
 
-    use auth_framework::server::{
+    use cinaauth::server::{
         ClientLogoutConfig, RpInitiatedLogoutConfig, RpInitiatedLogoutManager,
         RpInitiatedLogoutRequest, SessionManager,
     };
-    use auth_framework::server::oidc::oidc_session_management::SessionManagementConfig;
+    use cinaauth::server::oidc::oidc_session_management::SessionManagementConfig;
     use std::collections::HashMap;
 
     let mut session_manager = SessionManager::new(SessionManagementConfig::default());
@@ -314,7 +314,7 @@ async fn test_comprehensive_integration() {
     println!("   ✅ Resource hierarchy working");
 
     // 2. Test device fingerprinting system
-    use auth_framework::session::DeviceFingerprintGenerator;
+    use cinaauth::session::DeviceFingerprintGenerator;
     let fingerprint_generator = DeviceFingerprintGenerator::new();
 
     let test_metadata = RequestMetadata {

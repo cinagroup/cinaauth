@@ -63,18 +63,18 @@ pub async fn get_profile(
 ) -> ApiResponse<UserProfile> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Fetch actual user profile from storage
                     match state
-                        .auth_framework
+                        .cinaauth
                         .get_user_profile(&auth_token.user_id)
                         .await
                     {
                         Ok(user_profile) => {
-                            // Check MFA status from AuthFramework
+                            // Check MFA status from Cinaauth
                             let mfa_enabled =
-                                check_user_mfa_status(&state.auth_framework, &auth_token.user_id)
+                                check_user_mfa_status(&state.cinaauth, &auth_token.user_id)
                                     .await;
 
                             // Extract first_name and last_name from the name field if available
@@ -149,7 +149,7 @@ pub async fn update_profile(
 ) -> ApiResponse<UserProfile> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Validate email format before storing to ensure consistency with
                     // the public registration endpoint.
@@ -172,7 +172,7 @@ pub async fn update_profile(
                     }
 
                     // Persist updated profile to storage
-                    let storage = state.auth_framework.storage();
+                    let storage = state.cinaauth.storage();
                     let user_key = format!("user:{}", auth_token.user_id);
                     let current_data = storage.get_kv(&user_key).await.ok().flatten();
                     let mut user_json: serde_json::Value = current_data
@@ -250,7 +250,7 @@ pub async fn update_profile(
                         roles: auth_token.roles,
                         permissions: auth_token.permissions,
                         mfa_enabled: check_user_mfa_status(
-                            &state.auth_framework,
+                            &state.cinaauth,
                             &auth_token.user_id,
                         )
                         .await,
@@ -298,11 +298,11 @@ pub async fn change_password(
 
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Verify current password against stored hash
                     match state
-                        .auth_framework
+                        .cinaauth
                         .verify_user_password(&auth_token.user_id, &req.current_password)
                         .await
                     {
@@ -319,7 +319,7 @@ pub async fn change_password(
 
                     // Get the username (update_user_password takes username)
                     let username = match state
-                        .auth_framework
+                        .cinaauth
                         .get_username_by_id(&auth_token.user_id)
                         .await
                     {
@@ -328,7 +328,7 @@ pub async fn change_password(
                     };
 
                     match state
-                        .auth_framework
+                        .cinaauth
                         .update_user_password(&username, &req.new_password)
                         .await
                     {
@@ -354,13 +354,13 @@ pub async fn get_user_profile(
 ) -> ApiResponse<UserProfile> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     if !auth_token.roles.contains(&"admin".to_string()) {
                         return ApiResponse::<UserProfile>::forbidden_typed();
                     }
 
-                    match state.auth_framework.get_user_profile(&user_id).await {
+                    match state.cinaauth.get_user_profile(&user_id).await {
                         Ok(user_profile) => {
                             // Load roles from the canonical user record (same
                             // pattern as validate_api_token) rather than hard-coding [].
@@ -370,7 +370,7 @@ pub async fn get_user_profile(
                             let user_kv_bytes = {
                                 let uk = format!("user:{}", user_id);
                                 state
-                                    .auth_framework
+                                    .cinaauth
                                     .storage()
                                     .get_kv(&uk)
                                     .await
@@ -470,9 +470,9 @@ pub async fn get_sessions(
     headers: HeaderMap,
 ) -> ApiResponse<Vec<SessionInfo>> {
     match extract_bearer_token(&headers) {
-        Some(token) => match validate_api_token(&state.auth_framework, &token).await {
+        Some(token) => match validate_api_token(&state.cinaauth, &token).await {
             Ok(auth_token) => {
-                let storage = state.auth_framework.storage();
+                let storage = state.cinaauth.storage();
                 match storage.list_user_sessions(&auth_token.user_id).await {
                     Ok(sessions) => {
                         let session_list: Vec<SessionInfo> = sessions
@@ -531,9 +531,9 @@ pub async fn revoke_session(
 ) -> ApiResponse<()> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match validate_api_token(&state.auth_framework, &token).await {
+            match validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
-                    let storage = state.auth_framework.storage();
+                    let storage = state.cinaauth.storage();
 
                     // SECURITY: Verify that the session belongs to the authenticated user
                     // before deleting it; without this check any authenticated user can
@@ -576,8 +576,8 @@ pub async fn revoke_session(
 /// checks the `mfa_enabled:{user_id}` KV key written by the MFA verification
 /// flow.
 async fn check_user_mfa_status(
-    auth_framework: &std::sync::Arc<crate::AuthFramework>,
+    cinaauth: &std::sync::Arc<crate::Cinaauth>,
     user_id: &str,
 ) -> bool {
-    crate::api::mfa::check_user_mfa_status(auth_framework, user_id).await
+    crate::api::mfa::check_user_mfa_status(cinaauth, user_id).await
 }

@@ -65,7 +65,7 @@ impl IssuerMetadata {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::protocols::openid4vci::*;
+    /// use cinaauth::protocols::openid4vci::*;
     ///
     /// let meta = IssuerMetadata::builder("https://issuer.example.com")
     ///     .add_credential("Degree", CredentialConfiguration::new(CredentialFormat::JwtVcJson)
@@ -176,7 +176,7 @@ impl CredentialConfiguration {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::protocols::openid4vci::{CredentialConfiguration, CredentialFormat};
+    /// use cinaauth::protocols::openid4vci::{CredentialConfiguration, CredentialFormat};
     ///
     /// let cfg = CredentialConfiguration::new(CredentialFormat::JwtVcJson)
     ///     .scope("degree")
@@ -357,7 +357,7 @@ impl CredentialResponse {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::protocols::openid4vci::CredentialResponse;
+    /// use cinaauth::protocols::openid4vci::CredentialResponse;
     ///
     /// let resp = CredentialResponse::immediate(
     ///     serde_json::json!({"vc": "..."}),
@@ -384,7 +384,7 @@ impl CredentialResponse {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::protocols::openid4vci::CredentialResponse;
+    /// use cinaauth::protocols::openid4vci::CredentialResponse;
     ///
     /// let resp = CredentialResponse::deferred("tx-123", "nonce-xyz", 300);
     /// assert!(resp.credential.is_none());

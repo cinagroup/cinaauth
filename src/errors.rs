@@ -1,4 +1,4 @@
-//! Comprehensive error types for the AuthFramework.
+//! Comprehensive error types for the Cinaauth.
 //!
 //! This module defines all error types used throughout the authentication framework,
 //! providing detailed error information for debugging, logging, and user feedback.
@@ -26,19 +26,19 @@
 //! # Example Error Handling
 //!
 //! ```rust,no_run
-//! use auth_framework::{AuthFramework, AuthError};
-//! use auth_framework::authentication::credentials::Credential;
-//! use auth_framework::authentication::CredentialMetadata;
+//! use cinaauth::{Cinaauth, AuthError};
+//! use cinaauth::authentication::credentials::Credential;
+//! use cinaauth::authentication::CredentialMetadata;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! # let auth_framework: AuthFramework = unimplemented!();
+//! # let cinaauth: Cinaauth = unimplemented!();
 //! # let credential: Credential = unimplemented!();
 //! # fn handle_success<T>(_: T) {}
 //! # fn respond_with_auth_failure() {}
 //! # fn respond_with_rate_limit(_: Option<u64>) {}
 //! # fn respond_with_system_error() {}
-//! match auth_framework.authenticate("password", credential).await {
+//! match cinaauth.authenticate("password", credential).await {
 //!     Ok(result) => handle_success(result),
 //!     Err(AuthError::InvalidCredential { credential_type, message, .. }) => {
 //!         log::warn!("Invalid {} credential: {}", credential_type, message);
@@ -111,9 +111,9 @@ pub type Result<T, E = AuthError> = std::result::Result<T, E>;
 /// # Enhanced Error Handling
 ///
 /// ```rust,no_run
-/// use auth_framework::AuthError;
+/// use cinaauth::AuthError;
 ///
-/// # let auth_result: auth_framework::errors::Result<()> = Ok(());
+/// # let auth_result: cinaauth::errors::Result<()> = Ok(());
 /// // Enhanced error handling with contextual help
 /// match auth_result {
 ///     Err(AuthError::Configuration { message, help, docs_url, .. }) => {
@@ -579,7 +579,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::config("Missing database URL");
     /// assert!(err.to_string().contains("Missing database URL"));
@@ -602,7 +602,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::config_with_help(
     ///     "JWT secret not set",
@@ -621,7 +621,7 @@ impl AuthError {
             source: None,
             help: Some(help.into()),
             docs_url: Some(
-                "https://docs.rs/auth-framework/latest/auth_framework/config/".to_string(),
+                "https://docs.rs/cinaauth/latest/cinaauth/config/".to_string(),
             ),
             suggested_fix,
         }
@@ -632,7 +632,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::jwt_secret_too_short(16);
     /// assert!(err.to_string().contains("16 characters"));
@@ -645,7 +645,7 @@ impl AuthError {
             ),
             source: None,
             help: Some("Use a cryptographically secure random string of at least 32 characters".to_string()),
-            docs_url: Some("https://docs.rs/auth-framework/latest/auth_framework/config/struct.SecurityConfig.html".to_string()),
+            docs_url: Some("https://docs.rs/cinaauth/latest/cinaauth/config/struct.SecurityConfig.html".to_string()),
             suggested_fix: Some("Generate a secure secret: `openssl rand -hex 32`".to_string()),
         }
     }
@@ -655,7 +655,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::production_memory_storage();
     /// assert!(err.to_string().contains("Memory storage"));
@@ -665,7 +665,7 @@ impl AuthError {
             message: "Memory storage is not suitable for production environments".to_string(),
             source: None,
             help: Some("Use a persistent storage backend like PostgreSQL or Redis".to_string()),
-            docs_url: Some("https://docs.rs/auth-framework/latest/auth_framework/storage/".to_string()),
+            docs_url: Some("https://docs.rs/cinaauth/latest/cinaauth/storage/".to_string()),
             suggested_fix: Some("Configure PostgreSQL: .with_postgres(\"postgresql://...\") or Redis: .with_redis(\"redis://...\")".to_string()),
         }
     }
@@ -675,7 +675,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::auth_method("oauth2", "token endpoint unreachable");
     /// assert!(err.to_string().contains("oauth2"));
@@ -695,7 +695,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::auth_method_with_help(
     ///     "saml",
@@ -716,7 +716,7 @@ impl AuthError {
             message: message.into(),
             help: Some(help.into()),
             docs_url: Some(
-                "https://docs.rs/auth-framework/latest/auth_framework/methods/".to_string(),
+                "https://docs.rs/cinaauth/latest/cinaauth/methods/".to_string(),
             ),
             suggested_fix,
         }
@@ -727,7 +727,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::rate_limit("too many login attempts");
     /// assert!(err.to_string().contains("too many login attempts"));
@@ -743,7 +743,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::crypto("HMAC key too short");
     /// assert!(err.to_string().contains("HMAC key too short"));
@@ -759,7 +759,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::validation("email format invalid");
     /// assert!(err.to_string().contains("email format invalid"));
@@ -775,7 +775,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::internal("unexpected state");
     /// assert!(err.to_string().contains("unexpected state"));
@@ -791,7 +791,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::authorization("insufficient privileges");
     /// assert!(err.to_string().contains("insufficient privileges"));
@@ -809,7 +809,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::access_denied("admin role required");
     /// assert!(err.to_string().contains("admin role required"));
@@ -827,7 +827,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::token("signature mismatch");
     /// assert!(err.to_string().contains("signature mismatch"));
@@ -843,7 +843,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::{AuthError, DeviceFlowError};
+    /// use cinaauth::errors::{AuthError, DeviceFlowError};
     ///
     /// let err = AuthError::device_flow(DeviceFlowError::ExpiredToken);
     /// assert!(err.to_string().contains("expired"));
@@ -857,7 +857,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::{AuthError, OAuthProviderError};
+    /// use cinaauth::errors::{AuthError, OAuthProviderError};
     ///
     /// let err = AuthError::oauth_provider(OAuthProviderError::InvalidRedirectUri);
     /// assert!(err.to_string().contains("redirect"));
@@ -871,7 +871,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::user_profile("email already in use");
     /// assert!(err.to_string().contains("email already in use"));
@@ -887,7 +887,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::invalid_credential("password", "too short");
     /// assert!(err.to_string().contains("password"));
@@ -907,7 +907,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::timeout(30);
     /// assert!(err.to_string().contains("30"));
@@ -921,7 +921,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::provider_not_configured("github");
     /// assert!(err.to_string().contains("github"));
@@ -937,7 +937,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::rate_limited("5 requests per second exceeded");
     /// assert!(err.to_string().contains("5 requests"));
@@ -953,7 +953,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// let err = AuthError::configuration("invalid issuer URL");
     /// assert!(err.to_string().contains("invalid issuer URL"));
@@ -982,7 +982,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// assert_eq!(AuthError::rate_limit("slow down").http_status_code(), 429);
     /// assert_eq!(AuthError::internal("oops").http_status_code(), 500);
@@ -1068,7 +1068,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// assert!(AuthError::rate_limit("too fast").is_retryable());
     /// assert!(AuthError::timeout(30).is_retryable());
@@ -1094,7 +1094,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// assert_eq!(AuthError::rate_limit("nope").error_code(), "rate_limit");
     /// assert_eq!(AuthError::token("bad").error_code(), "invalid_token");
@@ -1157,7 +1157,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// assert!(AuthError::validation("bad").is_client_error());
     /// assert!(!AuthError::internal("oops").is_client_error());
@@ -1171,7 +1171,7 @@ impl AuthError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::AuthError;
+    /// use cinaauth::AuthError;
     ///
     /// assert!(AuthError::internal("oops").is_server_error());
     /// assert!(!AuthError::validation("bad").is_server_error());
@@ -1187,7 +1187,7 @@ impl TokenError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::TokenError;
+    /// use cinaauth::errors::TokenError;
     ///
     /// let err = TokenError::creation_failed("signing key unavailable");
     /// assert!(err.to_string().contains("signing key unavailable"));
@@ -1203,7 +1203,7 @@ impl TokenError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::TokenError;
+    /// use cinaauth::errors::TokenError;
     ///
     /// let err = TokenError::refresh_failed("refresh token revoked");
     /// assert!(err.to_string().contains("refresh token revoked"));
@@ -1219,7 +1219,7 @@ impl TokenError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::TokenError;
+    /// use cinaauth::errors::TokenError;
     ///
     /// let err = TokenError::revocation_failed("storage write failed");
     /// assert!(err.to_string().contains("storage write failed"));
@@ -1237,7 +1237,7 @@ impl PermissionError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::PermissionError;
+    /// use cinaauth::errors::PermissionError;
     ///
     /// let err = PermissionError::access_denied("write", "documents");
     /// assert!(err.to_string().contains("write"));
@@ -1254,7 +1254,7 @@ impl PermissionError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::PermissionError;
+    /// use cinaauth::errors::PermissionError;
     ///
     /// let err = PermissionError::role_not_found("superadmin");
     /// assert!(err.to_string().contains("superadmin"));
@@ -1268,7 +1268,7 @@ impl PermissionError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::PermissionError;
+    /// use cinaauth::errors::PermissionError;
     ///
     /// let err = PermissionError::permission_not_found("delete_user");
     /// assert!(err.to_string().contains("delete_user"));
@@ -1284,7 +1284,7 @@ impl PermissionError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::PermissionError;
+    /// use cinaauth::errors::PermissionError;
     ///
     /// let err = PermissionError::invalid_format("missing resource:action separator");
     /// assert!(err.to_string().contains("separator"));
@@ -1302,7 +1302,7 @@ impl StorageError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::StorageError;
+    /// use cinaauth::errors::StorageError;
     ///
     /// let err = StorageError::connection_failed("connection refused");
     /// assert!(err.to_string().contains("connection refused"));
@@ -1318,7 +1318,7 @@ impl StorageError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::StorageError;
+    /// use cinaauth::errors::StorageError;
     ///
     /// let err = StorageError::operation_failed("table not found");
     /// assert!(err.to_string().contains("table not found"));
@@ -1334,7 +1334,7 @@ impl StorageError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::StorageError;
+    /// use cinaauth::errors::StorageError;
     ///
     /// let err = StorageError::serialization("invalid JSON");
     /// assert!(err.to_string().contains("invalid JSON"));
@@ -1352,7 +1352,7 @@ impl MfaError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::MfaError;
+    /// use cinaauth::errors::MfaError;
     ///
     /// let err = MfaError::method_not_supported("biometric");
     /// assert!(err.to_string().contains("biometric"));
@@ -1368,7 +1368,7 @@ impl MfaError {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::errors::MfaError;
+    /// use cinaauth::errors::MfaError;
     ///
     /// let err = MfaError::verification_failed("code expired");
     /// assert!(err.to_string().contains("code expired"));

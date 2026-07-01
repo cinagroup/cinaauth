@@ -109,22 +109,22 @@ pub async fn health_check(State(state): State<ApiState>) -> ApiResponse<HealthRe
     let mut services = std::collections::HashMap::new();
     let mut overall_healthy = true;
 
-    // Check AuthFramework health
-    let auth_health = check_auth_framework_health(&state.auth_framework).await;
-    services.insert("auth_framework".to_string(), auth_health.status.clone());
+    // Check Cinaauth health
+    let auth_health = check_cinaauth_health(&state.cinaauth).await;
+    services.insert("cinaauth".to_string(), auth_health.status.clone());
     if auth_health.status != "healthy" {
         overall_healthy = false;
     }
 
     // Check storage health
-    let storage_health = check_storage_health(&state.auth_framework).await;
+    let storage_health = check_storage_health(&state.cinaauth).await;
     services.insert("storage".to_string(), storage_health.status.clone());
     if storage_health.status != "healthy" {
         overall_healthy = false;
     }
 
     // Check token manager health
-    let token_health = check_token_manager_health(&state.auth_framework).await;
+    let token_health = check_token_manager_health(&state.cinaauth).await;
     services.insert("token_manager".to_string(), token_health.status.clone());
     if token_health.status != "healthy" {
         overall_healthy = false;
@@ -159,10 +159,10 @@ pub async fn detailed_health_check(
     let mut services = HashMap::new();
     let mut overall_healthy = true;
 
-    // Check AuthFramework health with detailed info
-    let auth_health = check_auth_framework_health(&state.auth_framework).await;
+    // Check Cinaauth health with detailed info
+    let auth_health = check_cinaauth_health(&state.cinaauth).await;
     services.insert(
-        "auth_framework".to_string(),
+        "cinaauth".to_string(),
         ServiceHealth {
             status: auth_health.status.clone(),
             response_time_ms: auth_health.response_time_ms,
@@ -170,7 +170,7 @@ pub async fn detailed_health_check(
             error: auth_health.error,
             details: {
                 let mut details = HashMap::new();
-                if let Ok(stats) = state.auth_framework.get_stats().await {
+                if let Ok(stats) = state.cinaauth.get_stats().await {
                     details.insert(
                         "active_sessions".to_string(),
                         serde_json::Value::Number(serde_json::Number::from(stats.active_sessions)),
@@ -193,7 +193,7 @@ pub async fn detailed_health_check(
     }
 
     // Check storage health
-    let storage_health = check_storage_health(&state.auth_framework).await;
+    let storage_health = check_storage_health(&state.cinaauth).await;
     services.insert(
         "storage".to_string(),
         ServiceHealth {
@@ -209,7 +209,7 @@ pub async fn detailed_health_check(
     }
 
     // Check token manager health
-    let token_health = check_token_manager_health(&state.auth_framework).await;
+    let token_health = check_token_manager_health(&state.cinaauth).await;
     services.insert(
         "token_manager".to_string(),
         ServiceHealth {
@@ -249,7 +249,7 @@ pub async fn detailed_health_check(
 
 /// `GET /metrics` — export metrics in Prometheus text exposition format.
 pub async fn metrics(State(state): State<ApiState>) -> impl IntoResponse {
-    let metrics_text = state.auth_framework.export_prometheus_metrics().await;
+    let metrics_text = state.cinaauth.export_prometheus_metrics().await;
 
     Response::builder()
         .status(StatusCode::OK)
@@ -262,7 +262,7 @@ pub async fn metrics(State(state): State<ApiState>) -> impl IntoResponse {
 pub async fn readiness_check(State(state): State<ApiState>) -> impl IntoResponse {
     // Check if the auth framework is ready to accept traffic by trying to get stats.
     // A successful stats call confirms storage, token manager, and core services are up.
-    let ready = state.auth_framework.get_stats().await.is_ok();
+    let ready = state.cinaauth.get_stats().await.is_ok();
 
     if ready {
         (StatusCode::OK, "Ready").into_response()
@@ -275,18 +275,18 @@ pub async fn readiness_check(State(state): State<ApiState>) -> impl IntoResponse
 pub async fn liveness_check(State(state): State<ApiState>) -> impl IntoResponse {
     // Verify the service can perform a basic operation — completing the await on
     // get_performance_metrics confirms the async runtime is not deadlocked.
-    state.auth_framework.get_performance_metrics().await;
+    state.cinaauth.get_performance_metrics().await;
     (StatusCode::OK, "Alive").into_response()
 }
 
 /// Internal health check functions
-async fn check_auth_framework_health(
-    auth_framework: &std::sync::Arc<crate::AuthFramework>,
+async fn check_cinaauth_health(
+    cinaauth: &std::sync::Arc<crate::Cinaauth>,
 ) -> ServiceHealthResult {
     let start = std::time::Instant::now();
 
     // Test basic framework operations
-    match auth_framework.get_stats().await {
+    match cinaauth.get_stats().await {
         Ok(_stats) => ServiceHealthResult {
             status: "healthy".to_string(),
             response_time_ms: start.elapsed().as_millis() as u64,
@@ -304,13 +304,13 @@ async fn check_auth_framework_health(
 }
 
 async fn check_storage_health(
-    auth_framework: &std::sync::Arc<crate::AuthFramework>,
+    cinaauth: &std::sync::Arc<crate::Cinaauth>,
 ) -> ServiceHealthResult {
     let start = std::time::Instant::now();
 
     // Test storage connectivity by checking if we can perform a basic operation
     // This is a non-destructive test
-    match auth_framework.get_stats().await {
+    match cinaauth.get_stats().await {
         Ok(_) => ServiceHealthResult {
             status: "healthy".to_string(),
             response_time_ms: start.elapsed().as_millis() as u64,
@@ -328,12 +328,12 @@ async fn check_storage_health(
 }
 
 async fn check_token_manager_health(
-    auth_framework: &std::sync::Arc<crate::AuthFramework>,
+    cinaauth: &std::sync::Arc<crate::Cinaauth>,
 ) -> ServiceHealthResult {
     let start = std::time::Instant::now();
 
     // Test token creation and validation (without storing)
-    let test_token = auth_framework.token_manager().create_jwt_token(
+    let test_token = cinaauth.token_manager().create_jwt_token(
         "health_check_user",
         vec!["health_check".to_string()],
         Some(std::time::Duration::from_secs(1)),
@@ -342,7 +342,7 @@ async fn check_token_manager_health(
     match test_token {
         Ok(token) => {
             // Validate the token we just created
-            match auth_framework.token_manager().validate_jwt_token(&token) {
+            match cinaauth.token_manager().validate_jwt_token(&token) {
                 Ok(_) => ServiceHealthResult {
                     status: "healthy".to_string(),
                     response_time_ms: start.elapsed().as_millis() as u64,

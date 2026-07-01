@@ -1,4 +1,4 @@
-# Main auth-framework configuration
+# Main cinaauth configuration
 # This file demonstrates the modular configuration approach with includes
 
 [auth]
@@ -6,7 +6,7 @@
 token_lifetime = "1h"
 refresh_token_lifetime = "7d"
 enable_multi_factor = false
-issuer = "auth-framework"
+issuer = "cinaauth"
 audience = "api"
 
 [auth.storage]
@@ -75,7 +75,7 @@ version = "1.0.0"
 features = ["oauth", "mfa", "audit"]
 
 [custom.database]
-# Additional database settings not covered by auth-framework
+# Additional database settings not covered by cinaauth
 connection_pool_size = 20
 query_timeout = "30s"
 migration_timeout = "5m"

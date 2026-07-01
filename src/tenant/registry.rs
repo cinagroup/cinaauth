@@ -1,7 +1,7 @@
 //! Tenant registry for managing multiple tenant instances
 
 use super::context::{TenantContext, TenantId};
-use crate::auth::AuthFramework;
+use crate::auth::Cinaauth;
 use crate::config::AuthConfig;
 use crate::errors::{AuthError, Result};
 use dashmap::DashMap;
@@ -48,9 +48,9 @@ impl From<TenantRegistryError> for AuthError {
     }
 }
 
-/// Registry for managing multi-tenant AuthFramework instances
+/// Registry for managing multi-tenant Cinaauth instances
 ///
-/// The TenantRegistry manages the lifecycle of AuthFramework instances,
+/// The TenantRegistry manages the lifecycle of Cinaauth instances,
 /// one per tenant. Each tenant has complete data isolation and independent
 /// configuration while sharing the same process.
 #[derive(Clone)]
@@ -58,8 +58,8 @@ pub struct TenantRegistry {
     /// Default configuration for new tenants
     default_config: Arc<RwLock<AuthConfig>>,
 
-    /// Active AuthFramework instances by tenant ID
-    frameworks: Arc<DashMap<TenantId, Arc<RwLock<AuthFramework>>>>,
+    /// Active Cinaauth instances by tenant ID
+    frameworks: Arc<DashMap<TenantId, Arc<RwLock<Cinaauth>>>>,
 
     /// Tenant contexts/metadata
     tenants: Arc<DashMap<TenantId, TenantContext>>,
@@ -75,12 +75,12 @@ impl TenantRegistry {
         }
     }
 
-    /// Register a new tenant and create its AuthFramework instance
+    /// Register a new tenant and create its Cinaauth instance
     pub async fn register_tenant(
         &self,
         tenant_context: TenantContext,
         config: Option<AuthConfig>,
-    ) -> Result<Arc<RwLock<AuthFramework>>> {
+    ) -> Result<Arc<RwLock<Cinaauth>>> {
         // Validate tenant is active
         if !tenant_context.active {
             warn!(
@@ -116,13 +116,13 @@ impl TenantRegistry {
             serde_json::json!(tenant_id.as_str()),
         );
 
-        // Create new AuthFramework for this tenant
-        let mut framework = AuthFramework::new(auth_config);
+        // Create new Cinaauth for this tenant
+        let mut framework = Cinaauth::new(auth_config);
 
         // Initialize the framework
         if let Err(e) = framework.initialize().await {
             error!(
-                "Failed to initialize AuthFramework for tenant {}: {}",
+                "Failed to initialize cinaauth for tenant {}: {}",
                 tenant_id, e
             );
             return Err(e);
@@ -143,8 +143,8 @@ impl TenantRegistry {
         Ok(framework)
     }
 
-    /// Get the AuthFramework for a specific tenant
-    pub fn get_tenant_framework(&self, tenant_id: &TenantId) -> Result<Arc<RwLock<AuthFramework>>> {
+    /// Get the Cinaauth for a specific tenant
+    pub fn get_tenant_framework(&self, tenant_id: &TenantId) -> Result<Arc<RwLock<Cinaauth>>> {
         let tenant_ref = self.tenants.get(tenant_id).ok_or_else(|| {
             AuthError::internal(
                 TenantRegistryError::TenantNotFound(tenant_id.to_string()).to_string(),
@@ -214,7 +214,7 @@ impl TenantRegistry {
 
     /// Remove a tenant from the registry
     ///
-    /// This unregisters the tenant and removes its AuthFramework instance.
+    /// This unregisters the tenant and removes its Cinaauth instance.
     /// Note: This does NOT delete tenant data from storage.
     pub async fn remove_tenant(&self, tenant_id: &TenantId) -> Result<()> {
         self.frameworks.remove(tenant_id);

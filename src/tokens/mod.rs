@@ -18,7 +18,7 @@ use uuid::Uuid;
 /// An issued authentication token with all associated metadata.
 ///
 /// Created by [`TokenManager`] and returned from
-/// [`AuthFramework::authenticate`](crate::auth::AuthFramework::authenticate).
+/// [`Cinaauth::authenticate`](crate::auth::Cinaauth::authenticate).
 /// Contains the encoded `access_token` string, optional `refresh_token`,
 /// granted scopes, and contextual [`TokenMetadata`].
 #[cfg_attr(feature = "postgres-storage", derive(FromRow))]
@@ -110,8 +110,8 @@ impl std::fmt::Debug for AuthToken {
 /// # Example
 ///
 /// ```rust
-/// use auth_framework::tokens::{AuthToken, TokenMetadata};
-/// use auth_framework::types::{Scopes, Permissions, Roles};
+/// use cinaauth::tokens::{AuthToken, TokenMetadata};
+/// use cinaauth::types::{Scopes, Permissions, Roles};
 /// use chrono::{Utc, Duration};
 ///
 /// let token = AuthToken::builder("user123", "token456", "access_token_here")
@@ -182,7 +182,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .token_type("bearer")
@@ -199,7 +199,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .subject("user@example.com")
@@ -216,7 +216,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .issuer("auth.example.com")
@@ -233,7 +233,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .refresh_token("refresh_token_value")
@@ -250,7 +250,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     /// use chrono::Utc;
     ///
     /// let now = Utc::now();
@@ -269,7 +269,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     /// use chrono::{Utc, Duration};
     ///
     /// let expires = Utc::now() + Duration::hours(2);
@@ -287,8 +287,8 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
-    /// use auth_framework::types::Scopes;
+    /// use cinaauth::tokens::AuthToken;
+    /// use cinaauth::types::Scopes;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .scopes(Scopes::new(vec!["read".into(), "write".into()]))
@@ -304,7 +304,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .auth_method("password")
@@ -321,7 +321,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .client_id("client-app")
@@ -338,8 +338,8 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use auth_framework::tokens::AuthToken;
-    /// use auth_framework::providers::ProviderProfile;
+    /// use cinaauth::tokens::AuthToken;
+    /// use cinaauth::providers::ProviderProfile;
     ///
     /// let profile = ProviderProfile { /* ... */ };
     /// let token = AuthToken::builder("t1", "u1", "access")
@@ -356,8 +356,8 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
-    /// use auth_framework::types::Permissions;
+    /// use cinaauth::tokens::AuthToken;
+    /// use cinaauth::types::Permissions;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .permissions(Permissions::new(vec!["admin".into()]))
@@ -373,8 +373,8 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
-    /// use auth_framework::types::Roles;
+    /// use cinaauth::tokens::AuthToken;
+    /// use cinaauth::types::Roles;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .roles(Roles::new(vec!["editor".into()]))
@@ -390,7 +390,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::{AuthToken, TokenMetadata};
+    /// use cinaauth::tokens::{AuthToken, TokenMetadata};
     ///
     /// let meta = TokenMetadata::builder().issued_ip("10.0.0.1").build();
     /// let token = AuthToken::builder("t1", "u1", "access")
@@ -407,7 +407,7 @@ impl AuthTokenBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build();
     /// assert_eq!(token.user_id, "u1");
@@ -440,7 +440,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("token123", "user456", "access_token")
     ///     .expires_at(chrono::Utc::now() + chrono::Duration::hours(2))
@@ -498,7 +498,7 @@ impl TokenMetadata {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::TokenMetadata;
+    /// use cinaauth::tokens::TokenMetadata;
     /// let meta = TokenMetadata::builder()
     ///     .issued_ip("10.0.0.1")
     ///     .user_agent("curl/8.0")
@@ -523,7 +523,7 @@ impl TokenMetadataBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::TokenMetadata;
+    /// use cinaauth::tokens::TokenMetadata;
     ///
     /// let meta = TokenMetadata::builder().issued_ip("10.0.0.1").build();
     /// assert_eq!(meta.issued_ip.as_deref(), Some("10.0.0.1"));
@@ -538,7 +538,7 @@ impl TokenMetadataBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::TokenMetadata;
+    /// use cinaauth::tokens::TokenMetadata;
     ///
     /// let meta = TokenMetadata::builder().user_agent("curl/8.0").build();
     /// assert_eq!(meta.user_agent.as_deref(), Some("curl/8.0"));
@@ -553,7 +553,7 @@ impl TokenMetadataBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::TokenMetadata;
+    /// use cinaauth::tokens::TokenMetadata;
     ///
     /// let meta = TokenMetadata::builder().device_id("phone-123").build();
     /// assert_eq!(meta.device_id.as_deref(), Some("phone-123"));
@@ -568,7 +568,7 @@ impl TokenMetadataBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::TokenMetadata;
+    /// use cinaauth::tokens::TokenMetadata;
     ///
     /// let meta = TokenMetadata::builder().session_id("sess-abc").build();
     /// assert_eq!(meta.session_id.as_deref(), Some("sess-abc"));
@@ -583,7 +583,7 @@ impl TokenMetadataBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::TokenMetadata;
+    /// use cinaauth::tokens::TokenMetadata;
     ///
     /// let meta = TokenMetadata::builder()
     ///     .custom("region", serde_json::json!("us-east-1"))
@@ -600,7 +600,7 @@ impl TokenMetadataBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::TokenMetadata;
+    /// use cinaauth::tokens::TokenMetadata;
     ///
     /// let meta = TokenMetadata::builder()
     ///     .issued_ip("127.0.0.1")
@@ -636,7 +636,7 @@ impl Type<Postgres> for TokenMetadata {
 
 /// Lightweight user information extracted from a validated token.
 ///
-/// Returned by [`AuthFramework::get_token_info`](crate::auth::AuthFramework)
+/// Returned by [`Cinaauth::get_token_info`](crate::auth::Cinaauth)
 /// after token validation succeeds.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenInfo {
@@ -709,7 +709,7 @@ pub struct JwtClaims {
 /// Central token lifecycle manager: creation, validation, refresh, and
 /// revocation.
 ///
-/// Constructed internally by [`AuthFramework`](crate::auth::AuthFramework)
+/// Constructed internally by [`Cinaauth`](crate::auth::Cinaauth)
 /// — most users interact with token operations through the
 /// [`TokenOperations`](crate::auth::TokenOperations) facade instead.
 pub struct TokenManager {
@@ -807,7 +807,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "my_token").build();
     /// assert_eq!(token.access_token(), "my_token");
@@ -821,7 +821,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "user42", "access").build();
     /// assert_eq!(token.user_id(), "user42");
@@ -835,7 +835,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     /// use chrono::Utc;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build();
@@ -852,7 +852,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "tok_value").build();
     /// assert_eq!(token.token_value(), "tok_value");
@@ -866,7 +866,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .token_type("Bearer")
@@ -882,7 +882,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .subject("sub-123")
@@ -898,7 +898,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .issuer("my-service")
@@ -914,7 +914,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build();
     /// assert!(!token.is_expired()); // 1-hour default
@@ -928,7 +928,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     /// use std::time::Duration;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build();
@@ -943,7 +943,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// assert!(!token.is_revoked());
@@ -959,7 +959,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build();
     /// assert!(token.is_valid());
@@ -973,7 +973,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .refresh_token("rt-abc")
@@ -989,7 +989,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access")
     ///     .refresh_token("rt-xyz")
@@ -1005,7 +1005,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// token.revoke(Some("compromised".to_string()));
@@ -1022,7 +1022,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// assert_eq!(token.metadata.use_count, 0);
@@ -1041,7 +1041,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// token.add_scope("read");
@@ -1059,7 +1059,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// token.add_scope("write");
@@ -1075,7 +1075,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build()
     ///     .with_refresh_token("refresh_xyz");
@@ -1091,7 +1091,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build()
     ///     .with_client_id("app-client");
@@ -1107,8 +1107,8 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
-    /// use auth_framework::types::Scopes;
+    /// use cinaauth::tokens::AuthToken;
+    /// use cinaauth::types::Scopes;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build()
     ///     .with_scopes(Scopes::new(vec!["read".into()]));
@@ -1124,7 +1124,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::{AuthToken, TokenMetadata};
+    /// use cinaauth::tokens::{AuthToken, TokenMetadata};
     ///
     /// let meta = TokenMetadata::builder().issued_ip("192.168.1.1").build();
     /// let token = AuthToken::builder("t1", "u1", "access").build()
@@ -1143,7 +1143,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     /// use std::time::Duration;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build();
@@ -1163,7 +1163,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// token.add_custom_claim("tenant", serde_json::json!("acme"));
@@ -1178,7 +1178,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build();
     /// assert!(token.get_custom_claim("missing").is_none());
@@ -1192,7 +1192,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// token.add_permission("admin");
@@ -1209,7 +1209,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// token.add_permission("write");
@@ -1229,7 +1229,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// token.add_role("editor");
@@ -1247,7 +1247,7 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
+    /// use cinaauth::tokens::AuthToken;
     ///
     /// let mut token = AuthToken::builder("t1", "u1", "access").build();
     /// token.add_role("admin");
@@ -1263,8 +1263,8 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
-    /// use auth_framework::types::Permissions;
+    /// use cinaauth::tokens::AuthToken;
+    /// use cinaauth::types::Permissions;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build()
     ///     .with_permissions(Permissions::new(vec!["read".into()]));
@@ -1280,8 +1280,8 @@ impl AuthToken {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::tokens::AuthToken;
-    /// use auth_framework::types::Roles;
+    /// use cinaauth::tokens::AuthToken;
+    /// use cinaauth::types::Roles;
     ///
     /// let token = AuthToken::builder("t1", "u1", "access").build()
     ///     .with_roles(Roles::new(vec!["viewer".into()]));
@@ -1411,7 +1411,7 @@ impl TokenManager {
     /// ## Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::tokens::TokenManager;
+    /// use cinaauth::tokens::TokenManager;
     ///
     /// // Both PKCS#1 and PKCS#8 formats work; provide PEM bytes from your key store.
     /// # let private_key: &[u8] = b"";
@@ -1423,7 +1423,7 @@ impl TokenManager {
     ///     "my-service",
     ///     "my-audience"
     /// )?;
-    /// # Ok::<(), auth_framework::errors::AuthError>(())
+    /// # Ok::<(), cinaauth::errors::AuthError>(())
     /// ```
     pub fn new_rsa(
         private_key: &[u8],

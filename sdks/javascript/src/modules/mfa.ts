@@ -1,5 +1,5 @@
 /**
- * Multi-Factor Authentication module for AuthFramework SDK
+ * Multi-Factor Authentication module for cinaauth SDK
  */
 
 import { BaseClient } from '../base-client';

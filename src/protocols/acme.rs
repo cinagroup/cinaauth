@@ -16,9 +16,9 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use auth_framework::protocols::acme::{AcmeClient, AcmeConfig};
+//! use cinaauth::protocols::acme::{AcmeClient, AcmeConfig};
 //!
-//! # async fn example() -> auth_framework::errors::Result<()> {
+//! # async fn example() -> cinaauth::errors::Result<()> {
 //! let config = AcmeConfig {
 //!     directory_url: "https://acme-v02.api.letsencrypt.org/directory".to_string(),
 //!     ..Default::default()

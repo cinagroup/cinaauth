@@ -153,7 +153,7 @@ impl AppConfig {
             jwt: JwtConfig {
                 secret_key: env::var("JWT_SECRET")
                     .map_err(|_| ConfigError::MissingEnvVar("JWT_SECRET"))?,
-                issuer: env::var("JWT_ISSUER").unwrap_or_else(|_| "auth-framework".to_string()),
+                issuer: env::var("JWT_ISSUER").unwrap_or_else(|_| "cinaauth".to_string()),
                 audience: env::var("JWT_AUDIENCE").unwrap_or_else(|_| "api".to_string()),
                 access_token_ttl_seconds: 3600,
                 refresh_token_ttl_seconds: 86400 * 7,
@@ -239,12 +239,12 @@ impl AppConfig {
         config
     }
 
-    /// Build an initialized AuthFramework using the configured storage backend.
-    pub async fn build_auth_framework(&self) -> crate::errors::Result<crate::AuthFramework> {
+    /// Build an initialized Cinaauth using the configured storage backend.
+    pub async fn build_cinaauth(&self) -> crate::errors::Result<crate::Cinaauth> {
         let auth_config = self.to_auth_config();
         let pool_size = self.primary_storage_pool_size();
 
-        let mut framework = crate::AuthFramework::new(auth_config.clone());
+        let mut framework = crate::Cinaauth::new(auth_config.clone());
         let storage =
             crate::storage::factory::build_storage_backend(&auth_config.storage, pool_size).await?;
         framework.replace_storage(storage);
@@ -446,7 +446,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             database: DatabaseConfig {
-                url: "postgresql://localhost/auth_framework".to_string(),
+                url: "postgresql://localhost/cinaauth".to_string(),
                 max_connections: 10,
                 min_connections: 1,
                 connect_timeout_seconds: 30,
@@ -454,7 +454,7 @@ impl Default for AppConfig {
             redis: None,
             jwt: JwtConfig {
                 secret_key: "development-only-secret-change-in-production".to_string(),
-                issuer: "auth-framework".to_string(),
+                issuer: "cinaauth".to_string(),
                 audience: "api".to_string(),
                 access_token_ttl_seconds: 3600,
                 refresh_token_ttl_seconds: 86400 * 7,

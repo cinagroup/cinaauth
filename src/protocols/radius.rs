@@ -100,7 +100,7 @@ impl Default for RadiusConfig {
             shared_secret: String::new(),
             timeout: Duration::from_secs(5),
             retries: 3,
-            nas_identifier: "auth-framework".into(),
+            nas_identifier: "cinaauth".into(),
             accounting_addr: None,
         }
     }
@@ -115,7 +115,7 @@ impl RadiusConfig {
     ///
     /// # Example
     /// ```rust,ignore
-    /// use auth_framework::protocols::radius::RadiusConfig;
+    /// use cinaauth::protocols::radius::RadiusConfig;
     ///
     /// let config = RadiusConfig::with_server("radius.corp:1812", "s3cret-key")?;
     /// ```
@@ -141,7 +141,7 @@ impl RadiusConfig {
     /// # Example
     /// ```rust,ignore
     /// use std::time::Duration;
-    /// use auth_framework::protocols::radius::RadiusConfig;
+    /// use cinaauth::protocols::radius::RadiusConfig;
     ///
     /// let config = RadiusConfig::with_options(
     ///     "radius.corp:1812",
@@ -188,7 +188,7 @@ impl RadiusPacket {
     ///
     /// # Example
     /// ```rust,ignore
-    /// use auth_framework::protocols::radius::{RadiusPacket, attr, code};
+    /// use cinaauth::protocols::radius::{RadiusPacket, attr, code};
     ///
     /// let mut packet = RadiusPacket {
     ///     code: code::ACCESS_REQUEST,

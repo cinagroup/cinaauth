@@ -1,7 +1,7 @@
 //! Integration tests for WebAuthn and SAML API endpoints
 
-use auth_framework::api::ApiServer;
-use auth_framework::{AuthConfig, AuthFramework};
+use cinaauth::api::ApiServer;
+use cinaauth::{AuthConfig, Cinaauth};
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -11,8 +11,8 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 async fn create_test_app() -> axum::Router {
-    let auth_framework = Arc::new(AuthFramework::new(AuthConfig::default()));
-    let server = ApiServer::new(auth_framework);
+    let cinaauth = Arc::new(Cinaauth::new(AuthConfig::default()));
+    let server = ApiServer::new(cinaauth);
     server
         .build_router()
         .await
@@ -21,8 +21,8 @@ async fn create_test_app() -> axum::Router {
 
 #[cfg(feature = "saml")]
 async fn create_test_app_with_saml_sp_config() -> axum::Router {
-    let auth_framework = Arc::new(AuthFramework::new(AuthConfig::default()));
-    auth_framework
+    let cinaauth = Arc::new(Cinaauth::new(AuthConfig::default()));
+    cinaauth
         .storage()
         .store_kv(
             "saml_sp:config",
@@ -38,7 +38,7 @@ async fn create_test_app_with_saml_sp_config() -> axum::Router {
         .await
         .unwrap();
 
-    ApiServer::new(auth_framework)
+    ApiServer::new(cinaauth)
         .build_router()
         .await
         .expect("Failed to build router for tests")
@@ -120,8 +120,8 @@ async fn test_saml_metadata() {
 #[tokio::test]
 async fn test_saml_sso_initiation() {
     // Build app with pre-populated IdP config so the endpoint can look it up.
-    let auth_framework = Arc::new(AuthFramework::new(AuthConfig::default()));
-    auth_framework
+    let cinaauth = Arc::new(Cinaauth::new(AuthConfig::default()));
+    cinaauth
         .storage()
         .store_kv(
             "saml_sp:config",
@@ -142,7 +142,7 @@ async fn test_saml_sso_initiation() {
         "slo_url": "https://idp.example.com/slo",
         "certificate": ""
     });
-    auth_framework
+    cinaauth
         .storage()
         .store_kv(
             "saml_idp:https://idp.example.com",
@@ -152,7 +152,7 @@ async fn test_saml_sso_initiation() {
         .await
         .unwrap();
 
-    let app = ApiServer::new(auth_framework)
+    let app = ApiServer::new(cinaauth)
         .build_router()
         .await
         .expect("Failed to build router for tests");
@@ -188,14 +188,14 @@ async fn test_saml_sso_initiation() {
 #[cfg(feature = "saml")]
 #[tokio::test]
 async fn test_saml_sso_requires_sp_config() {
-    let auth_framework = Arc::new(AuthFramework::new(AuthConfig::default()));
+    let cinaauth = Arc::new(Cinaauth::new(AuthConfig::default()));
     let idp_config = serde_json::json!({
         "entity_id": "https://idp.example.com",
         "sso_url": "https://idp.example.com/sso",
         "slo_url": "https://idp.example.com/slo",
         "certificate": ""
     });
-    auth_framework
+    cinaauth
         .storage()
         .store_kv(
             "saml_idp:https://idp.example.com",
@@ -205,7 +205,7 @@ async fn test_saml_sso_requires_sp_config() {
         .await
         .unwrap();
 
-    let app = ApiServer::new(auth_framework)
+    let app = ApiServer::new(cinaauth)
         .build_router()
         .await
         .expect("Failed to build router for tests");

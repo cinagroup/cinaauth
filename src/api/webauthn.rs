@@ -13,9 +13,9 @@ use sha2::{Digest, Sha256};
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::webauthn::WebAuthnConfig;
+/// use cinaauth::api::webauthn::WebAuthnConfig;
 ///
-/// // Minimal — defaults to "localhost" / "AuthFramework" / "direct"
+/// // Minimal — defaults to "localhost" / "cinaauth" / "direct"
 /// let cfg = WebAuthnConfig::default();
 /// assert_eq!(cfg.rp_id, "localhost");
 ///
@@ -42,7 +42,7 @@ impl Default for WebAuthnConfig {
     fn default() -> Self {
         Self {
             rp_id: "localhost".to_string(),
-            rp_name: "AuthFramework".to_string(),
+            rp_name: "cinaauth".to_string(),
             attestation: "direct".to_string(),
             timeout_ms: 60_000,
         }
@@ -64,14 +64,14 @@ impl WebAuthnConfig {
     /// | Variable | Default |
     /// |----------|---------|
     /// | `WEBAUTHN_RP_ID` | `"localhost"` |
-    /// | `WEBAUTHN_RP_NAME` | `"AuthFramework"` |
+    /// | `WEBAUTHN_RP_NAME` | `"cinaauth"` |
     /// | `WEBAUTHN_ATTESTATION` | `"direct"` |
     /// | `WEBAUTHN_TIMEOUT_MS` | `60000` |
     pub fn from_env() -> Self {
         Self {
             rp_id: std::env::var("WEBAUTHN_RP_ID").unwrap_or_else(|_| "localhost".to_string()),
             rp_name: std::env::var("WEBAUTHN_RP_NAME")
-                .unwrap_or_else(|_| "AuthFramework".to_string()),
+                .unwrap_or_else(|_| "cinaauth".to_string()),
             attestation: std::env::var("WEBAUTHN_ATTESTATION")
                 .unwrap_or_else(|_| "direct".to_string()),
             timeout_ms: std::env::var("WEBAUTHN_TIMEOUT_MS")
@@ -276,7 +276,7 @@ pub async fn webauthn_registration_init(
         "timestamp": chrono::Utc::now().timestamp()
     });
     let _ = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &session_key,
@@ -298,7 +298,7 @@ pub async fn webauthn_registration_complete(
 ) -> Json<ApiResponse<()>> {
     // Retrieve the stored session to validate the challenge
     let session_key = format!("webauthn_reg_session:{}", request.session_id);
-    let storage = state.auth_framework.storage();
+    let storage = state.cinaauth.storage();
 
     let (username, stored_challenge) = match storage.get_kv(&session_key).await {
         Ok(Some(data)) => {
@@ -443,7 +443,7 @@ pub async fn webauthn_authentication_init(
     let challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(challenge_bytes);
 
     let session_id = format!("webauthn_auth_{}", uuid::Uuid::new_v4());
-    let storage = state.auth_framework.storage();
+    let storage = state.cinaauth.storage();
 
     // Retrieve user's registered credentials from storage
     let username = request.username.as_deref().unwrap_or("");
@@ -504,7 +504,7 @@ pub async fn webauthn_authentication_complete(
     State(state): State<ApiState>,
     Json(request): Json<WebAuthnAuthenticationCompleteRequest>,
 ) -> Json<ApiResponse<serde_json::Value>> {
-    let storage = state.auth_framework.storage();
+    let storage = state.cinaauth.storage();
     let session_key = format!("webauthn_auth_session:{}", request.session_id);
 
     // Retrieve and validate the stored session
@@ -747,8 +747,8 @@ pub async fn webauthn_authentication_complete(
     }
 
     // Generate authentication token for the verified user
-    let token_lifetime = state.auth_framework.config().token_lifetime;
-    let token = match state.auth_framework.token_manager().create_jwt_token(
+    let token_lifetime = state.cinaauth.config().token_lifetime;
+    let token = match state.cinaauth.token_manager().create_jwt_token(
         &username,
         vec![],
         Some(token_lifetime),
@@ -792,7 +792,7 @@ pub async fn list_webauthn_credentials(
             ));
         }
     };
-    let auth_token = match validate_api_token(&state.auth_framework, &token).await {
+    let auth_token = match validate_api_token(&state.cinaauth, &token).await {
         Ok(t) => t,
         Err(_) => {
             return Json(ApiResponse::error_typed(
@@ -810,7 +810,7 @@ pub async fn list_webauthn_credentials(
         ));
     }
 
-    let storage = state.auth_framework.storage();
+    let storage = state.cinaauth.storage();
     let index_key = format!("webauthn_creds_index:{}", username);
 
     let credentials = match storage.get_kv(&index_key).await {
@@ -855,7 +855,7 @@ pub async fn delete_webauthn_credential(
             ));
         }
     };
-    let auth_token = match validate_api_token(&state.auth_framework, &token).await {
+    let auth_token = match validate_api_token(&state.cinaauth, &token).await {
         Ok(t) => t,
         Err(_) => {
             return Json(ApiResponse::error(
@@ -873,7 +873,7 @@ pub async fn delete_webauthn_credential(
         ));
     }
 
-    let storage = state.auth_framework.storage();
+    let storage = state.cinaauth.storage();
     let credential_key = format!("webauthn_credential:{}:{}", username, credential_id);
 
     // Check credential exists before deleting
@@ -917,7 +917,7 @@ mod tests {
     fn test_webauthn_config_default() {
         let cfg = WebAuthnConfig::default();
         assert_eq!(cfg.rp_id, "localhost");
-        assert_eq!(cfg.rp_name, "AuthFramework");
+        assert_eq!(cfg.rp_name, "cinaauth");
         assert_eq!(cfg.attestation, "direct");
         assert_eq!(cfg.timeout_ms, 60_000);
     }

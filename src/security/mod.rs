@@ -11,7 +11,7 @@
 //! - **[`presets`]** — One-call security presets (`HighSecurity`, `Standard`,
 //!   `Development`) and an automated security-audit report generator.
 //!
-//! Most users interact with these through [`AuthFramework`](crate::auth::AuthFramework)
+//! Most users interact with these through [`Cinaauth`](crate::auth::Cinaauth)
 //! rather than importing security types directly.
 
 use serde::{Deserialize, Serialize};
@@ -84,7 +84,7 @@ pub struct TotpConfig {
 impl Default for TotpConfig {
     fn default() -> Self {
         Self {
-            issuer: "Auth Framework".to_string(),
+            issuer: "cinaauth".to_string(),
             digits: 6,
             period: 30,
             skew: 1,

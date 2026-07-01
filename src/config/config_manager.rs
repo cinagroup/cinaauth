@@ -33,7 +33,7 @@ pub struct ConfigBuilder {
     sources: Vec<ConfigSource>,
     /// Environment variable prefix
     env_prefix: String,
-    /// Whether to include default auth-framework config files
+    /// Whether to include default cinaauth config files
     include_defaults: bool,
     /// Custom configuration file search paths
     search_paths: Vec<String>,
@@ -56,10 +56,10 @@ pub enum ConfigSource {
     IncludeDir { path: String, pattern: String },
 }
 
-/// Settings that can be used by parent applications to configure auth-framework
+/// Settings that can be used by parent applications to configure cinaauth
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
-pub struct AuthFrameworkSettings {
+pub struct CinaauthSettings {
     /// Main auth framework configuration
     #[serde(flatten)]
     pub auth: super::AuthConfig,
@@ -146,14 +146,14 @@ impl ConfigBuilder {
     pub fn new() -> Self {
         Self {
             sources: Vec::new(),
-            env_prefix: "AUTH_FRAMEWORK".to_string(),
+            env_prefix: "CINAAUTH".to_string(),
             include_defaults: true,
             search_paths: vec![
                 ".".to_string(),
                 "./config".to_string(),
-                "/etc/auth-framework".to_string(),
+                "/etc/cinaauth".to_string(),
                 dirs::config_dir()
-                    .map(|d| d.join("auth-framework").to_string_lossy().to_string())
+                    .map(|d| d.join("cinaauth").to_string_lossy().to_string())
                     .unwrap_or_else(|| "./config".to_string()),
             ],
         }
@@ -165,7 +165,7 @@ impl ConfigBuilder {
         self
     }
 
-    /// Disable loading of default auth-framework configuration files
+    /// Disable loading of default cinaauth configuration files
     pub fn without_defaults(mut self) -> Self {
         self.include_defaults = false;
         self
@@ -233,15 +233,15 @@ impl ConfigBuilder {
         let mut config = Config::builder();
         let mut sources = Vec::new();
 
-        // Add default auth-framework configuration files if requested
+        // Add default cinaauth configuration files if requested
         if self.include_defaults {
-            // Look for auth-framework configuration files in search paths
+            // Look for cinaauth configuration files in search paths
             for search_path in &self.search_paths {
                 for filename in &[
-                    "auth-framework.toml",
-                    "auth-framework.yaml",
-                    "auth-framework.yml",
-                    "auth-framework.json",
+                    "cinaauth.toml",
+                    "cinaauth.yaml",
+                    "cinaauth.yml",
+                    "cinaauth.json",
                     "auth.toml",
                     "auth.yaml",
                     "auth.yml",
@@ -351,17 +351,17 @@ impl ConfigManager {
     /// Create a configuration manager for a specific application
     pub fn for_application(app_name: &str) -> Result<Self> {
         ConfigBuilder::new()
-            .with_env_prefix(format!("{}_AUTH_FRAMEWORK", app_name.to_uppercase()))
+            .with_env_prefix(format!("{}_CINAAUTH", app_name.to_uppercase()))
             .add_file(format!("{}.toml", app_name), false)
             .add_file(format!("config/{}.toml", app_name), false)
             .build()
     }
 
     /// Get the auth framework settings
-    pub fn get_auth_settings(&self) -> Result<AuthFrameworkSettings> {
+    pub fn get_auth_settings(&self) -> Result<CinaauthSettings> {
         self.config
             .clone()
-            .try_deserialize::<AuthFrameworkSettings>()
+            .try_deserialize::<CinaauthSettings>()
             .map_err(|e| AuthError::config(format!("Failed to deserialize auth settings: {e}")))
     }
 
@@ -531,10 +531,10 @@ impl Default for SessionCookieSettings {
 /// Helper trait for easy integration into parent application configurations
 pub trait ConfigIntegration {
     /// Get the auth framework configuration section
-    fn auth_framework(&self) -> Option<&AuthFrameworkSettings>;
+    fn cinaauth(&self) -> Option<&CinaauthSettings>;
 
     /// Get the auth framework configuration section (mutable)
-    fn auth_framework_mut(&mut self) -> Option<&mut AuthFrameworkSettings>;
+    fn cinaauth_mut(&mut self) -> Option<&mut CinaauthSettings>;
 }
 
 #[cfg(test)]
@@ -555,19 +555,19 @@ mod tests {
     fn test_config_manager_default() {
         // Since ConfigManager::new() tries to load from files/env which may not exist,
         // we'll test the default settings directly instead
-        let settings = AuthFrameworkSettings::default();
+        let settings = CinaauthSettings::default();
 
         // Should have default values
         assert!(!settings.auth.enable_multi_factor);
         assert_eq!(settings.auth.token_lifetime.as_secs(), 3600); // 1 hour
-        assert_eq!(settings.auth.issuer, "auth-framework");
+        assert_eq!(settings.auth.issuer, "cinaauth");
     }
 
     #[test]
     fn test_application_specific_config() {
         let config = ConfigManager::for_application("myapp").expect("Failed to create app config");
 
-        assert_eq!(config.env_prefix(), "MYAPP_AUTH_FRAMEWORK");
+        assert_eq!(config.env_prefix(), "MYAPP_CINAAUTH");
     }
 
     #[test]

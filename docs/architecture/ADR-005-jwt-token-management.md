@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The AuthFramework requires robust JWT token management for multiple use cases:
+The Cinaauth requires robust JWT token management for multiple use cases:
 
 - **Access Tokens**: Short-lived tokens for API authorization
 - **Refresh Tokens**: Long-lived tokens for access token renewal
@@ -131,5 +131,5 @@ let validated_claims = jwt_manager.verify_token(&token)?;
 ---
 
 **Decision Date**: 2025-08-17
-**Decision Maker(s)**: AuthFramework Development Team
+**Decision Maker(s)**: Cinaauth Development Team
 **Review Date**: 2026-02-17

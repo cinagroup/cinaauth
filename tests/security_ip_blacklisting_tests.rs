@@ -8,7 +8,7 @@
 //! - Integration with request handling
 //! - Admin-only access control
 
-use auth_framework::api::security_simple::is_ip_blacklisted;
+use cinaauth::api::security_simple::is_ip_blacklisted;
 use std::net::IpAddr;
 use std::str::FromStr;
 

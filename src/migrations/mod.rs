@@ -1,4 +1,4 @@
-//! Database migration system for auth-framework.
+//! Database migration system for cinaauth.
 //! This module provides tools for managing database schema changes
 //! and ensuring proper setup of authentication-related tables.
 #[cfg(feature = "mysql-storage")]

@@ -1,5 +1,5 @@
 // Comprehensive tests for AuthToken edge cases
-use auth_framework::tokens::AuthToken;
+use cinaauth::tokens::AuthToken;
 use std::time::Duration;
 
 #[cfg(test)]

@@ -6,13 +6,13 @@
 ```mermaid
 classDiagram
     class AppState {
-        -Arc~AuthFramework~ framework
+        -Arc~Cinaauth~ framework
         -Arc~ApiServerConfig~ api_config
         -Arc~ServerStatus~ status
         -Arc~AuditLogger~ audit_logger
         -Instant start_time
         -Arc~TokenManager~ token_manager
-        +get_framework() Arc~AuthFramework~
+        +get_framework() Arc~Cinaauth~
         +get_status() ServerStatus
         +get_uptime_seconds() u64
         +log_admin_action(user_id, action, resource, outcome) Result

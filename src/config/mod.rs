@@ -6,7 +6,7 @@ pub mod config_manager;
 // Re-export for easy access
 pub use app_config::{AppConfig, ConfigBuilder as AppConfigBuilder};
 pub use config_manager::{
-    ApiServerSettings, AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder,
+    ApiServerSettings, CinaauthSettings, ConfigBuilder as LayeredConfigBuilder,
     ConfigIntegration, ConfigManager, SessionCookieSettings, SessionSettings,
 };
 
@@ -274,7 +274,7 @@ impl CorsConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::CorsConfig;
+    /// use cinaauth::config::CorsConfig;
     ///
     /// let cors = CorsConfig::for_origins(["https://app.example.com"]);
     /// assert!(cors.enabled);
@@ -346,7 +346,7 @@ impl Default for AuthConfig {
             token_lifetime: Duration::from_secs(3600), // 1 hour
             refresh_token_lifetime: Duration::from_secs(86400 * 7), // 7 days
             enable_multi_factor: false,
-            issuer: "auth-framework".to_string(),
+            issuer: "cinaauth".to_string(),
             audience: "api".to_string(),
             secret: None,
             storage: StorageConfig::Memory,
@@ -584,7 +584,7 @@ impl RuntimeConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::{AuthConfig, RuntimeConfig};
+    /// use cinaauth::config::{AuthConfig, RuntimeConfig};
     ///
     /// let auth_cfg = AuthConfig::new();
     /// let rt = RuntimeConfig::from_auth_config(&auth_cfg);
@@ -627,7 +627,7 @@ impl AuthConfig {
     /// ## Fluent setter chain (simple cases)
     ///
     /// ```rust,no_run
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     /// use std::time::Duration;
     ///
     /// let config = AuthConfig::new()
@@ -638,10 +638,10 @@ impl AuthConfig {
     /// ## Full builder (complex / multi-backend setups)
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let auth = AuthFramework::builder()
+    /// let auth = Cinaauth::builder()
     ///     .with_jwt().secret("...").issuer("myapp").done()
     ///     .with_storage().memory().done()
     ///     .security_preset(SecurityPreset::HighSecurity)
@@ -649,7 +649,7 @@ impl AuthConfig {
     /// # Ok(()) }
     /// ```
     ///
-    /// See [`AuthFramework::builder`] and [`AuthFramework::quick_start`] for
+    /// See [`Cinaauth::builder`] and [`Cinaauth::quick_start`] for
     /// the full builder APIs.
     pub fn new() -> Self {
         Self::default()
@@ -672,7 +672,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// // In tests or CI you can set the env vars beforehand:
     /// // std::env::set_var("JWT_SECRET", "my-long-secret-key-for-jwt-signing!!");
@@ -718,14 +718,14 @@ impl AuthConfig {
 
     /// Start the full [`AuthBuilder`](crate::builders::AuthBuilder) workflow.
     ///
-    /// This is a convenience alias for [`AuthFramework::builder()`] — use it
+    /// This is a convenience alias for [`Cinaauth::builder()`] — use it
     /// when you want to configure storage, security presets, and sub-builders
     /// from a single fluent chain.
     ///
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::prelude::*;
+    /// use cinaauth::prelude::*;
     ///
     /// # #[tokio::main] async fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let auth = AuthConfig::builder()
@@ -746,7 +746,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     /// use std::time::Duration;
     ///
     /// let config = AuthConfig::new().token_lifetime(Duration::from_secs(1800));
@@ -762,7 +762,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     /// use std::time::Duration;
     ///
     /// let config = AuthConfig::new().refresh_token_lifetime(Duration::from_secs(86400));
@@ -778,7 +778,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new().enable_multi_factor(true);
     /// assert!(config.enable_multi_factor);
@@ -811,7 +811,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new().require_mfa(true);
     /// assert!(config.enable_multi_factor);
@@ -832,7 +832,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new().max_failed_attempts(10);
     /// assert_eq!(config.max_failed_attempts, 10);
@@ -847,7 +847,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new().enable_rbac(true);
     /// assert!(config.enable_rbac);
@@ -862,7 +862,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new().enable_security_audit(true);
     /// assert!(config.audit.enabled);
@@ -877,7 +877,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new().enable_middleware(true);
     /// assert!(config.enable_middleware);
@@ -895,7 +895,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new().force_production_mode();
     /// ```
@@ -909,7 +909,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::{AuthConfig, StorageConfig};
+    /// use cinaauth::config::{AuthConfig, StorageConfig};
     ///
     /// let config = AuthConfig::new().storage(StorageConfig::Memory);
     /// ```
@@ -923,7 +923,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new().redis_storage("redis://127.0.0.1:6379");
     /// ```
@@ -941,7 +941,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::{AuthConfig, RateLimitConfig};
+    /// use cinaauth::config::{AuthConfig, RateLimitConfig};
     ///
     /// let config = AuthConfig::new().rate_limiting(RateLimitConfig::default());
     /// ```
@@ -955,7 +955,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::{AuthConfig, SecurityConfig};
+    /// use cinaauth::config::{AuthConfig, SecurityConfig};
     ///
     /// let config = AuthConfig::new().security(SecurityConfig::secure());
     /// ```
@@ -969,7 +969,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::{AuthConfig, CorsConfig};
+    /// use cinaauth::config::{AuthConfig, CorsConfig};
     ///
     /// let config = AuthConfig::new()
     ///     .cors(CorsConfig::for_origins(["https://app.example.com"]));
@@ -984,7 +984,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::{AuthConfig, AuditConfig};
+    /// use cinaauth::config::{AuthConfig, AuditConfig};
     ///
     /// let config = AuthConfig::new().audit(AuditConfig::default());
     /// ```
@@ -998,7 +998,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new()
     ///     .method_config("oauth2", serde_json::json!({
@@ -1024,7 +1024,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new();
     /// let oauth: Option<serde_json::Value> = config.get_method_config("oauth2").unwrap();
@@ -1049,7 +1049,7 @@ impl AuthConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::AuthConfig;
+    /// use cinaauth::config::AuthConfig;
     ///
     /// let config = AuthConfig::new();
     /// assert!(config.validate().is_ok());
@@ -1397,7 +1397,7 @@ impl RateLimitConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::RateLimitConfig;
+    /// use cinaauth::config::RateLimitConfig;
     /// use std::time::Duration;
     ///
     /// let rl = RateLimitConfig::new(100, Duration::from_secs(60));
@@ -1418,7 +1418,7 @@ impl RateLimitConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::RateLimitConfig;
+    /// use cinaauth::config::RateLimitConfig;
     ///
     /// let rl = RateLimitConfig::disabled();
     /// assert!(!rl.enabled);
@@ -1435,7 +1435,7 @@ impl RateLimitConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::RateLimitConfig;
+    /// use cinaauth::config::RateLimitConfig;
     ///
     /// let rl = RateLimitConfig::per_second(50);
     /// assert_eq!(rl.max_requests, 50);
@@ -1449,7 +1449,7 @@ impl RateLimitConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::RateLimitConfig;
+    /// use cinaauth::config::RateLimitConfig;
     ///
     /// let rl = RateLimitConfig::per_minute(100);
     /// assert_eq!(rl.max_requests, 100);
@@ -1463,7 +1463,7 @@ impl RateLimitConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::RateLimitConfig;
+    /// use cinaauth::config::RateLimitConfig;
     ///
     /// let rl = RateLimitConfig::per_hour(1000);
     /// assert_eq!(rl.max_requests, 1000);
@@ -1479,7 +1479,7 @@ impl SecurityConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::SecurityConfig;
+    /// use cinaauth::config::SecurityConfig;
     ///
     /// let sec = SecurityConfig::secure();
     /// assert!(sec.secure_cookies);
@@ -1508,7 +1508,7 @@ impl SecurityConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::config::SecurityConfig;
+    /// use cinaauth::config::SecurityConfig;
     ///
     /// let sec = SecurityConfig::development();
     /// assert_eq!(sec.min_password_length, 6);
@@ -1539,7 +1539,7 @@ impl SecurityConfig {
 /// # Example
 ///
 /// ```rust,no_run
-/// use auth_framework::config::{AuthConfig, AuthConfigBuilder};
+/// use cinaauth::config::{AuthConfig, AuthConfigBuilder};
 /// use std::time::Duration;
 ///
 /// let builder = AuthConfigBuilder::new()

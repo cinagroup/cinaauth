@@ -3,8 +3,8 @@
 //! Comprehensive tests for Denial of Service protection mechanisms beyond rate limiting.
 //! Tests request size limits, timeouts, connection handling, and resource exhaustion.
 
-use auth_framework::{
-    AuthConfig, AuthFramework, Credential,
+use cinaauth::{
+    AuthConfig, Cinaauth, Credential,
     distributed::rate_limiting::{
         DistributedRateLimiter, RateLimitConfig, RateLimitResult, RateLimitStrategy,
     },
@@ -24,7 +24,7 @@ async fn test_request_size_limit_enforcement() {
     let config = AuthConfig::new()
         .secret("test_dos_protection_secret_key_32_bytes_min".to_string())
         .max_failed_attempts(5);
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test 1: Normal size request should succeed
@@ -74,7 +74,7 @@ async fn test_request_timeout_protection() {
     let config = AuthConfig::new()
         .secret("test_dos_protection_secret_key_32_bytes_min".to_string())
         .max_failed_attempts(5);
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test 1: Normal request completes quickly
@@ -126,7 +126,7 @@ async fn test_concurrent_request_handling() {
     let config = AuthConfig::new()
         .secret("test_dos_protection_secret_key_32_bytes_min".to_string())
         .max_failed_attempts(5);
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -207,7 +207,7 @@ async fn test_resource_exhaustion_protection() {
     let config = AuthConfig::new()
         .secret("test_dos_protection_secret_key_32_bytes_min".to_string())
         .max_failed_attempts(5);
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test: Attempt many authentication attempts (memory exhaustion test)
@@ -258,7 +258,7 @@ async fn test_connection_flooding_protection() {
     let config = AuthConfig::new()
         .secret("test_dos_protection_secret_key_32_bytes_min".to_string())
         .max_failed_attempts(5);
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -314,7 +314,7 @@ async fn test_slow_request_attack_protection() {
     let config = AuthConfig::new()
         .secret("test_dos_protection_secret_key_32_bytes_min".to_string())
         .max_failed_attempts(5);
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -442,7 +442,7 @@ async fn test_mixed_attack_scenarios() {
     let config = AuthConfig::new()
         .secret("test_dos_protection_secret_key_32_bytes_min".to_string())
         .max_failed_attempts(5);
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -573,7 +573,7 @@ async fn test_system_stability_under_load() {
     let config = AuthConfig::new()
         .secret("test_dos_protection_secret_key_32_bytes_min".to_string())
         .max_failed_attempts(5);
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);

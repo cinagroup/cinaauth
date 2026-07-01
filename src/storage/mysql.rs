@@ -2,7 +2,7 @@ use crate::errors::Result;
 use crate::storage::{AuthStorage, SessionData};
 use crate::tokens::AuthToken;
 use async_trait::async_trait;
-/// MySQL storage backend implementation for auth-framework.
+/// MySQL storage backend implementation for cinaauth.
 #[cfg(feature = "mysql-storage")]
 use sqlx::MySqlPool;
 

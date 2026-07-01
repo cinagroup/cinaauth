@@ -1,11 +1,11 @@
-"""Example usage of the AuthFramework Python SDK."""
-# Copyright (c) 2025 AuthFramework Team. All rights reserved.
+"""Example usage of the cinaauth Python SDK."""
+# Copyright (c) 2025 cinaauth Team. All rights reserved.
 
 import asyncio
 import logging
 
-from authframework import AuthFrameworkClient
-from authframework.exceptions import AuthenticationError, AuthFrameworkError
+from cinaauth import CinaauthClient
+from cinaauth.exceptions import AuthenticationError, CinaauthError
 
 
 # Configure logging
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 async def main() -> None:
     """Execute main example function."""
     # Initialize client
-    client = AuthFrameworkClient("http://localhost:8080")
+    client = CinaauthClient("http://localhost:8080")
 
     try:
         # Example 1: Login and get profile
@@ -103,7 +103,7 @@ async def main() -> None:
 
     except AuthenticationError as e:
         logger.exception("Authentication failed: %s", e.message)
-    except AuthFrameworkError as e:
+    except CinaauthError as e:
         logger.exception("API error: %s (Status: %s)", e.message, e.status_code)
     except Exception:
         logger.exception("Unexpected error occurred")
@@ -117,7 +117,7 @@ async def context_manager_example() -> None:
     logger.info("=== Context Manager Example ===")
 
     try:
-        async with AuthFrameworkClient("http://localhost:8080") as client:
+        async with CinaauthClient("http://localhost:8080") as client:
             # Login
             await client.auth.login("user@example.com", "password")
 
@@ -127,7 +127,7 @@ async def context_manager_example() -> None:
 
             # Client is automatically closed when exiting the context
 
-    except AuthFrameworkError:
+    except CinaauthError:
         logger.exception("API error occurred")
 
 
@@ -135,7 +135,7 @@ async def concurrent_requests_example() -> None:
     """Demonstrate making concurrent requests."""
     logger.info("=== Concurrent Requests Example ===")
 
-    async with AuthFrameworkClient("http://localhost:8080") as client:
+    async with CinaauthClient("http://localhost:8080") as client:
         # Login first
         await client.auth.login("admin@example.com", "admin_password")
 

@@ -1,4 +1,4 @@
-//! Comprehensive integration tests for AuthFramework multi-tenant architecture
+//! Comprehensive integration tests for Cinaauth multi-tenant architecture
 //!
 //! This test suite validates:
 //! - Complete tenant lifecycle management
@@ -9,7 +9,7 @@
 
 #[cfg(test)]
 mod multi_tenant_tests {
-    use auth_framework::{
+    use cinaauth::{
         AuthConfig, TenantContext, TenantId, TenantRegistry, TenantRegistryBuilder,
     };
     use std::sync::Arc;

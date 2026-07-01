@@ -1,9 +1,9 @@
 //! Tests for OIDC Enhanced CIBA and Advanced JARM managers.
 
-use auth_framework::server::oidc::oidc_advanced_jarm::{
+use cinaauth::server::oidc::oidc_advanced_jarm::{
     AdvancedJarmConfig, AdvancedJarmManager, AuthorizationResponse, JarmDeliveryMode,
 };
-use auth_framework::server::oidc::oidc_enhanced_ciba::{
+use cinaauth::server::oidc::oidc_enhanced_ciba::{
     AuthenticationMode, BackchannelAuthParams, EnhancedCibaConfig, EnhancedCibaManager,
     UserIdentifierHint,
 };

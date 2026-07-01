@@ -1,4 +1,4 @@
-# AuthFramework Quick Start Guide
+# Cinaauth Quick Start Guide
 
 Get a complete authentication and authorization system running in your Rust application in minutes.
 
@@ -15,7 +15,7 @@ Get a complete authentication and authorization system running in your Rust appl
 ```toml
 # Cargo.toml
 [dependencies]
-auth-framework = "0.5"
+cinaauth = "0.5"
 tokio = { version = "1", features = ["full"] }
 serde_json = "1"
 ```
@@ -27,17 +27,17 @@ The default feature set includes PostgreSQL storage, Axum API server, OpenID Con
 ### Option A: Quick Start (Fastest)
 
 ```rust
-use auth_framework::AuthFramework;
+use cinaauth::Cinaauth;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // One-liner initialization with in-memory storage
-    let auth = AuthFramework::quick_start()
+    let auth = Cinaauth::quick_start()
         .jwt_auth("your-32-character-secret-key-here!!")
         .build()
         .await?;
 
-    println!("AuthFramework is ready!");
+    println!("Cinaauth is ready!");
     Ok(())
 }
 ```
@@ -45,12 +45,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Option B: Environment Variable Configuration
 
 ```rust
-use auth_framework::AuthFramework;
+use cinaauth::Cinaauth;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Reads JWT_SECRET from environment
-    let auth = AuthFramework::quick_start()
+    let auth = Cinaauth::quick_start()
         .jwt_auth_from_env()
         .build()
         .await?;
@@ -72,12 +72,12 @@ reads `JWT_SECRET`, `DATABASE_URL`, `REDIS_URL`, `AUTH_ISSUER`, and `AUTH_AUDIEN
 environment and builds an `AuthConfig` with sensible defaults:
 
 ```rust
-use auth_framework::{AuthFramework, config::AuthConfig};
+use cinaauth::{Cinaauth, config::AuthConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = AuthConfig::from_env();
-    let auth = AuthFramework::new(config);
+    let auth = Cinaauth::new(config);
     auth.initialize().await?;
     Ok(())
 }
@@ -86,12 +86,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Option C: Full Builder (Production)
 
 ```rust
-use auth_framework::{AuthFramework, config::SecurityConfig};
-use auth_framework::builders::{SecurityPreset, PerformancePreset, UseCasePreset};
+use cinaauth::{Cinaauth, config::SecurityConfig};
+use cinaauth::builders::{SecurityPreset, PerformancePreset, UseCasePreset};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let auth = AuthFramework::builder()
+    let auth = Cinaauth::builder()
         .security_preset(SecurityPreset::HighSecurity)
         .performance_preset(PerformancePreset::LowLatency)
         .use_case_preset(UseCasePreset::WebApp)
@@ -105,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Option D: Manual Configuration
 
 ```rust
-use auth_framework::{AuthFramework, config::AuthConfig};
+use cinaauth::{Cinaauth, config::AuthConfig};
 use std::time::Duration;
 
 #[tokio::main]
@@ -119,14 +119,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .security(SecurityConfig::secure()) // Production hardened
         .build();
 
-    let auth = AuthFramework::new(config);
+    let auth = Cinaauth::new(config);
     auth.initialize().await?;
 
     Ok(())
 }
 ```
 
-> **Important**: Always call `initialize().await?` when using `AuthFramework::new()`. The `quick_start()` and `builder()` paths handle this automatically. Calling any storage, user, token, session, or authorization method before initializing returns a clear `AuthError::Configuration` telling you what to do.
+> **Important**: Always call `initialize().await?` when using `Cinaauth::new()`. The `quick_start()` and `builder()` paths handle this automatically. Calling any storage, user, token, session, or authorization method before initializing returns a clear `AuthError::Configuration` telling you what to do.
 
 ## Step 3: Register Users
 
@@ -153,7 +153,7 @@ println!("User: {} ({})", profile.username, profile.email);
 ## Step 4: Issue and Manage Tokens
 
 ```rust
-use auth_framework::auth_operations::TokenCreateRequest;
+use cinaauth::auth_operations::TokenCreateRequest;
 
 // Preferred: use the TokenCreateRequest builder
 let token = auth.tokens().create_token(
@@ -183,7 +183,7 @@ auth.tokens().revoke(&refreshed).await?;
 ## Step 5: Manage Sessions
 
 ```rust
-use auth_framework::auth_operations::SessionCreateRequest;
+use cinaauth::auth_operations::SessionCreateRequest;
 use std::time::Duration;
 
 // Create a session
@@ -199,7 +199,7 @@ println!("Session ID: {}", session_id);
 let active = auth.sessions().get(&session_id).await?;
 
 // List only active sessions for a user
-use auth_framework::auth_operations::SessionFilter;
+use cinaauth::auth_operations::SessionFilter;
 let active_sessions = auth.sessions()
     .list_for_user_filtered(&user_id, SessionFilter::ActiveOnly)
     .await?;
@@ -212,7 +212,7 @@ auth.sessions().delete(&session_id).await?;
 ## Step 6: Authorization (Roles & Permissions)
 
 ```rust
-use auth_framework::permissions::{Permission, Role};
+use cinaauth::permissions::{Permission, Role};
 
 let mut admin = Role::new("admin");
 admin.add_permission(Permission::new("documents", "delete"));
@@ -240,7 +240,7 @@ assert!(can_delete);
 // Generate a TOTP secret for a user
 let secret = auth.mfa().generate_totp_secret(&user_id).await?;
 let provisioning_uri = auth.mfa()
-    .generate_totp_qr_url(&user_id, "AuthFramework Demo", &secret)
+    .generate_totp_qr_url(&user_id, "Cinaauth Demo", &secret)
     .await?;
 println!("Scan this QR code: {}", provisioning_uri);
 println!("Or enter this secret: {}", secret);
@@ -273,13 +273,13 @@ println!("{}", metrics);
 ### Axum (Recommended)
 
 ```rust
-use auth_framework::AuthFramework;
+use cinaauth::Cinaauth;
 use axum::{Router, routing::get, extract::State, Json};
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let auth = AuthFramework::quick_start()
+    let auth = Cinaauth::quick_start()
         .jwt_auth_from_env()
         .build()
         .await?;
@@ -295,11 +295,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn health(State(auth): State<Arc<AuthFramework>>) -> &'static str {
+async fn health(State(auth): State<Arc<Cinaauth>>) -> &'static str {
     "OK"
 }
 
-async fn protected(State(auth): State<Arc<AuthFramework>>) -> Result<String, String> {
+async fn protected(State(auth): State<Arc<Cinaauth>>) -> Result<String, String> {
     // Token validation happens via middleware or manual extraction
     Ok("You are authenticated!".to_string())
 }
@@ -310,7 +310,7 @@ async fn protected(State(auth): State<Arc<AuthFramework>>) -> Result<String, Str
 Enable the `actix-integration` feature:
 
 ```toml
-auth-framework = { version = "0.5", features = ["actix-integration"] }
+cinaauth = { version = "0.5", features = ["actix-integration"] }
 ```
 
 See [Web Framework Integration Guide](web-frameworks.md) for full Actix-web, Warp, and Axum patterns.
@@ -320,7 +320,7 @@ See [Web Framework Integration Guide](web-frameworks.md) for full Actix-web, War
 Enable the `warp-integration` feature:
 
 ```toml
-auth-framework = { version = "0.5", features = ["warp-integration"] }
+cinaauth = { version = "0.5", features = ["warp-integration"] }
 ```
 
 ---
@@ -331,7 +331,7 @@ auth-framework = { version = "0.5", features = ["warp-integration"] }
 docker run -p 8080:8080 \
   -e JWT_SECRET="your-32-character-secret-key-here!!" \
   -e DATABASE_URL="postgresql://user:pass@host/dbname" \
-  ghcr.io/ciresnave/auth-framework:latest
+  ghcr.io/cinagroup/cinaauth:latest
 ```
 
 See [Docker Deployment Guide](DOCKER_DEPLOYMENT.md) and [Deployment Guide](DEPLOYMENT_GUIDE.md) for production configuration.

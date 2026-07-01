@@ -10,9 +10,9 @@
 
 #![cfg(feature = "mysql-storage")]
 
-use auth_framework::storage::mysql::MySqlStorage;
-use auth_framework::storage::{AuthStorage, SessionData};
-use auth_framework::tokens::AuthToken;
+use cinaauth::storage::mysql::MySqlStorage;
+use cinaauth::storage::{AuthStorage, SessionData};
+use cinaauth::tokens::AuthToken;
 use sqlx::MySqlPool;
 use std::time::Duration;
 

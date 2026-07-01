@@ -1,6 +1,6 @@
-@startuml AuthFramework
+@startuml Cinaauth
 ' =============================================================================
-' AuthFramework - UML 2.0 Class Diagram
+' Cinaauth - UML 2.0 Class Diagram
 ' Generated: 2026-03-11
 ' =============================================================================
 '
@@ -155,12 +155,12 @@ package "config" #E8F4FD {
     + sources: Vec<String>
     + env_prefix: String
     --
-    + load() : Result<AuthFrameworkSettings>
+    + load() : Result<CinaauthSettings>
     + reload() : Result<()>
     + get<T>(key) : Result<T>
   }
 
-  class AuthFrameworkSettings {
+  class CinaauthSettings {
     + auth: AuthConfig
     + session: Option<SessionSettings>
     + custom: HashMap<String, Value>
@@ -178,8 +178,8 @@ package "config" #E8F4FD {
   AuthConfig *-- StorageConfig
   SecurityConfig ..> JwtAlgorithm
   SecurityConfig ..> PasswordHashAlgorithm
-  AuthFrameworkSettings *-- AuthConfig
-  AuthFrameworkSettings *-- SessionSettings
+  CinaauthSettings *-- AuthConfig
+  CinaauthSettings *-- SessionSettings
 }
 
 ' =============================================================================
@@ -1134,8 +1134,8 @@ package "oauth2_domain\n(standalone server layer)" #FFF3E0 {
     <b>⚠ ARCHITECTURAL NOTE:</b>
     This is one of THREE parallel OAuth2 implementations.
     The API handlers (api/oauth2.rs) do NOT use OAuth2Server —
-    they reach directly into AuthFramework::storage() and
-    AuthFramework::token_manager(). So this struct is only
+    they reach directly into Cinaauth::storage() and
+    Cinaauth::token_manager(). So this struct is only
     useful when consumed directly by library users, not via
     the HTTP API.
   end note
@@ -1647,7 +1647,7 @@ package "api_layer" #E0F7FA {
 
   note as NApiLayer
     <b>⚠ ARCHITECTURAL NOTE:</b>
-    The API handlers reach directly into AuthFramework's
+    The API handlers reach directly into Cinaauth's
     storage() and token_manager() without going through
     OAuth2Server or ServerOAuth2Server. This means the
     three OAuth2 server implementations are disconnected
@@ -1656,7 +1656,7 @@ package "api_layer" #E0F7FA {
 
   class ApiServer {
     - config: ApiServerConfig
-    - auth_framework: Arc<AuthFramework>
+    - cinaauth: Arc<Cinaauth>
     --
     + new(framework): Self
     + with_config(framework, config): Self
@@ -1674,7 +1674,7 @@ package "api_layer" #E0F7FA {
   }
 
   class ApiState {
-    + auth_framework: Arc<AuthFramework>
+    + cinaauth: Arc<Cinaauth>
     + rate_limiter: Arc<DistributedRateLimiter>
     + authorization_service: Arc<AuthorizationService> «feature»
     --
@@ -1807,8 +1807,8 @@ package "api_layer" #E0F7FA {
   }
 
   ApiServer *-- ApiServerConfig
-  ApiServer o-- AuthFramework : Arc
-  ApiState o-- AuthFramework : Arc
+  ApiServer o-- Cinaauth : Arc
+  ApiState o-- Cinaauth : Arc
   ApiState o-- DistributedRateLimiter : Arc
   ApiState o-- AuthorizationService : Arc «feature»
   ApiResponse *-- ApiError
@@ -1821,15 +1821,15 @@ package "api_layer" #E0F7FA {
 package "admin" #F9FBE7 {
 
   class AppState {
-    + config: Arc<RwLock<AuthFrameworkSettings>>
+    + config: Arc<RwLock<CinaauthSettings>>
     + config_manager: ConfigManager
     + health_status: HealthStatus
     + server_status: Arc<RwLock<ServerStatus>>
     + admin_sessions: Arc<Mutex<HashSet<String>>>
-    + auth_framework: Option<Arc<AuthFramework>>
+    + cinaauth: Option<Arc<Cinaauth>>
     --
     + new(settings): Result<Self>
-    + with_auth_framework(af): Self
+    + with_cinaauth(af): Self
     + get_health_status(): HealthStatus
     + reload_config(): Result<()>
   }
@@ -1849,13 +1849,13 @@ package "admin" #F9FBE7 {
   }
 
   AppState *-- ServerStatus
-  AppState o-- AuthFramework : Option<Arc>
+  AppState o-- Cinaauth : Option<Arc>
 }
 
 ' =============================================================================
-' PACKAGE: core (AuthFramework — the root type)
+' PACKAGE: core (Cinaauth — the root type)
 ' =============================================================================
-package "core (AuthFramework)" #FAFAFA {
+package "core (Cinaauth)" #FAFAFA {
 
   enum AuthResult <<enum>> {
     Success(Box<AuthToken>)
@@ -1863,7 +1863,7 @@ package "core (AuthFramework)" #FAFAFA {
     Failure(String)
   }
 
-  class AuthFramework {
+  class Cinaauth {
     - config: AuthConfig
     - methods: HashMap<String, AuthMethodEnum>
     - token_manager: TokenManager
@@ -1895,15 +1895,15 @@ package "core (AuthFramework)" #FAFAFA {
     + register_method(name, method)
   }
 
-  AuthFramework *-- AuthConfig
-  AuthFramework *-- TokenManager
-  AuthFramework o--> AuthStorage : Arc<dyn>
-  AuthFramework *-- PermissionChecker
-  AuthFramework *-- SecurityManager
-  AuthFramework *-- AuditLogger
-  AuthFramework o--> DistributedSessionStore : Arc<dyn>
-  AuthFramework ..> AuthResult : returns
-  AuthFramework ..> AuthMethodEnum : dispatches
+  Cinaauth *-- AuthConfig
+  Cinaauth *-- TokenManager
+  Cinaauth o--> AuthStorage : Arc<dyn>
+  Cinaauth *-- PermissionChecker
+  Cinaauth *-- SecurityManager
+  Cinaauth *-- AuditLogger
+  Cinaauth o--> DistributedSessionStore : Arc<dyn>
+  Cinaauth ..> AuthResult : returns
+  Cinaauth ..> AuthMethodEnum : dispatches
   AuthResult ..> AuthToken
   AuthResult ..> MfaChallenge
 }
@@ -1914,22 +1914,22 @@ package "core (AuthFramework)" #FAFAFA {
 
 ' TokenManager used widely
 TokenManager ..> JwtClaims
-AuthFramework *-- TokenManager
+Cinaauth *-- TokenManager
 
 ' Storage trait is the central integration point
 AuthStorage <|.. MemoryStorage
 AuthStorage <|.. RedisStorage
 AuthStorage <|.. PostgresStorage
-AuthFramework o--> AuthStorage
+Cinaauth o--> AuthStorage
 
 ' AuthorizationService uses AuthStorage indirectly (through role_system)
 AuthorizationService ..> AuthStorage : via role_system<S>
 
 ' ApiState bridges config to handlers
-ApiState o--> AuthFramework
+ApiState o--> Cinaauth
 ApiState o--> AuthorizationService
 
-' OAuth2Server (domain) uses storage + token_manager from AuthFramework-adjacent types
+' OAuth2Server (domain) uses storage + token_manager from Cinaauth-adjacent types
 OAuth2Server o--> TokenManager
 OAuth2Server o--> EnhancedTokenStorage
 OAuth2Server ..> UserContext : authenticates
@@ -1953,11 +1953,11 @@ AuditLogger ..> AuditStorageInterface
 ' DistributedRateLimiter used by ApiState
 ApiState o--> DistributedRateLimiter
 
-' ConfigManager produces AuthFrameworkSettings
-ConfigManager ..> AuthFrameworkSettings : produces
+' ConfigManager produces CinaauthSettings
+ConfigManager ..> CinaauthSettings : produces
 
 ' AppState (admin) holds framework
-AppState o--> AuthFramework
+AppState o--> Cinaauth
 
 ' =============================================================================
 ' DUPLICATION SUMMARY NOTE
@@ -2004,7 +2004,7 @@ note as NDupSummary
      → Use server_layer version everywhere
   
   8. <b>OAuth2 three-layer split</b>:
-     - Layer 1: api/oauth2.rs handlers (live, reach into AuthFramework directly)
+     - Layer 1: api/oauth2.rs handlers (live, reach into Cinaauth directly)
      - Layer 2: oauth2_server::OAuth2Server (library API, unused by HTTP layer)
      - Layer 3: server::oauth::* (RFC objects, unused by HTTP layer)
      → Either wire layers 2/3 into the API handlers, or remove them

@@ -1,8 +1,8 @@
-//! Grouped operation facades over [`AuthFramework`].
+//! Grouped operation facades over [`Cinaauth`].
 //!
 //! Each `*Operations` struct is a lightweight view (holds only a lifetime-bound
 //! reference to the framework) that exposes a focused subset of the full API.
-//! They are created by the corresponding accessor on `AuthFramework` (e.g. [`users()`]).
+//! They are created by the corresponding accessor on `Cinaauth` (e.g. [`users()`]).
 //!
 //! # Request structs
 //!
@@ -19,10 +19,10 @@
 //! - [`UserStatus`] — `Active` vs `Inactive` for user account state.
 //! - [`SessionFilter`] — `ActiveOnly` vs `IncludeInactive` for session listing.
 //!
-//! [`users()`]: crate::auth::AuthFramework::users
+//! [`users()`]: crate::auth::Cinaauth::users
 
 use crate::audit::SecurityAuditStats;
-use crate::auth::{AuthFramework, AuthStats, UserInfo};
+use crate::auth::{Cinaauth, AuthStats, UserInfo};
 use crate::errors::{AuthError, Result};
 use crate::maintenance::{BackupReport, ResetReport, RestoreReport};
 use crate::methods::MfaChallenge;
@@ -40,7 +40,7 @@ use std::time::Duration;
 /// # Example
 ///
 /// ```rust,ignore
-/// use auth_framework::auth_operations::ExecutionMode;
+/// use cinaauth::auth_operations::ExecutionMode;
 ///
 /// // Preview:
 /// let preview = auth.maintenance().backup("backup.json", ExecutionMode::DryRun).await?;
@@ -77,7 +77,7 @@ impl From<ExecutionMode> for bool {
 /// # Example
 ///
 /// ```rust,ignore
-/// use auth_framework::auth_operations::UserStatus;
+/// use cinaauth::auth_operations::UserStatus;
 ///
 /// // Deactivate a user:
 /// auth.users().set_status(&user_id, UserStatus::Inactive).await?;
@@ -119,7 +119,7 @@ impl From<bool> for UserStatus {
 /// # Example
 ///
 /// ```rust,ignore
-/// use auth_framework::auth_operations::SessionFilter;
+/// use cinaauth::auth_operations::SessionFilter;
 ///
 /// let active = mgr.get_user_sessions(user_id, SessionFilter::ActiveOnly).await?;
 /// let all    = mgr.get_user_sessions(user_id, SessionFilter::IncludeInactive).await?;
@@ -228,7 +228,7 @@ impl AuditLogQuery {
 /// # Example
 ///
 /// ```rust
-/// # use auth_framework::auth_operations::UserListQuery;
+/// # use cinaauth::auth_operations::UserListQuery;
 /// let query = UserListQuery::new()
 ///     .limit(50)
 ///     .active_only();
@@ -302,7 +302,7 @@ impl UserListQuery {
 /// # Example
 ///
 /// ```rust
-/// # use auth_framework::auth_operations::PermissionContext;
+/// # use cinaauth::auth_operations::PermissionContext;
 /// let context = PermissionContext::new()
 ///     .with_attribute("time_of_day", "business_hours")
 ///     .with_attribute("ip_location", "office")
@@ -424,13 +424,13 @@ impl DelegationRequest {
 // User operations
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Focused user-management operations exposed from [`AuthFramework::users`].
+/// Focused user-management operations exposed from [`Cinaauth::users`].
 ///
 /// # Example
 ///
 /// ```rust,no_run
-/// # use auth_framework::prelude::*;
-/// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+/// # use cinaauth::prelude::*;
+/// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
 /// // Register
 /// let uid = auth.users().register("alice", "alice@example.com", "P@ssw0rd!").await?;
 ///
@@ -444,7 +444,7 @@ impl DelegationRequest {
 /// # }
 /// ```
 pub struct UserOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl UserOperations<'_> {
@@ -484,8 +484,8 @@ impl UserOperations<'_> {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// let active = auth.users()
     ///     .list_with_query(UserListQuery::new().limit(50).active_only())
     ///     .await?;
@@ -599,8 +599,8 @@ impl UserOperations<'_> {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// auth.users().check_username("alice")?;
     /// // Returns Err explaining why the name is invalid:
     /// assert!(auth.users().check_username("").is_err());
@@ -619,8 +619,8 @@ impl UserOperations<'_> {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// auth.users().check_password_strength("C0mpl3x!Pa$$word")?;
     /// assert!(auth.users().check_password_strength("weak").is_err());
     /// # Ok(())
@@ -646,8 +646,8 @@ impl UserOperations<'_> {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// auth.users().check_email("alice@example.com")?;
     /// assert!(auth.users().check_email("not-an-email").is_err());
     /// # Ok(())
@@ -671,7 +671,7 @@ impl UserOperations<'_> {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use auth_framework::auth_operations::SessionCreateRequest;
+/// # use cinaauth::auth_operations::SessionCreateRequest;
 /// # use std::time::Duration;
 /// // Minimal — no optional fields:
 /// let req = SessionCreateRequest::new("user-123", Duration::from_secs(3600));
@@ -733,15 +733,15 @@ impl SessionCreateRequest {
     }
 }
 
-/// Focused session-management operations exposed from [`AuthFramework::sessions`].
+/// Focused session-management operations exposed from [`Cinaauth::sessions`].
 ///
 /// # Example
 ///
 /// ```rust,no_run
-/// # use auth_framework::prelude::*;
-/// # use auth_framework::auth_operations::SessionCreateRequest;
+/// # use cinaauth::prelude::*;
+/// # use cinaauth::auth_operations::SessionCreateRequest;
 /// # use std::time::Duration;
-/// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+/// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
 /// // Using the request struct (recommended):
 /// let req = SessionCreateRequest::new("user-123", Duration::from_secs(3600))
 ///     .ip_address("10.0.0.1");
@@ -756,7 +756,7 @@ impl SessionCreateRequest {
 /// # }
 /// ```
 pub struct SessionOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl SessionOperations<'_> {
@@ -806,9 +806,9 @@ impl SessionOperations<'_> {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # use auth_framework::auth_operations::SessionFilter;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # use cinaauth::auth_operations::SessionFilter;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// let active = auth.sessions()
     ///     .list_for_user_filtered("user-1", SessionFilter::ActiveOnly)
     ///     .await?;
@@ -846,8 +846,8 @@ impl SessionOperations<'_> {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use auth_framework::prelude::*;
-/// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+/// # use cinaauth::prelude::*;
+/// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
 /// let token = auth.tokens().create_token(
 ///     TokenCreateRequest::new("user-123", "jwt")
 ///         .scope("read")
@@ -899,13 +899,13 @@ impl TokenCreateRequest {
     }
 }
 
-/// Focused token-management operations exposed from [`AuthFramework::tokens`].
+/// Focused token-management operations exposed from [`Cinaauth::tokens`].
 ///
 /// # Example
 ///
 /// ```rust,no_run
-/// # use auth_framework::prelude::*;
-/// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+/// # use cinaauth::prelude::*;
+/// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
 /// // Issue a JWT token
 /// let token = auth.tokens().create("user-123", &["read"], "jwt", None).await?;
 ///
@@ -921,7 +921,7 @@ impl TokenCreateRequest {
 /// # }
 /// ```
 pub struct TokenOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl TokenOperations<'_> {
@@ -970,8 +970,8 @@ impl TokenOperations<'_> {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// let token = auth.tokens().create_token(
     ///     TokenCreateRequest::new("user-123", "jwt")
     ///         .scope("read")
@@ -1030,7 +1030,7 @@ impl TokenOperations<'_> {
 // Authorization operations
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Focused authorization operations exposed via [`AuthFramework::authorization()`].
+/// Focused authorization operations exposed via [`Cinaauth::authorization()`].
 ///
 /// Provides role-based access control (RBAC), direct permission grants, and
 /// effective-permission queries.
@@ -1038,9 +1038,9 @@ impl TokenOperations<'_> {
 /// # Example
 ///
 /// ```rust,no_run
-/// # async fn example(auth: &auth_framework::AuthFramework) -> auth_framework::Result<()> {
-/// use auth_framework::permissions::{Permission, Role};
-/// use auth_framework::tokens::AuthToken;
+/// # async fn example(auth: &cinaauth::Cinaauth) -> cinaauth::Result<()> {
+/// use cinaauth::permissions::{Permission, Role};
+/// use cinaauth::tokens::AuthToken;
 ///
 /// let authz = auth.authorization();
 /// let token = AuthToken::builder("token_123", "user_123", "access_token").build();
@@ -1057,7 +1057,7 @@ impl TokenOperations<'_> {
 /// # }
 /// ```
 pub struct AuthorizationOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl AuthorizationOperations<'_> {
@@ -1140,7 +1140,7 @@ impl AuthorizationOperations<'_> {
     }
 }
 
-/// Focused maintenance operations exposed via [`AuthFramework::maintenance()`].
+/// Focused maintenance operations exposed via [`Cinaauth::maintenance()`].
 ///
 /// Backup, restore, and reset authentication state in the configured storage
 /// backend. All operations support an [`ExecutionMode`] parameter that
@@ -1149,8 +1149,8 @@ impl AuthorizationOperations<'_> {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use auth_framework::auth_operations::ExecutionMode;
-/// # async fn example(auth: &auth_framework::AuthFramework) -> auth_framework::Result<()> {
+/// # use cinaauth::auth_operations::ExecutionMode;
+/// # async fn example(auth: &cinaauth::Cinaauth) -> cinaauth::Result<()> {
 /// let maint = auth.maintenance();
 ///
 /// // Preview a backup without writing to disk
@@ -1163,7 +1163,7 @@ impl AuthorizationOperations<'_> {
 /// # }
 /// ```
 pub struct MaintenanceOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl MaintenanceOperations<'_> {
@@ -1221,7 +1221,7 @@ impl MaintenanceOperations<'_> {
 // MFA operations
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Focused multi-factor authentication operations exposed via [`AuthFramework::mfa()`].
+/// Focused multi-factor authentication operations exposed via [`Cinaauth::mfa()`].
 ///
 /// Covers TOTP, SMS, email challenges, backup codes, and MFA completion
 /// flows.
@@ -1229,7 +1229,7 @@ impl MaintenanceOperations<'_> {
 /// # Example
 ///
 /// ```rust,no_run
-/// # async fn example(auth: &auth_framework::AuthFramework) -> auth_framework::Result<()> {
+/// # async fn example(auth: &cinaauth::Cinaauth) -> cinaauth::Result<()> {
 /// let mfa = auth.mfa();
 ///
 /// // Set up TOTP for a user
@@ -1242,7 +1242,7 @@ impl MaintenanceOperations<'_> {
 /// # }
 /// ```
 pub struct MfaOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl MfaOperations<'_> {
@@ -1320,7 +1320,7 @@ impl MfaOperations<'_> {
 // Monitoring operations
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Focused monitoring and health operations exposed via [`AuthFramework::monitoring()`].
+/// Focused monitoring and health operations exposed via [`Cinaauth::monitoring()`].
 ///
 /// Health-checks, performance and security metrics, Prometheus export, and
 /// rate-limit inspection.
@@ -1328,7 +1328,7 @@ impl MfaOperations<'_> {
 /// # Example
 ///
 /// ```rust,no_run
-/// # async fn example(auth: &auth_framework::AuthFramework) -> auth_framework::Result<()> {
+/// # async fn example(auth: &cinaauth::Cinaauth) -> cinaauth::Result<()> {
 /// let mon = auth.monitoring();
 ///
 /// let health = mon.health_check().await?;
@@ -1338,7 +1338,7 @@ impl MfaOperations<'_> {
 /// # }
 /// ```
 pub struct MonitoringOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl MonitoringOperations<'_> {
@@ -1393,7 +1393,7 @@ impl MonitoringOperations<'_> {
 // Audit operations
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Focused audit log operations exposed via [`AuthFramework::audit()`].
+/// Focused audit log operations exposed via [`Cinaauth::audit()`].
 ///
 /// Query permission audit logs, view permission metrics, and retrieve
 /// comprehensive security audit statistics.
@@ -1401,7 +1401,7 @@ impl MonitoringOperations<'_> {
 /// # Example
 ///
 /// ```rust,no_run
-/// # async fn example(auth: &auth_framework::AuthFramework) -> auth_framework::Result<()> {
+/// # async fn example(auth: &cinaauth::Cinaauth) -> cinaauth::Result<()> {
 /// let audit = auth.audit();
 ///
 /// // Retrieve recent permission log entries for a specific user
@@ -1413,7 +1413,7 @@ impl MonitoringOperations<'_> {
 /// # }
 /// ```
 pub struct AuditOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl AuditOperations<'_> {
@@ -1473,9 +1473,9 @@ mod tests {
     use super::*;
     use crate::config::AuthConfig;
 
-    async fn make_fw() -> AuthFramework {
+    async fn make_fw() -> Cinaauth {
         let config = AuthConfig::new().secret("test_ops_secret_key_32bytes_long!".to_string());
-        let mut fw = AuthFramework::new(config);
+        let mut fw = Cinaauth::new(config);
         fw.initialize().await.unwrap();
         fw
     }
@@ -1930,13 +1930,13 @@ mod tests {
 // Admin operations
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Focused advanced administration operations exposed from [`AuthFramework::admin`].
+/// Focused advanced administration operations exposed from [`Cinaauth::admin`].
 ///
 /// These operations go beyond the everyday [`AuthorizationOperations`] surface and cover
 /// ABAC policy management, permission delegation, role inheritance, resource registration,
 /// and attribute-based access control.
 pub struct AdminOperations<'a> {
-    pub(crate) framework: &'a AuthFramework,
+    pub(crate) framework: &'a Cinaauth,
 }
 
 impl AdminOperations<'_> {
@@ -1972,8 +1972,8 @@ impl AdminOperations<'_> {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::prelude::*;
-    /// # async fn example(auth: &AuthFramework) -> Result<(), AuthError> {
+    /// # use cinaauth::prelude::*;
+    /// # async fn example(auth: &Cinaauth) -> Result<(), AuthError> {
     /// auth.admin().set_user_attributes("user-1", &[
     ///     ("department", "engineering"),
     ///     ("clearance", "top-secret"),
@@ -2026,7 +2026,7 @@ impl AdminOperations<'_> {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use auth_framework::auth_operations::PermissionContext;
+    /// use cinaauth::auth_operations::PermissionContext;
     ///
     /// let ctx = PermissionContext::new()
     ///     .with_attribute("ip_location", "office")

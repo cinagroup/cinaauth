@@ -1,4 +1,4 @@
-//! Common domain types used throughout the AuthFramework.
+//! Common domain types used throughout the Cinaauth.
 //!
 //! This module provides type-safe wrappers around raw collections and primitives
 //! to improve API clarity and prevent common mistakes.
@@ -14,7 +14,7 @@ use std::ops::Deref;
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::Roles;
+/// use cinaauth::types::Roles;
 ///
 /// let roles = Roles(vec!["admin".to_string(), "user".to_string()]);
 /// assert_eq!(roles.len(), 2);
@@ -154,7 +154,7 @@ impl<'q> sqlx::Encode<'q, sqlx::Postgres> for Roles {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::Scopes;
+/// use cinaauth::types::Scopes;
 ///
 /// let scopes = Scopes(vec!["read".to_string(), "write".to_string()]);
 /// assert!(scopes.contains("read"));
@@ -293,7 +293,7 @@ impl<'q> sqlx::Encode<'q, sqlx::Postgres> for Scopes {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::RedirectUris;
+/// use cinaauth::types::RedirectUris;
 ///
 /// let uris = RedirectUris(vec!["https://example.com/callback".to_string()]);
 /// assert!(uris.contains("https://example.com/callback"));
@@ -404,7 +404,7 @@ impl<'a> IntoIterator for &'a RedirectUris {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::GrantTypes;
+/// use cinaauth::types::GrantTypes;
 ///
 /// let types = GrantTypes(vec!["authorization_code".to_string()]);
 /// assert!(types.contains("authorization_code"));
@@ -515,7 +515,7 @@ impl<'a> IntoIterator for &'a GrantTypes {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::ResponseTypes;
+/// use cinaauth::types::ResponseTypes;
 ///
 /// let types = ResponseTypes(vec!["code".to_string()]);
 /// assert!(types.contains("code"));
@@ -627,7 +627,7 @@ impl<'a> IntoIterator for &'a ResponseTypes {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::Permissions;
+/// use cinaauth::types::Permissions;
 ///
 /// let perms = Permissions(vec!["user:read".to_string(), "user:write".to_string()]);
 /// assert!(perms.contains("user:read"));
@@ -767,7 +767,7 @@ impl<'q> sqlx::Encode<'q, sqlx::Postgres> for Permissions {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::UserAttributes;
+/// use cinaauth::types::UserAttributes;
 /// use std::collections::HashMap;
 ///
 /// let mut attrs = HashMap::new();
@@ -867,7 +867,7 @@ impl<'a> IntoIterator for &'a UserAttributes {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::UserAttributesString;
+/// use cinaauth::types::UserAttributesString;
 /// use std::collections::HashMap;
 ///
 /// let mut attrs = HashMap::new();
@@ -965,7 +965,7 @@ impl<'a> IntoIterator for &'a UserAttributesString {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::IpList;
+/// use cinaauth::types::IpList;
 ///
 /// let ips = IpList(vec!["192.168.1.1".to_string(), "10.0.0.1".to_string()]);
 /// assert!(ips.contains("192.168.1.1"));
@@ -1078,7 +1078,7 @@ impl<'a> IntoIterator for &'a IpList {
 /// # Examples
 ///
 /// ```rust
-/// use auth_framework::types::AdditionalParams;
+/// use cinaauth::types::AdditionalParams;
 ///
 /// let mut params = AdditionalParams::new();
 /// params.insert("prompt", "consent");

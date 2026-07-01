@@ -77,7 +77,7 @@ pub async fn send_verification(
         }
     };
 
-    let auth_token = match validate_api_token(&state.auth_framework, &token).await {
+    let auth_token = match validate_api_token(&state.cinaauth, &token).await {
         Ok(t) => t,
         Err(_) => {
             return ApiResponse::error_typed("INVALID_TOKEN", "Invalid or expired token");
@@ -88,7 +88,7 @@ pub async fn send_verification(
 
     // Check if already verified
     let user_key = format!("user:{user_id}");
-    let user_bytes = match state.auth_framework.storage().get_kv(&user_key).await {
+    let user_bytes = match state.cinaauth.storage().get_kv(&user_key).await {
         Ok(Some(b)) => b,
         _ => {
             return ApiResponse::error_typed("USER_NOT_FOUND", "User not found");
@@ -127,7 +127,7 @@ pub async fn send_verification(
     // Store: email_verify:{token} → user_id
     let verify_key = format!("{VERIFY_KEY_PREFIX}{verify_token}");
     if let Err(_) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &verify_key,
@@ -162,7 +162,7 @@ pub async fn verify_email(
 
     // Look up verification token
     let verify_key = format!("{VERIFY_KEY_PREFIX}{}", body.token);
-    let user_id_bytes = match state.auth_framework.storage().get_kv(&verify_key).await {
+    let user_id_bytes = match state.cinaauth.storage().get_kv(&verify_key).await {
         Ok(Some(b)) => b,
         Ok(None) => {
             return ApiResponse::error_typed(
@@ -184,7 +184,7 @@ pub async fn verify_email(
 
     // Update user record: set email_verified = true
     let user_key = format!("user:{user_id}");
-    let user_bytes = match state.auth_framework.storage().get_kv(&user_key).await {
+    let user_bytes = match state.cinaauth.storage().get_kv(&user_key).await {
         Ok(Some(b)) => b,
         _ => {
             return ApiResponse::error_typed("USER_NOT_FOUND", "User not found");
@@ -201,7 +201,7 @@ pub async fn verify_email(
     user_json["email_verified"] = serde_json::Value::Bool(true);
 
     if let Err(_) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(&user_key, user_json.to_string().as_bytes(), None)
         .await
@@ -210,7 +210,7 @@ pub async fn verify_email(
     }
 
     // Delete the used verification token (one-time use)
-    let _ = state.auth_framework.storage().delete_kv(&verify_key).await;
+    let _ = state.cinaauth.storage().delete_kv(&verify_key).await;
 
     ApiResponse::success(serde_json::json!({
         "verified": true,
@@ -234,7 +234,7 @@ pub async fn resend_verification(
 
     // Look up user by email
     let email_key = format!("user:email:{}", body.email);
-    let user_id_bytes = match state.auth_framework.storage().get_kv(&email_key).await {
+    let user_id_bytes = match state.cinaauth.storage().get_kv(&email_key).await {
         Ok(Some(b)) => b,
         // Return a generic success to prevent email enumeration
         Ok(None) | Err(_) => {
@@ -263,7 +263,7 @@ pub async fn resend_verification(
 
     // Check if already verified
     let user_key = format!("user:{user_id}");
-    let user_bytes = match state.auth_framework.storage().get_kv(&user_key).await {
+    let user_bytes = match state.cinaauth.storage().get_kv(&user_key).await {
         Ok(Some(b)) => b,
         _ => {
             return ApiResponse::success(VerificationSentResponse {
@@ -313,7 +313,7 @@ pub async fn resend_verification(
 
     let verify_key = format!("{VERIFY_KEY_PREFIX}{verify_token}");
     if let Err(_) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &verify_key,

@@ -128,7 +128,7 @@ impl Default for BackChannelLogoutConfig {
             max_concurrent_notifications: 10,
             logout_token_exp_secs: 120, // 2 minutes
             include_session_claims: true,
-            user_agent: "AuthFramework-OIDC/1.0".to_string(),
+            user_agent: "cinaauth-OIDC/1.0".to_string(),
             enable_http_logging: false,
             signing_key: None,
             rsa_private_key_pem: None,
@@ -248,7 +248,7 @@ impl BackChannelLogoutManager {
             let rng = SystemRandom::new();
             let mut key = vec![0u8; 32];
             rng.fill(&mut key)
-                .expect("AuthFramework fatal: system CSPRNG unavailable");
+                .expect("cinaauth fatal: system CSPRNG unavailable");
             key
         });
 

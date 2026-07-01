@@ -9,11 +9,11 @@ use tokio::sync::RwLock;
 use tracing::{debug, info};
 
 /// Authorization manager that owns the `PermissionChecker` and exposes
-/// all role and permission operations for delegation from `AuthFramework`.
+/// all role and permission operations for delegation from `Cinaauth`.
 ///
 /// # Example
 /// ```rust,ignore
-/// use auth_framework::auth_modular::AuthorizationManager;
+/// use cinaauth::auth_modular::AuthorizationManager;
 /// let am = AuthorizationManager::new(checker.clone(), storage.clone());
 /// am.create_default_roles().await;
 /// ```
@@ -173,7 +173,7 @@ impl AuthorizationManager {
     ///
     /// # Example
     /// ```rust,ignore
-    /// use auth_framework::permissions::Role;
+    /// use cinaauth::permissions::Role;
     /// am.create_role(Role::new("editor")).await?;
     /// ```
     pub async fn create_role(&self, role: Role) -> Result<()> {
@@ -229,7 +229,7 @@ impl AuthorizationManager {
     ///
     /// # Example
     /// ```rust,ignore
-    /// use auth_framework::permissions::Permission;
+    /// use cinaauth::permissions::Permission;
     /// am.add_role_permission("editor", Permission::new("write", "posts")).await?;
     /// ```
     pub async fn add_role_permission(&self, role_name: &str, permission: Permission) -> Result<()> {

@@ -26,7 +26,7 @@ pub struct PasetoConfig {
 impl Default for PasetoConfig {
     fn default() -> Self {
         Self {
-            issuer: "auth-framework".to_string(),
+            issuer: "cinaauth".to_string(),
             token_lifetime: Duration::from_secs(3600),
             audience: None,
             footer: None,
@@ -207,7 +207,7 @@ mod tests {
         assert!(token.starts_with("v4.local."));
         let decoded = mgr.validate_token(&token).unwrap();
         assert_eq!(decoded.subject, "user-42");
-        assert_eq!(decoded.issuer, "auth-framework");
+        assert_eq!(decoded.issuer, "cinaauth");
         assert!(decoded.token_id.is_some());
     }
 
@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = PasetoConfig::default();
-        assert_eq!(config.issuer, "auth-framework");
+        assert_eq!(config.issuer, "cinaauth");
         assert_eq!(config.token_lifetime, Duration::from_secs(3600));
         assert!(config.audience.is_none());
         assert!(config.footer.is_none());

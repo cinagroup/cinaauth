@@ -4,7 +4,7 @@
 
 ### ⚠️ **Critical Security Requirement**
 
-The AuthFramework requires a cryptographically secure JWT secret to function. **No default secret is provided** to prevent accidental security vulnerabilities.
+The Cinaauth requires a cryptographically secure JWT secret to function. **No default secret is provided** to prevent accidental security vulnerabilities.
 
 ### 🚨 **Why No Default Secret?**
 

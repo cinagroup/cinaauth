@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: auth-framework-config
-  namespace: auth-framework
+  name: cinaauth-config
+  namespace: cinaauth
   labels:
-    app.kubernetes.io/name: auth-framework
+    app.kubernetes.io/name: cinaauth
 data:
   # Server
-  RUST_LOG: "auth_framework=info,warn"
+  RUST_LOG: "cinaauth=info,warn"
   PORT: "8080"
   HEALTH_PORT: "8080"
 

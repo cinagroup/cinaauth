@@ -1,7 +1,7 @@
 #![deny(clippy::unwrap_used)]
 
 /*!
-# Auth Framework
+# cinaauth
 
 A comprehensive authentication and authorization framework for Rust applications.
 
@@ -11,8 +11,8 @@ a focus on distributed systems.
 
 ## API Orientation
 
-- Use [`AuthFramework`] as the default entry point for most applications.
-- Use [`ModularAuthFramework`] only when you explicitly want manager-level
+- Use [`Cinaauth`] as the default entry point for most applications.
+- Use [`ModularCinaauth`] only when you explicitly want manager-level
   composition and lifecycle control.
 - Use [`prelude`] when you want ergonomic imports for application code.
 - Use [`AppConfigBuilder`] for simple application-owned configuration values.
@@ -40,7 +40,7 @@ a focus on distributed systems.
 ## Quick Start
 
 ```rust,no_run
-use auth_framework::prelude::*;
+use cinaauth::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .secret(std::env::var("JWT_SECRET")
             .unwrap_or_else(|_| "replace-with-a-32-char-random-secret!!".to_string()));
 
-    let mut auth = AuthFramework::new(config);
+    let mut auth = Cinaauth::new(config);
     auth.initialize().await?;
 
     // Register a user.
@@ -71,9 +71,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 See [`prelude`] for the full set of re-exported types, and the accessor groups
-[`AuthFramework::users`], [`AuthFramework::sessions`], [`AuthFramework::tokens`],
-[`AuthFramework::authorization`], [`AuthFramework::mfa`], [`AuthFramework::monitoring`],
-[`AuthFramework::audit`], and [`AuthFramework::admin`] for organized entry points
+[`Cinaauth::users`], [`Cinaauth::sessions`], [`Cinaauth::tokens`],
+[`Cinaauth::authorization`], [`Cinaauth::mfa`], [`Cinaauth::monitoring`],
+[`Cinaauth::audit`], and [`Cinaauth::admin`] for organized entry points
 into each capability area.
 
 ## Security Considerations
@@ -85,7 +85,7 @@ into each capability area.
 - Monitor authentication events for suspicious activity
 - Follow the principle of least privilege for permissions
 
-See the [Security Policy](https://github.com/ciresnave/auth-framework/blob/main/SECURITY.md)
+See the [Security Policy](https://github.com/cinagroup/cinaauth/blob/main/SECURITY.md)
 for comprehensive security guidelines.
 */
 
@@ -103,22 +103,22 @@ pub mod admin;
 
 /// Primary authentication framework — start here.
 ///
-/// Contains [`AuthFramework`], the main entry point for most applications.
-/// Access grouped operations via [`AuthFramework::users`], [`AuthFramework::tokens`],
-/// [`AuthFramework::sessions`], etc.
+/// Contains [`Cinaauth`], the main entry point for most applications.
+/// Access grouped operations via [`Cinaauth::users`], [`Cinaauth::tokens`],
+/// [`Cinaauth::sessions`], etc.
 pub mod auth;
 
 /// Advanced component-oriented framework.
 ///
-/// Use [`ModularAuthFramework`](auth_modular::AuthFramework) only when you need
+/// Use [`ModularCinaauth`](auth_modular::Cinaauth) only when you need
 /// direct access to individual manager instances (user, session, MFA) for custom
-/// composition. Most applications should use [`auth::AuthFramework`] instead.
+/// composition. Most applications should use [`auth::Cinaauth`] instead.
 pub mod auth_modular;
 
-/// Grouped operation facades over [`AuthFramework`].
+/// Grouped operation facades over [`Cinaauth`].
 ///
 /// Light reference wrappers (e.g. [`UserOperations`], [`TokenOperations`]) returned
-/// by the accessor methods on `AuthFramework`. Not usually imported directly —
+/// by the accessor methods on `Cinaauth`. Not usually imported directly —
 /// use `auth.users()`, `auth.tokens()`, etc.
 pub mod auth_operations;
 
@@ -255,7 +255,7 @@ pub mod maintenance;
 /// Ergonomic builders and prelude for better developer experience.
 pub mod builders;
 
-/// Convenience re-exports for common types — `use auth_framework::prelude::*`.
+/// Convenience re-exports for common types — `use cinaauth::prelude::*`.
 pub mod prelude;
 
 /// Internal utility functions.
@@ -314,7 +314,7 @@ pub mod integrations {
 
 // Re-exports - Main modular auth framework components
 pub use crate::auth::{
-    AdminOperations, AuditOperations, AuthFramework, AuthResult, AuthStats,
+    AdminOperations, AuditOperations, Cinaauth, AuthResult, AuthStats,
     AuthorizationOperations, MaintenanceOperations, MfaOperations, MonitoringOperations,
     SessionOperations, TokenOperations, UserInfo, UserOperations,
 };
@@ -325,7 +325,7 @@ pub use crate::auth::{
     note = "Use `UserInfo` directly — the `Core` prefix is redundant"
 )]
 pub type CoreUserInfo = UserInfo;
-pub use crate::auth_modular::AuthFramework as ModularAuthFramework;
+pub use crate::auth_modular::Cinaauth as ModularCinaauth;
 pub use crate::maintenance::{
     BackupReport, MaintenanceSnapshot, MigrationFileReport, ResetReport, RestoreReport,
     SnapshotManifest,
@@ -333,7 +333,7 @@ pub use crate::maintenance::{
 pub use authentication::credentials::Credential;
 pub use config::app_config::ConfigBuilder as AppConfigBuilder;
 pub use config::config_manager::{
-    ApiServerSettings, AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder,
+    ApiServerSettings, CinaauthSettings, ConfigBuilder as LayeredConfigBuilder,
     ConfigManager,
 };
 pub use config::{AuthConfig, AuthConfigBuilder, CorsConfig, app_config::AppConfig};
@@ -361,7 +361,7 @@ pub use providers::{
 pub use tokens::AuthToken;
 
 // WS-Security 1.1 and WS-Trust — enterprise XML security protocols.
-// Hidden from root docs; access via `auth_framework::protocols::ws_security` / `ws_trust`.
+// Hidden from root docs; access via `cinaauth::protocols::ws_security` / `ws_trust`.
 #[doc(hidden)]
 pub use protocols::ws_security::{
     UsernameToken, WsSecurityClient, WsSecurityConfig, WsSecurityHeader,
@@ -381,8 +381,8 @@ pub use server::oidc::{
 };
 
 // Phase 2: Logout & Security Ecosystem specifications (advanced OIDC logout protocols).
-// Hidden from root docs; access via `auth_framework::server::oidc::oidc_backchannel_logout`
-// and `auth_framework::server::oidc::oidc_frontchannel_logout`.
+// Hidden from root docs; access via `cinaauth::server::oidc::oidc_backchannel_logout`
+// and `cinaauth::server::oidc::oidc_frontchannel_logout`.
 #[doc(hidden)]
 pub use server::oidc::oidc_backchannel_logout::{
     BackChannelLogoutConfig, BackChannelLogoutManager, BackChannelLogoutRequest,
@@ -417,7 +417,7 @@ pub type ServerClientRegistrationRequest =
 
 // Advanced server modules and RFC implementations.
 // Hidden from top-level docs/autocomplete to avoid cluttering the onboarding path;
-// access via `auth_framework::server::*` for advanced use.
+// access via `cinaauth::server::*` for advanced use.
 #[doc(hidden)]
 pub use server::DpopManager;
 #[doc(hidden)]
@@ -436,7 +436,7 @@ pub use audit::{AuditEvent, AuditEventType, AuditLogger, EventOutcome, RiskLevel
 /// Deprecated alias for `authentication::mfa::MfaManager`. Use `auth_modular` MFA operations instead.
 #[deprecated(
     since = "0.5.0",
-    note = "Use `AuthFramework::mfa()` accessor or `auth_modular::MfaManager` instead"
+    note = "Use `Cinaauth::mfa()` accessor or `auth_modular::MfaManager` instead"
 )]
 pub use authentication::mfa::MfaManager as LegacyMfaManager;
 pub use authentication::mfa::{MfaMethodType, TotpProvider};

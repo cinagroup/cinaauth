@@ -122,7 +122,7 @@ pub struct AuthConfig {
 impl AuthConfig {
     pub fn load() -> Result<Self, ConfigError> {
         let config = ConfigBuilder::new()
-            .add_source(File::with_name("auth-framework"))
+            .add_source(File::with_name("cinaauth"))
             .add_source(Environment::with_prefix("AUTH"))
             .add_source(CommandLine::new())
             .build()?;
@@ -169,5 +169,5 @@ pub struct SecurityConfig {
 ---
 
 **Decision Date**: 2025-08-17
-**Decision Maker(s)**: AuthFramework Development Team
+**Decision Maker(s)**: Cinaauth Development Team
 **Review Date**: 2026-02-17

@@ -10,9 +10,9 @@
 
 #![cfg(feature = "postgres-storage")]
 
-use auth_framework::storage::postgres::PostgresStorage;
-use auth_framework::storage::{AuthStorage, SessionData};
-use auth_framework::tokens::AuthToken;
+use cinaauth::storage::postgres::PostgresStorage;
+use cinaauth::storage::{AuthStorage, SessionData};
+use cinaauth::tokens::AuthToken;
 use sqlx::PgPool;
 use std::time::Duration;
 

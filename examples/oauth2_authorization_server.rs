@@ -1,9 +1,9 @@
 //! Simple OAuth 2.0 Server Configuration Example
 //!
 //! This example demonstrates basic OAuth 2.0 server configuration
-//! using working components of the Auth Framework.
+//! using working components of the cinaauth.
 
-use auth_framework::oauth2_server::{GrantType, OAuth2Config, ResponseType};
+use cinaauth::oauth2_server::{GrantType, OAuth2Config, ResponseType};
 use std::time::Duration;
 
 #[tokio::main]

@@ -1,23 +1,23 @@
 //! Performance and Observability Integration Example
 //!
-//! This example demonstrates the comprehensive improvements made to AuthFramework
+//! This example demonstrates the comprehensive improvements made to Cinaauth
 //! including unified storage optimization, enhanced observability, and architecture
 //! enhancements for production-ready enterprise authentication systems.
 
-use auth_framework::{
-    AuthConfig, AuthFramework, Result,
+use cinaauth::{
+    AuthConfig, Cinaauth, Result,
     methods::{AuthMethodEnum, JwtMethod},
     storage::AuthStorage,
 };
 
 #[cfg(feature = "performance-optimization")]
-use auth_framework::storage::{UnifiedStorage, UnifiedStorageConfig};
+use cinaauth::storage::{UnifiedStorage, UnifiedStorageConfig};
 
 #[cfg(feature = "enhanced-observability")]
-use auth_framework::observability::{ObservabilityConfig, ObservabilityManager};
+use cinaauth::observability::{ObservabilityConfig, ObservabilityManager};
 
 #[cfg(feature = "event-sourcing")]
-use auth_framework::architecture::{
+use cinaauth::architecture::{
     EventSourcingManager, TieredStorageConfig, TieredStorageManager,
 };
 
@@ -26,7 +26,7 @@ use tokio::time::{Instant, sleep};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🚀 AuthFramework Performance & Observability Demo");
+    println!("🚀 Cinaauth Performance & Observability Demo");
     println!("================================================\n");
 
     // 1. Performance Optimization Demo
@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
     demo_integrated_performance().await?;
 
     println!("\n✅ Demo completed successfully!");
-    println!("🎯 AuthFramework is now optimized for enterprise production workloads");
+    println!("🎯 Cinaauth is now optimized for enterprise production workloads");
 
     Ok(())
 }
@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
 /// Demonstrate unified storage performance optimizations
 #[cfg(feature = "performance-optimization")]
 async fn demo_unified_storage() -> Result<()> {
-    use auth_framework::tokens::AuthToken;
+    use cinaauth::tokens::AuthToken;
     use chrono::Utc;
 
     println!("  • Creating high-performance unified storage...");
@@ -127,7 +127,7 @@ async fn demo_unified_storage() -> Result<()> {
 /// Demonstrate enhanced observability features
 #[cfg(feature = "enhanced-observability")]
 async fn demo_observability() -> Result<()> {
-    use auth_framework::observability::{EventSeverity, SecurityEvent, SecurityEventType};
+    use cinaauth::observability::{EventSeverity, SecurityEvent, SecurityEventType};
     use std::collections::HashMap;
     use std::time::SystemTime;
 
@@ -204,8 +204,8 @@ async fn demo_observability() -> Result<()> {
 /// Demonstrate architecture enhancement features
 #[cfg(feature = "event-sourcing")]
 async fn demo_architecture_enhancements() -> Result<()> {
-    use auth_framework::architecture::DomainEvent;
-    use auth_framework::storage::memory::InMemoryStorage;
+    use cinaauth::architecture::DomainEvent;
+    use cinaauth::storage::memory::InMemoryStorage;
     use std::collections::HashMap;
     use std::time::SystemTime;
     use uuid::Uuid;
@@ -289,14 +289,14 @@ async fn demo_architecture_enhancements() -> Result<()> {
 
 /// Demonstrate integrated performance with all optimizations
 async fn demo_integrated_performance() -> Result<()> {
-    println!("  • Creating optimized AuthFramework instance...");
+    println!("  • Creating optimized Cinaauth instance...");
 
-    // Configure AuthFramework with all optimizations
+    // Configure Cinaauth with all optimizations
     let config = AuthConfig::new()
         .token_lifetime(Duration::from_secs(3600))
         .refresh_token_lifetime(Duration::from_secs(86400 * 7));
 
-    let mut auth = AuthFramework::new(config);
+    let mut auth = Cinaauth::new(config);
 
     // Register JWT method
     let jwt_method = JwtMethod::new()

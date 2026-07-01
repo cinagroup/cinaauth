@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: auth-framework
+  name: cinaauth
   labels:
-    app.kubernetes.io/name: auth-framework
+    app.kubernetes.io/name: cinaauth
     app.kubernetes.io/managed-by: kubectl

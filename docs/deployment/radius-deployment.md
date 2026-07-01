@@ -1,13 +1,13 @@
 # RADIUS Deployment Guide
 
-This guide covers deploying AuthFramework with RADIUS authentication, supporting integration with FreeRADIUS, Microsoft NPS, and other RADIUS servers.
+This guide covers deploying Cinaauth with RADIUS authentication, supporting integration with FreeRADIUS, Microsoft NPS, and other RADIUS servers.
 
 ## Prerequisites
 
 - A RADIUS server (FreeRADIUS, Microsoft NPS, Cisco ISE, etc.)
 - Network connectivity to the RADIUS server (default UDP 1812 for auth, 1813 for accounting)
-- A shared secret configured on both the RADIUS server and AuthFramework
-- The AuthFramework host registered as a RADIUS client (NAS) on the server
+- A shared secret configured on both the RADIUS server and Cinaauth
+- The Cinaauth host registered as a RADIUS client (NAS) on the server
 
 ## Configuration
 
@@ -19,7 +19,7 @@ This guide covers deploying AuthFramework with RADIUS authentication, supporting
 | `shared_secret`   | `String`         | —                | Shared secret (minimum 16 bytes recommended)    |
 | `timeout`         | `Duration`       | 5 seconds        | Per-request timeout                             |
 | `retries`         | `u32`            | `3`              | Number of retry attempts on timeout             |
-| `nas_identifier`  | `String`         | `auth-framework` | NAS-Identifier sent to the RADIUS server        |
+| `nas_identifier`  | `String`         | `cinaauth` | NAS-Identifier sent to the RADIUS server        |
 | `accounting_addr` | `Option<String>` | `None`           | Accounting server address (typically port 1813) |
 
 ### Example Configuration
@@ -27,7 +27,7 @@ This guide covers deploying AuthFramework with RADIUS authentication, supporting
 Preferred — use the convenience constructor:
 
 ```rust
-use auth_framework::protocols::radius::{RadiusConfig, RadiusClient};
+use cinaauth::protocols::radius::{RadiusConfig, RadiusClient};
 
 // Minimal — uses default timeout (5s) and retries (3)
 let config = RadiusConfig::with_server(
@@ -50,7 +50,7 @@ let client = RadiusClient::new(config)?;
 Manual struct construction is still supported:
 
 ```rust
-use auth_framework::protocols::radius::{RadiusConfig, RadiusClient};
+use cinaauth::protocols::radius::{RadiusConfig, RadiusClient};
 use std::time::Duration;
 
 let config = RadiusConfig {
@@ -58,7 +58,7 @@ let config = RadiusConfig {
     shared_secret: "your-strong-shared-secret-here".to_string(),
     timeout: Duration::from_secs(5),
     retries: 3,
-    nas_identifier: "auth-framework-prod".to_string(),
+    nas_identifier: "cinaauth-prod".to_string(),
     accounting_addr: Some("radius.example.com:1813".to_string()),
 };
 
@@ -67,12 +67,12 @@ let client = RadiusClient::new(config)?;
 
 ## FreeRADIUS Setup
 
-### 1. Register AuthFramework as a Client
+### 1. Register Cinaauth as a Client
 
 Add to `/etc/freeradius/clients.conf`:
 
 ```
-client auth-framework {
+client cinaauth {
     ipaddr = 10.0.1.50
     secret = your-strong-shared-secret-here
     shortname = authframework
@@ -104,14 +104,14 @@ radtest testuser testpass radius.example.com 0 your-strong-shared-secret-here
 
 ## Microsoft NPS Setup
 
-### 1. Add AuthFramework as a RADIUS Client
+### 1. Add Cinaauth as a RADIUS Client
 
 1. Open **Network Policy Server** console
 2. Navigate to **RADIUS Clients and Servers → RADIUS Clients**
 3. Right-click → **New**
 4. Set:
-   - Friendly name: `AuthFramework`
-   - Address: IP or FQDN of the AuthFramework host
+   - Friendly name: `Cinaauth`
+   - Address: IP or FQDN of the Cinaauth host
    - Shared Secret: Match the `shared_secret` in `RadiusConfig`
 
 ### 2. Create a Network Policy
@@ -172,7 +172,7 @@ client.send_accounting_stop("username", "session-123", session_duration, bytes_i
 - **Network Security**: RADIUS uses MD5-based authentication which is not encrypted in transit. Use IPsec, a VPN tunnel, or RadSec (RADIUS over TLS) for connections traversing untrusted networks.
 - **Timeout Tuning**: Set `timeout` high enough to accommodate RADIUS server latency and any backend lookups (LDAP, SQL) the server performs.
 - **Retry Limiting**: The default 3 retries prevents indefinite hangs. Adjust based on network reliability.
-- **NAS-Identifier**: Set a meaningful `nas_identifier` to distinguish AuthFramework traffic in RADIUS server logs and policies.
+- **NAS-Identifier**: Set a meaningful `nas_identifier` to distinguish Cinaauth traffic in RADIUS server logs and policies.
 
 ## Troubleshooting
 

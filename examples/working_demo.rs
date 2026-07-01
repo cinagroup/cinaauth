@@ -2,15 +2,15 @@
 //!
 //! This example demonstrates the successfully implemented optimizations.
 
-use auth_framework::Result;
+use cinaauth::Result;
 
 #[cfg(feature = "performance-optimization")]
-use auth_framework::storage::AuthStorage;
+use cinaauth::storage::AuthStorage;
 #[cfg(feature = "performance-optimization")]
-use auth_framework::storage::unified::UnifiedStorage;
+use cinaauth::storage::unified::UnifiedStorage;
 
 #[cfg(feature = "enhanced-observability")]
-use auth_framework::observability::ObservabilityManager;
+use cinaauth::observability::ObservabilityManager;
 
 #[cfg(any(
     feature = "performance-optimization",
@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🚀 AuthFramework Performance Demo");
+    println!("🚀 Cinaauth Performance Demo");
     println!("==================================");
 
     // Test unified storage performance

@@ -28,7 +28,7 @@ pub struct CredentialCheckResult {
 ///
 /// # Example
 /// ```rust,ignore
-/// use auth_framework::auth_modular::UserManager;
+/// use cinaauth::auth_modular::UserManager;
 /// let um = UserManager::new(storage.clone());
 /// let uid = um.register_user("alice", "alice@example.com", "Str0ng!Pass").await?;
 /// ```
@@ -358,7 +358,7 @@ impl UserManager {
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // Full user lifecycle management (migrated from auth.rs::AuthFramework)
+    // Full user lifecycle management (migrated from auth.rs::Cinaauth)
     // ────────────────────────────────────────────────────────────────────────
 
     /// Register a new user, creating all required storage records.

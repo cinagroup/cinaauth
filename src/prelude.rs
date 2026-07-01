@@ -1,11 +1,11 @@
-//! Auth Framework Prelude
+//! cinaauth Prelude
 //!
 //! This module provides a convenient way to import the most commonly used types
 //! and traits from the auth framework. Instead of importing individual types,
 //! you can simply use:
 //!
 //! ```rust
-//! use auth_framework::prelude::*;
+//! use cinaauth::prelude::*;
 //! ```
 //!
 //! This imports all the essential types you need to get started with authentication
@@ -13,11 +13,11 @@
 //!
 //! # Recommended Entry Points
 //!
-//! - Use [`AuthFramework`] for the normal library entry point.
-//! - Use [`ModularAuthFramework`] only when you need direct access to the
+//! - Use [`Cinaauth`] for the normal library entry point.
+//! - Use [`ModularCinaauth`] only when you need direct access to the
 //!   component managers from `auth_modular`.
-//! - Use [`AuthFramework::users`], [`AuthFramework::sessions`],
-//!   [`AuthFramework::tokens`], and [`AuthFramework::authorization`] when you
+//! - Use [`Cinaauth::users`], [`Cinaauth::sessions`],
+//!   [`Cinaauth::tokens`], and [`Cinaauth::authorization`] when you
 //!   want grouped operations instead of the full façade.
 //! - Use [`AppConfigBuilder`] for simple app-defined configuration.
 //! - Use [`LayeredConfigBuilder`] and [`ConfigManager`] for layered config
@@ -28,10 +28,10 @@
 //! # What's Included
 //!
 //! ## Core Framework Types
-//! - [`AuthFramework`] - Main authentication framework
+//! - [`Cinaauth`] - Main authentication framework
 //! - [`AuthConfig`] - Configuration builder
 //! - [`AuthError`] - Error type with detailed error variants
-//! - [`AuthFrameworkResult`] - Convenient Result type alias
+//! - [`CinaauthResult`] - Convenient Result type alias
 //!
 //! ## Authentication Methods
 //! - [`JwtMethod`] - JWT authentication
@@ -79,12 +79,12 @@
 //! # Quick Start Example
 //!
 //! ```rust,no_run
-//! use auth_framework::prelude::*;
+//! use cinaauth::prelude::*;
 //!
 //! #[tokio::main]
-//! async fn main() -> AuthFrameworkResult<()> {
+//! async fn main() -> CinaauthResult<()> {
 //!     // Create auth framework with sensible defaults
-//!     let auth = AuthFramework::quick_start()
+//!     let auth = Cinaauth::quick_start()
 //!         .jwt_auth_from_env()
 //!         .with_postgres_from_env()
 //!         .build().await?;
@@ -107,8 +107,8 @@
 //! ```
 
 // Re-export core framework types
-pub use crate::AuthFramework;
-pub use crate::ModularAuthFramework;
+pub use crate::Cinaauth;
+pub use crate::ModularCinaauth;
 pub use crate::auth::{
     AdminOperations, AuditOperations, AuthStats, AuthorizationOperations, MfaOperations,
     MonitoringOperations, SessionOperations, TokenOperations, UserInfo, UserOperations,
@@ -123,7 +123,7 @@ pub use crate::auth_operations::{
 // Re-export configuration types
 pub use crate::config::app_config::{AppConfig, ConfigBuilder as AppConfigBuilder};
 pub use crate::config::config_manager::{
-    ApiServerSettings, AuthFrameworkSettings, ConfigBuilder as LayeredConfigBuilder,
+    ApiServerSettings, CinaauthSettings, ConfigBuilder as LayeredConfigBuilder,
     ConfigManager,
 };
 pub use crate::config::{
@@ -319,13 +319,13 @@ pub use time::{days, hours, minutes, seconds, weeks};
 
 // Common type aliases for ergonomics
 /// Convenience alias for `Result<T, AuthError>`.
-pub type AuthFrameworkResult<T> = Result<T, AuthError>;
+pub type CinaauthResult<T> = Result<T, AuthError>;
 
-/// A boxed, `Send`-safe async future returning `AuthFrameworkResult<()>`.
+/// A boxed, `Send`-safe async future returning `CinaauthResult<()>`.
 ///
 /// Useful for storing async handler callbacks in collections.
 pub type AsyncAuthHandler =
-    std::pin::Pin<Box<dyn std::future::Future<Output = AuthFrameworkResult<()>> + Send>>;
+    std::pin::Pin<Box<dyn std::future::Future<Output = CinaauthResult<()>> + Send>>;
 
 // Import security presets from the security module
 pub use crate::security::SecurityPreset; // Performance presets for optimization

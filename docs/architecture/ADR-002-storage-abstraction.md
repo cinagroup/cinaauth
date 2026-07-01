@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The AuthFramework needs to support multiple storage backends for different deployment scenarios:
+The Cinaauth needs to support multiple storage backends for different deployment scenarios:
 
 - **Development**: In-memory storage for testing and prototyping
 - **Production**: Redis for high-performance caching and session storage
@@ -116,5 +116,5 @@ Key components:
 ---
 
 **Decision Date**: 2025-08-17
-**Decision Maker(s)**: AuthFramework Development Team
+**Decision Maker(s)**: Cinaauth Development Team
 **Review Date**: 2026-02-17

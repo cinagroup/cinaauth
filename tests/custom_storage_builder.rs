@@ -1,5 +1,5 @@
-use auth_framework::prelude::*;
-use auth_framework::storage::MemoryStorage;
+use cinaauth::prelude::*;
+use cinaauth::storage::MemoryStorage;
 use std::sync::Arc;
 
 #[tokio::test]
@@ -12,7 +12,7 @@ async fn build_with_custom_storage() {
     // Create an in-memory storage and pass it via the builder
     let storage = Arc::new(MemoryStorage::new());
 
-    let framework = AuthFramework::builder()
+    let framework = Cinaauth::builder()
         .customize(|c| {
             c.secret = Some("Xk9mQ3pL7vN2wA5rB8jH4cY6dF0eG1tZ".to_string());
             c

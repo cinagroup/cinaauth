@@ -3,7 +3,7 @@
 //! These tests exercise configuration, IP checking, and feed status
 //! without making real network requests.
 
-use auth_framework::threat_intelligence::{
+use cinaauth::threat_intelligence::{
     FeedConfig, FeedFormat, FeedType, ThreatFeedManager, ThreatIntelConfig,
 };
 use std::collections::HashMap;
@@ -285,11 +285,11 @@ async fn feed_status_reports_disabled_and_active() {
 
     assert!(matches!(
         statuses.get("off"),
-        Some(auth_framework::threat_intelligence::FeedStatus::Disabled)
+        Some(cinaauth::threat_intelligence::FeedStatus::Disabled)
     ));
     assert!(matches!(
         statuses.get("active_feed"),
-        Some(auth_framework::threat_intelligence::FeedStatus::Active { .. })
+        Some(cinaauth::threat_intelligence::FeedStatus::Active { .. })
     ));
 }
 
@@ -317,7 +317,7 @@ async fn feed_status_reports_not_downloaded() {
 
     assert!(matches!(
         statuses.get("pending"),
-        Some(auth_framework::threat_intelligence::FeedStatus::NotDownloaded)
+        Some(cinaauth::threat_intelligence::FeedStatus::NotDownloaded)
     ));
 }
 

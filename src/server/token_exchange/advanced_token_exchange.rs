@@ -35,8 +35,8 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::token_exchange::advanced_token_exchange::*;
-//! use auth_framework::server::SessionManager;
+//! use cinaauth::server::token_exchange::advanced_token_exchange::*;
+//! use cinaauth::server::SessionManager;
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {

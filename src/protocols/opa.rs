@@ -149,8 +149,8 @@ impl OpaClient {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use auth_framework::protocols::opa::*;
-    /// # async fn example() -> auth_framework::errors::Result<()> {
+    /// # use cinaauth::protocols::opa::*;
+    /// # async fn example() -> cinaauth::errors::Result<()> {
     /// let client = OpaClient::new(OpaConfig::default())?;
     /// let input = serde_json::json!({
     ///     "user": "alice",

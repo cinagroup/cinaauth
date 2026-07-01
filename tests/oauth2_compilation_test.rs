@@ -6,7 +6,7 @@
 #[tokio::test]
 async fn test_oauth2_module_compilation() {
     // Test that we can create the basic types without errors
-    use auth_framework::api::oauth2::{AuthorizeRequest, RevokeRequest, TokenRequest};
+    use cinaauth::api::oauth2::{AuthorizeRequest, RevokeRequest, TokenRequest};
 
     // Create sample structs to verify they compile
     let _auth_req = AuthorizeRequest {

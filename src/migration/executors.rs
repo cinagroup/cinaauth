@@ -78,12 +78,12 @@ pub async fn execute_migration_plan(
 ///
 /// ```rust,no_run
 /// use role_system::{AsyncRoleSystem, MemoryStorage, RoleSystem, RoleSystemConfig};
-/// use auth_framework::migration::executors::execute_migration_plan_with_role_system;
+/// use cinaauth::migration::executors::execute_migration_plan_with_role_system;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let plan: auth_framework::migration::MigrationPlan = unimplemented!();
-/// # let config: auth_framework::migration::MigrationConfig = unimplemented!();
+/// # let plan: cinaauth::migration::MigrationPlan = unimplemented!();
+/// # let config: cinaauth::migration::MigrationConfig = unimplemented!();
 /// let rs = AsyncRoleSystem::new(
 ///     RoleSystem::with_storage(MemoryStorage::new(), RoleSystemConfig::default())
 /// );

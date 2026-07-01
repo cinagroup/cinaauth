@@ -30,8 +30,8 @@
 //! ## Example Usage
 //!
 //! ```rust,no_run
-//! use auth_framework::server::token_exchange::{TokenExchangeManager, TokenExchangeRequest};
-//! use auth_framework::{SecureJwtValidator, SecureJwtConfig};
+//! use cinaauth::server::token_exchange::{TokenExchangeManager, TokenExchangeRequest};
+//! use cinaauth::{SecureJwtValidator, SecureJwtConfig};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Default generates a cryptographically random per-instance secret.
@@ -208,7 +208,7 @@ impl TokenExchangePolicy {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::server::token_exchange::TokenExchangePolicy;
+    /// use cinaauth::server::token_exchange::TokenExchangePolicy;
     ///
     /// let policy = TokenExchangePolicy::builder()
     ///     .max_token_lifetime(chrono::Duration::minutes(30))

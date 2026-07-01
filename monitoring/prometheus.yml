@@ -1,4 +1,4 @@
-# Prometheus configuration for AuthFramework monitoring
+# Prometheus configuration for cinaauth monitoring
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -13,8 +13,8 @@ alerting:
             - alertmanager:9093
 
 scrape_configs:
-  # AuthFramework application metrics
-  - job_name: "auth-framework"
+  # cinaauth application metrics
+  - job_name: "cinaauth"
     static_configs:
       - targets: ["auth-server:8080"]
     metrics_path: "/metrics"

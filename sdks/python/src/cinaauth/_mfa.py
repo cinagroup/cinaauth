@@ -1,6 +1,6 @@
-"""Multi-factor authentication service for AuthFramework.
+"""Multi-factor authentication service for cinaauth.
 
-Copyright (c) 2025 AuthFramework. All rights reserved.
+Copyright (c) 2025 cinaauth. All rights reserved.
 """
 
 from __future__ import annotations
@@ -206,7 +206,7 @@ class MFAService:
 
         """
         raise NotImplementedError(
-            "The current AuthFramework REST API does not expose a GET /mfa/backup-codes "
+            "The current cinaauth REST API does not expose a GET /mfa/backup-codes "
             "endpoint. Use regenerate_backup_codes() to issue a fresh set of backup codes."
         )
 

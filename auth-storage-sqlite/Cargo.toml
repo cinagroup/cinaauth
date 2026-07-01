@@ -1,11 +1,11 @@
 [package]
     edition = "2021"
-    name    = "auth-storage-sqlite"
+    name    = "cinaauth-storage-sqlite"
     version = "0.1.0"
 
 [dependencies]
     async-trait    = "0.1.86"
-    auth-framework = { path = "../" }
+    cinaauth       = { path = "../" }
     chrono         = { version = "0.4.38", features = ["serde"] }
     serde          = { version = "1", features = ["derive"] }
     serde_json     = "1"

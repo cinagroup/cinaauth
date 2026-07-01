@@ -3,19 +3,19 @@
 //! Provides a trait for querying the total number of active sessions across all
 //! instances in a distributed deployment.  A no-op [`LocalOnlySessionStore`] is
 //! provided for single-node use; it always reports zero total sessions, which
-//! causes `AuthFramework`'s remote-session estimate logic to return `0`
+//! causes `Cinaauth`'s remote-session estimate logic to return `0`
 //! instead of an incorrect `local_count * 2` estimate.
 //!
 //! # Production integration
 //!
 //! To use Redis (or any key–value store) as the distributed session backend,
 //! implement this trait and inject it via
-//! [`AuthFramework::set_distributed_store`][crate::auth::AuthFramework]:
+//! [`Cinaauth::set_distributed_store`][crate::auth::Cinaauth]:
 //!
 //! ```rust,no_run
 //! use std::sync::Arc;
-//! use auth_framework::distributed::DistributedSessionStore;
-//! use auth_framework::errors::Result;
+//! use cinaauth::distributed::DistributedSessionStore;
+//! use cinaauth::errors::Result;
 //! use async_trait::async_trait;
 //!
 //! // Example: wrap your chosen backend (e.g., a Redis client) in this struct.
@@ -31,8 +31,8 @@
 //!     }
 //! }
 //!
-//! # async fn example() -> auth_framework::errors::Result<()> {
-//! let mut framework = auth_framework::AuthFramework::builder().build().await?;
+//! # async fn example() -> cinaauth::errors::Result<()> {
+//! let mut framework = cinaauth::Cinaauth::builder().build().await?;
 //! framework.set_distributed_store(Arc::new(MySessionStore {}));
 //! # Ok(())
 //! # }

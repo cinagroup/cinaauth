@@ -2,15 +2,15 @@
 //!
 //! Covers MonitoringManager, HealthChecker, Collectors, Exporters, and AlertManager.
 
-use auth_framework::monitoring::alerts::{
+use cinaauth::monitoring::alerts::{
     AlertConfig, AlertManager, AlertThresholds, NotificationChannel,
 };
-use auth_framework::monitoring::collectors::{
+use cinaauth::monitoring::collectors::{
     AuthMetricsCollector, SessionMetricsCollector, TokenMetricsCollector,
 };
-use auth_framework::monitoring::exporters::{DataDogExporter, GrafanaExporter, PrometheusExporter};
-use auth_framework::monitoring::health::{HealthCheckConfig, HealthChecker};
-use auth_framework::monitoring::{
+use cinaauth::monitoring::exporters::{DataDogExporter, GrafanaExporter, PrometheusExporter};
+use cinaauth::monitoring::health::{HealthCheckConfig, HealthChecker};
+use cinaauth::monitoring::{
     HealthStatus, MonitoringConfig, MonitoringManager, SecurityEvent, SecurityEventSeverity,
     SecurityEventType,
 };
@@ -228,7 +228,7 @@ async fn test_health_check_disabled() {
         .expect("should contain 'monitoring' key");
     assert!(matches!(
         monitoring.status,
-        auth_framework::monitoring::HealthStatus::Healthy
+        cinaauth::monitoring::HealthStatus::Healthy
     ));
     assert!(monitoring.message.contains("disabled"));
 }
@@ -431,7 +431,7 @@ async fn test_grafana_exporter_structure() {
 
     let output = exporter.export(metrics).await;
 
-    assert_eq!(output["dashboard"], "auth-framework");
+    assert_eq!(output["dashboard"], "cinaauth");
     assert!(output["metrics"]["cpu_usage"].as_f64().is_some());
     assert!(output["timestamp"].as_i64().is_some());
 }
@@ -447,7 +447,7 @@ async fn test_datadog_exporter_series() {
     assert_eq!(output.len(), 1);
     assert_eq!(output[0]["metric"], "auth_latency");
     assert_eq!(output[0]["type"], "gauge");
-    assert_eq!(output[0]["host"], "auth-framework");
+    assert_eq!(output[0]["host"], "cinaauth");
 
     let points = output[0]["points"].as_array().unwrap();
     assert_eq!(points.len(), 1);

@@ -2,19 +2,19 @@
 //!
 //! Comprehensive tests for the Device Authorization endpoint
 
-use auth_framework::server::oauth::device::{
+use cinaauth::server::oauth::device::{
     DeviceAuthManager, DeviceAuthorizationRequest, DeviceAuthorizationStatus,
 };
-use auth_framework::{AuthConfig, AuthFramework};
+use cinaauth::{AuthConfig, Cinaauth};
 use std::sync::Arc;
 
-/// Helper to create a test AuthFramework instance
-async fn create_test_framework() -> Arc<AuthFramework> {
-    let _env = auth_framework::testing::test_infrastructure::TestEnvironmentGuard::new()
+/// Helper to create a test Cinaauth instance
+async fn create_test_framework() -> Arc<Cinaauth> {
+    let _env = cinaauth::testing::test_infrastructure::TestEnvironmentGuard::new()
         .with_jwt_secret("test_secret_key_for_device_tests_1234567890");
 
     let config = AuthConfig::default();
-    let mut auth = AuthFramework::new(config);
+    let mut auth = Cinaauth::new(config);
     auth.initialize().await.unwrap();
     Arc::new(auth)
 }

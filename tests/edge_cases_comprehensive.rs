@@ -1,8 +1,8 @@
-use auth_framework::auth::AuthFramework;
-use auth_framework::authentication::credentials::Credential;
-use auth_framework::config::AuthConfig;
-use auth_framework::testing::test_infrastructure::TestEnvironmentGuard;
-use auth_framework::tokens::AuthToken;
+use cinaauth::auth::Cinaauth;
+use cinaauth::authentication::credentials::Credential;
+use cinaauth::config::AuthConfig;
+use cinaauth::testing::test_infrastructure::TestEnvironmentGuard;
+use cinaauth::tokens::AuthToken;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -13,7 +13,7 @@ async fn test_extreme_input_sizes() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test various extreme input sizes
@@ -64,7 +64,7 @@ async fn test_special_character_handling() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test various special characters and encodings
@@ -116,7 +116,7 @@ async fn test_session_expiration_edge_cases() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test various expiration edge cases
@@ -182,7 +182,7 @@ async fn test_token_validation_edge_cases() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test various token edge cases
@@ -248,7 +248,7 @@ async fn test_concurrent_data_races() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -316,7 +316,7 @@ async fn test_memory_cleanup_edge_cases() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -375,7 +375,7 @@ async fn test_framework_reinitialization() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
 
     // Initialize framework
     framework.initialize().await.unwrap();
@@ -417,7 +417,7 @@ async fn test_boundary_value_analysis() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test boundary values for various parameters
@@ -489,7 +489,7 @@ async fn test_error_propagation_consistency() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test that similar errors are handled consistently

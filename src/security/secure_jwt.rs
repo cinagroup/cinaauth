@@ -55,7 +55,7 @@ impl Default for SecureJwtConfig {
         let rng = SystemRandom::new();
         let mut bytes = [0u8; 32];
         rng.fill(&mut bytes)
-            .expect("AuthFramework fatal: system CSPRNG unavailable â€” the operating system cannot provide cryptographic randomness");
+            .expect("cinaauth fatal: system CSPRNG unavailable â€” the operating system cannot provide cryptographic randomness");
         let jwt_secret = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
             s.push_str(&format!("{b:02x}"));
             s
@@ -67,7 +67,7 @@ impl Default for SecureJwtConfig {
         allowed_token_types.insert("JARM".to_string());
 
         let mut required_issuers = HashSet::new();
-        required_issuers.insert("auth-framework".to_string());
+        required_issuers.insert("cinaauth".to_string());
 
         Self {
             // Only advertise algorithms for which key material is actually present.
@@ -701,7 +701,7 @@ mod tests {
         let now = chrono::Utc::now().timestamp();
         SecureJwtClaims {
             sub: "user123".to_string(),
-            iss: "auth-framework".to_string(),
+            iss: "cinaauth".to_string(),
             aud: "test".to_string(),
             exp: now + 600,
             nbf: now - 10,
@@ -749,7 +749,7 @@ mod tests {
         let validator = SecureJwtValidator::new(config).unwrap();
         let result = validator.validate(&token).unwrap();
         assert_eq!(result.sub, "user123");
-        assert_eq!(result.iss, "auth-framework");
+        assert_eq!(result.iss, "cinaauth");
     }
 
     #[test]

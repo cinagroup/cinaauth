@@ -27,7 +27,7 @@
 
 ```mermaid
 classDiagram
-    class core_AuthFramework
+    class core_Cinaauth
     class config_AuthConfig
     class tokens_TokenManager
     class storage_AuthStorage
@@ -47,21 +47,21 @@ classDiagram
     class tokenex_TokenExchangeManager
     class methods_AuthMethodEnum
 
-    core_AuthFramework ..> config_AuthConfig
-    core_AuthFramework ..> tokens_TokenManager
-    core_AuthFramework ..> storage_AuthStorage
-    core_AuthFramework ..> oauth2_OAuth2Server
-    core_AuthFramework ..> authz_AuthorizationService
-    core_AuthFramework ..> session_SessionManager
-    core_AuthFramework ..> security_SecureSessionManager
-    core_AuthFramework ..> audit_AuditLogger
-    core_AuthFramework ..> security_SecurityManager
-    core_AuthFramework ..> permissions_PermissionChecker
-    core_AuthFramework ..> distributed_RateLimiter
-    core_AuthFramework ..> server_ServerOAuth2Server
+    core_Cinaauth ..> config_AuthConfig
+    core_Cinaauth ..> tokens_TokenManager
+    core_Cinaauth ..> storage_AuthStorage
+    core_Cinaauth ..> oauth2_OAuth2Server
+    core_Cinaauth ..> authz_AuthorizationService
+    core_Cinaauth ..> session_SessionManager
+    core_Cinaauth ..> security_SecureSessionManager
+    core_Cinaauth ..> audit_AuditLogger
+    core_Cinaauth ..> security_SecurityManager
+    core_Cinaauth ..> permissions_PermissionChecker
+    core_Cinaauth ..> distributed_RateLimiter
+    core_Cinaauth ..> server_ServerOAuth2Server
 
     api_ApiServer ..> api_ApiState
-    api_ApiState ..> core_AuthFramework
+    api_ApiState ..> core_Cinaauth
     api_ApiState ..> audit_AuditLogger
 
     server_ServerOAuth2Server ..> server_ClientRegistry
@@ -106,5 +106,5 @@ classDiagram
 | 19  | [19-distributed](19-distributed.md)                       | `src/distributed/` — distributed rate limiter   |
 | 20  | [20-api-layer](20-api-layer.md)                           | `src/api/` — HTTP request/response DTOs         |
 | 21  | [21-admin](21-admin.md)                                   | `src/bin/` — admin server binary types          |
-| 22  | [22-core](22-core.md)                                     | `src/lib.rs` — AuthFramework root type          |
+| 22  | [22-core](22-core.md)                                     | `src/lib.rs` — Cinaauth root type          |
 | 23  | [23-cross-package](23-cross-package.md)                   | cross-package deps + duplication map            |

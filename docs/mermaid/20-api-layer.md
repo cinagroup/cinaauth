@@ -7,7 +7,7 @@
 classDiagram
     class ApiServer {
         -ApiServerConfig config
-        -Arc~AuthFramework~ auth_framework
+        -Arc~Cinaauth~ cinaauth
         +new(framework) Self
         +with_config(framework, config) Self
         +start() Result
@@ -23,7 +23,7 @@ classDiagram
         +bool enable_tracing
     }
     class ApiState {
-        -Arc~AuthFramework~ framework
+        -Arc~Cinaauth~ framework
         -Arc~DistributedRateLimiter~ rate_limiter
         +new(framework) Result~ApiState~
     }

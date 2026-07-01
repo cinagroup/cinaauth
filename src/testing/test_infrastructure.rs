@@ -297,7 +297,7 @@ pub mod test_data {
             access_token,
             token_type: Some("bearer".to_string()),
             subject: Some(user_id.to_string()),
-            issuer: Some("auth-framework-test".to_string()),
+            issuer: Some("cinaauth-test".to_string()),
             refresh_token: None,
             issued_at: Utc::now(),
             expires_at: Utc::now() + chrono::Duration::seconds(3600),

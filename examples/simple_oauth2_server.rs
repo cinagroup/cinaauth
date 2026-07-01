@@ -1,10 +1,10 @@
 //! Simple OAuth 2.0 Server Example
 //!
 //! This example demonstrates basic OAuth 2.0 server functionality
-//! using working components of the Auth Framework.
+//! using working components of the cinaauth.
 
-use auth_framework::{
-    AuthConfig, AuthFramework,
+use cinaauth::{
+    AuthConfig, Cinaauth,
     methods::{AuthMethodEnum, JwtMethod},
     server::OAuth2Server,
     storage::memory::InMemoryStorage,
@@ -28,17 +28,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .refresh_token_lifetime(Duration::from_secs(86400 * 7));
 
     // Create auth framework
-    let mut auth_framework = AuthFramework::new(config);
+    let mut cinaauth = Cinaauth::new(config);
 
     // Register JWT method for OAuth tokens
     let jwt_method = JwtMethod::new()
         .secret_key("oauth-server-secret")
         .issuer("https://auth.localhost:8080");
 
-    auth_framework.register_method("oauth", AuthMethodEnum::Jwt(jwt_method));
+    cinaauth.register_method("oauth", AuthMethodEnum::Jwt(jwt_method));
 
     // Initialize framework
-    auth_framework.initialize().await?;
+    cinaauth.initialize().await?;
     println!("✅ Auth framework initialized successfully!");
 
     // Create in-memory storage for development
@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Demo: Create a sample token using the auth framework
-    let demo_token = auth_framework
+    let demo_token = cinaauth
         .tokens()
         .create(
             "demo_client",
@@ -76,11 +76,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Scopes: {:?}", demo_token.scopes);
 
     // Validate the demo token
-    if auth_framework.tokens().validate(&demo_token).await? {
+    if cinaauth.tokens().validate(&demo_token).await? {
         println!("✅ Token validation successful!");
 
         // Check permissions
-        if auth_framework
+        if cinaauth
             .authorization()
             .check(&demo_token, "read", "api")
             .await?

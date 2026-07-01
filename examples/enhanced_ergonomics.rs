@@ -1,6 +1,6 @@
 //! Enhanced Ergonomics Example - Demonstrating New Developer Experience Features
 //!
-//! This example showcases the new ergonomic improvements to the Auth Framework:
+//! This example showcases the new ergonomic improvements to the cinaauth:
 //! - Prelude module for easy imports
 //! - Quick start builders for common setups
 //! - Security presets with validation
@@ -12,17 +12,17 @@
 //! JWT_SECRET="your-super-secret-jwt-key-at-least-32-characters-long" cargo run --example enhanced_ergonomics --features "enhanced-rbac postgres-storage"
 //! ```
 
-use auth_framework::prelude::*;
+use cinaauth::prelude::*;
 use std::env;
 
 #[tokio::main]
-async fn main() -> AuthFrameworkResult<()> {
+async fn main() -> CinaauthResult<()> {
     // Initialize logging
     tracing_subscriber::fmt()
-        .with_env_filter("auth_framework=debug,enhanced_ergonomics=info")
+        .with_env_filter("cinaauth=debug,enhanced_ergonomics=info")
         .init();
 
-    println!("🚀 Auth Framework - Enhanced Ergonomics Demo");
+    println!("🚀 cinaauth - Enhanced Ergonomics Demo");
     println!("=============================================\n");
 
     // Demonstrate enhanced error handling
@@ -62,14 +62,14 @@ async fn demonstrate_enhanced_errors() {
 
         println!("💡 Help: Use a cryptographically secure random string of at least 32 characters");
         println!("🔧 Fix: Generate a secure secret: `openssl rand -hex 32`");
-        println!("📖 Docs: https://docs.rs/auth-framework/latest/auth_framework/config/");
+        println!("📖 Docs: https://docs.rs/cinaauth/latest/cinaauth/config/");
     }
 
     println!();
 }
 
 /// Demonstrate the quick start builder for common setups
-async fn demonstrate_quick_start() -> AuthFrameworkResult<()> {
+async fn demonstrate_quick_start() -> CinaauthResult<()> {
     println!("⚡ 2. Quick Start Builder");
     println!("========================");
 
@@ -81,7 +81,7 @@ async fn demonstrate_quick_start() -> AuthFrameworkResult<()> {
             // Quick start - one-liner setup for common case
             println!("🔧 Creating auth framework with quick start...");
 
-            let _auth = AuthFramework::quick_start()
+            let _auth = Cinaauth::quick_start()
                 .jwt_auth_from_env()
                 .with_memory_storage() // Use memory for demo
                 .security_level(SecurityPreset::Development)
@@ -111,7 +111,7 @@ async fn demonstrate_quick_start() -> AuthFrameworkResult<()> {
 
             // Demo with inline secret (development only!)
             println!("\n🔧 Creating demo with inline secret (development only)...");
-            let _auth = AuthFramework::quick_start()
+            let _auth = Cinaauth::quick_start()
                 .jwt_auth("demo-secret-for-development-only-not-production-safe")
                 .with_memory_storage()
                 .security_level(SecurityPreset::Development)
@@ -127,7 +127,7 @@ async fn demonstrate_quick_start() -> AuthFrameworkResult<()> {
 }
 
 /// Demonstrate security presets with validation
-async fn demonstrate_security_presets() -> AuthFrameworkResult<()> {
+async fn demonstrate_security_presets() -> CinaauthResult<()> {
     println!("🔒 3. Security Presets & Validation");
     println!("===================================");
 
@@ -213,14 +213,14 @@ async fn demonstrate_security_presets() -> AuthFrameworkResult<()> {
 }
 
 /// Demonstrate fluent API design patterns
-async fn demonstrate_fluent_api() -> AuthFrameworkResult<()> {
+async fn demonstrate_fluent_api() -> CinaauthResult<()> {
     println!("🔗 4. Fluent API Design");
     println!("=======================");
 
     println!("🔧 Building auth framework with fluent API...");
 
     // Demonstrate the fluent builder pattern
-    let _auth = AuthFramework::builder()
+    let _auth = Cinaauth::builder()
         .security_preset(SecurityPreset::Balanced)
         .with_jwt()
         .secret("demo-secret-for-development-only-not-production-safe")
@@ -282,7 +282,7 @@ async fn demonstrate_fluent_api() -> AuthFrameworkResult<()> {
 }
 
 /// Helper function to validate JWT secret (demonstrates enhanced error handling)
-fn validate_jwt_secret(secret: &str) -> AuthFrameworkResult<()> {
+fn validate_jwt_secret(secret: &str) -> CinaauthResult<()> {
     if secret.len() < 32 {
         return Err(AuthError::jwt_secret_too_short(secret.len()));
     }
@@ -300,13 +300,13 @@ fn validate_jwt_secret(secret: &str) -> AuthFrameworkResult<()> {
 
 /// Demo showing different ways to configure auth for different use cases
 #[allow(dead_code)]
-async fn demonstrate_use_case_presets() -> AuthFrameworkResult<()> {
+async fn demonstrate_use_case_presets() -> CinaauthResult<()> {
     println!("🎯 Use Case Presets");
     println!("===================");
 
     // Web application
     println!("🌐 Web Application Configuration:");
-    let _web_auth = AuthFramework::for_use_case(UseCasePreset::WebApp)
+    let _web_auth = Cinaauth::for_use_case(UseCasePreset::WebApp)
         // Note: Customize would need setter methods, using direct builder for now
         .build()
         .await?;
@@ -314,7 +314,7 @@ async fn demonstrate_use_case_presets() -> AuthFrameworkResult<()> {
 
     // API Service
     println!("\n🔌 API Service Configuration:");
-    let _api_auth = AuthFramework::for_use_case(UseCasePreset::ApiService)
+    let _api_auth = Cinaauth::for_use_case(UseCasePreset::ApiService)
         // Note: Customize would need setter methods, using direct builder for now
         .build()
         .await?;
@@ -322,7 +322,7 @@ async fn demonstrate_use_case_presets() -> AuthFrameworkResult<()> {
 
     // Enterprise
     println!("\n🏢 Enterprise Configuration:");
-    let _enterprise_auth = AuthFramework::for_use_case(UseCasePreset::Enterprise)
+    let _enterprise_auth = Cinaauth::for_use_case(UseCasePreset::Enterprise)
         .security_preset(SecurityPreset::HighSecurity)
         .build()
         .await?;

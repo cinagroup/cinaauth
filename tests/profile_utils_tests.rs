@@ -1,7 +1,7 @@
 //! Unit tests for profile utility functions and token-to-profile conversion
 
-use auth_framework::profile_utils::ExtractProfile;
-use auth_framework::providers::{OAuthProvider, ProviderProfile};
+use cinaauth::profile_utils::ExtractProfile;
+use cinaauth::providers::{OAuthProvider, ProviderProfile};
 use base64::Engine;
 use serde_json::json;
 

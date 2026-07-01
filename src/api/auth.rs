@@ -63,7 +63,7 @@ async fn build_login_response(
     permissions: Vec<String>,
 ) -> ApiResponse<LoginResponse> {
     let user_key = format!("user:{}", user_id);
-    let roles: Vec<String> = match state.auth_framework.storage().get_kv(&user_key).await {
+    let roles: Vec<String> = match state.cinaauth.storage().get_kv(&user_key).await {
         Ok(Some(bytes)) => {
             let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
             json["roles"]
@@ -86,8 +86,8 @@ async fn build_login_response(
         permissions,
     };
 
-    let token_lifetime = state.auth_framework.config().token_lifetime;
-    let access_token = match state.auth_framework.token_manager().create_jwt_token(
+    let token_lifetime = state.cinaauth.config().token_lifetime;
+    let access_token = match state.cinaauth.token_manager().create_jwt_token(
         user_id,
         roles,
         Some(token_lifetime),
@@ -102,8 +102,8 @@ async fn build_login_response(
         }
     };
 
-    let refresh_token_lifetime = state.auth_framework.config().refresh_token_lifetime;
-    let refresh_token = match state.auth_framework.token_manager().create_jwt_token(
+    let refresh_token_lifetime = state.cinaauth.config().refresh_token_lifetime;
+    let refresh_token = match state.cinaauth.token_manager().create_jwt_token(
         user_id,
         vec!["refresh".to_string()],
         Some(refresh_token_lifetime),
@@ -211,7 +211,7 @@ pub(crate) fn login_risk_level(headers: &HeaderMap) -> (&'static str, Vec<String
 
 /// Increment the per-username failed login counter with a sliding TTL window.
 async fn increment_login_failure(state: &ApiState, lockout_key: &str, window_secs: u64) {
-    let current: u64 = match state.auth_framework.storage().get_kv(lockout_key).await {
+    let current: u64 = match state.cinaauth.storage().get_kv(lockout_key).await {
         Ok(Some(bytes)) => std::str::from_utf8(&bytes)
             .ok()
             .and_then(|s| s.parse().ok())
@@ -220,7 +220,7 @@ async fn increment_login_failure(state: &ApiState, lockout_key: &str, window_sec
     };
     let new_count = current.saturating_add(1);
     let _ = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             lockout_key,
@@ -255,7 +255,7 @@ pub async fn login(
         (req.challenge_id.clone(), req.mfa_code.as_deref())
     {
         return match state
-            .auth_framework
+            .cinaauth
             .complete_mfa_by_id(&challenge_id, mfa_code)
             .await
         {
@@ -293,7 +293,7 @@ pub async fn login(
     let lockout_key = format!("login_failures:{}", req.username);
     const MAX_FAILED_ATTEMPTS: u64 = 5;
     const LOCKOUT_WINDOW_SECS: u64 = 900; // 15 minutes
-    if let Ok(Some(count_bytes)) = state.auth_framework.storage().get_kv(&lockout_key).await {
+    if let Ok(Some(count_bytes)) = state.cinaauth.storage().get_kv(&lockout_key).await {
         if let Ok(count_str) = std::str::from_utf8(&count_bytes) {
             if let Ok(count) = count_str.parse::<u64>() {
                 if count >= MAX_FAILED_ATTEMPTS {
@@ -319,7 +319,7 @@ pub async fn login(
 
     // Attempt authentication
     match state
-        .auth_framework
+        .cinaauth
         .authenticate("password", credential)
         .await
     {
@@ -328,7 +328,7 @@ pub async fn login(
                 // Check if the user has MFA enrolled.  If not and the risk level is
                 // elevated, add a security advisory recommending MFA enrollment.
                 let mfa_enrolled =
-                    crate::api::mfa::check_user_mfa_status(&state.auth_framework, &token.user_id)
+                    crate::api::mfa::check_user_mfa_status(&state.cinaauth, &token.user_id)
                         .await;
 
                 if !mfa_enrolled && matches!(risk_level, "high" | "critical") {
@@ -360,7 +360,7 @@ pub async fn login(
                 .await;
 
                 // Reset failed login counter on successful authentication
-                let _ = state.auth_framework.storage().delete_kv(&lockout_key).await;
+                let _ = state.cinaauth.storage().delete_kv(&lockout_key).await;
 
                 if let Some(data) = response.data.as_mut() {
                     data.login_risk_level = risk_level.to_string();
@@ -425,7 +425,7 @@ pub async fn refresh_token(
 
     // Validate the refresh token
     match state
-        .auth_framework
+        .cinaauth
         .token_manager()
         .validate_jwt_token(&req.refresh_token)
     {
@@ -440,7 +440,7 @@ pub async fn refresh_token(
 
             // SECURITY: Reject revoked refresh tokens (e.g. those already passed to /auth/logout).
             let revocation_key = format!("revoked_token:{}", claims.jti);
-            match state.auth_framework.storage().get_kv(&revocation_key).await {
+            match state.cinaauth.storage().get_kv(&revocation_key).await {
                 Ok(Some(_)) => {
                     return ApiResponse::error_typed(
                         "INVALID_TOKEN",
@@ -465,7 +465,7 @@ pub async fn refresh_token(
             // user can indefinitely obtain new access tokens.
             {
                 let user_key = format!("user:{}", claims.sub);
-                if let Ok(Some(user_bytes)) = state.auth_framework.storage().get_kv(&user_key).await
+                if let Ok(Some(user_bytes)) = state.cinaauth.storage().get_kv(&user_key).await
                 {
                     let user_json: serde_json::Value =
                         serde_json::from_slice(&user_bytes).unwrap_or_default();
@@ -480,7 +480,7 @@ pub async fn refresh_token(
             }
 
             let permissions: Vec<String> = match state
-                .auth_framework
+                .cinaauth
                 .storage()
                 .get_kv(&format!("user_permissions:{}", claims.sub))
                 .await
@@ -489,8 +489,8 @@ pub async fn refresh_token(
                 _ => vec![],
             };
 
-            let token_lifetime = state.auth_framework.config().token_lifetime;
-            let new_access_token = match state.auth_framework.token_manager().create_jwt_token(
+            let token_lifetime = state.cinaauth.config().token_lifetime;
+            let new_access_token = match state.cinaauth.token_manager().create_jwt_token(
                 &claims.sub,
                 permissions,
                 Some(token_lifetime),
@@ -529,7 +529,7 @@ pub async fn logout(
     // Revoke the access token by storing it in the blocklist keyed by JTI
     if let Some(token) = extract_bearer_token(&headers) {
         match state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .validate_jwt_token(&token)
         {
@@ -538,7 +538,7 @@ pub async fn logout(
                 // TTL: longer of token's remaining lifetime or 1 hour; cap at 7 days
                 let ttl = std::time::Duration::from_secs(7 * 86400);
                 if let Err(e) = state
-                    .auth_framework
+                    .cinaauth
                     .storage()
                     .store_kv(revocation_key.as_str(), b"revoked", Some(ttl))
                     .await
@@ -558,7 +558,7 @@ pub async fn logout(
     // If refresh token provided, revoke it too
     if let Some(ref refresh_token) = req.refresh_token {
         match state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .validate_jwt_token(refresh_token)
         {
@@ -566,7 +566,7 @@ pub async fn logout(
                 let revocation_key = format!("revoked_token:{}", claims.jti);
                 let ttl = std::time::Duration::from_secs(7 * 86400);
                 if let Err(e) = state
-                    .auth_framework
+                    .cinaauth
                     .storage()
                     .store_kv(revocation_key.as_str(), b"revoked", Some(ttl))
                     .await
@@ -593,11 +593,11 @@ pub async fn validate_token(
 ) -> ApiResponse<LoginUserInfo> {
     match extract_bearer_token(&headers) {
         Some(token) => {
-            match crate::api::validate_api_token(&state.auth_framework, &token).await {
+            match crate::api::validate_api_token(&state.cinaauth, &token).await {
                 Ok(auth_token) => {
                     // Fetch actual user information from storage
                     let username = match state
-                        .auth_framework
+                        .cinaauth
                         .get_user_profile(&auth_token.user_id)
                         .await
                     {
@@ -719,7 +719,7 @@ pub async fn register(
 
     // Check if username already exists
     let username_key = format!("user:credentials:{}", req.username);
-    match state.auth_framework.storage().get_kv(&username_key).await {
+    match state.cinaauth.storage().get_kv(&username_key).await {
         Ok(Some(_)) => {
             // Use a generic message for both username and email conflicts to prevent
             // enumeration of existing accounts via the public registration endpoint.
@@ -737,7 +737,7 @@ pub async fn register(
 
     // Check if email already exists
     let email_key = format!("user:email:{}", req.email);
-    match state.auth_framework.storage().get_kv(&email_key).await {
+    match state.cinaauth.storage().get_kv(&email_key).await {
         Ok(Some(_)) => {
             return ApiResponse::error_typed(
                 "CONFLICT",
@@ -776,7 +776,7 @@ pub async fn register(
 
     // Store main user record
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(&username_key, &user_data_bytes, None)
         .await
@@ -787,7 +787,7 @@ pub async fn register(
 
     // Store email → user_id mapping for duplicate checking
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(&email_key, user_id.as_bytes(), None)
         .await
@@ -795,7 +795,7 @@ pub async fn register(
         tracing::error!("Email mapping storage failed: {:?}", e);
         // Best-effort rollback
         let _ = state
-            .auth_framework
+            .cinaauth
             .storage()
             .delete_kv(&username_key)
             .await;
@@ -815,7 +815,7 @@ pub async fn register(
     });
     let canonical_key = format!("user:{}", user_id);
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &canonical_key,
@@ -826,31 +826,31 @@ pub async fn register(
     {
         tracing::error!("Canonical user record storage failed: {:?}", e);
         let _ = state
-            .auth_framework
+            .cinaauth
             .storage()
             .delete_kv(&username_key)
             .await;
-        let _ = state.auth_framework.storage().delete_kv(&email_key).await;
+        let _ = state.cinaauth.storage().delete_kv(&email_key).await;
         return ApiResponse::error_typed("REGISTRATION_FAILED", "Failed to create user account");
     }
 
     // Store username → user_id mapping (used by get_username_by_id reverse-lookup).
     let username_id_key = format!("user:username:{}", req.username);
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(&username_id_key, user_id.as_bytes(), None)
         .await
     {
         tracing::error!("Username-id mapping storage failed: {:?}", e);
         let _ = state
-            .auth_framework
+            .cinaauth
             .storage()
             .delete_kv(&username_key)
             .await;
-        let _ = state.auth_framework.storage().delete_kv(&email_key).await;
+        let _ = state.cinaauth.storage().delete_kv(&email_key).await;
         let _ = state
-            .auth_framework
+            .cinaauth
             .storage()
             .delete_kv(&canonical_key)
             .await;
@@ -859,14 +859,14 @@ pub async fn register(
 
     // Add user to the global users:index so admin list endpoints include self-registered users.
     let index_key = "users:index";
-    let mut ids: Vec<String> = match state.auth_framework.storage().get_kv(index_key).await {
+    let mut ids: Vec<String> = match state.cinaauth.storage().get_kv(index_key).await {
         Ok(Some(bytes)) => serde_json::from_slice(&bytes).unwrap_or_default(),
         _ => vec![],
     };
     ids.push(user_id.clone());
     if let Ok(idx_json) = serde_json::to_vec(&ids) {
         if let Err(e) = state
-            .auth_framework
+            .cinaauth
             .storage()
             .store_kv(index_key, &idx_json, None)
             .await
@@ -905,14 +905,14 @@ pub async fn create_api_key(
     };
 
     // Validate the token and extract the caller's identity.
-    let auth_token = match crate::api::validate_api_token(&state.auth_framework, &token).await {
+    let auth_token = match crate::api::validate_api_token(&state.cinaauth, &token).await {
         Ok(t) => t,
         Err(_) => return ApiResponse::unauthorized_typed(),
     };
 
     // Create an API key scoped to the authenticated user.
     match state
-        .auth_framework
+        .cinaauth
         .create_api_key(&auth_token.user_id, None)
         .await
     {

@@ -149,15 +149,15 @@ pub struct CertIdentity {
 /// ## Minimal usage
 ///
 /// ```rust,no_run
-/// use auth_framework::methods::client_cert::{ClientCertAuthMethod, ClientCertConfig};
-/// use auth_framework::authentication::credentials::Credential;
+/// use cinaauth::methods::client_cert::{ClientCertAuthMethod, ClientCertConfig};
+/// use cinaauth::authentication::credentials::Credential;
 ///
 /// # let cert_der: Vec<u8> = unimplemented!();
 /// let method = ClientCertAuthMethod::new(ClientCertConfig::new());
 ///
 /// // `cert_der` comes from your HTTP framework's peer certificate extraction.
 /// let identity = method.authenticate(&Credential::client_cert_from_tls(cert_der))?;
-/// # Ok::<_, auth_framework::errors::AuthError>(())
+/// # Ok::<_, cinaauth::errors::AuthError>(())
 /// ```
 pub struct ClientCertAuthMethod {
     config: ClientCertConfig,

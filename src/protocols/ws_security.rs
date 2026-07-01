@@ -671,7 +671,7 @@ impl WsSecurityConfig {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use auth_framework::protocols::ws_security::WsSecurityConfig;
+    /// use cinaauth::protocols::ws_security::WsSecurityConfig;
     /// # let cert_pem: Vec<u8> = vec![];
     /// # let key_pem: Vec<u8> = vec![];
     ///

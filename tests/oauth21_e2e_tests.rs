@@ -8,21 +8,21 @@
 //! These tests verify that all OAuth 2.1 components work together correctly
 //! through realistic usage scenarios.
 
-use auth_framework::{
-    AuthConfig, AuthFramework,
+use cinaauth::{
+    AuthConfig, Cinaauth,
     server::oauth::par::{PARManager, PushedAuthorizationRequest},
     server::{DeviceAuthManager, DeviceAuthorizationRequest, DeviceAuthorizationStatus},
 };
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Helper function to create test AuthFramework with storage
-async fn setup_test_framework() -> Arc<AuthFramework> {
+/// Helper function to create test Cinaauth with storage
+async fn setup_test_framework() -> Arc<Cinaauth> {
     let config = AuthConfig::new()
         .secret("test_oauth21_e2e_secret_key_minimum_32_bytes_required".to_string())
         .max_failed_attempts(5);
 
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
     Arc::new(framework)
 }

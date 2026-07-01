@@ -2,7 +2,7 @@
 /// For richer progress bars, consider the `indicatif` crate.
 ///
 /// The CLI delegates database migrations to `MigrationCli` and uses the core
-/// `AuthFramework` APIs for user, role, status, health, audit, and session management.
+/// `Cinaauth` APIs for user, role, status, health, audit, and session management.
 /// Destructive database maintenance flows are implemented as logical snapshot
 /// export/import operations backed by the maintenance module.
 pub struct CliProgressBar {}
@@ -25,7 +25,7 @@ impl CliProgressBar {
 
 pub fn format_cli_output(msg: &str) -> String {
     // Example: blue bold formatting
-    format!("\x1b[1;34m[auth-framework]\x1b[0m {}", msg)
+    format!("\x1b[1;34m[cinaauth]\x1b[0m {}", msg)
 }
 #[cfg(feature = "cli")]
 use crate::AppConfig;
@@ -42,8 +42,8 @@ use std::{io, process};
 
 #[cfg(feature = "cli")]
 #[derive(Parser)]
-#[command(name = "auth-framework")]
-#[command(about = "Auth Framework CLI - Manage authentication and authorization")]
+#[command(name = "cinaauth")]
+#[command(about = "cinaauth CLI - Manage authentication and authorization")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
@@ -242,8 +242,8 @@ impl CliHandler {
         })
     }
 
-    async fn framework(&self) -> Result<crate::AuthFramework, Box<dyn std::error::Error>> {
-        Ok(self.config.build_auth_framework().await?)
+    async fn framework(&self) -> Result<crate::Cinaauth, Box<dyn std::error::Error>> {
+        Ok(self.config.build_cinaauth().await?)
     }
 
     fn prompt_password(prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -788,7 +788,7 @@ mod tests {
     #[test]
     fn test_terminal_formatting() {
         let msg = format_cli_output("Hello");
-        assert!(msg.contains("[auth-framework]"));
+        assert!(msg.contains("[cinaauth]"));
     }
 
     #[cfg(all(feature = "cli", feature = "sqlite-storage"))]
@@ -806,7 +806,7 @@ mod tests {
         let mut config = AppConfig::default();
         config.database.url = database_url;
 
-        let mut seed_framework = config.build_auth_framework().await.unwrap();
+        let mut seed_framework = config.build_cinaauth().await.unwrap();
         seed_framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
 
         let user_id = seed_framework
@@ -874,7 +874,7 @@ mod tests {
             .await
             .unwrap();
 
-        let reset_framework = config.build_auth_framework().await.unwrap();
+        let reset_framework = config.build_cinaauth().await.unwrap();
         assert!(
             reset_framework
                 .users()
@@ -908,7 +908,7 @@ mod tests {
             .await
             .unwrap();
 
-        let restored_framework = config.build_auth_framework().await.unwrap();
+        let restored_framework = config.build_cinaauth().await.unwrap();
         let restored_user = restored_framework.users().get(&user_id).await.unwrap();
         assert_eq!(restored_user.username, "cli-smoke");
         assert_eq!(

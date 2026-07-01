@@ -655,7 +655,7 @@ impl ConfigHotReloadManager {
                 source: Some(Box::new(e)),
                 help: Some("Check that the config file exists and is readable".to_string()),
                 docs_url: Some(
-                    "https://docs.rs/auth-framework/latest/auth_framework/config/".to_string(),
+                    "https://docs.rs/cinaauth/latest/cinaauth/config/".to_string(),
                 ),
                 suggested_fix: Some("Verify file path and permissions".to_string()),
             })?;
@@ -665,7 +665,7 @@ impl ConfigHotReloadManager {
             source: Some(Box::new(e)),
             help: Some("Check that the config file contains valid JSON".to_string()),
             docs_url: Some(
-                "https://docs.rs/auth-framework/latest/auth_framework/config/".to_string(),
+                "https://docs.rs/cinaauth/latest/cinaauth/config/".to_string(),
             ),
             suggested_fix: Some("Validate JSON syntax using a JSON validator".to_string()),
         })
@@ -707,7 +707,7 @@ impl ConfigHotReloadManager {
             source: Some(Box::new(e)),
             help: Some("Check that the file system supports file watching".to_string()),
             docs_url: Some(
-                "https://docs.rs/auth-framework/latest/auth_framework/config/".to_string(),
+                "https://docs.rs/cinaauth/latest/cinaauth/config/".to_string(),
             ),
             suggested_fix: Some("Ensure the system has file watching capabilities".to_string()),
         })?;
@@ -719,7 +719,7 @@ impl ConfigHotReloadManager {
                 source: Some(Box::new(e)),
                 help: Some("Check that the config file path exists and is accessible".to_string()),
                 docs_url: Some(
-                    "https://docs.rs/auth-framework/latest/auth_framework/config/".to_string(),
+                    "https://docs.rs/cinaauth/latest/cinaauth/config/".to_string(),
                 ),
                 suggested_fix: Some("Verify the config file path is correct".to_string()),
             })?;

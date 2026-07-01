@@ -6,27 +6,27 @@
 
 #[cfg(all(test, feature = "api-server"))]
 mod oauth2_integration_tests {
-    use auth_framework::api::ApiState;
-    use auth_framework::api::oauth2::{self, AuthorizeRequest, RevokeRequest, TokenRequest};
-    use auth_framework::{AuthConfig, AuthFramework};
+    use cinaauth::api::ApiState;
+    use cinaauth::api::oauth2::{self, AuthorizeRequest, RevokeRequest, TokenRequest};
+    use cinaauth::{AuthConfig, Cinaauth};
     use axum::Json;
     use axum::extract::{Query, State};
     use axum::http::{HeaderMap, HeaderValue, StatusCode};
     use axum::response::IntoResponse;
     use std::sync::Arc;
 
-    async fn setup_auth_framework() -> Arc<AuthFramework> {
+    async fn setup_cinaauth() -> Arc<Cinaauth> {
         let config = AuthConfig::new()
             .secret("test_oauth2_secret_key_that_is_long_enough_for_secure_operation".to_string());
 
-        let mut auth_framework = AuthFramework::new(config);
-        auth_framework.initialize().await.unwrap();
-        Arc::new(auth_framework)
+        let mut cinaauth = Cinaauth::new(config);
+        cinaauth.initialize().await.unwrap();
+        Arc::new(cinaauth)
     }
 
     async fn setup_api_state() -> ApiState {
-        let auth_framework = setup_auth_framework().await;
-        let state = ApiState::new(auth_framework).await.unwrap();
+        let cinaauth = setup_cinaauth().await;
+        let state = ApiState::new(cinaauth).await.unwrap();
 
         // Register test clients so the authorize endpoint can validate them
         let callback = "http://localhost:3000/callback";
@@ -38,7 +38,7 @@ mod oauth2_integration_tests {
             let client_data = serde_json::json!({ "redirect_uris": [callback] });
             let key = format!("oauth2_client:{}", client_id);
             state
-                .auth_framework
+                .cinaauth
                 .storage()
                 .store_kv(&key, client_data.to_string().as_bytes(), None)
                 .await
@@ -61,13 +61,13 @@ mod oauth2_integration_tests {
         let email = format!("{}@test.example.com", username);
 
         let user_id = state
-            .auth_framework
+            .cinaauth
             .register_user(&username, &email, "SecurePass123!")
             .await
             .expect("test user registration should succeed");
 
         let token = state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .create_auth_token(
                 &user_id,
@@ -267,9 +267,9 @@ mod oauth2_integration_tests {
 
         // Register a real user so storage has the profile data that the
         // UserInfo endpoint needs.  register_user takes &self, so it works
-        // fine on the Arc<AuthFramework> returned by setup_api_state().
+        // fine on the Arc<Cinaauth> returned by setup_api_state().
         let user_id = state
-            .auth_framework
+            .cinaauth
             .register_user(
                 "oauth2_userinfo_test",
                 "oauth2_userinfo_test@example.com",
@@ -280,7 +280,7 @@ mod oauth2_integration_tests {
 
         // Create an access token whose `sub` claim is the newly registered user.
         let token = state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .create_auth_token(
                 &user_id,

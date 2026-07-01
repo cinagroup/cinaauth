@@ -41,12 +41,12 @@ ARG APP_FEATURES=api-server,postgres-storage
 
 COPY --from=planner /app/recipe.json recipe.json
 
-RUN cargo chef cook --release --locked --recipe-path recipe.json --features "$APP_FEATURES" --bin auth-framework
+RUN cargo chef cook --release --locked --recipe-path recipe.json --features "$APP_FEATURES" --bin cinaauth
 
 COPY . .
 
-RUN cargo build --release --locked --features "$APP_FEATURES" --bin auth-framework && \
-    strip target/release/auth-framework
+RUN cargo build --release --locked --features "$APP_FEATURES" --bin cinaauth && \
+    strip target/release/cinaauth
 
 FROM debian:bookworm-slim AS runtime
 
@@ -65,7 +65,7 @@ WORKDIR /app
 RUN mkdir -p /app/config /app/logs && \
     chown -R authfw:authfw /app
 
-COPY --from=builder /app/target/release/auth-framework /usr/local/bin/auth-framework
+COPY --from=builder /app/target/release/cinaauth /usr/local/bin/cinaauth
 COPY --chown=authfw:authfw config/ ./config/
 
 USER authfw
@@ -73,7 +73,7 @@ USER authfw
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["auth-framework"]
+CMD ["cinaauth"]
 
 EXPOSE 8080
 

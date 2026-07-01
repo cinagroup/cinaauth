@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Config - Auth Framework Admin</title>
+  <title>Config - cinaauth Admin</title>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -109,7 +109,7 @@
 
 <body>
   <nav>
-    <span class="brand">AuthFramework</span>
+    <span class="brand">cinaauth</span>
     <a href="/">Dashboard</a>
     <a href="/config" class="active">Config</a>
     <a href="/users">Users</a>
@@ -124,7 +124,7 @@
       {% if live_updates_enabled %}
       <p class="info">Runtime-safe configuration fields can be updated live from this page.</p>
       {% else %}
-      <p class="info">Live runtime updates are unavailable because no AuthFramework instance is attached.</p>
+      <p class="info">Live runtime updates are unavailable because no cinaauth instance is attached.</p>
       {% endif %}
     
       {% if items.is_empty() %}

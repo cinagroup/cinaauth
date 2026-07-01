@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This guide provides comprehensive instructions for migrating to AuthFramework from other authentication systems and upgrading between AuthFramework versions. It includes migration strategies, compatibility matrices, automated tools, and step-by-step procedures to ensure smooth transitions.
+This guide provides comprehensive instructions for migrating to Cinaauth from other authentication systems and upgrading between Cinaauth versions. It includes migration strategies, compatibility matrices, automated tools, and step-by-step procedures to ensure smooth transitions.
 
 ## Table of Contents
 
@@ -21,11 +21,11 @@ This guide provides comprehensive instructions for migrating to AuthFramework fr
 
 ### Migration Types
 
-AuthFramework supports several migration scenarios:
+Cinaauth supports several migration scenarios:
 
 - **Fresh Installation**: New deployment with no existing auth system
 - **System Migration**: Moving from another authentication system
-- **Version Upgrade**: Upgrading between AuthFramework versions
+- **Version Upgrade**: Upgrading between Cinaauth versions
 - **Configuration Migration**: Updating configuration formats
 - **Data Migration**: Migrating user data and sessions
 
@@ -91,11 +91,11 @@ Migration Support:
 ### From Auth0
 
 ```rust
-use auth_framework::{Auth0Migrator, MigrationConfig};
+use cinaauth::{Auth0Migrator, MigrationConfig};
 
 pub struct Auth0Migration {
     auth0_client: Auth0Client,
-    auth_framework: AuthFramework,
+    cinaauth: Cinaauth,
     migrator: Auth0Migrator,
 }
 
@@ -114,7 +114,7 @@ impl Auth0Migration {
         // 2. Transform user data
         let transformed_users = self.transform_auth0_users(users).await?;
 
-        // 3. Import to AuthFramework
+        // 3. Import to Cinaauth
         let import_result = self.import_users(transformed_users, &config).await?;
 
         // 4. Migrate user metadata
@@ -126,11 +126,11 @@ impl Auth0Migration {
         Ok(import_result)
     }
 
-    async fn transform_auth0_users(&self, auth0_users: Vec<Auth0User>) -> Result<Vec<AuthFrameworkUser>, MigrationError> {
+    async fn transform_auth0_users(&self, auth0_users: Vec<Auth0User>) -> Result<Vec<CinaauthUser>, MigrationError> {
         let mut transformed = Vec::with_capacity(auth0_users.len());
 
         for auth0_user in auth0_users {
-            let user = AuthFrameworkUser {
+            let user = CinaauthUser {
                 id: generate_user_id(),
                 external_id: Some(auth0_user.user_id),
                 username: auth0_user.email.clone(),
@@ -160,11 +160,11 @@ impl Auth0Migration {
 ### From Firebase Auth
 
 ```rust
-use auth_framework::{FirebaseMigrator, FirebaseExportData};
+use cinaauth::{FirebaseMigrator, FirebaseExportData};
 
 pub struct FirebaseMigration {
     firebase_admin: FirebaseAdmin,
-    auth_framework: AuthFramework,
+    cinaauth: Cinaauth,
 }
 
 impl FirebaseMigration {
@@ -218,11 +218,11 @@ impl FirebaseMigration {
 ### From Custom JWT System
 
 ```rust
-use auth_framework::{JwtMigrator, CustomJwtConfig};
+use cinaauth::{JwtMigrator, CustomJwtConfig};
 
 pub struct CustomJwtMigration {
     old_jwt_config: CustomJwtConfig,
-    auth_framework: AuthFramework,
+    cinaauth: Cinaauth,
 }
 
 impl CustomJwtMigration {
@@ -246,8 +246,8 @@ impl CustomJwtMigration {
         // Import existing JWT signing keys for token validation
         let old_public_key = self.old_jwt_config.get_public_key();
 
-        // Add old key to AuthFramework for backward compatibility
-        self.auth_framework
+        // Add old key to Cinaauth for backward compatibility
+        self.cinaauth
             .add_legacy_signing_key(LegacySigningKey {
                 key_id: "legacy-jwt-key".to_string(),
                 public_key: old_public_key,
@@ -271,8 +271,8 @@ impl CustomJwtMigration {
             let new_user_id = user_mapping.get_new_user_id(&old_claims.user_id)
                 .ok_or(MigrationError::UserMappingNotFound)?;
 
-            // Create new AuthFramework session
-            let new_session = self.auth_framework
+            // Create new Cinaauth session
+            let new_session = self.cinaauth
                 .create_session(CreateSessionRequest {
                     user_id: new_user_id,
                     permissions: map_permissions(&old_claims.permissions),
@@ -298,7 +298,7 @@ impl CustomJwtMigration {
 ### Upgrade from 0.3.x to 0.4.x
 
 ```rust
-use auth_framework::{UpgradeManager, DatabaseMigrator};
+use cinaauth::{UpgradeManager, DatabaseMigrator};
 
 pub struct V03ToV04Upgrade {
     upgrade_manager: UpgradeManager,
@@ -405,7 +405,7 @@ impl V03ToV04Upgrade {
 ### Major Version Upgrade (0.x to 1.0)
 
 ```rust
-use auth_framework::{MajorVersionUpgrade, BreakingChangeHandler};
+use cinaauth::{MajorVersionUpgrade, BreakingChangeHandler};
 
 pub struct MajorVersionUpgrader {
     breaking_change_handler: BreakingChangeHandler,
@@ -475,13 +475,13 @@ impl MajorVersionUpgrader {
 ### Automated Migration CLI
 
 ```rust
-use auth_framework::{MigrationCli, MigrationCommand};
+use cinaauth::{MigrationCli, MigrationCommand};
 
-pub struct AuthFrameworkMigrationCli {
+pub struct CinaauthMigrationCli {
     config: MigrationConfig,
 }
 
-impl AuthFrameworkMigrationCli {
+impl CinaauthMigrationCli {
     pub async fn run_migration(&self, command: MigrationCommand) -> Result<(), MigrationError> {
         match command {
             MigrationCommand::Plan { from_version, to_version } => {
@@ -547,14 +547,14 @@ impl AuthFrameworkMigrationCli {
 ### Data Export/Import Tools
 
 ```rust
-use auth_framework::{DataExporter, DataImporter};
+use cinaauth::{DataExporter, DataImporter};
 
-pub struct AuthFrameworkDataTools {
+pub struct CinaauthDataTools {
     exporter: DataExporter,
     importer: DataImporter,
 }
 
-impl AuthFrameworkDataTools {
+impl CinaauthDataTools {
     pub async fn export_system_data(&self, export_config: ExportConfig) -> Result<ExportResult, ExportError> {
         let mut export_data = SystemExportData::new();
 
@@ -688,7 +688,7 @@ Database Schema Changes:
 ### Migration Code for Breaking Changes
 
 ```rust
-use auth_framework::{BreakingChangesMigrator, CompatibilityMode};
+use cinaauth::{BreakingChangesMigrator, CompatibilityMode};
 
 pub struct BreakingChangeHandler {
     compatibility_mode: CompatibilityMode,
@@ -771,14 +771,14 @@ impl BreakingChangeHandler {
 ### Automated Rollback System
 
 ```rust
-use auth_framework::{RollbackManager, BackupMetadata};
+use cinaauth::{RollbackManager, BackupMetadata};
 
-pub struct AuthFrameworkRollback {
+pub struct CinaauthRollback {
     rollback_manager: RollbackManager,
     backup_store: BackupStore,
 }
 
-impl AuthFrameworkRollback {
+impl CinaauthRollback {
     pub async fn perform_rollback(&self, backup_id: &str) -> Result<RollbackReport, RollbackError> {
         // 1. Validate backup exists and is complete
         let backup_metadata = self.backup_store.get_metadata(backup_id).await?;
@@ -844,13 +844,13 @@ impl AuthFrameworkRollback {
 
 ```bash
 #!/bin/bash
-# AuthFramework Manual Rollback Script
+# Cinaauth Manual Rollback Script
 
 set -e
 
 BACKUP_ID=$1
 BACKUP_DIR="/var/backups/authframework"
-SERVICE_NAME="auth-framework"
+SERVICE_NAME="cinaauth"
 
 if [ -z "$BACKUP_ID" ]; then
     echo "Usage: $0 <backup_id>"
@@ -860,9 +860,9 @@ fi
 echo "Starting rollback to backup: $BACKUP_ID"
 
 # 1. Stop services
-echo "Stopping AuthFramework services..."
+echo "Stopping Cinaauth services..."
 systemctl stop $SERVICE_NAME
-systemctl stop auth-framework-worker
+systemctl stop cinaauth-worker
 
 # 2. Create emergency backup
 echo "Creating emergency backup..."
@@ -870,13 +870,13 @@ EMERGENCY_BACKUP="emergency_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR/$EMERGENCY_BACKUP"
 
 # Backup current database
-pg_dump auth_framework > "$BACKUP_DIR/$EMERGENCY_BACKUP/database.sql"
+pg_dump cinaauth > "$BACKUP_DIR/$EMERGENCY_BACKUP/database.sql"
 
 # Backup current configuration
-cp -r /etc/auth-framework "$BACKUP_DIR/$EMERGENCY_BACKUP/config"
+cp -r /etc/cinaauth "$BACKUP_DIR/$EMERGENCY_BACKUP/config"
 
 # Backup current data directory
-cp -r /var/lib/auth-framework "$BACKUP_DIR/$EMERGENCY_BACKUP/data"
+cp -r /var/lib/cinaauth "$BACKUP_DIR/$EMERGENCY_BACKUP/data"
 
 echo "Emergency backup created: $EMERGENCY_BACKUP"
 
@@ -885,28 +885,28 @@ echo "Restoring from backup: $BACKUP_ID"
 
 # Restore database
 echo "Restoring database..."
-dropdb auth_framework
-createdb auth_framework
-psql auth_framework < "$BACKUP_DIR/$BACKUP_ID/database.sql"
+dropdb cinaauth
+createdb cinaauth
+psql cinaauth < "$BACKUP_DIR/$BACKUP_ID/database.sql"
 
 # Restore configuration
 echo "Restoring configuration..."
-rm -rf /etc/auth-framework
-cp -r "$BACKUP_DIR/$BACKUP_ID/config" /etc/auth-framework
+rm -rf /etc/cinaauth
+cp -r "$BACKUP_DIR/$BACKUP_ID/config" /etc/cinaauth
 
 # Restore data directory
 echo "Restoring data directory..."
-rm -rf /var/lib/auth-framework
-cp -r "$BACKUP_DIR/$BACKUP_ID/data" /var/lib/auth-framework
+rm -rf /var/lib/cinaauth
+cp -r "$BACKUP_DIR/$BACKUP_ID/data" /var/lib/cinaauth
 
 # Fix permissions
-chown -R auth-framework:auth-framework /var/lib/auth-framework
-chmod 600 /etc/auth-framework/config.yaml
+chown -R cinaauth:cinaauth /var/lib/cinaauth
+chmod 600 /etc/cinaauth/config.yaml
 
 # 4. Start services
-echo "Starting AuthFramework services..."
+echo "Starting Cinaauth services..."
 systemctl start $SERVICE_NAME
-systemctl start auth-framework-worker
+systemctl start cinaauth-worker
 
 # 5. Validate rollback
 echo "Validating rollback..."
@@ -936,4 +936,4 @@ echo "Emergency backup available at: $EMERGENCY_BACKUP"
 
 ---
 
-AuthFramework v0.5.0-rc24 - Migration and Upgrade Documentation
+Cinaauth v0.5.0-rc24 - Migration and Upgrade Documentation

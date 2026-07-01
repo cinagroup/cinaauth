@@ -1,6 +1,6 @@
-"""Basic tests for AuthFramework client architecture.
+"""Basic tests for cinaauth client architecture.
 
-Copyright (c) 2025 AuthFramework. All rights reserved.
+Copyright (c) 2025 cinaauth. All rights reserved.
 """
 
 import asyncio
@@ -8,7 +8,7 @@ import logging
 import os
 from unittest.mock import MagicMock
 
-from authframework.client import AuthFrameworkClient, BaseClient
+from cinaauth.client import CinaauthClient, BaseClient
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def test_client_initialization() -> None:
         TypeError: If client internal structure is invalid.
 
     """
-    client = AuthFrameworkClient("https://api.test.com")
+    client = CinaauthClient("https://api.test.com")
 
     # Verify services are initialized
     if not hasattr(client, "auth"):
@@ -54,7 +54,7 @@ async def test_client_context_manager() -> None:
         AssertionError: If client missing required services.
 
     """
-    async with AuthFrameworkClient("https://api.test.com") as client:
+    async with CinaauthClient("https://api.test.com") as client:
         if not hasattr(client, "auth"):
             msg = "Client missing 'auth' service in context manager"
             raise AssertionError(msg)
@@ -67,7 +67,7 @@ def test_token_management() -> None:
         AssertionError: If token management operations fail.
 
     """
-    client = AuthFrameworkClient("https://api.test.com")
+    client = CinaauthClient("https://api.test.com")
 
     # Test setting access token
     # Use environment variable or fallback for testing
@@ -92,7 +92,7 @@ def test_service_separation() -> None:
         AssertionError: If service separation validation fails.
 
     """
-    client = AuthFrameworkClient("https://api.test.com")
+    client = CinaauthClient("https://api.test.com")
 
     # Create a mock base client for testing (unused but part of test setup)
     _base_client = MagicMock(spec=BaseClient)

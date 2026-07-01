@@ -1,13 +1,13 @@
-# Auth Framework
+# cinaauth
 
-![Auth Framework](auth-framework.png)
+![cinaauth](cinaauth.png)
 
 ## 🏆 The Most Complete Authentication & Authorization Framework for Rust
 
 Security-first • Feature-rich • Batteries-included • Release candidate
 
-[![Crates.io](https://img.shields.io/crates/v/auth-framework.svg)](https://crates.io/crates/auth-framework)
-[![Documentation](https://docs.rs/auth-framework/badge.svg)](https://docs.rs/auth-framework)
+[![Crates.io](https://img.shields.io/crates/v/cinaauth.svg)](https://crates.io/crates/cinaauth)
+[![Documentation](https://docs.rs/cinaauth/badge.svg)](https://docs.rs/cinaauth)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![Security Audit](https://img.shields.io/badge/security-audited-green.svg)](SECURITY.md)
 [![OAuth 2.1](https://img.shields.io/badge/OAuth-2.1-blue.svg)](https://oauth.net/2.1/)
@@ -19,18 +19,18 @@ Security-first • Feature-rich • Batteries-included • Release candidate
 
 ```bash
 # Linux/macOS - One-line installation
-curl -sSL https://raw.githubusercontent.com/ciresnave/auth-framework/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/cinagroup/cinaauth/main/scripts/install.sh | bash
 
 # Windows PowerShell - One command
-iwr -useb https://raw.githubusercontent.com/ciresnave/auth-framework/main/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/cinagroup/cinaauth/main/scripts/install.ps1 | iex
 
 # Docker - Instant deployment
-docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
+docker run -p 8080:8080 ghcr.io/cinagroup/cinaauth:latest
 ```
 
 **That's it!** Server running at `http://localhost:8080` 🎉
 
-The `auth-framework` executable now starts the standalone REST API server directly. Build the separate admin tool as `auth-framework-admin` with the `admin-binary` feature when you need the operational UI and CLI.
+The `cinaauth` executable now starts the standalone REST API server directly. Build the separate admin tool as `cinaauth-admin` with the `admin-binary` feature when you need the operational UI and CLI.
 
 📖 [Full Deployment Guide](docs/DEPLOYMENT_GUIDE.md) • 🐳 [Docker Deployment](docker-compose.yml) • 🛠️ [Configuration Guide](docs/DEPLOYMENT_GUIDE.md#configuration) • 🧰 [Maintenance Operations Guide](docs/guides/maintenance-operations.md)
 
@@ -38,21 +38,21 @@ The `auth-framework` executable now starts the standalone REST API server direct
 
 ---
 
-**Auth Framework** is a comprehensive authentication and authorization framework for Rust applications. The project is aimed at production deployments, but as an active release candidate it should still be validated against your environment, storage, TLS, and operational requirements before rollout.
+**cinaauth** is a comprehensive authentication and authorization framework for Rust applications. The project is aimed at production deployments, but as an active release candidate it should still be validated against your environment, storage, TLS, and operational requirements before rollout.
 
 ## API Orientation
 
 If you are integrating the Rust library directly, start with these entry points:
 
-- `auth_framework::AuthFramework`: recommended default entry point for most applications.
-- `auth_framework::ModularAuthFramework`: advanced entry point when you need direct access to individual managers.
-- `auth_framework::prelude::*`: ergonomic imports for application code.
-- `auth_framework::AppConfigBuilder`: simple in-process configuration builder.
-- `auth_framework::LayeredConfigBuilder` and `auth_framework::ConfigManager`: layered configuration from files and environment variables.
+- `cinaauth::Cinaauth`: recommended default entry point for most applications.
+- `cinaauth::ModularCinaauth`: advanced entry point when you need direct access to individual managers.
+- `cinaauth::prelude::*`: ergonomic imports for application code.
+- `cinaauth::AppConfigBuilder`: simple in-process configuration builder.
+- `cinaauth::LayeredConfigBuilder` and `cinaauth::ConfigManager`: layered configuration from files and environment variables.
 
-This split exists to support both simple app integration and advanced composition, but new users should usually start with `AuthFramework` plus the prelude.
+This split exists to support both simple app integration and advanced composition, but new users should usually start with `Cinaauth` plus the prelude.
 
-## 🚀 Why Auth Framework is the Best Choice
+## 🚀 Why cinaauth is the Best Choice
 
 - **🏢 Complete Client & Server Solution**: The ONLY Rust framework providing both client authentication AND full OAuth 2.0 authorization server capabilities
 - **🛡️ Enterprise Security**: Military-grade security with comprehensive audit trails, rate limiting, and multi-factor authentication
@@ -74,7 +74,7 @@ Historical release notes below include the test counts and quality metrics repor
 **v0.5.0-rc24** - Release Publication Repair:
 
 - **📝 Release notes now come from the committed changelog** - The release workflow extracts the current version section directly from `CHANGELOG.md` instead of trying to build the obsolete `orhun/git-cliff-action@v3` container
-- **🐳 Prebuilt-musl Docker publishing retained** - The rc23 split runtime-image path remains in place, so release images still package prebuilt `auth-framework` musl binaries rather than compiling Rust in Docker publish jobs
+- **🐳 Prebuilt-musl Docker publishing retained** - The rc23 split runtime-image path remains in place, so release images still package prebuilt `cinaauth` musl binaries rather than compiling Rust in Docker publish jobs
 - **🦾 Native arm64 musl release path retained** - The `aarch64-unknown-linux-musl` release build continues to use native `cargo` plus host `musl-gcc` on `ubuntu-24.04-arm`
 
 **Previous: v0.5.0-rc6** - Storage Backend Correctness (audit cycle 13):
@@ -160,7 +160,7 @@ Historical release notes below include the test counts and quality metrics repor
 - **📁 Modular Configuration System** - Include directives for breaking configuration into logical components
 - **🌍 Environment Variable Support** - Comprehensive environment variable mapping with precedence control
 - **⚙️ CLI Integration** - Command-line argument parsing with clap integration
-- **🏗️ Parent App Integration** - Seamless nesting of auth-framework config into larger applications
+- **🏗️ Parent App Integration** - Seamless nesting of cinaauth config into larger applications
 - **🔄 Configuration Layering** - Smart precedence: CLI → Environment → Files → Defaults
 - **🚨 Automated Threat Intelligence** - Real-time threat feed updates with MaxMind GeoIP2 integration
 - **🛡️ Enhanced Security Features** - Advanced rate limiting, IP geolocation tracking, and threat detection
@@ -220,13 +220,13 @@ Historical release notes below include the test counts and quality metrics repor
 
 ### 🆕 Grouped Operation Accessors
 
-`AuthFramework` exposes its surface through focused, discoverable accessor methods so common operations
+`Cinaauth` exposes its surface through focused, discoverable accessor methods so common operations
 are easy to find and autocomplete works effectively:
 
 ```rust
-use auth_framework::prelude::*;
+use cinaauth::prelude::*;
 
-# async fn example(auth: &AuthFramework) -> Result<(), Box<dyn std::error::Error>> {
+# async fn example(auth: &Cinaauth) -> Result<(), Box<dyn std::error::Error>> {
 // User management
 let user_id = auth.users().register("alice", "alice@example.com", "hunter2").await?;
 let profile = auth.users().profile(&user_id).await?;
@@ -263,7 +263,7 @@ The full set of accessor groups is:
 | `auth.audit()`         | Permission logs and security statistics                  |
 | `auth.admin()`         | ABAC policies, role inheritance, resource delegation     |
 
-Import `auth_framework::prelude::*` to bring all types into scope at once.
+Import `cinaauth::prelude::*` to bring all types into scope at once.
 
 ### Device Flow Credential Constructors
 
@@ -289,7 +289,7 @@ Import `auth_framework::prelude::*` to bring all types into scope at once.
 Convenience constructors for device flow credentials:
 
 ```rust
-use auth_framework::{Credential, OAuthProvider};
+use cinaauth::{Credential, OAuthProvider};
 
 // Create device flow credential with minimal code
 let credential = Credential::enhanced_device_flow(
@@ -321,15 +321,15 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc24"
+cinaauth = "0.5.0-rc24"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
 ### Basic Usage
 
 ```rust
-use auth_framework::{AuthFramework, AuthConfig};
-use auth_framework::methods::{JwtMethod, AuthMethodEnum};
+use cinaauth::{Cinaauth, AuthConfig};
+use cinaauth::methods::{JwtMethod, AuthMethodEnum};
 use std::time::Duration;
 
 #[tokio::main]
@@ -348,9 +348,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .secret(jwt_secret);
 
     // Create the auth framework (storage is handled internally)
-    let mut auth = AuthFramework::new(config);
+    let mut auth = Cinaauth::new(config);
 
-    // Register the JWT method marker. AuthFramework validates JWTs with the
+    // Register the JWT method marker. Cinaauth validates JWTs with the
     // configured TokenManager when `authenticate("jwt", ...)` is called.
     auth.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
 
@@ -384,7 +384,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Build your own OAuth 2.0 authorization server in minutes:
 
 ```rust
-use auth_framework::{
+use cinaauth::{
     server::oauth::oauth2::{OAuth2Server, OAuth2ServerConfig},
     storage::memory::InMemoryStorage,
     client::ClientConfig,
@@ -421,7 +421,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client_config = ClientConfig {
         client_id: uuid::Uuid::new_v4().to_string(),
         client_secret: Some("my-client-secret".to_string()),
-        client_type: auth_framework::ClientType::Confidential,
+        client_type: cinaauth::ClientType::Confidential,
         redirect_uris: vec!["https://myapp.com/callback".to_string()],
         authorized_scopes: vec!["openid".to_string(), "profile".to_string(), "email".to_string()],
         authorized_grant_types: vec!["authorization_code".to_string(), "refresh_token".to_string()],
@@ -447,7 +447,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Provide OpenID Connect authentication for your applications:
 
 ```rust
-use auth_framework::{
+use cinaauth::{
     server::oidc::core::{OidcConfig, OidcProvider, SubjectType},
     storage::memory::InMemoryStorage,
     tokens::TokenManager,
@@ -489,7 +489,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 > For complete OAuth client flows, see the server examples in `examples/oauth2_authorization_server.rs` and `examples/complete_oauth2_server_axum.rs`.
 
 ```rust
-use auth_framework::providers::OAuthProvider;
+use cinaauth::providers::OAuthProvider;
 
 // OAuth providers are available for server implementations
 let github_provider = OAuthProvider::GitHub;
@@ -522,7 +522,7 @@ println!("Access token: {}", token_response.access_token);
 ### API Key Authentication
 
 ```rust
-use auth_framework::methods::{ApiKeyMethod, AuthMethodEnum};
+use cinaauth::methods::{ApiKeyMethod, AuthMethodEnum};
 
 // Set up API key authentication
 auth.register_method("api_key", AuthMethodEnum::ApiKey(ApiKeyMethod::new()));
@@ -539,7 +539,7 @@ let api_key = auth
 println!("New API key: {}", api_key);
 
 // Authenticate with API key
-let credential = auth_framework::credentials::Credential::api_key(&api_key);
+let credential = cinaauth::credentials::Credential::api_key(&api_key);
 let result = auth.authenticate("api_key", credential).await?;
 ```
 
@@ -551,11 +551,11 @@ let config = AuthConfig::new()
     .enable_multi_factor(true);
 
 // Authentication with MFA
-let credential = auth_framework::credentials::Credential::password("username", "password");
+let credential = cinaauth::credentials::Credential::password("username", "password");
 let result = auth.authenticate("password", credential).await?;
 
 match result {
-    auth_framework::AuthResult::MfaRequired(challenge) => {
+    cinaauth::AuthResult::MfaRequired(challenge) => {
         println!("MFA required. Challenge ID: {}", challenge.id());
 
         // User provides MFA code
@@ -563,10 +563,10 @@ match result {
         let token = auth.complete_mfa(challenge, mfa_code).await?;
         println!("MFA successful!");
     }
-    auth_framework::AuthResult::Success(token) => {
+    cinaauth::AuthResult::Success(token) => {
         println!("Direct authentication successful!");
     }
-    auth_framework::AuthResult::Failure(reason) => {
+    cinaauth::AuthResult::Failure(reason) => {
         println!("Authentication failed: {}", reason);
     }
 }
@@ -575,9 +575,9 @@ match result {
 ### Permission Management
 
 ```rust
-use auth_framework::permissions::{Permission, Role, PermissionChecker};
+use cinaauth::permissions::{Permission, Role, PermissionChecker};
 
-// Permission checking is built into the AuthFramework
+// Permission checking is built into the Cinaauth
 // Create a test token first
 let token = auth.create_auth_token(
     "user123",
@@ -601,7 +601,7 @@ println!("Can read: {}, Can write: {}, Can delete: {}", can_read, can_write, can
 #### PostgreSQL Storage (Recommended)
 
 ```rust
-use auth_framework::config::{AuthConfig, StorageConfig};
+use cinaauth::config::{AuthConfig, StorageConfig};
 
 let config = AuthConfig::new()
     .storage(StorageConfig::PostgreSQL {
@@ -613,7 +613,7 @@ let config = AuthConfig::new()
 #### Redis Storage
 
 ```rust
-use auth_framework::config::{AuthConfig, StorageConfig};
+use cinaauth::config::{AuthConfig, StorageConfig};
 
 let config = AuthConfig::new()
     .storage(StorageConfig::Redis {
@@ -625,8 +625,8 @@ let config = AuthConfig::new()
 #### Custom Storage
 
 ```rust
-use auth_framework::storage::AuthStorage;
-use auth_framework::tokens::AuthToken;
+use cinaauth::storage::AuthStorage;
+use cinaauth::tokens::AuthToken;
 
 #[derive(Clone)]
 struct MyCustomStorage;
@@ -653,13 +653,13 @@ impl AuthStorage for MyCustomStorage {
 
 // Use your custom storage
 let storage = Arc::new(MyCustomStorage);
-let auth = AuthFramework::new_with_storage(config, storage);
+let auth = Cinaauth::new_with_storage(config, storage);
 ```
 
 ### Rate Limiting
 
 ```rust
-use auth_framework::config::RateLimitConfig;
+use cinaauth::config::RateLimitConfig;
 
 let config = AuthConfig::new()
     .rate_limiting(RateLimitConfig::new(
@@ -681,7 +681,7 @@ use axum::{
 };
 
 async fn auth_middleware(
-    State(auth): State<Arc<AuthFramework>>,
+    State(auth): State<Arc<Cinaauth>>,
     mut request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
@@ -712,7 +712,7 @@ async fn auth_validator(
     req: ServiceRequest,
     credentials: BearerAuth,
 ) -> Result<ServiceRequest, Error> {
-    let auth = req.app_data::<web::Data<AuthFramework>>().unwrap();
+    let auth = req.app_data::<web::Data<Cinaauth>>().unwrap();
 
     if let Ok(Some(token)) = auth.storage.get_token_by_access_token(credentials.token()).await {
         if auth.validate_token(&token).await.unwrap_or(false) {
@@ -730,7 +730,7 @@ async fn auth_validator(
 Device flow is supported through the provider implementations. See the OAuth server examples for complete device flow implementations:
 
 ```rust
-use auth_framework::providers::OAuthProvider;
+use cinaauth::providers::OAuthProvider;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -765,7 +765,7 @@ Auth-framework provides flexible configuration management using the `config` cra
 ### Quick Start Configuration
 
 ```toml
-# auth-framework.toml
+# cinaauth.toml
 [jwt]
 secret_key = "${JWT_SECRET_KEY:development-secret}"
 algorithm = "HS256"
@@ -787,13 +787,13 @@ include = [
 ### Using ConfigManager in Code
 
 ```rust
-use auth_framework::config::{ConfigManager, AuthFrameworkConfigManager};
+use cinaauth::config::{ConfigManager, CinaauthConfigManager};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load configuration from files and environment
-    let config = AuthFrameworkConfigManager::builder()
-        .with_file("config/auth-framework.toml")
+    let config = CinaauthConfigManager::builder()
+        .with_file("config/cinaauth.toml")
         .with_env_prefix("AUTH")  // Maps AUTH_JWT_SECRET_KEY etc.
         .with_cli_args()         // Command line overrides
         .build()?;
@@ -830,7 +830,7 @@ Organize configuration into logical modules:
 
 ```text
 config/
-├── auth-framework.toml    # Main configuration with includes
+├── cinaauth.toml    # Main configuration with includes
 ├── threat-intel.toml      # Threat intelligence settings
 ├── session.toml          # Session management configuration
 └── methods/              # Authentication method configs
@@ -850,9 +850,9 @@ Auth-framework configuration seamlessly integrates into larger application confi
 name = "MyApplication"
 version = "1.0.0"
 
-# Include auth-framework configuration
+# Include cinaauth configuration
 [auth]
-include = ["auth-framework.toml"]
+include = ["cinaauth.toml"]
 
 # Override specific auth settings
 [auth.jwt]
@@ -900,7 +900,7 @@ When using RSA keys for JWT signing and verification, the framework supports bot
 Both formats are automatically detected and work seamlessly with the `TokenManager`:
 
 ```rust
-use auth_framework::tokens::TokenManager;
+use cinaauth::tokens::TokenManager;
 
 // Load your RSA keys (either PKCS#1 or PKCS#8 format)
 let private_key = std::fs::read("private.pem")?;
@@ -945,7 +945,7 @@ See the `examples/` directory for complete client examples:
 **Full OAuth 2.0 Authorization Server Examples:**
 
 - `oauth2_authorization_server.rs` - Complete OAuth 2.0 server setup with client registration
-- `complete_oauth2_server_axum.rs` - Axum server reference implementation with AuthFramework integration
+- `complete_oauth2_server_axum.rs` - Axum server reference implementation with Cinaauth integration
 - `production_deployments.rs` - Enterprise deployment configurations for different environments
 
 **Server Features Demonstrated:**
@@ -1011,19 +1011,19 @@ The framework provides comprehensive testing utilities to make testing your auth
 
 ```toml
 [dev-dependencies]
-auth-framework = { version = "0.5.0-rc24", features = ["testing"] }
+cinaauth = { version = "0.5.0-rc24", features = ["testing"] }
 ```
 
 ```rust
-use auth_framework::{
+use cinaauth::{
     testing::{MockAuthMethod, MockStorage, helpers},
-    AuthFramework, AuthConfig, Credential,
+    Cinaauth, AuthConfig, Credential,
 };
 
 #[tokio::test]
 async fn test_user_authentication() {
     // Create a test auth framework
-    let mut auth = helpers::create_test_auth_framework();
+    let mut auth = helpers::create_test_cinaauth();
 
     // Set up a mock authentication method
     let mock_method = MockAuthMethod::new_success()
@@ -1037,7 +1037,7 @@ async fn test_user_authentication() {
     let result = auth.authenticate("mock", credential).await.unwrap();
 
     match result {
-        auth_framework::AuthResult::Success(token) => {
+        cinaauth::AuthResult::Success(token) => {
             assert_eq!(token.user_id, "testuser");
             assert!(token.scopes.contains(&"read".to_string()));
         }
@@ -1047,7 +1047,7 @@ async fn test_user_authentication() {
 
 #[tokio::test]
 async fn test_authentication_failure() {
-    let mut auth = helpers::create_test_auth_framework();
+    let mut auth = helpers::create_test_cinaauth();
 
     // Mock method that always fails
     let mock_method = MockAuthMethod::new_failure();
@@ -1058,7 +1058,7 @@ async fn test_authentication_failure() {
     let result = auth.authenticate("mock", credential).await.unwrap();
 
     match result {
-        auth_framework::AuthResult::Failure(_) => {
+        cinaauth::AuthResult::Failure(_) => {
             // Expected
         }
         _ => panic!("Expected authentication failure"),
@@ -1092,7 +1092,7 @@ async fn test_token_storage() {
 The framework provides specific error types for better error handling:
 
 ```rust
-use auth_framework::{AuthError, DeviceFlowError, OAuthProviderError};
+use cinaauth::{AuthError, DeviceFlowError, OAuthProviderError};
 
 async fn handle_auth_errors() {
     // Device flow specific errors
@@ -1147,7 +1147,7 @@ async fn handle_auth_errors() {
 OAuth providers are available for server-side implementations. See the server examples for complete provider usage:
 
 ```rust
-use auth_framework::providers::{OAuthProvider, OAuthProviderConfig, UserProfile};
+use cinaauth::providers::{OAuthProvider, OAuthProviderConfig, UserProfile};
 use std::collections::HashMap;
 
 // Available providers for OAuth server implementations
@@ -1182,7 +1182,7 @@ let custom_provider = OAuthProvider::Custom {
 The framework provides a standardized `UserProfile` type that works across all providers:
 
 ```rust
-use auth_framework::providers::UserProfile;
+use cinaauth::providers::UserProfile;
 
 // Creating user profiles
 let profile = UserProfile::new("user123", "github")
@@ -1222,7 +1222,7 @@ let app_user: AppUser = user_profile.into();
 Understanding the relationship between credentials and authentication methods:
 
 ```rust
-use auth_framework::Credential;
+use cinaauth::Credential;
 
 // Password credentials -> PasswordMethod
 let password_cred = Credential::password("username", "password");
@@ -1270,14 +1270,14 @@ Helper utilities for integrating with CLI frameworks:
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc24"
+cinaauth = "0.5.0-rc24"
 clap = "4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
 ```rust
-use auth_framework::{AuthFramework, AuthConfig, Credential};
-use auth_framework::providers::OAuthProvider;
+use cinaauth::{Cinaauth, AuthConfig, Credential};
+use cinaauth::providers::OAuthProvider;
 use clap::{Arg, Command};
 
 fn create_auth_command() -> Command {
@@ -1334,7 +1334,7 @@ async fn perform_device_flow_auth(provider: &str, client_id: &str) -> Result<(),
 
     // Set up auth framework
     let config = AuthConfig::new();
-    let mut auth = AuthFramework::new(config);
+    let mut auth = Cinaauth::new(config);
 
     // OAuth providers are available for server-side implementations
     let oauth_provider = match provider {
@@ -1364,7 +1364,7 @@ async fn perform_web_flow_auth(provider: &str, client_id: &str) -> Result<(), Bo
 }
 ```
 
-AuthFramework includes protocol implementations for:
+Cinaauth includes protocol implementations for:
 
 - PASETO (v4.local tokens)
 - Macaroons (HMAC-SHA256 chained caveats)

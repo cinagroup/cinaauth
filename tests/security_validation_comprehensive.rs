@@ -2,10 +2,10 @@
 //!
 //! Comprehensive test suite covering all security validation paths
 //! identified in the security audit. These tests replace the PowerShell
-//! tests and ensure proper security validation throughout AuthFramework.
+//! tests and ensure proper security validation throughout Cinaauth.
 
-use auth_framework::{
-    AuthFramework,
+use cinaauth::{
+    Cinaauth,
     api::{ApiServer, server::ApiServerConfig},
     config::AuthConfig,
     storage::memory::InMemoryStorage,
@@ -24,27 +24,27 @@ async fn create_test_server() -> ApiServer {
         .token_lifetime(Duration::from_secs(3600))
         .refresh_token_lifetime(Duration::from_secs(86400 * 7)); // 7 days
 
-    let mut auth_framework_mut = AuthFramework::new(auth_config);
-    auth_framework_mut.initialize().await.unwrap();
-    let auth_framework = Arc::new(auth_framework_mut);
+    let mut cinaauth_mut = Cinaauth::new(auth_config);
+    cinaauth_mut.initialize().await.unwrap();
+    let cinaauth = Arc::new(cinaauth_mut);
 
     let api_config = ApiServerConfig {
         host: "127.0.0.1".to_string(),
         port: 0, // Random port for testing
-        cors: auth_framework::CorsConfig {
+        cors: cinaauth::CorsConfig {
             enabled: true,
             allowed_origins: vec!["http://localhost:3000".to_string()],
-            ..auth_framework::CorsConfig::default()
+            ..cinaauth::CorsConfig::default()
         },
         max_body_size: 1024 * 1024,
         enable_tracing: false,
     };
 
-    ApiServer::with_config(auth_framework, api_config)
+    ApiServer::with_config(cinaauth, api_config)
 }
 
 fn unique_registration_password() -> String {
-    format!("AuthFramework!A9{}", uuid::Uuid::new_v4().simple())
+    format!("Cinaauth!A9{}", uuid::Uuid::new_v4().simple())
 }
 
 // =============================================================================

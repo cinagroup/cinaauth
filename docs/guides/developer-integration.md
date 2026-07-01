@@ -1,6 +1,6 @@
 # Developer Integration Guide
 
-This guide covers how to integrate AuthFramework as a Rust library into your application.
+This guide covers how to integrate Cinaauth as a Rust library into your application.
 If you are looking to deploy the standalone server binary, see [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md) instead.
 
 ---
@@ -17,7 +17,7 @@ If you are looking to deploy the standalone server binary, see [DEPLOYMENT_GUIDE
 
 ```toml
 [dependencies]
-auth-framework = "0.5.0-rc24"
+cinaauth = "0.5.0-rc24"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -28,7 +28,7 @@ To opt out of specific subsystems:
 
 ```toml
 # Axum-only, no OIDC
-auth-framework = { version = "0.5.0-rc24", default-features = false, features = ["enhanced-rbac", "postgres-storage", "axum-integration"] }
+cinaauth = { version = "0.5.0-rc24", default-features = false, features = ["enhanced-rbac", "postgres-storage", "axum-integration"] }
 ```
 
 See [Cargo.toml](../../Cargo.toml) for the full feature flag reference.
@@ -38,7 +38,7 @@ See [Cargo.toml](../../Cargo.toml) for the full feature flag reference.
 ## Step 2 — Configure and initialize
 
 ```rust
-use auth_framework::prelude::*;
+use cinaauth::prelude::*;
 use std::time::Duration;
 
 #[tokio::main]
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // In production, load from env: std::env::var("JWT_SECRET")?
         .secret("replace-with-a-32-char-random-secret!!".to_string());
 
-    let mut auth = AuthFramework::new(config);
+    let mut auth = Cinaauth::new(config);
     auth.initialize().await?;
 
     // auth is now ready to use
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`AuthFramework::new()` is synchronous. Call `.initialize().await` before serving requests
+`Cinaauth::new()` is synchronous. Call `.initialize().await` before serving requests
 so that background cleanup tasks are scheduled.
 
 ---
@@ -133,7 +133,7 @@ auth.authorization().grant(&user_id, "read", "reports").await?;
 auth.authorization().revoke(&user_id, "read", "reports").await?;
 
 // Role management
-use auth_framework::permissions::Role;
+use cinaauth::permissions::Role;
 auth.authorization().create_role(Role::new("editor")).await?;
 auth.authorization().assign_role(&user_id, "editor").await?;
 auth.authorization().remove_role(&user_id, "editor").await?;
@@ -164,23 +164,23 @@ auth.sessions().cleanup_expired().await?;
 
 ## Step 7 — Axum integration
 
-AuthFramework ships a first-class Axum integration in the `axum-integration` feature
+Cinaauth ships a first-class Axum integration in the `axum-integration` feature
 (on by default). The `AuthenticatedUser` extractor validates the `Authorization: Bearer`
 header on every request automatically.
 
 ```rust
-use auth_framework::prelude::*;
-use auth_framework::integrations::axum::AuthenticatedUser;
+use cinaauth::prelude::*;
+use cinaauth::integrations::axum::AuthenticatedUser;
 use axum::{Router, routing::get, Json, extract::State, http::StatusCode};
 use std::sync::Arc;
 
-type AppState = Arc<AuthFramework>;
+type AppState = Arc<Cinaauth>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = AuthConfig::new()
         .secret(std::env::var("JWT_SECRET")?);
-    let mut auth = AuthFramework::new(config);
+    let mut auth = Cinaauth::new(config);
     auth.initialize().await?;
 
     let state: AppState = Arc::new(auth);

@@ -2,7 +2,7 @@
   authors       = ["Eric Evans <ciresnave@gmail.com>"]
   categories    = ["authentication", "web-programming"]
   description   = "A comprehensive, production-ready authentication and authorization framework for Rust applications"
-  documentation = "https://docs.rs/auth-framework"
+  documentation = "https://docs.rs/cinaauth"
   edition       = "2024"
   exclude       = [
     # Audit / dev-only docs
@@ -44,7 +44,7 @@
     # Misc dev files
     ".env.example",
     "err*.txt",
-    "auth-framework.png",
+    "cinaauth.png",
     "*.profraw",
     # Build log / analysis output files
     "build_*.txt",
@@ -54,19 +54,19 @@
   ]
   keywords      = ["auth", "authentication", "authorization", "jwt", "oauth"]
   license       = "MIT OR Apache-2.0"
-  name          = "auth-framework"
+  name          = "cinaauth"
   readme        = "README.md"
-  repository    = "https://github.com/ciresnave/auth-framework"
+  repository    = "https://github.com/cinagroup/cinaauth"
   rust-version  = "1.88"
   version       = "0.5.0-rc24"
 
 [[bin]]
-  name              = "auth-framework"
+  name              = "cinaauth"
   path              = "src/bin/server.rs"
   required-features = ["api-server"]
 
 [[bin]]
-  name              = "auth-framework-admin"
+  name              = "cinaauth-admin"
   path              = "src/bin/admin.rs"
   required-features = ["admin-binary"]
 

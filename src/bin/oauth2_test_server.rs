@@ -3,7 +3,7 @@
 //! This binary demonstrates and tests the complete OAuth2 authorization server functionality
 //! including authorization code flow, PKCE support, and token exchange.
 
-use auth_framework::{AuthConfig, AuthFramework, api::ApiServer};
+use cinaauth::{AuthConfig, Cinaauth, api::ApiServer};
 use std::sync::Arc;
 use tracing::info;
 
@@ -14,19 +14,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("🚀 Starting OAuth2 Authorization Server Test");
 
-    // Create AuthFramework instance
+    // Create Cinaauth instance
     // Create auth framework configuration
     let config = AuthConfig::new()
         .secret("test_oauth2_secret_key_that_is_long_enough_for_secure_operation".to_string());
 
     // Create and initialize auth framework
-    let mut auth_framework = AuthFramework::new(config);
-    auth_framework.initialize().await?;
+    let mut cinaauth = Cinaauth::new(config);
+    cinaauth.initialize().await?;
 
-    let auth_framework = Arc::new(auth_framework);
+    let cinaauth = Arc::new(cinaauth);
 
     // Create API server
-    let server = ApiServer::new(auth_framework.clone());
+    let server = ApiServer::new(cinaauth.clone());
 
     info!("📖 OAuth2 Endpoints Available:");
     info!("  Authorization: GET  http://127.0.0.1:8080/api/v1/oauth/authorize");

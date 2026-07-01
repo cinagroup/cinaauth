@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use auth_framework::errors::{AuthError, Result, StorageError};
-use auth_framework::storage::{AuthStorage, SessionData};
-use auth_framework::tokens::AuthToken;
+use cinaauth::errors::{AuthError, Result, StorageError};
+use cinaauth::storage::{AuthStorage, SessionData};
+use cinaauth::tokens::AuthToken;
 use sqlx::{Row, SqlitePool};
 use std::time::Duration;
 
@@ -313,7 +313,7 @@ impl AuthStorage for SqliteStorage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use auth_framework::tokens::TokenMetadata;
+    use cinaauth::tokens::TokenMetadata;
     use chrono::Utc;
     use std::collections::HashMap;
 

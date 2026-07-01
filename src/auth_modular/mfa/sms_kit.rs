@@ -10,7 +10,7 @@ use std::time::Duration;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-/// SMSKit configuration for AuthFramework
+/// SMSKit configuration for Cinaauth
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SmsKitConfig {
     /// Primary SMS provider

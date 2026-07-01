@@ -28,8 +28,8 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::security::caep_continuous_access::*;
-//! use auth_framework::server::{SessionManager, BackChannelLogoutManager};
+//! use cinaauth::server::security::caep_continuous_access::*;
+//! use cinaauth::server::{SessionManager, BackChannelLogoutManager};
 //! use chrono::Duration;
 //! use std::sync::Arc;
 //! use async_trait::async_trait;
@@ -39,7 +39,7 @@
 //!
 //! #[async_trait]
 //! impl CaepEventHandler for RiskScoreHandler {
-//!     async fn handle_event(&self, event: &CaepEvent) -> auth_framework::errors::Result<()> {
+//!     async fn handle_event(&self, event: &CaepEvent) -> cinaauth::errors::Result<()> {
 //!         if event.risk_score > 0.8 {
 //!             // High risk - would revoke access in real implementation
 //!             println!("High risk detected: {}", event.risk_score);
@@ -137,7 +137,7 @@ impl Default for CaepConfig {
         let rng = SystemRandom::new();
         let mut bytes = [0u8; 32];
         rng.fill(&mut bytes)
-            .expect("AuthFramework fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
+            .expect("cinaauth fatal: system CSPRNG unavailable — the operating system cannot provide cryptographic randomness");
         let signing_secret = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
             s.push_str(&format!("{b:02x}"));
             s
@@ -523,7 +523,7 @@ impl CaepManager {
             AuthError::Configuration {
                 message: format!("Invalid evaluation interval: {}", e),
                 help: Some("Provide a valid duration for evaluation interval".to_string()),
-                docs_url: Some("https://docs.auth-framework.com/configuration".to_string()),
+                docs_url: Some("https://docs.cinaauth.com/configuration".to_string()),
                 source: None,
                 suggested_fix: Some("Check your configuration and ensure the evaluation interval is properly formatted".to_string()),
             }

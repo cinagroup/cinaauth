@@ -10,14 +10,14 @@ pub trait AdvancedMiddlewareHooks {
     fn on_response(&self, _res: &warp::http::Response<warp::hyper::body::Incoming>) {}
     fn on_error(&self, _err: &AuthError) {}
 }
-/// Warp integration for auth-framework.
+/// Warp integration for cinaauth.
 ///
 /// This module provides filters and utilities for seamless
 /// integration with Warp web applications.
 use crate::authorization::{AccessContext, AuthorizationStorage};
 
 use crate::{
-    AuthError, AuthFramework, Result,
+    AuthError, Cinaauth, Result,
     authorization::{AbacPermission, AuthorizationEngine},
     tokens::AuthToken,
 };
@@ -45,17 +45,17 @@ impl warp::reject::Reject for AuthRejection {}
 /// let route = warp::path("api").and(with_auth(fw.clone())).map(|token: AuthToken| { /* ... */ });
 /// ```
 pub fn with_auth(
-    auth_framework: Arc<AuthFramework>,
+    cinaauth: Arc<Cinaauth>,
 ) -> impl Filter<Extract = (AuthToken,), Error = Rejection> + Clone {
     warp::header::<String>("authorization").and_then(move |auth_header: String| {
-        let auth_framework = auth_framework.clone();
+        let cinaauth = cinaauth.clone();
         async move {
             // Extract the raw bearer token
             let token_str = extract_token_from_header(&auth_header)
                 .map_err(|e| warp::reject::custom(AuthRejection { error: e }))?;
 
             // Validate using the framework's TokenManager (full HMAC/RSA signature verification)
-            let claims = auth_framework
+            let claims = cinaauth
                 .token_manager()
                 .validate_jwt_token(&token_str)
                 .map_err(|e| warp::reject::custom(AuthRejection { error: e }))?;
@@ -456,7 +456,7 @@ fn validate_token_secure(token_str: &str) -> Result<AuthToken> {
 /// let cfg = WarpConfig::new(fw.clone()).with_authorization(engine);
 /// ```
 pub struct WarpConfig<S: AuthorizationStorage + Send + Sync + 'static> {
-    pub auth_framework: Arc<AuthFramework>,
+    pub cinaauth: Arc<Cinaauth>,
     pub authorization_engine: Option<Arc<AuthorizationEngine<S>>>,
 }
 
@@ -467,9 +467,9 @@ impl<S: AuthorizationStorage + Send + Sync + 'static> WarpConfig<S> {
     /// ```rust,ignore
     /// let cfg = WarpConfig::new(fw.clone());
     /// ```
-    pub fn new(auth_framework: Arc<AuthFramework>) -> Self {
+    pub fn new(cinaauth: Arc<Cinaauth>) -> Self {
         Self {
-            auth_framework,
+            cinaauth,
             authorization_engine: None,
         }
     }
@@ -492,7 +492,7 @@ impl<S: AuthorizationStorage + Send + Sync + 'static> WarpConfig<S> {
     /// let filter = cfg.auth_filter();
     /// ```
     pub fn auth_filter(&self) -> impl Filter<Extract = (AuthToken,), Error = Rejection> + Clone {
-        with_auth(self.auth_framework.clone())
+        with_auth(self.cinaauth.clone())
     }
 }
 

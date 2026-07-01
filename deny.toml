@@ -1,4 +1,4 @@
-# Cargo-deny configuration for AuthFramework
+# Cargo-deny configuration for Cinaauth
 # Security-first configuration for authentication framework
 
 [advisories]

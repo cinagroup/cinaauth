@@ -2,8 +2,8 @@
 //!
 //! This binary tests the complete OAuth2 authorization server flow
 
-use auth_framework::{
-    AuthConfig, AuthFramework,
+use cinaauth::{
+    AuthConfig, Cinaauth,
     api::{ApiServer, server::ApiServerConfig},
 };
 use std::sync::Arc;
@@ -21,25 +21,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .secret("test_oauth2_secret_key_that_is_long_enough_for_secure_operation".to_string());
 
     // Create and initialize auth framework
-    let mut auth_framework = AuthFramework::new(config);
-    auth_framework.initialize().await?;
+    let mut cinaauth = Cinaauth::new(config);
+    cinaauth.initialize().await?;
 
-    let auth_framework = Arc::new(auth_framework);
+    let cinaauth = Arc::new(cinaauth);
 
     // Create API server
     let api_config = ApiServerConfig {
         host: "127.0.0.1".to_string(),
         port: 8080,
-        cors: auth_framework::CorsConfig {
+        cors: cinaauth::CorsConfig {
             enabled: true,
             allowed_origins: vec!["http://localhost:3000".to_string()],
-            ..auth_framework::CorsConfig::default()
+            ..cinaauth::CorsConfig::default()
         },
         max_body_size: 1024 * 1024, // 1MB
         enable_tracing: true,
     };
 
-    let api_server = ApiServer::with_config(auth_framework.clone(), api_config);
+    let api_server = ApiServer::with_config(cinaauth.clone(), api_config);
 
     info!("Building OAuth2 server router...");
     let app = api_server.build_router().await?;

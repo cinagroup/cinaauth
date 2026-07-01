@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "authframework"
+name = "cinaauth"
 version = "0.5.0rc18"
-description = "Official Python SDK for AuthFramework REST API"
+description = "Official Python SDK for cinaauth REST API"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
-authors = [{ name = "AuthFramework Team", email = "support@authframework.dev" }]
+authors = [{ name = "cinaauth Team", email = "support@cinaauth.dev" }]
 keywords = [
   "auth",
   "authentication",
@@ -53,13 +53,13 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/cires/AuthFramework"
-Repository = "https://github.com/cires/AuthFramework.git"
-Documentation = "https://github.com/cires/AuthFramework/tree/main/sdks/python"
-Issues = "https://github.com/cires/AuthFramework/issues"
+Homepage = "https://github.com/cinagroup/cinaauth"
+Repository = "https://github.com/cinagroup/cinaauth.git"
+Documentation = "https://github.com/cinagroup/cinaauth/tree/main/sdks/python"
+Issues = "https://github.com/cinagroup/cinaauth/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/authframework"]
+packages = ["src/cinaauth"]
 
 [tool.hatch.build.targets.sdist]
 include = ["/src", "/tests", "/README.md", "/LICENSE"]
@@ -114,7 +114,7 @@ python_functions = ["test_*"]
 addopts = [
   "--strict-markers",
   "--strict-config",
-  "--cov=authframework",
+  "--cov=cinaauth",
   "--cov-report=term-missing",
   "--cov-report=html",
   "--cov-report=xml",
@@ -127,7 +127,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/authframework"]
+source = ["src/cinaauth"]
 omit = ["*/tests/*", "*/test_*"]
 
 [tool.coverage.report]

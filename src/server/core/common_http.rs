@@ -42,7 +42,7 @@ impl HttpClient {
         if !headers.contains_key("user-agent") {
             headers.insert(
                 reqwest::header::USER_AGENT,
-                reqwest::header::HeaderValue::from_static("auth-framework/0.3.0"),
+                reqwest::header::HeaderValue::from_static("cinaauth/0.3.0"),
             );
         }
 

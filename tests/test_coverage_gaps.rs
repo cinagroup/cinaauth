@@ -1,7 +1,7 @@
-use auth_framework::auth::AuthFramework;
-use auth_framework::authentication::credentials::Credential;
-use auth_framework::config::AuthConfig;
-use auth_framework::testing::test_infrastructure::TestEnvironmentGuard;
+use cinaauth::auth::Cinaauth;
+use cinaauth::authentication::credentials::Credential;
+use cinaauth::config::AuthConfig;
+use cinaauth::testing::test_infrastructure::TestEnvironmentGuard;
 use std::sync::Arc;
 
 /// Demonstration of critical test coverage gaps
@@ -12,7 +12,7 @@ async fn demonstrate_uninitialized_framework_gap() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let framework = AuthFramework::new(config);
+    let framework = Cinaauth::new(config);
     // DELIBERATELY NOT calling framework.initialize()
 
     let credential = Credential::password("user", "pass");
@@ -35,7 +35,7 @@ async fn demonstrate_storage_failure_gap() {
     // This demonstrates we lack proper failure scenario testing
     let config = AuthConfig::default();
 
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // This test demonstrates that we lack coverage for storage failures
@@ -61,7 +61,7 @@ async fn demonstrate_input_validation_gaps() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test extreme inputs that might cause issues
@@ -98,7 +98,7 @@ async fn demonstrate_concurrency_gap() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     let framework = Arc::new(framework);
@@ -141,7 +141,7 @@ async fn demonstrate_error_propagation_gaps() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     // Test non-existent authentication method
@@ -167,7 +167,7 @@ async fn demonstrate_boundary_condition_gaps() {
     let _env = TestEnvironmentGuard::new().with_jwt_secret("test-secret");
 
     let config = AuthConfig::default();
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
 
     println!("⚠️ COVERAGE GAPS DEMONSTRATED:");

@@ -10,8 +10,8 @@
 //! These tests verify that rate limiting works correctly through realistic
 //! attack scenarios and ensure the system is protected against abuse.
 
-use auth_framework::{
-    AuthConfig, AuthFramework,
+use cinaauth::{
+    AuthConfig, Cinaauth,
     distributed::rate_limiting::{
         DistributedRateLimiter, RateLimitConfig, RateLimitResult, RateLimitStrategy,
     },
@@ -23,12 +23,12 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 /// Helper to create test framework
-async fn setup_test_framework() -> Arc<AuthFramework> {
+async fn setup_test_framework() -> Arc<Cinaauth> {
     let config = AuthConfig::new()
         .secret("test_security_verification_secret_key_minimum_32_bytes".to_string())
         .max_failed_attempts(5);
 
-    let mut framework = AuthFramework::new(config);
+    let mut framework = Cinaauth::new(config);
     framework.initialize().await.unwrap();
     Arc::new(framework)
 }

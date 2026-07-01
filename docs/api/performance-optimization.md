@@ -1,6 +1,6 @@
 # Performance Optimization Guide
 
-This guide documents performance strategies that match the current AuthFramework API and storage model.
+This guide documents performance strategies that match the current Cinaauth API and storage model.
 
 ## 1. Optimize the Real Hot Paths
 
@@ -16,7 +16,7 @@ Start with those routes before tuning rarely used admin or feature-gated endpoin
 
 ## 2. Reuse HTTP Connections
 
-When you call AuthFramework from another service, keep a single `reqwest::Client` per process.
+When you call Cinaauth from another service, keep a single `reqwest::Client` per process.
 
 ```rust,ignore
 use reqwest::Client;
@@ -85,7 +85,7 @@ For login benchmarking, use realistic credentials and include the JSON wrapper i
 
 Recommendations:
 
-- Prefer `GET /api/v1/auth/validate` for first-party internal services that already trust the AuthFramework bearer tokens.
+- Prefer `GET /api/v1/auth/validate` for first-party internal services that already trust the Cinaauth bearer tokens.
 - Reserve `/oauth/introspect` for RFC-compliant OAuth resource-server integrations.
 - Reuse client credentials and keep HTTP connections warm.
 

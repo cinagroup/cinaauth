@@ -1,8 +1,8 @@
 //! Debug REST API Server
 //! Simple test to identify startup issues
 
-use auth_framework::{
-    AuthFramework,
+use cinaauth::{
+    Cinaauth,
     api::{ApiServer, server::ApiServerConfig},
     config::AuthConfig,
     storage::memory::InMemoryStorage,
@@ -28,29 +28,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .token_lifetime(chrono::Duration::hours(1).to_std().unwrap())
         .refresh_token_lifetime(chrono::Duration::days(7).to_std().unwrap());
 
-    println!("🔐 Creating AuthFramework...");
-    let mut auth_framework_mut = AuthFramework::new(auth_config);
+    println!("🔐 Creating Cinaauth...");
+    let mut cinaauth_mut = Cinaauth::new(auth_config);
 
-    println!("⚡ Initializing AuthFramework...");
-    auth_framework_mut.initialize().await?;
+    println!("⚡ Initializing Cinaauth...");
+    cinaauth_mut.initialize().await?;
 
-    let auth_framework = Arc::new(auth_framework_mut);
+    let cinaauth = Arc::new(cinaauth_mut);
 
     println!("🌐 Creating API config...");
     let api_config = ApiServerConfig {
         host: "127.0.0.1".to_string(),
         port: 8088,
-        cors: auth_framework::CorsConfig {
+        cors: cinaauth::CorsConfig {
             enabled: true,
             allowed_origins: vec!["http://localhost:3000".to_string()],
-            ..auth_framework::CorsConfig::default()
+            ..cinaauth::CorsConfig::default()
         },
         max_body_size: 1024 * 1024,
         enable_tracing: true,
     };
 
     println!("🚀 Creating API server...");
-    let api_server = ApiServer::with_config(auth_framework, api_config);
+    let api_server = ApiServer::with_config(cinaauth, api_config);
 
     println!("🎯 Starting server (this should not return immediately)...");
     api_server.start().await?;

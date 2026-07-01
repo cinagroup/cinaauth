@@ -1,4 +1,4 @@
-//! Benchmarks for AuthFramework authentication hot paths.
+//! Benchmarks for Cinaauth authentication hot paths.
 //!
 //! These benchmarks measure the latency of the most frequently executed operations
 //! in a running auth service:
@@ -14,9 +14,9 @@
 //! HTML reports are written to `target/criterion/` when the `html_reports` feature
 //! is enabled (it is part of the default dev-dependency configuration).
 
-use auth_framework::security::secure_jwt::{SecureJwtClaims, SecureJwtConfig, SecureJwtValidator};
-use auth_framework::security::secure_utils::constant_time_compare;
-use auth_framework::utils::password::{hash_password, verify_password};
+use cinaauth::security::secure_jwt::{SecureJwtClaims, SecureJwtConfig, SecureJwtValidator};
+use cinaauth::security::secure_utils::constant_time_compare;
+use cinaauth::utils::password::{hash_password, verify_password};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use std::collections::HashSet;
@@ -33,7 +33,7 @@ fn make_claims() -> SecureJwtClaims {
     let now = chrono::Utc::now().timestamp();
     SecureJwtClaims {
         sub: "bench-user-001".to_string(),
-        iss: "auth-framework".to_string(),
+        iss: "cinaauth".to_string(),
         aud: "bench-audience".to_string(),
         exp: now + 3600,
         nbf: now - 10,
@@ -55,7 +55,7 @@ fn signed_token() -> String {
 
 fn make_validator() -> SecureJwtValidator {
     let mut required_issuers = HashSet::new();
-    required_issuers.insert("auth-framework".to_string());
+    required_issuers.insert("cinaauth".to_string());
 
     let config = SecureJwtConfig {
         allowed_algorithms: vec![Algorithm::HS256],

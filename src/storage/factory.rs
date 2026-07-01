@@ -81,7 +81,7 @@ pub(crate) async fn build_storage_backend(
             Ok(Arc::new(storage))
         }
         StorageConfig::Custom(name) => Err(AuthError::configuration(format!(
-            "Custom storage backend '{name}' requires AuthFramework::new_with_storage() or replace_storage()",
+            "Custom storage backend '{name}' requires Cinaauth::new_with_storage() or replace_storage()",
         ))),
         #[allow(unreachable_patterns)]
         _ => Err(AuthError::configuration(

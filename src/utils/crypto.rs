@@ -1,4 +1,4 @@
-//! Cryptographic utility functions for the AuthFramework.
+//! Cryptographic utility functions for the Cinaauth.
 
 use crate::errors::Result;
 use rand::{RngExt, rng};

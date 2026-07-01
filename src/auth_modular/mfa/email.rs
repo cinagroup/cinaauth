@@ -71,7 +71,7 @@ impl Default for EmailProviderConfig {
         Self {
             provider: EmailProvider::Development,
             from_email: "noreply@example.com".to_string(),
-            from_name: Some("AuthFramework".to_string()),
+            from_name: Some("cinaauth".to_string()),
             provider_config: ProviderConfig::Development,
         }
     }
@@ -294,7 +294,7 @@ impl EmailManager {
                 }],
                 "from": {
                     "email": self.email_config.from_email,
-                    "name": self.email_config.from_name.as_deref().unwrap_or("AuthFramework")
+                    "name": self.email_config.from_name.as_deref().unwrap_or("cinaauth")
                 },
                 "subject": subject,
                 "content": [{
@@ -341,7 +341,7 @@ impl EmailManager {
                 .email_config
                 .from_name
                 .as_deref()
-                .unwrap_or("AuthFramework");
+                .unwrap_or("cinaauth");
 
             let host = format!("email.{}.amazonaws.com", region);
             let url = format!("https://{}/v2/email/outbound-emails", host);
@@ -440,7 +440,7 @@ impl EmailManager {
                 .email_config
                 .from_name
                 .clone()
-                .unwrap_or_else(|| "AuthFramework".to_string());
+                .unwrap_or_else(|| "cinaauth".to_string());
 
             let email = Message::builder()
                 .from(

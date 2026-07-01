@@ -1,4 +1,4 @@
-//! Password utility functions for the AuthFramework.
+//! Password utility functions for the Cinaauth.
 
 use crate::errors::{AuthError, Result};
 use argon2::{

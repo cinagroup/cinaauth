@@ -1,6 +1,6 @@
 # Web Framework Integration Guide
 
-This guide covers how to integrate auth-framework with popular Rust web frameworks.
+This guide covers how to integrate cinaauth with popular Rust web frameworks.
 
 ## Actix-web Integration
 
@@ -12,7 +12,7 @@ Add the actix-web feature to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.1.0", features = ["actix-web"] }
+cinaauth = { version = "0.1.0", features = ["actix-web"] }
 actix-web = "4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
@@ -21,8 +21,8 @@ tokio = { version = "1.0", features = ["full"] }
 
 ```rust
 use actix_web::{web, App, HttpServer, Result, HttpResponse};
-use auth_framework::{
-    AuthFramework, InMemoryStorage,
+use cinaauth::{
+    Cinaauth, InMemoryStorage,
     config::AuthConfig,
     integrations::actix_web::{AuthMiddleware, AuthenticatedUser, RequirePermission},
 };
@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
         .build();
     
     // Create auth framework instance
-    let auth = AuthFramework::new(storage, config).await.unwrap();
+    let auth = Cinaauth::new(storage, config).await.unwrap();
     
     HttpServer::new(move || {
         App::new()
@@ -80,7 +80,7 @@ struct LoginResponse {
 }
 
 async fn login_handler(
-    auth: web::Data<AuthFramework<InMemoryStorage>>,
+    auth: web::Data<Cinaauth<InMemoryStorage>>,
     req: web::Json<LoginRequest>,
 ) -> Result<HttpResponse> {
     match auth.authenticate(&req.username, &req.password).await {
@@ -104,7 +104,7 @@ struct RegisterRequest {
 }
 
 async fn register_handler(
-    auth: web::Data<AuthFramework<InMemoryStorage>>,
+    auth: web::Data<Cinaauth<InMemoryStorage>>,
     req: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse> {
     match auth.register_user(&req.username, &req.password).await {
@@ -147,7 +147,7 @@ async fn moderator_panel(
 ### Custom Middleware Configuration
 
 ```rust
-use auth_framework::integrations::actix_web::{AuthMiddleware, AuthConfig as ActixAuthConfig};
+use cinaauth::integrations::actix_web::{AuthMiddleware, AuthConfig as ActixAuthConfig};
 
 // Custom auth middleware configuration
 let auth_config = ActixAuthConfig::builder()
@@ -167,7 +167,7 @@ App::new()
 
 ```rust
 use actix_web::{middleware::ErrorHandlers, http::StatusCode};
-use auth_framework::integrations::actix_web::AuthError;
+use cinaauth::integrations::actix_web::AuthError;
 
 fn create_app() -> App<
     impl actix_web::dev::ServiceFactory<
@@ -202,7 +202,7 @@ Warp is a super-easy, composable, web server framework for building HTTP APIs.
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.1.0", features = ["warp"] }
+cinaauth = { version = "0.1.0", features = ["warp"] }
 warp = "0.3"
 tokio = { version = "1.0", features = ["full"] }
 ```
@@ -211,8 +211,8 @@ tokio = { version = "1.0", features = ["full"] }
 
 ```rust
 use warp::Filter;
-use auth_framework::{
-    AuthFramework, InMemoryStorage,
+use cinaauth::{
+    Cinaauth, InMemoryStorage,
     config::AuthConfig,
     integrations::warp::{with_auth, require_permission, require_role},
 };
@@ -222,7 +222,7 @@ async fn main() {
     // Initialize auth framework
     let storage = InMemoryStorage::new();
     let config = AuthConfig::default();
-    let auth = AuthFramework::new(storage, config).await.unwrap();
+    let auth = Cinaauth::new(storage, config).await.unwrap();
     
     // Create auth filter
     let auth_filter = with_auth(auth.clone());
@@ -286,7 +286,7 @@ async fn main() {
 ```rust
 async fn login_handler(
     req: LoginRequest,
-    auth: AuthFramework<InMemoryStorage>,
+    auth: Cinaauth<InMemoryStorage>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     match auth.authenticate(&req.username, &req.password).await {
         Ok(token) => {
@@ -325,7 +325,7 @@ Rocket is a web framework for Rust that makes it simple to write fast, secure we
 
 ```toml
 [dependencies]
-auth-framework = { version = "0.1.0", features = ["rocket"] }
+cinaauth = { version = "0.1.0", features = ["rocket"] }
 rocket = { version = "0.5", features = ["json"] }
 tokio = { version = "1.0", features = ["full"] }
 ```
@@ -334,8 +334,8 @@ tokio = { version = "1.0", features = ["full"] }
 
 ```rust
 use rocket::{get, post, launch, routes, serde::json::Json, State};
-use auth_framework::{
-    AuthFramework, InMemoryStorage,
+use cinaauth::{
+    Cinaauth, InMemoryStorage,
     config::AuthConfig,
     integrations::rocket::{AuthenticatedUser, RequirePermission, RequireRole, AuthFairing},
 };
@@ -343,7 +343,7 @@ use auth_framework::{
 #[post("/login", data = "<req>")]
 async fn login(
     req: Json<LoginRequest>,
-    auth: &State<AuthFramework<InMemoryStorage>>,
+    auth: &State<Cinaauth<InMemoryStorage>>,
 ) -> Result<Json<LoginResponse>, rocket::http::Status> {
     match auth.authenticate(&req.username, &req.password).await {
         Ok(token) => {
@@ -381,7 +381,7 @@ fn moderator_only(_user: AuthenticatedUser, _mod: RequireRole<"moderator">) -> &
 async fn rocket() -> _ {
     let storage = InMemoryStorage::new();
     let config = AuthConfig::default();
-    let auth = AuthFramework::new(storage, config).await.unwrap();
+    let auth = Cinaauth::new(storage, config).await.unwrap();
     
     rocket::build()
         .manage(auth)
@@ -509,10 +509,10 @@ impl RateLimiter {
 
 ```rust
 // Session-based authentication alongside JWT
-use auth_framework::storage::SessionData;
+use cinaauth::storage::SessionData;
 
 async fn create_session_handler(
-    auth: web::Data<AuthFramework<InMemoryStorage>>,
+    auth: web::Data<Cinaauth<InMemoryStorage>>,
     user: AuthenticatedUser,
 ) -> Result<HttpResponse> {
     let session_data = SessionData {
@@ -546,7 +546,7 @@ struct CustomClaims {
 // Use custom claims in your handlers
 async fn custom_protected_handler(
     req: HttpRequest,
-    auth: web::Data<AuthFramework<InMemoryStorage>>,
+    auth: web::Data<Cinaauth<InMemoryStorage>>,
 ) -> Result<HttpResponse> {
     let token = extract_token_from_request(&req)?;
     let claims: CustomClaims = auth.verify_custom_token(&token).await?;
@@ -571,7 +571,7 @@ mod tests {
     async fn test_protected_route() {
         let storage = InMemoryStorage::new();
         let config = AuthConfig::default();
-        let auth = AuthFramework::new(storage, config).await.unwrap();
+        let auth = Cinaauth::new(storage, config).await.unwrap();
         
         // Create test user
         auth.register_user("testuser", "password").await.unwrap();
@@ -595,4 +595,4 @@ mod tests {
 }
 ```
 
-This guide covers the essential patterns for integrating auth-framework with popular Rust web frameworks. Each framework has its own idioms and patterns, but the auth-framework provides consistent interfaces that work naturally with each one.
+This guide covers the essential patterns for integrating cinaauth with popular Rust web frameworks. Each framework has its own idioms and patterns, but the cinaauth provides consistent interfaces that work naturally with each one.

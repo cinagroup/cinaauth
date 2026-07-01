@@ -228,7 +228,7 @@ impl PermissionChecker {
 /// # Example
 ///
 /// ```rust,ignore
-/// use auth_framework::permissions::*;
+/// use cinaauth::permissions::*;
 ///
 /// let granted = checker.check_advanced(
 ///     AdvancedPermissionCheck::new("user_123", &permission, &role_resolver)

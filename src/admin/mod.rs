@@ -1,7 +1,7 @@
-//! Comprehensive administration module for AuthFramework management.
+//! Comprehensive administration module for Cinaauth management.
 //!
 //! This module provides multiple administrative interfaces for monitoring,
-//! configuring, and managing AuthFramework deployments. It includes both
+//! configuring, and managing Cinaauth deployments. It includes both
 //! interactive and programmatic interfaces suitable for different operational
 //! environments.
 //!
@@ -49,7 +49,7 @@
 //! # Example Usage
 //!
 //! ```rust,ignore
-//! use auth_framework::admin::{AdminInterface, AppState};
+//! use cinaauth::admin::{AdminInterface, AppState};
 //!
 //! // Create administrative interface
 //! let app_state = AppState::new(config_manager).await?;
@@ -77,7 +77,7 @@
 //! - SIEM system integration
 //! - Log aggregation systems
 
-use crate::{config::AuthFrameworkSettings, errors::Result};
+use crate::{config::CinaauthSettings, errors::Result};
 use chrono;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -127,7 +127,7 @@ pub struct AdminLoginAttemptRecord {
 /// ```
 #[derive(Clone)]
 pub struct AppState {
-    pub config: Arc<RwLock<AuthFrameworkSettings>>,
+    pub config: Arc<RwLock<CinaauthSettings>>,
     pub config_manager: crate::config::ConfigManager,
     pub health_status: HealthStatus,
     pub server_status: Arc<RwLock<ServerStatus>>,
@@ -141,16 +141,16 @@ pub struct AppState {
     /// Failed admin GUI login attempts keyed by username.
     pub admin_login_attempts:
         Arc<std::sync::Mutex<std::collections::HashMap<String, AdminLoginAttemptRecord>>>,
-    /// Optional reference to the running AuthFramework instance.
+    /// Optional reference to the running Cinaauth instance.
     /// When present, web/API handlers can query live storage data (users, events, etc.).
-    pub auth_framework: Option<Arc<crate::AuthFramework>>,
+    pub cinaauth: Option<Arc<crate::Cinaauth>>,
 }
 
 impl std::fmt::Debug for AppState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppState")
             .field("health_status", &self.health_status)
-            .field("auth_framework_present", &self.auth_framework.is_some())
+            .field("cinaauth_present", &self.cinaauth.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -237,7 +237,7 @@ pub struct SecurityEvent {
 }
 
 impl AppState {
-    pub fn new(settings: AuthFrameworkSettings) -> Result<Self> {
+    pub fn new(settings: CinaauthSettings) -> Result<Self> {
         let config = Arc::new(RwLock::new(settings));
         let config_manager = crate::config::ConfigManager::new()?;
 
@@ -257,25 +257,25 @@ impl AppState {
             server_status: Arc::new(RwLock::new(server_status)),
             admin_sessions: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             admin_login_attempts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-            auth_framework: None,
+            cinaauth: None,
         })
     }
 
-    /// Attach a running [`crate::AuthFramework`] instance so that admin GUI
+    /// Attach a running [`crate::Cinaauth`] instance so that admin GUI
     /// handlers can query live storage data (users, audit events, etc.).
     ///
     /// # Example
     /// ```rust,ignore
-    /// let state = state.with_auth_framework(fw.clone());
+    /// let state = state.with_cinaauth(fw.clone());
     /// ```
-    pub fn with_auth_framework(mut self, af: Arc<crate::AuthFramework>) -> Self {
-        self.auth_framework = Some(af);
+    pub fn with_cinaauth(mut self, af: Arc<crate::Cinaauth>) -> Self {
+        self.cinaauth = Some(af);
         self
     }
 
     pub async fn get_health_status(&self) -> HealthStatus {
-        // Check storage connectivity if auth_framework is available
-        if let Some(ref af) = self.auth_framework {
+        // Check storage connectivity if cinaauth is available
+        if let Some(ref af) = self.cinaauth {
             let storage = af.storage();
             // Attempt a lightweight storage operation to verify connectivity
             match storage.get_kv("health_check_ping").await {
@@ -289,7 +289,7 @@ impl AppState {
                 Err(e) => HealthStatus::Critical(format!("Storage unavailable: {}", e)),
             }
         } else {
-            HealthStatus::Warning("AuthFramework not attached".to_string())
+            HealthStatus::Warning("cinaauth not attached".to_string())
         }
     }
 
@@ -343,7 +343,7 @@ impl AppState {
     /// println!("total users: {}", stats.total_users);
     /// ```
     pub async fn get_user_statistics(&self) -> Result<UserStatistics> {
-        if let Some(ref af) = self.auth_framework {
+        if let Some(ref af) = self.cinaauth {
             let storage = af.storage();
 
             // Count total users from the users:index list.
@@ -386,7 +386,7 @@ impl AppState {
     /// let events = state.get_recent_security_events().await?;
     /// ```
     pub async fn get_recent_security_events(&self) -> Result<Vec<SecurityEvent>> {
-        if let Some(ref af) = self.auth_framework {
+        if let Some(ref af) = self.cinaauth {
             let logs = af
                 .get_permission_audit_logs(None, None, None, Some(20))
                 .await?;

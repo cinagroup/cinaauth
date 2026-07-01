@@ -1,9 +1,9 @@
-# Configuration template for Auth Framework
+# Configuration template for cinaauth
 # Copy this to auth.toml and customize for your environment
 
 [database]
 # PostgreSQL connection URL
-url = "postgresql://username:password@localhost:5432/auth_framework"
+url = "postgresql://username:password@localhost:5432/cinaauth"
 max_connections = 10
 min_connections = 1
 connect_timeout_seconds = 30

@@ -149,8 +149,8 @@ fn generate_example_code(
 ) -> String {
     match (use_case, manager_type) {
         (TokenExchangeUseCase::SimpleServiceToService, ServiceComplexityLevel::Basic) => r#"
-use auth_framework::server::{TokenExchangeManager, TokenExchangeRequest};
-use auth_framework::secure_jwt::SecureJwtValidator;
+use cinaauth::server::{TokenExchangeManager, TokenExchangeRequest};
+use cinaauth::secure_jwt::SecureJwtValidator;
 
 async fn setup_simple_exchange() -> Result<(), Box<dyn std::error::Error>> {
     // Create basic manager
@@ -181,11 +181,11 @@ async fn setup_simple_exchange() -> Result<(), Box<dyn std::error::Error>> {
         .to_string(),
 
         (TokenExchangeUseCase::EnterpriseIntegration, ServiceComplexityLevel::Advanced) => r#"
-use auth_framework::server::{
+use cinaauth::server::{
     AdvancedTokenExchangeManager, AdvancedTokenExchangeConfig,
     AdvancedTokenExchangeRequest, ExchangeContext,
 };
-use auth_framework::server::oidc_session_management::SessionManager;
+use cinaauth::server::oidc_session_management::SessionManager;
 use std::sync::Arc;
 
 async fn setup_enterprise_exchange() -> Result<(), Box<dyn std::error::Error>> {
@@ -244,7 +244,7 @@ async fn setup_enterprise_exchange() -> Result<(), Box<dyn std::error::Error>> {
             r#"
 // Example for {:?} using {:?} manager
 // Customize based on your specific requirements
-use auth_framework::server::token_exchange_common::*;
+use cinaauth::server::token_exchange_common::*;
 
 async fn setup_custom_exchange() -> Result<(), Box<dyn std::error::Error>> {{
     // Use TokenExchangeManagerFactory::get_setup_guide() for detailed instructions

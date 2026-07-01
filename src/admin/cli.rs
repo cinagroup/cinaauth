@@ -1,4 +1,4 @@
-//! Command Line Interface for Auth Framework Administration
+//! Command Line Interface for cinaauth Administration
 
 use crate::admin::{
     AppState, CliCommand, ConfigAction, HealthStatus, MaintenanceAction, SecurityAction,
@@ -34,10 +34,10 @@ pub async fn run_cli(state: AppState, command: CliCommand) -> Result<()> {
 }
 
 #[cfg(feature = "cli")]
-fn require_auth_framework(state: &AppState) -> Result<std::sync::Arc<crate::AuthFramework>> {
-    state.auth_framework.clone().ok_or_else(|| {
+fn require_cinaauth(state: &AppState) -> Result<std::sync::Arc<crate::Cinaauth>> {
+    state.cinaauth.clone().ok_or_else(|| {
         AuthError::internal(
-            "Admin AppState is not attached to an AuthFramework instance; maintenance commands are unavailable",
+            "Admin AppState is not attached to an cinaauth instance; maintenance commands are unavailable",
         )
     })
 }
@@ -350,12 +350,12 @@ async fn handle_user_action(state: AppState, action: UserAction) -> Result<()> {
 
             // User creation requires a storage backend wired into AppState.
             // The AppState for the CLI currently holds only configuration;
-            // connect it to an AuthFramework instance with storage to complete
+            // connect it to an Cinaauth instance with storage to complete
             // this operation.
             println!(
                 "{}",
                 "⚠️  User creation requires a connected storage backend.  \
-                 Wire AppState to an AuthFramework instance to enable this operation."
+                 Wire AppState to an Cinaauth instance to enable this operation."
                     .yellow()
             );
             println!(
@@ -584,7 +584,7 @@ async fn handle_security_action(state: AppState, action: SecurityAction) -> Resu
             }
         }
         SecurityAction::Sessions { user, terminate } => {
-            let framework = require_auth_framework(&state)?;
+            let framework = require_cinaauth(&state)?;
 
             if let Some(session_id) = terminate {
                 println!("🔒 Terminating session: {}", session_id.yellow());
@@ -728,7 +728,7 @@ async fn handle_security_action(state: AppState, action: SecurityAction) -> Resu
             }
         }
         SecurityAction::AuditLog => {
-            let framework = require_auth_framework(&state)?;
+            let framework = require_cinaauth(&state)?;
             println!("📋 Displaying audit log...");
             let spinner = create_spinner("Loading audit events...");
             let logs = framework
@@ -746,7 +746,7 @@ async fn handle_security_action(state: AppState, action: SecurityAction) -> Resu
             }
         }
         SecurityAction::ThreatReport => {
-            let framework = require_auth_framework(&state)?;
+            let framework = require_cinaauth(&state)?;
             println!("📊 Generating threat report...");
             let spinner = create_spinner("Analyzing threats...");
             let stats = framework.audit().security_stats().await?;
@@ -778,7 +778,7 @@ async fn handle_security_action(state: AppState, action: SecurityAction) -> Resu
             }
         }
         SecurityAction::ForceLogout { user_id } => {
-            let framework = require_auth_framework(&state)?;
+            let framework = require_cinaauth(&state)?;
             println!("🔒 Forcing logout for user: {}", user_id.red());
             let spinner = create_spinner("Terminating user sessions...");
 
@@ -809,7 +809,7 @@ async fn handle_maintenance_action(state: AppState, action: MaintenanceAction) -
             output_path,
             dry_run,
         } => {
-            let framework = require_auth_framework(&state)?;
+            let framework = require_cinaauth(&state)?;
             let report = framework
                 .maintenance()
                 .backup_to_file(&output_path, dry_run)
@@ -848,7 +848,7 @@ async fn handle_maintenance_action(state: AppState, action: MaintenanceAction) -
                 ));
             }
 
-            let framework = require_auth_framework(&state)?;
+            let framework = require_cinaauth(&state)?;
             let report = framework
                 .maintenance()
                 .restore_from_file(&backup_path, dry_run)
@@ -883,7 +883,7 @@ async fn handle_maintenance_action(state: AppState, action: MaintenanceAction) -
                 ));
             }
 
-            let framework = require_auth_framework(&state)?;
+            let framework = require_cinaauth(&state)?;
             let report = framework.maintenance().reset(dry_run).await?;
 
             if report.dry_run {
@@ -945,7 +945,7 @@ fn format_health_status(status: &HealthStatus) -> colored::ColoredString {
 
 #[cfg(feature = "cli")]
 fn create_minimal_config_template() -> String {
-    r#"# Auth Framework Configuration Template
+    r#"# cinaauth Configuration Template
 # Minimal configuration for getting started
 # NOTE: The framework rejects known placeholder values at startup.
 # You MUST replace secret_key with a real secret (minimum 32 characters).
@@ -973,7 +973,7 @@ enabled = false
 
 #[cfg(feature = "cli")]
 fn create_complete_config_template() -> String {
-    r#"# Auth Framework Configuration Template
+    r#"# cinaauth Configuration Template
 # Complete configuration with all options
 # NOTE: The framework rejects known placeholder values at startup.
 # You MUST replace secret_key with a real secret (minimum 32 characters).
@@ -983,7 +983,7 @@ secret_key = "${JWT_SECRET_KEY:CHANGE_ME_REQUIRED_minimum_32_chars}"
 algorithm = "HS256"
 expiry = "1h"
 refresh_expiry = "30d"
-issuer = "auth-framework"
+issuer = "cinaauth"
 audience = ["api.example.com"]
 
 [session]
@@ -1047,7 +1047,7 @@ include = [
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{AuthConfig, StorageConfig, config_manager::AuthFrameworkSettings};
+    use crate::config::{AuthConfig, StorageConfig, config_manager::CinaauthSettings};
     use crate::methods::{AuthMethodEnum, JwtMethod};
     use crate::permissions::Role;
     use tempfile::tempdir;
@@ -1070,7 +1070,7 @@ mod tests {
             connection_string: database_url,
         };
 
-        let settings = AuthFrameworkSettings {
+        let settings = CinaauthSettings {
             auth: auth_config.clone(),
             api_server: None,
             threat_intelligence: None,
@@ -1078,7 +1078,7 @@ mod tests {
             custom: std::collections::HashMap::new(),
         };
 
-        let mut framework = crate::AuthFramework::new(auth_config);
+        let mut framework = crate::Cinaauth::new(auth_config);
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
         framework.initialize().await.unwrap();
 
@@ -1124,7 +1124,7 @@ mod tests {
 
         let state = AppState::new(settings)
             .unwrap()
-            .with_auth_framework(std::sync::Arc::new(framework));
+            .with_cinaauth(std::sync::Arc::new(framework));
 
         run_cli(
             state.clone(),
@@ -1153,7 +1153,7 @@ mod tests {
 
         assert!(
             state
-                .auth_framework
+                .cinaauth
                 .as_ref()
                 .unwrap()
                 .users()
@@ -1176,7 +1176,7 @@ mod tests {
         .await
         .unwrap();
 
-        let restored_framework = state.auth_framework.as_ref().unwrap();
+        let restored_framework = state.cinaauth.as_ref().unwrap();
         let restored_user = restored_framework.users().get(&user_id).await.unwrap();
         assert_eq!(restored_user.username, "admin-cli-smoke");
         assert_eq!(

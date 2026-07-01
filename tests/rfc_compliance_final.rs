@@ -1,11 +1,11 @@
-//! RFC Compliance Test Suite for AuthFramework
+//! RFC Compliance Test Suite for Cinaauth
 //!
-//! This comprehensive test suite validates that AuthFramework correctly implements
+//! This comprehensive test suite validates that Cinaauth correctly implements
 //! multiple RFCs and security specifications. Each test focuses on actual functionality
 //! rather than theoretical compliance.
 
-use auth_framework::{
-    auth::AuthFramework,
+use cinaauth::{
+    auth::Cinaauth,
     config::AuthConfig,
     methods::{AuthMethodEnum, JwtMethod},
     server::OAuth2Server,
@@ -24,11 +24,11 @@ async fn test_jwt_rfc7519_compliance() {
         .issuer("https://auth.example.com".to_string())
         .audience("https://api.example.com".to_string());
 
-    let mut auth_framework = AuthFramework::new(config);
+    let mut cinaauth = Cinaauth::new(config);
     let jwt_method = JwtMethod::new();
-    auth_framework.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
-    auth_framework.initialize().await.unwrap(); // Test JWT creation with required structure
-    let token = auth_framework
+    cinaauth.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
+    cinaauth.initialize().await.unwrap(); // Test JWT creation with required structure
+    let token = cinaauth
         .create_auth_token("test_user", vec!["read:api".to_string()], "jwt", None)
         .await
         .unwrap();
@@ -38,7 +38,7 @@ async fn test_jwt_rfc7519_compliance() {
     assert_eq!(jwt_parts.len(), 3, "JWT must have 3 parts per RFC 7519");
 
     // Test token validation
-    let is_valid = auth_framework.validate_token(&token).await.unwrap();
+    let is_valid = cinaauth.validate_token(&token).await.unwrap();
     assert!(is_valid, "RFC 7519 compliant JWT should be valid");
 
     println!("✅ JWT RFC 7519 compliance verified");
@@ -67,23 +67,23 @@ async fn test_oauth2_scope_handling() {
         .issuer("https://auth.example.com".to_string())
         .audience("https://api.example.com".to_string());
 
-    let mut auth_framework = AuthFramework::new(config);
+    let mut cinaauth = Cinaauth::new(config);
     let jwt_method = JwtMethod::new();
-    auth_framework.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
-    auth_framework.initialize().await.unwrap();
+    cinaauth.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
+    cinaauth.initialize().await.unwrap();
 
     // Grant permissions using OAuth 2.0 scope format
-    auth_framework
+    cinaauth
         .grant_permission("test_user", "read", "profile")
         .await
         .unwrap();
-    auth_framework
+    cinaauth
         .grant_permission("test_user", "write", "profile")
         .await
         .unwrap();
 
     // Create token with OAuth 2.0 compliant scopes
-    let token = auth_framework
+    let token = cinaauth
         .create_auth_token(
             "test_user",
             vec!["read:profile".to_string(), "write:profile".to_string()],
@@ -92,20 +92,20 @@ async fn test_oauth2_scope_handling() {
         )
         .await
         .unwrap(); // Test permission checking per RFC 6749
-    let has_read = auth_framework
+    let has_read = cinaauth
         .check_permission(&token, "read", "profile")
         .await
         .unwrap();
     assert!(has_read, "Should have read permission per granted scope");
 
-    let has_write = auth_framework
+    let has_write = cinaauth
         .check_permission(&token, "write", "profile")
         .await
         .unwrap();
     assert!(has_write, "Should have write permission per granted scope");
 
     // Test scope boundary enforcement
-    let has_delete = auth_framework
+    let has_delete = cinaauth
         .check_permission(&token, "delete", "profile")
         .await
         .unwrap();
@@ -180,27 +180,27 @@ async fn test_comprehensive_rfc_integration() {
 
     let _env = TestEnvironmentGuard::new().with_jwt_secret("comprehensive-rfc-integration-32chars");
 
-    // Initialize AuthFramework with JWT support
+    // Initialize Cinaauth with JWT support
     let config = AuthConfig::new()
         .issuer("https://auth.example.com".to_string())
         .audience("https://api.example.com".to_string());
-    let mut auth_framework = AuthFramework::new(config);
+    let mut cinaauth = Cinaauth::new(config);
     let jwt_method = JwtMethod::new();
-    auth_framework.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
-    auth_framework.initialize().await.unwrap();
+    cinaauth.register_method("jwt", AuthMethodEnum::Jwt(jwt_method));
+    cinaauth.initialize().await.unwrap();
 
     // Grant OAuth 2.0 style permissions
-    auth_framework
+    cinaauth
         .grant_permission("integration_user", "read", "documents")
         .await
         .unwrap();
-    auth_framework
+    cinaauth
         .grant_permission("integration_user", "write", "documents")
         .await
         .unwrap();
 
     // Create RFC 7519 compliant JWT
-    let token = auth_framework
+    let token = cinaauth
         .create_auth_token(
             "integration_user",
             vec!["read:documents".to_string(), "write:documents".to_string()],
@@ -211,11 +211,11 @@ async fn test_comprehensive_rfc_integration() {
         .unwrap();
 
     // Validate JWT per RFC 7519
-    let is_valid = auth_framework.validate_token(&token).await.unwrap();
+    let is_valid = cinaauth.validate_token(&token).await.unwrap();
     assert!(is_valid, "RFC compliant JWT should validate");
 
     // Test OAuth 2.0 scope-based permissions
-    let has_read = auth_framework
+    let has_read = cinaauth
         .check_permission(&token, "read", "documents")
         .await
         .unwrap();
@@ -226,7 +226,7 @@ async fn test_comprehensive_rfc_integration() {
     let _oauth2_server = OAuth2Server::new(storage).await.unwrap();
 
     // Test TokenManager direct functionality
-    let token_manager = auth_framework.token_manager();
+    let token_manager = cinaauth.token_manager();
     let direct_jwt = token_manager
         .create_jwt_token(
             "direct_user",
@@ -250,11 +250,11 @@ async fn test_comprehensive_rfc_integration() {
     println!("   • End-to-end authentication flows");
 }
 
-/// Display comprehensive summary of all RFC implementations in AuthFramework
+/// Display comprehensive summary of all RFC implementations in Cinaauth
 #[tokio::test]
 async fn test_display_rfc_implementation_summary() {
     println!();
-    println!("🔒 AuthFramework RFC & Specification Implementation Summary");
+    println!("🔒 Cinaauth RFC & Specification Implementation Summary");
     println!("═══════════════════════════════════════════════════════════");
     println!();
 
@@ -316,7 +316,7 @@ async fn test_display_rfc_implementation_summary() {
     println!("   • Production-ready security implementations");
     println!();
 
-    println!("✅ AuthFramework is a comprehensive authentication & authorization solution");
+    println!("✅ Cinaauth is a comprehensive authentication & authorization solution");
     println!("   implementing industry-standard RFCs and security specifications!");
     println!();
 }
@@ -332,10 +332,10 @@ async fn test_rfc_test_suite_functionality() {
     let config = AuthConfig::new()
         .issuer("https://test.example.com".to_string())
         .audience("https://test-api.example.com".to_string());
-    let auth_framework = AuthFramework::new(config);
+    let cinaauth = Cinaauth::new(config);
 
     // Test TokenManager creation
-    let token_manager = auth_framework.token_manager();
+    let token_manager = cinaauth.token_manager();
 
     // Test that we can create a JWT
     let jwt = token_manager.create_jwt_token(

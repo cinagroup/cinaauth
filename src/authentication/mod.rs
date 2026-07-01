@@ -4,7 +4,7 @@
 //! advanced authentication, multi-factor authentication, and credential management.
 //!
 //! This is a supporting module for auth-related data types and helpers.
-//! Most applications should start from [`crate::AuthFramework`] or
+//! Most applications should start from [`crate::Cinaauth`] or
 //! [`crate::prelude`] rather than treating this as a parallel framework entry point.
 
 pub mod advanced_auth;

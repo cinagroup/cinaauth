@@ -1,4 +1,4 @@
-//! Simplified comprehensive tests for auth_framework
+//! Simplified comprehensive tests for cinaauth
 //!
 //! This test suite covers core functionality of the auth framework:
 //! - Authentication methods (JWT)
@@ -8,8 +8,8 @@
 //! - Error handling
 //! - Edge cases
 
-use auth_framework::{
-    AuthConfig, AuthFramework, AuthToken,
+use cinaauth::{
+    AuthConfig, Cinaauth, AuthToken,
     methods::{AuthMethodEnum, JwtMethod},
     providers::ProviderProfile,
     storage::{AuthStorage, MemoryStorage, SessionData},
@@ -118,17 +118,17 @@ mod test_helpers {
 }
 
 #[cfg(test)]
-mod auth_framework_tests {
+mod cinaauth_tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_auth_framework_initialization() {
+    async fn test_cinaauth_initialization() {
         let config = AuthConfig::new()
             .secret("test-secret-key-for-initialization-test-12345")
             .token_lifetime(Duration::from_secs(3600))
             .refresh_token_lifetime(Duration::from_secs(86400));
 
-        let mut auth = AuthFramework::new(config);
+        let mut auth = Cinaauth::new(config);
 
         // Should initialize without errors
         assert!(auth.initialize().await.is_ok());
@@ -137,7 +137,7 @@ mod auth_framework_tests {
     #[tokio::test]
     async fn test_jwt_method_registration() {
         let config = AuthConfig::new().secret("test-secret-key-for-jwt-method-test-12345");
-        let mut auth = AuthFramework::new(config);
+        let mut auth = Cinaauth::new(config);
 
         let jwt_method = JwtMethod::new()
             .secret_key("test-secret-key-12345")
@@ -289,7 +289,7 @@ mod token_tests {
         assert!(token.access_token.starts_with("access_token_"));
         assert!(token.refresh_token.is_some());
         assert_eq!(token.token_type.as_ref().unwrap(), "Bearer");
-        assert_eq!(token.scopes, auth_framework::types::Scopes::new(vec!["read".to_string(), "write".to_string()]));
+        assert_eq!(token.scopes, cinaauth::types::Scopes::new(vec!["read".to_string(), "write".to_string()]));
     }
 
     #[test]
@@ -458,7 +458,7 @@ mod edge_case_tests {
     async fn test_token_with_empty_scopes() {
         let storage = Arc::new(MemoryStorage::new());
         let mut token = create_test_token("user123");
-        token.scopes = auth_framework::types::Scopes::empty(); // Empty scopes
+        token.scopes = cinaauth::types::Scopes::empty(); // Empty scopes
 
         assert!(storage.store_token(&token).await.is_ok());
 
@@ -511,7 +511,7 @@ mod integration_tests {
             .token_lifetime(Duration::from_secs(3600))
             .refresh_token_lifetime(Duration::from_secs(86400));
 
-        let mut auth = AuthFramework::new(config);
+        let mut auth = Cinaauth::new(config);
 
         let jwt_method = JwtMethod::new()
             .secret_key("integration-test-secret")

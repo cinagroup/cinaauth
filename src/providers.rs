@@ -91,7 +91,7 @@ impl OAuthProviderConfig {
     /// # Example
     ///
     /// ```rust
-    /// use auth_framework::providers::OAuthProviderConfig;
+    /// use cinaauth::providers::OAuthProviderConfig;
     /// let cfg = OAuthProviderConfig::builder(
     ///         "https://provider.example/authorize",
     ///         "https://provider.example/token",

@@ -23,7 +23,7 @@
 //! # Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::oidc::oidc_advanced_jarm::{
+//! use cinaauth::server::oidc::oidc_advanced_jarm::{
 //!     AdvancedJarmManager, AdvancedJarmConfig, JarmDeliveryMode, AuthorizationResponse
 //! };
 //!
@@ -153,7 +153,7 @@ impl AdvancedJarmConfig {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use auth_framework::server::oidc::oidc_advanced_jarm::AdvancedJarmConfig;
+    /// use cinaauth::server::oidc::oidc_advanced_jarm::AdvancedJarmConfig;
     ///
     /// let config = AdvancedJarmConfig::builder()
     ///     .jarm_issuer("https://auth.example.com")

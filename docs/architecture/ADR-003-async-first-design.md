@@ -18,7 +18,7 @@ Synchronous blocking operations would severely limit scalability and performance
 
 ## Decision
 
-Design the AuthFramework with async/await as the primary programming model:
+Design the Cinaauth with async/await as the primary programming model:
 
 - All public APIs use `async fn` for I/O operations
 - Storage operations are inherently asynchronous
@@ -112,5 +112,5 @@ Key implementation details:
 ---
 
 **Decision Date**: 2025-08-17
-**Decision Maker(s)**: AuthFramework Development Team
+**Decision Maker(s)**: Cinaauth Development Team
 **Review Date**: 2026-02-17

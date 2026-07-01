@@ -152,7 +152,7 @@ impl GnapTransactionRequest {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::protocols::gnap::GnapTransactionRequest;
+    /// use cinaauth::protocols::gnap::GnapTransactionRequest;
     ///
     /// let req = GnapTransactionRequest::builder()
     ///     .access("read", &["list"], &["https://api.example.com"])

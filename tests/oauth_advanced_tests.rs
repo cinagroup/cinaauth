@@ -2,9 +2,9 @@
 //!
 //! Tests for RFC 7662 (Token Introspection) and RFC 9126 (PAR)
 
-use auth_framework::api::{ApiServer, server::ApiServerConfig};
-use auth_framework::storage::MemoryStorage;
-use auth_framework::{AuthConfig, AuthFramework};
+use cinaauth::api::{ApiServer, server::ApiServerConfig};
+use cinaauth::storage::MemoryStorage;
+use cinaauth::{AuthConfig, Cinaauth};
 use axum::{
     body::{Body, to_bytes},
     http::{Request, StatusCode, header},
@@ -18,18 +18,18 @@ use tower::ServiceExt;
 // Test Helpers
 // ============================================================================
 
-async fn create_test_server() -> (Arc<AuthFramework>, ApiServer) {
+async fn create_test_server() -> (Arc<Cinaauth>, ApiServer) {
     let config = AuthConfig::default();
     let storage = Arc::new(MemoryStorage::new());
-    let auth = Arc::new(AuthFramework::new_with_storage(config, storage));
+    let auth = Arc::new(Cinaauth::new_with_storage(config, storage));
 
     let api_config = ApiServerConfig {
         host: "127.0.0.1".to_string(),
         port: 8080,
-        cors: auth_framework::CorsConfig {
+        cors: cinaauth::CorsConfig {
             enabled: true,
             allowed_origins: vec!["http://localhost:3000".to_string()],
-            ..auth_framework::CorsConfig::default()
+            ..cinaauth::CorsConfig::default()
         },
         max_body_size: 1024 * 1024,
         enable_tracing: false,
@@ -40,7 +40,7 @@ async fn create_test_server() -> (Arc<AuthFramework>, ApiServer) {
 
 /// Register an OAuth2 client in storage so that `verify_client_credentials`
 /// can validate introspection requests in tests.
-async fn register_oauth_client(auth: &Arc<AuthFramework>, client_id: &str, client_secret: &str) {
+async fn register_oauth_client(auth: &Arc<Cinaauth>, client_id: &str, client_secret: &str) {
     let client_data = serde_json::json!({
         "client_id": client_id,
         "client_secret": client_secret,

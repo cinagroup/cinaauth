@@ -1,7 +1,7 @@
 //! REST API Server Module
 //!
 //! This module provides a comprehensive REST API server implementation
-//! that exposes all AuthFramework functionality through HTTP endpoints.
+//! that exposes all Cinaauth functionality through HTTP endpoints.
 
 pub mod admin;
 pub mod auth;
@@ -32,7 +32,7 @@ pub use responses::{ApiError, ApiResponse, ApiResult};
 pub use security::SecurityManager;
 pub use server::ApiServer;
 
-use crate::AuthFramework;
+use crate::Cinaauth;
 use crate::distributed::rate_limiting::{DistributedRateLimiter, RateLimitConfig};
 use crate::errors::AuthError;
 use std::sync::Arc;
@@ -40,26 +40,26 @@ use std::sync::Arc;
 /// API server state
 #[derive(Clone)]
 pub struct ApiState {
-    pub auth_framework: Arc<AuthFramework>,
+    pub cinaauth: Arc<Cinaauth>,
     pub rate_limiter: Arc<DistributedRateLimiter>,
     #[cfg(feature = "enhanced-rbac")]
     pub authorization_service: Arc<crate::authorization_enhanced::AuthorizationService>,
 }
 
 impl ApiState {
-    /// Create an [`ApiState`] wrapping the given [`AuthFramework`].
+    /// Create an [`ApiState`] wrapping the given [`Cinaauth`].
     ///
     /// A balanced distributed rate-limiter is initialised automatically.
     ///
     /// # Example
     /// ```rust,ignore
-    /// let state = ApiState::new(Arc::new(auth_framework)).await?;
+    /// let state = ApiState::new(Arc::new(cinaauth)).await?;
     /// ```
-    pub async fn new(auth_framework: Arc<AuthFramework>) -> crate::errors::Result<Self> {
+    pub async fn new(cinaauth: Arc<Cinaauth>) -> crate::errors::Result<Self> {
         let rate_limiter =
             Arc::new(DistributedRateLimiter::new(RateLimitConfig::balanced()).await?);
         Ok(Self {
-            auth_framework,
+            cinaauth,
             rate_limiter,
             #[cfg(feature = "enhanced-rbac")]
             authorization_service: Arc::new(
@@ -76,12 +76,12 @@ impl ApiState {
     /// ```
     #[cfg(feature = "enhanced-rbac")]
     pub fn with_authorization_service(
-        auth_framework: Arc<AuthFramework>,
+        cinaauth: Arc<Cinaauth>,
         rate_limiter: Arc<DistributedRateLimiter>,
         authorization_service: Arc<crate::authorization_enhanced::AuthorizationService>,
     ) -> Self {
         Self {
-            auth_framework,
+            cinaauth,
             rate_limiter,
             authorization_service,
         }
@@ -100,15 +100,15 @@ pub fn extract_bearer_token(headers: &axum::http::HeaderMap) -> Option<String> {
 
 /// Validate API token and extract user information
 pub async fn validate_api_token(
-    auth_framework: &AuthFramework,
+    cinaauth: &Cinaauth,
     token: &str,
 ) -> Result<crate::tokens::AuthToken, AuthError> {
     // Validate the JWT signature and expiry
-    let token_obj = auth_framework.token_manager().validate_jwt_token(token)?;
+    let token_obj = cinaauth.token_manager().validate_jwt_token(token)?;
 
     // Check whether this token has been explicitly revoked (e.g. via logout)
     let revocation_key = format!("revoked_token:{}", token_obj.jti);
-    match auth_framework.storage().get_kv(&revocation_key).await {
+    match cinaauth.storage().get_kv(&revocation_key).await {
         Ok(Some(_)) => {
             return Err(AuthError::Unauthorized(
                 "Token has been revoked".to_string(),
@@ -130,7 +130,7 @@ pub async fn validate_api_token(
     let user_id_str = token_obj.sub.clone();
     let roles = {
         let user_key = format!("user:{}", user_id_str);
-        match auth_framework.storage().get_kv(&user_key).await {
+        match cinaauth.storage().get_kv(&user_key).await {
             Ok(Some(bytes)) => {
                 let json: serde_json::Value = match serde_json::from_slice(&bytes) {
                     Ok(v) => v,
@@ -225,7 +225,7 @@ mod tests {
     #[tokio::test]
     async fn test_validate_api_token_invalid() {
         let config = crate::AuthConfig::new().secret("a]Bc!d@e#f$g%h^i&j*k(l)m_n-o+p=q");
-        let fw = AuthFramework::new(config);
+        let fw = Cinaauth::new(config);
         let result = validate_api_token(&fw, "not.a.valid.token").await;
         assert!(result.is_err());
     }
@@ -233,7 +233,7 @@ mod tests {
     #[tokio::test]
     async fn test_validate_api_token_revoked() {
         let config = crate::AuthConfig::new().secret("a]Bc!d@e#f$g%h^i&j*k(l)m_n-o+p=q");
-        let mut fw = AuthFramework::new(config);
+        let mut fw = Cinaauth::new(config);
         fw.initialize().await.unwrap();
 
         // Create a valid JWT token
@@ -260,7 +260,7 @@ mod tests {
     #[tokio::test]
     async fn test_validate_api_token_success() {
         let config = crate::AuthConfig::new().secret("a]Bc!d@e#f$g%h^i&j*k(l)m_n-o+p=q");
-        let mut fw = AuthFramework::new(config);
+        let mut fw = Cinaauth::new(config);
         fw.initialize().await.unwrap();
 
         let token = fw
@@ -277,7 +277,7 @@ mod tests {
     #[tokio::test]
     async fn test_validate_api_token_with_roles_from_storage() {
         let config = crate::AuthConfig::new().secret("a]Bc!d@e#f$g%h^i&j*k(l)m_n-o+p=q");
-        let mut fw = AuthFramework::new(config);
+        let mut fw = Cinaauth::new(config);
         fw.initialize().await.unwrap();
 
         // Store a user profile with an admin role

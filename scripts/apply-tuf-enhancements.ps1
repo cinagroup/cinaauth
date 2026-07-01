@@ -21,7 +21,7 @@ if ($authContent -match '// TODO: Add password validation') {
     # The enhanced validation code from TUF-Laptop
     $enhancedValidation = @'
     // Enhanced password validation with security requirements
-    let security_config = &state.auth_framework.config().security;
+    let security_config = &state.cinaauth.config().security;
     
     if let Err(e) = crate::utils::validation::validate_password_enhanced(
         &req.password,

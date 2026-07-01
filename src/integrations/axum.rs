@@ -1,4 +1,4 @@
-//! Axum integration for auth-framework with enhanced ergonomics.
+//! Axum integration for cinaauth with enhanced ergonomics.
 //!
 //! This module provides middleware, extractors, and helper functions for easy integration
 //! with Axum web applications. The ergonomic improvements include:
@@ -11,10 +11,10 @@
 //! # Quick Start
 //!
 //! ```rust,ignore
-//! use auth_framework::prelude::*;
+//! use cinaauth::prelude::*;
 //! use axum::{Router, routing::get};
 //!
-//! let auth = AuthFramework::quick_start()
+//! let auth = Cinaauth::quick_start()
 //!     .jwt_auth_from_env()
 //!     .with_axum()
 //!     .build().await?;
@@ -29,8 +29,8 @@
 //! # Advanced Usage
 //!
 //! ```rust,ignore
-//! use auth_framework::prelude::*;
-//! use auth_framework::integrations::axum::*;
+//! use cinaauth::prelude::*;
+//! use cinaauth::integrations::axum::*;
 //!
 //! // Custom auth routes
 //! let auth_routes = AuthRouter::new()
@@ -46,7 +46,7 @@
 //!     .with_state(auth);
 //! ```
 
-use crate::{AuthError, AuthFramework, AuthToken};
+use crate::{AuthError, Cinaauth, AuthToken};
 use axum::{
     Json, Router,
     extract::{FromRef, FromRequestParts, Request, State},
@@ -266,7 +266,7 @@ impl AuthRouter {
     }
 
     /// Build the auth routes and return a Router
-    pub fn build(self) -> Router<Arc<AuthFramework>> {
+    pub fn build(self) -> Router<Arc<Cinaauth>> {
         Router::new()
             .route(&self.login_path, post(login_handler))
             .route(&self.logout_path, post(logout_handler))
@@ -283,7 +283,7 @@ impl Default for AuthRouter {
 
 // Route handlers for authentication endpoints
 async fn login_handler(
-    State(auth): State<Arc<AuthFramework>>,
+    State(auth): State<Arc<Cinaauth>>,
     Json(request): Json<LoginRequest>,
 ) -> Result<impl IntoResponse, AuthError> {
     // This is a simplified login implementation
@@ -315,7 +315,7 @@ async fn login_handler(
 
 /// Logout handler for authenticated users
 pub async fn logout_handler(
-    State(auth): State<Arc<AuthFramework>>,
+    State(auth): State<Arc<Cinaauth>>,
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, AuthError> {
     // Revoke the user's current token
@@ -335,7 +335,7 @@ pub async fn logout_handler(
 }
 
 async fn refresh_handler(
-    State(auth): State<Arc<AuthFramework>>,
+    State(auth): State<Arc<Cinaauth>>,
     headers: axum::http::HeaderMap,
 ) -> Result<impl IntoResponse, AuthError> {
     // Extract and validate the existing bearer token
@@ -386,7 +386,7 @@ async fn refresh_handler(
 
 /// User profile handler for authenticated users
 pub async fn profile_handler(
-    State(auth): State<Arc<AuthFramework>>,
+    State(auth): State<Arc<Cinaauth>>,
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, AuthError> {
     // Look up full user profile from storage
@@ -420,13 +420,13 @@ pub async fn profile_handler(
 
 /// Authentication middleware implementation
 pub async fn auth_middleware(
-    State(auth): State<Arc<AuthFramework>>,
+    State(auth): State<Arc<Cinaauth>>,
     mut request: Request,
     next: Next,
 ) -> Result<Response, AuthError> {
     let token_str = extract_bearer_token(&request)?;
 
-    // Validate token using AuthFramework
+    // Validate token using Cinaauth
     match auth.token_manager().validate_jwt_token(&token_str) {
         Ok(_claims) => {
             // Store token in request extensions for later extraction
@@ -458,13 +458,13 @@ fn extract_bearer_token(request: &Request) -> Result<String, AuthError> {
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,
-    Arc<AuthFramework>: FromRef<S>,
+    Arc<Cinaauth>: FromRef<S>,
 {
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         // Extract auth framework from state via FromRef
-        let auth: Arc<AuthFramework> = Arc::from_ref(state);
+        let auth: Arc<Cinaauth> = Arc::from_ref(state);
 
         // Extract token from request
         let token_str = extract_bearer_token_from_parts(parts)?;

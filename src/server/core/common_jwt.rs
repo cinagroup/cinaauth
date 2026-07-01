@@ -171,7 +171,7 @@ impl CommonJwtClaims {
 /// # Example
 ///
 /// ```rust,no_run
-/// use auth_framework::server::core::common_jwt::{JwtManager, JwtConfig, CommonJwtClaims};
+/// use cinaauth::server::core::common_jwt::{JwtManager, JwtConfig, CommonJwtClaims};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// # let private_key_bytes: &[u8] = unimplemented!();

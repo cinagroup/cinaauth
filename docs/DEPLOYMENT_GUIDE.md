@@ -1,21 +1,21 @@
-# AuthFramework Precompiled Releases - Deployment Guide
+# Cinaauth Precompiled Releases - Deployment Guide
 
 ## 🚀 Quick Installation
 
-AuthFramework provides precompiled binaries for easy deployment without needing Rust installed.
+Cinaauth provides precompiled binaries for easy deployment without needing Rust installed.
 
 ### One-Line Installation
 
 **Linux/macOS:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ciresnave/auth-framework/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/cinagroup/cinaauth/main/scripts/install.sh | bash
 ```
 
 **Windows PowerShell (Run as Administrator):**
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/ciresnave/auth-framework/main/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/cinagroup/cinaauth/main/scripts/install.ps1 | iex
 ```
 
 ### Docker (Recommended for Production)
@@ -25,8 +25,8 @@ iwr -useb https://raw.githubusercontent.com/ciresnave/auth-framework/main/script
 docker compose up -d
 
 # Or using Docker directly
-docker pull ghcr.io/ciresnave/auth-framework:latest
-docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
+docker pull ghcr.io/cinagroup/cinaauth:latest
+docker run -p 8080:8080 ghcr.io/cinagroup/cinaauth:latest
 ```
 
 ---
@@ -51,7 +51,7 @@ docker run -p 8080:8080 ghcr.io/ciresnave/auth-framework:latest
 
 ### 1. Download Binaries
 
-Visit the [releases page](https://github.com/ciresnave/auth-framework/releases) and download the appropriate package for your platform.
+Visit the [releases page](https://github.com/cinagroup/cinaauth/releases) and download the appropriate package for your platform.
 
 ### 2. Extract Archive
 
@@ -80,10 +80,10 @@ sudo install -m 755 authframework-cli /usr/local/bin/
 
 ```powershell
 # Copy to Program Files
-Copy-Item authframework-*.exe "C:\Program Files\AuthFramework\"
+Copy-Item authframework-*.exe "C:\Program Files\Cinaauth\"
 
 # Add to PATH
-$env:Path += ";C:\Program Files\AuthFramework"
+$env:Path += ";C:\Program Files\Cinaauth"
 [Environment]::SetEnvironmentVariable("Path", $env:Path, "Machine")
 ```
 
@@ -162,7 +162,7 @@ export RUST_LOG="info"
 1. **Clone or download the docker-compose.yml:**
 
 ```bash
-curl -O https://raw.githubusercontent.com/ciresnave/auth-framework/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/cinagroup/cinaauth/main/docker-compose.yml
 ```
 
 1. **Create environment file (.env):**
@@ -210,7 +210,7 @@ docker compose logs -f authframework
 
 ```bash
 # Pull image
-docker pull ghcr.io/ciresnave/auth-framework:latest
+docker pull ghcr.io/cinagroup/cinaauth:latest
 
 # Run with SQLite (simplest)
 docker run -d \
@@ -219,7 +219,7 @@ docker run -d \
   -e STORAGE_BACKEND=sqlite \
   -e SECRET_KEY="$(openssl rand -base64 32)" \
   -v authframework-data:/app/data \
-  ghcr.io/ciresnave/auth-framework:latest
+  ghcr.io/cinagroup/cinaauth:latest
 
 # Run with PostgreSQL
 docker run -d \
@@ -229,7 +229,7 @@ docker run -d \
   -e DATABASE_URL="postgresql://user:pass@postgres:5432/authframework" \
   -e SECRET_KEY="$(openssl rand -base64 32)" \
   --network your-network \
-  ghcr.io/ciresnave/auth-framework:latest
+  ghcr.io/cinagroup/cinaauth:latest
 ```
 
 ### Docker Tags
@@ -252,7 +252,7 @@ The installation script can create a systemd service. Manually:
 ```bash
 sudo tee /etc/systemd/system/authframework.service > /dev/null << EOF
 [Unit]
-Description=AuthFramework Authentication Server
+Description=Cinaauth Authentication Server
 After=network.target
 
 [Service]
@@ -329,17 +329,17 @@ The PowerShell installation script can install as a Windows Service. Manually:
 
 ```powershell
 # Create service
-New-Service -Name "AuthFramework" `
-            -BinaryPathName '"C:\Program Files\AuthFramework\authframework-server.exe" --config "C:\Users\YourUser\.config\authframework\config.toml"' `
-            -DisplayName "AuthFramework Server" `
-            -Description "AuthFramework Authentication Server" `
+New-Service -Name "Cinaauth" `
+            -BinaryPathName '"C:\Program Files\Cinaauth\authframework-server.exe" --config "C:\Users\YourUser\.config\authframework\config.toml"' `
+            -DisplayName "Cinaauth Server" `
+            -Description "Cinaauth Authentication Server" `
             -StartupType Automatic
 
 # Start service
-Start-Service -Name "AuthFramework"
+Start-Service -Name "Cinaauth"
 
 # Check status
-Get-Service -Name "AuthFramework"
+Get-Service -Name "Cinaauth"
 ```
 
 ---
@@ -424,7 +424,7 @@ scrape_configs:
 
 ### Grafana Dashboard
 
-Import the AuthFramework dashboard (ID: TBD) or create custom dashboards monitoring:
+Import the Cinaauth dashboard (ID: TBD) or create custom dashboards monitoring:
 
 - Request rate and latency
 - Authentication success/failure rates
@@ -443,7 +443,7 @@ Import the AuthFramework dashboard (ID: TBD) or create custom dashboards monitor
 authframework-server --version
 
 # Check latest release
-curl -s https://api.github.com/repos/ciresnave/auth-framework/releases/latest | grep tag_name
+curl -s https://api.github.com/repos/cinagroup/cinaauth/releases/latest | grep tag_name
 ```
 
 ### Update Installation
@@ -452,10 +452,10 @@ curl -s https://api.github.com/repos/ciresnave/auth-framework/releases/latest | 
 
 ```bash
 # Linux/macOS
-curl -sSL https://raw.githubusercontent.com/ciresnave/auth-framework/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/cinagroup/cinaauth/main/scripts/install.sh | bash
 
 # Windows
-iwr -useb https://raw.githubusercontent.com/ciresnave/auth-framework/main/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/cinagroup/cinaauth/main/scripts/install.ps1 | iex
 ```
 
 **Docker:**
@@ -527,9 +527,9 @@ authframework-server
 
 ### Getting Help
 
-- 📚 Documentation: <https://github.com/ciresnave/auth-framework/tree/main/docs>
-- 🐛 Issues: <https://github.com/ciresnave/auth-framework/issues>
-- 💬 Discussions: <https://github.com/ciresnave/auth-framework/discussions>
+- 📚 Documentation: <https://github.com/cinagroup/cinaauth/tree/main/docs>
+- 🐛 Issues: <https://github.com/cinagroup/cinaauth/issues>
+- 💬 Discussions: <https://github.com/cinagroup/cinaauth/discussions>
 
 ---
 
@@ -547,7 +547,7 @@ After installation:
 
 ## 🎉 Success
 
-You now have AuthFramework running! Access the API documentation at:
+You now have Cinaauth running! Access the API documentation at:
 
 - <http://localhost:8080/docs> (Swagger UI when the API server is running)
 - <http://localhost:8080/api/openapi.json> (OpenAPI JSON)

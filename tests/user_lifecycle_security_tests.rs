@@ -3,15 +3,15 @@
 //! Verifies that critical user lifecycle events—deactivation, password change,
 //! and account deletion—are correctly enforced at login time.
 
-use auth_framework::{
-    auth::{AuthFramework, AuthResult},
+use cinaauth::{
+    auth::{Cinaauth, AuthResult},
     authentication::credentials::Credential,
     config::AuthConfig,
 };
 
-fn make_framework() -> AuthFramework {
+fn make_framework() -> Cinaauth {
     let config = AuthConfig::new().secret("test_lifecycle_secret_key_32_bytes!".to_string());
-    AuthFramework::new(config)
+    Cinaauth::new(config)
 }
 
 // ---------------------------------------------------------------------------

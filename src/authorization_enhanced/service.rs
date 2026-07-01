@@ -1,7 +1,7 @@
 //! Enhanced Authorization Service using role-system v1.0
 //!
 //! This service provides a unified interface for all authorization operations,
-//! replacing the fragmented authorization systems in AuthFramework.
+//! replacing the fragmented authorization systems in Cinaauth.
 
 use crate::errors::{AuthError, Result};
 use role_system::{
@@ -81,7 +81,7 @@ impl AuthorizationService<MemoryStorage> {
             storage_handle,
         };
 
-        // Initialize with standard AuthFramework roles
+        // Initialize with standard Cinaauth roles
         service.initialize_authframework_roles().await?;
 
         info!("AuthorizationService initialized with enhanced RBAC");
@@ -111,9 +111,9 @@ where
         Ok(service)
     }
 
-    /// Initialize standard AuthFramework roles
+    /// Initialize standard Cinaauth roles
     async fn initialize_authframework_roles(&self) -> Result<()> {
-        info!("Initializing AuthFramework standard roles");
+        info!("Initializing cinaauth standard roles");
 
         // Create guest role (minimal permissions)
         let guest_role = Role::new("guest")
@@ -196,7 +196,7 @@ where
                 AuthError::authorization(format!("Failed to set user->guest inheritance: {}", e))
             })?;
 
-        info!("AuthFramework standard roles initialized successfully");
+        info!("cinaauth standard roles initialized successfully");
         Ok(())
     }
 

@@ -1,4 +1,4 @@
-//! Terminal User Interface for Auth Framework Administration
+//! Terminal User Interface for cinaauth Administration
 
 #[cfg(feature = "tui")]
 use crate::admin::AppState;
@@ -211,7 +211,7 @@ impl TuiApp {
                 "threat_intel.enabled".to_string(),
             ],
             // Users, security events, and logs are populated by load_initial_data()
-            // from the live AuthFramework state; start empty so no stale data is shown.
+            // from the live Cinaauth state; start empty so no stale data is shown.
             users: vec![],
             security_events: vec![],
             server_logs: vec![],
@@ -219,7 +219,7 @@ impl TuiApp {
     }
 
     pub async fn load_initial_data(&mut self) {
-        tracing::debug!("Loading real data from AuthFramework state");
+        tracing::debug!("Loading real data from cinaauth state");
 
         // Update system information from real state
         if let Ok(server_info) = self.state.get_server_info().await {
@@ -418,7 +418,7 @@ fn render_tab_bar(f: &mut Frame, area: Rect, app: &TuiApp) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Auth Framework Admin"),
+                .title("cinaauth Admin"),
         )
         .select(
             Tab::all()

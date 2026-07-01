@@ -114,7 +114,7 @@ impl SamlSpConfig {
 
 async fn load_saml_sp_config(state: &ApiState) -> Result<SamlSpConfig, String> {
     let data = state
-        .auth_framework
+        .cinaauth
         .storage()
         .get_kv("saml_sp:config")
         .await
@@ -210,7 +210,7 @@ pub async fn initiate_saml_sso(
     // Look up IdP SSO URL from storage — reject unknown IdPs rather than
     // redirecting to a hardcoded placeholder.
     let idp_key = format!("saml_idp:{}", request.idp_entity_id);
-    let idp_sso_url = match state.auth_framework.storage().get_kv(&idp_key).await {
+    let idp_sso_url = match state.cinaauth.storage().get_kv(&idp_key).await {
         Ok(Some(data)) => {
             let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
             match cfg["sso_url"].as_str() {
@@ -303,7 +303,7 @@ pub async fn initiate_saml_sso(
     })
     .to_string();
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &request_key,
@@ -389,10 +389,10 @@ pub async fn handle_saml_acs(
     // we actually issued.  This prevents unsolicited response injection attacks.
     if let Some(irt) = extract_in_response_to(&saml_response_xml) {
         let request_key = format!("saml_request:{}", irt);
-        match state.auth_framework.storage().get_kv(&request_key).await {
+        match state.cinaauth.storage().get_kv(&request_key).await {
             Ok(Some(_)) => {
                 // Valid outstanding request — consume it so it cannot be replayed.
-                let _ = state.auth_framework.storage().delete_kv(&request_key).await;
+                let _ = state.cinaauth.storage().delete_kv(&request_key).await;
             }
             _ => {
                 tracing::warn!(in_response_to = %irt, "SAML ACS: InResponseTo references unknown or expired request");
@@ -452,7 +452,7 @@ pub async fn handle_saml_acs(
         "email".to_string(),
     ];
     let token = match state
-        .auth_framework
+        .cinaauth
         .token_manager()
         .create_auth_token(&username, scopes, "saml", None)
     {
@@ -492,7 +492,7 @@ pub async fn initiate_saml_slo(
 ) -> Json<ApiResponse<SamlLogoutResponse>> {
     // Look up IdP SLO URL from storage.
     let idp_key = format!("saml_idp:{}", request.idp_entity_id);
-    let idp_slo_url = match state.auth_framework.storage().get_kv(&idp_key).await {
+    let idp_slo_url = match state.cinaauth.storage().get_kv(&idp_key).await {
         Ok(Some(data)) => {
             let cfg: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
             match cfg["slo_url"].as_str() {
@@ -626,7 +626,7 @@ pub async fn handle_saml_slo_response(
             if let Some(name_id) = xml_extract_name_id(&response_xml) {
                 // Look up user by email (NameID) and invalidate their sessions.
                 if let Ok(Some(uid_bytes)) = _state
-                    .auth_framework
+                    .cinaauth
                     .storage()
                     .get_kv(&format!("user:email:{}", name_id))
                     .await
@@ -634,7 +634,7 @@ pub async fn handle_saml_slo_response(
                     let user_id = String::from_utf8_lossy(&uid_bytes).to_string();
                     let session_key = format!("sessions:user:{}", user_id);
                     let _ = _state
-                        .auth_framework
+                        .cinaauth
                         .storage()
                         .delete_kv(&session_key)
                         .await;
@@ -770,7 +770,7 @@ pub async fn list_saml_idps(
 ) -> Json<ApiResponse<Vec<serde_json::Value>>> {
     // Load the IdP index from storage.
     let entity_ids: Vec<String> = match state
-        .auth_framework
+        .cinaauth
         .storage()
         .get_kv("saml_idps:index")
         .await
@@ -790,7 +790,7 @@ pub async fn list_saml_idps(
     let mut idps = Vec::with_capacity(entity_ids.len());
     for entity_id in &entity_ids {
         let key = format!("saml_idp:{}", entity_id);
-        if let Ok(Some(data)) = state.auth_framework.storage().get_kv(&key).await
+        if let Ok(Some(data)) = state.cinaauth.storage().get_kv(&key).await
             && let Ok(cfg) = serde_json::from_slice::<serde_json::Value>(&data)
         {
             idps.push(cfg);
@@ -823,7 +823,7 @@ async fn validate_saml_signature(state: &ApiState, saml_xml: &str) -> Result<(),
     // Load the IdP's signing certificate from storage.
     let idp_key = format!("saml_idp:{}", issuer);
     let idp_cfg_data = state
-        .auth_framework
+        .cinaauth
         .storage()
         .get_kv(&idp_key)
         .await

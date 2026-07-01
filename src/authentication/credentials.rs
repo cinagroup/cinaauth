@@ -103,7 +103,7 @@ impl Credential {
     /// # Example
     ///
     /// ```rust
-    /// # use auth_framework::authentication::credentials::Credential;
+    /// # use cinaauth::authentication::credentials::Credential;
     /// let cred = Credential::password("alice", "s3cret!");
     /// assert_eq!(cred.credential_type(), "password");
     /// ```
@@ -203,7 +203,7 @@ impl Credential {
     /// # Example
     ///
     /// ```rust
-    /// # use auth_framework::authentication::credentials::Credential;
+    /// # use cinaauth::authentication::credentials::Credential;
     /// use std::collections::HashMap;
     ///
     /// let mut data = HashMap::new();
@@ -365,7 +365,7 @@ impl Credential {
 /// Use the builder methods to construct metadata fluently:
 ///
 /// ```rust
-/// # use auth_framework::authentication::credentials::CredentialMetadata;
+/// # use cinaauth::authentication::credentials::CredentialMetadata;
 /// let meta = CredentialMetadata::new()
 ///     .client_id("my-app")
 ///     .client_ip("10.0.0.1")

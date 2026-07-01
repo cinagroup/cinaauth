@@ -876,7 +876,7 @@ impl SecurityAuditStats {
     /// Criteria: > 100 failed logins, > 5 security alerts, or security score < 0.3.
     ///
     /// ```rust,no_run
-    /// use auth_framework::audit::SecurityAuditStats;
+    /// use cinaauth::audit::SecurityAuditStats;
     ///
     /// # fn alert_security_team(_: &SecurityAuditStats) {}
     /// # let security_stats: SecurityAuditStats = unimplemented!();
@@ -893,7 +893,7 @@ impl SecurityAuditStats {
     /// Returns `None` if no immediate security concerns are detected.
     ///
     /// ```rust,no_run
-    /// use auth_framework::audit::SecurityAuditStats;
+    /// use cinaauth::audit::SecurityAuditStats;
     ///
     /// # fn notify_administrators(_: &str) {}
     /// # let security_stats: SecurityAuditStats = unimplemented!();
@@ -973,7 +973,7 @@ impl CorrelationIdGenerator {
 /// # Example
 ///
 /// ```rust
-/// use auth_framework::audit::*;
+/// use cinaauth::audit::*;
 ///
 /// let event = AuditEvent::builder(AuditEventType::LoginSuccess, "User logged in")
 ///     .user_id("user_123")
@@ -1146,7 +1146,7 @@ impl Default for SortOrder {
 /// # Example
 ///
 /// ```rust
-/// use auth_framework::audit::*;
+/// use cinaauth::audit::*;
 /// use std::time::{Duration, SystemTime};
 ///
 /// let query = AuditQuery::builder()

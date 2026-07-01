@@ -437,7 +437,7 @@ impl MigrationConfig {
 /// # Example
 ///
 /// ```rust,no_run
-/// use auth_framework::migration::MigrationConfig;
+/// use cinaauth::migration::MigrationConfig;
 ///
 /// let config = MigrationConfig::builder()
 ///     .working_directory("./my_migration")

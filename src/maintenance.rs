@@ -12,7 +12,7 @@
 //! Most operations are available through the
 //! [`MaintenanceOperations`](crate::auth::MaintenanceOperations) facade.
 
-use crate::auth::AuthFramework;
+use crate::auth::Cinaauth;
 use crate::auth_operations::UserListQuery;
 use crate::config::{StorageConfig, app_config::AppConfig};
 use crate::errors::{AuthError, Result};
@@ -216,7 +216,7 @@ fn sanitize_migration_name(name: &str) -> Result<String> {
     Ok(collapsed)
 }
 
-async fn collect_snapshot(framework: &AuthFramework) -> Result<MaintenanceSnapshot> {
+async fn collect_snapshot(framework: &Cinaauth) -> Result<MaintenanceSnapshot> {
     let storage = framework.storage();
 
     let mut users = framework
@@ -334,7 +334,7 @@ fn validate_snapshot(snapshot: &MaintenanceSnapshot) -> Result<()> {
 }
 
 pub async fn backup_to_file(
-    framework: &AuthFramework,
+    framework: &Cinaauth,
     output_path: impl AsRef<Path>,
     dry_run: bool,
 ) -> Result<BackupReport> {
@@ -361,7 +361,7 @@ pub async fn backup_to_file(
     })
 }
 
-pub async fn reset_runtime_data(framework: &AuthFramework, dry_run: bool) -> Result<ResetReport> {
+pub async fn reset_runtime_data(framework: &Cinaauth, dry_run: bool) -> Result<ResetReport> {
     let storage = framework.storage();
     let users = framework
         .users()
@@ -416,7 +416,7 @@ pub async fn reset_runtime_data(framework: &AuthFramework, dry_run: bool) -> Res
 }
 
 pub async fn restore_from_file(
-    framework: &AuthFramework,
+    framework: &Cinaauth,
     input_path: impl AsRef<Path>,
     dry_run: bool,
 ) -> Result<RestoreReport> {
@@ -473,7 +473,7 @@ pub async fn restore_from_file(
 
 fn build_migration_template(backend: &str, migration_name: &str, original_name: &str) -> String {
     format!(
-        "-- AuthFramework migration template\n-- Backend: {backend}\n-- Name: {original_name}\n-- Generated at: {}\n\n-- Replace this placeholder with idempotent DDL for {migration_name}.\n-- Prefer CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS where supported.\n\nBEGIN;\n\n-- Add migration SQL here\n\nCOMMIT;\n",
+        "-- cinaauth migration template\n-- Backend: {backend}\n-- Name: {original_name}\n-- Generated at: {}\n\n-- Replace this placeholder with idempotent DDL for {migration_name}.\n-- Prefer CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS where supported.\n\nBEGIN;\n\n-- Add migration SQL here\n\nCOMMIT;\n",
         Utc::now().to_rfc3339(),
     )
 }
@@ -522,11 +522,11 @@ mod tests {
     use std::time::Duration;
     use tempfile::tempdir;
 
-    async fn create_framework() -> AuthFramework {
+    async fn create_framework() -> Cinaauth {
         let config = AuthConfig::new()
             .secret("0123456789abcdef0123456789abcdef")
             .token_lifetime(Duration::from_secs(3600));
-        let mut framework = AuthFramework::new(config);
+        let mut framework = Cinaauth::new(config);
         framework.register_method("jwt", AuthMethodEnum::Jwt(JwtMethod::new()));
         framework.initialize().await.unwrap();
         framework

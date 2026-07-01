@@ -1,6 +1,6 @@
-"""Simplified AuthFramework client using service composition.
+"""Simplified cinaauth client using service composition.
 
-Copyright (c) 2025 AuthFramework. All rights reserved.
+Copyright (c) 2025 cinaauth. All rights reserved.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from ._oauth import OAuthService
 from ._user import UserService
 
 
-class AuthFrameworkClient:
-    """Simplified AuthFramework client using service composition."""
+class CinaauthClient:
+    """Simplified cinaauth client using service composition."""
 
     def __init__(
         self,
@@ -26,10 +26,10 @@ class AuthFrameworkClient:
         retries: int = 3,
         api_key: str | None = None,
     ) -> None:
-        """Initialize AuthFramework client.
+        """Initialize cinaauth client.
 
         Args:
-            base_url: Base URL of the AuthFramework server
+            base_url: Base URL of the cinaauth server
             timeout: Request timeout in seconds
             retries: Number of retry attempts for failed requests
             api_key: Optional API key for authentication

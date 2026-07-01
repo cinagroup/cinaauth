@@ -1,7 +1,7 @@
 //! SDK Generation Module
 //!
 //! This module provides SDK generators for multiple programming languages,
-//! enabling easy integration of AuthFramework's enhanced RBAC capabilities.
+//! enabling easy integration of Cinaauth's enhanced RBAC capabilities.
 
 #[cfg(feature = "enhanced-rbac")]
 pub mod javascript;
@@ -52,9 +52,9 @@ pub enum SdkLanguage {
 impl Default for SdkGenerationConfig {
     fn default() -> Self {
         let mut client_names = HashMap::new();
-        client_names.insert(SdkLanguage::JavaScript, "AuthFrameworkClient".to_string());
-        client_names.insert(SdkLanguage::TypeScript, "AuthFrameworkClient".to_string());
-        client_names.insert(SdkLanguage::Python, "AuthFrameworkClient".to_string());
+        client_names.insert(SdkLanguage::JavaScript, "CinaauthClient".to_string());
+        client_names.insert(SdkLanguage::TypeScript, "CinaauthClient".to_string());
+        client_names.insert(SdkLanguage::Python, "CinaauthClient".to_string());
 
         Self {
             base_url: "https://api.example.com".to_string(),
@@ -146,7 +146,7 @@ impl SdkGenerator {
                         .client_names
                         .get(&language)
                         .cloned()
-                        .unwrap_or_else(|| "AuthFrameworkClient".to_string()),
+                        .unwrap_or_else(|| "CinaauthClient".to_string()),
                 };
 
                 let generator = javascript::JsSdkGenerator::new(js_config);
@@ -166,7 +166,7 @@ impl SdkGenerator {
                         .client_names
                         .get(&language)
                         .cloned()
-                        .unwrap_or_else(|| "AuthFrameworkClient".to_string()),
+                        .unwrap_or_else(|| "CinaauthClient".to_string()),
                     async_support: true,
                     type_hints: true,
                 };

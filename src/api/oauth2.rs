@@ -52,7 +52,7 @@ fn redirect_uri_matches(candidate: &str, registered: &str) -> bool {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::oauth2::OAuthError;
+/// use cinaauth::api::oauth2::OAuthError;
 ///
 /// let err = OAuthError::new("invalid_request")
 ///     .description("missing redirect_uri")
@@ -114,7 +114,7 @@ impl OAuthError {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::oauth2::ClientInfo;
+/// use cinaauth::api::oauth2::ClientInfo;
 ///
 /// let info = ClientInfo {
 ///     client_id: "abc".into(),
@@ -138,7 +138,7 @@ pub struct ClientInfo {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::oauth2::RevokeRequest;
+/// use cinaauth::api::oauth2::RevokeRequest;
 ///
 /// let req: RevokeRequest = serde_json::from_str(r#"{"token":"abc"}"#).unwrap();
 /// assert_eq!(req.token, "abc");
@@ -158,7 +158,7 @@ pub struct RevokeRequest {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::oauth2::UserInfoResponse;
+/// use cinaauth::api::oauth2::UserInfoResponse;
 ///
 /// let info = UserInfoResponse {
 ///     sub: "user-1".into(),
@@ -232,7 +232,7 @@ pub async fn authorize(
                 return (StatusCode::UNAUTHORIZED, Json(error)).into_response();
             }
         };
-        match validate_api_token(&state.auth_framework, &token_str).await {
+        match validate_api_token(&state.cinaauth, &token_str).await {
             Ok(auth_token) => auth_token.user_id,
             Err(_) => {
                 let error = OAuthError::new("unauthorized_client")
@@ -246,7 +246,7 @@ pub async fn authorize(
     // SECURITY: Validate client_id and verify the redirect_uri is pre-registered.
     // Redirecting to an unregistered URI would let an attacker steal the authorization code.
     let client_key = format!("oauth2_client:{}", params.client_id);
-    match state.auth_framework.storage().get_kv(&client_key).await {
+    match state.cinaauth.storage().get_kv(&client_key).await {
         Ok(Some(data)) => {
             let client_data: serde_json::Value = serde_json::from_slice(&data).unwrap_or_default();
             let registered_uris: Vec<String> = client_data["redirect_uris"]
@@ -343,7 +343,7 @@ pub async fn authorize(
     };
 
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &storage_key,
@@ -436,12 +436,12 @@ async fn handle_authorization_code_grant(
     // race condition (TOCTOU). If a concurrent request already marked the code as
     // consumed, reject this request immediately.
     let consumed_key = format!("oauth2_code_consumed:{}", code);
-    if let Ok(Some(_)) = state.auth_framework.storage().get_kv(&consumed_key).await {
+    if let Ok(Some(_)) = state.cinaauth.storage().get_kv(&consumed_key).await {
         return ApiResponse::error_typed("invalid_grant", "Authorization code already used");
     }
     // Mark code as consumed BEFORE reading it, narrowing the race window.
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &consumed_key,
@@ -454,7 +454,7 @@ async fn handle_authorization_code_grant(
     }
 
     let storage_key = format!("oauth2_code:{}", code);
-    let code_data = match state.auth_framework.storage().get_kv(&storage_key).await {
+    let code_data = match state.cinaauth.storage().get_kv(&storage_key).await {
         Ok(Some(data)) => match serde_json::from_slice::<serde_json::Value>(&data) {
             Ok(json) => json,
             Err(e) => {
@@ -478,7 +478,7 @@ async fn handle_authorization_code_grant(
     };
 
     // Immediately delete the code to prevent reuse (single-use enforcement).
-    if let Err(e) = state.auth_framework.storage().delete_kv(&storage_key).await {
+    if let Err(e) = state.cinaauth.storage().delete_kv(&storage_key).await {
         tracing::error!("Failed to delete authorization code from storage: {:?}", e);
         return ApiResponse::error_typed("server_error", "Failed to process authorization code");
     }
@@ -583,7 +583,7 @@ async fn handle_authorization_code_grant(
         }
     };
 
-    let token = match state.auth_framework.token_manager().create_auth_token(
+    let token = match state.cinaauth.token_manager().create_auth_token(
         &user_id,
         scopes.clone(),
         "oauth2",
@@ -605,7 +605,7 @@ async fn handle_authorization_code_grant(
     });
     let refresh_key = format!("oauth2_refresh_token:{}", refresh_token_value);
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &refresh_key,
@@ -645,11 +645,11 @@ async fn handle_refresh_token_grant(
     // Defense-in-depth: Use a consumed marker to mitigate the non-atomic get+delete
     // race condition. If a concurrent request already consumed this refresh token, reject.
     let consumed_key = format!("oauth2_refresh_consumed:{}", refresh_token_str);
-    if let Ok(Some(_)) = state.auth_framework.storage().get_kv(&consumed_key).await {
+    if let Ok(Some(_)) = state.cinaauth.storage().get_kv(&consumed_key).await {
         return ApiResponse::error_typed("invalid_grant", "Refresh token already consumed");
     }
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &consumed_key,
@@ -663,7 +663,7 @@ async fn handle_refresh_token_grant(
 
     // Validate the refresh token against persistent storage.
     let refresh_key = format!("oauth2_refresh_token:{}", refresh_token_str);
-    let stored = match state.auth_framework.storage().get_kv(&refresh_key).await {
+    let stored = match state.cinaauth.storage().get_kv(&refresh_key).await {
         Ok(Some(data)) => match serde_json::from_slice::<serde_json::Value>(&data) {
             Ok(v) => v,
             Err(_) => return ApiResponse::error_typed("invalid_grant", "Invalid refresh token"),
@@ -688,7 +688,7 @@ async fn handle_refresh_token_grant(
     let scopes: Vec<String> = scope.split_whitespace().map(|s| s.to_string()).collect();
 
     let token = match state
-        .auth_framework
+        .cinaauth
         .token_manager()
         .create_auth_token(&user_id, scopes, "oauth2", None)
     {
@@ -705,7 +705,7 @@ async fn handle_refresh_token_grant(
     let new_refresh_data = serde_json::json!({ "user_id": user_id, "scopes": scope });
     let new_refresh_key = format!("oauth2_refresh_token:{}", new_refresh_token);
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &new_refresh_key,
@@ -721,7 +721,7 @@ async fn handle_refresh_token_grant(
     }
 
     // Now that the new token is safely stored, delete the old one (single-use enforcement).
-    if let Err(e) = state.auth_framework.storage().delete_kv(&refresh_key).await {
+    if let Err(e) = state.cinaauth.storage().delete_kv(&refresh_key).await {
         tracing::warn!(
             "Failed to delete old refresh token during rotation: {:?}",
             e
@@ -770,7 +770,7 @@ pub async fn revoke(
     });
 
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(
             &revoked_token_key,
@@ -790,7 +790,7 @@ pub async fn revoke(
     // endpoints. Without this step, the revocation would only be visible to the
     // userinfo endpoint, leaving all other authenticated routes unprotected.
     if let Ok(claims) = state
-        .auth_framework
+        .cinaauth
         .token_manager()
         .validate_jwt_token(&req.token)
     {
@@ -798,7 +798,7 @@ pub async fn revoke(
         let remaining_secs = (claims.exp - now + 60).max(60) as u64;
         let jti_key = format!("revoked_token:{}", claims.jti);
         if let Err(e) = state
-            .auth_framework
+            .cinaauth
             .storage()
             .store_kv(
                 &jti_key,
@@ -850,7 +850,7 @@ pub async fn userinfo(
     // Check if token is revoked first
     let revoked_token_key = format!("oauth2_revoked_token:{}", token);
     if let Ok(Some(_)) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .get_kv(&revoked_token_key)
         .await
@@ -860,7 +860,7 @@ pub async fn userinfo(
 
     // Validate the access token
     let claims = match state
-        .auth_framework
+        .cinaauth
         .token_manager()
         .validate_jwt_token(&token)
     {
@@ -871,7 +871,7 @@ pub async fn userinfo(
     };
 
     // Get user profile
-    let user_profile = match state.auth_framework.get_user_profile(&claims.sub).await {
+    let user_profile = match state.cinaauth.get_user_profile(&claims.sub).await {
         Ok(profile) => profile,
         Err(e) => {
             tracing::error!("Failed to get user profile: {:?}", e);
@@ -908,7 +908,7 @@ pub async fn get_client_info(
     Path(client_id): Path<String>,
 ) -> impl IntoResponse {
     let client_key = format!("oauth2_client:{}", client_id);
-    match state.auth_framework.storage().get_kv(&client_key).await {
+    match state.cinaauth.storage().get_kv(&client_key).await {
         Ok(Some(data)) => match serde_json::from_slice::<ClientInfo>(&data) {
             Ok(client) => (
                 StatusCode::OK,
@@ -969,7 +969,7 @@ pub async fn get_client_info(
 /// ```
 pub async fn openid_configuration(State(state): State<ApiState>) -> impl IntoResponse {
     let issuer = {
-        let configured = state.auth_framework.config().issuer.clone();
+        let configured = state.cinaauth.config().issuer.clone();
         if configured.is_empty() {
             "https://auth.example.com".to_string()
         } else {
@@ -1034,7 +1034,7 @@ pub async fn jwks(State(_state): State<ApiState>) -> impl IntoResponse {
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::oauth2::EndSessionRequest;
+/// use cinaauth::api::oauth2::EndSessionRequest;
 ///
 /// let req: EndSessionRequest = serde_json::from_str(
 ///     r#"{"id_token_hint":"eyJ...","state":"xyz"}"#
@@ -1066,13 +1066,13 @@ pub async fn end_session(
     // If an id_token_hint is provided, revoke it
     if let Some(ref token) = params.id_token_hint {
         if let Ok(claims) = state
-            .auth_framework
+            .cinaauth
             .token_manager()
             .validate_jwt_token(token)
         {
             let revoked_key = format!("oauth2_revoked_token:{}", token);
             if let Err(e) = state
-                .auth_framework
+                .cinaauth
                 .storage()
                 .store_kv(
                     &revoked_key,
@@ -1095,7 +1095,7 @@ pub async fn end_session(
         let allowed = if let Some(ref token) = params.id_token_hint {
             // Try to extract client_id from the token (azp > aud)
             let client_id = state
-                .auth_framework
+                .cinaauth
                 .token_manager()
                 .validate_jwt_token(token)
                 .ok()
@@ -1115,7 +1115,7 @@ pub async fn end_session(
                 });
             if let Some(cid) = client_id {
                 let client_key = format!("oauth2_client:{}", cid);
-                match state.auth_framework.storage().get_kv(&client_key).await {
+                match state.cinaauth.storage().get_kv(&client_key).await {
                     Ok(Some(data)) => {
                         let client: serde_json::Value =
                             serde_json::from_slice(&data).unwrap_or_default();
@@ -1168,7 +1168,7 @@ pub async fn end_session(
 ///
 /// # Example
 /// ```rust
-/// use auth_framework::api::oauth2::ClientRegistrationRequest;
+/// use cinaauth::api::oauth2::ClientRegistrationRequest;
 ///
 /// let req: ClientRegistrationRequest = serde_json::from_str(
 ///     r#"{"redirect_uris":["https://example.com/cb"]}"#
@@ -1231,7 +1231,7 @@ pub async fn register_client(
 
     // Option 1: check if this is the pre-configured Initial Access Token
     let is_initial_access_token = match state
-        .auth_framework
+        .cinaauth
         .storage()
         .get_kv("oauth2_initial_access_token")
         .await
@@ -1245,7 +1245,7 @@ pub async fn register_client(
 
     // Option 2: validate as a normal JWT and check for admin role
     let is_admin = if !is_initial_access_token {
-        match validate_api_token(&state.auth_framework, &token_str).await {
+        match validate_api_token(&state.cinaauth, &token_str).await {
             Ok(auth_token) => auth_token.roles.contains(&"admin".to_string()),
             Err(_) => false,
         }
@@ -1334,7 +1334,7 @@ pub async fn register_client(
 
     let key = format!("oauth2_client:{}", client_id);
     if let Err(e) = state
-        .auth_framework
+        .cinaauth
         .storage()
         .store_kv(&key, client_data.to_string().as_bytes(), None)
         .await

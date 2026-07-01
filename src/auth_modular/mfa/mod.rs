@@ -79,12 +79,12 @@ pub use sms_kit::SmsKitManager as SmsManager;
 /// # Example
 ///
 /// ```rust,no_run
-/// use auth_framework::auth_modular::mfa::MfaManager;
+/// use cinaauth::auth_modular::mfa::MfaManager;
 /// use std::sync::Arc;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let storage: Arc<dyn auth_framework::storage::AuthStorage> = unimplemented!();
+/// # let storage: Arc<dyn cinaauth::storage::AuthStorage> = unimplemented!();
 /// // Create MFA manager with storage backend
 /// let mfa_manager = MfaManager::new(storage);
 ///
@@ -735,15 +735,15 @@ impl MfaManager {
     }
 
     fn emergency_bypass_secret() -> Result<Vec<u8>> {
-        let secret = std::env::var("AUTHFRAMEWORK_EMERGENCY_BYPASS_SECRET").map_err(|_| {
+        let secret = std::env::var("CINAAUTH_EMERGENCY_BYPASS_SECRET").map_err(|_| {
             crate::errors::AuthError::config(
-                "Emergency MFA bypass is disabled until AUTHFRAMEWORK_EMERGENCY_BYPASS_SECRET is configured",
+                "Emergency MFA bypass is disabled until CINAAUTH_EMERGENCY_BYPASS_SECRET is configured",
             )
         })?;
 
         if secret.len() < 32 {
             return Err(crate::errors::AuthError::config(
-                "AUTHFRAMEWORK_EMERGENCY_BYPASS_SECRET must be at least 32 bytes long",
+                "CINAAUTH_EMERGENCY_BYPASS_SECRET must be at least 32 bytes long",
             ));
         }
 
@@ -1145,7 +1145,7 @@ mod tests {
     async fn test_generate_and_use_emergency_bypass() {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
             .with_custom_var(
-                "AUTHFRAMEWORK_EMERGENCY_BYPASS_SECRET",
+                "CINAAUTH_EMERGENCY_BYPASS_SECRET",
                 "this-is-a-very-long-test-secret-that-is-at-least-32-bytes",
             );
         let storage: Arc<dyn AuthStorage> = Arc::new(MemoryStorage::new());
@@ -1164,7 +1164,7 @@ mod tests {
     async fn test_emergency_bypass_wrong_user() {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
             .with_custom_var(
-                "AUTHFRAMEWORK_EMERGENCY_BYPASS_SECRET",
+                "CINAAUTH_EMERGENCY_BYPASS_SECRET",
                 "this-is-a-very-long-test-secret-that-is-at-least-32-bytes",
             );
         let storage: Arc<dyn AuthStorage> = Arc::new(MemoryStorage::new());
@@ -1193,7 +1193,7 @@ mod tests {
     async fn test_emergency_bypass_non_admin_rejected() {
         let _env = crate::testing::test_infrastructure::TestEnvironmentGuard::new()
             .with_custom_var(
-                "AUTHFRAMEWORK_EMERGENCY_BYPASS_SECRET",
+                "CINAAUTH_EMERGENCY_BYPASS_SECRET",
                 "this-is-a-very-long-test-secret-that-is-at-least-32-bytes",
             );
         let storage: Arc<dyn AuthStorage> = Arc::new(MemoryStorage::new());
@@ -1256,7 +1256,7 @@ mod tests {
         let secret = mfa.totp.generate_secret("totp5").await.unwrap();
         let qr = mfa
             .totp
-            .generate_qr_code("totp5", "AuthFramework", &secret)
+            .generate_qr_code("totp5", "cinaauth", &secret)
             .await
             .unwrap();
         assert!(qr.contains("otpauth://"));

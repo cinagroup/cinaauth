@@ -34,8 +34,8 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use auth_framework::server::core::federated_authentication_orchestration::*;
-//! use auth_framework::server::SessionManager;
+//! use cinaauth::server::core::federated_authentication_orchestration::*;
+//! use cinaauth::server::SessionManager;
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -381,7 +381,7 @@ impl IdentityProvider {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::server::core::federated_authentication_orchestration::{
+    /// use cinaauth::server::core::federated_authentication_orchestration::{
     ///     IdentityProvider, AuthenticationProtocol, TrustLevel
     /// };
     ///
@@ -667,7 +667,7 @@ impl OrchestrationRequest {
     ///
     /// # Example
     /// ```rust
-    /// use auth_framework::server::core::federated_authentication_orchestration::OrchestrationRequest;
+    /// use cinaauth::server::core::federated_authentication_orchestration::OrchestrationRequest;
     ///
     /// let req = OrchestrationRequest::builder("req-123", "client-456")
     ///     .user_hint("jdoe@example.com")

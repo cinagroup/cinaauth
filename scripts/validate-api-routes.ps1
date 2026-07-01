@@ -3,7 +3,7 @@
 # This script ensures the OpenAPI spec matches actual implemented routes
 
 Write-Host '========================================' -ForegroundColor Cyan
-Write-Host 'AuthFramework API Route Validation' -ForegroundColor Cyan
+Write-Host 'Cinaauth API Route Validation' -ForegroundColor Cyan
 Write-Host '========================================' -ForegroundColor Cyan
 Write-Host ''
 
