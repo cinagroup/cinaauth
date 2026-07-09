@@ -15,7 +15,7 @@ import type { CloudflareBindings } from "./env";
  *   - security_admin:  read + ban/unban + session revoke + audit read;
  *                      NO create/delete/set-role/set-password/impersonate
  */
-const ac = createAccessControl({
+export const ac = createAccessControl({
 	user: [
 		"create",
 		"list",
@@ -31,7 +31,7 @@ const ac = createAccessControl({
 	session: ["list", "revoke", "delete"],
 });
 
-const roles = {
+export const roles = {
 	super_admin: ac.newRole({
 		user: [
 			"create",
