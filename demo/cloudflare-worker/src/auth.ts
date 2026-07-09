@@ -29,6 +29,9 @@ export const ac = createAccessControl({
 		"update",
 	],
 	session: ["list", "revoke", "delete"],
+	// The admin plugin's stats endpoints (overview/signups/security-today)
+	// gate on `permissions: { stats: ["read"] }`, so the statement must exist.
+	stats: ["read"],
 });
 
 export const roles = {
@@ -46,11 +49,13 @@ export const roles = {
 			"update",
 		],
 		session: ["list", "revoke", "delete"],
+		stats: ["read"],
 	}),
 	security_admin: ac.newRole({
-		// read + ban/unban + sessions; NO create/delete/role/password/impersonate
+		// read + ban/unban + sessions + stats; NO create/delete/role/password/impersonate
 		user: ["list", "ban", "get", "update"],
 		session: ["list", "revoke", "delete"],
+		stats: ["read"],
 	}),
 	user: ac.newRole({ user: [], session: [] }),
 };
@@ -79,6 +84,10 @@ export const createAuth = (env: CloudflareBindings) =>
 				roles,
 			}),
 			auditLog({
+				// Roles permitted to query audit logs. Defaults to ["admin"] if
+				// omitted, which would exclude our super_admin/security_admin
+				// roles — so authorize both console roles explicitly.
+				allowedRoles: ["super_admin", "security_admin"],
 				// Service token for the admin console (cinaadmin) to call
 				// POST /audit/log without a user session.
 				writeTokens: env.CINAUTH_ADMIN_SERVICE_KEY
