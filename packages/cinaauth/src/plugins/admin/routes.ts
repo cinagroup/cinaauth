@@ -681,10 +681,10 @@ const listUsersQuerySchema = z.object({
 		description: 'The value to search for. Eg: "some name"',
 	}),
 	searchField: z
-		.enum(["email", "name"])
+		.enum(["email", "name", "wallet"])
 		.meta({
 			description:
-				'The field to search in, defaults to email. Can be `email` or `name`. Eg: "name"',
+				'The field to search in, defaults to email. Can be `email`, `name`, or `wallet` (SIWE address). Eg: "name"',
 		})
 		.optional(),
 	searchOperator: z
@@ -809,11 +809,44 @@ export const listUsers = (opts: AdminOptions) =>
 			const where: Where[] = [];
 
 			if (ctx.query?.searchValue) {
-				where.push({
-					field: ctx.query.searchField || "email",
-					operator: ctx.query.searchOperator || "contains",
-					value: ctx.query.searchValue,
-				});
+				// Wallet search is special-cased: the user table has no "wallet"
+				// column, so we resolve matching userIds from the walletAddress
+				// table (SIWE binds) first, then filter users by those ids.
+				if (ctx.query.searchField === "wallet") {
+					const wallets = await ctx.context.adapter.findMany<{
+						userId: string;
+					}>({
+						model: "walletAddress",
+						limit: 1000,
+						where: [
+							{
+								field: "address",
+								operator: ctx.query.searchOperator || "contains",
+								value: ctx.query.searchValue,
+							},
+						],
+					});
+					const userIds = wallets.map((w) => w.userId);
+					if (userIds.length === 0) {
+						return ctx.json({
+							users: [],
+							total: 0,
+							limit: Number(ctx.query?.limit) || undefined,
+							offset: Number(ctx.query?.offset) || undefined,
+						});
+					}
+					where.push({
+						field: "id",
+						operator: "in",
+						value: userIds,
+					});
+				} else {
+					where.push({
+						field: ctx.query.searchField || "email",
+						operator: ctx.query.searchOperator || "contains",
+						value: ctx.query.searchValue,
+					});
+				}
 			}
 
 			if (ctx.query?.filterValue !== undefined) {

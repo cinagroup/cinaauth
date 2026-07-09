@@ -221,6 +221,11 @@
       "types": "./dist/plugins/anonymous/index.d.mts",
       "default": "./dist/plugins/anonymous/index.mjs"
     },
+    "./plugins/audit-log": {
+      "dev-source": "./src/plugins/audit-log/index.ts",
+      "types": "./dist/plugins/audit-log/index.d.mts",
+      "default": "./dist/plugins/audit-log/index.mjs"
+    },
     "./plugins/bearer": {
       "dev-source": "./src/plugins/bearer/index.ts",
       "types": "./dist/plugins/bearer/index.d.mts",
