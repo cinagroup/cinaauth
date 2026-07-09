@@ -102,6 +102,28 @@ export const jwks = sqliteTable("jwks", {
 	expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
 });
 
+/**
+ * Audit-log table (audit-log plugin). Columns mirror the plugin's schema
+ * field names; the migration generator creates camelCase columns for this
+ * table (unlike the core tables above, which use snake_case), so the drizzle
+ * mapping must use camelCase column names to match.
+ */
+export const auditLog = sqliteTable("auditLog", {
+	id: text("id").primaryKey(),
+	timestamp: integer("timestamp", { mode: "timestamp_ms" }).notNull(),
+	actorId: text("actorId"),
+	actorRole: text("actorRole"),
+	actorIp: text("actorIp"),
+	actorUa: text("actorUa"),
+	actorSite: text("actorSite"),
+	category: text("category").notNull(),
+	action: text("action").notNull(),
+	targetType: text("targetType"),
+	targetId: text("targetId"),
+	result: text("result").notNull(),
+	metadata: text("metadata"),
+});
+
 // Relations
 export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),
