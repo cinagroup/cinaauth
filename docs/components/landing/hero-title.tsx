@@ -12,42 +12,6 @@ export function HeroTitle() {
 			className="relative z-[2] w-full py-16 flex flex-col justify-center h-full pointer-events-none"
 		>
 			<div>
-				<Link
-					href="/blog/better-auth-joins-vercel"
-					className="relative inline-flex items-center gap-1.5 px-2.5 py-1 pointer-events-auto group/badge rounded-full bg-neutral-200/80 dark:bg-neutral-800/80 hover:bg-neutral-200/70 dark:hover:bg-neutral-700/50 transition-colors"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="0.9em"
-						height="0.9em"
-						viewBox="0 0 24 24"
-						className="text-neutral-600 dark:text-neutral-100"
-						aria-hidden="true"
-					>
-						<path fill="currentColor" d="M12 2L2 19.777h20z" />
-					</svg>
-					<span className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-100 font-light">
-						Announcement{" "}
-						<span className="font-medium">| Better Auth is joining Vercel</span>
-					</span>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="0.85em"
-						height="0.85em"
-						viewBox="0 0 24 24"
-						className="text-neutral-500 dark:text-neutral-400 transition-transform group-hover/badge:translate-x-0.5"
-						aria-hidden="true"
-					>
-						<path
-							fill="none"
-							stroke="currentColor"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth="2"
-							d="M5 12h14m-6-6l6 6l-6 6"
-						/>
-					</svg>
-				</Link>
 				<h1 className="pt-3 sm:pt-4 text-2xl md:text-3xl xl:text-4xl text-neutral-800 dark:text-neutral-200 tracking-tight leading-tight text-balance">
 					The most comprehensive authentication framework
 				</h1>
