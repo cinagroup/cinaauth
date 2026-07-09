@@ -4,7 +4,7 @@ import type { Where } from "@cinaauth/core/db/adapter";
 import { whereOperators } from "@cinaauth/core/db/adapter";
 import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
-import { getSessionFromCtx } from "../../api";
+import { getAuthoritativeSessionFromCtx, getSessionFromCtx } from "../../api";
 import {
 	deleteSessionCookie,
 	expireCookie,
@@ -28,7 +28,7 @@ import type {
  * Will also provide additional types on the user to include role types.
  */
 export const adminMiddleware = createAuthMiddleware(async (ctx) => {
-	const session = await getSessionFromCtx(ctx);
+	const session = await getAuthoritativeSessionFromCtx(ctx);
 	if (!session) {
 		throw APIError.fromStatus("UNAUTHORIZED");
 	}
@@ -80,7 +80,7 @@ const setRoleBodySchema = z.object({
  * **client:**
  * `authClient.admin.setRole`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-set-role)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-set-role)
  */
 export const setRole = <O extends AdminOptions>(opts: O) =>
 	createAuthEndpoint(
@@ -285,7 +285,7 @@ const createUserBodySchema = z.object({
  * **client:**
  * `authClient.admin.createUser`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-create-user)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-create-user)
  */
 export const createUser = <O extends AdminOptions>(opts: O) =>
 	createAuthEndpoint(
@@ -330,7 +330,9 @@ export const createUser = <O extends AdminOptions>(opts: O) =>
 			},
 		},
 		async (ctx) => {
-			const session = await getSessionFromCtx<{ role: string }>(ctx);
+			const session = await getAuthoritativeSessionFromCtx<{ role: string }>(
+				ctx,
+			);
 			if (!session && (ctx.request || ctx.headers)) {
 				throw ctx.error("UNAUTHORIZED");
 			}
@@ -485,7 +487,7 @@ const adminUpdateUserBodySchema = z.object({
  * **client:**
  * `authClient.admin.updateUser`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-update-user)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-update-user)
  */
 export const adminUpdateUser = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -679,10 +681,10 @@ const listUsersQuerySchema = z.object({
 		description: 'The value to search for. Eg: "some name"',
 	}),
 	searchField: z
-		.enum(["email", "name", "wallet"])
+		.enum(["email", "name"])
 		.meta({
 			description:
-				'The field to search in, defaults to email. Can be `email`, `name`, or `wallet` (SIWE address). Eg: "name"',
+				'The field to search in, defaults to email. Can be `email` or `name`. Eg: "name"',
 		})
 		.optional(),
 	searchOperator: z
@@ -807,45 +809,11 @@ export const listUsers = (opts: AdminOptions) =>
 			const where: Where[] = [];
 
 			if (ctx.query?.searchValue) {
-				if (ctx.query.searchField === "wallet") {
-					// Wallet address search: resolve matching userIds from the
-					// SIWE walletAddress table first, then filter users by id.
-					// Case-insensitive: addresses are stored checksummed (mixed
-					// case) but users typically type lowercase.
-					const wallets = await ctx.context.adapter.findMany<{
-						userId: string;
-					}>({
-						model: "walletAddress",
-						limit: 100000,
-						select: ["userId"],
-						where: [
-							{
-								field: "address",
-								operator: ctx.query.searchOperator || "contains",
-								value: ctx.query.searchValue,
-								connector: "AND",
-								mode: "insensitive",
-							},
-						],
-					});
-					const userIds = wallets
-						.map((w) => w.userId)
-						.filter((id): id is string => Boolean(id));
-					if (userIds.length === 0) {
-						return ctx.json({ users: [], total: 0 });
-					}
-					where.push({
-						field: "id",
-						operator: "in",
-						value: userIds,
-					});
-				} else {
-					where.push({
-						field: ctx.query.searchField || "email",
-						operator: ctx.query.searchOperator || "contains",
-						value: ctx.query.searchValue,
-					});
-				}
+				where.push({
+					field: ctx.query.searchField || "email",
+					operator: ctx.query.searchOperator || "contains",
+					value: ctx.query.searchValue,
+				});
 			}
 
 			if (ctx.query?.filterValue !== undefined) {
@@ -907,7 +875,7 @@ const listUserSessionsBodySchema = z.object({
  * **client:**
  * `authClient.admin.listUserSessions`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-list-user-sessions)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-list-user-sessions)
  */
 export const listUserSessions = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -990,7 +958,7 @@ const unbanUserBodySchema = z.object({
  * **client:**
  * `authClient.admin.unbanUser`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-unban-user)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-unban-user)
  */
 export const unbanUser = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -1100,7 +1068,7 @@ const banUserBodySchema = z.object({
  * **client:**
  * `authClient.admin.banUser`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-ban-user)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-ban-user)
  */
 export const banUser = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -1205,7 +1173,7 @@ const impersonateUserBodySchema = z.object({
  * **client:**
  * `authClient.admin.impersonateUser`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-impersonate-user)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-impersonate-user)
  */
 export const impersonateUser = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -1356,7 +1324,7 @@ export const impersonateUser = (opts: AdminOptions) =>
  * **client:**
  * `authClient.admin.stopImpersonating`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-stop-impersonating)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-stop-impersonating)
  */
 export const stopImpersonating = () =>
 	createAuthEndpoint(
@@ -1437,7 +1405,7 @@ const revokeUserSessionBodySchema = z.object({
  * **client:**
  * `authClient.admin.revokeUserSession`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-revoke-user-session)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-revoke-user-session)
  */
 export const revokeUserSession = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -1513,7 +1481,7 @@ const revokeUserSessionsBodySchema = z.object({
  * **client:**
  * `authClient.admin.revokeUserSessions`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-revoke-user-sessions)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-revoke-user-sessions)
  */
 export const revokeUserSessions = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -1590,7 +1558,7 @@ const removeUserBodySchema = z.object({
  * **client:**
  * `authClient.admin.removeUser`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-remove-user)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-remove-user)
  */
 export const removeUser = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -1687,7 +1655,7 @@ const setUserPasswordBodySchema = z.object({
  * **client:**
  * `authClient.admin.setUserPassword`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-set-user-password)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-set-user-password)
  */
 export const setUserPassword = (opts: AdminOptions) =>
 	createAuthEndpoint(
@@ -1809,7 +1777,7 @@ const userHasPermissionBodySchema = z
  * **client:**
  * `authClient.admin.hasPermission`
  *
- * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/admin#api-method-admin-has-permission)
+ * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/admin#api-method-admin-has-permission)
  */
 export const userHasPermission = <O extends AdminOptions>(opts: O) => {
 	type DefaultStatements = typeof defaultStatements;
@@ -1887,7 +1855,7 @@ export const userHasPermission = <O extends AdminOptions>(opts: O) => {
 					message: "invalid permission check. no permission(s) were passed.",
 				});
 			}
-			const session = await getSessionFromCtx(ctx);
+			const session = await getAuthoritativeSessionFromCtx(ctx);
 
 			if (!session && (ctx.request || ctx.headers)) {
 				throw new APIError("UNAUTHORIZED");

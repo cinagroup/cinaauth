@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/cli",
-  "version": "1.6.19",
+  "version": "1.6.23",
   "description": "The CLI for CinaAuth",
   "type": "module",
   "license": "MIT",
@@ -59,7 +59,7 @@
     "@cinaauth/core": "workspace:*",
     "@cinaauth/telemetry": "workspace:*",
     "@better-auth/utils": "catalog:",
-    "@clack/prompts": "^0.11.0",
+    "@clack/prompts": "^1.6.0",
     "@mrleebo/prisma-ast": "^0.13.1",
     "cinaauth": "workspace:*",
     "c12": "^3.3.3",

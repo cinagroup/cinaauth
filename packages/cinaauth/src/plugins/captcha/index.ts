@@ -1,5 +1,5 @@
 import type { CinaAuthPlugin } from "@cinaauth/core";
-import { getIp } from "../../utils/get-request-ip";
+import { getIp } from "@cinaauth/core/utils/ip";
 import { middlewareResponse } from "../../utils/middleware-response";
 import { PACKAGE_VERSION } from "../../version";
 import { defaultEndpoints, Providers, siteVerifyMap } from "./constants";

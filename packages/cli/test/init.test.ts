@@ -155,7 +155,7 @@ describe("initAction", () => {
 					return { value: true };
 				}
 				if (question.name === "providedSecret") {
-					return { providedSecret: "test-secret-123" };
+					return { providedSecret: "" };
 				}
 				if (question.name === "providedURL") {
 					return { providedURL: "http://localhost:3000" };
@@ -230,10 +230,7 @@ describe("initAction", () => {
 			});
 
 			// Assertions
-			expect(mockHasDependency).toHaveBeenCalledWith(
-				packageJson,
-				"cinaauth",
-			);
+			expect(mockHasDependency).toHaveBeenCalledWith(packageJson, "cinaauth");
 			expect(mockInstallDependencies).toHaveBeenCalledWith(
 				expect.objectContaining({
 					cwd: path.resolve(tmp),
@@ -256,6 +253,20 @@ describe("initAction", () => {
 				.then(() => true)
 				.catch(() => false);
 			expect(envExists).toBe(true);
+
+			const envContent = await fs.readFile(envPath, "utf-8");
+
+			const line = envContent
+				.toString()
+				.split("\n")
+				.find((l) => l.startsWith("CINAAUTH_SECRET="));
+
+			expect(line).toBeDefined();
+
+			const secret = line!.split("=")[1]?.replaceAll('"', "").trim();
+
+			expect(secret).toBeDefined();
+			expect(secret!.length).toBeGreaterThanOrEqual(64); // 64 characters 32 hex bytes
 		},
 	);
 

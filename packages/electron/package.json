@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/electron",
-  "version": "1.6.19",
+  "version": "1.6.23",
   "description": "CinaAuth integration for Electron applications.",
   "type": "module",
   "license": "MIT",

@@ -1,9 +1,8 @@
 import type { AuthContext, CinaAuthRateLimitStorage } from "@cinaauth/core";
-import { createRateLimitKey } from "@cinaauth/core/utils/ip";
+import { createRateLimitKey, getIp } from "@cinaauth/core/utils/ip";
 import { safeJSONParse } from "@cinaauth/core/utils/json";
 import { normalizePathname } from "@cinaauth/core/utils/url";
 import type { RateLimit } from "../../types";
-import { getIp } from "../../utils/get-request-ip";
 import { wildcardMatch } from "../../utils/wildcard";
 
 interface MemoryRateLimitEntry {
@@ -381,7 +380,8 @@ async function resolveRateLimitConfig(req: Request, ctx: AuthContext) {
 		ctx.logger.warn(
 			"Rate limiting could not determine a client IP and is falling back to a " +
 				"single shared per-path bucket. Ensure your runtime forwards a trusted " +
-				"client IP header and configure `advanced.ipAddress.ipAddressHeaders` if needed.",
+				"client IP header, then set `advanced.ipAddress.ipAddressHeaders` or " +
+				"`advanced.ipAddress.trustedProxies` so the address can be resolved.",
 		);
 		ipWarningLogged = true;
 	}

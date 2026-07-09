@@ -1,4 +1,4 @@
-﻿export interface CommunityAdapter {
+export interface CommunityAdapter {
 	name: string;
 	url: string;
 	database: string;
@@ -12,8 +12,8 @@
 
 export const communityAdapters: CommunityAdapter[] = [
 	{
-		name: "@convex-dev/cinaauth",
-		url: "https://github.com/get-convex/cinaauth",
+		name: "@convex-dev/better-auth",
+		url: "https://github.com/get-convex/better-auth",
 		database: "Convex",
 		databaseUrl: "https://www.convex.dev/",
 		author: {
@@ -23,8 +23,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "surreal-cinaauth",
-		url: "https://github.com/oskar-gmerek/surreal-cinaauth",
+		name: "surreal-better-auth",
+		url: "https://github.com/oskar-gmerek/surreal-better-auth",
 		database: "SurrealDB",
 		databaseUrl: "https://surrealdb.com/",
 		author: {
@@ -34,8 +34,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "surrealdb-cinaauth",
-		url: "https://github.com/Necmttn/surrealdb-cinaauth",
+		name: "surrealdb-better-auth",
+		url: "https://github.com/Necmttn/surrealdb-better-auth",
 		database: "SurrealDB",
 		databaseUrl: "https://surrealdb.com/",
 		author: {
@@ -45,8 +45,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "cinaauth-surrealdb",
-		url: "https://github.com/msanchezdev/cinaauth-surrealdb",
+		name: "better-auth-surrealdb",
+		url: "https://github.com/msanchezdev/better-auth-surrealdb",
 		database: "SurrealDB",
 		databaseUrl: "https://surrealdb.com/",
 		author: {
@@ -67,8 +67,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "@delmaredigital/payload-cinaauth",
-		url: "https://github.com/delmaredigital/payload-cinaauth",
+		name: "@delmaredigital/payload-better-auth",
+		url: "https://github.com/delmaredigital/payload-better-auth",
 		database: "Payload CMS",
 		databaseUrl: "https://payloadcms.com/",
 		author: {
@@ -78,8 +78,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "@hedystia/cinaauth-typeorm",
-		url: "https://github.com/Zastinian/cinaauth-typeorm",
+		name: "@hedystia/better-auth-typeorm",
+		url: "https://github.com/Zastinian/better-auth-typeorm",
 		database: "TypeORM",
 		databaseUrl: "https://typeorm.io/",
 		author: {
@@ -89,8 +89,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "cinaauth-instantdb",
-		url: "https://github.com/daveyplate/cinaauth-instantdb",
+		name: "better-auth-instantdb",
+		url: "https://github.com/daveyplate/better-auth-instantdb",
 		database: "InstantDB",
 		databaseUrl: "https://www.instantdb.com/",
 		author: {
@@ -100,8 +100,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "@nerdfolio/remult-cinaauth",
-		url: "https://github.com/nerdfolio/remult-cinaauth",
+		name: "@nerdfolio/remult-better-auth",
+		url: "https://github.com/nerdfolio/remult-better-auth",
 		database: "Remult",
 		databaseUrl: "https://remult.dev/",
 		author: {
@@ -111,8 +111,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "pocketbase-cinaauth",
-		url: "https://github.com/LightInn/pocketbase-cinaauth",
+		name: "pocketbase-better-auth",
+		url: "https://github.com/LightInn/pocketbase-better-auth",
 		database: "PocketBase",
 		databaseUrl: "https://pocketbase.io/",
 		author: {
@@ -122,8 +122,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "cinaauth-firestore",
-		url: "https://github.com/yultyyev/cinaauth-firestore",
+		name: "better-auth-firestore",
+		url: "https://github.com/yultyyev/better-auth-firestore",
 		database: "Firebase Firestore",
 		databaseUrl: "https://firebase.google.com/docs/firestore",
 		author: {
@@ -133,8 +133,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "@zenstackhq/cinaauth",
-		url: "https://github.com/zenstackhq/zenstack-v3/tree/main/packages/auth-adapters/cinaauth",
+		name: "@zenstackhq/better-auth",
+		url: "https://github.com/zenstackhq/zenstack-v3/tree/main/packages/auth-adapters/better-auth",
 		database: "ZenStack",
 		databaseUrl: "https://zenstack.dev",
 		author: {
@@ -144,8 +144,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "@strapi-community/plugin-cinaauth",
-		url: "https://github.com/strapi-community/plugin-cinaauth",
+		name: "@strapi-community/plugin-better-auth",
+		url: "https://github.com/strapi-community/plugin-better-auth",
 		database: "Strapi CMS",
 		databaseUrl: "https://strapi.io/",
 		author: {
@@ -155,8 +155,8 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "neo4j-cinaauth",
-		url: "https://github.com/florianamette/cinaauth-neo4j",
+		name: "neo4j-better-auth",
+		url: "https://github.com/florianamette/better-auth-neo4j",
 		database: "Neo4j",
 		databaseUrl: "https://neo4j.com/",
 		author: {
@@ -166,8 +166,19 @@ export const communityAdapters: CommunityAdapter[] = [
 		},
 	},
 	{
-		name: "cinaauth-mikro-orm",
-		url: "https://github.com/octet-stream/cinaauth-mikro-orm",
+		name: "@lubiah/better-auth-mikro-orm",
+		url: "https://github.com/lubiah/better-auth-mikro-orm",
+		database: "MikroORM",
+		databaseUrl: "https://mikro-orm.io/",
+		author: {
+			name: "lubiah",
+			url: "https://github.com/lubiah",
+			avatar: "https://github.com/lubiah.png",
+		},
+	},
+	{
+		name: "better-auth-mikro-orm",
+		url: "https://github.com/octet-stream/better-auth-mikro-orm",
 		database: "MikroORM",
 		databaseUrl: "https://mikro-orm.io/",
 		author: {

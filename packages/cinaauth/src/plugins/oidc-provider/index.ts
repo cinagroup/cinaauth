@@ -285,19 +285,19 @@ const warnOidcDeprecation = deprecate(
 	() => {},
 	'The "oidc-provider" plugin is deprecated and will be removed in the next major version. ' +
 		"Migrate to @cinaauth/oauth-provider. " +
-		"See: https://www.cinagroup.com/docs/plugins/oauth-provider",
+		"See: https://www.better-auth.com/docs/plugins/oauth-provider",
 );
 
 /**
- * OpenID Connect (OIDC) plugin for CinaAuth. This plugin implements the
+ * OpenID Connect (OIDC) plugin for Better Auth. This plugin implements the
  * authorization code flow and the token exchange flow. It also implements the
  * userinfo endpoint.
  *
  * @deprecated Use `@cinaauth/oauth-provider` instead. This plugin will be removed in the next major version.
- * @see https://www.cinagroup.com/docs/plugins/oauth-provider
+ * @see https://www.better-auth.com/docs/plugins/oauth-provider
  *
  * @param options - The options for the OIDC plugin.
- * @returns A CinaAuth plugin.
+ * @returns A Better Auth plugin.
  */
 export const oidcProvider = (options: OIDCOptions) => {
 	if (!options.__skipDeprecationWarning) {
@@ -874,13 +874,10 @@ export const oidcProvider = (options: OIDCOptions) => {
 					// caller receives the row; concurrent racers receive `null`
 					// and fall through to the `invalid_grant` error path.
 					//
-					// TODO(legacy-hardening-coordinate): in-flight follow-ups at
-					// https://github.com/cinagroup/cinaauth/security/advisories/GHSA-9h47-pqcx-hjr4
-					// and https://github.com/cinagroup/cinaauth/security/advisories/GHSA-pw9m-5jxm-xr6h
-					// touch this same surface. Whoever lands second must rebase
-					// to keep the atomic consume + `invalid_grant` semantics in
-					// place; do not regress to a `findVerificationValue` +
-					// delete pair.
+					// TODO(legacy-hardening-coordinate): follow-up hardening touches
+					// this same surface. Whoever lands second must rebase to keep
+					// the atomic consume + `invalid_grant` semantics in place; do
+					// not regress to a `findVerificationValue` + delete pair.
 					const verificationValue =
 						await ctx.context.internalAdapter.consumeVerificationValue(
 							code.toString(),
@@ -1314,7 +1311,7 @@ export const oidcProvider = (options: OIDCOptions) => {
 			 * **client:**
 			 * `authClient.oauth2.register`
 			 *
-			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/oidc-provider#api-method-oauth2-register)
+			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/oidc-provider#api-method-oauth2-register)
 			 */
 			registerOAuthApplication: createAuthEndpoint(
 				"/oauth2/register",

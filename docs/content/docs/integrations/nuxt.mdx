@@ -1,13 +1,13 @@
-﻿---
+---
 title: Nuxt Integration
-description: Integrate CinaAuth with Nuxt.
+description: Integrate Better Auth with Nuxt.
 ---
 
-Before you start, make sure you have a CinaAuth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
+Before you start, make sure you have a Better Auth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
 
 ## Mount the handler
 
-Mount the CinaAuth handler to a catch-all Nitro route. Create a file at `server/api/auth/[...all].ts`:
+Mount the Better Auth handler to a catch-all Nitro route. Create a file at `server/api/auth/[...all].ts`:
 
 ```ts title="server/api/auth/[...all].ts"
 import { auth } from "~~/lib/auth"; // import your auth config
@@ -18,7 +18,7 @@ export default defineEventHandler((event) => {
 ```
 
 <Callout type="info">
-  You can change the mount path in your CinaAuth configuration, but keeping it as `/api/auth/[...all]` is recommended.
+  You can change the mount path in your Better Auth configuration, but keeping it as `/api/auth/[...all]` is recommended.
 </Callout>
 
 ## Create a client
@@ -153,9 +153,9 @@ export default defineNuxtConfig({
 
 {/* cspell:disable */}
 
-* [`atinux/nuxthub-cinaauth`](https://github.com/atinux/nuxthub-cinaauth)
-* [`leamsigc/nuxt-cinaauth-drizzle`](https://github.com/leamsigc/nuxt-cinaauth-drizzle)
-* [`NuxSaaS/NuxSaaS`](https://github.com/NuxSaaS/NuxSaaS)
+* [`nuxt-modules/better-auth`](https://github.com/nuxt-modules/better-auth)
+* [`atinux/nuxthub-better-auth`](https://github.com/atinux/nuxthub-better-auth)
+* [`leamsigc/nuxt-better-auth-drizzle`](https://github.com/leamsigc/nuxt-better-auth-drizzle)
 * [`nuxtone/nuxt-one`](https://github.com/nuxtone/nuxt-one)
 
 {/* cspell:enable */}

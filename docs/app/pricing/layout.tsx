@@ -1,5 +1,6 @@
 ﻿import Footer from "@/components/landing/footer";
 import { HalftoneBackground } from "@/components/landing/halftone-bg";
+import { SignatureMark } from "@/components/landing/signature-mark";
 
 export default function PricingLayout({
 	children,
@@ -13,6 +14,9 @@ export default function PricingLayout({
 					{/* Left side — Hero */}
 					<div className="hidden lg:block relative w-full shrink-0 lg:w-[30%] lg:h-dvh border-b lg:border-b-0 lg:border-r border-foreground/[0.06] overflow-clip px-5 sm:px-6 lg:px-10 lg:sticky lg:top-0">
 						<HalftoneBackground />
+						<div className="absolute left-10 right-6 bottom-4 z-[3]">
+							<SignatureMark compact />
+						</div>
 						<div className="relative w-full pt-6 md:pt-10 pb-6 lg:pb-0 flex flex-col justify-center lg:h-full">
 							<div className="space-y-6">
 								<div className="space-y-2">
@@ -23,8 +27,7 @@ export default function PricingLayout({
 									</h1>
 									<p className="text-sm text-foreground/70 dark:text-foreground/50 leading-relaxed max-w-[260px]">
 										Connect to our infrastructure and power your self-hosted
-										CinaAuth with a dashboard, audit logs, security, and
-										more.
+										CinaAuth with a dashboard, audit logs, security, and more.
 									</p>
 								</div>
 
@@ -65,15 +68,16 @@ export default function PricingLayout({
 									</h1>
 									<p className="text-sm text-foreground/70 dark:text-foreground/50 leading-relaxed">
 										Connect to our infrastructure and power your self-hosted
-										CinaAuth with a dashboard, audit logs, security, and
-										more.
+										CinaAuth with a dashboard, audit logs, security, and more.
 									</p>
 								</div>
 							</div>
 						</div>
 
 						{children}
-						<Footer />
+						<div className="lg:hidden">
+							<Footer />
+						</div>
 					</div>
 				</div>
 			</div>

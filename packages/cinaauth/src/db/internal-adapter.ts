@@ -13,10 +13,10 @@ import {
 import type { DBAdapter, Where } from "@cinaauth/core/db/adapter";
 import type { InternalLogger } from "@cinaauth/core/env";
 import { generateId } from "@cinaauth/core/utils/id";
+import { getIp } from "@cinaauth/core/utils/ip";
 import { safeJSONParse } from "@cinaauth/core/utils/json";
 import type { Account, Session, User, Verification } from "../types";
 import { getDate } from "../utils/date";
-import { getIp } from "../utils/get-request-ip";
 import {
 	getSessionDefaultFields,
 	parseSessionOutput,

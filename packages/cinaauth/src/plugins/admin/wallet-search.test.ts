@@ -58,7 +58,7 @@ describe("admin list-users wallet search", () => {
 		const res = (await auth.api.listUsers({
 			headers,
 			query: {
-				searchField: "wallet",
+				searchField: "wallet" as "email",
 				searchValue: "0xAbC1",
 			},
 		})) as { users: { id: string }[]; total: number };
@@ -74,7 +74,7 @@ describe("admin list-users wallet search", () => {
 		const res = (await auth.api.listUsers({
 			headers,
 			query: {
-				searchField: "wallet",
+				searchField: "wallet" as "email",
 				searchValue: "0xNONEXISTENT0000",
 			},
 		})) as { users: unknown[]; total: number };
