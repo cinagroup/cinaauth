@@ -10,7 +10,10 @@
     "url": "git+https://github.com/cinagroup/cinaauth.git",
     "directory": "packages/scim"
   },
-  "author": "Jonathan Samines",
+  "author": "CinaGroup",
+  "contributors": [
+    "Jonathan Samines"
+  ],
   "keywords": [
     "auth",
     "scim",

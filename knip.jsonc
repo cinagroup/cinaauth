@@ -7,7 +7,7 @@
 	"tags": ["-lintignore"],
 	"ignore": [
 		// test utilities only imported by test files — invisible to --production
-		"packages/better-auth/src/client/test-plugin.ts",
+		"packages/cinaauth/src/client/test-plugin.ts",
 		// CI scripts used by GitHub Actions workflows, not by packages
 		".github/scripts/**"
 	],
@@ -31,7 +31,7 @@
 			"entry": ["src/index.ts!"],
 			"project": ["src/**/*.ts!"]
 		},
-		"packages/better-auth": {
+		"packages/cinaauth": {
 			"project": [
 				"src/**/*.ts!",
 				"!src/adapters/**/test/*.prisma",

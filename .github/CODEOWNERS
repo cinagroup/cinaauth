@@ -6,53 +6,53 @@
 # Teams must have Write access to the repo.
 
 # ── Global fallback (covers: core, devtools, infra, and anything unlisted) ──
-* @better-auth/core
+* @cinaauth/core
 
 # ── Database ──
-/packages/better-auth/src/db/                      @better-auth/data
-/packages/better-auth/src/adapters/                @better-auth/data
-/packages/drizzle-adapter/                         @better-auth/data
-/packages/prisma-adapter/                          @better-auth/data
-/packages/mongo-adapter/                           @better-auth/data
-/packages/kysely-adapter/                          @better-auth/data
-/packages/memory-adapter/                          @better-auth/data
+/packages/cinaauth/src/db/                      @cinaauth/data
+/packages/cinaauth/src/adapters/                @cinaauth/data
+/packages/drizzle-adapter/                         @cinaauth/data
+/packages/prisma-adapter/                          @cinaauth/data
+/packages/mongo-adapter/                           @cinaauth/data
+/packages/kysely-adapter/                          @cinaauth/data
+/packages/memory-adapter/                          @cinaauth/data
 
 # ── Identity & Auth ──
-/packages/oauth-provider/                          @better-auth/identity
-/packages/better-auth/src/plugins/oidc-provider/   @better-auth/identity
-/packages/better-auth/src/plugins/mcp/             @better-auth/identity
-/packages/better-auth/src/plugins/device-authorization/ @better-auth/identity
-/packages/sso/                                     @better-auth/identity
-/packages/scim/                                    @better-auth/identity
-/packages/core/src/oauth2/                         @better-auth/identity
-/packages/better-auth/src/oauth2/                  @better-auth/identity
-/packages/passkey/                                 @better-auth/identity
-/packages/better-auth/src/plugins/two-factor/      @better-auth/identity
-/packages/better-auth/src/plugins/magic-link/      @better-auth/identity
-/packages/better-auth/src/plugins/email-otp/       @better-auth/identity
-/packages/better-auth/src/plugins/phone-number/    @better-auth/identity
-/packages/better-auth/src/plugins/username/        @better-auth/identity
-/packages/better-auth/src/plugins/anonymous/       @better-auth/identity
-/packages/better-auth/src/plugins/siwe/            @better-auth/identity
-/packages/better-auth/src/plugins/captcha/         @better-auth/identity
-/packages/better-auth/src/plugins/haveibeenpwned/  @better-auth/identity
-/packages/better-auth/src/plugins/generic-oauth/   @better-auth/identity
-/packages/better-auth/src/plugins/oauth-proxy/     @better-auth/identity
-/packages/better-auth/src/plugins/one-tap/         @better-auth/identity
-/packages/core/src/social-providers/               @better-auth/identity
+/packages/oauth-provider/                          @cinaauth/identity
+/packages/cinaauth/src/plugins/oidc-provider/   @cinaauth/identity
+/packages/cinaauth/src/plugins/mcp/             @cinaauth/identity
+/packages/cinaauth/src/plugins/device-authorization/ @cinaauth/identity
+/packages/sso/                                     @cinaauth/identity
+/packages/scim/                                    @cinaauth/identity
+/packages/core/src/oauth2/                         @cinaauth/identity
+/packages/cinaauth/src/oauth2/                  @cinaauth/identity
+/packages/passkey/                                 @cinaauth/identity
+/packages/cinaauth/src/plugins/two-factor/      @cinaauth/identity
+/packages/cinaauth/src/plugins/magic-link/      @cinaauth/identity
+/packages/cinaauth/src/plugins/email-otp/       @cinaauth/identity
+/packages/cinaauth/src/plugins/phone-number/    @cinaauth/identity
+/packages/cinaauth/src/plugins/username/        @cinaauth/identity
+/packages/cinaauth/src/plugins/anonymous/       @cinaauth/identity
+/packages/cinaauth/src/plugins/siwe/            @cinaauth/identity
+/packages/cinaauth/src/plugins/captcha/         @cinaauth/identity
+/packages/cinaauth/src/plugins/haveibeenpwned/  @cinaauth/identity
+/packages/cinaauth/src/plugins/generic-oauth/   @cinaauth/identity
+/packages/cinaauth/src/plugins/oauth-proxy/     @cinaauth/identity
+/packages/cinaauth/src/plugins/one-tap/         @cinaauth/identity
+/packages/core/src/social-providers/               @cinaauth/identity
 
 # ── Plugins (non-auth) ──
-/packages/better-auth/src/plugins/organization/    @better-auth/plugins
-/packages/better-auth/src/plugins/admin/           @better-auth/plugins
-/packages/better-auth/src/plugins/access/          @better-auth/plugins
-/packages/stripe/                                  @better-auth/plugins
-/packages/api-key/                                 @better-auth/plugins
+/packages/cinaauth/src/plugins/organization/    @cinaauth/plugins
+/packages/cinaauth/src/plugins/admin/           @cinaauth/plugins
+/packages/cinaauth/src/plugins/access/          @cinaauth/plugins
+/packages/stripe/                                  @cinaauth/plugins
+/packages/api-key/                                 @cinaauth/plugins
 
 # ── Platform ──
-/packages/expo/                                    @better-auth/platform
-/packages/electron/                                @better-auth/platform
-/packages/better-auth/src/integrations/            @better-auth/platform
+/packages/expo/                                    @cinaauth/platform
+/packages/electron/                                @cinaauth/platform
+/packages/cinaauth/src/integrations/            @cinaauth/platform
 
 # ── Documentation ──
-/docs/                                             @better-auth/docs
-/demo/                                             @better-auth/docs
+/docs/                                             @cinaauth/docs
+/demo/                                             @cinaauth/docs

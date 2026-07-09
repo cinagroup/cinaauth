@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@cinaauth/electron": "link:../../packages/electron",
-    "@better-auth/infra": "^0.2.5",
     "@cinaauth/oauth-provider": "link:../../packages/oauth-provider",
     "@cinaauth/passkey": "link:../../packages/passkey",
     "@cinaauth/scim": "link:../../packages/scim",
@@ -57,7 +56,7 @@
     "@react-email/components": "^1.0.8",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-query-devtools": "^5.91.3",
-    "cinaauth": "link:../../packages/better-auth",
+    "cinaauth": "link:../../packages/cinaauth",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
