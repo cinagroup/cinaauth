@@ -49,7 +49,7 @@ const mysqlMap = {
 
 const sqliteMap = {
 	string: ["TEXT"],
-	number: ["INTEGER", "REAL"],
+	number: ["INTEGER", "REAL", "BIGINT"],
 	boolean: ["INTEGER", "BOOLEAN"], // 0 or 1
 	date: ["DATE", "INTEGER"],
 	json: ["TEXT"],
@@ -221,6 +221,9 @@ export async function getMigrations(config: CinaAuthOptions) {
 	}[] = [];
 
 	for (const [key, value] of Object.entries(CinaAuthSchema)) {
+		if (value.disableMigrations) {
+			continue;
+		}
 		const table = tableMetadata.find((t) => t.name === key);
 		if (!table) {
 			const tIndex = toBeCreated.findIndex((t) => t.table === key);
@@ -392,7 +395,7 @@ export async function getMigrations(config: CinaAuthOptions) {
 		}
 		if (!(type in typeMap)) {
 			throw new Error(
-				`Unsupported field type '${String(type)}' for field '${fieldName}'. Allowed types are: string, number, boolean, date, string[], number[]. If you need to store structured data, store it as a JSON string (type: "string") or split it into primitive fields. See https://cinagroup.com/docs/advanced/schema#additional-fields`,
+				`Unsupported field type '${String(type)}' for field '${fieldName}'. Allowed types are: string, number, boolean, date, string[], number[]. If you need to store structured data, store it as a JSON string (type: "string") or split it into primitive fields. See https://better-auth.com/docs/advanced/schema#additional-fields`,
 			);
 		}
 		return typeMap[type][provider];

@@ -120,18 +120,25 @@ export const listUserWallets = (opts: AdminOptions) =>
 				}
 			}
 
-			const rows = wallets.map((w) => {
-				const m = bindMeta.get(String(w.address).toLowerCase());
-				return {
-					address: w.address,
-					chainId: w.chainId,
-					isPrimary: w.isPrimary,
-					boundAt:
-						w.createdAt instanceof Date ? w.createdAt : new Date(w.createdAt),
-					boundIp: m?.ip ?? null,
-					boundSite: m?.site ?? null,
-				};
-			});
+			const rows = wallets.map(
+				(w: {
+					address: string;
+					chainId: number;
+					isPrimary: boolean;
+					createdAt: Date | string;
+				}) => {
+					const m = bindMeta.get(String(w.address).toLowerCase());
+					return {
+						address: w.address,
+						chainId: w.chainId,
+						isPrimary: w.isPrimary,
+						boundAt:
+							w.createdAt instanceof Date ? w.createdAt : new Date(w.createdAt),
+						boundIp: m?.ip ?? null,
+						boundSite: m?.site ?? null,
+					};
+				},
+			);
 			return ctx.json({ wallets: rows });
 		},
 	);

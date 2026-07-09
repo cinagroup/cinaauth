@@ -301,6 +301,12 @@ export const router = <Option extends CinaAuthOptions>(
 			}
 
 			let currentRequest = req;
+
+			const rateLimitResponse = await onRequestRateLimit(currentRequest, ctx);
+			if (rateLimitResponse) {
+				return rateLimitResponse;
+			}
+
 			for (const plugin of ctx.options.plugins || []) {
 				if (plugin.onRequest) {
 					const response = await withSpan(
@@ -318,11 +324,6 @@ export const router = <Option extends CinaAuthOptions>(
 						currentRequest = response.request;
 					}
 				}
-			}
-
-			const rateLimitResponse = await onRequestRateLimit(currentRequest, ctx);
-			if (rateLimitResponse) {
-				return rateLimitResponse;
 			}
 
 			return currentRequest;
@@ -408,7 +409,7 @@ export {
 	optionsMiddleware,
 } from "@cinaauth/core/api";
 export { APIError } from "@cinaauth/core/error";
-export { getIp } from "../utils/get-request-ip";
+export { getIp } from "@cinaauth/core/utils/ip";
 export { isAPIError } from "../utils/is-api-error";
 export { type DispatchContext, dispatchAuthEndpoint } from "./dispatch";
 export * from "./middlewares";

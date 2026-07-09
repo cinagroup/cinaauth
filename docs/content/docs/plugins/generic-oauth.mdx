@@ -1,4 +1,4 @@
-﻿---
+---
 title: Generic OAuth
 description: Authenticate users with any OAuth provider
 ---
@@ -125,7 +125,7 @@ Unlike built-in providers, the `:providerId` parameter is required and must matc
 
 ## Pre-configured Provider Helpers
 
-CinaAuth provides pre-configured helper functions for popular OAuth providers. These helpers handle the provider-specific configuration, including discovery URLs and user info endpoints.
+Better Auth provides pre-configured helper functions for popular OAuth providers. These helpers handle the provider-specific configuration, including discovery URLs and user info endpoints.
 
 ### Supported Providers
 
@@ -137,6 +137,7 @@ CinaAuth provides pre-configured helper functions for popular OAuth providers. T
 * **Okta** - `okta(options)`
 * **Slack** - `slack(options)`
 * **Patreon** - `patreon(options)`
+* **Yandex** - `yandex(options)`
 
 ### Example: Using Pre-configured Providers
 
@@ -155,6 +156,7 @@ import {
 	okta,
 	slack,
 	patreon,
+	yandex,
 } from 'cinaauth/plugins';
 
 export const auth = CinaAuth({
@@ -209,6 +211,10 @@ export const auth = CinaAuth({
 					clientId: process.env.PATREON_CLIENT_ID,
 					clientSecret: process.env.PATREON_CLIENT_SECRET,
 				}),
+				yandex({
+					clientId: process.env.YANDEX_CLIENT_ID,
+					clientSecret: process.env.YANDEX_CLIENT_SECRET,
+				}),
 			],
 		}),
 	],
@@ -225,6 +231,7 @@ Each provider helper accepts common OAuth options (extending `BaseOAuthProviderO
 * **Okta**: Requires `issuer` (e.g., `https://dev-xxxxx.okta.com/oauth2/default`)
 * **Slack**: No additional required fields
 * **Patreon**: No additional required fields
+* **Yandex**: No additional required fields
 
 All providers support the same optional fields:
 
@@ -325,11 +332,11 @@ interface GenericOAuthConfig {
 
 ## Security: Issuer Validation
 
-CinaAuth validates the OAuth provider's issuer to protect against mix-up attacks ([RFC 9207](https://datatracker.ietf.org/doc/html/rfc9207)). A mix-up attack occurs when a malicious authorization server tricks your application into sending an authorization code to the wrong token endpoint.
+Better Auth validates the OAuth provider's issuer to protect against mix-up attacks ([RFC 9207](https://datatracker.ietf.org/doc/html/rfc9207)). A mix-up attack occurs when a malicious authorization server tricks your application into sending an authorization code to the wrong token endpoint.
 
 ### How It Works
 
-When an OAuth provider supports RFC 9207, it includes an `iss` (issuer) parameter in the authorization response. CinaAuth validates this parameter against the expected issuer to ensure the response came from the intended provider.
+When an OAuth provider supports RFC 9207, it includes an `iss` (issuer) parameter in the authorization response. Better Auth validates this parameter against the expected issuer to ensure the response came from the intended provider.
 
 ### Configuration Examples
 
@@ -518,4 +525,4 @@ getUserInfo: async (tokens) => {
 
 ### Error Handling
 
-The plugin includes built-in error handling for common OAuth issues. Errors are typically redirected to your application's error page with an appropriate error message in the URL parameters. If the callback URL is not provided, the user will be redirected to CinaAuth's default error page.
+The plugin includes built-in error handling for common OAuth issues. Errors are typically redirected to your application's error page with an appropriate error message in the URL parameters. If the callback URL is not provided, the user will be redirected to Better Auth's default error page.

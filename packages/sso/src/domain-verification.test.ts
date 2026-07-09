@@ -151,6 +151,7 @@ describe("Domain verification", async () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+		dnsMock.resolveTxt.mockReset();
 	});
 
 	describe("POST /sso/request-domain-verification", () => {
@@ -330,7 +331,7 @@ describe("Domain verification", async () => {
 
 			dnsMock.resolveTxt.mockResolvedValue([
 				[
-					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`,
+					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
 				],
 			]);
 
@@ -435,7 +436,36 @@ describe("Domain verification", async () => {
 
 			expect(response.status).toBe(502);
 			expect(await response.json()).toEqual({
-				message: "Unable to verify domain ownership. Try again later",
+				message:
+					"Unable to verify domain ownership for hello.com. Try again later",
+				code: "DOMAIN_VERIFICATION_FAILED",
+			});
+		});
+
+		it("should return bad gateway when the TXT record only contains the verification token as a substring", async () => {
+			const { auth, getAuthHeaders, registerSSOProvider } = createTestAuth();
+			const headers = await getAuthHeaders(testUser);
+			const provider = await registerSSOProvider(headers);
+
+			dnsMock.resolveTxt.mockResolvedValue([
+				[`prefix-${provider.domainVerificationToken}-suffix`],
+				[
+					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}-suffix`,
+				],
+			]);
+
+			const response = await auth.api.verifyDomain({
+				body: {
+					providerId: provider.providerId,
+				},
+				headers,
+				asResponse: true,
+			});
+
+			expect(response.status).toBe(502);
+			expect(await response.json()).toEqual({
+				message:
+					"Unable to verify domain ownership for hello.com. Try again later",
 				code: "DOMAIN_VERIFICATION_FAILED",
 			});
 		});
@@ -510,7 +540,8 @@ describe("Domain verification", async () => {
 					"v=spf1 ip4:50.242.118.232/29 include:_spf.google.com include:mail.zendesk.com ~all",
 				],
 				[
-					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`,
+					"_better-auth-token-saml-provider-1=",
+					provider.domainVerificationToken,
 				],
 			]);
 
@@ -524,7 +555,7 @@ describe("Domain verification", async () => {
 
 			expect(response.status).toBe(204);
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_cinaauth-token-saml-provider-1.hello.com",
+				"_better-auth-token-saml-provider-1.hello.com",
 			);
 		});
 
@@ -558,7 +589,7 @@ describe("Domain verification", async () => {
 		});
 
 		/**
-		 * @see https://github.com/cinagroup/cinaauth/issues/8361
+		 * @see https://github.com/better-auth/better-auth/issues/8361
 		 */
 		it("should verify a provider domain ownership with a bare domain", async () => {
 			const { auth, getAuthHeaders } = createTestAuth();
@@ -589,7 +620,7 @@ describe("Domain verification", async () => {
 			const { domainVerificationToken } = await requestResponse.json();
 
 			dnsMock.resolveTxt.mockResolvedValue([
-				[`_cinaauth-token-bare-domain-provider=${domainVerificationToken}`],
+				[`_better-auth-token-bare-domain-provider=${domainVerificationToken}`],
 			]);
 
 			const verifyResponse = await auth.api.verifyDomain({
@@ -600,7 +631,7 @@ describe("Domain verification", async () => {
 
 			expect(verifyResponse.status).toBe(204);
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_cinaauth-token-bare-domain-provider.hello.com",
+				"_better-auth-token-bare-domain-provider.hello.com",
 			);
 		});
 
@@ -647,7 +678,7 @@ describe("Domain verification", async () => {
 
 			dnsMock.resolveTxt.mockResolvedValue([
 				[
-					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`,
+					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
 				],
 			]);
 
@@ -675,10 +706,112 @@ describe("Domain verification", async () => {
 				code: "DOMAIN_VERIFIED",
 			});
 		});
+
+		it("does not verify a URL-like multi-domain provider unless every later-accepted domain is owned", async () => {
+			const { auth, getAuthHeaders } = createTestAuth();
+			const headers = await getAuthHeaders(testUser);
+
+			await auth.api.registerSSOProvider({
+				body: {
+					providerId: "multi-domain-provider",
+					issuer: "https://idp.example.com",
+					// The URL-like first entry exercises the shared normalization used
+					// by both verification and later domain matching.
+					domain: "https://attacker.com/path,victim.com",
+					samlConfig: {
+						entryPoint: "http://idp.com:",
+						cert: "the-cert",
+						callbackUrl: "http://hello.com:8081/api/sso/saml2/callback",
+						spMetadata: {},
+					},
+				},
+				headers,
+			});
+
+			const requestResponse = await auth.api.requestDomainVerification({
+				body: { providerId: "multi-domain-provider" },
+				headers,
+				asResponse: true,
+			});
+			const { domainVerificationToken } = await requestResponse.json();
+
+			// Only attacker.com publishes the verifying record; victim.com does not.
+			dnsMock.resolveTxt.mockImplementation(async (name: string) => {
+				if (name === "_better-auth-token-multi-domain-provider.attacker.com") {
+					return [
+						[
+							`_better-auth-token-multi-domain-provider=${domainVerificationToken}`,
+						],
+					];
+				}
+				return [];
+			});
+
+			const verifyResponse = await auth.api.verifyDomain({
+				body: { providerId: "multi-domain-provider" },
+				headers,
+				asResponse: true,
+			});
+
+			// victim.com ownership was never proven, so the provider must not verify.
+			expect(verifyResponse.status).toBe(502);
+			expect(await verifyResponse.json()).toEqual({
+				message:
+					"Unable to verify domain ownership for victim.com. Try again later",
+				code: "DOMAIN_VERIFICATION_FAILED",
+			});
+			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
+				"_better-auth-token-multi-domain-provider.victim.com",
+			);
+		});
+
+		it("verifies a multi-domain provider when every listed domain is owned", async () => {
+			const { auth, getAuthHeaders } = createTestAuth();
+			const headers = await getAuthHeaders(testUser);
+
+			await auth.api.registerSSOProvider({
+				body: {
+					providerId: "owned-multi-domain",
+					issuer: "https://idp.company.example",
+					domain: "company.com,subsidiary.com",
+					samlConfig: {
+						entryPoint: "http://idp.com:",
+						cert: "the-cert",
+						callbackUrl: "http://hello.com:8081/api/sso/saml2/callback",
+						spMetadata: {},
+					},
+				},
+				headers,
+			});
+
+			const requestResponse = await auth.api.requestDomainVerification({
+				body: { providerId: "owned-multi-domain" },
+				headers,
+				asResponse: true,
+			});
+			const { domainVerificationToken } = await requestResponse.json();
+
+			// Both listed domains publish the verifying record.
+			dnsMock.resolveTxt.mockResolvedValue([[domainVerificationToken]]);
+
+			const verifyResponse = await auth.api.verifyDomain({
+				body: { providerId: "owned-multi-domain" },
+				headers,
+				asResponse: true,
+			});
+
+			expect(verifyResponse.status).toBe(204);
+			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
+				"_better-auth-token-owned-multi-domain.company.com",
+			);
+			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
+				"_better-auth-token-owned-multi-domain.subsidiary.com",
+			);
+		});
 	});
 
 	/**
-	 * @see https://github.com/cinagroup/cinaauth/issues/8348
+	 * @see https://github.com/better-auth/better-auth/issues/8348
 	 */
 	describe("with secondaryStorage (no storeInDatabase)", () => {
 		it("should request and verify domain verification via secondary storage", async () => {
@@ -720,7 +853,7 @@ describe("Domain verification", async () => {
 			// Verify domain via DNS
 			dnsMock.resolveTxt.mockResolvedValue([
 				[
-					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`,
+					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
 				],
 			]);
 

@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/scim",
-  "version": "1.6.19",
+  "version": "1.6.23",
   "description": "SCIM plugin for CinaAuth",
   "type": "module",
   "license": "MIT",

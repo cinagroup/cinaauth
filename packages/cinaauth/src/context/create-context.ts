@@ -12,6 +12,7 @@ import type { OAuthProvider } from "@cinaauth/core/oauth2";
 import type { SocialProviders } from "@cinaauth/core/social-providers";
 import { socialProviders } from "@cinaauth/core/social-providers";
 import { generateId } from "@cinaauth/core/utils/id";
+import { findInvalidTrustedProxies } from "@cinaauth/core/utils/ip";
 import { createTelemetry } from "@cinaauth/telemetry";
 import defu from "defu";
 import type { Entries } from "type-fest";
@@ -77,7 +78,7 @@ function validateSecret(
 
 	if (secret.length < 32) {
 		logger.warn(
-			`[cinaauth] Warning: your CINAAUTH_SECRET should be at least 32 characters long for adequate security. Generate one with \`npx auth secret\` or \`openssl rand -base64 32\`.`,
+			`[better-auth] Warning: your CINAAUTH_SECRET should be at least 32 characters long for adequate security. Generate one with \`npx auth secret\` or \`openssl rand -base64 32\`.`,
 		);
 	}
 
@@ -85,7 +86,7 @@ function validateSecret(
 	const entropy = estimateEntropy(secret);
 	if (entropy < 120) {
 		logger.warn(
-			"[cinaauth] Warning: your CINAAUTH_SECRET appears low-entropy. Use a randomly generated secret for production.",
+			"[better-auth] Warning: your CINAAUTH_SECRET appears low-entropy. Use a randomly generated secret for production.",
 		);
 	}
 }
@@ -149,7 +150,7 @@ export async function createAuthContext<Options extends CinaAuthOptions>(
 
 	if (!baseURL && !isDynamicConfig) {
 		logger.warn(
-			`[cinaauth] Base URL is not set. Set the baseURL option or CINAAUTH_URL env, or use a dynamic baseURL with allowedHosts for multi-host setups. Without it the origin is derived from the incoming request, and callbacks and redirects may not work correctly.`,
+			`[better-auth] Base URL is not set. Set the baseURL option or CINAAUTH_URL env, or use a dynamic baseURL with allowedHosts for multi-host setups. Without it the origin is derived from the incoming request, and callbacks and redirects may not work correctly.`,
 		);
 	}
 
@@ -158,10 +159,10 @@ export async function createAuthContext<Options extends CinaAuthOptions>(
 		options.advanced?.database?.generateId === false
 	) {
 		logger.error(
-			`[cinaauth] Misconfiguration detected.
+			`[better-auth] Misconfiguration detected.
 You are using the memory DB with generateId: false.
 This will cause no id to be generated for any model.
-Most of the features of CinaAuth will not work correctly.`,
+Most of the features of Better Auth will not work correctly.`,
 		);
 	}
 
@@ -196,6 +197,17 @@ Most of the features of CinaAuth will not work correctly.`,
 	};
 
 	checkEndpointConflicts(options, logger);
+
+	const trustedProxies = options.advanced?.ipAddress?.trustedProxies;
+	if (trustedProxies && trustedProxies.length > 0) {
+		const invalid = findInvalidTrustedProxies(trustedProxies);
+		if (invalid.length > 0) {
+			logger.warn(
+				`Ignoring invalid \`advanced.ipAddress.trustedProxies\` entries: ${invalid.join(", ")}. Each entry must be an IP address or CIDR range.`,
+			);
+		}
+	}
+
 	const cookies = getCookies(options);
 	const tables = getAuthTables(options);
 	// TODO(#9294): allow registering the same provider multiple times under
@@ -267,7 +279,7 @@ Most of the features of CinaAuth will not work correctly.`,
 	const trustedProviders = await getTrustedProviders(options);
 
 	const ctx: AuthContext = {
-		appName: options.appName || "CinaAuth",
+		appName: options.appName || "Better Auth",
 		baseURL: baseURL || "",
 		version: getCinaAuthVersion(),
 		socialProviders: providers,
@@ -310,7 +322,7 @@ Most of the features of CinaAuth will not work correctly.`,
 				// and disable stateless refresh behavior to avoid confusing/unsafe configurations.
 				if (isStateful && refreshCache) {
 					logger.warn(
-						"[cinaauth] `session.cookieCache.refreshCache` is enabled while `database` or `secondaryStorage` is configured. `refreshCache` is meant for stateless (DB-less) setups. Disabling `refreshCache` — remove it from your config to silence this warning.",
+						"[better-auth] `session.cookieCache.refreshCache` is enabled while `database` or `secondaryStorage` is configured. `refreshCache` is meant for stateless (DB-less) setups. Disabling `refreshCache` — remove it from your config to silence this warning.",
 					);
 					return false;
 				}

@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/expo",
-  "version": "1.6.19",
+  "version": "1.6.23",
   "description": "CinaAuth integration for Expo and React Native applications.",
   "type": "module",
   "license": "MIT",

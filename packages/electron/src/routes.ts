@@ -1,14 +1,18 @@
 import { Buffer } from "node:buffer";
 import { timingSafeEqual } from "node:crypto";
+import { base64Url } from "@better-auth/utils/base64";
+import { createHash } from "@better-auth/utils/hash";
+import { betterFetch } from "@better-fetch/fetch";
 import type { GenericEndpointContext } from "@cinaauth/core";
 import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import { SocialProviderListEnum } from "@cinaauth/core/social-providers";
 import { safeJSONParse } from "@cinaauth/core/utils/json";
-import { base64Url } from "@better-auth/utils/base64";
-import { createHash } from "@better-auth/utils/hash";
-import { betterFetch } from "@better-fetch/fetch";
 import { createAuthEndpoint, sessionMiddleware } from "cinaauth/api";
-import { setSessionCookie } from "cinaauth/cookies";
+import {
+	parseSetCookieHeader,
+	setSessionCookie,
+	toCookieOptions,
+} from "cinaauth/cookies";
 import type { User } from "cinaauth/db";
 import { parseUserOutput } from "cinaauth/db";
 import * as z from "zod";
@@ -216,7 +220,7 @@ export const electronInitOAuthProxy = (opts: ElectronOptions) =>
 
 			const headers = new Headers(ctx.request?.headers);
 			headers.set("origin", new URL(ctx.context.baseURL).origin);
-			let setCookie: string | null = null;
+			let setCookies: string[] = [];
 			const searchParams = new URLSearchParams();
 			searchParams.set("client_id", opts.clientID || "electron");
 			searchParams.set("code_challenge", ctx.query.code_challenge);
@@ -235,9 +239,8 @@ export const electronInitOAuthProxy = (opts: ElectronOptions) =>
 					body: {
 						provider: ctx.query.provider,
 					},
-					onResponse: (ctx) => {
-						const headers = ctx.response.headers;
-						setCookie = headers.get("set-cookie") ?? null;
+					onResponse: (innerCtx) => {
+						setCookies = innerCtx.response.headers.getSetCookie();
 					},
 					headers,
 				},
@@ -249,9 +252,13 @@ export const electronInitOAuthProxy = (opts: ElectronOptions) =>
 				});
 			}
 
-			if (setCookie) {
-				ctx.setHeader("set-cookie", setCookie);
+			for (const cookieStr of setCookies) {
+				const parsed = parseSetCookieHeader(cookieStr);
+				parsed.forEach((attrs, name) => {
+					ctx.setCookie(name, attrs.value, toCookieOptions(attrs));
+				});
 			}
+
 			if (res.data.url && res.data.redirect) {
 				ctx.setHeader("Location", res.data.url);
 				ctx.setStatus(302);

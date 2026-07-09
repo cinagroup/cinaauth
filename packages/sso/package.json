@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/sso",
-  "version": "1.6.19",
+  "version": "1.6.23",
   "description": "SSO plugin for CinaAuth",
   "type": "module",
   "license": "MIT",

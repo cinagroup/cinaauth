@@ -1,4 +1,4 @@
-﻿import { mongodbAdapter } from "@cinaauth/mongo-adapter";
+import { mongodbAdapter } from "@cinaauth/mongo-adapter";
 import { createTestSuite, testAdapter } from "@cinaauth/test-utils/adapter";
 import type { Session, User } from "cinaauth";
 import { MongoClient, ObjectId } from "mongodb";
@@ -19,7 +19,7 @@ const dbClient = async (connectionString: string, dbName: string) => {
 	return { db, client };
 };
 
-const { db } = await dbClient("mongodb://127.0.0.1:27017", "cinaauth");
+const { db, client } = await dbClient("mongodb://127.0.0.1:27017", "cinaauth");
 
 const updateObjectIdTestSuite = createTestSuite(
 	"update-object-id",
@@ -90,6 +90,9 @@ const { execute } = await testAdapter({
 		// numberIdTestSuite(), // no support
 	],
 	customIdGenerator: () => new ObjectId().toHexString(),
+	async onFinish() {
+		await client.close();
+	},
 });
 
 execute();

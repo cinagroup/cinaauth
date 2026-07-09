@@ -1,4 +1,4 @@
-﻿---
+---
 title: Discord
 description: Discord provider setup and usage.
 ---
@@ -46,7 +46,8 @@ To sign in with Discord, you can use the `signIn.social` function provided by th
 
 ```ts title="auth-client.ts"
 import { createAuthClient } from "cinaauth/client"
-const authClient =  createAuthClient()
+
+const authClient = createAuthClient()
 
 const signIn = async () => {
     const data = await authClient.signIn.social({

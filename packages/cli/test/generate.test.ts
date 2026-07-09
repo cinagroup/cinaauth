@@ -3,10 +3,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { CinaAuthOptions, CinaAuthPlugin } from "@cinaauth/core";
 import type { DBAdapter } from "@cinaauth/core/db/adapter";
+import Database from "better-sqlite3";
 import { drizzleAdapter } from "cinaauth/adapters/drizzle";
 import { prismaAdapter } from "cinaauth/adapters/prisma";
 import { organization, twoFactor, username } from "cinaauth/plugins";
-import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { generateSchema } from "../src/generators";
 import { generateDrizzleSchema } from "../src/generators/drizzle";
@@ -425,6 +425,78 @@ describe("generate", async () => {
 		);
 		// Fields with explicit `required: false` should NOT have .notNull()
 		expect(schema.code).not.toMatch(/explicitOptional:.*\.notNull\(\)/);
+	});
+
+	it("should escape string default values so the generated schema stays valid TypeScript", async () => {
+		const pluginWithQuotedDefault = (): CinaAuthPlugin => ({
+			id: "quoted-default-test",
+			schema: {
+				testTable: {
+					fields: {
+						greeting: {
+							type: "string",
+							defaultValue: 'say "hi"\\done',
+						},
+					},
+				},
+			},
+		});
+
+		const schema = await generateDrizzleSchema({
+			file: "test.drizzle",
+			adapter: {
+				id: "drizzle",
+				options: {
+					provider: "pg",
+					schema: {},
+				},
+			} as any,
+			options: {
+				database: {} as any,
+				plugins: [pluginWithQuotedDefault()],
+			} as CinaAuthOptions,
+		});
+
+		// Quotes and backslashes must be escaped so the default is a valid
+		// literal. The raw interpolation would emit `.default("say "hi"\done")`
+		// and break the generated schema file.
+		expect(schema.code).toContain(String.raw`.default('say "hi"\\done')`);
+	});
+
+	it("should not emit duplicate unique indexes for unique indexed fields", async () => {
+		const pluginWithUniqueIndexedField = (): CinaAuthPlugin => ({
+			id: "unique-index-test",
+			schema: {
+				testTable: {
+					fields: {
+						slug: {
+							type: "string",
+							index: true,
+							unique: true,
+						},
+					},
+				},
+			},
+		});
+
+		const schema = await generateDrizzleSchema({
+			file: "test.drizzle",
+			adapter: {
+				id: "drizzle",
+				options: {
+					provider: "pg",
+					schema: {},
+				},
+			} as any,
+			options: {
+				database: {} as any,
+				plugins: [pluginWithUniqueIndexedField()],
+			} as CinaAuthOptions,
+		});
+
+		expect(schema.code).toContain('slug: text("slug").notNull().unique()');
+		expect(schema.code).not.toContain("uniqueIndex");
+		expect(schema.code).not.toContain("slug_uidx");
 	});
 
 	it("should treat fields with omitted required as non-optional in prisma schema", async () => {
@@ -1683,5 +1755,59 @@ describe("--dialect flag support", () => {
 		expect(schema.code).toBeDefined();
 		expect(schema.code).toContain('provider = "mysql"');
 		expect(schema.fileName).toBe("test.prisma");
+	});
+
+	const pluginWithDisabledMigration = (): CinaAuthPlugin => ({
+		id: "disabled-migration-test",
+		schema: {
+			emittedTable: {
+				fields: {
+					name: { type: "string", required: true },
+				},
+			},
+			skippedTable: {
+				fields: {
+					name: { type: "string", required: true },
+				},
+				disableMigration: true,
+			},
+		},
+	});
+
+	it("should not emit drizzle tables with disableMigration", async () => {
+		const schema = await generateDrizzleSchema({
+			file: "test.drizzle",
+			adapter: {
+				id: "drizzle",
+				options: {
+					provider: "pg",
+					schema: {},
+				},
+			} as any,
+			options: {
+				database: {} as any,
+				plugins: [pluginWithDisabledMigration()],
+			} as CinaAuthOptions,
+		});
+
+		expect(schema.code).toContain("emittedTable");
+		expect(schema.code).not.toContain("skippedTable");
+	});
+
+	it("should not emit prisma models with disableMigration", async () => {
+		const schema = await generatePrismaSchema({
+			file: "test.prisma",
+			adapter: prismaAdapter(
+				{},
+				{ provider: "postgresql" },
+			)({} as CinaAuthOptions),
+			options: {
+				database: prismaAdapter({}, { provider: "postgresql" }),
+				plugins: [pluginWithDisabledMigration()],
+			},
+		});
+
+		expect(schema.code).toContain("EmittedTable");
+		expect(schema.code).not.toContain("SkippedTable");
 	});
 });
