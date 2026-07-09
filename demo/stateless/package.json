@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "cinaauth": "link:../../packages/better-auth",
+    "cinaauth": "link:../../packages/cinaauth",
     "next": "^16.2.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
