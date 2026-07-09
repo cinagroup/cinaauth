@@ -7,7 +7,7 @@ export function SignatureMark({ compact = false }: { compact?: boolean }) {
 		<div className="flex items-center justify-between gap-3 text-[11px] font-mono text-foreground/50 select-none">
 			{compact ? (
 				<span className="text-[10px]">
-					© {new Date().getFullYear()} Better Auth Inc.
+						© {new Date().getFullYear()} CinaGroup.
 				</span>
 			) : (
 				<div className="flex items-center gap-3">

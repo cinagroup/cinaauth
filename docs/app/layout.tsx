@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = createMetadata({
 	title: {
-		template: "%s | Better Auth",
-		default: "Better Auth",
+		template: "%s | CinaAuth",
+		default: "CinaAuth",
 	},
 	description: "The Most Comprehensive Authentication Framework",
 });
