@@ -31,6 +31,26 @@ app.use("*", async (c, next) => {
 	await next();
 });
 
+// Rate-limit configuration endpoint (read-only, for the admin console's
+// security-policy page). Must be registered BEFORE the /api/auth/* catch-all
+// so Hono routes it here instead of delegating to the auth handler.
+app.get("/api/auth/admin/rate-limit-config", async (c) => {
+	const session = await c.var.auth.api.getSession({
+		headers: c.req.raw.headers,
+	});
+	if (!session || session.user.role !== "super_admin") {
+		return c.json({ error: "Forbidden" }, 403);
+	}
+	const rl = c.var.auth.options.rateLimit;
+	return c.json({
+		enabled: rl?.enabled ?? true,
+		window: rl?.window ?? 10,
+		max: rl?.max ?? 100,
+		storage: rl?.storage ?? "memory",
+		customRules: rl?.customRules ?? {},
+	});
+});
+
 // Auth catch-all route handler
 app.on(["POST", "GET"], "/api/auth/*", (c) => c.var.auth.handler(c.req.raw));
 
@@ -57,10 +77,13 @@ app.get("/api/session", async (c) => {
 // Database migration endpoint (run once after deployment)
 app.post("/api/migrate", async (c) => {
 	try {
+		const { apiKey } = await import("@cinaauth/api-key");
 		const { getMigrations } = await import("cinaauth/db/migration");
 		const { admin } = await import("cinaauth/plugins/admin");
 		const { auditLog } = await import("cinaauth/plugins/audit-log");
 		const { jwt } = await import("cinaauth/plugins/jwt");
+		const { organization } = await import("cinaauth/plugins/organization");
+		const { twoFactor } = await import("cinaauth/plugins/two-factor");
 		// Reuse the access-control config from auth.ts so migrations and the auth
 		// instance always agree on which tables/columns to create.
 		const { ac, roles } = await import("./auth");
@@ -73,6 +96,9 @@ app.post("/api/migrate", async (c) => {
 			database: c.env.DB,
 			plugins: [
 				jwt(),
+				twoFactor(),
+				organization(),
+				apiKey({ references: "user" }),
 				admin({
 					defaultRole: "user",
 					adminRoles: ["super_admin", "security_admin"],
@@ -80,6 +106,7 @@ app.post("/api/migrate", async (c) => {
 					roles,
 				}),
 				auditLog({
+					allowedRoles: ["super_admin", "security_admin"],
 					writeTokens: c.env.CINAUTH_ADMIN_SERVICE_KEY
 						? [c.env.CINAUTH_ADMIN_SERVICE_KEY]
 						: [],

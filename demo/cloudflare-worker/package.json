@@ -13,6 +13,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@cinaauth/api-key": "workspace:*",
     "cinaauth": "workspace:*",
     "hono": "^4.12.25",
     "drizzle-orm": "^0.45.2"

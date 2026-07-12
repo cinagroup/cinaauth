@@ -1,9 +1,12 @@
-﻿import { CinaAuth } from "cinaauth";
+import { apiKey } from "@cinaauth/api-key";
+import { CinaAuth } from "cinaauth";
 import { drizzleAdapter } from "cinaauth/adapters/drizzle";
 import { createAccessControl } from "cinaauth/plugins/access";
 import { admin } from "cinaauth/plugins/admin";
 import { auditLog } from "cinaauth/plugins/audit-log";
 import { jwt } from "cinaauth/plugins/jwt";
+import { organization } from "cinaauth/plugins/organization";
+import { twoFactor } from "cinaauth/plugins/two-factor";
 import { createDrizzle } from "./db";
 import type { CloudflareBindings } from "./env";
 
@@ -22,6 +25,10 @@ export const ac = createAccessControl({
 		"set-role",
 		"ban",
 		"impersonate",
+		// Restricts impersonation: without this, admin plugin's impersonate
+		// endpoint refuses to target other admins (routes.ts:1283-1300).
+		// Only super_admin gets it; security_admin cannot impersonate admins.
+		"impersonate-admins",
 		"delete",
 		"set-password",
 		"set-email",
@@ -42,6 +49,7 @@ export const roles = {
 			"set-role",
 			"ban",
 			"impersonate",
+			"impersonate-admins",
 			"delete",
 			"set-password",
 			"set-email",
@@ -53,6 +61,7 @@ export const roles = {
 	}),
 	security_admin: ac.newRole({
 		// read + ban/unban + sessions + stats; NO create/delete/role/password/impersonate
+		// Also NO impersonate-admins → cannot impersonate super_admin/security_admin.
 		user: ["list", "ban", "get", "update"],
 		session: ["list", "revoke", "delete"],
 		stats: ["read"],
@@ -75,6 +84,12 @@ export const createAuth = (env: CloudflareBindings) =>
 		},
 		plugins: [
 			jwt(),
+			twoFactor(),
+			organization(),
+			apiKey({
+				// API keys are scoped to individual users, not organizations.
+				references: "user",
+			}),
 			admin({
 				// Roles recognized by the admin console's whitelist
 				// (CINAADMIN_ALLOWED_ROLES = super_admin,security_admin).
