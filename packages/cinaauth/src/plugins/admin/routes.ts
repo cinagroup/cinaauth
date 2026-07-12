@@ -1777,6 +1777,109 @@ export const setUserPassword = (opts: AdminOptions) =>
 		},
 	);
 
+/**
+ * ### Endpoint
+ *
+ * POST `/admin/reset-2fa`
+ *
+ * Resets (disables) two-factor authentication for a user. Performs the
+ * same two-step operation as the two-factor plugin's `disableTwoFactor`:
+ * sets `twoFactorEnabled: false` on the user and deletes the user's
+ * `twoFactor` record (secret + backup codes).
+ *
+ * Requires `user:update` permission (super_admin only in the default
+ * two-tier model).
+ *
+ * ### API Methods
+ *
+ * **server:** `auth.api.resetTwoFactor({ body: { userId } })`
+ *
+ * **client:** `authClient.admin.resetTwoFactor({ userId })`
+ */
+export const resetTwoFactor = (opts: AdminOptions) =>
+	createAuthEndpoint(
+		"/admin/reset-2fa",
+		{
+			method: "POST",
+			body: z.object({
+				userId: z.string().meta({
+					description: `The user id. Eg: "user-id"`,
+				}),
+			}),
+			use: [adminMiddleware],
+			metadata: {
+				openapi: {
+					operationId: "resetTwoFactor",
+					summary: "Reset a user's 2FA",
+					description:
+						"Disables two-factor authentication for a user by clearing twoFactorEnabled and deleting their 2FA record.",
+					responses: {
+						200: {
+							description: "2FA reset",
+							content: {
+								"application/json": {
+									schema: {
+										type: "object",
+										properties: {
+											status: { type: "boolean" },
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		async (ctx) => {
+			const canUpdateUser = hasPermission({
+				userId: ctx.context.session.user.id,
+				role: ctx.context.session.user.role,
+				options: opts,
+				permissions: {
+					user: ["update"],
+				},
+			});
+			if (!canUpdateUser) {
+				throw APIError.from(
+					"FORBIDDEN",
+					ADMIN_ERROR_CODES.YOU_ARE_NOT_ALLOWED_TO_UPDATE_USERS,
+				);
+			}
+
+			const { userId } = ctx.body;
+			const user = await ctx.context.internalAdapter.findUserById(userId);
+			if (!user) {
+				throw APIError.from("NOT_FOUND", BASE_ERROR_CODES.USER_NOT_FOUND);
+			}
+
+			// Step 1: clear the twoFactorEnabled flag on the user record.
+			await ctx.context.internalAdapter.updateUser(userId, {
+				twoFactorEnabled: false,
+			});
+
+			// Step 2: delete the twoFactor record (secret + backup codes).
+			// Wrap in try/catch in case the two-factor plugin is not loaded
+			// (no twoFactor table) or the user never set up 2FA.
+			try {
+				await ctx.context.adapter.delete({
+					model: "twoFactor",
+					where: [{ field: "userId", value: userId }],
+				});
+			} catch {
+				// If the twoFactor table doesn't exist, the flag clear above
+				// is sufficient to disable 2FA at the login gate.
+				ctx.context.logger.warn(
+					`Could not delete twoFactor record for user ${userId} (table may not exist). twoFactorEnabled flag was cleared.`,
+				);
+			}
+
+			return ctx.json({
+				status: true,
+			});
+		},
+	);
+
 const userHasPermissionBodySchema = z
 	.object({
 		userId: z.coerce.string().optional().meta({

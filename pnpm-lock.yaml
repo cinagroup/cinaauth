@@ -163,6 +163,9 @@ importers:
 
   demo/cloudflare-worker:
     dependencies:
+      '@cinaauth/api-key':
+        specifier: workspace:*
+        version: link:../../packages/api-key
       cinaauth:
         specifier: workspace:*
         version: link:../../packages/cinaauth
