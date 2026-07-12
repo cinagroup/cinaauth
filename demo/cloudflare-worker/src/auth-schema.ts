@@ -1,23 +1,35 @@
 import { relations, sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+/**
+ * Drizzle schema for CinaAuth tables.
+ *
+ * IMPORTANT: Column names must match what the CinaAuth migration system
+ * creates. CinaAuth uses camelCase column names (e.g. "emailVerified",
+ * "createdAt", "userId"), so the drizzle column mappings below use
+ * camelCase to match the actual D1 schema. This is different from the
+ * default drizzle convention of snake_case.
+ */
+
 export const user = sqliteTable("user", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
 	email: text("email").notNull().unique(),
-	emailVerified: integer("email_verified", { mode: "boolean" })
+	emailVerified: integer("emailVerified", { mode: "boolean" })
 		.default(false)
 		.notNull(),
 	image: text("image"),
 	// admin plugin fields
 	role: text("role").default("user"),
 	banned: integer("banned", { mode: "boolean" }).default(false),
-	banReason: text("ban_reason"),
-	banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
-	createdAt: integer("created_at", { mode: "timestamp_ms" })
+	banReason: text("banReason"),
+	banExpires: integer("banExpires", { mode: "timestamp_ms" }),
+	// two-factor plugin field
+	twoFactorEnabled: integer("twoFactorEnabled", { mode: "boolean" }).default(false),
+	createdAt: integer("createdAt", { mode: "timestamp_ms" })
 		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 		.notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+	updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
 		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 		.$onUpdate(() => new Date())
 		.notNull(),
@@ -27,21 +39,23 @@ export const session = sqliteTable(
 	"session",
 	{
 		id: text("id").primaryKey(),
-		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+		expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
 		token: text("token").notNull().unique(),
-		createdAt: integer("created_at", { mode: "timestamp_ms" })
+		createdAt: integer("createdAt", { mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.notNull(),
-		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
 			.$onUpdate(() => new Date())
 			.notNull(),
-		ipAddress: text("ip_address"),
-		userAgent: text("user_agent"),
-		userId: text("user_id")
+		ipAddress: text("ipAddress"),
+		userAgent: text("userAgent"),
+		userId: text("userId")
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),
 		// admin plugin field (impersonation)
-		impersonatedBy: text("impersonated_by"),
+		impersonatedBy: text("impersonatedBy"),
+		// organization plugin field
+		activeOrganizationId: text("activeOrganizationId"),
 	},
 	(table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -50,26 +64,26 @@ export const account = sqliteTable(
 	"account",
 	{
 		id: text("id").primaryKey(),
-		accountId: text("account_id").notNull(),
-		providerId: text("provider_id").notNull(),
-		userId: text("user_id")
+		accountId: text("accountId").notNull(),
+		providerId: text("providerId").notNull(),
+		userId: text("userId")
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),
-		accessToken: text("access_token"),
-		refreshToken: text("refresh_token"),
-		idToken: text("id_token"),
-		accessTokenExpiresAt: integer("access_token_expires_at", {
+		accessToken: text("accessToken"),
+		refreshToken: text("refreshToken"),
+		idToken: text("idToken"),
+		accessTokenExpiresAt: integer("accessTokenExpiresAt", {
 			mode: "timestamp_ms",
 		}),
-		refreshTokenExpiresAt: integer("refresh_token_expires_at", {
+		refreshTokenExpiresAt: integer("refreshTokenExpiresAt", {
 			mode: "timestamp_ms",
 		}),
 		scope: text("scope"),
 		password: text("password"),
-		createdAt: integer("created_at", { mode: "timestamp_ms" })
+		createdAt: integer("createdAt", { mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.notNull(),
-		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
 			.$onUpdate(() => new Date())
 			.notNull(),
 	},
@@ -82,11 +96,11 @@ export const verification = sqliteTable(
 		id: text("id").primaryKey(),
 		identifier: text("identifier").notNull(),
 		value: text("value").notNull(),
-		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-		createdAt: integer("created_at", { mode: "timestamp_ms" })
+		expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
+		createdAt: integer("createdAt", { mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.notNull(),
-		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.$onUpdate(() => new Date())
 			.notNull(),
@@ -96,17 +110,14 @@ export const verification = sqliteTable(
 
 export const jwks = sqliteTable("jwks", {
 	id: text("id").primaryKey(),
-	publicKey: text("public_key").notNull(),
-	privateKey: text("private_key").notNull(),
-	createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-	expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+	publicKey: text("publicKey").notNull(),
+	privateKey: text("privateKey").notNull(),
+	createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+	expiresAt: integer("expiresAt", { mode: "timestamp_ms" }),
 });
 
 /**
- * Audit-log table (audit-log plugin). Columns mirror the plugin's schema
- * field names; the migration generator creates camelCase columns for this
- * table (unlike the core tables above, which use snake_case), so the drizzle
- * mapping must use camelCase column names to match.
+ * Audit-log table (audit-log plugin).
  */
 export const auditLog = sqliteTable("auditLog", {
 	id: text("id").primaryKey(),
@@ -121,6 +132,88 @@ export const auditLog = sqliteTable("auditLog", {
 	targetType: text("targetType"),
 	targetId: text("targetId"),
 	result: text("result").notNull(),
+	metadata: text("metadata"),
+});
+
+/**
+ * two-factor plugin table.
+ */
+export const twoFactor = sqliteTable("twoFactor", {
+	id: text("id").primaryKey(),
+	secret: text("secret").notNull(),
+	backupCodes: text("backupCodes").notNull(),
+	userId: text("userId")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
+	verified: integer("verified", { mode: "boolean" }).default(true),
+	failedVerificationCount: integer("failedVerificationCount").default(0),
+	lockedUntil: integer("lockedUntil", { mode: "timestamp_ms" }),
+});
+
+/**
+ * organization plugin tables.
+ */
+export const organization = sqliteTable("organization", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	slug: text("slug").notNull().unique(),
+	logo: text("logo"),
+	metadata: text("metadata"),
+	createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const member = sqliteTable("member", {
+	id: text("id").primaryKey(),
+	organizationId: text("organizationId")
+		.notNull()
+		.references(() => organization.id, { onDelete: "cascade" }),
+	userId: text("userId")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
+	role: text("role").default("member"),
+	createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const invitation = sqliteTable("invitation", {
+	id: text("id").primaryKey(),
+	organizationId: text("organizationId")
+		.notNull()
+		.references(() => organization.id, { onDelete: "cascade" }),
+	email: text("email").notNull(),
+	role: text("role"),
+	status: text("status").default("pending"),
+	expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
+	inviterId: text("inviterId")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
+	createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+});
+
+/**
+ * api-key plugin table.
+ */
+export const apikey = sqliteTable("apikey", {
+	id: text("id").primaryKey(),
+	configId: text("configId").default("default"),
+	name: text("name"),
+	start: text("start"),
+	referenceId: text("referenceId"),
+	prefix: text("prefix"),
+	key: text("key"),
+	refillInterval: integer("refillInterval"),
+	refillAmount: integer("refillAmount"),
+	lastRefillAt: integer("lastRefillAt", { mode: "timestamp_ms" }),
+	enabled: integer("enabled", { mode: "boolean" }).default(true),
+	rateLimitEnabled: integer("rateLimitEnabled", { mode: "boolean" }).default(false),
+	rateLimitTimeWindow: integer("rateLimitTimeWindow"),
+	rateLimitMax: integer("rateLimitMax"),
+	requestCount: integer("requestCount").default(0),
+	remaining: integer("remaining"),
+	lastRequest: integer("lastRequest", { mode: "timestamp_ms" }),
+	expiresAt: integer("expiresAt", { mode: "timestamp_ms" }),
+	createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+	updatedAt: integer("updatedAt", { mode: "timestamp_ms" }).notNull(),
+	permissions: text("permissions"),
 	metadata: text("metadata"),
 });
 
