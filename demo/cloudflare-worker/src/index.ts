@@ -79,19 +79,25 @@ app.post("/api/migrate", async (c) => {
 	try {
 		const { apiKey } = await import("@cinaauth/api-key");
 		const { getMigrations } = await import("cinaauth/db/migration");
+		// Import ALL plugins to match the auth config in auth.ts
 		const { admin } = await import("cinaauth/plugins/admin");
+		const { anonymous } = await import("cinaauth/plugins/anonymous");
 		const { auditLog } = await import("cinaauth/plugins/audit-log");
+		const { customSession } = await import("cinaauth/plugins/custom-session");
+		const { emailOTP } = await import("cinaauth/plugins/email-otp");
+		const { genericOAuth } = await import("cinaauth/plugins/generic-oauth");
+		const { haveIBeenPwned } = await import("cinaauth/plugins/haveibeenpwned");
 		const { jwt } = await import("cinaauth/plugins/jwt");
+		const { magicLink } = await import("cinaauth/plugins/magic-link");
+		const { multiSession } = await import("cinaauth/plugins/multi-session");
+		const { oneTimeToken } = await import("cinaauth/plugins/one-time-token");
 		const { organization } = await import("cinaauth/plugins/organization");
+		const { phoneNumber } = await import("cinaauth/plugins/phone-number");
+		const { siwe } = await import("cinaauth/plugins/siwe");
 		const { twoFactor } = await import("cinaauth/plugins/two-factor");
-		// Reuse the access-control config from auth.ts so migrations and the auth
-		// instance always agree on which tables/columns to create.
+		const { username } = await import("cinaauth/plugins/username");
 		const { ac, roles } = await import("./auth");
 
-		// getMigrations needs the plugin config (to know which tables to create)
-		// and a Kysely-compatible database. The D1 binding is auto-detected by
-		// createKyselyAdapter, so we pass it directly as `database` with the same
-		// plugins the auth instance uses.
 		const { runMigrations, toBeCreated, toBeAdded } = await getMigrations({
 			database: c.env.DB,
 			plugins: [
@@ -111,6 +117,7 @@ app.post("/api/migrate", async (c) => {
 						? [c.env.CINAUTH_ADMIN_SERVICE_KEY]
 						: [],
 				}),
+				siwe(),
 			],
 		});
 		await runMigrations();

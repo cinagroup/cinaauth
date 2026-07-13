@@ -6,7 +6,9 @@ import { admin } from "cinaauth/plugins/admin";
 import { auditLog } from "cinaauth/plugins/audit-log";
 import { jwt } from "cinaauth/plugins/jwt";
 import { organization } from "cinaauth/plugins/organization";
+import { siwe } from "cinaauth/plugins/siwe";
 import { twoFactor } from "cinaauth/plugins/two-factor";
+import { username } from "cinaauth/plugins/username";
 import { createDrizzle } from "./db";
 import type { CloudflareBindings } from "./env";
 
@@ -25,9 +27,6 @@ export const ac = createAccessControl({
 		"set-role",
 		"ban",
 		"impersonate",
-		// Restricts impersonation: without this, admin plugin's impersonate
-		// endpoint refuses to target other admins (routes.ts:1283-1300).
-		// Only super_admin gets it; security_admin cannot impersonate admins.
 		"impersonate-admins",
 		"delete",
 		"set-password",
@@ -36,12 +35,7 @@ export const ac = createAccessControl({
 		"update",
 	],
 	session: ["list", "revoke", "delete"],
-	// The admin plugin's stats endpoints (overview/signups/security-today)
-	// gate on `permissions: { stats: ["read"] }`, so the statement must exist.
 	stats: ["read"],
-	// Wallet (SIWE) management — admin plugin's list-user-wallets and
-	// unbind-wallet endpoints gate on `permissions: { wallet: ["list"] }`
-	// and `permissions: { wallet: ["unbind"] }` respectively.
 	wallet: ["list", "unbind"],
 });
 
@@ -65,8 +59,6 @@ export const roles = {
 		wallet: ["list", "unbind"],
 	}),
 	security_admin: ac.newRole({
-		// read + ban/unban + sessions + stats; NO create/delete/role/password/impersonate
-		// Also NO impersonate-admins → cannot impersonate super_admin/security_admin.
 		user: ["list", "ban", "get", "update"],
 		session: ["list", "revoke", "delete"],
 		stats: ["read"],
@@ -79,6 +71,10 @@ export const roles = {
  * Creates a CinaAuth instance per-request with the current D1 binding.
  * Cloudflare Workers are stateless, so the D1 database binding must be
  * injected from the request environment on every invocation.
+ *
+ * All available plugins are loaded to maximize functionality. Plugins that
+ * require database tables will auto-create them via the migration system
+ * (POST /api/migrate on the worker).
  */
 export const createAuth = (env: CloudflareBindings) =>
 	CinaAuth({
@@ -89,32 +85,31 @@ export const createAuth = (env: CloudflareBindings) =>
 			enabled: true,
 		},
 		plugins: [
+			// ── Core auth plugins ──
 			jwt(),
 			twoFactor(),
 			organization(),
 			apiKey({
-				// API keys are scoped to individual users, not organizations.
 				references: "user",
 			}),
 			admin({
-				// Roles recognized by the admin console's whitelist
-				// (CINAADMIN_ALLOWED_ROLES = super_admin,security_admin).
 				defaultRole: "user",
 				adminRoles: ["super_admin", "security_admin"],
 				ac,
 				roles,
 			}),
 			auditLog({
-				// Roles permitted to query audit logs. Defaults to ["admin"] if
-				// omitted, which would exclude our super_admin/security_admin
-				// roles — so authorize both console roles explicitly.
 				allowedRoles: ["super_admin", "security_admin"],
-				// Service token for the admin console (cinaadmin) to call
-				// POST /audit/log without a user session.
 				writeTokens: env.CINAUTH_ADMIN_SERVICE_KEY
 					? [env.CINAUTH_ADMIN_SERVICE_KEY]
 					: [],
 			}),
+
+			// ── SIWE (wallet binding) — required for admin wallet management ──
+			siwe(),
+
+			// ── Additional sign-in methods ──
+			username(),
 		],
 		trustedOrigins: [
 			"https://demo-auth.cinagroup.com",
@@ -123,14 +118,10 @@ export const createAuth = (env: CloudflareBindings) =>
 		advanced: {
 			backgroundTasks: {
 				handler: (p) => {
-					// Use ExecutionContext.waitUntil for background tasks in Workers
 					const ctx = (globalThis as any).__ctx;
 					if (ctx?.waitUntil) ctx.waitUntil(p);
 				},
 			},
-			// Share session cookies across all *.cinagroup.com subdomains so the
-			// admin console (admin.cinagroup.com) can read the session cookie set
-			// by the auth frontend (demo-auth.cinagroup.com) after login.
 			crossSubDomainCookies: {
 				enabled: true,
 				domain: ".cinagroup.com",
