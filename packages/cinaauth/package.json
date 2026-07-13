@@ -330,6 +330,21 @@
       "dev-source": "./src/plugins/mcp/client/adapters.ts",
       "types": "./dist/plugins/mcp/client/adapters.d.mts",
       "default": "./dist/plugins/mcp/client/adapters.mjs"
+    },
+    "./plugins/captcha": {
+      "dev-source": "./src/plugins/captcha/index.ts",
+      "types": "./dist/plugins/captcha/index.d.mts",
+      "default": "./dist/plugins/captcha/index.mjs"
+    },
+    "./plugins/open-api": {
+      "dev-source": "./src/plugins/open-api/index.ts",
+      "types": "./dist/plugins/open-api/index.d.mts",
+      "default": "./dist/plugins/open-api/index.mjs"
+    },
+    "./plugins/last-login-method": {
+      "dev-source": "./src/plugins/last-login-method/index.ts",
+      "types": "./dist/plugins/last-login-method/index.d.mts",
+      "default": "./dist/plugins/last-login-method/index.mjs"
     }
   },
   "typesVersions": {

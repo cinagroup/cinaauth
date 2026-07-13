@@ -75,51 +75,74 @@ app.get("/api/session", async (c) => {
 });
 
 // Database migration endpoint (run once after deployment)
-app.post("/api/migrate", async (c) => {
-	try {
-		const { apiKey } = await import("@cinaauth/api-key");
-		const { getMigrations } = await import("cinaauth/db/migration");
-		// Import ALL plugins to match the auth config in auth.ts
-		const { admin } = await import("cinaauth/plugins/admin");
-		const { anonymous } = await import("cinaauth/plugins/anonymous");
-		const { auditLog } = await import("cinaauth/plugins/audit-log");
-		const { customSession } = await import("cinaauth/plugins/custom-session");
-		const { emailOTP } = await import("cinaauth/plugins/email-otp");
-		const { genericOAuth } = await import("cinaauth/plugins/generic-oauth");
-		const { haveIBeenPwned } = await import("cinaauth/plugins/haveibeenpwned");
-		const { jwt } = await import("cinaauth/plugins/jwt");
-		const { magicLink } = await import("cinaauth/plugins/magic-link");
-		const { multiSession } = await import("cinaauth/plugins/multi-session");
-		const { oneTimeToken } = await import("cinaauth/plugins/one-time-token");
-		const { organization } = await import("cinaauth/plugins/organization");
-		const { phoneNumber } = await import("cinaauth/plugins/phone-number");
-		const { siwe } = await import("cinaauth/plugins/siwe");
-		const { twoFactor } = await import("cinaauth/plugins/two-factor");
-		const { username } = await import("cinaauth/plugins/username");
-		const { ac, roles } = await import("./auth");
+	app.post("/api/migrate", async (c) => {
+		try {
+			const { apiKey } = await import("@cinaauth/api-key");
+			const { getMigrations } = await import("cinaauth/db/migration");
+			const { admin } = await import("cinaauth/plugins/admin");
+			const { anonymous } = await import("cinaauth/plugins/anonymous");
+			const { auditLog } = await import("cinaauth/plugins/audit-log");
+			const { customSession } = await import("cinaauth/plugins/custom-session");
+			const { emailOTP } = await import("cinaauth/plugins/email-otp");
+			const { genericOAuth } = await import("cinaauth/plugins/generic-oauth");
+			const { haveIBeenPwned } = await import("cinaauth/plugins/haveibeenpwned");
+			const { jwt } = await import("cinaauth/plugins/jwt");
+			const { lastLoginMethod } = await import("cinaauth/plugins/last-login-method");
+			const { magicLink } = await import("cinaauth/plugins/magic-link");
+			const { multiSession } = await import("cinaauth/plugins/multi-session");
+			const { oneTimeToken } = await import("cinaauth/plugins/one-time-token");
+			const { organization } = await import("cinaauth/plugins/organization");
+			const { phoneNumber } = await import("cinaauth/plugins/phone-number");
+			const { siwe } = await import("cinaauth/plugins/siwe");
+			const { twoFactor } = await import("cinaauth/plugins/two-factor");
+			const { username } = await import("cinaauth/plugins/username");
+			const { ac, roles } = await import("./auth");
 
-		const { runMigrations, toBeCreated, toBeAdded } = await getMigrations({
-			database: c.env.DB,
-			plugins: [
-				jwt(),
-				twoFactor(),
-				organization(),
-				apiKey({ references: "user" }),
-				admin({
-					defaultRole: "user",
-					adminRoles: ["super_admin", "security_admin"],
-					ac,
-					roles,
-				}),
-				auditLog({
-					allowedRoles: ["super_admin", "security_admin"],
-					writeTokens: c.env.CINAUTH_ADMIN_SERVICE_KEY
-						? [c.env.CINAUTH_ADMIN_SERVICE_KEY]
-						: [],
-				}),
-				siwe(),
-			],
-		});
+			const { runMigrations, toBeCreated, toBeAdded } = await getMigrations({
+				database: c.env.DB,
+				plugins: [
+					jwt(),
+					twoFactor(),
+					organization(),
+					apiKey({ references: "user" }),
+					admin({
+						defaultRole: "user",
+						adminRoles: ["super_admin", "security_admin"],
+						ac,
+						roles,
+					}),
+					auditLog({
+						allowedRoles: ["super_admin", "security_admin"],
+						writeTokens: c.env.CINAUTH_ADMIN_SERVICE_KEY
+							? [c.env.CINAUTH_ADMIN_SERVICE_KEY]
+							: [],
+					}),
+					siwe(),
+					username(),
+					emailOTP({
+						sendVerificationOTP: async ({ email, otp }) => {
+							console.log(`[email-otp] OTP for ${email}: ${otp}`);
+						},
+					}),
+					magicLink({
+						sendMagicLink: async ({ email, url }) => {
+							console.log(`[magic-link] ${email}: ${url}`);
+						},
+					}),
+					phoneNumber({
+						sendOTP: async ({ phoneNumber, code }) => {
+							console.log(`[phone-number] OTP for ${phoneNumber}: ${code}`);
+						},
+					}),
+					anonymous(),
+					oneTimeToken(),
+					haveIBeenPwned(),
+					multiSession({ maximumSessions: 10 }),
+					customSession(async ({ user, session }) => ({ user, session })),
+					lastLoginMethod(),
+					genericOAuth({ providers: [] }),
+				],
+			});
 		await runMigrations();
 		return c.json({
 			success: true,

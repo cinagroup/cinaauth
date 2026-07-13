@@ -5,13 +5,14 @@ import { createAccessControl } from "cinaauth/plugins/access";
 import { admin } from "cinaauth/plugins/admin";
 import { anonymous } from "cinaauth/plugins/anonymous";
 import { auditLog } from "cinaauth/plugins/audit-log";
+import { customSession } from "cinaauth/plugins/custom-session";
 import { emailOTP } from "cinaauth/plugins/email-otp";
 import { haveIBeenPwned } from "cinaauth/plugins/haveibeenpwned";
 import { jwt } from "cinaauth/plugins/jwt";
+import { lastLoginMethod } from "cinaauth/plugins/last-login-method";
 import { magicLink } from "cinaauth/plugins/magic-link";
-import { oneTimeToken } from "cinaauth/plugins/one-time-token";
 import { multiSession } from "cinaauth/plugins/multi-session";
-import { customSession } from "cinaauth/plugins/custom-session";
+import { oneTimeToken } from "cinaauth/plugins/one-time-token";
 import { organization } from "cinaauth/plugins/organization";
 import { phoneNumber } from "cinaauth/plugins/phone-number";
 import { siwe } from "cinaauth/plugins/siwe";
@@ -147,6 +148,9 @@ export const createAuth = (env: CloudflareBindings) =>
 					session,
 				};
 			}),
+			lastLoginMethod(),
+
+			// ── API ──
 		],
 		trustedOrigins: [
 			"https://demo-auth.cinagroup.com",
