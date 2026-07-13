@@ -10,6 +10,8 @@ import { haveIBeenPwned } from "cinaauth/plugins/haveibeenpwned";
 import { jwt } from "cinaauth/plugins/jwt";
 import { magicLink } from "cinaauth/plugins/magic-link";
 import { oneTimeToken } from "cinaauth/plugins/one-time-token";
+import { multiSession } from "cinaauth/plugins/multi-session";
+import { customSession } from "cinaauth/plugins/custom-session";
 import { organization } from "cinaauth/plugins/organization";
 import { phoneNumber } from "cinaauth/plugins/phone-number";
 import { siwe } from "cinaauth/plugins/siwe";
@@ -136,6 +138,15 @@ export const createAuth = (env: CloudflareBindings) =>
 			// ── Session & security ──
 			oneTimeToken(),
 			haveIBeenPwned(),
+			multiSession({
+				maximumSessions: 10,
+			}),
+			customSession(async ({ user, session }) => {
+				return {
+					user,
+					session,
+				};
+			}),
 		],
 		trustedOrigins: [
 			"https://demo-auth.cinagroup.com",
