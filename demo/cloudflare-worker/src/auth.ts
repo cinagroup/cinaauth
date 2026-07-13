@@ -8,12 +8,14 @@ import { auditLog } from "cinaauth/plugins/audit-log";
 import { customSession } from "cinaauth/plugins/custom-session";
 import { emailOTP } from "cinaauth/plugins/email-otp";
 import { haveIBeenPwned } from "cinaauth/plugins/haveibeenpwned";
+import { genericOAuth } from "cinaauth/plugins/generic-oauth";
 import { jwt } from "cinaauth/plugins/jwt";
 import { lastLoginMethod } from "cinaauth/plugins/last-login-method";
 import { magicLink } from "cinaauth/plugins/magic-link";
 import { multiSession } from "cinaauth/plugins/multi-session";
 import { oneTimeToken } from "cinaauth/plugins/one-time-token";
 import { organization } from "cinaauth/plugins/organization";
+import { openAPI } from "cinaauth/plugins/open-api";
 import { phoneNumber } from "cinaauth/plugins/phone-number";
 import { siwe } from "cinaauth/plugins/siwe";
 import { twoFactor } from "cinaauth/plugins/two-factor";
@@ -149,8 +151,10 @@ export const createAuth = (env: CloudflareBindings) =>
 				};
 			}),
 			lastLoginMethod(),
+			genericOAuth({ config: [] }),
 
 			// ── API ──
+			openAPI(),
 		],
 		trustedOrigins: [
 			"https://demo-auth.cinagroup.com",
