@@ -39,6 +39,10 @@ export const ac = createAccessControl({
 	// The admin plugin's stats endpoints (overview/signups/security-today)
 	// gate on `permissions: { stats: ["read"] }`, so the statement must exist.
 	stats: ["read"],
+	// Wallet (SIWE) management — admin plugin's list-user-wallets and
+	// unbind-wallet endpoints gate on `permissions: { wallet: ["list"] }`
+	// and `permissions: { wallet: ["unbind"] }` respectively.
+	wallet: ["list", "unbind"],
 });
 
 export const roles = {
@@ -58,6 +62,7 @@ export const roles = {
 		],
 		session: ["list", "revoke", "delete"],
 		stats: ["read"],
+		wallet: ["list", "unbind"],
 	}),
 	security_admin: ac.newRole({
 		// read + ban/unban + sessions + stats; NO create/delete/role/password/impersonate
@@ -65,6 +70,7 @@ export const roles = {
 		user: ["list", "ban", "get", "update"],
 		session: ["list", "revoke", "delete"],
 		stats: ["read"],
+		wallet: ["list"],
 	}),
 	user: ac.newRole({ user: [], session: [] }),
 };
