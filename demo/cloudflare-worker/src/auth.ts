@@ -3,9 +3,15 @@ import { CinaAuth } from "cinaauth";
 import { drizzleAdapter } from "cinaauth/adapters/drizzle";
 import { createAccessControl } from "cinaauth/plugins/access";
 import { admin } from "cinaauth/plugins/admin";
+import { anonymous } from "cinaauth/plugins/anonymous";
 import { auditLog } from "cinaauth/plugins/audit-log";
+import { emailOTP } from "cinaauth/plugins/email-otp";
+import { haveIBeenPwned } from "cinaauth/plugins/haveibeenpwned";
 import { jwt } from "cinaauth/plugins/jwt";
+import { magicLink } from "cinaauth/plugins/magic-link";
+import { oneTimeToken } from "cinaauth/plugins/one-time-token";
 import { organization } from "cinaauth/plugins/organization";
+import { phoneNumber } from "cinaauth/plugins/phone-number";
 import { siwe } from "cinaauth/plugins/siwe";
 import { twoFactor } from "cinaauth/plugins/two-factor";
 import { username } from "cinaauth/plugins/username";
@@ -105,11 +111,31 @@ export const createAuth = (env: CloudflareBindings) =>
 					: [],
 			}),
 
-			// ── SIWE (wallet binding) — required for admin wallet management ──
+			// ── SIWE (wallet binding) ──
 			siwe(),
 
-			// ── Additional sign-in methods ──
+			// ── Sign-in methods ──
 			username(),
+			emailOTP({
+				sendVerificationOTP: async ({ email, otp }) => {
+					console.log(`[email-otp] OTP for ${email}: ${otp}`);
+				},
+			}),
+			magicLink({
+				sendMagicLink: async ({ email, url }) => {
+					console.log(`[magic-link] ${email}: ${url}`);
+				},
+			}),
+			phoneNumber({
+				sendOTP: async ({ phoneNumber, code }) => {
+					console.log(`[phone-number] OTP for ${phoneNumber}: ${code}`);
+				},
+			}),
+			anonymous(),
+
+			// ── Session & security ──
+			oneTimeToken(),
+			haveIBeenPwned(),
 		],
 		trustedOrigins: [
 			"https://demo-auth.cinagroup.com",
