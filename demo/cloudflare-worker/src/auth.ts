@@ -60,7 +60,12 @@ const buildAuth = (env: CloudflareBindings) =>
 		},
 		rateLimit: {
 			enabled: true,
-			storage: "database",
+			// "memory" avoids D1 hot-row contention on the rateLimit table under
+			// high concurrency. Each isolate counts independently, so the effective
+			// limit is per-isolate (slightly more permissive than a global counter).
+			// For strict global rate limiting, use Cloudflare's native Rate Limiting
+			// rules in the dashboard instead.
+			storage: "memory",
 			window: 60,
 			max: 300,
 		},
