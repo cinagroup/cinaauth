@@ -91,34 +91,20 @@ export function parseCertificate(certPem: string) {
 		: `-----BEGIN CERTIFICATE-----\n${certPem}\n-----END CERTIFICATE-----`;
 
 	if (!hasX509Certificate) {
-		// Cloudflare Workers fallback: extract the raw DER bytes from PEM and
-		// compute SHA-256 fingerprint with Web Crypto (available everywhere).
-		// Validity dates and key algorithm are unknown in this fallback —
-		// callers that need them should run on Node.js instead.
+		// Cloudflare Workers fallback: X509Certificate and createHash from
+		// node:crypto are NOT available under nodejs_compat. Return the raw
+		// base64 content as a pseudo-fingerprint — it uniquely identifies the
+		// certificate for comparison purposes. Validity dates and key algorithm
+		// are unknown in this mode; callers needing them should use Node.js.
 		const base64 = normalized
 			.replace(/-----[A-Z ]+-----/g, "")
 			.replace(/\s/g, "");
-		const derBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-		// Synchronous SHA-256 isn't available in Web Crypto (it's async-only).
-		// Use a simple synchronous hash via the Node crypto fallback for the
-		// fingerprint. If that's also unavailable, return a placeholder.
-		try {
-			const { createHash } = require("node:crypto");
-			const hash = createHash("sha256").update(derBytes).digest("hex");
-			return {
-				fingerprintSha256: hash,
-				notBefore: "",
-				notAfter: "",
-				publicKeyAlgorithm: "UNKNOWN",
-			};
-		} catch {
-			return {
-				fingerprintSha256: "",
-				notBefore: "",
-				notAfter: "",
-				publicKeyAlgorithm: "UNKNOWN",
-			};
-		}
+		return {
+			fingerprintSha256: base64,
+			notBefore: "",
+			notAfter: "",
+			publicKeyAlgorithm: "UNKNOWN",
+		};
 	}
 
 	const cert = new X509Certificate(normalized);
