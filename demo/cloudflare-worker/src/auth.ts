@@ -1,135 +1,111 @@
-import { apiKey } from "@cinaauth/api-key";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { CinaAuth } from "cinaauth";
-import { drizzleAdapter } from "cinaauth/adapters/drizzle";
-import { createAccessControl } from "cinaauth/plugins/access";
-import { admin } from "cinaauth/plugins/admin";
-import { auditLog } from "cinaauth/plugins/audit-log";
-import { jwt } from "cinaauth/plugins/jwt";
-import { organization } from "cinaauth/plugins/organization";
-import { twoFactor } from "cinaauth/plugins/two-factor";
-import { createDrizzle } from "./db";
+import { enqueueDelivery } from "./delivery";
 import type { CloudflareBindings } from "./env";
+import { createAuthPlugins, TRUSTED_ORIGINS } from "./plugins";
 
-/**
- * Access-control statements for the admin plugin.
- *
- * Roles mirror cinaadmin's two-tier model (spec §3.1):
- *   - super_admin:     full CRUD across every module
- *   - security_admin:  read + ban/unban + session revoke + audit read;
- *                      NO create/delete/set-role/set-password/impersonate
- */
-export const ac = createAccessControl({
-	user: [
-		"create",
-		"list",
-		"set-role",
-		"ban",
-		"impersonate",
-		// Restricts impersonation: without this, admin plugin's impersonate
-		// endpoint refuses to target other admins (routes.ts:1283-1300).
-		// Only super_admin gets it; security_admin cannot impersonate admins.
-		"impersonate-admins",
-		"delete",
-		"set-password",
-		"set-email",
-		"get",
-		"update",
-	],
-	session: ["list", "revoke", "delete"],
-	// The admin plugin's stats endpoints (overview/signups/security-today)
-	// gate on `permissions: { stats: ["read"] }`, so the statement must exist.
-	stats: ["read"],
-});
+export { ac, roles } from "./plugins";
 
-export const roles = {
-	super_admin: ac.newRole({
-		user: [
-			"create",
-			"list",
-			"set-role",
-			"ban",
-			"impersonate",
-			"impersonate-admins",
-			"delete",
-			"set-password",
-			"set-email",
-			"get",
-			"update",
-		],
-		session: ["list", "revoke", "delete"],
-		stats: ["read"],
-	}),
-	security_admin: ac.newRole({
-		// read + ban/unban + sessions + stats; NO create/delete/role/password/impersonate
-		// Also NO impersonate-admins → cannot impersonate super_admin/security_admin.
-		user: ["list", "ban", "get", "update"],
-		session: ["list", "revoke", "delete"],
-		stats: ["read"],
-	}),
-	user: ac.newRole({ user: [], session: [] }),
+const logBackgroundTaskError = (error: unknown) => {
+	console.error(
+		JSON.stringify({
+			level: "error",
+			message: "cinaauth.background_task_failed",
+			error: error instanceof Error ? error.message : String(error),
+		}),
+	);
 };
 
 /**
- * Creates a CinaAuth instance per-request with the current D1 binding.
- * Cloudflare Workers are stateless, so the D1 database binding must be
- * injected from the request environment on every invocation.
+ * Carries the current request's ExecutionContext to background-task handlers.
+ * The auth instance is cached across requests (see createAuth), so it must not
+ * close over a per-request ctx; instead the request path runs inside
+ * runWithExecutionCtx and the handler reads the active ctx from here.
  */
-export const createAuth = (env: CloudflareBindings) =>
+const executionCtxStore = new AsyncLocalStorage<ExecutionContext>();
+
+export const runWithExecutionCtx = <T>(
+	ctx: ExecutionContext,
+	fn: () => T,
+): T => executionCtxStore.run(ctx, fn);
+
+/**
+ * Builds a CinaAuth instance for the current Worker bindings. D1 is passed
+ * directly so CinaAuth's Kysely adapter can auto-detect Cloudflare D1 and keep
+ * plugin schema generation aligned with runtime behavior.
+ */
+const buildAuth = (env: CloudflareBindings) =>
 	CinaAuth({
 		baseURL: env.CINAAUTH_URL || "https://auth.cinagroup.com",
 		secret: env.CINAAUTH_SECRET,
-		database: drizzleAdapter(createDrizzle(env.DB), { provider: "sqlite" }),
+		database: env.DB,
 		emailAndPassword: {
 			enabled: true,
+			// Wire the classic reset-link flow to the delivery queue; without this
+			// /request-password-reset returns 400 RESET_PASSWORD_DISABLED.
+			sendResetPassword: async ({ user, url }) => {
+				await enqueueDelivery(env, {
+					kind: "password-reset",
+					payload: { email: user.email, url },
+				});
+			},
 		},
-		plugins: [
-			jwt(),
-			twoFactor(),
-			organization(),
-			apiKey({
-				// API keys are scoped to individual users, not organizations.
-				references: "user",
-			}),
-			admin({
-				// Roles recognized by the admin console's whitelist
-				// (CINAADMIN_ALLOWED_ROLES = super_admin,security_admin).
-				defaultRole: "user",
-				adminRoles: ["super_admin", "security_admin"],
-				ac,
-				roles,
-			}),
-			auditLog({
-				// Roles permitted to query audit logs. Defaults to ["admin"] if
-				// omitted, which would exclude our super_admin/security_admin
-				// roles — so authorize both console roles explicitly.
-				allowedRoles: ["super_admin", "security_admin"],
-				// Service token for the admin console (cinaadmin) to call
-				// POST /audit/log without a user session.
-				writeTokens: env.CINAUTH_ADMIN_SERVICE_KEY
-					? [env.CINAUTH_ADMIN_SERVICE_KEY]
-					: [],
-			}),
-		],
-		trustedOrigins: [
-			"https://demo-auth.cinagroup.com",
-			"https://*.cinagroup.com",
-		],
+		session: {
+			// Serve most get-session calls from a signed session cookie instead of a
+			// D1 read. Revocations and bans take effect within maxAge (5 min).
+			cookieCache: {
+				enabled: true,
+				maxAge: 300,
+			},
+		},
+		rateLimit: {
+			enabled: true,
+			storage: "database",
+			window: 60,
+			max: 300,
+		},
+		plugins: createAuthPlugins(env),
+		trustedOrigins: TRUSTED_ORIGINS,
 		advanced: {
 			backgroundTasks: {
 				handler: (p) => {
-					// Use ExecutionContext.waitUntil for background tasks in Workers
-					const ctx = (globalThis as any).__ctx;
-					if (ctx?.waitUntil) ctx.waitUntil(p);
+					const wrapped = p.catch(logBackgroundTaskError);
+					// Present during any request wrapped by runWithExecutionCtx; absent
+					// paths (e.g. the queue handler) never register background tasks.
+					executionCtxStore.getStore()?.waitUntil(wrapped);
 				},
 			},
-			// Share session cookies across all *.cinagroup.com subdomains so the
-			// admin console (admin.cinagroup.com) can read the session cookie set
-			// by the auth frontend (demo-auth.cinagroup.com) after login.
+			// Share session cookies across *.cinagroup.com subdomains so the admin
+			// console can read the auth frontend session cookie after login.
 			crossSubDomainCookies: {
 				enabled: true,
 				domain: ".cinagroup.com",
 			},
+			ipAddress: {
+				ipAddressHeaders: [
+					"cf-connecting-ip",
+					"x-forwarded-for",
+					"x-real-ip",
+				],
+			},
 		},
 	});
 
-export type Auth = ReturnType<typeof createAuth>;
+export type Auth = ReturnType<typeof buildAuth>;
+
+/**
+ * Cache the instance per isolate. Construction performs no DB or network I/O and
+ * closes over `env` only, so one instance safely serves every request in an
+ * isolate; the per-request ExecutionContext is supplied via executionCtxStore.
+ * A new isolate (or a changed env identity) rebuilds it.
+ */
+let cached: { env: CloudflareBindings; auth: Auth } | null = null;
+
+export const createAuth = (env: CloudflareBindings): Auth => {
+	if (cached && cached.env === env) {
+		return cached.auth;
+	}
+	const auth = buildAuth(env);
+	cached = { env, auth };
+	return auth;
+};

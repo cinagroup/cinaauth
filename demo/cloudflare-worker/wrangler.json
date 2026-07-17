@@ -2,22 +2,49 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "cinaauth-api",
   "main": "src/index.ts",
-  "compatibility_date": "2025-04-01",
+  "compatibility_date": "2026-07-14",
   "compatibility_flags": ["nodejs_compat"],
+  "minify": true,
   "upload_source_maps": true,
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "version_metadata": {
+    "binding": "VERSION_METADATA"
+  },
+  "triggers": {
+    "crons": ["0 3 * * *"]
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "cinaauth-db",
-      "database_id": "b5063da6-673d-41e3-93c7-e63b089aaf28",
-      "migrations_dir": "./drizzle"
+      "database_id": "b5063da6-673d-41e3-93c7-e63b089aaf28"
     }
   ],
   "vars": {
     "CINAAUTH_URL": "https://auth.cinagroup.com"
+  },
+  "queues": {
+    "producers": [
+      {
+        "queue": "cinaauth-delivery",
+        "binding": "CINAAUTH_DELIVERY_QUEUE"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "cinaauth-delivery",
+        "max_batch_size": 10,
+        "max_batch_timeout": 1,
+        "max_concurrency": 5,
+        "max_retries": 5,
+        "retry_delay": 30,
+        "visibility_timeout_ms": 60000,
+        "dead_letter_queue": "cinaauth-delivery-dlq"
+      }
+    ]
   },
   "routes": [
     {
