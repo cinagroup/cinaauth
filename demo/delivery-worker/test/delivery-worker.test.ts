@@ -1,0 +1,279 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import deliveryWorker, {
+	createProviderRequest,
+	getRuntimeConfigIssues,
+	parseDeliveryMessage,
+	secureEqual,
+	verifyCinaAuthRequest,
+	type DeliveryMessage,
+} from "../src/index";
+import type { DeliveryWorkerEnv } from "../src/env";
+
+const encoder = new TextEncoder();
+const strongSecret = "delivery-secret-".repeat(3);
+
+const hmacSha256Hex = async (secret: string, payload: string) => {
+	const key = await crypto.subtle.importKey(
+		"raw",
+		encoder.encode(secret),
+		{ name: "HMAC", hash: "SHA-256" },
+		false,
+		["sign"],
+	);
+	const signature = await crypto.subtle.sign(
+		"HMAC",
+		key,
+		encoder.encode(payload),
+	);
+	return [...new Uint8Array(signature)]
+		.map((byte) => byte.toString(16).padStart(2, "0"))
+		.join("");
+};
+
+const createKv = () => {
+	const store = new Map<string, string>();
+	const get = vi.fn(async (key: string) => store.get(key) ?? null);
+	const put = vi.fn(
+		async (
+			key: string,
+			value: string,
+			_options?: KVNamespacePutOptions,
+		) => {
+			store.set(key, value);
+		},
+	);
+
+	return {
+		store,
+		get,
+		put,
+		kv: {
+			get,
+			put,
+		} as unknown as KVNamespace,
+	};
+};
+
+const makeEnv = (
+	overrides: Partial<DeliveryWorkerEnv> = {},
+): DeliveryWorkerEnv => {
+	const kv = createKv();
+	return {
+		CINAAUTH_DELIVERY_WEBHOOK_SECRET: strongSecret,
+		CINAAUTH_DELIVERY_REPLAY_KV: kv.kv,
+		VERSION_METADATA: {
+			id: "version-id",
+			tag: "version-tag",
+			timestamp: "2026-07-14T00:00:00.000Z",
+		} as WorkerVersionMetadata,
+		DELIVERY_ALLOWED_SKEW_SECONDS: "300",
+		DELIVERY_REPLAY_TTL_SECONDS: "86400",
+		RESEND_API_KEY: "resend-key",
+		RESEND_EMAIL_FROM: "CinaAuth <no-reply@cinagroup.com>",
+		TWILIO_ACCOUNT_SID: "AC123",
+		TWILIO_AUTH_TOKEN: "twilio-token",
+		TWILIO_FROM_NUMBER: "+15555550123",
+		...overrides,
+	} as DeliveryWorkerEnv;
+};
+
+const message: DeliveryMessage = {
+	kind: "email-otp",
+	payload: {
+		email: "user@example.com",
+		otp: "123456",
+		type: "sign-in",
+	},
+};
+
+const fetchWorker = deliveryWorker.fetch as unknown as (
+	request: Request,
+	env: DeliveryWorkerEnv,
+) => Promise<Response>;
+
+const signedRequest = async (
+	body: string,
+	env: DeliveryWorkerEnv,
+	options: {
+		deliveryId?: string;
+		now?: Date;
+	} = {},
+) => {
+	const deliveryId = options.deliveryId || "delivery-1";
+	const timestamp = Math.floor(
+		(options.now?.getTime() ?? Date.now()) / 1000,
+	).toString();
+	const signature = await hmacSha256Hex(
+		env.CINAAUTH_DELIVERY_WEBHOOK_SECRET,
+		`${timestamp}.${deliveryId}.${body}`,
+	);
+	return new Request("https://cinaauth-delivery.cinagroup.com/cinaauth/delivery", {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${env.CINAAUTH_DELIVERY_WEBHOOK_SECRET}`,
+			"Content-Type": "application/json",
+			"X-CinaAuth-Delivery-Id": deliveryId,
+			"X-CinaAuth-Delivery-Timestamp": timestamp,
+			"X-CinaAuth-Delivery-Signature": `v1=${signature}`,
+		},
+		body,
+	});
+};
+
+afterEach(() => {
+	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
+});
+
+describe("delivery webhook security", () => {
+	it("verifies signed CinaAuth delivery requests", async () => {
+		const env = makeEnv();
+		const body = JSON.stringify(message);
+		const now = new Date("2026-07-14T00:00:00.000Z");
+		const request = await signedRequest(body, env, { now });
+
+		await expect(
+			verifyCinaAuthRequest(request, env, body, now.getTime()),
+		).resolves.toEqual({
+			deliveryId: "delivery-1",
+			timestampSeconds: 1783987200,
+		});
+	});
+
+	it("rejects stale signatures", async () => {
+		const env = makeEnv();
+		const body = JSON.stringify(message);
+		const signedAt = new Date("2026-07-14T00:00:00.000Z");
+		const checkedAt = new Date("2026-07-14T00:10:01.000Z");
+		const request = await signedRequest(body, env, { now: signedAt });
+
+		await expect(
+			verifyCinaAuthRequest(request, env, body, checkedAt.getTime()),
+		).rejects.toMatchObject({
+			code: "stale_signature",
+			status: 401,
+		});
+	});
+
+	it("compares secrets without direct string equality", async () => {
+		await expect(secureEqual("same-token", "same-token")).resolves.toBe(true);
+		await expect(secureEqual("same-token", "different-token")).resolves.toBe(
+			false,
+		);
+		await expect(secureEqual(undefined, "same-token")).resolves.toBe(false);
+	});
+});
+
+describe("provider requests", () => {
+	it("creates Resend requests for email delivery", () => {
+		const request = createProviderRequest(makeEnv(), message);
+		expect(request.url).toBe("https://api.resend.com/emails");
+		expect(request.method).toBe("POST");
+		const headers = new Headers(request.headers);
+		expect(headers.get("Authorization")).toBe("Bearer resend-key");
+		expect(JSON.parse(request.body as string)).toMatchObject({
+			from: "CinaAuth <no-reply@cinagroup.com>",
+			to: ["user@example.com"],
+			subject: "Your CinaAuth verification code",
+		});
+	});
+
+	it("creates Twilio requests for phone delivery", () => {
+		const request = createProviderRequest(makeEnv(), {
+			kind: "phone-otp",
+			payload: {
+				phoneNumber: "+15555550100",
+				code: "654321",
+			},
+		});
+		expect(request.url).toBe(
+			"https://api.twilio.com/2010-04-01/Accounts/AC123/Messages.json",
+		);
+		const headers = new Headers(request.headers);
+		expect(headers.get("Authorization")).toMatch(/^Basic /);
+		expect(request.body).toBeInstanceOf(URLSearchParams);
+		expect((request.body as URLSearchParams).get("To")).toBe("+15555550100");
+	});
+});
+
+describe("delivery worker", () => {
+	it("dispatches valid deliveries and deduplicates successful delivery ids", async () => {
+		const env = makeEnv();
+		const body = JSON.stringify(message);
+		const request = await signedRequest(body, env);
+		const fetchMock = vi.fn(async () => new Response(null, { status: 202 }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const first = await fetchWorker(request, env);
+		expect(first.status).toBe(200);
+		expect(await first.json()).toEqual({ success: true, duplicate: false });
+		expect(fetchMock).toHaveBeenCalledOnce();
+
+		const duplicate = await fetchWorker(await signedRequest(body, env), env);
+		expect(duplicate.status).toBe(200);
+		expect(await duplicate.json()).toEqual({ success: true, duplicate: true });
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it("reports missing provider inputs in readiness without exposing secrets", async () => {
+		const env = makeEnv({
+			RESEND_API_KEY: undefined,
+			TWILIO_AUTH_TOKEN: undefined,
+		});
+		const issues = getRuntimeConfigIssues(env);
+		expect(issues).toContain("missing_resend_api_key");
+		expect(issues).toContain("missing_twilio_auth_token");
+		expect(JSON.stringify(issues)).not.toContain(strongSecret);
+	});
+
+	it("hides readiness details unless the shared delivery secret is provided", async () => {
+		const env = makeEnv({
+			RESEND_API_KEY: undefined,
+			TWILIO_AUTH_TOKEN: undefined,
+		});
+
+		const response = await fetchWorker(
+			new Request("https://cinaauth-delivery.cinagroup.com/ready"),
+			env,
+		);
+		expect(response.status).toBe(503);
+		const body = (await response.json()) as {
+			runtimeConfig: { issues: string[] };
+		};
+		expect(JSON.stringify(body)).not.toContain("missing_resend_api_key");
+	});
+
+	it("returns detailed readiness to authorized operators", async () => {
+		const env = makeEnv({
+			RESEND_API_KEY: undefined,
+			TWILIO_AUTH_TOKEN: undefined,
+		});
+
+		const response = await fetchWorker(
+			new Request("https://cinaauth-delivery.cinagroup.com/ready", {
+				headers: {
+					Authorization: `Bearer ${env.CINAAUTH_DELIVERY_WEBHOOK_SECRET}`,
+				},
+			}),
+			env,
+		);
+		expect(response.status).toBe(503);
+		const body = (await response.json()) as {
+			runtimeConfig: { issues: string[] };
+		};
+		expect(body.runtimeConfig.issues).toContain("missing_resend_api_key");
+		expect(JSON.stringify(body)).not.toContain(strongSecret);
+	});
+
+	it("parses delivery payloads without accepting unsupported kinds", () => {
+		expect(parseDeliveryMessage(JSON.stringify(message))).toEqual(message);
+		expect(() =>
+			parseDeliveryMessage(
+				JSON.stringify({
+					kind: "unknown",
+					payload: {},
+				}),
+			),
+		).toThrow();
+	});
+});

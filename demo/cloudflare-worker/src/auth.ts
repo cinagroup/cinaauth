@@ -1,177 +1,111 @@
-import { apiKey } from "@cinaauth/api-key";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { CinaAuth } from "cinaauth";
-import { drizzleAdapter } from "cinaauth/adapters/drizzle";
-import { createAccessControl } from "cinaauth/plugins/access";
-import { admin } from "cinaauth/plugins/admin";
-import { anonymous } from "cinaauth/plugins/anonymous";
-import { auditLog } from "cinaauth/plugins/audit-log";
-import { customSession } from "cinaauth/plugins/custom-session";
-import { emailOTP } from "cinaauth/plugins/email-otp";
-import { haveIBeenPwned } from "cinaauth/plugins/haveibeenpwned";
-import { genericOAuth } from "cinaauth/plugins/generic-oauth";
-import { jwt } from "cinaauth/plugins/jwt";
-import { lastLoginMethod } from "cinaauth/plugins/last-login-method";
-import { magicLink } from "cinaauth/plugins/magic-link";
-import { multiSession } from "cinaauth/plugins/multi-session";
-import { oneTimeToken } from "cinaauth/plugins/one-time-token";
-import { organization } from "cinaauth/plugins/organization";
-import { openAPI } from "cinaauth/plugins/open-api";
-import { phoneNumber } from "cinaauth/plugins/phone-number";
-import { siwe } from "cinaauth/plugins/siwe";
-import { twoFactor } from "cinaauth/plugins/two-factor";
-import { username } from "cinaauth/plugins/username";
-import { createDrizzle } from "./db";
+import { enqueueDelivery } from "./delivery";
 import type { CloudflareBindings } from "./env";
+import { createAuthPlugins, TRUSTED_ORIGINS } from "./plugins";
 
-/**
- * Access-control statements for the admin plugin.
- *
- * Roles mirror cinaadmin's two-tier model (spec §3.1):
- *   - super_admin:     full CRUD across every module
- *   - security_admin:  read + ban/unban + session revoke + audit read;
- *                      NO create/delete/set-role/set-password/impersonate
- */
-export const ac = createAccessControl({
-	user: [
-		"create",
-		"list",
-		"set-role",
-		"ban",
-		"impersonate",
-		"impersonate-admins",
-		"delete",
-		"set-password",
-		"set-email",
-		"get",
-		"update",
-	],
-	session: ["list", "revoke", "delete"],
-	stats: ["read"],
-	wallet: ["list", "unbind"],
-});
+export { ac, roles } from "./plugins";
 
-export const roles = {
-	super_admin: ac.newRole({
-		user: [
-			"create",
-			"list",
-			"set-role",
-			"ban",
-			"impersonate",
-			"impersonate-admins",
-			"delete",
-			"set-password",
-			"set-email",
-			"get",
-			"update",
-		],
-		session: ["list", "revoke", "delete"],
-		stats: ["read"],
-		wallet: ["list", "unbind"],
-	}),
-	security_admin: ac.newRole({
-		user: ["list", "ban", "get", "update"],
-		session: ["list", "revoke", "delete"],
-		stats: ["read"],
-		wallet: ["list"],
-	}),
-	user: ac.newRole({ user: [], session: [] }),
+const logBackgroundTaskError = (error: unknown) => {
+	console.error(
+		JSON.stringify({
+			level: "error",
+			message: "cinaauth.background_task_failed",
+			error: error instanceof Error ? error.message : String(error),
+		}),
+	);
 };
 
 /**
- * Creates a CinaAuth instance per-request with the current D1 binding.
- * Cloudflare Workers are stateless, so the D1 database binding must be
- * injected from the request environment on every invocation.
- *
- * All available plugins are loaded to maximize functionality. Plugins that
- * require database tables will auto-create them via the migration system
- * (POST /api/migrate on the worker).
+ * Carries the current request's ExecutionContext to background-task handlers.
+ * The auth instance is cached across requests (see createAuth), so it must not
+ * close over a per-request ctx; instead the request path runs inside
+ * runWithExecutionCtx and the handler reads the active ctx from here.
  */
-export const createAuth = (env: CloudflareBindings) =>
+const executionCtxStore = new AsyncLocalStorage<ExecutionContext>();
+
+export const runWithExecutionCtx = <T>(
+	ctx: ExecutionContext,
+	fn: () => T,
+): T => executionCtxStore.run(ctx, fn);
+
+/**
+ * Builds a CinaAuth instance for the current Worker bindings. D1 is passed
+ * directly so CinaAuth's Kysely adapter can auto-detect Cloudflare D1 and keep
+ * plugin schema generation aligned with runtime behavior.
+ */
+const buildAuth = (env: CloudflareBindings) =>
 	CinaAuth({
 		baseURL: env.CINAAUTH_URL || "https://auth.cinagroup.com",
 		secret: env.CINAAUTH_SECRET,
-		database: drizzleAdapter(createDrizzle(env.DB), { provider: "sqlite" }),
+		database: env.DB,
 		emailAndPassword: {
 			enabled: true,
+			// Wire the classic reset-link flow to the delivery queue; without this
+			// /request-password-reset returns 400 RESET_PASSWORD_DISABLED.
+			sendResetPassword: async ({ user, url }) => {
+				await enqueueDelivery(env, {
+					kind: "password-reset",
+					payload: { email: user.email, url },
+				});
+			},
 		},
-		plugins: [
-			// ── Core auth plugins ──
-			jwt(),
-			twoFactor(),
-			organization(),
-			apiKey({
-				references: "user",
-			}),
-			admin({
-				defaultRole: "user",
-				adminRoles: ["super_admin", "security_admin"],
-				ac,
-				roles,
-			}),
-			auditLog({
-				allowedRoles: ["super_admin", "security_admin"],
-				writeTokens: env.CINAUTH_ADMIN_SERVICE_KEY
-					? [env.CINAUTH_ADMIN_SERVICE_KEY]
-					: [],
-			}),
-
-			// ── SIWE (wallet binding) ──
-			siwe(),
-
-			// ── Sign-in methods ──
-			username(),
-			emailOTP({
-				sendVerificationOTP: async ({ email, otp }) => {
-					console.log(`[email-otp] OTP for ${email}: ${otp}`);
-				},
-			}),
-			magicLink({
-				sendMagicLink: async ({ email, url }) => {
-					console.log(`[magic-link] ${email}: ${url}`);
-				},
-			}),
-			phoneNumber({
-				sendOTP: async ({ phoneNumber, code }) => {
-					console.log(`[phone-number] OTP for ${phoneNumber}: ${code}`);
-				},
-			}),
-			anonymous(),
-
-			// ── Session & security ──
-			oneTimeToken(),
-			haveIBeenPwned(),
-			multiSession({
-				maximumSessions: 10,
-			}),
-			customSession(async ({ user, session }) => {
-				return {
-					user,
-					session,
-				};
-			}),
-			lastLoginMethod(),
-			genericOAuth({ config: [] }),
-
-			// ── API ──
-			openAPI(),
-		],
-		trustedOrigins: [
-			"https://demo-auth.cinagroup.com",
-			"https://*.cinagroup.com",
-		],
+		session: {
+			// Serve most get-session calls from a signed session cookie instead of a
+			// D1 read. Revocations and bans take effect within maxAge (5 min).
+			cookieCache: {
+				enabled: true,
+				maxAge: 300,
+			},
+		},
+		rateLimit: {
+			enabled: true,
+			storage: "database",
+			window: 60,
+			max: 300,
+		},
+		plugins: createAuthPlugins(env),
+		trustedOrigins: TRUSTED_ORIGINS,
 		advanced: {
 			backgroundTasks: {
 				handler: (p) => {
-					const ctx = (globalThis as any).__ctx;
-					if (ctx?.waitUntil) ctx.waitUntil(p);
+					const wrapped = p.catch(logBackgroundTaskError);
+					// Present during any request wrapped by runWithExecutionCtx; absent
+					// paths (e.g. the queue handler) never register background tasks.
+					executionCtxStore.getStore()?.waitUntil(wrapped);
 				},
 			},
+			// Share session cookies across *.cinagroup.com subdomains so the admin
+			// console can read the auth frontend session cookie after login.
 			crossSubDomainCookies: {
 				enabled: true,
 				domain: ".cinagroup.com",
 			},
+			ipAddress: {
+				ipAddressHeaders: [
+					"cf-connecting-ip",
+					"x-forwarded-for",
+					"x-real-ip",
+				],
+			},
 		},
 	});
 
-export type Auth = ReturnType<typeof createAuth>;
+export type Auth = ReturnType<typeof buildAuth>;
+
+/**
+ * Cache the instance per isolate. Construction performs no DB or network I/O and
+ * closes over `env` only, so one instance safely serves every request in an
+ * isolate; the per-request ExecutionContext is supplied via executionCtxStore.
+ * A new isolate (or a changed env identity) rebuilds it.
+ */
+let cached: { env: CloudflareBindings; auth: Auth } | null = null;
+
+export const createAuth = (env: CloudflareBindings): Auth => {
+	if (cached && cached.env === env) {
+		return cached.auth;
+	}
+	const auth = buildAuth(env);
+	cached = { env, auth };
+	return auth;
+};

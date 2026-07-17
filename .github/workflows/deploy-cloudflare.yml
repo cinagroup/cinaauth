@@ -5,10 +5,103 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
 jobs:
+  deploy-delivery:
+    name: Deploy Delivery Worker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: demo/delivery-worker
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Validate required delivery secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_EMAIL_FROM: ${{ secrets.RESEND_EMAIL_FROM }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
+          test -n "$CINAAUTH_DELIVERY_WEBHOOK_SECRET" || (echo "Missing CINAAUTH_DELIVERY_WEBHOOK_SECRET" && exit 1)
+          test "${#CINAAUTH_DELIVERY_WEBHOOK_SECRET}" -ge 32 || (echo "CINAAUTH_DELIVERY_WEBHOOK_SECRET must be at least 32 characters" && exit 1)
+          test -n "$RESEND_API_KEY" || (echo "Missing RESEND_API_KEY" && exit 1)
+          test -n "$RESEND_EMAIL_FROM" || (echo "Missing RESEND_EMAIL_FROM" && exit 1)
+          test -n "$TWILIO_ACCOUNT_SID" || (echo "Missing TWILIO_ACCOUNT_SID" && exit 1)
+          test -n "$TWILIO_AUTH_TOKEN" || (echo "Missing TWILIO_AUTH_TOKEN" && exit 1)
+          test -n "$TWILIO_FROM_NUMBER" || (echo "Missing TWILIO_FROM_NUMBER" && exit 1)
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Delivery Worker
+        run: pnpm run check
+
+      - name: Build Delivery Worker dry run
+        run: pnpm run build
+
+      - name: Deploy Delivery Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: demo/delivery-worker
+          command: deploy
+
+      - name: Provision Delivery Worker secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_EMAIL_FROM: ${{ secrets.RESEND_EMAIL_FROM }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+        run: pnpm run provision:secrets
+
+      - name: Check Delivery Worker remote prerequisites
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm run check:cloudflare
+
+      - name: Check Delivery Worker readiness
+        env:
+          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
+        run: |
+          curl --fail-with-body --show-error --silent \
+            --retry 10 --retry-all-errors --retry-delay 6 \
+            https://cinaauth-delivery.cinagroup.com/ready \
+            -H "Authorization: Bearer $CINAAUTH_DELIVERY_WEBHOOK_SECRET"
+
   deploy-worker:
     name: Deploy Worker API
     runs-on: ubuntu-latest
+    needs: deploy-delivery
     defaults:
       run:
         working-directory: demo/cloudflare-worker
@@ -26,8 +119,56 @@ jobs:
         with:
           version: 11
 
+      - name: Validate required secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CINAAUTH_SECRET: ${{ secrets.CINAAUTH_SECRET }}
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
+          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
+          test -n "$CINAAUTH_SECRET" || (echo "Missing CINAAUTH_SECRET" && exit 1)
+          test "${#CINAAUTH_SECRET}" -ge 32 || (echo "CINAAUTH_SECRET must be at least 32 characters" && exit 1)
+          test -n "$CINAAUTH_MIGRATION_TOKEN" || (echo "Missing CINAAUTH_MIGRATION_TOKEN" && exit 1)
+          test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32 || (echo "CINAAUTH_MIGRATION_TOKEN must be at least 32 characters" && exit 1)
+          test -n "$CINAAUTH_DELIVERY_WEBHOOK_SECRET" || (echo "Missing CINAAUTH_DELIVERY_WEBHOOK_SECRET" && exit 1)
+          test "${#CINAAUTH_DELIVERY_WEBHOOK_SECRET}" -ge 32 || (echo "CINAAUTH_DELIVERY_WEBHOOK_SECRET must be at least 32 characters" && exit 1)
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check Worker types and bindings
+        run: pnpm run check
+
+      - name: Provision Worker secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CINAAUTH_SECRET: ${{ secrets.CINAAUTH_SECRET }}
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
+          CINAAUTH_DELIVERY_WEBHOOK_URL: https://cinaauth-delivery.cinagroup.com/cinaauth/delivery
+          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
+          OAUTH_PAIRWISE_SECRET: ${{ secrets.OAUTH_PAIRWISE_SECRET }}
+          GENERIC_OAUTH_CONFIG: ${{ secrets.GENERIC_OAUTH_CONFIG }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          CLOUDFLARE_TURNSTILE_SECRET_KEY: ${{ secrets.CLOUDFLARE_TURNSTILE_SECRET_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_DEFAULT_PRICE_ID: ${{ secrets.STRIPE_DEFAULT_PRICE_ID }}
+          STRIPE_DEFAULT_PLAN_NAME: ${{ secrets.STRIPE_DEFAULT_PLAN_NAME }}
+          CINAUTH_ADMIN_SERVICE_KEY: ${{ secrets.CINAUTH_ADMIN_SERVICE_KEY }}
+        run: pnpm run provision:secrets
+
+      - name: Check Cloudflare remote prerequisites
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm run check:cloudflare
+
+      - name: Build Worker dry run
+        run: pnpm run build
 
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
@@ -36,6 +177,46 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: demo/cloudflare-worker
           command: deploy
+
+      - name: Preview Worker migrations
+        env:
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
+        run: |
+          curl --fail-with-body --show-error --silent \
+            --retry 5 --retry-all-errors --retry-delay 5 \
+            https://auth.cinagroup.com/api/migrate \
+            -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN"
+
+      - name: Record D1 Time Travel restore point
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # Non-blocking recovery anchor. Replaces `wrangler d1 export`, which
+          # blocked the live production DB while it ran (an auth brownout on every
+          # deploy) and published a full credential dump (PII, password hashes,
+          # live session + OAuth tokens) as a 14-day CI artifact. D1 Time Travel
+          # keeps 30 days of point-in-time history; capture the current bookmark
+          # so a bad migration can be undone with:
+          #   wrangler d1 time-travel restore cinaauth-db --bookmark=<id>
+          pnpm exec wrangler d1 time-travel info cinaauth-db
+
+      - name: Apply Worker migrations
+        env:
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
+        run: |
+          curl --fail-with-body --show-error --silent \
+            -X POST https://auth.cinagroup.com/api/migrate \
+            -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN"
+
+      - name: Check Worker readiness
+        env:
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
+        run: |
+          curl --fail-with-body --show-error --silent \
+            --retry 10 --retry-all-errors --retry-delay 6 \
+            https://auth.cinagroup.com/api/ready \
+            -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN"
 
   deploy-demo:
     name: Deploy Next.js Demo (Worker)
@@ -58,13 +239,28 @@ jobs:
         with:
           version: 11
 
+      - name: Validate required secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CINAAUTH_DEMO_SECRET: ${{ secrets.CINAAUTH_DEMO_SECRET }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
+          test -n "$CINAAUTH_DEMO_SECRET" || (echo "Missing CINAAUTH_DEMO_SECRET" && exit 1)
+          test "${#CINAAUTH_DEMO_SECRET}" -ge 32 || (echo "CINAAUTH_DEMO_SECRET must be at least 32 characters" && exit 1)
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Typecheck demo
+        run: pnpm run typecheck
 
       - name: Build for Cloudflare
         run: pnpm build:cf
         env:
-          CINAAUTH_URL: https://demo-auth.cinagroup.com
+          CINAAUTH_URL: https://auth.cinagroup.com
+          NEXT_PUBLIC_CINAAUTH_API_URL: https://demo-auth.cinagroup.com
 
       - name: Inject CINAAUTH_SECRET
         env:
@@ -80,3 +276,15 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: demo/nextjs
           command: deploy
+
+      - name: Smoke test demo homepage
+        run: |
+          curl --fail-with-body --show-error --silent \
+            --retry 10 --retry-all-errors --retry-delay 6 \
+            https://demo-auth.cinagroup.com/
+
+      - name: Smoke test demo auth proxy
+        run: |
+          curl --fail-with-body --show-error --silent \
+            --retry 10 --retry-all-errors --retry-delay 6 \
+            https://demo-auth.cinagroup.com/api/auth/get-session
