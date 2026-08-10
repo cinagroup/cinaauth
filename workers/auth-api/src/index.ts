@@ -17,6 +17,10 @@ import {
 } from "./auth-routing";
 import { getAuthCapabilities } from "./capabilities";
 import {
+	CLOUDFLARE_ACCESS_JWKS_PATH,
+	normalizeCloudflareAccessJwks,
+} from "./cloudflare-access-jwks";
+import {
 	D1_CUTOVER_MARKER_NAME,
 	D1_CUTOVER_MARKER_TABLE,
 	migrateLegacyD1ToPostgres,
@@ -952,6 +956,36 @@ app.use("*", async (c, next) => {
 app.get("/api/auth/capabilities", async (c) => {
 	const delivery = await getDeliveryProviderCapabilities(c.env);
 	return withNoStore(c.json(getAuthCapabilities(c.env, delivery)));
+});
+
+// Cloudflare Access supports ES256 but can be strict about mixed-algorithm
+// JWKS documents and explicit signing-key metadata. Keep the general JWKS
+// unchanged while exposing a narrow compatibility view for this integration.
+app.get(CLOUDFLARE_ACCESS_JWKS_PATH, async (c) => {
+	const jwksUrl = new URL(c.req.url);
+	jwksUrl.pathname = "/api/auth/jwks";
+	jwksUrl.search = "";
+	const upstream = await c.var.auth.handler(
+		new Request(jwksUrl, {
+			headers: { Accept: "application/json" },
+		}),
+	);
+	if (!upstream.ok) return withNoStore(upstream);
+
+	let normalized: ReturnType<typeof normalizeCloudflareAccessJwks>;
+	try {
+		normalized = normalizeCloudflareAccessJwks(await upstream.json());
+	} catch {
+		return withNoStore(
+			c.json({ error: "Signing keys are temporarily unavailable" }, 503),
+		);
+	}
+	if (normalized.keys.length === 0) {
+		return withNoStore(
+			c.json({ error: "No compatible signing key is available" }, 503),
+		);
+	}
+	return withNoStore(c.json(normalized));
 });
 
 // Authenticated, no-store feature and limit snapshot. Stripe webhooks remain
