@@ -1,4 +1,4 @@
-﻿import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import defaultMdxComponents from "fumadocs-ui/mdx";
@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlogLeftPanel } from "@/components/blog/blog-left-panel";
+import { BlogTOC } from "@/components/blog/blog-toc";
 import Footer from "@/components/landing/footer";
 import { BlogTweet } from "@/components/mdx/tweet";
 import { Callout } from "@/components/ui/callout";
@@ -48,8 +49,28 @@ function BlogCover({
 }: {
 	title: string;
 	date: Date;
-	image?: string;
+	image?: string | { light: string; dark: string };
 }) {
+	if (typeof image === "object") {
+		return (
+			<>
+				<Image
+					src={image.light}
+					alt={title}
+					width={320}
+					height={168}
+					className="w-full h-full object-cover dark:hidden"
+				/>
+				<Image
+					src={image.dark}
+					alt={title}
+					width={320}
+					height={168}
+					className="w-full h-full object-cover hidden dark:block"
+				/>
+			</>
+		);
+	}
 	if (image) {
 		return (
 			<Image
@@ -183,14 +204,16 @@ export default async function Page({
 	const toc = page.data.toc ?? [];
 
 	return (
-		<div className="flex flex-col lg:flex-row h-full min-h-dvh pt-14 lg:pt-0">
+		<div
+			id="fd-glass-layout"
+			className="flex flex-col lg:flex-row h-full min-h-dvh pt-14 lg:pt-0 [--fd-right-width:0px]"
+		>
 			<BlogLeftPanel
 				post={{
 					title,
 					description,
 					date,
 					author: page.data.author,
-					toc,
 				}}
 			/>
 
@@ -256,53 +279,77 @@ export default async function Page({
 											className={`text-[11px] font-semibold tracking-wide not-prose block select-none ${colors[variant]}`}
 										>
 											{children}
-										</span>
-									);
-								},
-								Contributors: ({ usernames }: { usernames: string[] }) => (
-									<div className="flex flex-wrap gap-1.5 not-prose">
-										{usernames.map((username) => (
-											<a
-												key={username}
-												href={`https://github.com/${username}`}
-												target="_blank"
-												rel="noreferrer noopener"
-												className="text-xs font-mono px-2 py-1 border border-foreground/10 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-foreground/20 transition-colors"
-											>
-												@{username}
-											</a>
-										))}
-									</div>
-								),
-								a: ({ className, href, children, ...props }: any) => {
-									const isExternal =
-										typeof href === "string" && /^(https?:)?\/\//.test(href);
-									const classes = cn(
-										"font-medium underline decoration-dashed underline-offset-4",
-										className,
-									);
-									if (isExternal) {
+										</Callout>
+									),
+									HeaderLabel: ({
+										children,
+										variant = "default",
+									}: {
+										children: React.ReactNode;
+										variant?: "default" | "info" | "warning";
+									}) => {
+										const colors = {
+											default: "text-neutral-600 dark:text-neutral-300",
+											info: "text-blue-500 dark:text-blue-400",
+											warning: "text-amber-600 dark:text-amber-400",
+										};
 										return (
-											<a
-												className={classes}
-												href={href}
-												target="_blank"
-												rel="noreferrer noopener"
-												{...props}
+											<span
+												data-header-label="true"
+												className={`text-[11px] font-semibold tracking-wide not-prose block select-none ${colors[variant]}`}
 											>
 												{children}
-											</a>
+											</span>
 										);
-									}
-									return (
-										<Link className={classes} href={href} {...(props as any)}>
-											{children}
-										</Link>
-									);
-								},
-							}}
-						/>
-					</article>
+									},
+									Contributors: ({ usernames }: { usernames: string[] }) => (
+										<div className="flex flex-wrap gap-1.5 not-prose">
+											{usernames.map((username) => (
+												<a
+													key={username}
+													href={`https://github.com/${username}`}
+													target="_blank"
+													rel="noreferrer noopener"
+													className="text-xs font-mono px-2 py-1 border border-foreground/10 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-foreground/20 transition-colors"
+												>
+													@{username}
+												</a>
+											))}
+										</div>
+									),
+									a: ({ className, href, children, ...props }: any) => {
+										const isExternal =
+											typeof href === "string" && /^(https?:)?\/\//.test(href);
+										const classes = cn(
+											"font-medium underline decoration-dashed underline-offset-4",
+											className,
+										);
+										if (isExternal) {
+											return (
+												<a
+													className={classes}
+													href={href}
+													target="_blank"
+													rel="noreferrer noopener"
+													{...props}
+												>
+													{children}
+												</a>
+											);
+										}
+										return (
+											<Link className={classes} href={href} {...(props as any)}>
+												{children}
+											</Link>
+										);
+									},
+								}}
+							/>
+						</article>
+					</div>
+					<div className="lg:hidden">
+						<Footer />
+					</div>
 				</div>
 				<div className="lg:hidden">
 					<Footer />
@@ -329,7 +376,9 @@ export async function generateMetadata({
 	const { title, description, image, date } = page.data;
 
 	// Social cards have no theme preference; always use the dark variant.
-	const ogImage = image || generatedCoverUrl(title, date, "dark");
+	const ogImage =
+		(typeof image === "string" ? image : image?.dark) ??
+		generatedCoverUrl(title, date, "dark");
 
 	return createMetadata({
 		title,

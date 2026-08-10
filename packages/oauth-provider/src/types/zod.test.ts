@@ -79,6 +79,14 @@ describe("SafeUrlSchema", () => {
 	});
 
 	describe("URL parsing", () => {
+		it("should reject embedded credentials", () => {
+			const result = SafeUrlSchema.safeParse(
+				"https://user:secret@example.com/callback",
+			);
+			expect(result.success).toBe(false);
+			expect(result.error?.issues[0]?.message).toContain("credentials");
+		});
+
 		it("should reject invalid URLs", () => {
 			const result = SafeUrlSchema.safeParse("not-a-valid-url");
 			expect(result.success).toBe(false);

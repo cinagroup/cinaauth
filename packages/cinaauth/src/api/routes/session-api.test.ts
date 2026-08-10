@@ -132,6 +132,105 @@ describe("session", async () => {
 		});
 	});
 
+	it("should reject a cached session after its server-side record is revoked", async () => {
+		const freshSessionPlugin = {
+			id: "fresh-session-cache-revocation-test",
+			endpoints: {
+				freshSessionCheck: createAuthEndpoint(
+					"/fresh-session-cache-revocation-check",
+					{
+						method: "GET",
+						use: [freshSessionMiddleware],
+					},
+					async () => ({ status: true }),
+				),
+			},
+		};
+		const { auth, client, testUser, cookieSetter } = await getTestInstance({
+			session: {
+				freshAge: 60,
+				cookieCache: { enabled: true, maxAge: 60 },
+			},
+			plugins: [freshSessionPlugin],
+		});
+		const headers = new Headers();
+		await client.signIn.email(
+			{ email: testUser.email, password: testUser.password },
+			{ onSuccess: cookieSetter(headers) },
+		);
+		const currentSession = await client.getSession({
+			fetchOptions: { headers, onSuccess: cookieSetter(headers) },
+		});
+		expect(headers.get("cookie")).toContain("session_data");
+		await (await auth.$context).internalAdapter.deleteSession(
+			currentSession.data!.session.token,
+		);
+
+		const response = await client.$fetch(
+			"/fresh-session-cache-revocation-check",
+			{
+				method: "GET",
+				headers,
+			},
+		);
+
+		expect(response.data).toBeNull();
+		expect(response.error).toMatchObject({
+			status: 401,
+			statusText: "UNAUTHORIZED",
+			code: "UNAUTHORIZED",
+		});
+	});
+
+	it("should reject a session whose creation time is in the future", async () => {
+		vi.useFakeTimers();
+		const now = new Date("2026-01-01T00:00:00.000Z");
+		vi.setSystemTime(now);
+		const freshSessionPlugin = {
+			id: "fresh-session-future-created-at-test",
+			endpoints: {
+				freshSessionCheck: createAuthEndpoint(
+					"/fresh-session-future-created-at-check",
+					{
+						method: "GET",
+						use: [freshSessionMiddleware],
+					},
+					async () => ({ status: true }),
+				),
+			},
+		};
+		const { auth, client, signInWithTestUser, db } = await getTestInstance({
+			session: { freshAge: 60 },
+			plugins: [freshSessionPlugin],
+		});
+		const { headers } = await signInWithTestUser();
+		const currentSession = await auth.api.getSession({ headers });
+		expect(currentSession?.session.id).toBeDefined();
+		await db.update({
+			model: "session",
+			where: [{ field: "id", value: currentSession!.session.id }],
+			update: {
+				createdAt: new Date(now.getTime() + 60_000),
+				updatedAt: now,
+			},
+		});
+
+		const response = await client.$fetch(
+			"/fresh-session-future-created-at-check",
+			{
+				method: "GET",
+				headers,
+			},
+		);
+
+		expect(response.data).toBeNull();
+		expect(response.error).toMatchObject({
+			status: 403,
+			statusText: "FORBIDDEN",
+			code: "SESSION_NOT_FRESH",
+		});
+	});
+
 	it("should require a fresh session to list sessions", async () => {
 		vi.useFakeTimers();
 		const now = new Date("2026-01-01T00:00:00.000Z");
@@ -1442,6 +1541,7 @@ describe("cookie cache refreshCache", async () => {
 			context: ctx,
 			headers,
 			query: {},
+			responseHeaders: new Headers(),
 		} as unknown as GenericEndpointContext;
 
 		await runWithRequestState(new WeakMap(), async () => {
@@ -1450,7 +1550,7 @@ describe("cookie cache refreshCache", async () => {
 				expect(session?.user.email).toBe(testUser.email);
 
 				const parsed = parseSetCookieHeader(
-					endpointCtx.context.responseHeaders?.get("set-cookie") || "",
+					endpointCtx.responseHeaders.get("set-cookie") || "",
 				);
 				const forwardedSessionDataCookie = Array.from(parsed.keys()).some(
 					(name) =>

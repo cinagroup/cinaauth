@@ -285,19 +285,19 @@ const warnOidcDeprecation = deprecate(
 	() => {},
 	'The "oidc-provider" plugin is deprecated and will be removed in the next major version. ' +
 		"Migrate to @cinaauth/oauth-provider. " +
-		"See: https://www.better-auth.com/docs/plugins/oauth-provider",
+		"See: https://cinagroup.com/docs/plugins/oauth-provider",
 );
 
 /**
- * OpenID Connect (OIDC) plugin for Better Auth. This plugin implements the
+ * OpenID Connect (OIDC) plugin for CinaAuth. This plugin implements the
  * authorization code flow and the token exchange flow. It also implements the
  * userinfo endpoint.
  *
  * @deprecated Use `@cinaauth/oauth-provider` instead. This plugin will be removed in the next major version.
- * @see https://www.better-auth.com/docs/plugins/oauth-provider
+ * @see https://cinagroup.com/docs/plugins/oauth-provider
  *
  * @param options - The options for the OIDC plugin.
- * @returns A Better Auth plugin.
+ * @returns A CinaAuth plugin.
  */
 export const oidcProvider = (options: OIDCOptions) => {
 	if (!options.__skipDeprecationWarning) {
@@ -1311,7 +1311,7 @@ export const oidcProvider = (options: OIDCOptions) => {
 			 * **client:**
 			 * `authClient.oauth2.register`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/oidc-provider#api-method-oauth2-register)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/oidc-provider#api-method-oauth2-register)
 			 */
 			registerOAuthApplication: createAuthEndpoint(
 				"/oauth2/register",

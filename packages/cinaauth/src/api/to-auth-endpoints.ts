@@ -1,5 +1,9 @@
 import type { AuthContext } from "@cinaauth/core";
-import { hasRequestState, runWithRequestState } from "@cinaauth/core/context";
+import type { RequestStateWeakMap } from "@cinaauth/core/context";
+import {
+	hasRequestState,
+	runWithRequestState,
+} from "@cinaauth/core/context";
 import { APIError, CinaAuthError } from "@cinaauth/core/error";
 import type {
 	Endpoint,
@@ -102,7 +106,7 @@ export function toAuthEndpoints<const E extends Record<string, Endpoint>>(
 			if (await hasRequestState()) {
 				return run();
 			}
-			const store = new WeakMap();
+			const store: RequestStateWeakMap = new WeakMap();
 			return runWithRequestState(store, run);
 		};
 		api[key].path = endpoint.path;

@@ -37,6 +37,13 @@ export const SafeUrlSchema = z.url().superRefine((val, ctx) => {
 		return;
 	}
 
+	if (u.username || u.password) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Redirect URI must not contain embedded credentials",
+		});
+	}
+
 	if (val.includes("#")) {
 		ctx.addIssue({
 			code: "custom",

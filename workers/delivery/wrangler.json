@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cinaauth-delivery",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "version_metadata": {
+    "binding": "VERSION_METADATA"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "CINAAUTH_DELIVERY_REPLAY_KV",
+      "id": "d5a6d9a4e8b7469ab2de82c53bf6b7f8"
+    }
+  ],
+  "vars": {
+    "DELIVERY_ALLOWED_SKEW_SECONDS": "300",
+    "DELIVERY_REPLAY_TTL_SECONDS": "86400"
+  },
+  "routes": [
+    {
+      "pattern": "cinaauth-delivery.cinagroup.com",
+      "custom_domain": true
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { CinaAuthPlugin } from "@cinaauth/core";
+import type { CinaAuthPlugin, GenericEndpointContext } from "@cinaauth/core";
 import * as z from "zod";
 import { mergeSchema } from "../../db";
 import type { InferOptionSchema } from "../../types/plugins";
@@ -91,13 +91,15 @@ export const deviceAuthorizationOptionsSchema = z.object({
 			"Function to generate a user code. If not provided, a default random string generator will be used.",
 		),
 	validateClient: z
-		.custom<(clientId: string) => boolean | Promise<boolean>>(
-			(val) => typeof val === "function",
-			{
-				message:
-					"validateClient must be a function that returns a boolean or a promise that resolves to a boolean.",
-			},
-		)
+		.custom<
+			(
+				clientId: string,
+				ctx: GenericEndpointContext,
+			) => boolean | Promise<boolean>
+		>((val) => typeof val === "function", {
+			message:
+				"validateClient must be a function that returns a boolean or a promise that resolves to a boolean.",
+		})
 		.optional()
 		.describe(
 			"Function to validate the client ID. If not provided, no validation will be performed.",

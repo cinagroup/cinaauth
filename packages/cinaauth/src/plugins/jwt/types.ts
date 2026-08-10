@@ -163,6 +163,15 @@ export interface JwtOptions {
 			data: Omit<Jwk, "id">,
 			ctx: GenericEndpointContext,
 		) => Promise<Jwk>;
+		/**
+		 * Marks a key as expired when the configured signing algorithm changes.
+		 * The public key remains available from JWKS for the configured grace period.
+		 */
+		expireJwk?: (
+			id: string,
+			expiresAt: Date,
+			ctx: GenericEndpointContext,
+		) => Promise<Jwk | null | undefined>;
 	};
 }
 

@@ -49,7 +49,7 @@ export type GenerateIdFn = (options: {
 
 /**
  * Configuration for dynamic base URL resolution.
- * Allows Better Auth to work with multiple domains (e.g., Vercel preview deployments).
+ * Allows CinaAuth to work with multiple domains (e.g., Vercel preview deployments).
  */
 export type DynamicBaseURLConfig = {
 	/**
@@ -71,7 +71,7 @@ export type DynamicBaseURLConfig = {
 
 	/**
 	 * Fallback URL to use if the derived host doesn't match any allowed host.
-	 * If not set, Better Auth will throw an error when the host doesn't match.
+	 * If not set, CinaAuth will throw an error when the host doesn't match.
 	 *
 	 * @example "https://myapp.com"
 	 */
@@ -223,7 +223,7 @@ export type CinaAuthAdvancedOptions = {
 				 * @example ["x-client-ip", "x-forwarded-for", "cf-connecting-ip"]
 				 *
 				 * @default
-				 * @link https://github.com/better-auth/better-auth/blob/main/packages/core/src/utils/ip.ts
+				 * @link https://github.com/cinagroup/cinaauth/blob/main/packages/core/src/utils/ip.ts
 				 */
 				ipAddressHeaders?: string[];
 				/**
@@ -434,11 +434,11 @@ export type CinaAuthOptions = {
 	 *
 	 * Can also be set via the `APP_NAME` environment variable.
 	 *
-	 * @default "Better Auth"
+	 * @default "CinaAuth"
 	 */
 	appName?: string | undefined;
 	/**
-	 * Base URL for the Better Auth. This is typically the
+	 * Base URL for the CinaAuth. This is typically the
 	 * root URL where your application server is hosted.
 	 *
 	 * Can be configured as:
@@ -462,9 +462,9 @@ export type CinaAuthOptions = {
 	 */
 	baseURL?: BaseURLConfig | undefined;
 	/**
-	 * Base path for the Better Auth. This is typically
+	 * Base path for the CinaAuth. This is typically
 	 * the path where the
-	 * Better Auth routes are mounted.
+	 * CinaAuth routes are mounted.
 	 *
 	 * @default "/api/auth"
 	 */
@@ -473,14 +473,14 @@ export type CinaAuthOptions = {
 	 * The secret to use for encryption,
 	 * signing and hashing.
 	 *
-	 * By default Better Auth will look for
+	 * By default CinaAuth will look for
 	 * the following environment variables:
 	 * process.env.CINAAUTH_SECRET,
 	 * process.env.AUTH_SECRET
 	 * If none of these environment
 	 * variables are set,
 	 * it will default to
-	 * "better-auth-secret-123456789".
+	 * "cinaauth-secret-123456789".
 	 *
 	 * on production if it's not set
 	 * it will throw an error.
@@ -810,7 +810,7 @@ export type CinaAuthOptions = {
 	 */
 	socialProviders?: SocialProviders | undefined;
 	/**
-	 * List of Better Auth plugins
+	 * List of CinaAuth plugins
 	 */
 	plugins?: ([] | CinaAuthPlugin[]) | undefined;
 	/**
@@ -1180,7 +1180,7 @@ export type CinaAuthOptions = {
 				 * refresh tokens, ID tokens, scopes, and token expiry.
 				 *
 				 * This is useful for database-less flows, but large provider tokens can
-				 * still hit browser or proxy cookie/header limits even though Better Auth
+				 * still hit browser or proxy cookie/header limits even though CinaAuth
 				 * chunks oversized account cookies.
 				 *
 				 * @default false
@@ -1218,7 +1218,7 @@ export type CinaAuthOptions = {
 		  })
 		| undefined;
 	/**
-	 * Additional trusted origins. By default, Better Auth trusts your
+	 * Additional trusted origins. By default, CinaAuth trusts your
 	 * app's {@link baseURL}. Use this option to allow additional origins
 	 * (e.g. a separate frontend domain).
 	 *
@@ -1237,8 +1237,8 @@ export type CinaAuthOptions = {
 	 * ```ts
 	 * trustedOrigins: async (request) => {
 	 *   return [
-	 *    "https://better-auth.com",
-	 *    "https://*.better-auth.com",
+	 *    "https://cinagroup.com",
+	 *    "https://*.cinagroup.com",
 	 *    request.headers.get("x-custom-origin")
 	 *   ];
 	 * }
@@ -1585,7 +1585,7 @@ export type CinaAuthOptions = {
 				 */
 				errorURL?: string;
 				/**
-				 * Configure the default error page provided by Better-Auth
+				 * Configure the default error page provided by CinaAuth
 				 * Start your dev server and go to /api/auth/error to see the error page.
 				 */
 				customizeDefaultErrorPage?: {

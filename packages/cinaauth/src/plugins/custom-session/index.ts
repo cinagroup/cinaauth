@@ -13,6 +13,7 @@ import {
 import { getSessionQuerySchema } from "../../cookies/session-store";
 import { getEndpointResponse } from "../../utils/plugin-helper";
 import { PACKAGE_VERSION } from "../../version";
+import { getSetCookieHeaders } from "./cookie-headers";
 
 declare module "@cinaauth/core" {
 	interface CinaAuthPluginRegistry<AuthOptions, Options> {
@@ -109,7 +110,7 @@ export const customSession = <
 					}
 					const fnResult = await fn(session.response as any, ctx);
 
-					for (const cookieStr of session.headers.getSetCookie()) {
+					for (const cookieStr of getSetCookieHeaders(session.headers)) {
 						const parsed = parseSetCookieHeader(cookieStr);
 						parsed.forEach((attrs, name) => {
 							ctx.setCookie(name, attrs.value, toCookieOptions(attrs));

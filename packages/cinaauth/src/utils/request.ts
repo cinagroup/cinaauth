@@ -4,7 +4,7 @@ export function safeCloneRequest(request?: Request): Request | undefined {
 	}
 
 	try {
-		return request.clone();
+		return request.clone() as Request;
 	} catch {
 		return new Request(request.url, {
 			cache: request.cache,
@@ -18,6 +18,6 @@ export function safeCloneRequest(request?: Request): Request | undefined {
 			referrer: request.referrer,
 			referrerPolicy: request.referrerPolicy,
 			signal: request.signal,
-		});
+		}) as Request;
 	}
 }

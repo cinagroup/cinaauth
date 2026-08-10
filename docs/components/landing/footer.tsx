@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Icons } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -8,7 +8,6 @@ const footerLinks = [
 	{ label: "Blog", href: "/blog" },
 	{ label: "Community", href: "/community" },
 	{ label: "Changelog", href: "/changelog" },
-	{ label: "Careers", href: "/careers" },
 ];
 
 export default function Footer() {
@@ -49,7 +48,7 @@ export default function Footer() {
 							<Icons.XIcon className="h-3.5 w-3.5" />
 						</Link>
 						<Link
-							href="https://github.com/cinaauth"
+							href="https://github.com/cinagroup/cinaauth"
 							aria-label="GitHub"
 							className="text-foreground/50 hover:text-foreground/80 transition-colors"
 						>

@@ -22,6 +22,7 @@ import type {
 
 import {
 	clientAllowsGrant,
+	authorizeOAuthClient,
 	getClient,
 	getJwtPlugin,
 	isPKCERequired,
@@ -277,6 +278,19 @@ export async function authorizeEndpoint(
 				"unauthorized_client",
 				"client is not authorized to use the authorization_code grant",
 			),
+		);
+	}
+	try {
+		await authorizeOAuthClient(
+			opts,
+			client,
+			"authorize",
+			"authorization_code",
+		);
+	} catch {
+		return handleRedirect(
+			ctx,
+			getErrorURL(ctx, "access_denied", "OAuth client access is disabled"),
 		);
 	}
 

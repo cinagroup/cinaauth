@@ -5,7 +5,7 @@
     "@cinaauth/sso": "workspace:*",
     "cinaauth": "workspace:*",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.25"
+    "hono": "^4.12.34"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.12.18",

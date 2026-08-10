@@ -1,10 +1,143 @@
 import { describe, expect, it, vi } from "vitest";
 import { getTestInstance } from "../../test-utils/test-instance";
 import { admin } from "../admin/admin";
-import { writeAuditLog } from "./capture";
+import { organization } from "../organization/organization";
+import {
+	matchCapturePath,
+	resolveOrganizationAuditTarget,
+	writeAuditLog,
+} from "./capture";
 import { auditLog } from "./index";
 
 describe("audit-log plugin skeleton", () => {
+	it("maps self-service security mutations to stable audit actions", () => {
+		expect(
+			[
+				"/delete-user",
+				"/link-social",
+				"/oauth2/link",
+				"/unlink-account",
+				"/revoke-session",
+				"/revoke-sessions",
+				"/revoke-other-sessions",
+				"/passkey/verify-registration",
+				"/passkey/delete-passkey",
+				"/passkey/update-passkey",
+				"/api-key/create",
+				"/api-key/update",
+				"/api-key/delete",
+				"/siwe/link-wallet",
+				"/siwe/set-primary-wallet",
+				"/siwe/unlink-wallet",
+				"/privacy/export",
+			].map((path) => [path, matchCapturePath(path)]),
+		).toEqual([
+			["/delete-user", { category: "identity", action: "user.account_delete" }],
+			["/link-social", { category: "identity", action: "identity.link" }],
+			["/oauth2/link", { category: "identity", action: "identity.link" }],
+			["/unlink-account", { category: "identity", action: "identity.unlink" }],
+			["/revoke-session", { category: "session", action: "session.revoke" }],
+			[
+				"/revoke-sessions",
+				{ category: "session", action: "session.revoke_all" },
+			],
+			[
+				"/revoke-other-sessions",
+				{ category: "session", action: "session.revoke_others" },
+			],
+			[
+				"/passkey/verify-registration",
+				{ category: "authenticator", action: "passkey.create" },
+			],
+			[
+				"/passkey/delete-passkey",
+				{ category: "authenticator", action: "passkey.delete" },
+			],
+			[
+				"/passkey/update-passkey",
+				{ category: "authenticator", action: "passkey.update" },
+			],
+			["/api-key/create", { category: "credential", action: "api_key.create" }],
+			["/api-key/update", { category: "credential", action: "api_key.update" }],
+			["/api-key/delete", { category: "credential", action: "api_key.delete" }],
+			["/siwe/link-wallet", { category: "wallet", action: "siwe.bind" }],
+			[
+				"/siwe/set-primary-wallet",
+				{ category: "wallet", action: "siwe.set_primary" },
+			],
+			["/siwe/unlink-wallet", { category: "wallet", action: "siwe.unbind" }],
+			["/privacy/export", { category: "privacy", action: "privacy.export" }],
+		]);
+	});
+
+	it("maps organization mutations to stable tenant audit actions", () => {
+		expect(
+			[
+				"/organization/create",
+				"/organization/update",
+				"/organization/delete",
+				"/organization/invite-member",
+				"/organization/remove-member",
+				"/organization/update-member-role",
+				"/organization/leave",
+				"/organization/create-team",
+			].map((path) => [path, matchCapturePath(path)]),
+		).toEqual([
+			["/organization/create", { category: "org", action: "org.create" }],
+			["/organization/update", { category: "org", action: "org.update" }],
+			["/organization/delete", { category: "org", action: "org.delete" }],
+			[
+				"/organization/invite-member",
+				{ category: "org", action: "org.member_invite" },
+			],
+			[
+				"/organization/remove-member",
+				{ category: "org", action: "org.member_remove" },
+			],
+			[
+				"/organization/update-member-role",
+				{ category: "org", action: "org.member_role_update" },
+			],
+			["/organization/leave", { category: "org", action: "org.member_leave" }],
+			[
+				"/organization/create-team",
+				{ category: "org", action: "org.team_create" },
+			],
+		]);
+	});
+
+	it("resolves organization targets from response, body, then active session", () => {
+		expect(
+			resolveOrganizationAuditTarget(
+				{ body: {}, context: { session: null } },
+				{ id: "organization-response" },
+				"org.create",
+			),
+		).toBe("organization-response");
+		expect(
+			resolveOrganizationAuditTarget(
+				{
+					body: { organizationId: "organization-body" },
+					context: { session: null },
+				},
+				null,
+			),
+		).toBe("organization-body");
+		expect(
+			resolveOrganizationAuditTarget(
+				{
+					body: {},
+					context: {
+						session: {
+							session: { activeOrganizationId: "organization-session" },
+						},
+					},
+				},
+				null,
+			),
+		).toBe("organization-session");
+	});
+
 	it("registers without error and creates auditLog table", async () => {
 		const { auth } = await getTestInstance({
 			plugins: [auditLog()],
@@ -149,6 +282,49 @@ describe("audit-log endpoints", () => {
 		});
 		expect(walletRows.length).toBe(1);
 		expect((walletRows[0] as { action: string }).action).toBe("siwe.bind");
+	});
+
+	it("lists only the requested organization audit for an owner", async () => {
+		const { auth, signInWithTestUser } = await getTestInstance({
+			plugins: [organization(), auditLog()],
+		});
+		const { headers } = await signInWithTestUser();
+		const created = await auth.api.createOrganization({
+			headers,
+			body: { name: "Audit Tenant", slug: "audit-tenant" },
+		});
+		if (!created) throw new Error("Organization was not created");
+
+		const ctx = await auth.$context;
+		await ctx.adapter.create({
+			model: "auditLog",
+			data: {
+				timestamp: new Date(),
+				category: "org",
+				action: "org.update",
+				result: "success",
+				targetType: "organization",
+				targetId: "other-organization",
+			},
+		});
+
+		const result = await auth.api.listOrganizationAudit({
+			headers,
+			query: { organizationId: created.id },
+		});
+		expect(result.total).toBe(1);
+		expect(result.rows).toHaveLength(1);
+		expect(result.rows[0]?.action).toBe("org.create");
+		expect(result.rows[0]?.targetId).toBe(created.id);
+		expect(result.rows[0]).not.toHaveProperty("actorIp");
+		expect(result.rows[0]).not.toHaveProperty("actorUa");
+
+		await expect(
+			auth.api.listOrganizationAudit({
+				headers,
+				query: { organizationId: "other-organization" },
+			}),
+		).rejects.toThrow();
 	});
 });
 

@@ -8,7 +8,6 @@ interface BlogPostData {
 	description?: string;
 	date?: Date;
 	author?: { name?: string; twitter?: string };
-	toc?: { title: ReactNode; url: string; depth: number }[];
 }
 
 interface BlogLeftPanelProps {

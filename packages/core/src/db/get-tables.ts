@@ -106,6 +106,10 @@ export const getAuthTables = (options: CinaAuthOptions): CinaAuthDBSchema => {
 				expiresAt: {
 					type: "date",
 					required: true,
+					// Indexed for retention cleanup queries (DELETE WHERE expiresAt < ?).
+					// Without this index, D1/SQLite does a full table scan on every
+					// scheduled cleanup, which is slow and locks rows as session grows.
+					index: true,
 					fieldName: options.session?.fields?.expiresAt || "expiresAt",
 				},
 				token: {

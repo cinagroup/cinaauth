@@ -77,6 +77,25 @@ describe("client validation", async () => {
 		expect(response.device_code).toBeDefined();
 	});
 
+	it("provides endpoint context to the client validator", async () => {
+		let receivedAdapter = false;
+		const { auth: contextAuth } = await getTestInstance({
+			plugins: [
+				deviceAuthorization({
+					validateClient: async (clientId, ctx) => {
+						receivedAdapter = typeof ctx.context.adapter.findOne === "function";
+						return clientId === "registered-client";
+					},
+				}),
+			],
+		});
+
+		await contextAuth.api.deviceCode({
+			body: { client_id: "registered-client" },
+		});
+		expect(receivedAdapter).toBe(true);
+	});
+
 	it("should reject invalid client in token request", async () => {
 		const { device_code } = await auth.api.deviceCode({
 			body: {

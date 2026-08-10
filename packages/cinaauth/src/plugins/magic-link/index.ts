@@ -5,7 +5,7 @@ import type {
 } from "@cinaauth/core";
 import { createAuthEndpoint } from "@cinaauth/core/api";
 import * as z from "zod";
-import { originCheck } from "../../api";
+import { formCsrfMiddleware, originCheck } from "../../api";
 import { setSessionCookie } from "../../cookies";
 import { generateRandomString } from "../../crypto";
 import {
@@ -201,13 +201,14 @@ export const magicLink = (options: MagicLinkOptions) => {
 			 * **client:**
 			 * `authClient.signIn.magicLink`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/sign-in#api-method-sign-in-magic-link)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/sign-in#api-method-sign-in-magic-link)
 			 */
 			signInMagicLink: createAuthEndpoint(
 				"/sign-in/magic-link",
 				{
 					method: "POST",
 					requireHeaders: true,
+					use: [formCsrfMiddleware],
 					body: signInMagicLinkBodySchema,
 					metadata: {
 						openapi: {
@@ -291,7 +292,7 @@ export const magicLink = (options: MagicLinkOptions) => {
 			 * **client:**
 			 * `authClient.magicLink.verify`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/magic-link#api-method-magic-link-verify)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/magic-link#api-method-magic-link-verify)
 			 */
 			magicLinkVerify: createAuthEndpoint(
 				"/magic-link/verify",

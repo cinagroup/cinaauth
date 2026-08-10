@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/test-utils",
-  "version": "1.6.23",
+  "version": "1.6.26",
   "description": "Testing utilities for CinaAuth adapter development",
   "type": "module",
   "license": "MIT",

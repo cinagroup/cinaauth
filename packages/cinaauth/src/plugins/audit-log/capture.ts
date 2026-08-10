@@ -14,9 +14,7 @@ import { getSessionFromCtx } from "../../api";
 interface AuditCtx {
 	request?: Request | Headers | null;
 	context: {
-		session?: {
-			user?: { id?: string | null; role?: string | null } | null;
-		} | null;
+		session?: unknown;
 		adapter: {
 			create: (args: {
 				model: string;
@@ -24,6 +22,46 @@ interface AuditCtx {
 			}) => Promise<unknown>;
 		};
 	};
+}
+
+function readUnknownField(value: unknown, field: string): unknown {
+	if (!value || typeof value !== "object") return null;
+	return (value as Record<string, unknown>)[field];
+}
+
+function readStringField(value: unknown, field: string): string | null {
+	const candidate = readUnknownField(value, field);
+	return typeof candidate === "string" && candidate.length > 0
+		? candidate
+		: null;
+}
+
+interface OrganizationAuditContext {
+	body?: unknown;
+	context: {
+		session?: unknown;
+	};
+}
+
+/** Resolve the authoritative tenant target for organization audit capture. */
+export function resolveOrganizationAuditTarget(
+	ctx: OrganizationAuditContext,
+	response: unknown,
+	action?: string,
+): string | null {
+	const responseOrganizationId = readStringField(response, "organizationId");
+	if (responseOrganizationId) return responseOrganizationId;
+
+	const bodyOrganizationId = readStringField(ctx.body, "organizationId");
+	if (bodyOrganizationId) return bodyOrganizationId;
+
+	const activeOrganizationId = readStringField(
+		readUnknownField(ctx.context.session, "session"),
+		"activeOrganizationId",
+	);
+	if (activeOrganizationId) return activeOrganizationId;
+
+	return action === "org.create" ? readStringField(response, "id") : null;
 }
 
 /**
@@ -41,10 +79,10 @@ export function extractActorFromCtx(ctx: AuditCtx): {
 		ctx.request instanceof Headers
 			? ctx.request
 			: (ctx.request as Request | null)?.headers;
-	const sessionUser = ctx.context.session?.user ?? null;
+	const sessionUser = readUnknownField(ctx.context.session, "user");
 	return {
-		actorId: sessionUser?.id ?? null,
-		actorRole: sessionUser?.role ?? null,
+		actorId: readStringField(sessionUser, "id"),
+		actorRole: readStringField(sessionUser, "role"),
 		actorIp:
 			headers?.get("cf-connecting-ip") ??
 			headers?.get("x-forwarded-for") ??
@@ -134,6 +172,33 @@ export const CAPTURE_PATH_MAP: Record<
 	"/sign-up/email": { category: "auth", action: "user.register" },
 	"/sign-out": { category: "auth", action: "user.logout" },
 	"/change-password": { category: "auth", action: "user.password_change" },
+	"/delete-user": { category: "identity", action: "user.account_delete" },
+	"/link-social": { category: "identity", action: "identity.link" },
+	"/oauth2/link": { category: "identity", action: "identity.link" },
+	"/unlink-account": { category: "identity", action: "identity.unlink" },
+	"/revoke-session": { category: "session", action: "session.revoke" },
+	"/revoke-sessions": { category: "session", action: "session.revoke_all" },
+	"/revoke-other-sessions": {
+		category: "session",
+		action: "session.revoke_others",
+	},
+	// passkey plugin
+	"/passkey/verify-registration": {
+		category: "authenticator",
+		action: "passkey.create",
+	},
+	"/passkey/delete-passkey": {
+		category: "authenticator",
+		action: "passkey.delete",
+	},
+	"/passkey/update-passkey": {
+		category: "authenticator",
+		action: "passkey.update",
+	},
+	// API key plugin
+	"/api-key/create": { category: "credential", action: "api_key.create" },
+	"/api-key/update": { category: "credential", action: "api_key.update" },
+	"/api-key/delete": { category: "credential", action: "api_key.delete" },
 	// two-factor plugin
 	"/two-factor/enable": { category: "auth", action: "user.2fa_enable" },
 	"/two-factor/disable": { category: "auth", action: "user.2fa_disable" },
@@ -145,6 +210,75 @@ export const CAPTURE_PATH_MAP: Record<
 	"/email-otp/verify-email": { category: "auth", action: "user.otp_verify" },
 	// siwe plugin (wallet bind)
 	"/siwe/verify": { category: "wallet", action: "siwe.bind" },
+	"/siwe/link-wallet": { category: "wallet", action: "siwe.bind" },
+	"/siwe/set-primary-wallet": {
+		category: "wallet",
+		action: "siwe.set_primary",
+	},
+	"/siwe/unlink-wallet": { category: "wallet", action: "siwe.unbind" },
+	// privacy-center plugin
+	"/privacy/export": { category: "privacy", action: "privacy.export" },
+	// organization plugin mutations
+	"/organization/create": { category: "org", action: "org.create" },
+	"/organization/update": { category: "org", action: "org.update" },
+	"/organization/delete": { category: "org", action: "org.delete" },
+	"/organization/invite-member": {
+		category: "org",
+		action: "org.member_invite",
+	},
+	"/organization/cancel-invitation": {
+		category: "org",
+		action: "org.invitation_cancel",
+	},
+	"/organization/accept-invitation": {
+		category: "org",
+		action: "org.invitation_accept",
+	},
+	"/organization/reject-invitation": {
+		category: "org",
+		action: "org.invitation_reject",
+	},
+	"/organization/remove-member": {
+		category: "org",
+		action: "org.member_remove",
+	},
+	"/organization/update-member-role": {
+		category: "org",
+		action: "org.member_role_update",
+	},
+	"/organization/leave": { category: "org", action: "org.member_leave" },
+	"/organization/create-role": {
+		category: "org",
+		action: "org.role_create",
+	},
+	"/organization/update-role": {
+		category: "org",
+		action: "org.role_update",
+	},
+	"/organization/delete-role": {
+		category: "org",
+		action: "org.role_delete",
+	},
+	"/organization/create-team": {
+		category: "org",
+		action: "org.team_create",
+	},
+	"/organization/update-team": {
+		category: "org",
+		action: "org.team_update",
+	},
+	"/organization/remove-team": {
+		category: "org",
+		action: "org.team_delete",
+	},
+	"/organization/add-team-member": {
+		category: "org",
+		action: "org.team_member_add",
+	},
+	"/organization/remove-team-member": {
+		category: "org",
+		action: "org.team_member_remove",
+	},
 	// admin plugin mutations
 	"/admin/set-role": { category: "admin", action: "admin.set_role" },
 	"/admin/create-user": { category: "admin", action: "admin.user_create" },

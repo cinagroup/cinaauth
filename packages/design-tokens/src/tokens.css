@@ -1,0 +1,18 @@
+:root {
+	--cina-neutral-0: #ffffff;
+	--cina-neutral-50: #fafafa;
+	--cina-neutral-100: #f5f5f5;
+	--cina-neutral-400: #a1a1a1;
+	--cina-neutral-500: #888888;
+	--cina-neutral-700: #4d4d4d;
+	--cina-neutral-900: #171717;
+	--cina-hairline: #ebebeb;
+	--cina-link: #0070f3;
+	--cina-violet: #7928ca;
+	--cina-radius-xs: 4px;
+	--cina-radius-sm: 6px;
+	--cina-radius-md: 8px;
+	--cina-radius-lg: 12px;
+	--cina-radius-xl: 16px;
+	--cina-radius-pill: 100px;
+}

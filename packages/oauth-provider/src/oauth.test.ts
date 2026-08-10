@@ -1,3 +1,4 @@
+import { APIError } from "better-call";
 import { createAuthMiddleware } from "cinaauth/api";
 import { createAuthClient } from "cinaauth/client";
 import {
@@ -13,7 +14,6 @@ import { multiSession } from "cinaauth/plugins/multi-session";
 import type { Organization } from "cinaauth/plugins/organization";
 import { organization } from "cinaauth/plugins/organization";
 import { getTestInstance } from "cinaauth/test";
-import { APIError } from "better-call";
 import { createLocalJWKSet, jwtVerify } from "jose";
 import type { Listener } from "listhen";
 import { listen } from "listhen";
@@ -1907,6 +1907,8 @@ describe("oauth - prompt", async () => {
 			},
 		);
 
+		expect(data.url).toBeDefined();
+		if (!data.url) throw new Error("Expected OAuth sign-in redirect URL");
 		let selectAccountRedirectUri = "";
 		await serverClient.$fetch(data.url, {
 			method: "GET",

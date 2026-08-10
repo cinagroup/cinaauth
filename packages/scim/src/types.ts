@@ -110,6 +110,28 @@ export type SCIMOptions = {
 		member: Member | null;
 	}) => boolean | Promise<boolean>;
 	/**
+	 * Authorizes an otherwise valid SCIM provider connection at request time.
+	 * Runs only after the bearer token has been verified. Return `false` to deny
+	 * every provisioning operation for the connection.
+	 */
+	authorizeProvider?: (payload: {
+		provider: Omit<SCIMProvider, "scimToken">;
+	}) => boolean | Promise<boolean>;
+	/**
+	 * Wraps the complete SCIM user, account, and organization-member transaction
+	 * as one caller-controlled operation. Use this to hold a distributed capacity
+	 * lock until the member write commits.
+	 */
+	withOrganizationMemberProvisioning?: <T>(
+		payload: {
+			organizationId: string;
+			/** Existing user id when SCIM links an existing account. */
+			userId?: string;
+			provider: Omit<SCIMProvider, "scimToken">;
+		},
+		provision: () => Promise<T>,
+	) => Promise<T>;
+	/**
 	 * How to store the SCIM token in the database.
 	 *
 	 * @default "plain"

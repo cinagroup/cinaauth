@@ -5,6 +5,7 @@ import type { JWTPayload } from "jose";
 import { importJWK, jwtVerify } from "jose";
 import { getJwksAdapter } from "./adapter";
 import type { JwtOptions } from "./types";
+import { getJwkAlgorithm } from "./utils";
 
 /**
  * Verify a JWT token using the JWKS public keys
@@ -46,7 +47,11 @@ export async function verifyJWT<T extends JWTPayload = JWTPayload>(
 		}
 
 		const publicKey = JSON.parse(key.publicKey);
-		const alg = key.alg ?? options?.jwks?.keyPairConfig?.alg ?? "EdDSA";
+		const alg =
+			getJwkAlgorithm(key) ??
+			(typeof header.alg === "string" ? header.alg : undefined) ??
+			options?.jwks?.keyPairConfig?.alg ??
+			"EdDSA";
 		const cryptoKey = await importJWK(publicKey, alg);
 
 		const baseURLOrigin =

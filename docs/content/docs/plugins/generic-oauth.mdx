@@ -125,7 +125,7 @@ Unlike built-in providers, the `:providerId` parameter is required and must matc
 
 ## Pre-configured Provider Helpers
 
-Better Auth provides pre-configured helper functions for popular OAuth providers. These helpers handle the provider-specific configuration, including discovery URLs and user info endpoints.
+CinaAuth provides pre-configured helper functions for popular OAuth providers. These helpers handle the provider-specific configuration, including discovery URLs and user info endpoints.
 
 ### Supported Providers
 
@@ -332,11 +332,11 @@ interface GenericOAuthConfig {
 
 ## Security: Issuer Validation
 
-Better Auth validates the OAuth provider's issuer to protect against mix-up attacks ([RFC 9207](https://datatracker.ietf.org/doc/html/rfc9207)). A mix-up attack occurs when a malicious authorization server tricks your application into sending an authorization code to the wrong token endpoint.
+CinaAuth validates the OAuth provider's issuer to protect against mix-up attacks ([RFC 9207](https://datatracker.ietf.org/doc/html/rfc9207)). A mix-up attack occurs when a malicious authorization server tricks your application into sending an authorization code to the wrong token endpoint.
 
 ### How It Works
 
-When an OAuth provider supports RFC 9207, it includes an `iss` (issuer) parameter in the authorization response. Better Auth validates this parameter against the expected issuer to ensure the response came from the intended provider.
+When an OAuth provider supports RFC 9207, it includes an `iss` (issuer) parameter in the authorization response. CinaAuth validates this parameter against the expected issuer to ensure the response came from the intended provider.
 
 ### Configuration Examples
 
@@ -525,4 +525,4 @@ getUserInfo: async (tokens) => {
 
 ### Error Handling
 
-The plugin includes built-in error handling for common OAuth issues. Errors are typically redirected to your application's error page with an appropriate error message in the URL parameters. If the callback URL is not provided, the user will be redirected to Better Auth's default error page.
+The plugin includes built-in error handling for common OAuth issues. Errors are typically redirected to your application's error page with an appropriate error message in the URL parameters. If the callback URL is not provided, the user will be redirected to CinaAuth's default error page.

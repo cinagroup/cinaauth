@@ -1,0 +1,514 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@cinaauth/design-tokens/tokens.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Vercel-inspired design tokens ─────────────────────────────────────────
+ *
+ * Token mapping follows the `Vercel-Inspired-design-analysis` spec.
+ * Shadcn-compatible aliases (--background, --foreground, --primary, ...)
+ * coexist with the Vercel-semantic tokens (--ink, --body, --mute, --canvas, ...).
+ *
+ * Surfaces:
+ *   canvas-soft  (#fafafa)  - default page background        → --background
+ *   canvas       (#ffffff)  - card / dialog / modal surface  → --card
+ *   canvas-soft-2(#f5f5f5)  - inset region                   → --secondary
+ *   primary/ink  (#171717)  - CTA + heading text             → --primary / --foreground
+ *
+ * Text hierarchy:
+ *   ink   (#171717) - headings + body paragraphs on light surfaces
+ *   body  (#4d4d4d) - secondary text (captions, nav-inactive, footer body)
+ *   mute  (#888888) - lowest-priority text (placeholders, fine print)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+	/* Surfaces */
+	--canvas: var(--cina-neutral-0); /* #ffffff */
+	--canvas-soft: var(--cina-neutral-50); /* #fafafa */
+	--canvas-soft-2: var(--cina-neutral-100); /* #f5f5f5 */
+	--ink: var(--cina-neutral-900); /* #171717 */
+	--body: var(--cina-neutral-700); /* #4d4d4d */
+	--mute: var(--cina-neutral-500); /* #888888 */
+
+	/* Dividers */
+	--hairline: var(--cina-hairline); /* #ebebeb */
+	--hairline-strong: var(--cina-neutral-400); /* #a1a1a1 */
+
+	/* Link */
+	--link: var(--cina-link); /* #0070f3 */
+	--link-deep: hsl(212 94% 42%); /* #0761d1 */
+	--link-bg-soft: hsl(213 100% 91%); /* #d3e5ff */
+
+	/* Error / success (success per spec doubles as link blue) */
+	--error: hsl(0 100% 47%); /* #ee0000 */
+	--error-soft: hsl(355 67% 90%); /* #f7d4d6 */
+	--error-deep: hsl(0 100% 38%); /* #c50000 */
+	--success: hsl(211 100% 48%); /* #0070f3 (per spec, same as link) */
+
+	/* Warning */
+	--warning: hsl(37 90% 55%); /* #f5a623 */
+	--warning-soft: hsl(41 100% 90%); /* #ffefcf */
+	--warning-deep: hsl(29 92% 35%); /* #ab570a */
+
+	/* Brand accents */
+	--violet: var(--cina-violet); /* #7928ca */
+	--violet-soft: hsl(266 52% 81%); /* #d8ccf1 */
+	--violet-deep: hsl(265 65% 34%); /* #4c2889 */
+	--cyan: hsl(162 69% 60%); /* #50e3c2 */
+	--cyan-soft: hsl(162 100% 83%); /* #aaffec */
+	--cyan-deep: hsl(162 64% 45%); /* #29bc9b */
+	--highlight-pink: hsl(330 100% 50%); /* #ff0080 */
+	--highlight-magenta: hsl(345 78% 56%); /* #eb367f */
+
+	/* Brand gradient pairs */
+	--gradient-develop-start: hsl(208 100% 47%); /* #007cf0 */
+	--gradient-develop-end: hsl(176 100% 43%); /* #00dfd8 */
+	--gradient-preview-start: hsl(271 67% 48%); /* #7928ca */
+	--gradient-preview-end: hsl(330 100% 50%); /* #ff0080 */
+	--gradient-ship-start: hsl(0 100% 64%); /* #ff4d4d */
+	--gradient-ship-end: hsl(45 98% 57%); /* #f9cb28 */
+
+	/* Selection */
+	--selection-bg: hsl(0 0% 9%); /* #171717 */
+	--selection-fg: hsl(0 0% 95%); /* #f2f2f2 */
+
+	/* Shadcn-compatible aliases (map to Vercel tokens) */
+	--background: var(--canvas-soft);
+	--foreground: var(--ink);
+	--card: var(--canvas);
+	--card-foreground: var(--ink);
+	--popover: var(--canvas);
+	--popover-foreground: var(--ink);
+	--primary: var(--ink);
+	--primary-foreground: var(--canvas);
+	--secondary: var(--canvas-soft-2);
+	--secondary-foreground: var(--ink);
+	--muted: var(--canvas-soft-2);
+	--muted-foreground: var(--mute);
+	--accent: var(--canvas-soft-2);
+	--accent-foreground: var(--ink);
+	--destructive: var(--error);
+	--destructive-foreground: var(--canvas);
+	--border: var(--hairline);
+	--input: var(--hairline);
+	--ring: var(--ink);
+	--chart-1: hsl(12 76% 61%);
+	--chart-2: hsl(173 58% 39%);
+	--chart-3: hsl(197 37% 24%);
+	--chart-4: hsl(43 74% 66%);
+	--chart-5: hsl(27 87% 67%);
+	--sidebar: var(--canvas-soft);
+	--sidebar-foreground: var(--ink);
+	--sidebar-primary: var(--ink);
+	--sidebar-primary-foreground: var(--canvas);
+	--sidebar-accent: var(--canvas-soft-2);
+	--sidebar-accent-foreground: var(--ink);
+	--sidebar-border: var(--hairline);
+	--sidebar-ring: var(--ink);
+
+	/* Radius scale — direct values per spec (xs=4, sm=6, md=8, lg=12, xl=16).
+	 * Removed calc-based derivation since it inverted the spec scale.
+	 * Keep --radius as a legacy fallback for any component still referencing it. */
+	--radius-xs: var(--cina-radius-xs);
+	--radius-sm: var(--cina-radius-sm);
+	--radius-md: var(--cina-radius-md);
+	--radius-lg: var(--cina-radius-lg);
+	--radius-xl: var(--cina-radius-xl);
+	--radius-pill-sm: 64px;
+	--radius-pill: var(--cina-radius-pill);
+	--radius: var(--radius-md);
+}
+
+.dark {
+	/* Dark mode: polarity-flip. Background becomes ink, foreground becomes near-white. */
+	--canvas: hsl(0 0% 9%);
+	--canvas-soft: hsl(0 0% 4%);
+	--canvas-soft-2: hsl(0 0% 15%);
+	--ink: hsl(0 0% 95%);
+	--body: hsl(0 0% 73%);
+	--mute: hsl(0 0% 55%);
+	--hairline: hsl(0 0% 15%);
+	--hairline-strong: hsl(0 0% 45%);
+
+	--background: var(--canvas-soft);
+	--foreground: var(--ink);
+	--card: var(--canvas);
+	--card-foreground: var(--ink);
+	--popover: var(--canvas);
+	--popover-foreground: var(--ink);
+	--primary: var(--ink);
+	--primary-foreground: var(--canvas-soft);
+	--secondary: var(--canvas-soft-2);
+	--secondary-foreground: var(--ink);
+	--muted: var(--canvas-soft-2);
+	--muted-foreground: var(--mute);
+	--accent: var(--canvas-soft-2);
+	--accent-foreground: var(--ink);
+	--destructive: hsl(0 63% 31%);
+	--destructive-foreground: var(--ink);
+	--border: var(--hairline);
+	--input: var(--hairline);
+	--ring: hsl(0 0% 83%);
+	--chart-1: hsl(220 70% 50%);
+	--chart-2: hsl(160 60% 45%);
+	--chart-3: hsl(30 80% 55%);
+	--chart-4: hsl(280 65% 60%);
+	--chart-5: hsl(340 75% 55%);
+	--sidebar: var(--canvas-soft);
+	--sidebar-foreground: var(--ink);
+	--sidebar-primary: var(--ink);
+	--sidebar-primary-foreground: var(--canvas-soft);
+	--sidebar-accent: var(--canvas-soft-2);
+	--sidebar-accent-foreground: var(--ink);
+	--sidebar-border: var(--hairline);
+	--sidebar-ring: hsl(0 0% 83%);
+}
+
+@theme inline {
+	/* Breakpoints per spec (override Tailwind defaults 640/768/1024/1280). */
+	--breakpoint-sm: 37.5rem; /* 600px */
+	--breakpoint-md: 60rem; /* 960px */
+	--breakpoint-lg: 75rem; /* 1200px */
+	--breakpoint-xl: 87.5rem; /* 1400px */
+
+	/* ── Vercel color tokens ────────────────────────────────────── */
+	--color-canvas: var(--canvas);
+	--color-canvas-soft: var(--canvas-soft);
+	--color-canvas-soft-2: var(--canvas-soft-2);
+	--color-ink: var(--ink);
+	--color-body: var(--body);
+	--color-mute: var(--mute);
+	--color-hairline: var(--hairline);
+	--color-hairline-strong: var(--hairline-strong);
+	--color-link: var(--link);
+	--color-link-deep: var(--link-deep);
+	--color-link-bg-soft: var(--link-bg-soft);
+	--color-error: var(--error);
+	--color-error-soft: var(--error-soft);
+	--color-error-deep: var(--error-deep);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
+	--color-warning-soft: var(--warning-soft);
+	--color-warning-deep: var(--warning-deep);
+	--color-violet: var(--violet);
+	--color-violet-soft: var(--violet-soft);
+	--color-violet-deep: var(--violet-deep);
+	--color-cyan: var(--cyan);
+	--color-cyan-soft: var(--cyan-soft);
+	--color-cyan-deep: var(--cyan-deep);
+	--color-highlight-pink: var(--highlight-pink);
+	--color-highlight-magenta: var(--highlight-magenta);
+
+	/* Brand gradient stops (use in bg-[gradient:...] compositions) */
+	--color-gradient-develop-start: var(--gradient-develop-start);
+	--color-gradient-develop-end: var(--gradient-develop-end);
+	--color-gradient-preview-start: var(--gradient-preview-start);
+	--color-gradient-preview-end: var(--gradient-preview-end);
+	--color-gradient-ship-start: var(--gradient-ship-start);
+	--color-gradient-ship-end: var(--gradient-ship-end);
+
+	/* Selection */
+	--color-selection-bg: var(--selection-bg);
+	--color-selection-fg: var(--selection-fg);
+
+	/* Shadcn color tokens */
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
+
+	/* Radius scale (spec xs=4, sm=6, md=8, lg=12, xl=16). */
+	--radius-xs: var(--radius-xs);
+	--radius-sm: var(--radius-sm);
+	--radius-md: var(--radius-md);
+	--radius-lg: var(--radius-lg);
+	--radius-xl: var(--radius-xl);
+	--radius-pill-sm: var(--radius-pill-sm);
+	--radius-pill: var(--radius-pill);
+
+	/* Spacing tokens per spec. */
+	--space-xxs: 4px;
+	--space-xs: 8px;
+	--space-sm: 12px;
+	--space-md: 16px;
+	--space-lg: 24px;
+	--space-xl: 32px;
+	--space-2xl: 40px;
+	--space-3xl: 48px;
+	--space-4xl: 64px;
+	--space-5xl: 96px;
+	--space-6xl: 128px;
+	--space-section: 192px;
+
+	--animate-accordion-down: accordion-down 0.2s ease-out;
+	--animate-accordion-up: accordion-up 0.2s ease-out;
+
+	@keyframes accordion-down {
+		from {
+			height: 0;
+		}
+		to {
+			height: var(--radix-accordion-content-height);
+		}
+	}
+
+	@keyframes accordion-up {
+		from {
+			height: var(--radix-accordion-content-height);
+		}
+		to {
+			height: 0;
+		}
+	}
+
+	@keyframes cell-ripple {
+		0% {
+			transform: scale(1);
+			opacity: 0.5;
+		}
+		50% {
+			transform: scale(1.2);
+			opacity: 0.9;
+		}
+		100% {
+			transform: scale(1);
+			opacity: 0.5;
+		}
+	}
+
+	--animate-cell-ripple: cell-ripple var(--duration, 400ms) ease-out
+		var(--delay, 0ms) 1;
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	::selection {
+		background-color: var(--selection-bg);
+		color: var(--selection-fg);
+	}
+}
+
+/* ─── Card variants ──────────────────────────────────────────────────────────
+ * Use via className: <Card className="card-soft shadow-l3" />
+ * ────────────────────────────────────────────────────────────────────────── */
+@utility card-soft {
+	background-color: var(--canvas-soft);
+}
+
+@utility card-marketing-large {
+	padding: var(--space-xl);
+	border-radius: var(--radius-lg);
+}
+
+/* ─── Nav-link ghost pill ────────────────────────────────────────────────────
+ * Use for pill-shaped link rows: <Link className="nav-ghost-pill" />
+ * ────────────────────────────────────────────────────────────────────────── */
+@utility nav-ghost-pill {
+	border-radius: var(--radius-full);
+	padding: var(--space-xs) var(--space-sm);
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 20px;
+	color: var(--body);
+	transition: color 150ms ease;
+	&:hover {
+		color: var(--ink);
+	}
+}
+
+@utility tab-ghost {
+	border-radius: var(--radius-pill-sm);
+	padding: 0 var(--space-md);
+	height: 32px;
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 20px;
+	color: var(--ink);
+	background-color: var(--canvas);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: background-color 150ms ease;
+	&:hover {
+		background-color: var(--canvas-soft);
+	}
+	&[aria-selected="true"],
+	&.active {
+		background-color: var(--ink);
+		color: var(--canvas);
+	}
+}
+
+@utility code-editor-mockup {
+	background-color: var(--ink);
+	color: var(--canvas);
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: 13px;
+	line-height: 20px;
+	border-radius: var(--radius-md);
+	padding: var(--space-lg);
+}
+
+/* ─── Elevation scale (spec L1-L5) ───────────────────────────────────────────
+ * Each level composes a stacked drop-shadow with an inset hairline ring.
+ * Usage: <div class="shadow-l3">, <div class="shadow-l5-modal">, etc.
+ * ────────────────────────────────────────────────────────────────────────── */
+@utility shadow-l1 {
+	box-shadow: inset 0 0 0 1px #00000014;
+}
+
+@utility shadow-l2 {
+	box-shadow:
+		inset 0 0 0 1px #00000014,
+		0 1px 1px #00000005,
+		0 2px 2px #0000000a;
+}
+
+@utility shadow-l3 {
+	box-shadow:
+		inset 0 0 0 1px #00000014,
+		0 2px 2px #0000000a,
+		0 8px 8px -8px #0000000a;
+}
+
+@utility shadow-l4 {
+	box-shadow:
+		inset 0 0 0 1px #00000014,
+		0 2px 2px #0000000a,
+		0 8px 16px -4px #0000000a;
+}
+
+@utility shadow-l5-modal {
+	box-shadow:
+		inset 0 0 0 1px #00000014,
+		0 1px 1px #00000005,
+		0 8px 16px -4px #0000000a,
+		0 24px 32px -8px #0000000f;
+}
+
+/* Inset hairline only (Level 0 elevation — no drop) */
+@utility shadow-inset-hairline {
+	box-shadow: inset 0 0 0 1px #00000014;
+}
+
+/* ─── Brand mesh gradient (hero-scale atmospheric backdrop) ──────────────────
+ * Usage: <div class="mesh-gradient-hero"> behind hero content.
+ * Composes three gradient pairs (develop + preview + ship) via layered radial
+ * gradients, then heavily blurred to produce the signature Vercel mesh.
+ * ────────────────────────────────────────────────────────────────────────── */
+@utility mesh-gradient-hero {
+	background:
+		radial-gradient(
+			ellipse 80% 60% at 20% 30%,
+			var(--gradient-develop-start) 0%,
+			transparent 60%
+		),
+		radial-gradient(
+			ellipse 70% 55% at 50% 20%,
+			var(--gradient-develop-end) 0%,
+			transparent 55%
+		),
+		radial-gradient(
+			ellipse 75% 60% at 75% 35%,
+			var(--gradient-preview-start) 0%,
+			transparent 60%
+		),
+		radial-gradient(
+			ellipse 65% 50% at 35% 60%,
+			var(--gradient-preview-end) 0%,
+			transparent 55%
+		),
+		radial-gradient(
+			ellipse 70% 55% at 65% 70%,
+			var(--gradient-ship-start) 0%,
+			transparent 60%
+		),
+		radial-gradient(
+			ellipse 60% 50% at 85% 65%,
+			var(--gradient-ship-end) 0%,
+			transparent 55%
+		);
+	filter: blur(80px) saturate(1.2);
+	opacity: 0.7;
+}
+
+/* ─── Reduced-motion override (spec accessibility requirement) ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+	.mesh-gradient-hero {
+		filter: blur(80px) saturate(1.2); /* keep static, don't animate */
+	}
+}
+
+@utility no-visible-scrollbar {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+	-webkit-overflow-scrolling: touch;
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+@utility bg-grid {
+	background-image:
+		linear-gradient(currentColor 1px, transparent 1px),
+		linear-gradient(90deg, currentColor 1px, transparent 1px);
+	background-size: 32px 32px;
+}
+
+@utility bg-grid-small {
+	background-image:
+		linear-gradient(currentColor 1px, transparent 1px),
+		linear-gradient(90deg, currentColor 1px, transparent 1px);
+	background-size: 8px 8px;
+}
+
+@utility bg-dot {
+	background-image: radial-gradient(
+		circle at 50% 50%,
+		currentColor 1.6px,
+		transparent 1.6px
+	);
+	background-size: 16px 16px;
+}

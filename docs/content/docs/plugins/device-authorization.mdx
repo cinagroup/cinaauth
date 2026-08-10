@@ -392,9 +392,12 @@ You can validate client IDs to ensure only authorized applications can use the d
 
 ```ts
 deviceAuthorization({
-  validateClient: async (clientId) => {
+  validateClient: async (clientId, ctx) => {
     // Check if client is authorized
-    const client = await db.oauth_clients.findOne({ id: clientId });
+    const client = await ctx.context.adapter.findOne({
+      model: "oauthClient",
+      where: [{ field: "clientId", value: clientId }],
+    });
     return client && client.allowDeviceFlow;
   },
   
@@ -602,7 +605,7 @@ authenticateCLI().catch((err) => {
 
 **generateUserCode**: Custom function to generate user codes. Returns a string or `Promise<string>`.
 
-**validateClient**: Function to validate client IDs. Takes a clientId and returns boolean or `Promise<boolean>`.
+**validateClient**: Function to validate client IDs. It receives the requested `clientId` and the current endpoint context, and returns a boolean or `Promise<boolean>`. Production deployments should query an authoritative client registry through `ctx.context.adapter`; do not accept arbitrary client IDs.
 
 **onDeviceAuthRequest**: Hook called when device authorization is requested. Takes clientId and optional scope.
 

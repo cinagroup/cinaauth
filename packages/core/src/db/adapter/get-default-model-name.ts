@@ -24,7 +24,7 @@ export const initGetDefaultModelName = ({
 		// `modelName`) back to its canonical schema key.
 		//
 		// An exact schema-key match must win over a `modelName` match.
-		// Better-auth internals (and `references.model`, see get-tables.ts)
+		// CinaAuth internals (and `references.model`, see get-tables.ts)
 		// always pass canonical schema keys, so when a user remaps a
 		// built-in table onto another table's schema key (e.g.
 		// `user.modelName = "account"`), preferring the modelName alias

@@ -1,0 +1,25 @@
+{
+  "name": "@cinaauth/privacy-erasure-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "wrangler deploy --dry-run --outdir=dist",
+    "test": "vitest run",
+    "check:cloudflare": "node ./scripts/check-cloudflare-remote.mjs",
+    "provision:secrets": "node ./scripts/provision-secrets.mjs",
+    "cf-typegen": "wrangler types ./src/worker-configuration.d.ts --env-interface PrivacyErasureBindings --include-runtime false",
+    "cf-typegen:check": "wrangler types ./src/worker-configuration.d.ts --env-interface PrivacyErasureBindings --include-runtime false --check",
+    "check": "pnpm run test && pnpm run cf-typegen:check && tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260804.1",
+    "@types/better-sqlite3": "7.6.13",
+    "better-sqlite3": "12.6.2",
+    "typescript": "^5.9.3",
+    "vitest": "catalog:vitest",
+    "wrangler": "4.120.0"
+  }
+}

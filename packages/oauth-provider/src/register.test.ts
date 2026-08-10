@@ -101,6 +101,25 @@ describe("oauth register", async () => {
 		expect(response.error?.status).toBe(400);
 	});
 
+	it("should reject a custom-scheme callback for a confidential web client", async () => {
+		const response = await serverClient.oauth2.register({
+			token_endpoint_auth_method: "client_secret_basic",
+			type: "web",
+			redirect_uris: ["cinaapp://oauth/callback"],
+		});
+		expect(response.error?.status).toBe(400);
+	});
+
+	it("should accept a custom-scheme callback for a native public client", async () => {
+		const response = await serverClient.oauth2.register({
+			token_endpoint_auth_method: "none",
+			type: "native",
+			redirect_uris: ["cinaapp://oauth/callback"],
+		});
+		expect(response.error).toBeNull();
+		expect(response.data?.public).toBe(true);
+	});
+
 	it.for([
 		"native",
 		"user-agent-based",

@@ -1,0 +1,1778 @@
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import type { Auth } from "./auth";
+import {
+	createAuth,
+	runWithExecutionCtx,
+	SECURITY_FRESH_AGE_SECONDS,
+} from "./auth";
+import {
+	AUTH_DISCOVERY_PATHS,
+	createCanonicalDiscoveryRequest,
+	isAuthHandlerRequestPath,
+} from "./auth-routing";
+import {
+	DEFAULT_AUDIT_RETENTION_DAYS,
+	getAuditRetentionPolicy,
+} from "./audit-retention";
+import { getAuthCapabilities } from "./capabilities";
+import {
+	D1_CUTOVER_MARKER_NAME,
+	D1_CUTOVER_MARKER_TABLE,
+	migrateLegacyD1ToPostgres,
+	previewLegacyD1Migration,
+} from "./d1-migration";
+import { createDatabase, isHyperdrive } from "./database";
+import type { DeliveryMessage } from "./delivery";
+import {
+	getDeliveryProviderCapabilities,
+	getRequiredDeliveryProvider,
+	handleDeliveryBatch,
+} from "./delivery";
+import type { CloudflareBindings } from "./env";
+import {
+	getBillingRuntimeConfiguration,
+	loadEntitlementSnapshot,
+	type EntitlementSubscription,
+} from "./entitlements";
+import {
+	evaluateEntitlementAccess,
+	getEntitlementRequestPolicy,
+	type EntitlementRequestPolicy,
+} from "./entitlement-enforcement";
+import {
+	getEntitlementCapacityLockKey,
+	withEntitlementCapacityLock,
+} from "./entitlement-lock";
+import { createAuthPlugins, TRUSTED_ORIGIN_HOSTS } from "./plugins";
+import type { PrivacyExportMessage } from "./privacy-export";
+import {
+	handlePrivacyExportBatch,
+	hasPrivacyExportRuntime,
+	PRIVACY_EXPORT_QUEUE_NAME,
+	sweepExpiredPrivacyExports,
+} from "./privacy-export";
+
+export { RateLimitDurableObject } from "./rate-limit";
+
+const app = new Hono<{
+	Bindings: CloudflareBindings;
+	Variables: {
+		auth: Auth;
+	};
+}>();
+
+type RateLimitConfig = {
+	enabled?: boolean;
+	window?: number;
+	max?: number;
+	storage?: string;
+	customStorage?: unknown;
+	customRules?: unknown;
+};
+
+type MigrationTable = {
+	table: string;
+	fields?: Record<string, unknown>;
+};
+
+type MigrationFeature = "organization-advanced" | undefined;
+
+type MigrationFeatureSelection =
+	| { feature: MigrationFeature }
+	| { error: "invalid_migration_feature" };
+
+type DatabaseTableRow = {
+	name: string;
+};
+
+type CutoverMarkerRow = {
+	complete: boolean;
+};
+
+type OrganizationMemberRoleRow = {
+	role: string;
+};
+
+type EntitlementSubscriptionRow = {
+	plan: string;
+	status: "active" | "trialing";
+	periodEnd: Date | string | null;
+	cancelAtPeriodEnd: boolean | null;
+	seats: number | null;
+};
+
+type CountRow = {
+	count: number | string;
+};
+
+type OrganizationSubjectRow = {
+	organizationId: string;
+};
+
+type SSOProviderSubjectRow = {
+	organizationId: string | null;
+	userId: string | null;
+};
+
+type InvitationSubjectRow = {
+	organizationId: string;
+	email: string;
+	status: string;
+};
+
+type VersionMetadataSnapshot = {
+	id: string | null;
+	tag: string | null;
+	timestamp: string | null;
+};
+
+type RuntimeConfigIssue =
+	| "missing_cinaauth_secret"
+	| "weak_cinaauth_secret"
+	| "missing_hyperdrive_binding"
+	| "missing_legacy_d1_binding"
+	| "missing_version_metadata"
+	| "missing_cinaauth_migration_token"
+	| "weak_cinaauth_migration_token"
+	| "missing_delivery_queue"
+	| "missing_delivery_service"
+	| "missing_delivery_webhook_url"
+	| "invalid_delivery_webhook_url"
+	| "missing_delivery_webhook_secret"
+	| "weak_delivery_webhook_secret"
+	| "missing_privacy_export_queue"
+	| "missing_privacy_export_bucket"
+	| "missing_privacy_export_key"
+	| "weak_privacy_export_key"
+	| "missing_erasure_webhook_url"
+	| "invalid_erasure_webhook_url"
+	| "missing_erasure_webhook_secret"
+	| "weak_erasure_webhook_secret"
+	| "invalid_cinaauth_cutover_state"
+	| "invalid_cinaauth_url";
+
+const REQUIRED_DATABASE_TABLES = [
+	"user",
+	"session",
+	"account",
+	"verification",
+	D1_CUTOVER_MARKER_TABLE,
+] as const;
+
+const reportedRuntimeConfigIssues = new Set<string>();
+
+let cutoverReadinessCache:
+	| {
+			versionId: string;
+			checkedAt: number;
+			ready: boolean;
+	  }
+	| undefined;
+
+const MAINTENANCE_PATHS = new Set([
+	"/",
+	"/api/ready",
+	"/api/migrate",
+	"/api/migrate/d1",
+]);
+
+const FRESH_SESSION_MUTATION_PATHS = new Set([
+	"/api/auth/api-key/create",
+	"/api/auth/api-key/update",
+	"/api/auth/api-key/delete",
+	"/api/auth/organization/create",
+	"/api/auth/organization/update",
+	"/api/auth/organization/delete",
+	"/api/auth/organization/invite-member",
+	"/api/auth/organization/cancel-invitation",
+	"/api/auth/organization/remove-member",
+	"/api/auth/organization/update-member-role",
+	"/api/auth/organization/leave",
+	"/api/auth/organization/create-role",
+	"/api/auth/organization/update-role",
+	"/api/auth/organization/delete-role",
+	"/api/auth/organization/create-team",
+	"/api/auth/organization/update-team",
+	"/api/auth/organization/remove-team",
+	"/api/auth/organization/add-team-member",
+	"/api/auth/organization/remove-team-member",
+	"/api/auth/sso/register",
+	"/api/auth/sso/update-provider",
+	"/api/auth/sso/delete-provider",
+	"/api/auth/sso/request-domain-verification",
+	"/api/auth/sso/verify-domain",
+	"/api/auth/scim/generate-token",
+	"/api/auth/scim/delete-provider-connection",
+	"/api/auth/oauth2/register",
+	"/api/auth/oauth2/create-client",
+	"/api/auth/oauth2/update-client",
+	"/api/auth/oauth2/client/rotate-secret",
+	"/api/auth/oauth2/delete-client",
+	"/api/auth/oauth2/update-consent",
+	"/api/auth/oauth2/delete-consent",
+	"/api/auth/subscription/upgrade",
+	"/api/auth/subscription/cancel",
+	"/api/auth/subscription/restore",
+	"/api/auth/subscription/billing-portal",
+]);
+
+const withNoStore = (response: Response) => {
+	response.headers.set("Cache-Control", "no-store");
+	return response;
+};
+
+/** Returns true only for non-future sessions inside the sensitive-action window. */
+export const isFreshSecuritySession = (
+	createdAt: Date | string,
+	now = Date.now(),
+	freshAgeSeconds = SECURITY_FRESH_AGE_SECONDS,
+) => {
+	const createdAtMs = new Date(createdAt).getTime();
+	const age = now - createdAtMs;
+	return (
+		Number.isFinite(createdAtMs) && age >= 0 && age < freshAgeSeconds * 1000
+	);
+};
+
+/** Classifies privileged self-service mutations that require a recent sign-in. */
+export const requiresFreshSessionForMutation = (
+	pathname: string,
+	method: string,
+) =>
+	method.toUpperCase() === "POST" && FRESH_SESSION_MUTATION_PATHS.has(pathname);
+
+const MAX_ENTITLEMENT_REQUEST_BODY_BYTES = 64 * 1024;
+const SAFE_SUBJECT_ID_PATTERN = /^[^\u0000-\u001f\u007f]{1,256}$/;
+
+type EntitlementSubject = {
+	type: "user" | "organization";
+	id: string;
+};
+
+type EntitlementSubjectResolution =
+	| {
+			success: true;
+			subject: EntitlementSubject;
+			usageReferenceId: string;
+	  }
+	| {
+			success: false;
+			code:
+				| "ENTITLEMENT_REQUEST_BODY_INVALID"
+				| "ENTITLEMENT_SUBJECT_NOT_FOUND";
+	  };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+const readBoundedJsonBody = async (
+	request: Request,
+): Promise<Record<string, unknown> | undefined> => {
+	const declaredLength = Number(request.headers.get("content-length"));
+	if (
+		Number.isFinite(declaredLength) &&
+		declaredLength > MAX_ENTITLEMENT_REQUEST_BODY_BYTES
+	) {
+		return undefined;
+	}
+	const bytes = await request.clone().arrayBuffer();
+	if (bytes.byteLength > MAX_ENTITLEMENT_REQUEST_BODY_BYTES) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+		return isRecord(parsed) ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+};
+
+const getSafeSubjectId = (
+	value: unknown,
+	optional = false,
+): string | undefined => {
+	if (value === undefined && optional) return undefined;
+	if (typeof value !== "string") return undefined;
+	const normalized = value.trim();
+	return SAFE_SUBJECT_ID_PATTERN.test(normalized) ? normalized : undefined;
+};
+
+const queryActiveEntitlementSubscriptions = async (
+	database: ReturnType<typeof createDatabase>,
+	subjectId: string,
+) => {
+	const result = await database.query<EntitlementSubscriptionRow>(
+		'SELECT "plan", "status", "periodEnd", "cancelAtPeriodEnd", "seats" FROM "subscription" WHERE "referenceId" = $1 AND "status" IN (\'active\', \'trialing\') ORDER BY "updatedAt" DESC LIMIT 2',
+		[subjectId],
+	);
+	return result.rows satisfies EntitlementSubscription[];
+};
+
+const hasOrganizationMembership = async (
+	database: ReturnType<typeof createDatabase>,
+	organizationId: string,
+	userId: string,
+) => {
+	const membership = await database.query<OrganizationMemberRoleRow>(
+		'SELECT "role" FROM "member" WHERE "organizationId" = $1 AND "userId" = $2 LIMIT 1',
+		[organizationId, userId],
+	);
+	return membership.rows.length > 0;
+};
+
+const resolveEntitlementSubject = async ({
+	policy,
+	request,
+	userId,
+	userEmail,
+	activeOrganizationId,
+	database,
+}: {
+	policy: EntitlementRequestPolicy;
+	request: Request;
+	userId: string;
+	userEmail: string;
+	activeOrganizationId?: string | null;
+	database: ReturnType<typeof createDatabase>;
+}): Promise<EntitlementSubjectResolution> => {
+	if (policy.subjectSource === "user") {
+		return {
+			success: true,
+			subject: { type: "user", id: userId },
+			usageReferenceId: userId,
+		};
+	}
+
+	if (policy.subjectSource === "organization-query") {
+		const values = new URL(request.url).searchParams.getAll("organizationId");
+		const organizationId =
+			values.length === 1 ? getSafeSubjectId(values[0]) : undefined;
+		return organizationId
+			? {
+					success: true,
+					subject: { type: "organization", id: organizationId },
+					usageReferenceId: organizationId,
+				}
+			: { success: false, code: "ENTITLEMENT_REQUEST_BODY_INVALID" };
+	}
+
+	const body = await readBoundedJsonBody(request);
+	if (!body) {
+		return { success: false, code: "ENTITLEMENT_REQUEST_BODY_INVALID" };
+	}
+
+	if (
+		policy.subjectSource === "organization-body" ||
+		policy.subjectSource === "organization-or-user-body"
+	) {
+		const requestedOrganizationId = getSafeSubjectId(
+			body.organizationId,
+			true,
+		);
+		if (body.organizationId !== undefined && !requestedOrganizationId) {
+			return { success: false, code: "ENTITLEMENT_REQUEST_BODY_INVALID" };
+		}
+		const organizationId =
+			requestedOrganizationId ||
+			(policy.subjectSource === "organization-body"
+				? getSafeSubjectId(activeOrganizationId, true)
+				: undefined);
+		if (organizationId) {
+			return {
+				success: true,
+				subject: { type: "organization", id: organizationId },
+				usageReferenceId: organizationId,
+			};
+		}
+		if (policy.subjectSource === "organization-or-user-body") {
+			return {
+				success: true,
+				subject: { type: "user", id: userId },
+				usageReferenceId: userId,
+			};
+		}
+		return { success: false, code: "ENTITLEMENT_REQUEST_BODY_INVALID" };
+	}
+
+	if (policy.subjectSource === "team-body") {
+		const teamId = getSafeSubjectId(body.teamId);
+		if (!teamId) {
+			return { success: false, code: "ENTITLEMENT_REQUEST_BODY_INVALID" };
+		}
+		const team = await database.query<OrganizationSubjectRow>(
+			'SELECT "organizationId" FROM "team" WHERE "id" = $1 LIMIT 1',
+			[teamId],
+		);
+		const organizationId = team.rows[0]?.organizationId;
+		return organizationId
+			? {
+					success: true,
+					subject: { type: "organization", id: organizationId },
+					usageReferenceId: teamId,
+				}
+			: { success: false, code: "ENTITLEMENT_SUBJECT_NOT_FOUND" };
+	}
+
+	if (policy.subjectSource === "invitation-body") {
+		const invitationId = getSafeSubjectId(body.invitationId);
+		if (!invitationId) {
+			return { success: false, code: "ENTITLEMENT_REQUEST_BODY_INVALID" };
+		}
+		const invitation = await database.query<InvitationSubjectRow>(
+			'SELECT "organizationId", "email", "status" FROM "invitation" WHERE "id" = $1 LIMIT 1',
+			[invitationId],
+		);
+		const row = invitation.rows[0];
+		if (
+			!row ||
+			row.status !== "pending" ||
+			row.email.trim().toLowerCase() !== userEmail.trim().toLowerCase()
+		) {
+			return { success: false, code: "ENTITLEMENT_SUBJECT_NOT_FOUND" };
+		}
+		return {
+			success: true,
+			subject: { type: "organization", id: row.organizationId },
+			usageReferenceId: row.organizationId,
+		};
+	}
+
+	const providerId = getSafeSubjectId(body.providerId);
+	if (!providerId) {
+		return { success: false, code: "ENTITLEMENT_REQUEST_BODY_INVALID" };
+	}
+	const provider = await database.query<SSOProviderSubjectRow>(
+		'SELECT "organizationId", "userId" FROM "ssoProvider" WHERE "providerId" = $1 LIMIT 1',
+		[providerId],
+	);
+	const row = provider.rows[0];
+	if (!row) return { success: false, code: "ENTITLEMENT_SUBJECT_NOT_FOUND" };
+	if (row.organizationId) {
+		return {
+			success: true,
+			subject: { type: "organization", id: row.organizationId },
+			usageReferenceId: row.organizationId,
+		};
+	}
+	if (row.userId === userId) {
+		return {
+			success: true,
+			subject: { type: "user", id: userId },
+			usageReferenceId: userId,
+		};
+	}
+	return { success: false, code: "ENTITLEMENT_SUBJECT_NOT_FOUND" };
+};
+
+const getEntitlementUsage = async (
+	database: ReturnType<typeof createDatabase>,
+	policy: EntitlementRequestPolicy,
+	subjectId: string,
+	usageReferenceId: string,
+) => {
+	if (!policy.usageSource) return undefined;
+	const queryByUsage = {
+		"api-keys": {
+			text: 'SELECT COUNT(*)::int AS "count" FROM "apikey" WHERE "referenceId" = $1',
+			value: subjectId,
+		},
+		"oauth-clients": {
+			text: 'SELECT COUNT(*)::int AS "count" FROM "oauthClient" WHERE "userId" = $1',
+			value: subjectId,
+		},
+		"organization-members": {
+			text: 'SELECT COUNT(*)::int AS "count" FROM "member" WHERE "organizationId" = $1',
+			value: subjectId,
+		},
+		teams: {
+			text: 'SELECT COUNT(*)::int AS "count" FROM "team" WHERE "organizationId" = $1',
+			value: subjectId,
+		},
+		"team-members": {
+			text: 'SELECT COUNT(*)::int AS "count" FROM "teamMember" WHERE "teamId" = $1',
+			value: usageReferenceId,
+		},
+		"dynamic-roles": {
+			text: 'SELECT COUNT(*)::int AS "count" FROM "organizationRole" WHERE "organizationId" = $1',
+			value: subjectId,
+		},
+	} satisfies Record<
+		NonNullable<EntitlementRequestPolicy["usageSource"]>,
+		{ text: string; value: string }
+	>;
+	const query = queryByUsage[policy.usageSource];
+	const result = await database.query<CountRow>(query.text, [query.value]);
+	const count = Number(result.rows[0]?.count);
+	return Number.isSafeInteger(count) && count >= 0 ? count : undefined;
+};
+
+const isTrustedOrigin = (origin: string) => {
+	try {
+		const url = new URL(origin);
+		// Explicit allowlist (see TRUSTED_ORIGIN_HOSTS in plugins.ts) rather than a
+		// *.cinagroup.com suffix match, so a forgotten/takeover-prone subdomain
+		// cannot make credentialed cross-origin calls against the auth API.
+		return url.protocol === "https:" && TRUSTED_ORIGIN_HOSTS.has(url.hostname);
+	} catch {
+		return false;
+	}
+};
+
+const isHttpsUrl = (value: string | undefined) => {
+	if (!value) return false;
+	try {
+		return new URL(value).protocol === "https:";
+	} catch {
+		return false;
+	}
+};
+
+export const isVersionMetadata = (
+	value: unknown,
+): value is WorkerVersionMetadata => {
+	const metadata = value as WorkerVersionMetadata | undefined;
+	return typeof metadata?.id === "string" && typeof metadata.tag === "string";
+};
+
+const isDeliveryQueue = (value: unknown): value is Queue<DeliveryMessage> =>
+	typeof (value as Queue<DeliveryMessage> | undefined)?.send === "function";
+
+const isFetcher = (value: unknown): value is Fetcher =>
+	typeof (value as Fetcher | undefined)?.fetch === "function";
+
+const isPrivacyExportQueue = (
+	value: unknown,
+): value is Queue<PrivacyExportMessage> =>
+	typeof (value as Queue<PrivacyExportMessage> | undefined)?.send ===
+	"function";
+
+const isR2Bucket = (value: unknown): value is R2Bucket =>
+	typeof (value as R2Bucket | undefined)?.put === "function" &&
+	typeof (value as R2Bucket | undefined)?.get === "function";
+
+const isD1Database = (value: unknown): value is D1Database =>
+	typeof (value as D1Database | undefined)?.prepare === "function";
+
+export const getCutoverState = (env: CloudflareBindings) =>
+	env.CINAAUTH_CUTOVER_STATE === "live" ? "live" : "maintenance";
+
+const parseBearerToken = (authorization: string | undefined) => {
+	if (!authorization) return undefined;
+	const match = /^Bearer\s+(.+)$/i.exec(authorization.trim());
+	return match?.[1];
+};
+
+const sha256 = async (value: string) =>
+	new Uint8Array(
+		await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+	);
+
+export const secureEqual = async (
+	actual: string | undefined,
+	expected: string | undefined,
+) => {
+	if (!actual || !expected) return false;
+	const [actualHash, expectedHash] = await Promise.all([
+		sha256(actual),
+		sha256(expected),
+	]);
+	let diff = actualHash.length ^ expectedHash.length;
+	for (let i = 0; i < actualHash.length; i++) {
+		diff |= actualHash[i]! ^ expectedHash[i]!;
+	}
+	return diff === 0;
+};
+
+const errorMessage = (error: unknown) =>
+	error instanceof Error ? error.message : String(error);
+
+export const getVersionMetadata = (
+	env: CloudflareBindings,
+): VersionMetadataSnapshot => {
+	if (!isVersionMetadata(env.VERSION_METADATA)) {
+		return {
+			id: null,
+			tag: null,
+			timestamp: null,
+		};
+	}
+
+	const timestamp = env.VERSION_METADATA.timestamp;
+	return {
+		id: env.VERSION_METADATA.id,
+		tag: env.VERSION_METADATA.tag,
+		timestamp: timestamp ? String(timestamp) : null,
+	};
+};
+
+export const getRuntimeConfigIssues = (
+	env: CloudflareBindings,
+): RuntimeConfigIssue[] => {
+	const issues: RuntimeConfigIssue[] = [];
+	const authSecret =
+		typeof env.CINAAUTH_SECRET === "string" ? env.CINAAUTH_SECRET : "";
+
+	if (!authSecret) {
+		issues.push("missing_cinaauth_secret");
+	} else if (authSecret.length < 32) {
+		issues.push("weak_cinaauth_secret");
+	}
+
+	if (!isHyperdrive(env.HYPERDRIVE)) {
+		issues.push("missing_hyperdrive_binding");
+	}
+	if (!isD1Database(env.LEGACY_D1)) {
+		issues.push("missing_legacy_d1_binding");
+	}
+
+	if (!isVersionMetadata(env.VERSION_METADATA)) {
+		issues.push("missing_version_metadata");
+	}
+
+	if (!env.CINAAUTH_MIGRATION_TOKEN) {
+		issues.push("missing_cinaauth_migration_token");
+	} else if (env.CINAAUTH_MIGRATION_TOKEN.length < 32) {
+		issues.push("weak_cinaauth_migration_token");
+	}
+
+	if (!isDeliveryQueue(env.CINAAUTH_DELIVERY_QUEUE)) {
+		issues.push("missing_delivery_queue");
+	}
+	if (!isFetcher(env.CINAAUTH_DELIVERY_SERVICE)) {
+		issues.push("missing_delivery_service");
+	}
+
+	if (!env.CINAAUTH_DELIVERY_WEBHOOK_URL) {
+		issues.push("missing_delivery_webhook_url");
+	} else if (!isHttpsUrl(env.CINAAUTH_DELIVERY_WEBHOOK_URL)) {
+		issues.push("invalid_delivery_webhook_url");
+	}
+
+	if (!env.CINAAUTH_DELIVERY_WEBHOOK_SECRET) {
+		issues.push("missing_delivery_webhook_secret");
+	} else if (env.CINAAUTH_DELIVERY_WEBHOOK_SECRET.length < 32) {
+		issues.push("weak_delivery_webhook_secret");
+	}
+
+	if (!isPrivacyExportQueue(env.CINAAUTH_PRIVACY_EXPORT_QUEUE)) {
+		issues.push("missing_privacy_export_queue");
+	}
+	if (!isR2Bucket(env.CINAAUTH_PRIVACY_EXPORTS)) {
+		issues.push("missing_privacy_export_bucket");
+	}
+	if (!env.CINAAUTH_PRIVACY_EXPORT_KEY) {
+		issues.push("missing_privacy_export_key");
+	} else if (env.CINAAUTH_PRIVACY_EXPORT_KEY.length < 32) {
+		issues.push("weak_privacy_export_key");
+	}
+
+	const hasErasureUrl = Boolean(env.CINAAUTH_ERASURE_WEBHOOK_URL);
+	const hasErasureSecret = Boolean(env.CINAAUTH_ERASURE_WEBHOOK_SECRET);
+	if (hasErasureUrl || hasErasureSecret) {
+		if (!hasErasureUrl) {
+			issues.push("missing_erasure_webhook_url");
+		} else if (!isHttpsUrl(env.CINAAUTH_ERASURE_WEBHOOK_URL)) {
+			issues.push("invalid_erasure_webhook_url");
+		}
+		if (!hasErasureSecret) {
+			issues.push("missing_erasure_webhook_secret");
+		} else if (env.CINAAUTH_ERASURE_WEBHOOK_SECRET!.length < 32) {
+			issues.push("weak_erasure_webhook_secret");
+		}
+	}
+
+	if (
+		env.CINAAUTH_CUTOVER_STATE !== "maintenance" &&
+		env.CINAAUTH_CUTOVER_STATE !== "live"
+	) {
+		issues.push("invalid_cinaauth_cutover_state");
+	}
+
+	if (!isHttpsUrl(env.CINAAUTH_URL || "https://auth.cinaseek.ai")) {
+		issues.push("invalid_cinaauth_url");
+	}
+
+	return issues;
+};
+
+const logRuntimeConfigIssuesOnce = (
+	issues: RuntimeConfigIssue[],
+	env: CloudflareBindings,
+) => {
+	const version = getVersionMetadata(env);
+	const key = `${version.id ?? "unknown"}:${issues.join(",")}`;
+	if (reportedRuntimeConfigIssues.has(key)) {
+		return;
+	}
+	reportedRuntimeConfigIssues.add(key);
+	console.error(
+		JSON.stringify({
+			level: "error",
+			message: "cinaauth.runtime_config_invalid",
+			issues,
+			version,
+		}),
+	);
+};
+
+export const isAuthorizedMigrationRequest = async (
+	headers: Headers,
+	env: CloudflareBindings,
+) => {
+	const provided =
+		headers.get("x-cinaauth-migration-token") ||
+		parseBearerToken(headers.get("authorization") ?? undefined);
+
+	return (
+		(await secureEqual(provided, env.CINAAUTH_MIGRATION_TOKEN)) ||
+		(await secureEqual(provided, env.CINAAUTH_D1_MIGRATION_TOKEN))
+	);
+};
+
+/**
+ * Selects the one intentionally exposed feature-schema migration. Unknown or
+ * repeated values fail closed so this endpoint cannot become a generic plugin
+ * composition surface.
+ */
+export const getMigrationFeatureSelection = (
+	url: URL,
+): MigrationFeatureSelection => {
+	const values = url.searchParams.getAll("feature");
+	if (values.length === 0) return { feature: undefined };
+	if (values.length === 1 && values[0] === "organization-advanced") {
+		return { feature: "organization-advanced" };
+	}
+	return { error: "invalid_migration_feature" };
+};
+
+const getMigrationPlan = async (
+	env: CloudflareBindings,
+	feature: MigrationFeature,
+) => {
+	const { getMigrations } = await import("cinaauth/db/migration");
+	const database = createDatabase(env);
+	let migrations: Awaited<ReturnType<typeof getMigrations>>;
+	try {
+		migrations = await getMigrations({
+			database,
+			plugins: createAuthPlugins(env, {
+				advancedOrganization: feature === "organization-advanced",
+			}),
+		});
+	} catch (error) {
+		await database.end();
+		throw error;
+	}
+	const created = (migrations.toBeCreated as MigrationTable[]).map(
+		(table) => table.table,
+	);
+	const added = (migrations.toBeAdded as MigrationTable[]).map((table) => ({
+		table: table.table,
+		fields: Object.keys(table.fields ?? {}),
+	}));
+
+	return {
+		...migrations,
+		close: () => database.end(),
+		summary: {
+			pendingCount:
+				created.length +
+				added.reduce((sum, table) => sum + table.fields.length, 0),
+			created,
+			added,
+			requiredTables: [...REQUIRED_DATABASE_TABLES],
+		},
+	};
+};
+
+const getDatabaseReadiness = async (env: CloudflareBindings) => {
+	if (!isHyperdrive(env.HYPERDRIVE)) {
+		return {
+			ok: false,
+			cutoverMarker: false,
+			requiredTables: [...REQUIRED_DATABASE_TABLES],
+			presentTables: [],
+			missingTables: [...REQUIRED_DATABASE_TABLES],
+		};
+	}
+
+	const database = createDatabase(env);
+	let rows: DatabaseTableRow[];
+	let cutoverMarker = false;
+	try {
+		const result = await database.query<DatabaseTableRow>(
+			`SELECT table_name AS name
+			 FROM information_schema.tables
+			 WHERE table_schema = ANY(current_schemas(false))
+				AND table_name = ANY($1::text[])
+			 ORDER BY table_name`,
+			[[...REQUIRED_DATABASE_TABLES]],
+		);
+		rows = result.rows;
+		if (rows.some((row) => row.name === D1_CUTOVER_MARKER_TABLE)) {
+			const markerResult = await database.query<CutoverMarkerRow>(
+				`SELECT EXISTS(
+					SELECT 1
+					FROM "${D1_CUTOVER_MARKER_TABLE}"
+					WHERE "name" = $1
+				) AS complete`,
+				[D1_CUTOVER_MARKER_NAME],
+			);
+			cutoverMarker = markerResult.rows[0]?.complete === true;
+		}
+	} finally {
+		await database.end();
+	}
+	const presentTables = new Set(rows.map((row) => row.name));
+	const missingTables = REQUIRED_DATABASE_TABLES.filter(
+		(table) => !presentTables.has(table),
+	);
+
+	return {
+		ok: missingTables.length === 0 && cutoverMarker,
+		cutoverMarker,
+		requiredTables: [...REQUIRED_DATABASE_TABLES],
+		presentTables: [...presentTables],
+		missingTables,
+	};
+};
+
+const isDatabaseCutoverReady = async (env: CloudflareBindings) => {
+	const versionId = getVersionMetadata(env).id ?? "unknown";
+	const now = Date.now();
+	if (
+		cutoverReadinessCache?.versionId === versionId &&
+		now - cutoverReadinessCache.checkedAt <
+			(cutoverReadinessCache.ready ? 60_000 : 5_000)
+	) {
+		return cutoverReadinessCache.ready;
+	}
+	const ready = (await getDatabaseReadiness(env)).ok;
+	cutoverReadinessCache = { versionId, checkedAt: now, ready };
+	return ready;
+};
+
+// Middleware
+app.use(
+	"*",
+	cors({
+		origin: (origin) =>
+			origin && isTrustedOrigin(origin) ? origin : undefined,
+		allowHeaders: [
+			"Content-Type",
+			"Authorization",
+			"x-captcha-response",
+			"x-cinaauth-migration-token",
+			"electron-origin",
+		],
+		allowMethods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+		exposeHeaders: ["set-auth-token", "set-auth-jwt", "WWW-Authenticate"],
+		credentials: true,
+	}),
+);
+
+// Create auth instance per request with current env bindings.
+app.use("*", async (c, next) => {
+	const pathname = new URL(c.req.url).pathname;
+	const runtimeConfigIssues = getRuntimeConfigIssues(c.env);
+	if (runtimeConfigIssues.length > 0) {
+		logRuntimeConfigIssuesOnce(runtimeConfigIssues, c.env);
+		if (pathname === "/api/ready") {
+			await next();
+			return;
+		}
+		return withNoStore(c.json({ error: "Server misconfigured" }, 503));
+	}
+
+	if (
+		getCutoverState(c.env) === "maintenance" &&
+		!MAINTENANCE_PATHS.has(pathname)
+	) {
+		return withNoStore(
+			c.json(
+				{ error: "Authentication service is in database maintenance" },
+				503,
+			),
+		);
+	}
+
+	if (!isAuthHandlerRequestPath(pathname)) {
+		await next();
+		return;
+	}
+
+	try {
+		if (!(await isDatabaseCutoverReady(c.env))) {
+			return withNoStore(
+				c.json({ error: "Authentication database cutover is incomplete" }, 503),
+			);
+		}
+	} catch {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.cutover_guard.failed",
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json({ error: "Authentication database is unavailable" }, 503),
+		);
+	}
+
+	const requiredDeliveryProvider = getRequiredDeliveryProvider(pathname);
+	if (requiredDeliveryProvider) {
+		const delivery = await getDeliveryProviderCapabilities(c.env);
+		if (!delivery[requiredDeliveryProvider]) {
+			return withNoStore(
+				c.json(
+					{
+						success: false,
+						code: "DELIVERY_PROVIDER_UNAVAILABLE",
+						message: "The required delivery provider is unavailable",
+					},
+					503,
+				),
+			);
+		}
+	}
+
+	// Run inside the ExecutionContext store so the request-scoped auth instance's
+	// background-task handler can reach ctx.waitUntil — including any task the
+	// first-time instance construction (plugin init) might schedule.
+	await runWithExecutionCtx(c.executionCtx, async () => {
+		c.set("auth", createAuth(c.env));
+		await next();
+	});
+});
+
+// Public, secret-free capability discovery. Login surfaces use this to avoid
+// advertising providers that are not configured on the production Worker.
+app.get("/api/auth/capabilities", async (c) => {
+	const delivery = await getDeliveryProviderCapabilities(c.env);
+	return withNoStore(c.json(getAuthCapabilities(c.env, delivery)));
+});
+
+// Authenticated, no-store feature and limit snapshot. Stripe webhooks remain
+// the subscription source of truth; this endpoint never calls Stripe inline.
+app.get("/api/auth/entitlements", async (c) => {
+	const session = await c.var.auth.api.getSession({
+		headers: c.req.raw.headers,
+		query: { disableCookieCache: true },
+	});
+	if (!session) {
+		return withNoStore(
+			c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401),
+		);
+	}
+
+	const organizationIds = new URL(c.req.url).searchParams.getAll(
+		"organizationId",
+	);
+	if (organizationIds.length > 1) {
+		return withNoStore(
+			c.json(
+				{ code: "INVALID_ORGANIZATION_ID", message: "Invalid organization" },
+				400,
+			),
+		);
+	}
+	const organizationId = organizationIds[0]?.trim();
+	if (
+		organizationId !== undefined &&
+		(organizationId.length === 0 ||
+			organizationId.length > 128 ||
+			/[\u0000-\u001f\u007f]/.test(organizationId))
+	) {
+		return withNoStore(
+			c.json(
+				{ code: "INVALID_ORGANIZATION_ID", message: "Invalid organization" },
+				400,
+			),
+		);
+	}
+
+	const subject = organizationId
+		? { type: "organization" as const, id: organizationId }
+		: { type: "user" as const, id: session.user.id };
+	const billing = getBillingRuntimeConfiguration(c.env);
+	let database: ReturnType<typeof createDatabase> | undefined;
+	try {
+		if (organizationId || billing) database = createDatabase(c.env);
+		if (
+			organizationId &&
+			!(await hasOrganizationMembership(
+				database!,
+				organizationId,
+				session.user.id,
+			))
+		) {
+				return withNoStore(
+					c.json(
+						{ code: "FORBIDDEN", message: "Organization access denied" },
+						403,
+					),
+				);
+		}
+
+		const loaded = await loadEntitlementSnapshot({
+			subject,
+			billing,
+			loadSubscriptions: async () =>
+				queryActiveEntitlementSubscriptions(database!, subject.id),
+		});
+		if (!loaded.success) {
+			return withNoStore(
+				c.json(
+					{
+						code: loaded.code,
+						message:
+							loaded.code === "ENTITLEMENT_PLAN_UNMAPPED"
+								? "Entitlement plan is not mapped"
+								: "Entitlement subscription state is ambiguous",
+					},
+					503,
+				),
+			);
+		}
+		return withNoStore(c.json(loaded.snapshot));
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.entitlements.failed",
+				error: error instanceof Error ? error.message : String(error),
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json(
+				{
+					code: "ENTITLEMENT_STORAGE_UNAVAILABLE",
+					message: "Entitlements are temporarily unavailable",
+				},
+				503,
+			),
+		);
+	} finally {
+		await database?.end().catch(() => undefined);
+	}
+});
+
+// Rate-limit configuration endpoint (read-only, for the admin console's
+// security-policy page). Must be registered BEFORE the /api/auth/* catch-all
+// so Hono routes it here instead of delegating to the auth handler.
+app.get("/api/auth/admin/rate-limit-config", async (c) => {
+	const session = await c.var.auth.api.getSession({
+		headers: c.req.raw.headers,
+	});
+	const role = (session?.user as { role?: string } | undefined)?.role;
+	if (role !== "super_admin") {
+		return withNoStore(c.json({ error: "Forbidden" }, 403));
+	}
+	const rl = (c.var.auth.options as { rateLimit?: RateLimitConfig }).rateLimit;
+	return withNoStore(
+		c.json({
+			enabled: rl?.enabled ?? true,
+			window: rl?.window ?? 10,
+			max: rl?.max ?? 100,
+			storage: rl?.customStorage ? "durable-object" : (rl?.storage ?? "memory"),
+			customRules: rl?.customRules ?? {},
+		}),
+	);
+});
+
+// Sensitive mutations require a fresh authoritative session. Commercial
+// management paths also evaluate the webhook-synchronized feature/limit policy
+// before delegating to the public plugin endpoint contract.
+app.use("/api/auth/*", async (c, next) => {
+	const pathname = new URL(c.req.url).pathname;
+	const requiresFreshSession = requiresFreshSessionForMutation(
+		pathname,
+		c.req.method,
+	);
+	const entitlementPolicy = getEntitlementRequestPolicy(
+		pathname,
+		c.req.method,
+	);
+	if (!requiresFreshSession && !entitlementPolicy) {
+		await next();
+		return;
+	}
+
+	const session = await c.var.auth.api.getSession({
+		headers: c.req.raw.headers,
+		query: { disableCookieCache: true },
+	});
+	if (!session) {
+		return withNoStore(
+			c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401),
+		);
+	}
+	if (
+		requiresFreshSession &&
+		!isFreshSecuritySession(session.session.createdAt)
+	) {
+		return withNoStore(
+			c.json(
+				{
+					code: "SESSION_NOT_FRESH",
+					message: "Recent authentication required",
+				},
+				403,
+			),
+		);
+	}
+	if (!entitlementPolicy) {
+		await next();
+		return;
+	}
+
+	const billing = getBillingRuntimeConfiguration(c.env);
+	let database: ReturnType<typeof createDatabase> | undefined;
+	let downstreamFailure = false;
+	try {
+		database = createDatabase(c.env);
+		const resolved = await resolveEntitlementSubject({
+			policy: entitlementPolicy,
+			request: c.req.raw,
+			userId: session.user.id,
+			userEmail: session.user.email,
+			activeOrganizationId: (
+				session.session as typeof session.session & {
+					activeOrganizationId?: string | null;
+				}
+			).activeOrganizationId,
+			database,
+		});
+		if (!resolved.success) {
+			return withNoStore(
+				c.json(
+					{
+						code: resolved.code,
+						message:
+							resolved.code === "ENTITLEMENT_SUBJECT_NOT_FOUND"
+								? "Entitlement subject was not found"
+								: "Invalid entitlement request",
+					},
+					resolved.code === "ENTITLEMENT_SUBJECT_NOT_FOUND" ? 404 : 400,
+				),
+			);
+		}
+
+		if (
+			resolved.subject.type === "organization" &&
+			entitlementPolicy.subjectSource !== "invitation-body" &&
+			!(await hasOrganizationMembership(
+				database,
+				resolved.subject.id,
+				session.user.id,
+			))
+		) {
+			return withNoStore(
+				c.json(
+					{ code: "FORBIDDEN", message: "Organization access denied" },
+					403,
+				),
+			);
+		}
+
+		const loaded = await loadEntitlementSnapshot({
+			subject: resolved.subject,
+			billing,
+			loadSubscriptions: async () =>
+				queryActiveEntitlementSubscriptions(database!, resolved.subject.id),
+		});
+		if (!loaded.success) {
+			return withNoStore(
+				c.json(
+					{
+						code: loaded.code,
+						message: "Entitlement policy is temporarily unavailable",
+					},
+					503,
+				),
+			);
+		}
+
+		const hasFiniteLimit =
+			entitlementPolicy.limit !== undefined &&
+			loaded.snapshot.limits[entitlementPolicy.limit] !== null;
+		const evaluateAndContinue = async () => {
+			const currentUsage = hasFiniteLimit
+				? await getEntitlementUsage(
+						database!,
+						entitlementPolicy,
+						resolved.subject.id,
+						resolved.usageReferenceId,
+					)
+				: undefined;
+			const access = evaluateEntitlementAccess(
+				loaded.snapshot,
+				entitlementPolicy,
+				currentUsage,
+			);
+			if (access.success) {
+				try {
+					await next();
+				} catch (error) {
+					downstreamFailure = true;
+					throw error;
+				}
+			}
+			return access;
+		};
+		const access = hasFiniteLimit
+			? await withEntitlementCapacityLock(
+					database,
+					getEntitlementCapacityLockKey({
+						subjectType: resolved.subject.type,
+						subjectId: resolved.subject.id,
+						limit: entitlementPolicy.limit!,
+						usageReferenceId: resolved.usageReferenceId,
+					}),
+					evaluateAndContinue,
+				)
+			: await evaluateAndContinue();
+		if (!access.success) {
+			const message =
+				access.code === "ENTITLEMENT_FEATURE_DISABLED"
+					? "This feature is not available for the current plan"
+					: access.code === "ENTITLEMENT_LIMIT_REACHED"
+						? "The current plan limit has been reached"
+						: "Entitlement usage is temporarily unavailable";
+			return withNoStore(
+				c.json(
+					{ ...access, message },
+					access.code === "ENTITLEMENT_FEATURE_DISABLED"
+						? 403
+						: access.code === "ENTITLEMENT_LIMIT_REACHED"
+							? 409
+							: 503,
+				),
+			);
+		}
+		return;
+	} catch (error) {
+		if (downstreamFailure) throw error;
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.entitlement_enforcement.failed",
+				path: pathname,
+				error: errorMessage(error),
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json(
+				{
+					code: "ENTITLEMENT_STORAGE_UNAVAILABLE",
+					message: "Entitlements are temporarily unavailable",
+				},
+				503,
+			),
+		);
+	} finally {
+		await database?.end().catch(() => undefined);
+	}
+
+});
+
+// The issuer is the Worker root while CinaAuth's API base path is /api/auth.
+// Publish both standards-based root discovery and a compatibility API alias.
+app.on(
+	["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+	[...AUTH_DISCOVERY_PATHS],
+	async (c) => {
+		if (c.req.method !== "GET" && c.req.method !== "HEAD") {
+			return new Response(null, {
+				status: 405,
+				headers: { Allow: "GET, HEAD" },
+			});
+		}
+		return withNoStore(
+			await c.var.auth.handler(createCanonicalDiscoveryRequest(c.req.raw)),
+		);
+	},
+);
+
+// Auth catch-all route handler
+app.on(
+	["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+	"/api/auth/*",
+	async (c) => withNoStore(await c.var.auth.handler(c.req.raw)),
+);
+
+// Health check
+app.get("/", (c) =>
+	withNoStore(
+		c.json({
+			name: "CinaAuth API",
+			status: getCutoverState(c.env) === "live" ? "running" : "maintenance",
+			version: "1.0.0",
+		}),
+	),
+);
+
+const assertAuthorizedMigrationRequest = async (
+	headers: Headers,
+	env: CloudflareBindings,
+) => {
+	if (await isAuthorizedMigrationRequest(headers, env)) {
+		return undefined;
+	}
+	return new Response(JSON.stringify({ error: "Forbidden" }), {
+		status: 403,
+		headers: {
+			"Content-Type": "application/json",
+			"Cache-Control": "no-store",
+		},
+	});
+};
+
+// Deployment readiness endpoint (protected; safe to call from CI after deploy).
+app.get("/api/ready", async (c) => {
+	const forbidden = await assertAuthorizedMigrationRequest(
+		c.req.raw.headers,
+		c.env,
+	);
+	if (forbidden) return forbidden;
+
+	const runtimeConfigIssues = getRuntimeConfigIssues(c.env);
+	try {
+		const database = await getDatabaseReadiness(c.env);
+		const cutoverState = getCutoverState(c.env);
+		const isReady =
+			runtimeConfigIssues.length === 0 &&
+			database.ok &&
+			cutoverState === "live";
+		const version = getVersionMetadata(c.env);
+		return withNoStore(
+			c.json(
+				{
+					success: isReady,
+					version,
+					cutover: {
+						state: cutoverState,
+					},
+					runtimeConfig: {
+						ok: runtimeConfigIssues.length === 0,
+						issues: runtimeConfigIssues,
+					},
+					database,
+					delivery: {
+						queue: isDeliveryQueue(c.env.CINAAUTH_DELIVERY_QUEUE),
+						service: isFetcher(c.env.CINAAUTH_DELIVERY_SERVICE),
+						webhookUrl: isHttpsUrl(c.env.CINAAUTH_DELIVERY_WEBHOOK_URL),
+						webhookSecret:
+							typeof c.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET === "string" &&
+							c.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET.length >= 32,
+					},
+					privacyExport: {
+						queue: isPrivacyExportQueue(c.env.CINAAUTH_PRIVACY_EXPORT_QUEUE),
+						bucket: isR2Bucket(c.env.CINAAUTH_PRIVACY_EXPORTS),
+						customerEncryptionKey:
+							typeof c.env.CINAAUTH_PRIVACY_EXPORT_KEY === "string" &&
+							c.env.CINAAUTH_PRIVACY_EXPORT_KEY.length >= 32,
+						retentionHours: 24,
+					},
+					rateLimit: {
+						storage: "durable-object",
+						binding: "RATE_LIMITER",
+						loginRule: {
+							path: "/sign-in/*",
+							window: 60,
+							max: 5,
+						},
+					},
+				},
+				isReady ? 200 : 503,
+			),
+		);
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.readiness.failed",
+				error: errorMessage(error),
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json(
+				{
+					success: false,
+					error: "Readiness check failed",
+					version: getVersionMetadata(c.env),
+					runtimeConfig: {
+						ok: runtimeConfigIssues.length === 0,
+						issues: runtimeConfigIssues,
+					},
+				},
+				503,
+			),
+		);
+	}
+});
+
+// Migration preview endpoint (protected; inspect before applying changes).
+app.get("/api/migrate", async (c) => {
+	const forbidden = await assertAuthorizedMigrationRequest(
+		c.req.raw.headers,
+		c.env,
+	);
+	if (forbidden) return forbidden;
+	const selection = getMigrationFeatureSelection(new URL(c.req.url));
+	if ("error" in selection) {
+		return withNoStore(c.json({ error: selection.error }, 400));
+	}
+
+	try {
+		const { summary, close } = await getMigrationPlan(c.env, selection.feature);
+		try {
+			return withNoStore(
+				c.json({
+					success: true,
+					mode: "preview",
+					feature: selection.feature ?? null,
+					...summary,
+				}),
+			);
+		} finally {
+			await close();
+		}
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.migration.preview_failed",
+				error: errorMessage(error),
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json(
+				{
+					success: false,
+					error: "Migration preview failed",
+				},
+				500,
+			),
+		);
+	}
+});
+
+// Database migration endpoint (protected; run after deployment when plugins change).
+app.post("/api/migrate", async (c) => {
+	if (!(await isAuthorizedMigrationRequest(c.req.raw.headers, c.env))) {
+		return withNoStore(c.json({ error: "Forbidden" }, 403));
+	}
+	const selection = getMigrationFeatureSelection(new URL(c.req.url));
+	if ("error" in selection) {
+		return withNoStore(c.json({ error: selection.error }, 400));
+	}
+
+	try {
+		const { runMigrations, summary, close } = await getMigrationPlan(
+			c.env,
+			selection.feature,
+		);
+		try {
+			await runMigrations();
+			return withNoStore(
+				c.json({
+					success: true,
+					mode: "apply",
+					feature: selection.feature ?? null,
+					message: "Migrations applied successfully",
+					...summary,
+				}),
+			);
+		} finally {
+			await close();
+		}
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.migration.failed",
+				error: errorMessage(error),
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json(
+				{
+					success: false,
+					error: "Migration failed",
+				},
+				500,
+			),
+		);
+	}
+});
+
+const assertD1CutoverRequest = async (
+	headers: Headers,
+	env: CloudflareBindings,
+) => {
+	if (getCutoverState(env) !== "maintenance") {
+		return new Response(
+			JSON.stringify({ error: "D1 cutover requires maintenance mode" }),
+			{
+				status: 409,
+				headers: {
+					"Content-Type": "application/json",
+					"Cache-Control": "no-store",
+				},
+			},
+		);
+	}
+	const provided = parseBearerToken(headers.get("authorization") ?? undefined);
+	if (await secureEqual(provided, env.CINAAUTH_D1_MIGRATION_TOKEN)) {
+		return undefined;
+	}
+	return new Response(JSON.stringify({ error: "Forbidden" }), {
+		status: 403,
+		headers: {
+			"Content-Type": "application/json",
+			"Cache-Control": "no-store",
+		},
+	});
+};
+
+// One-time D1 snapshot preview. It requires a separate ephemeral token so the
+// permanent schema-migration credential cannot overwrite a live PostgreSQL DB.
+app.get("/api/migrate/d1", async (c) => {
+	const blocked = await assertD1CutoverRequest(c.req.raw.headers, c.env);
+	if (blocked) return blocked;
+
+	const database = createDatabase(c.env);
+	try {
+		const preview = await previewLegacyD1Migration(c.env.LEGACY_D1, database);
+		return withNoStore(
+			c.json({
+				success: true,
+				mode: "preview",
+				...preview,
+			}),
+		);
+	} catch {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.d1_migration.preview_failed",
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json({ success: false, error: "D1 migration preview failed" }, 500),
+		);
+	} finally {
+		await database.end();
+	}
+});
+
+// Applies the maintenance-mode D1 snapshot transactionally and returns only
+// per-table counts. No user, session, token, or key values leave the Worker.
+app.post("/api/migrate/d1", async (c) => {
+	const blocked = await assertD1CutoverRequest(c.req.raw.headers, c.env);
+	if (blocked) return blocked;
+
+	const database = createDatabase(c.env);
+	try {
+		const result = await migrateLegacyD1ToPostgres(c.env.LEGACY_D1, database);
+		return withNoStore(
+			c.json({
+				success: true,
+				mode: "apply",
+				...result,
+			}),
+		);
+	} catch {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.d1_migration.failed",
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json({ success: false, error: "D1 migration failed" }, 500),
+		);
+	} finally {
+		await database.end();
+	}
+});
+
+app.notFound((c) =>
+	withNoStore(
+		c.json(
+			{
+				error: "Not found",
+			},
+			404,
+		),
+	),
+);
+
+app.onError((error, c) => {
+	console.error(
+		JSON.stringify({
+			level: "error",
+			message: "cinaauth.request.failed",
+			path: new URL(c.req.url).pathname,
+			method: c.req.method,
+			error: errorMessage(error),
+			version: getVersionMetadata(c.env),
+		}),
+	);
+	return withNoStore(
+		c.json(
+			{
+				error: "Internal server error",
+			},
+			500,
+		),
+	);
+});
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Scheduled retention for audit logs and abandoned sessions. Uses the framework
+// PostgreSQL adapter so date serialization matches how the rows were written.
+const runRetention = async (env: CloudflareBindings) => {
+	if (!isHyperdrive(env.HYPERDRIVE) || getCutoverState(env) !== "live") {
+		return;
+	}
+	if (!(await isDatabaseCutoverReady(env))) {
+		return;
+	}
+	const context = await createAuth(env).$context;
+	const now = Date.now();
+	const expiredSessions = await context.adapter.deleteMany({
+		model: "session",
+		where: [{ field: "expiresAt", value: new Date(now), operator: "lt" }],
+	});
+	const billing = getBillingRuntimeConfiguration(env);
+	const retention = getAuditRetentionPolicy(billing);
+	let staleAuditLogs = 0;
+	if (retention.mode === "deployment-default") {
+		staleAuditLogs = await context.adapter.deleteMany({
+			model: "auditLog",
+			where: [
+				{
+					field: "timestamp",
+					value: new Date(now - retention.defaultDays * DAY_MS),
+					operator: "lt",
+				},
+			],
+		});
+	} else {
+		const database = createDatabase(env);
+		const client = await database.connect();
+		try {
+			await client.query("BEGIN");
+			const nonOrganization = await client.query(
+				'DELETE FROM "auditLog" WHERE ("targetType" IS DISTINCT FROM \'organization\' OR "targetId" IS NULL) AND "timestamp" < $1',
+				[
+					new Date(
+						now - DEFAULT_AUDIT_RETENTION_DAYS * DAY_MS,
+					),
+				],
+			);
+			staleAuditLogs += nonOrganization.rowCount ?? 0;
+
+			for (const plan of retention.plans) {
+				if (plan.days === null) continue;
+				const organizationLogs = await client.query(
+					'DELETE FROM "auditLog" AS "audit" WHERE "audit"."targetType" = \'organization\' AND "audit"."timestamp" < $1 AND (SELECT CASE WHEN COUNT(*) = 0 THEN $2 WHEN COUNT(*) = 1 THEN MAX("subscription"."plan") ELSE NULL END FROM "subscription" WHERE "subscription"."referenceId" = "audit"."targetId" AND "subscription"."status" IN (\'active\', \'trialing\')) = $3',
+					[
+						new Date(now - plan.days * DAY_MS),
+						retention.defaultPlan,
+						plan.planId,
+					],
+				);
+				staleAuditLogs += organizationLogs.rowCount ?? 0;
+			}
+			await client.query("COMMIT");
+		} catch (error) {
+			await client.query("ROLLBACK").catch(() => undefined);
+			throw error;
+		} finally {
+			client.release();
+			await database.end().catch(() => undefined);
+		}
+	}
+	console.info(
+		JSON.stringify({
+			level: "info",
+			message: "cinaauth.retention.swept",
+			expiredSessions,
+			staleAuditLogs,
+			retentionMode: retention.mode,
+			version: getVersionMetadata(env),
+		}),
+	);
+};
+
+type WorkerQueueMessage = DeliveryMessage | PrivacyExportMessage;
+
+const handleQueueBatch = async (
+	batch: MessageBatch<WorkerQueueMessage>,
+	env: CloudflareBindings,
+) => {
+	if (batch.queue === PRIVACY_EXPORT_QUEUE_NAME) {
+		await handlePrivacyExportBatch(
+			batch as MessageBatch<PrivacyExportMessage>,
+			env,
+			async () => createAuth(env).$context,
+		);
+		return;
+	}
+	await handleDeliveryBatch(batch as MessageBatch<DeliveryMessage>, env);
+};
+
+export default {
+	fetch: (request, env, ctx) => app.fetch(request, env, ctx),
+	queue: handleQueueBatch,
+	scheduled: (_event, env, ctx) => {
+		ctx.waitUntil(
+			runRetention(env).catch((error) => {
+				console.error(
+					JSON.stringify({
+						level: "error",
+						message: "cinaauth.retention.failed",
+						error: errorMessage(error),
+						version: getVersionMetadata(env),
+					}),
+				);
+			}),
+		);
+		if (hasPrivacyExportRuntime(env)) {
+			ctx.waitUntil(
+				sweepExpiredPrivacyExports(env)
+					.then((deletedObjects) => {
+						console.info(
+							JSON.stringify({
+								level: "info",
+								message: "cinaauth.privacy_export.retention_swept",
+								deletedObjects,
+								version: getVersionMetadata(env),
+							}),
+						);
+					})
+					.catch((error) => {
+						console.error(
+							JSON.stringify({
+								level: "error",
+								message: "cinaauth.privacy_export.retention_failed",
+								error: errorMessage(error),
+								version: getVersionMetadata(env),
+							}),
+						);
+					}),
+			);
+		}
+	},
+} satisfies ExportedHandler<CloudflareBindings, WorkerQueueMessage>;

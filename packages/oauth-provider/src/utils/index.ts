@@ -441,6 +441,24 @@ export function clientAllowsGrant(
 	return allowedGrants.includes(grantType);
 }
 
+/** Authorizes a resolved OAuth client before issuing protocol artifacts. */
+export async function authorizeOAuthClient(
+	options: OAuthOptions<Scope[]>,
+	client: SchemaClient<Scope[]>,
+	endpoint: "authorize" | "token",
+	grantType: GrantType,
+) {
+	if (
+		options.authorizeClient &&
+		!(await options.authorizeClient({ client, endpoint, grantType }))
+	) {
+		throw new APIError("FORBIDDEN", {
+			error_description: "OAuth client access is disabled",
+			error: "access_denied",
+		});
+	}
+}
+
 /**
  * Validates client credentials failing on mismatches
  * and incorrectly provided information

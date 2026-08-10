@@ -1,0 +1,32 @@
+CINAAUTH_SECRET=replace-with-a-local-secret-at-least-32-characters
+CINAAUTH_MIGRATION_TOKEN=replace-with-a-local-migration-token-at-least-32-characters
+CINAAUTH_DELIVERY_WEBHOOK_URL=https://example.invalid/cinaauth/delivery
+CINAAUTH_DELIVERY_WEBHOOK_SECRET=replace-with-a-local-delivery-secret-at-least-32-characters
+CINAAUTH_PRIVACY_EXPORT_KEY=replace-with-a-dedicated-export-key-at-least-32-characters
+
+# Configure both only when an external processor erasure orchestrator exists.
+# CINAAUTH_ERASURE_WEBHOOK_URL=https://privacy-controller.example.com/erase
+# CINAAUTH_ERASURE_WEBHOOK_SECRET=replace-with-an-erasure-secret-at-least-32-characters
+
+# The PostgreSQL origin is configured in Hyperdrive, not as a Worker secret.
+# Replace the placeholder Hyperdrive ID in wrangler.json before remote deploy.
+# CINAAUTH_D1_MIGRATION_TOKEN is deliberately omitted: generate it only for the
+# maintenance cutover, write it through Wrangler stdin, then remove it.
+
+# Optional plugin settings. Uncomment only the integrations you are testing.
+# OAUTH_PAIRWISE_SECRET=replace-with-a-pairwise-secret-at-least-32-characters
+# GENERIC_OAUTH_CONFIG=[]
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# GITHUB_CLIENT_ID=
+# GITHUB_CLIENT_SECRET=
+# CLOUDFLARE_TURNSTILE_SITE_KEY=
+# CLOUDFLARE_TURNSTILE_SECRET_KEY=
+# STRIPE_SECRET_KEY=
+# STRIPE_WEBHOOK_SECRET=
+# STRIPE_DEFAULT_PRICE_ID=
+# STRIPE_DEFAULT_PLAN_NAME=pro
+# Billing stays disabled unless the complete versioned entitlement policy is set.
+# This one-line example is illustrative only; approve the production catalog first.
+# CINAAUTH_ENTITLEMENT_CONFIG={"version":1,"defaultPlan":"pro","plans":{"pro":{"features":{"sso":true,"scim":true,"organizationAudit":true,"teams":true,"dynamicRoles":true,"oauthClients":true,"apiKeys":true},"limits":{"organizationMembers":null,"teams":null,"teamMembers":null,"dynamicRoles":null,"oauthClients":null,"apiKeys":null,"auditRetentionDays":null}}}}
+# CINAUTH_ADMIN_SERVICE_KEY=

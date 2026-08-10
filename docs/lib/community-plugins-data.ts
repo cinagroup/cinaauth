@@ -1,4 +1,4 @@
-﻿export interface CommunityPlugin {
+export interface CommunityPlugin {
 	name: string;
 	url: string;
 	description: string;
@@ -292,9 +292,19 @@ export const communityPlugins: CommunityPlugin[] = [
 		},
 	},
 	{
+		name: "@marinedotsh/better-auth-referral",
+		url: "https://github.com/marinedotsh/better-auth-referral",
+		description: "A CinaAuth plugin for adding user referrals to your app.",
+		author: {
+			name: "Shivam Gupta",
+			github: "shivamrun",
+			avatar: "https://github.com/shivamrun.png",
+		},
+	},
+	{
 		name: "better-auth-instagram",
 		url: "https://github.com/rajatsandeepsen/better-auth-instagram",
-		description: "Instagram Provider for Better Auth",
+		description: "Instagram Provider for CinaAuth",
 		author: {
 			name: "Rajat Sandeep",
 			github: "rajatsandeepsen",
@@ -304,7 +314,7 @@ export const communityPlugins: CommunityPlugin[] = [
 	{
 		name: "better-auth-zoho",
 		url: "https://github.com/rajatsandeepsen/better-auth-zoho",
-		description: "Zoho Provider for Better Auth",
+		description: "Zoho Provider for CinaAuth",
 		author: {
 			name: "Rajat Sandeep",
 			github: "rajatsandeepsen",
@@ -314,7 +324,7 @@ export const communityPlugins: CommunityPlugin[] = [
 	{
 		name: "better-auth-snapchat",
 		url: "https://github.com/rajatsandeepsen/better-auth-snapchat",
-		description: "Snapchat Provider for Better Auth",
+		description: "Snapchat Provider for CinaAuth",
 		author: {
 			name: "Rajat Sandeep",
 			github: "rajatsandeepsen",
@@ -325,7 +335,7 @@ export const communityPlugins: CommunityPlugin[] = [
 		name: "better-inbox",
 		url: "https://github.com/better-inbox/better-inbox",
 		description:
-			"In-app notifications for Better Auth apps. One plugin, one migration, one component — notifications live in your database, addressed to your users.",
+			"In-app notifications for CinaAuth apps. One plugin, one migration, one component — notifications live in your database, addressed to your users.",
 		author: {
 			name: "stewartjarod",
 			github: "stewartjarod",

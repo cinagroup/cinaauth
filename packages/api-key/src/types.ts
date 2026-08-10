@@ -47,6 +47,21 @@ export interface ApiKeyConfigurationOptions {
 		  }) => Awaitable<boolean>)
 		| undefined;
 	/**
+	 * Authorizes the resource represented by an otherwise valid API key.
+	 *
+	 * This callback runs after key lookup, built-in state checks, and permission
+	 * checks, but before quota or rate-limit state is consumed. Return `false`
+	 * to reject the key without mutating its usage state.
+	 */
+	authorizeReference?:
+		| ((options: {
+				ctx: GenericEndpointContext;
+				apiKeyId: string;
+				configId: string;
+				referenceId: string;
+		  }) => Awaitable<boolean>)
+		| undefined;
+	/**
 	 * custom key generation function
 	 */
 	customKeyGenerator?: (options: {

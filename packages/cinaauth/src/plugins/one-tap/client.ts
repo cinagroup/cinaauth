@@ -1,6 +1,12 @@
 /// <reference types="@types/google.accounts" />
-import type { CinaAuthClientPlugin, ClientFetchOption } from "@cinaauth/core";
+import type {
+	CinaAuthClientOptions,
+	CinaAuthClientPlugin,
+	ClientFetchOption,
+	ClientStore,
+} from "@cinaauth/core";
 import { isSafeUrlScheme } from "@cinaauth/core/utils/url";
+import type { BetterFetch } from "@better-fetch/fetch";
 import { PACKAGE_VERSION } from "../../version";
 
 declare global {
@@ -209,7 +215,11 @@ export const oneTapClient = (options: GoogleOneTapOptions) => {
 				},
 			},
 		],
-		getActions: ($fetch, _) => {
+		getActions: (
+			$fetch: BetterFetch,
+			_$store: ClientStore,
+			_options: CinaAuthClientOptions | undefined,
+		) => {
 			return {
 				oneTap: async (
 					opts?: GoogleOneTapActionOptions | undefined,

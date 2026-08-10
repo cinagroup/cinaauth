@@ -129,7 +129,7 @@ Follow [rfc8628#section-3.2](https://datatracker.ietf.org/doc/html/rfc8628#secti
 		},
 		async (ctx) => {
 			if (opts.validateClient) {
-				const isValid = await opts.validateClient(ctx.body.client_id);
+				const isValid = await opts.validateClient(ctx.body.client_id, ctx);
 				if (!isValid) {
 					throw new APIError("BAD_REQUEST", {
 						error: "invalid_client",
@@ -282,7 +282,7 @@ Follow [rfc8628#section-3.4](https://datatracker.ietf.org/doc/html/rfc8628#secti
 			const { device_code, client_id } = ctx.body;
 
 			if (opts.validateClient) {
-				const isValid = await opts.validateClient(client_id);
+				const isValid = await opts.validateClient(client_id, ctx);
 				if (!isValid) {
 					throw new APIError("BAD_REQUEST", {
 						error: "invalid_grant",

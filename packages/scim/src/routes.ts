@@ -6,7 +6,12 @@ import type {
 	User,
 } from "cinaauth";
 import { HIDE_METADATA } from "cinaauth";
-import { APIError, createAuthEndpoint, sessionMiddleware } from "cinaauth/api";
+import {
+	APIError,
+	createAuthEndpoint,
+	isAPIError,
+	sessionMiddleware,
+} from "cinaauth/api";
 import { generateRandomString } from "cinaauth/crypto";
 import type { Member } from "cinaauth/plugins";
 import { getOrgAdapter } from "cinaauth/plugins";
@@ -166,6 +171,7 @@ async function findOrganizationMember(
  */
 async function canLinkExistingUser(
 	ctx: GenericEndpointContext,
+	provider: Pick<SCIMProvider, "providerId" | "organizationId">,
 	opts: SCIMOptions,
 	existingUser: User,
 	email: string,
@@ -174,7 +180,7 @@ async function canLinkExistingUser(
 	if (!policy) return false;
 	if (policy === true) return true;
 
-	const { organizationId, providerId } = ctx.context.scimProvider;
+	const { organizationId, providerId } = provider;
 
 	// An empty policy object must not silently allow linking — require at least
 	// one positive constraint to be configured.
@@ -798,26 +804,73 @@ export const createSCIMUser = (
 			const createOrgMembership = async (userId: string) => {
 				const organizationId = ctx.context.scimProvider.organizationId;
 
-				if (organizationId) {
-					const isOrgMember = await ctx.context.adapter.findOne({
-						model: "member",
-						where: [
-							{ field: "organizationId", value: organizationId },
-							{ field: "userId", value: userId },
-						],
-					});
+				if (!organizationId) return;
 
-					if (!isOrgMember) {
-						return await ctx.context.adapter.create<Member>({
-							model: "member",
-							data: {
-								userId: userId,
-								role: "member",
-								createdAt: new Date(),
+				const isOrgMember = await ctx.context.adapter.findOne({
+					model: "member",
+					where: [
+						{ field: "organizationId", value: organizationId },
+						{ field: "userId", value: userId },
+					],
+				});
+
+				if (!isOrgMember) {
+					return await ctx.context.adapter.create<Member>({
+						model: "member",
+						data: {
+							userId: userId,
+							role: "member",
+							createdAt: new Date(),
+							organizationId,
+						},
+					});
+				}
+			};
+
+			const withOrganizationMemberProvisioning = async <T>(
+				userId: string | undefined,
+				provision: () => Promise<T>,
+			) => {
+				const organizationId = ctx.context.scimProvider.organizationId;
+				if (!organizationId || !opts.withOrganizationMemberProvisioning) {
+					return provision();
+				}
+				const provider = ctx.context.scimProvider as typeof ctx.context.scimProvider & {
+					id?: unknown;
+				};
+
+				try {
+					return await opts.withOrganizationMemberProvisioning(
+						{
+							organizationId,
+							...(userId ? { userId } : {}),
+							provider: {
+								id:
+									typeof provider.id === "string"
+										? provider.id
+										: provider.providerId,
+								providerId: provider.providerId,
 								organizationId,
+								userId: provider.userId,
 							},
+						},
+						provision,
+					);
+				} catch (error) {
+					if (isAPIError(error)) {
+						const code =
+							typeof error.body?.code === "string"
+								? error.body.code
+								: undefined;
+						throw new SCIMAPIError(error.status, {
+							detail:
+								typeof error.body?.message === "string"
+									? error.body.message
+									: error.message,
+							...(code ? { code } : {}),
 						});
 					}
+					throw error;
 				}
 			};
 
@@ -830,6 +883,7 @@ export const createSCIMUser = (
 				// Require an explicit, configured policy to allow it.
 				const allowLink = await canLinkExistingUser(
 					ctx,
+					ctx.context.scimProvider,
 					opts,
 					existingUser,
 					email,
@@ -841,20 +895,24 @@ export const createSCIMUser = (
 					});
 				}
 				user = existingUser;
-				account = await ctx.context.adapter.transaction<Account>(async () => {
-					const account = await createAccount(user.id);
-					await createOrgMembership(user.id);
-					return account;
-				});
+				account = await withOrganizationMemberProvisioning(user.id, () =>
+					ctx.context.adapter.transaction<Account>(async () => {
+						const account = await createAccount(user.id);
+						await createOrgMembership(user.id);
+						return account;
+					}),
+				);
 			} else {
-				[user, account] = await ctx.context.adapter.transaction<
-					[User, Account]
-				>(async () => {
-					const user = await createUser();
-					const account = await createAccount(user.id);
-					await createOrgMembership(user.id);
-					return [user, account];
-				});
+				[user, account] = await withOrganizationMemberProvisioning(
+					undefined,
+					() =>
+						ctx.context.adapter.transaction<[User, Account]>(async () => {
+							const user = await createUser();
+							const account = await createAccount(user.id);
+							await createOrgMembership(user.id);
+							return [user, account];
+						}),
+				);
 			}
 
 			if (body.active === false) {

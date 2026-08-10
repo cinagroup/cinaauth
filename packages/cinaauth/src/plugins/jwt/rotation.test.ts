@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { decodeProtectedHeader } from "jose";
 import { getTestInstance } from "../../test-utils/test-instance";
 import { jwt } from ".";
 import type { Jwk } from "./types";
@@ -100,8 +101,75 @@ describe("jwt rotation", async () => {
 
 		const jwksAfterGrace = await auth.api.getJwks();
 		expect(jwksAfterGrace.keys.length).toBe(1); // First key should be gone
-		expect(jwksAfterGrace.keys[0]?.kid).toBe(storage[1]!.id);
+		expect(jwksAfterGrace.keys[0]?.kid).toBe(storage.at(-1)!.id);
 
 		vi.useRealTimers();
+	});
+
+	it("should rotate immediately when the configured algorithm changes", async () => {
+		vi.useFakeTimers();
+		const storage: Jwk[] = [];
+		const adapter = {
+			getJwks: async () => storage,
+			createJwk: async (data: Omit<Jwk, "id">) => {
+				const key = { ...data, id: crypto.randomUUID() };
+				storage.push(key);
+				return key;
+			},
+			expireJwk: async (id: string, expiresAt: Date) => {
+				const key = storage.find((candidate) => candidate.id === id);
+				if (!key) return null;
+				key.expiresAt = expiresAt;
+				return key;
+			},
+		};
+		const first = await getTestInstance({
+			plugins: [
+				jwt({
+					jwks: { disablePrivateKeyEncryption: true },
+					adapter,
+				}),
+			],
+		});
+		const previousToken = await first.auth.api.signJWT({
+			body: { payload: { sub: "user1" } },
+		});
+		expect(storage).toHaveLength(1);
+		expect(storage[0]?.alg).toBe("EdDSA");
+
+		const second = await getTestInstance({
+			plugins: [
+				jwt({
+					jwks: {
+						keyPairConfig: { alg: "ES256" },
+						disablePrivateKeyEncryption: true,
+						gracePeriod: 30,
+					},
+					adapter,
+				}),
+			],
+		});
+		const token = await second.auth.api.signJWT({
+			body: { payload: { sub: "user1" } },
+		});
+		expect(decodeProtectedHeader(token.token).alg).toBe("ES256");
+		expect(storage).toHaveLength(2);
+		expect(storage[0]?.expiresAt).toBeInstanceOf(Date);
+		expect(
+			(
+				await second.auth.api.verifyJWT({
+					body: { token: previousToken.token },
+				})
+			).payload?.sub,
+		).toBe("user1");
+		expect((await second.auth.api.getJwks()).keys.map((key) => key.alg)).toEqual([
+			"EdDSA",
+			"ES256",
+		]);
+
+		vi.advanceTimersByTime(30_001);
+		expect((await second.auth.api.getJwks()).keys.map((key) => key.alg)).toEqual([
+			"ES256",
+		]);
 	});
 });

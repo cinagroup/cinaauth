@@ -450,7 +450,7 @@ export async function getConfig({
 					);
 				}
 				console.error(
-					`[#better-auth]: Couldn't read your auth config in ${resolvedPath}. Make sure to default export your auth instance or to export as a variable named auth.`,
+					`[#cinaauth]: Couldn't read your auth config in ${resolvedPath}. Make sure to default export your auth instance or to export as a variable named auth.`,
 				);
 				process.exit(1);
 			}
@@ -485,10 +485,10 @@ export async function getConfig({
 									"Couldn't read your auth config. Make sure to default export your auth instance or to export as a variable named auth.",
 								);
 							}
-							console.error("[#better-auth]: Couldn't read your auth config.");
+							console.error("[#cinaauth]: Couldn't read your auth config.");
 							console.log("");
 							console.log(
-								"[#better-auth]: Make sure to default export your auth instance or to export as a variable named auth.",
+								"[#cinaauth]: Make sure to default export your auth instance or to export as a variable named auth.",
 							);
 							process.exit(1);
 						}
@@ -517,7 +517,7 @@ export async function getConfig({
 					if (shouldThrowOnError) {
 						throw e;
 					}
-					console.error("[#better-auth]: Couldn't read your auth config.", e);
+					console.error("[#cinaauth]: Couldn't read your auth config.", e);
 					process.exit(1);
 				}
 			}

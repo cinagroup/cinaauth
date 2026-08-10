@@ -1,5 +1,5 @@
 ---
-title: "Better Auth 1.7 RC"
+title: "CinaAuth 1.7 RC"
 description: "OAuth and OpenID Connect fixes, protected resources, DPoP, MCP package migration, SAML and SCIM updates, safer defaults, and more."
 date: 2026-06-26
 author:
@@ -8,15 +8,15 @@ author:
 tags: ["1.7", "OAuth", "OpenID Connect", "MCP", "SAML", "SCIM", "security"]
 ---
 
-# Better Auth 1.7 RC
+# CinaAuth 1.7 RC
 
-We've put a lot into Better Auth 1.7. It's a big release, and some of it means migration work. We wanted to support a wider range of login flows, make the system more robust, and ship security fixes that needed structural changes.
+We've put a lot into CinaAuth 1.7. It's a big release, and some of it means migration work. We wanted to support a wider range of login flows, make the system more robust, and ship security fixes that needed structural changes.
 
 Here's what this release brings.
 
-**Your app can be the login provider for other apps.** If other apps sign in through your app, Better Auth now handles more OAuth and OpenID Connect rules. This includes DPoP tokens, single sign-out, forced re-login, per-API token rules, and safer token checks.
+**Your app can be the login provider for other apps.** If other apps sign in through your app, CinaAuth now handles more OAuth and OpenID Connect rules. This includes DPoP tokens, single sign-out, forced re-login, per-API token rules, and safer token checks.
 
-**More login providers work.** Better Auth now supports login setups that did not work well before: Amazon Cognito, Microsoft Entra ID with certificate login, standard OpenID providers, and school-login providers like Clever.
+**More login providers work.** CinaAuth now supports login setups that did not work well before: Amazon Cognito, Microsoft Entra ID with certificate login, standard OpenID providers, and school-login providers like Clever.
 
 **More secure by default.** We hardened flows that were previously unsafe. As security keeps moving to the foreground, we would rather disclose a security gap and fix it quickly than keep it in place for backward compatibility.
 
@@ -26,7 +26,7 @@ Here's what this release brings.
 
 <HeaderLabel variant="warning">Breaking</HeaderLabel>
 
-### Better Auth as an identity provider
+### CinaAuth as an identity provider
 
 This is the biggest area of the release. The OAuth provider grows from "it issues tokens" into a standards-based authorization server that other apps can sign in through.
 
@@ -49,7 +49,7 @@ The old `oidcProvider` plugin, deprecated in 1.6, is removed. Move OpenID provid
 
 ### Connecting to more identity providers
 
-The other half of the OAuth work is about Better Auth as the app receiving a login.
+The other half of the OAuth work is about CinaAuth as the app receiving a login.
 
 * **Generic OAuth is rebuilt** on the same path as built-in social providers, with PKCE on by default and automatic issuer validation through discovery. The API you call and the callback URL both change.
 * **Identity tokens are verified consistently** against a provider's published keys, including for mobile and single-page apps. Custom providers move from a `verifyIdToken` method to an `idToken` config.
@@ -114,7 +114,7 @@ These setups were impossible, broken, or unsafe before, and work now.
 
 ### Drizzle Relations v2
 
-Drizzle ORM v1 is now in release candidate, bringing its new relations API. Better Auth supports it through a new adapter entry point, so the generated auth relations slot in alongside your app's own relations.
+Drizzle ORM v1 is now in release candidate, bringing its new relations API. CinaAuth supports it through a new adapter entry point, so the generated auth relations slot in alongside your app's own relations.
 
 ```ts title="auth.ts"
 import { CinaAuth } from "cinaauth/minimal";
@@ -133,7 +133,7 @@ export const auth = CinaAuth({
 
 ### Built-in i18n for 22 languages
 
-`@cinaauth/i18n` ships built-in translations for 22 languages, and the English fallback is fixed. Drop it in to localize Better Auth's user-facing messages without maintaining your own translation table.
+`@cinaauth/i18n` ships built-in translations for 22 languages, and the English fallback is fixed. Drop it in to localize CinaAuth's user-facing messages without maintaining your own translation table.
 
 ***
 
@@ -236,7 +236,7 @@ export const auth = CinaAuth({
 | Change                                     | Replacement                          |
 | ------------------------------------------ | ------------------------------------ |
 | `oidcProvider` plugin removed              | Use `@cinaauth/oauth-provider`.      |
-| MCP plugin path moved out of `better-auth` | Use `@cinaauth/mcp`.                 |
+| MCP plugin path moved out of `cinaauth` | Use `@cinaauth/mcp`.                 |
 | Generic OAuth client APIs changed          | Use the standard social client APIs. |
 
 ***
@@ -248,14 +248,14 @@ Because this release carries large changes, we're shipping it as a release candi
 Install it from the `rc` tag, and do the same for any `@cinaauth/*` packages you use:
 
 ```package-install
-better-auth@rc
+cinaauth@rc
 ```
 
 Then run `npx auth@rc generate` for any schema changes; the unscoped `npx auth` still resolves the 1.6 CLI until 1.7 is stable. The table below shows whether these changes affect you. For the detailed migration guide, see the [1.7 upgrade guide](/docs/guides/1-7-upgrade-guide).
 
 | If you use                                     | What to expect                                                                                       |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Basic Better Auth setup                        | Usually just the `@rc` install and any generated schema changes                                      |
+| Basic CinaAuth setup                        | Usually just the `@rc` install and any generated schema changes                                      |
 | Social login, generic OAuth, One Tap, or SSO   | New login-client behavior, especially generic OAuth, identity-token verification, and Google One Tap |
 | `@cinaauth/oauth-provider`                     | The largest set of changes: resources, DPoP, back-channel logout, `max_age`, and safer OAuth checks  |
 | MCP                                            | A package move to `@cinaauth/mcp`, new imports, new endpoint paths, and a schema migration           |
@@ -268,7 +268,7 @@ Then run `npx auth@rc generate` for any schema changes; the unscoped `npx auth` 
 
 ## What's next?
 
-We're planning Better Auth 1.7 as the last feature release on the v1 line. Once it is stable, v1 moves into maintenance, where security, bug, and compatibility fixes continue while our focus shifts to v2. v1 stays maintained and remains a solid base to build on. v2 is our chance to improve the foundation. We're making it more modular and focused. More soon.
+We're planning CinaAuth 1.7 as the last feature release on the v1 line. Once it is stable, v1 moves into maintenance, where security, bug, and compatibility fixes continue while our focus shifts to v2. v1 stays maintained and remains a solid base to build on. v2 is our chance to improve the foundation. We're making it more modular and focused. More soon.
 
 ***
 

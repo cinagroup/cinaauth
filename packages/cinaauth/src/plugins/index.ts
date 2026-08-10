@@ -24,6 +24,7 @@ export * from "./one-time-token";
 export * from "./open-api";
 export * from "./organization";
 export * from "./phone-number";
+export * from "./privacy-center";
 export * from "./siwe";
 export * from "./test-utils";
 export * from "./two-factor";

@@ -7,6 +7,27 @@ import type { SCIMOptions, SCIMProvider } from "./types";
 
 export type AuthMiddleware = ReturnType<typeof authMiddlewareFactory>;
 
+const authorizeProvider = async (
+	opts: SCIMOptions,
+	provider: SCIMProvider | Omit<SCIMProvider, "id">,
+) => {
+	if (
+		opts.authorizeProvider &&
+		!(await opts.authorizeProvider({
+			provider: {
+				id: "id" in provider ? provider.id : provider.providerId,
+				providerId: provider.providerId,
+				organizationId: provider.organizationId,
+				userId: provider.userId,
+			},
+		}))
+	) {
+		throw new SCIMAPIError("FORBIDDEN", {
+			detail: "SCIM provider access is disabled",
+		});
+	}
+};
+
 /**
  * The middleware forces the endpoint to have a valid token
  */
@@ -49,6 +70,7 @@ export const authMiddlewareFactory = (opts: SCIMOptions) =>
 
 		if (scimProvider) {
 			if (constantTimeEqual(scimProvider.scimToken, scimToken)) {
+				await authorizeProvider(opts, scimProvider);
 				return { authSCIMToken: scimProvider.scimToken, scimProvider };
 			} else {
 				throw new SCIMAPIError("UNAUTHORIZED", {
@@ -85,6 +107,8 @@ export const authMiddlewareFactory = (opts: SCIMOptions) =>
 				detail: "Invalid SCIM token",
 			});
 		}
+
+		await authorizeProvider(opts, scimProvider);
 
 		return { authSCIMToken: scimToken, scimProvider };
 	});

@@ -44,7 +44,7 @@ export async function handleOAuthUserInfo(
 		)
 		.catch((e) => {
 			c.context.logger.error(
-				"Better auth was unable to query your database.\nError: ",
+				"CinaAuth was unable to query your database.\nError: ",
 				e,
 			);
 			const errorURL =
@@ -80,7 +80,7 @@ export async function handleOAuthUserInfo(
 			) {
 				if (isDevelopment()) {
 					c.context.logger.warn(
-						`User already exist but account isn't linked to ${account.providerId}. To read more about how account linking works in Better Auth see https://www.better-auth.com/docs/concepts/users-accounts#account-linking.`,
+						`User already exist but account isn't linked to ${account.providerId}. To read more about how account linking works in CinaAuth see https://cinagroup.com/docs/concepts/users-accounts#account-linking.`,
 					);
 				}
 				return {

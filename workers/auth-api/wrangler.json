@@ -1,0 +1,103 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cinaauth-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "minify": true,
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+  "version_metadata": {
+    "binding": "VERSION_METADATA"
+  },
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "374f6da17aff4c968cadd8d6aa454c22"
+    }
+  ],
+  "services": [
+    {
+      "binding": "CINAAUTH_DELIVERY_SERVICE",
+      "service": "cinaauth-delivery"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "LEGACY_D1",
+      "database_name": "cinaauth-db",
+      "database_id": "b5063da6-673d-41e3-93c7-e63b089aaf28"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "CINAAUTH_PRIVACY_EXPORTS",
+      "bucket_name": "cinaauth-privacy-exports"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RATE_LIMITER",
+        "class_name": "RateLimitDurableObject"
+      }
+    ]
+  },
+  "exports": {
+    "RateLimitDurableObject": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
+  "vars": {
+    "CINAAUTH_URL": "https://auth.cinaseek.ai",
+    "CINAAUTH_CUTOVER_STATE": "live"
+  },
+  "queues": {
+    "producers": [
+      {
+        "queue": "cinaauth-delivery",
+        "binding": "CINAAUTH_DELIVERY_QUEUE"
+      },
+      {
+        "queue": "cinaauth-privacy-export",
+        "binding": "CINAAUTH_PRIVACY_EXPORT_QUEUE"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "cinaauth-delivery",
+        "max_batch_size": 10,
+        "max_batch_timeout": 1,
+        "max_concurrency": 5,
+        "max_retries": 5,
+        "retry_delay": 30,
+        "visibility_timeout_ms": 60000,
+        "dead_letter_queue": "cinaauth-delivery-dlq"
+      },
+      {
+        "queue": "cinaauth-privacy-export",
+        "max_batch_size": 2,
+        "max_batch_timeout": 1,
+        "max_concurrency": 2,
+        "max_retries": 4,
+        "retry_delay": 30,
+        "visibility_timeout_ms": 300000,
+        "dead_letter_queue": "cinaauth-privacy-export-dlq"
+      }
+    ]
+  },
+  "routes": [
+    {
+      "pattern": "auth.cinaseek.ai",
+      "custom_domain": true
+    }
+  ]
+}

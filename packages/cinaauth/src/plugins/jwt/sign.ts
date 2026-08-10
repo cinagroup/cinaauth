@@ -3,9 +3,8 @@ import { CinaAuthError } from "@cinaauth/core/error";
 import type { JWTPayload } from "jose";
 import { importJWK, SignJWT } from "jose";
 import { symmetricDecrypt } from "../../crypto";
-import { getJwksAdapter } from "./adapter";
 import type { JwtOptions } from "./types";
-import { createJwk, toExpJWT } from "./utils";
+import { getJwkAlgorithm, getOrCreateCurrentJwk, toExpJWT } from "./utils";
 
 type JWTPayloadWithOptional = {
 	/**
@@ -113,11 +112,7 @@ export async function signJWT(
 		return options.jwt.sign(jwtPayload);
 	}
 
-	const adapter = getJwksAdapter(ctx.context.adapter, options);
-	let key = await adapter.getLatestKey(ctx);
-	if (!key || (key.expiresAt && key.expiresAt < new Date())) {
-		key = await createJwk(ctx, options);
-	}
+	const key = await getOrCreateCurrentJwk(ctx, options);
 	const privateKeyEncryptionEnabled =
 		!options?.jwks?.disablePrivateKeyEncryption;
 
@@ -131,7 +126,8 @@ export async function signJWT(
 				);
 			})
 		: key.privateKey;
-	const alg = key.alg ?? options?.jwks?.keyPairConfig?.alg ?? "EdDSA";
+	const alg =
+		getJwkAlgorithm(key) ?? options?.jwks?.keyPairConfig?.alg ?? "EdDSA";
 	const privateKey = await importJWK(JSON.parse(privateWebKey), alg);
 
 	const jwt = new SignJWT(payload)

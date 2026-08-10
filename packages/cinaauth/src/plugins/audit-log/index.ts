@@ -6,9 +6,16 @@ import { PACKAGE_VERSION } from "../../version";
 import {
 	extractActorFromCtx,
 	matchCapturePath,
+	resolveOrganizationAuditTarget,
 	writeAuditLog,
 } from "./capture";
-import { auditAlerts, exportAudit, listAudit, logAudit } from "./routes";
+import {
+	auditAlerts,
+	exportAudit,
+	listAudit,
+	listOrganizationAudit,
+	logAudit,
+} from "./routes";
 import { schema } from "./schema";
 import type { AuditLogPluginOptions } from "./types";
 
@@ -22,12 +29,19 @@ declare module "@cinaauth/core" {
 
 export const auditLog = (options?: AuditLogPluginOptions) => {
 	type ResolvedOptions = Required<
-		Pick<AuditLogPluginOptions, "allowedRoles" | "writeTokens">
+		Pick<
+			AuditLogPluginOptions,
+			"allowedRoles" | "organizationAllowedRoles" | "writeTokens"
+		>
 	> &
 		Pick<AuditLogPluginOptions, "schema">;
 	const opts: ResolvedOptions = {
 		...(options ?? {}),
 		allowedRoles: options?.allowedRoles ?? ["admin"],
+		organizationAllowedRoles: options?.organizationAllowedRoles ?? [
+			"owner",
+			"admin",
+		],
 		writeTokens: options?.writeTokens ?? [],
 	};
 
@@ -56,20 +70,27 @@ export const auditLog = (options?: AuditLogPluginOptions) => {
 						const ok = response !== null;
 						const actor = extractActorFromCtx(ctx);
 
-						// For wallet binds, populate targetId (the bound user) and
-						// metadata.address/chainId so list-user-wallets can enrich
-						// each wallet with its binding IP/site. The siwe /verify
-						// response carries {user.id, walletAddress, chainId}.
+						// SIWE mutations expose the same minimal target metadata so bind
+						// history can enrich admin views and lifecycle events remain
+						// attributable without storing signed messages or signatures.
 						let targetType: string | null = null;
 						let targetId: string | null = null;
 						let metadata: Record<string, unknown> | null = null;
-						if (mapped.action === "siwe.bind" && response) {
+						if (mapped.action.startsWith("siwe.") && response) {
 							targetType = "wallet";
 							targetId = response.user?.id ?? actor.actorId ?? null;
 							metadata = {
 								address: response.walletAddress ?? null,
 								chainId: response.chainId ?? null,
 							};
+						}
+						if (mapped.category === "org") {
+							targetId = resolveOrganizationAuditTarget(
+								ctx,
+								response,
+								mapped.action,
+							);
+							targetType = targetId ? "organization" : null;
 						}
 
 						await writeAuditLog(ctx, {
@@ -88,6 +109,7 @@ export const auditLog = (options?: AuditLogPluginOptions) => {
 		},
 		endpoints: {
 			listAudit: listAudit(opts),
+			listOrganizationAudit: listOrganizationAudit(opts),
 			logAudit: logAudit(opts),
 			exportAudit: exportAudit(opts),
 			auditAlerts: auditAlerts(opts),

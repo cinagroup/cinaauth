@@ -220,9 +220,11 @@ state.txt
 
 # Cloudflare / wrangler local runtime + build artifacts (never commit)
 .wrangler/
+.wrangler-direct-dist/
 .open-next/
 
 # Local design notes
 DESIGN.md
 
 .zcode/
+test-plugins.sh

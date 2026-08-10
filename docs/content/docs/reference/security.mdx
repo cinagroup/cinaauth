@@ -162,7 +162,7 @@ You can configure the IP address header in your CinaAuth configuration:
 
 This ensures that CinaAuth only accepts IP addresses from your trusted proxy's header, making it more difficult for attackers to bypass rate limiting or other IP-based security measures by spoofing headers.
 
-Behind a proxy chain, list your proxies in `trustedProxies` so Better Auth
+Behind a proxy chain, list your proxies in `trustedProxies` so CinaAuth
 resolves the real client instead of the spoofable leftmost `X-Forwarded-For`
 token:
 
@@ -300,7 +300,7 @@ You can also dynamically set the list of trusted origins by providing a function
 
 ## Outbound OAuth Requests
 
-During sign-in, Better Auth makes server-side requests to OAuth and OIDC provider endpoints: the token exchange, token refresh, token introspection, and key-set (JWKS) requests. These requests do not follow HTTP redirects. A conformant provider answers these endpoints with a direct response and never redirects, so standard integrations are unaffected. Refusing redirects keeps a provider endpoint from steering a server-side request to an unintended internal address.
+During sign-in, CinaAuth makes server-side requests to OAuth and OIDC provider endpoints: the token exchange, token refresh, token introspection, and key-set (JWKS) requests. These requests do not follow HTTP redirects. A conformant provider answers these endpoints with a direct response and never redirects, so standard integrations are unaffected. Refusing redirects keeps a provider endpoint from steering a server-side request to an unintended internal address.
 
 ## Email Enumeration Protection
 
@@ -310,4 +310,4 @@ See [Email and Password — Email Enumeration Protection](/docs/authentication/e
 
 ## Reporting Vulnerabilities
 
-If you discover a security vulnerability in CinaAuth, please report it to us at [security@cinagroup.com](mailto:security@cinagroup.com). We address all reports promptly, and credits will be given for validated discoveries.
+If you discover a security vulnerability in CinaAuth, please report it via [GitHub Security Advisories](https://github.com/cinagroup/cinaauth/security/advisories/new). We address all reports promptly, and credits will be given for validated discoveries.

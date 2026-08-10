@@ -781,7 +781,7 @@ describe("SCIM", () => {
 				headers: { authorization: `Bearer ${scimToken}` },
 			});
 
-			// The global Better Auth user must NOT be deleted by an org-scoped token.
+			// The global CinaAuth user must NOT be deleted by an org-scoped token.
 			const userAfter = await ctx.adapter.findOne({
 				model: "user",
 				where: [{ field: "id", value: created.id }],

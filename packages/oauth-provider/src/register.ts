@@ -103,6 +103,26 @@ export async function checkOAuthClient(
 		}
 	}
 
+	const browserRedirects = [
+		...(client.redirect_uris ?? []),
+		...(client.post_logout_redirect_uris ?? []),
+	];
+	if (
+		(!isPublic ||
+			client.type === "web" ||
+			client.type === "user-agent-based") &&
+		browserRedirects.some((uri) => {
+			const protocol = new URL(uri).protocol;
+			return protocol !== "https:" && protocol !== "http:";
+		})
+	) {
+		throw new APIError("BAD_REQUEST", {
+			error: "invalid_redirect_uri",
+			error_description:
+				"A web client redirect URI must use HTTPS, except for an HTTP loopback development callback.",
+		});
+	}
+
 	// Validate redirect URIs for redirect-based flows
 	if (
 		(!client.grant_types ||

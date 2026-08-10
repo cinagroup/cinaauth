@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/mongo-adapter",
-  "version": "1.6.23",
+  "version": "1.6.26",
   "description": "Mongo adapter for CinaAuth",
   "type": "module",
   "license": "MIT",

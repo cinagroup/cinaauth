@@ -147,7 +147,7 @@ await authClient.signIn.social({
 
 ### Restrict Sign-In to Google Workspace
 
-Set `hd` on the Google provider to require a verified Google Workspace hosted-domain claim. Google also receives this value as an account-selection hint, but Better Auth enforces the returned ID token/profile claim after Google signs the response.
+Set `hd` on the Google provider to require a verified Google Workspace hosted-domain claim. Google also receives this value as an account-selection hint, but CinaAuth enforces the returned ID token/profile claim after Google signs the response.
 
 ```ts title="auth.ts"
 socialProviders: {
@@ -160,6 +160,14 @@ socialProviders: {
 ```
 
 Set `hd: "*"` to allow any Google Workspace hosted domain. Tokens with no `hd` claim are rejected whenever `hd` is configured.
+
+<Callout type="warn">
+  A custom `getUserInfo` callback replaces Google's built-in callback-path `hd`
+  check. Validate the claim from a trusted provider response and return `null`
+  when it is missing or does not match. Direct ID-token sign-in follows the
+  provider's ID-token verification path, while Google One Tap enforces the
+  configured `hd` separately.
+</Callout>
 
 ### Always ask to select an account
 

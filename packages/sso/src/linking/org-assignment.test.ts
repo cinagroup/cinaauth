@@ -4,7 +4,11 @@ import { memoryAdapter } from "cinaauth/adapters/memory";
 import { organization } from "cinaauth/plugins";
 import { describe, expect, it } from "vitest";
 import { sso } from "..";
-import { assignOrganizationByDomain } from "./org-assignment";
+import type { SSOOptions, SSOProvider } from "../types";
+import {
+	assignOrganizationByDomain,
+	assignOrganizationFromProvider,
+} from "./org-assignment";
 
 describe("assignOrganizationByDomain", () => {
 	const createTestContext = () => {
@@ -144,6 +148,71 @@ describe("assignOrganizationByDomain", () => {
 		expect(members).toHaveLength(1);
 		expect(members[0]?.organizationId).toBe(org.id);
 		expect(members[0]?.role).toBe("member");
+	});
+
+	it("wraps the domain membership check and insert in one provisioning operation", async () => {
+		const { data, createContext } = createTestContext();
+		const org = createOrg();
+		data.organization.push(org);
+		data.ssoProvider.push(
+			createProvider({ domainVerified: true, organizationId: org.id }),
+		);
+		const user = createUser();
+		data.user.push(user);
+		const observations: number[] = [];
+
+		const ctx = (await createContext()) as GenericEndpointContext;
+		await assignOrganizationByDomain(ctx, {
+			user,
+			domainVerification: { enabled: true },
+			provisioningOptions: {
+				withOrganizationMemberProvisioning: async (payload, provision) => {
+					expect(payload).toMatchObject({
+						organizationId: org.id,
+						userId: user.id,
+					});
+					observations.push(data.member.length);
+					const result = await provision();
+					observations.push(data.member.length);
+					return result;
+				},
+			},
+		});
+
+		expect(observations).toEqual([0, 1]);
+	});
+
+	it("does not insert a provider-linked membership when its wrapper denies provisioning", async () => {
+		const { data, createContext } = createTestContext();
+		const org = createOrg();
+		data.organization.push(org);
+		const user = createUser();
+		data.user.push(user);
+		const provider = {
+			...createProvider({ organizationId: org.id }),
+			organizationId: org.id,
+		} as SSOProvider<SSOOptions>;
+
+		const ctx = (await createContext()) as GenericEndpointContext;
+		await expect(
+			assignOrganizationFromProvider(ctx, {
+				user,
+				provider,
+				profile: {
+					providerType: "oidc",
+					providerId: provider.providerId,
+					accountId: user.id,
+					email: user.email,
+					emailVerified: true,
+				},
+				provisioningOptions: {
+					withOrganizationMemberProvisioning: async () => {
+						throw new Error("capacity denied");
+					},
+				},
+			}),
+		).rejects.toThrow("capacity denied");
+		expect(data.member).toHaveLength(0);
 	});
 
 	it("should assign user when a verified provider's normalized domain set includes the email domain", async () => {

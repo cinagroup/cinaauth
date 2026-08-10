@@ -78,6 +78,14 @@ export const SCIMErrorOpenAPISchemas = {
 			},
 		},
 	},
+	"409": {
+		description: "Conflict. The requested resource cannot be provisioned.",
+		content: {
+			"application/json": {
+				schema: SCIMErrorOpenAPISchema,
+			},
+		},
+	},
 	"429": {
 		description:
 			"Too Many Requests. You have exceeded the rate limit. Try again later.",
@@ -90,6 +98,14 @@ export const SCIMErrorOpenAPISchemas = {
 	"500": {
 		description:
 			"Internal Server Error. This is a problem with the server that you cannot fix.",
+		content: {
+			"application/json": {
+				schema: SCIMErrorOpenAPISchema,
+			},
+		},
+	},
+	"503": {
+		description: "Service Unavailable. Provisioning policy is unavailable.",
 		content: {
 			"application/json": {
 				schema: SCIMErrorOpenAPISchema,

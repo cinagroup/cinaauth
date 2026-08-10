@@ -10,7 +10,7 @@ import { getJwksAdapter } from "./adapter";
 import { schema } from "./schema";
 import { getJwtToken, signJWT } from "./sign";
 import type { JwtOptions } from "./types";
-import { createJwk } from "./utils";
+import { getJwkAlgorithm, getOrCreateCurrentJwk } from "./utils";
 import { verifyJWT as verifyJWTHelper } from "./verify";
 
 export { signJWT } from "./sign";
@@ -164,12 +164,8 @@ export const jwt = <O extends JwtOptions>(options?: O) => {
 
 					const adapter = getJwksAdapter(ctx.context.adapter, options);
 
-					let keySets = await adapter.getAllKeys(ctx);
-
-					if (!keySets || keySets?.length === 0) {
-						await createJwk(ctx, options);
-						keySets = await adapter.getAllKeys(ctx);
-					}
+					await getOrCreateCurrentJwk(ctx, options);
+					const keySets = await adapter.getAllKeys(ctx);
 
 					if (!keySets?.length) {
 						throw new CinaAuthError(
@@ -198,7 +194,10 @@ export const jwt = <O extends JwtOptions>(options?: O) => {
 					return ctx.json({
 						keys: keys.map((keySet) => {
 							return {
-								alg: keySet.alg ?? options?.jwks?.keyPairConfig?.alg ?? "EdDSA",
+								alg:
+									getJwkAlgorithm(keySet) ??
+									options?.jwks?.keyPairConfig?.alg ??
+									"EdDSA",
 								crv: keySet.crv ?? defaultCrv,
 								...JSON.parse(keySet.publicKey),
 								kid: keySet.id,

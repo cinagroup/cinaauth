@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/prisma-adapter",
-  "version": "1.6.23",
+  "version": "1.6.26",
   "description": "Prisma adapter for CinaAuth",
   "type": "module",
   "license": "MIT",

@@ -36,6 +36,6 @@ You could help continuing its development by:
 - [Suggest new features and report issues](https://github.com/cinagroup/cinaauth/issues)
 
 ## Security
-If you discover a security vulnerability within CinaAuth, please send an e-mail to [security@cinagroup.com](mailto:security@cinagroup.com).
+If you discover a security vulnerability within CinaAuth, please report it via [GitHub Security Advisories](https://github.com/cinagroup/cinaauth/security/advisories/new).
 
 All reports will be promptly addressed, and you'll be credited accordingly.

@@ -393,7 +393,7 @@ describe("cookie-utils stripSecureCookiePrefix", () => {
 });
 
 /**
- * @see https://github.com/cinaauth/better-call/issues/54
+ * @see https://github.com/cinagroup/cinaauth/better-call/issues/54
  * @see https://github.com/cinagroup/cinaauth/pull/8089
  */
 describe("cookie-utils setRequestCookie", () => {

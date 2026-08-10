@@ -130,6 +130,41 @@ if (data) {
   A SIWE signature proves control of the wallet, not ownership of the `email` you pass. The plugin stores that email unverified and only binds it to the new account when it is not already in use. When `anonymous` is `false` and the supplied email already belongs to another account, the new wallet account is created with a wallet-derived address instead, so a sign-in cannot attach an email another account owns.
 </Callout>
 
+### Manage Wallets for an Existing Account
+
+Do not use `siwe.verify` to attach a wallet while a user is already signed in.
+That endpoint is a login operation and can create or switch to the wallet owner.
+Use the authenticated wallet lifecycle instead:
+
+```ts
+// 1. Request a nonce and sign a standard ERC-4361 message in the wallet.
+const { data: nonce } = await authClient.siwe.nonce({
+  walletAddress,
+  chainId,
+});
+
+// 2. Link the proof to the current session's user.
+await authClient.siwe.linkWallet({
+  message,
+  signature,
+  walletAddress,
+  chainId,
+});
+
+const { data } = await authClient.siwe.listWallets();
+
+await authClient.siwe.setPrimaryWallet({ walletAddress, chainId });
+await authClient.siwe.unlinkWallet({ walletAddress, chainId });
+```
+
+`linkWallet`, `setPrimaryWallet`, and `unlinkWallet` require a fresh,
+authoritative session. The caller cannot supply a `userId`; the current session
+always determines ownership. Linking consumes the nonce once and verifies the
+same domain, address, Chain ID, time bounds, and signature as wallet login.
+Wallet and SIWE account rows change in one transaction. CinaAuth rejects
+cross-user wallet takeover and refuses to unlink the last available login
+method. Removing a primary wallet promotes the oldest remaining wallet.
+
 ### Chain-Specific Examples
 
 Here are examples for different blockchain networks:

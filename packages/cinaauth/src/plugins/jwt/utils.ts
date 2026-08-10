@@ -4,7 +4,39 @@ import { symmetricEncrypt } from "../../crypto";
 import type { TimeString } from "../../utils/time";
 import { sec } from "../../utils/time";
 import { getJwksAdapter } from "./adapter";
-import type { Jwk, JwtOptions } from "./types";
+import type { Jwk, JWSAlgorithms, JwtOptions } from "./types";
+
+const JWS_ALGORITHMS = new Set<JWSAlgorithms>([
+	"EdDSA",
+	"ES256",
+	"ES512",
+	"PS256",
+	"RS256",
+]);
+
+const isJwsAlgorithm = (value: unknown): value is JWSAlgorithms =>
+	typeof value === "string" && JWS_ALGORITHMS.has(value as JWSAlgorithms);
+
+/** Resolves a stored key's signing algorithm, including legacy rows without alg. */
+export const getJwkAlgorithm = (key: Jwk): JWSAlgorithms | undefined => {
+	if (isJwsAlgorithm(key.alg)) return key.alg;
+	try {
+		const publicKey = JSON.parse(key.publicKey) as Record<string, unknown>;
+		if (isJwsAlgorithm(publicKey.alg)) return publicKey.alg;
+		if (publicKey.kty === "OKP" && publicKey.crv === "Ed25519") {
+			return "EdDSA";
+		}
+		if (publicKey.kty === "EC" && publicKey.crv === "P-256") {
+			return "ES256";
+		}
+		if (publicKey.kty === "EC" && publicKey.crv === "P-521") {
+			return "ES512";
+		}
+	} catch {
+		return undefined;
+	}
+	return undefined;
+};
 
 /**
  * Converts an expirationTime to ISO seconds expiration time (the format of JWT exp)
@@ -40,7 +72,7 @@ export async function generateExportedKeyPair(
 		extractable: true,
 	});
 
-	const publicWebKey = await exportJWK(publicKey);
+	const publicWebKey = { ...(await exportJWK(publicKey)), alg };
 	const privateWebKey = await exportJWK(privateKey);
 
 	return { publicWebKey, privateWebKey, alg, cfg };
@@ -92,5 +124,38 @@ export async function createJwk(
 	const adapter = getJwksAdapter(ctx.context.adapter, options);
 	const key = await adapter.createJwk(ctx, jwk as Jwk);
 
+	return key;
+}
+
+/** Returns a usable key and rotates when the configured algorithm changes. */
+export async function getOrCreateCurrentJwk(
+	ctx: GenericEndpointContext,
+	options?: JwtOptions | undefined,
+) {
+	const adapter = getJwksAdapter(ctx.context.adapter, options);
+	const keys = (await adapter.getAllKeys(ctx)) ?? [];
+	const now = new Date();
+	const configuredAlgorithm = options?.jwks?.keyPairConfig?.alg;
+	if (configuredAlgorithm) {
+		const incompatibleKeys = keys.filter(
+			(key) =>
+				getJwkAlgorithm(key) !== configuredAlgorithm &&
+				(!key.expiresAt || key.expiresAt > now),
+		);
+		await Promise.all(
+			incompatibleKeys.map((key) => adapter.expireJwk(ctx, key.id, now)),
+		);
+	}
+	let key = keys
+		.filter(
+			(candidate) =>
+				configuredAlgorithm === undefined ||
+				getJwkAlgorithm(candidate) === configuredAlgorithm,
+		)
+		.slice()
+		.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+	if (!key || (key.expiresAt && key.expiresAt < now)) {
+		key = await createJwk(ctx, options);
+	}
 	return key;
 }

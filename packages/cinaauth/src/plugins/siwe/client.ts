@@ -10,6 +10,9 @@ export const siweClient = () => {
 		pathMethods: {
 			"/siwe/nonce": "POST",
 			"/siwe/get-nonce": "POST",
+			"/siwe/link-wallet": "POST",
+			"/siwe/set-primary-wallet": "POST",
+			"/siwe/unlink-wallet": "POST",
 		},
 	} satisfies CinaAuthClientPlugin;
 };

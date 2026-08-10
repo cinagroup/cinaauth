@@ -47,10 +47,22 @@ export {
 	SignatureAlgorithm,
 } from "./saml";
 
-import type { OIDCConfig, SAMLConfig, SSOOptions, SSOProvider } from "./types";
+import type {
+	OIDCConfig,
+	OrganizationProvisioningOptions,
+	SAMLConfig,
+	SSOOptions,
+	SSOProvider,
+} from "./types";
 import { PACKAGE_VERSION } from "./version";
 
-export type { SAMLConfig, OIDCConfig, SSOOptions, SSOProvider };
+export type {
+	OIDCConfig,
+	OrganizationProvisioningOptions,
+	SAMLConfig,
+	SSOOptions,
+	SSOProvider,
+};
 
 declare module "@cinaauth/core" {
 	interface CinaAuthPluginRegistry<AuthOptions, Options> {

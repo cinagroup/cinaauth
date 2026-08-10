@@ -395,7 +395,7 @@ export async function getMigrations(config: CinaAuthOptions) {
 		}
 		if (!(type in typeMap)) {
 			throw new Error(
-				`Unsupported field type '${String(type)}' for field '${fieldName}'. Allowed types are: string, number, boolean, date, string[], number[]. If you need to store structured data, store it as a JSON string (type: "string") or split it into primitive fields. See https://better-auth.com/docs/advanced/schema#additional-fields`,
+				`Unsupported field type '${String(type)}' for field '${fieldName}'. Allowed types are: string, number, boolean, date, string[], number[]. If you need to store structured data, store it as a JSON string (type: "string") or split it into primitive fields. See https://cinagroup.com/docs/advanced/schema#additional-fields`,
 			);
 		}
 		return typeMap[type][provider];
@@ -537,14 +537,12 @@ export async function getMigrations(config: CinaAuthOptions) {
 					return col;
 				});
 
-				if (field.index) {
+				if (field.index && !field.unique) {
 					const builder = db.schema
-						.createIndex(
-							`${table.table}_${fieldName}_${field.unique ? "uidx" : "idx"}`,
-						)
+						.createIndex(`${table.table}_${fieldName}_idx`)
 						.on(table.table)
 						.columns([fieldName]);
-					deferredIndexes.push(field.unique ? builder.unique() : builder);
+					deferredIndexes.push(builder);
 				}
 			}
 			migrations.push(dbT);

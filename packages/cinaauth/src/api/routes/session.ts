@@ -583,12 +583,10 @@ export const getSessionFromCtx = async <
 			if (lowerKey === "cache-control" || lowerKey === "pragma") {
 				return;
 			}
-			if (!ctx.context.responseHeaders) {
-				ctx.context.responseHeaders = new Headers({ [key]: value });
-			} else if (lowerKey === "set-cookie") {
-				ctx.context.responseHeaders.append(key, value);
+			if (lowerKey === "set-cookie") {
+				ctx.responseHeaders.append(key, value);
 			} else {
-				ctx.context.responseHeaders.set(key, value);
+				ctx.responseHeaders.set(key, value);
 			}
 		});
 	}
@@ -678,7 +676,7 @@ export const requestOnlySessionMiddleware = createAuthMiddleware(
  * is set to 0
  */
 export const freshSessionMiddleware = createAuthMiddleware(async (ctx) => {
-	const session = await getSessionFromCtx(ctx);
+	const session = await getAuthoritativeSessionFromCtx(ctx);
 	if (!session?.session) {
 		throw APIError.from("UNAUTHORIZED", {
 			message: "Unauthorized",
@@ -688,7 +686,12 @@ export const freshSessionMiddleware = createAuthMiddleware(async (ctx) => {
 	if (ctx.context.sessionConfig.freshAge !== 0) {
 		const createdAt = new Date(session.session.createdAt).getTime();
 		const freshAge = ctx.context.sessionConfig.freshAge * 1000;
-		if (Date.now() - createdAt >= freshAge) {
+		const sessionAge = Date.now() - createdAt;
+		if (
+			!Number.isFinite(sessionAge) ||
+			sessionAge < 0 ||
+			sessionAge >= freshAge
+		) {
 			throw APIError.from("FORBIDDEN", BASE_ERROR_CODES.SESSION_NOT_FRESH);
 		}
 	}

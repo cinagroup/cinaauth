@@ -1,13 +1,13 @@
 ---
 title: Nuxt Integration
-description: Integrate Better Auth with Nuxt.
+description: Integrate CinaAuth with Nuxt.
 ---
 
-Before you start, make sure you have a Better Auth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
+Before you start, make sure you have a CinaAuth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
 
 ## Mount the handler
 
-Mount the Better Auth handler to a catch-all Nitro route. Create a file at `server/api/auth/[...all].ts`:
+Mount the CinaAuth handler to a catch-all Nitro route. Create a file at `server/api/auth/[...all].ts`:
 
 ```ts title="server/api/auth/[...all].ts"
 import { auth } from "~~/lib/auth"; // import your auth config
@@ -18,7 +18,7 @@ export default defineEventHandler((event) => {
 ```
 
 <Callout type="info">
-  You can change the mount path in your Better Auth configuration, but keeping it as `/api/auth/[...all]` is recommended.
+  You can change the mount path in your CinaAuth configuration, but keeping it as `/api/auth/[...all]` is recommended.
 </Callout>
 
 ## Create a client

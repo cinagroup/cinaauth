@@ -1144,4 +1144,206 @@ describe("siwe", async () => {
 			expect(sessionsAfter.length).toBe(sessionsBefore.length);
 		});
 	});
+
+	describe("authenticated wallet lifecycle", () => {
+		const otherWallet = "0x000000000000000000000000000000000000bEEF";
+		const setup = () =>
+			getTestInstance(
+				{
+					plugins: [
+						siwe({
+							domain,
+							async getNonce() {
+								return NONCE;
+							},
+							async verifyMessage({ signature }) {
+								return signature === "valid_signature";
+							},
+						}),
+					],
+				},
+				{ clientOptions: { plugins: [siweClient()] } },
+			);
+
+		it("links proof to the current user without creating or switching users", async () => {
+			const { auth, client, signInWithTestUser } = await setup();
+			const { headers } = await signInWithTestUser();
+			const sessionBefore = await auth.api.getSession({ headers });
+
+			await client.siwe.nonce({ walletAddress, chainId });
+			const linked = await client.siwe.linkWallet({
+				message: siweMessage(),
+				signature: "valid_signature",
+				walletAddress,
+				chainId,
+				fetchOptions: { headers },
+			});
+
+			expect(linked.error).toBeNull();
+			expect(linked.data).toMatchObject({
+				success: true,
+				alreadyLinked: false,
+				isPrimary: true,
+				walletAddress,
+				chainId,
+				user: { id: sessionBefore?.user.id },
+			});
+			const listed = await client.siwe.listWallets({
+				fetchOptions: { headers },
+			});
+			expect(listed.data?.wallets).toHaveLength(1);
+			expect(listed.data?.wallets[0]).toMatchObject({
+				address: walletAddress,
+				chainId,
+				isPrimary: true,
+			});
+			const sessionAfter = await auth.api.getSession({ headers });
+			expect(sessionAfter?.user.id).toBe(sessionBefore?.user.id);
+
+			const accounts = await (await auth.$context).adapter.findMany<{
+				providerId: string;
+				accountId: string;
+				userId: string;
+			}>({
+				model: "account",
+				where: [{ field: "userId", value: sessionBefore!.user.id }],
+			});
+			expect(accounts).toContainEqual(
+				expect.objectContaining({
+					providerId: "siwe",
+					accountId: `${walletAddress}:${chainId}`,
+				}),
+			);
+		});
+
+		it("is idempotent for the same user and rejects cross-user ownership", async () => {
+			const { client, cookieSetter, signInWithTestUser } = await setup();
+			const { headers: firstHeaders } = await signInWithTestUser();
+			const proof = {
+				message: siweMessage(),
+				signature: "valid_signature",
+				walletAddress,
+				chainId,
+			};
+
+			await client.siwe.nonce({ walletAddress, chainId });
+			expect(
+				(
+					await client.siwe.linkWallet({
+						...proof,
+						fetchOptions: { headers: firstHeaders },
+					})
+				).error,
+			).toBeNull();
+			await client.siwe.nonce({ walletAddress, chainId });
+			const repeated = await client.siwe.linkWallet({
+				...proof,
+				fetchOptions: { headers: firstHeaders },
+			});
+			expect(repeated.data?.alreadyLinked).toBe(true);
+
+			const secondHeaders = new Headers();
+			await client.signUp.email(
+				{
+					name: "Second User",
+					email: "second-wallet-owner@example.com",
+					password: "strong-password-123",
+				},
+				{ onSuccess: cookieSetter(secondHeaders) },
+			);
+			await client.siwe.nonce({ walletAddress, chainId });
+			const collision = await client.siwe.linkWallet({
+				...proof,
+				fetchOptions: { headers: secondHeaders },
+			});
+			expect(collision.data).toBeNull();
+			expect(collision.error).toMatchObject({
+				status: 400,
+				code: "WALLET_ALREADY_LINKED",
+			});
+		});
+
+		it("keeps exactly one primary wallet and reassigns it on unlink", async () => {
+			const { client, signInWithTestUser } = await setup();
+			const { headers } = await signInWithTestUser();
+			for (const address of [walletAddress, otherWallet]) {
+				await client.siwe.nonce({ walletAddress: address, chainId });
+				const linked = await client.siwe.linkWallet({
+					message: siweMessage({ address }),
+					signature: "valid_signature",
+					walletAddress: address,
+					chainId,
+					fetchOptions: { headers },
+				});
+				expect(linked.error).toBeNull();
+			}
+
+			const primary = await client.siwe.setPrimaryWallet({
+				walletAddress: otherWallet,
+				chainId,
+				fetchOptions: { headers },
+			});
+			expect(primary.error).toBeNull();
+			let listed = await client.siwe.listWallets({
+				fetchOptions: { headers },
+			});
+			expect(listed.data?.wallets.filter((wallet) => wallet.isPrimary)).toEqual([
+				expect.objectContaining({ address: otherWallet }),
+			]);
+
+			const unlinked = await client.siwe.unlinkWallet({
+				walletAddress: otherWallet,
+				chainId,
+				fetchOptions: { headers },
+			});
+			expect(unlinked.error).toBeNull();
+			expect(unlinked.data?.newPrimary).toMatchObject({
+				walletAddress,
+				chainId,
+			});
+			listed = await client.siwe.listWallets({ fetchOptions: { headers } });
+			expect(listed.data?.wallets).toEqual([
+				expect.objectContaining({ address: walletAddress, isPrimary: true }),
+			]);
+		});
+
+		it("does not allow a wallet-only user to remove the last login account", async () => {
+			const { client, cookieSetter } = await setup();
+			const headers = new Headers();
+			await client.siwe.nonce({ walletAddress, chainId });
+			const signedIn = await client.siwe.verify({
+				message: siweMessage(),
+				signature: "valid_signature",
+				walletAddress,
+				chainId,
+				fetchOptions: { onSuccess: cookieSetter(headers) },
+			});
+			expect(signedIn.error).toBeNull();
+
+			const unlinked = await client.siwe.unlinkWallet({
+				walletAddress,
+				chainId,
+				fetchOptions: { headers },
+			});
+			expect(unlinked.data).toBeNull();
+			expect(unlinked.error?.code).toBe("FAILED_TO_UNLINK_LAST_ACCOUNT");
+		});
+
+		it("never accepts a caller-selected user id", async () => {
+			const { client, signInWithTestUser } = await setup();
+			const { headers } = await signInWithTestUser();
+			const unauthenticated = await client.siwe.listWallets();
+			expect(unauthenticated.error?.status).toBe(401);
+
+			const response = await client.$fetch("/siwe/list-wallets", {
+				method: "GET",
+				query: { userId: "another-user" },
+				headers,
+			});
+			expect(response.error).toBeNull();
+			expect(
+				(response.data as { wallets: unknown[] } | null)?.wallets,
+			).toEqual([]);
+		});
+	});
 });

@@ -1,9 +1,9 @@
 ---
 title: SvelteKit Integration
-description: Integrate Better Auth with SvelteKit.
+description: Integrate CinaAuth with SvelteKit.
 ---
 
-Before you start, make sure you have a Better Auth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
+Before you start, make sure you have a CinaAuth instance configured. If you haven't done that yet, check out the [installation](/docs/installation).
 
 ### Mount the handler
 
@@ -29,7 +29,7 @@ import { svelteKitHandler } from "cinaauth/svelte-kit";
 import { building } from "$app/environment";
 
 export async function handle({ event, resolve }) {
-  // Fetch current session from Better Auth
+  // Fetch current session from CinaAuth
   const session = await auth.api.getSession({
     headers: event.request.headers,
   });
@@ -48,7 +48,7 @@ export async function handle({ event, resolve }) {
 
 To ensure cookies are properly set when you call functions like `signInEmail` or `signUpEmail` in a server action, you should use the `sveltekitCookies` plugin. This plugin will automatically handle setting cookies for you in SvelteKit.
 
-You need to add it as a plugin to your Better Auth instance.
+You need to add it as a plugin to your CinaAuth instance.
 
 <Callout>
   The `getRequestEvent` function is available in SvelteKit `2.20.0` and later.

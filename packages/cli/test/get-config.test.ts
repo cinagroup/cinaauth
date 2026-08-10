@@ -1264,7 +1264,7 @@ describe("getConfig", async () => {
 	 * @see https://github.com/better-auth/better-auth/issues/10136
 	 */
 	it("should recover when the config imports its own not-yet-generated --output file", async () => {
-		const authDir = path.join(tmpDir, "convex", "CinaAuth");
+		const authDir = path.join(tmpDir, "convex", "cinaAuth");
 		await fs.mkdir(authDir, { recursive: true });
 
 		await fs.writeFile(
@@ -1285,7 +1285,7 @@ describe("getConfig", async () => {
 
 		const config = await getConfig({
 			cwd: tmpDir,
-			configPath: "convex/CinaAuth/auth.ts",
+			configPath: "convex/cinaAuth/auth.ts",
 			outputPath,
 			shouldThrowOnError: true,
 		});
@@ -1303,7 +1303,7 @@ describe("getConfig", async () => {
 	});
 
 	it("should not silently stub an unrelated missing relative import", async () => {
-		const authDir = path.join(tmpDir, "convex", "CinaAuth");
+		const authDir = path.join(tmpDir, "convex", "cinaAuth");
 		await fs.mkdir(authDir, { recursive: true });
 
 		await fs.writeFile(
@@ -1323,7 +1323,7 @@ describe("getConfig", async () => {
 		await expect(
 			getConfig({
 				cwd: tmpDir,
-				configPath: "convex/CinaAuth/auth.ts",
+				configPath: "convex/cinaAuth/auth.ts",
 				outputPath,
 				shouldThrowOnError: true,
 			}),
@@ -1335,7 +1335,7 @@ describe("getConfig", async () => {
 	});
 
 	it("should not stub a missing bare package import even if its specifier matches the output basename", async () => {
-		const authDir = path.join(tmpDir, "convex", "CinaAuth");
+		const authDir = path.join(tmpDir, "convex", "cinaAuth");
 		await fs.mkdir(authDir, { recursive: true });
 
 		await fs.writeFile(
@@ -1355,7 +1355,7 @@ describe("getConfig", async () => {
 		await expect(
 			getConfig({
 				cwd: tmpDir,
-				configPath: "convex/CinaAuth/auth.ts",
+				configPath: "convex/cinaAuth/auth.ts",
 				outputPath,
 				shouldThrowOnError: true,
 			}),
@@ -1372,10 +1372,10 @@ describe("getConfig", async () => {
 	 * against `process.cwd()`, which can differ (e.g. `--cwd` points elsewhere
 	 * than the directory the CLI process was launched from).
 	 *
-	 * @see https://github.com/better-auth/better-auth/pull/10302
+	 * @see https://github.com/cinagroup/cinaauth/pull/10302
 	 */
 	it("should resolve a relative outputPath against the getConfig cwd, not process.cwd()", async () => {
-		const authDir = path.join(tmpDir, "convex", "CinaAuth");
+		const authDir = path.join(tmpDir, "convex", "cinaAuth");
 		await fs.mkdir(authDir, { recursive: true });
 
 		await fs.writeFile(
@@ -1391,7 +1391,7 @@ describe("getConfig", async () => {
 			 export const __schema = schema;`,
 		);
 
-		const relativeOutputPath = path.join("convex", "CinaAuth", "schema.ts");
+		const relativeOutputPath = path.join("convex", "cinaAuth", "schema.ts");
 		const expectedOutputPath = path.join(tmpDir, relativeOutputPath);
 
 		// Simulates the process actually being launched from a directory other
@@ -1410,7 +1410,7 @@ describe("getConfig", async () => {
 			await expect(
 				getConfig({
 					cwd: tmpDir,
-					configPath: "convex/CinaAuth/auth.ts",
+					configPath: "convex/cinaAuth/auth.ts",
 					outputPath: relativeOutputPath,
 					shouldThrowOnError: true,
 				}),
@@ -1435,10 +1435,10 @@ describe("getConfig", async () => {
 	 * unrelated reason (a different missing module), the empty placeholder
 	 * `getConfig` created must not be left behind on disk.
 	 *
-	 * @see https://github.com/better-auth/better-auth/pull/10302
+	 * @see https://github.com/cinagroup/cinaauth/pull/10302
 	 */
 	it("should remove the placeholder file it created if the retry fails for an unrelated reason", async () => {
-		const authDir = path.join(tmpDir, "convex", "CinaAuth");
+		const authDir = path.join(tmpDir, "convex", "cinaAuth");
 		await fs.mkdir(authDir, { recursive: true });
 
 		await fs.writeFile(
@@ -1461,7 +1461,7 @@ describe("getConfig", async () => {
 		await expect(
 			getConfig({
 				cwd: tmpDir,
-				configPath: "convex/CinaAuth/auth.ts",
+				configPath: "convex/cinaAuth/auth.ts",
 				outputPath,
 				shouldThrowOnError: true,
 			}),

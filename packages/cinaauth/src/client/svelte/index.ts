@@ -46,9 +46,7 @@ type ClientSession<Option extends CinaAuthClientOptions> =
 	}
 		? Res extends BetterFetchResponse<infer S>
 			? S
-			: Res extends Record<string, any>
-				? Res
-				: never
+			: Res
 		: never;
 
 /**

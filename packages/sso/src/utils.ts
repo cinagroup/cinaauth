@@ -1,6 +1,24 @@
 import { X509Certificate } from "node:crypto";
 import { getHostname } from "tldts";
 
+const unsafeSAMLRedirectPathPrefix = /^\/(?:\/|\\|%2f|%5c)/i;
+
+export const isSafeSAMLRedirectPath = (url: string): boolean =>
+	url.startsWith("/") && !unsafeSAMLRedirectPathPrefix.test(url);
+
+/**
+ * Detect whether X509Certificate is available at runtime. On Cloudflare
+ * Workers (nodejs_compat), node:crypto is partially implemented and
+ * X509Certificate is NOT available — calling new X509Certificate() throws
+ * "X509Certificate is not defined" at runtime. This guard lets the SSO
+ * plugin load without crashing; parseCertificate degrades to a
+ * Web-Crypto-based fingerprint when X509Certificate is unavailable.
+ */
+const hasX509Certificate =
+	typeof X509Certificate !== "undefined" &&
+	typeof (globalThis as Record<string, unknown>).X509Certificate !==
+		"undefined";
+
 /**
  * Safely parses a value that might be a JSON string or already a parsed object.
  * This handles cases where ORMs like Drizzle might return already parsed objects
@@ -76,6 +94,23 @@ export function parseCertificate(certPem: string) {
 	const normalized = certPem.includes("-----BEGIN")
 		? certPem
 		: `-----BEGIN CERTIFICATE-----\n${certPem}\n-----END CERTIFICATE-----`;
+
+	if (!hasX509Certificate) {
+		// Cloudflare Workers fallback: X509Certificate and createHash from
+		// node:crypto are NOT available under nodejs_compat. Return the raw
+		// base64 content as a pseudo-fingerprint — it uniquely identifies the
+		// certificate for comparison purposes. Validity dates and key algorithm
+		// are unknown in this mode; callers needing them should use Node.js.
+		const base64 = normalized
+			.replace(/-----[A-Z ]+-----/g, "")
+			.replace(/\s/g, "");
+		return {
+			fingerprintSha256: base64,
+			notBefore: "",
+			notAfter: "",
+			publicKeyAlgorithm: "UNKNOWN",
+		};
+	}
 
 	const cert = new X509Certificate(normalized);
 

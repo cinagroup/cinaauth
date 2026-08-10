@@ -1,0 +1,244 @@
+---
+title: Privacy Center
+description: Personal data exports, deletion readiness, and signed deletion receipts for CinaAuth.
+---
+
+The Privacy Center plugin gives an authenticated user a structured,
+machine-readable JSON copy of the personal authentication data linked to their
+account. JSON is suitable for reuse and portability; it does not include
+credential material. See the European Commission's guidance on
+[data portability](https://commission.europa.eu/law/law-topic/data-protection/rules-business-and-organisations/dealing-individuals-requests_en).
+
+This plugin is an implementation building block, not a complete legal
+compliance program. Controllers still need policies for identity verification,
+response deadlines, appeals, and data held by systems outside CinaAuth. The
+plugin can expose current legal holds, retention exceptions, and deletion
+evidence, but the controller remains responsible for supplying and enforcing
+the underlying policy.
+
+## Installation
+
+```ts title="auth.ts"
+import { CinaAuth } from "cinaauth";
+import { privacyCenter } from "cinaauth/plugins/privacy-center";
+
+export const auth = CinaAuth({
+  plugins: [
+    privacyCenter({
+      maxRecordsPerModel: 5_000,
+      deletion: {
+        policyVersion: "2026-08-09",
+        retentionExceptions: [
+          {
+            code: "security-audit-90d",
+            category: "Security audit evidence",
+            purpose: "Incident response and abuse prevention",
+            maximumRetentionDays: 90,
+            legalBasis: "Legitimate interests in service security",
+          },
+        ],
+        resolveBlockingHolds: async ({ user }) => {
+          return lookupSafeDeletionHolds(user.id);
+        },
+      },
+    }),
+  ],
+});
+```
+
+## Export personal data
+
+```http
+GET /api/auth/privacy/export
+```
+
+**Server:** `auth.api.exportPersonalData({ headers, asResponse: true })`
+
+The endpoint requires an authoritative recent session and returns an attachment
+named `cinaauth-personal-data-YYYY-MM-DD.json`. The response includes:
+
+- schema version, export timestamp, and the authenticated subject ID;
+- subject-linked profile, session, account, authenticator, wallet, API key,
+  organization, OAuth authorization, and audit metadata when those models are
+  installed;
+- per-model counts proving the returned section was not silently truncated;
+- an explicit safety declaration describing the export limits.
+
+The response uses `Cache-Control: no-store`, `Pragma: no-cache`,
+`X-Content-Type-Options: nosniff`, and a restrictive Content Security Policy.
+
+## Credential exclusion
+
+CinaAuth excludes credentials even when an installed plugin's schema would
+normally return the field. The export never includes:
+
+- passwords, session tokens, one-time verification values, or device codes;
+- OAuth access, refresh, ID tokens, or client secrets;
+- API key hashes, private keys, TOTP secrets, or backup codes;
+- WebAuthn public-key and credential-ID material.
+
+Rows are selected only by the authenticated subject's `id` or email. Models
+that cannot be linked to that subject are skipped rather than exported broadly.
+
+## Synchronous export limit
+
+`maxRecordsPerModel` defaults to `5_000` and may be set from `1` to `10_000`.
+When a section exceeds the configured limit, CinaAuth returns HTTP `413` with
+`PRIVACY_EXPORT_TOO_LARGE`. It never returns a partial file marked as complete.
+Large installations should catch this error and move the request to an
+asynchronous, encrypted export pipeline with an expiry policy.
+
+## Asynchronous encrypted exports
+
+Configure `asyncExport` with a provider that persists a subject-scoped job,
+queues generation, opens the completed object, and deletes one job or all jobs
+for a subject. CinaAuth keeps the provider runtime-agnostic; a Cloudflare
+deployment can implement it with Queues and R2 while another deployment can
+use equivalent private infrastructure.
+
+```ts
+privacyCenter({
+  asyncExport: {
+    expiresInSeconds: 86_400,
+    provider: privacyExportProvider,
+  },
+});
+```
+
+The plugin adds four recent-session-protected endpoints:
+
+```http
+POST   /api/auth/privacy/async-export
+GET    /api/auth/privacy/async-export/status?jobId=...
+GET    /api/auth/privacy/async-export/download?jobId=...
+DELETE /api/auth/privacy/async-export
+```
+
+The create endpoint returns HTTP `202`. Statuses are `queued`, `processing`,
+`retrying`, `ready`, `failed`, or `expired`. Downloads are possible only for a
+`ready` job owned by the authenticated subject. Every response is `no-store`;
+the download is streamed as an attachment. The provider must make deletion
+idempotent. Before account deletion, CinaAuth calls `deleteSubjectExports` and
+blocks the destructive account operation if export artifacts cannot be
+removed.
+
+`writePersonalDataExport()` is the shared streaming generator for queue
+consumers. It reads records in bounded batches and applies the same credential
+exclusions as the synchronous endpoint. Passing `maxRecordsPerModel: null`
+means stream every selected record rather than truncate it.
+
+## Deletion readiness
+
+When `deletion` is configured, the plugin adds:
+
+```http
+GET /api/auth/privacy/deletion-readiness
+```
+
+The endpoint requires an authoritative recent session and returns:
+
+- the controller's `policyVersion`;
+- declared `retentionExceptions`, including their maximum duration;
+- current `blockingHolds` resolved for the authenticated subject;
+- `canDelete`, which is `false` whenever a hold is active.
+
+`resolveBlockingHolds` is called again in a `before` hook immediately before
+`/delete-user` or `/delete-user/callback` performs destructive work. An active
+hold returns HTTP `409` with `PRIVACY_DELETION_BLOCKED`; the user is not
+deleted. Hold explanations must be safe to display to the subject and must not
+contain privileged case information.
+
+## Required external processors
+
+Register every external processor that must erase or de-identify subject data
+before the local account disappears:
+
+```ts
+privacyCenter({
+  deletion: {
+    policyVersion: "2026-08-09",
+    processors: [
+      {
+        id: "support-system",
+        async eraseSubject({ operationId, subject }) {
+          const result = await eraseSupportProfile({
+            operationId,
+            userId: subject.id,
+            email: subject.email,
+          });
+          return result.pending
+            ? { status: "pending", retryAfterSeconds: 30 }
+            : {
+                status: result.existed ? "completed" : "not-applicable",
+                completedAt: result.completedAt,
+                evidenceId: result.receiptId,
+              };
+        },
+      },
+    ],
+  },
+});
+```
+
+CinaAuth derives a stable keyed `operationId` from the subject, processor, and
+policy version. Processor adapters must use it as their idempotency key. Every
+required processor runs before local destructive work:
+
+- `pending` returns HTTP `409` with `PRIVACY_PROCESSOR_ERASURE_PENDING` and an
+  optional `retryAfterSeconds`; repeating the same deletion request supplies
+  the same operation ID;
+- an exception or malformed result returns
+  `PRIVACY_PROCESSOR_ERASURE_FAILED` and preserves the local account;
+- only `completed` or `not-applicable` lets local deletion continue.
+
+The readiness response exposes only the public-safe processor IDs in
+`requiredProcessors`. Never return raw provider evidence in a deletion receipt.
+CinaAuth instead stores an HMAC digest of `evidenceId`, the keyed operation ID,
+status, and completion timestamp inside the signed receipt.
+
+## Signed deletion receipt
+
+After a successful JSON account-deletion response, the plugin adds a
+`deletionReceipt` field. The receipt contains:
+
+- a random receipt ID, completion timestamp, and policy version;
+- the exact retention-exception snapshot shown before deletion;
+- a signed `purgeNoLaterThan` deadline for every exception with a finite
+  `maximumRetentionDays`, calculated from the receipt's `issuedAt` timestamp;
+- a keyed pseudonymous subject identifier, never the raw user ID or email;
+- required processor erasure attestations containing a keyed operation ID and
+  HMAC evidence digest, never the provider's raw evidence reference;
+- an HMAC-SHA256 proof over a canonical JSON payload.
+
+Save the receipt in the client before navigating away. Verify it later with:
+
+```http
+POST /api/auth/privacy/deletion-receipt/verify
+Content-Type: application/json
+
+{ "receipt": { "...": "the saved receipt" } }
+```
+
+The verification endpoint returns `valid: false` if any signed field was
+changed. By default, the CinaAuth application secret signs receipts. Set a
+dedicated `receiptSecret` of at least 32 characters when receipt verification
+must have an independent key-rotation lifecycle. Retired verification keys
+must remain available for as long as old receipts are expected to verify.
+
+The receipt proves that CinaAuth completed its account-deletion path and signed
+the configured processor adapters' attestations. It is not independent
+cryptographic proof that a vendor erased its storage. Controllers must retain
+the provider evidence referenced by each digest, audit adapter behavior, cover
+every actual processor, and separately document backup expiration. Unregistered
+processors are outside the receipt's scope. Redirect-only deletion callbacks
+cannot deliver an inline receipt; applications using that flow should persist
+or deliver equivalent evidence in their `afterDelete` callback.
+
+The deadline is a signed controller commitment, not evidence that the storage
+provider actually expired a backup. After the deadline, compare the receipt
+with an authenticated provider control-plane query. The CinaAuth Cloudflare
+demo includes `check:planetscale-backups`, which uses a PlanetScale service
+token limited to `read_backups`, rejects protected or over-retained backups,
+and can check that every backup started before the receipt was issued has a
+provider `deleted_at` timestamp. Its report explicitly remains control-plane
+evidence rather than a physical-media sanitization certificate.

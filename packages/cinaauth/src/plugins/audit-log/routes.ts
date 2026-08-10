@@ -8,7 +8,10 @@ import { AUDIT_LOG_ERROR_CODES } from "./error-codes";
 import type { AuditLogPluginOptions } from "./types";
 
 type ResolvedOptions = Required<
-	Pick<AuditLogPluginOptions, "allowedRoles" | "writeTokens">
+	Pick<
+		AuditLogPluginOptions,
+		"allowedRoles" | "organizationAllowedRoles" | "writeTokens"
+	>
 > &
 	Pick<AuditLogPluginOptions, "schema">;
 
@@ -141,6 +144,126 @@ export const listAudit = (opts: ResolvedOptions) =>
 				where: conditions.length ? conditions : undefined,
 			});
 			return ctx.json({ rows, total, limit, offset });
+		},
+	);
+
+const listOrganizationAuditQuerySchema = z.object({
+	organizationId: z.string().min(1),
+	limit: z.union([z.string(), z.number()]).optional(),
+	offset: z.union([z.string(), z.number()]).optional(),
+	start: z.string().optional(),
+	end: z.string().optional(),
+	action: z.string().optional(),
+	result: z.enum(["success", "failure"]).optional(),
+});
+
+/**
+ * ### Endpoint
+ *
+ * GET `/audit/organization`
+ *
+ * Tenant-scoped organization audit query. The caller must still be an owner
+ * or administrator of the requested organization; global audit roles are not
+ * accepted as a substitute for organization membership.
+ *
+ * **server:** `auth.api.listOrganizationAudit`
+ */
+export const listOrganizationAudit = (opts: ResolvedOptions) =>
+	createAuthEndpoint(
+		"/audit/organization",
+		{
+			method: "GET",
+			use: [auditSessionMiddleware],
+			query: listOrganizationAuditQuerySchema,
+		},
+		async (ctx) => {
+			if (!ctx.context.hasPlugin("organization")) {
+				throw APIError.fromStatus("FORBIDDEN");
+			}
+
+			const member = await ctx.context.adapter.findOne<{ role: string }>({
+				model: "member",
+				where: [
+					{ field: "userId", value: ctx.context.session.user.id },
+					{ field: "organizationId", value: ctx.query.organizationId },
+				],
+			});
+			const memberRoles =
+				member?.role
+					.split(",")
+					.map((role) => role.trim())
+					.filter(Boolean) ?? [];
+			if (
+				!member ||
+				!memberRoles.some((role) =>
+					opts.organizationAllowedRoles.includes(role),
+				)
+			) {
+				throw APIError.fromStatus("FORBIDDEN");
+			}
+
+			const filters = buildAuditWhere({
+				start: ctx.query.start,
+				end: ctx.query.end,
+				action: ctx.query.action,
+				result: ctx.query.result,
+			});
+			const conditions = [
+				where("targetType", "eq", "organization"),
+				where("targetId", "eq", ctx.query.organizationId),
+				...filters,
+			];
+			const requestedLimit = Number(ctx.query.limit ?? 50);
+			const requestedOffset = Number(ctx.query.offset ?? 0);
+			const limit = Number.isFinite(requestedLimit)
+				? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100)
+				: 50;
+			const offset = Number.isFinite(requestedOffset)
+				? Math.max(Math.trunc(requestedOffset), 0)
+				: 0;
+
+			const rows = await ctx.context.adapter.findMany<{
+				id: string;
+				timestamp: Date | string;
+				category: string;
+				action: string;
+				result: string;
+				actorId: string | null;
+				actorRole: string | null;
+				actorSite: string | null;
+				targetType: string | null;
+				targetId: string | null;
+				metadata: string | null;
+			}>({
+				model: "auditLog",
+				limit,
+				offset,
+				sortBy: { field: "timestamp", direction: "desc" },
+				where: conditions,
+			});
+			const total = await ctx.context.adapter.count({
+				model: "auditLog",
+				where: conditions,
+			});
+
+			return ctx.json({
+				rows: rows.map((row) => ({
+					id: row.id,
+					timestamp: row.timestamp,
+					category: row.category,
+					action: row.action,
+					result: row.result,
+					actorId: row.actorId,
+					actorRole: row.actorRole,
+					actorSite: row.actorSite,
+					targetType: row.targetType,
+					targetId: row.targetId,
+					metadata: row.metadata,
+				})),
+				total,
+				limit,
+				offset,
+			});
 		},
 	);
 

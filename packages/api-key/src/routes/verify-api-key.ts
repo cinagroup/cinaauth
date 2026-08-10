@@ -130,6 +130,18 @@ export async function validateApiKey({
 		}
 	}
 
+	if (
+		opts.authorizeReference &&
+		!(await opts.authorizeReference({
+			ctx,
+			apiKeyId: apiKey.id,
+			configId: apiKey.configId,
+			referenceId: apiKey.referenceId,
+		}))
+	) {
+		throw APIError.from("UNAUTHORIZED", ERROR_CODES.INVALID_API_KEY);
+	}
+
 	// A non-refillable key that is already exhausted is removed and rejected.
 	if (apiKey.remaining === 0 && apiKey.refillAmount === null) {
 		const deleteExhaustedKey = async () => {

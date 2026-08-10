@@ -1,18 +1,11 @@
 import type { GenericEndpointContext, OAuth2Tokens, User } from "cinaauth";
-import type { SSOOptions, SSOProvider } from "../types";
+import type {
+	OrganizationProvisioningOptions,
+	SSOOptions,
+	SSOProvider,
+} from "../types";
 import { domainMatches } from "../utils";
 import type { NormalizedSSOProfile } from "./types";
-
-export interface OrganizationProvisioningOptions {
-	disabled?: boolean;
-	defaultRole?: string;
-	getRole?: (data: {
-		user: User & Record<string, any>;
-		userInfo: Record<string, any>;
-		token?: OAuth2Tokens;
-		provider: SSOProvider<SSOOptions>;
-	}) => Promise<string>;
-}
 
 export interface AssignOrganizationFromProviderOptions {
 	user: User;
@@ -43,18 +36,7 @@ export async function assignOrganizationFromProvider(
 	if (!ctx.context.hasPlugin("organization")) {
 		return;
 	}
-
-	const isAlreadyMember = await ctx.context.adapter.findOne({
-		model: "member",
-		where: [
-			{ field: "organizationId", value: provider.organizationId },
-			{ field: "userId", value: user.id },
-		],
-	});
-
-	if (isAlreadyMember) {
-		return;
-	}
+	const organizationId = provider.organizationId;
 
 	const role = provisioningOptions?.getRole
 		? await provisioningOptions.getRole({
@@ -65,15 +47,42 @@ export async function assignOrganizationFromProvider(
 			})
 		: provisioningOptions?.defaultRole || "member";
 
-	await ctx.context.adapter.create({
-		model: "member",
-		data: {
-			organizationId: provider.organizationId,
-			userId: user.id,
-			role,
-			createdAt: new Date(),
-		},
-	});
+	const provision = async () => {
+		const isAlreadyMember = await ctx.context.adapter.findOne({
+			model: "member",
+			where: [
+				{ field: "organizationId", value: organizationId },
+				{ field: "userId", value: user.id },
+			],
+		});
+
+		if (isAlreadyMember) return;
+
+		await ctx.context.adapter.create({
+			model: "member",
+			data: {
+				organizationId,
+				userId: user.id,
+				role,
+				createdAt: new Date(),
+			},
+		});
+	};
+
+	const withProvisioning =
+		provisioningOptions?.withOrganizationMemberProvisioning;
+	if (withProvisioning) {
+		await withProvisioning(
+			{
+				organizationId,
+				userId: user.id,
+				provider,
+			},
+			provision,
+		);
+		return;
+	}
+	await provision();
 }
 
 export interface AssignOrganizationByDomainOptions {
@@ -144,18 +153,6 @@ export async function assignOrganizationByDomain(
 		return;
 	}
 
-	const isAlreadyMember = await ctx.context.adapter.findOne({
-		model: "member",
-		where: [
-			{ field: "organizationId", value: ssoProvider.organizationId },
-			{ field: "userId", value: user.id },
-		],
-	});
-
-	if (isAlreadyMember) {
-		return;
-	}
-
 	const role = provisioningOptions?.getRole
 		? await provisioningOptions.getRole({
 				user,
@@ -164,13 +161,41 @@ export async function assignOrganizationByDomain(
 			})
 		: provisioningOptions?.defaultRole || "member";
 
-	await ctx.context.adapter.create({
-		model: "member",
-		data: {
-			organizationId: ssoProvider.organizationId,
-			userId: user.id,
-			role,
-			createdAt: new Date(),
-		},
-	});
+	const organizationId = ssoProvider.organizationId;
+	const provision = async () => {
+		const isAlreadyMember = await ctx.context.adapter.findOne({
+			model: "member",
+			where: [
+				{ field: "organizationId", value: organizationId },
+				{ field: "userId", value: user.id },
+			],
+		});
+
+		if (isAlreadyMember) return;
+
+		await ctx.context.adapter.create({
+			model: "member",
+			data: {
+				organizationId,
+				userId: user.id,
+				role,
+				createdAt: new Date(),
+			},
+		});
+	};
+
+	const withProvisioning =
+		provisioningOptions?.withOrganizationMemberProvisioning;
+	if (withProvisioning) {
+		await withProvisioning(
+			{
+				organizationId,
+				userId: user.id,
+				provider: ssoProvider,
+			},
+			provision,
+		);
+		return;
+	}
+	await provision();
 }

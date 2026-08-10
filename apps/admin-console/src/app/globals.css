@@ -1,0 +1,284 @@
+@import "tailwindcss";
+@import "@cinaauth/design-tokens/tokens.css";
+
+/*
+ * CinaGroup Admin — dual theme (dark default, light toggleable).
+ * Palette extracted from better-auth-console's compiled CSS:
+ *   - Pure neutrals for surfaces/ink/borders (neutral scale, no warm tint).
+ *   - Indigo/blue for charts + interactive accents.
+ *   - Red/amber/emerald semantics.
+ *
+ * Tokens are plain CSS custom properties under :root (light) and .dark,
+ * then referenced by @theme so Tailwind generates the matching utilities
+ * (bg-canvas, text-body, …) that flip with the .dark class set by
+ * next-themes.
+ */
+
+/* ── Light theme (default variables) ── */
+:root {
+	--canvas: var(--cina-neutral-0); /* card / sidebar bg */
+	--canvas-soft: var(--cina-neutral-50); /* page background */
+	--canvas-soft-2: var(--cina-neutral-100); /* hover / dropdown */
+	--sidebar: var(--cina-neutral-50); /* sidebar surface */
+
+	--ink: var(--cina-neutral-900);
+	--body: var(--cina-neutral-700);
+	--mute: var(--cina-neutral-500);
+
+	--hairline: var(--cina-hairline);
+	--hairline-strong: var(--cina-neutral-400);
+
+	--link: var(--cina-link);
+	--link-deep: #0059c7;
+	--accent: #171717; /* neutral-900 — primary button / focus */
+	--accent-soft: #f5f5f5; /* neutral-100 */
+
+	/* Chart palette (BAC --chart-*: indigo→blue→violet family) */
+	--chart-1: #0070f3;
+	--chart-2: #7928ca;
+	--chart-3: #0a9f77;
+	--chart-4: #e43f8f;
+
+	--error: #dc2626; /* red-600 */
+	--error-soft: #fef2f2; /* red-50 */
+	--warning: #d97706; /* amber-600 */
+	--warning-soft: #fffbeb; /* amber-50 */
+	--success: #059669; /* emerald-600 */
+	--success-soft: #ecfdf5; /* emerald-50 */
+
+	--violet: var(--cina-violet);
+	--cyan: #0891b2;
+
+	/* selection / focus adapt to theme */
+	--selection-bg: #0a0a0a;
+	--selection-fg: #fafafa;
+	--focus-ring: #0070f3;
+	--shadow-rgb: 0, 0, 0; /* shadow tint */
+}
+
+/* ── Dark theme (default active theme) ── */
+.dark {
+	--canvas: #0a0a0a; /* neutral-950 — card / topbar */
+	--canvas-soft: #0a0a0a; /* page background */
+	--canvas-soft-2: #1f1f1f; /* hover / dropdown */
+	--sidebar: #171717; /* neutral-900 — sidebar surface (BAC dark sidebar) */
+
+	--ink: #fafafa; /* neutral-50 */
+	--body: #a3a3a3; /* neutral-400 */
+	--mute: #737373; /* neutral-500 */
+
+	--hairline: #262626; /* neutral-800 */
+	--hairline-strong: #404040; /* neutral-700 */
+
+	--link: #52a8ff;
+	--link-deep: #8bc5ff;
+	--accent: #fafafa; /* neutral-50 — primary button (inverts on dark) */
+	--accent-soft: #1f1f1f;
+
+	/* Chart palette — brighter indigos on dark */
+	--chart-1: #52a8ff;
+	--chart-2: #b983ff;
+	--chart-3: #42d3a7;
+	--chart-4: #ff72b6;
+
+	--error: #f87171; /* red-400 */
+	--error-soft: #450a0a; /* red-950 */
+	--warning: #fbbf24; /* amber-400 */
+	--warning-soft: #451a03; /* amber-950 */
+	--success: #34d399; /* emerald-400 */
+	--success-soft: #022c22; /* emerald-950 */
+
+	--violet: #b983ff;
+	--cyan: #22d3ee;
+
+	--selection-bg: #fafafa;
+	--selection-fg: #0a0a0a;
+	--focus-ring: #52a8ff;
+	--shadow-rgb: 0, 0, 0;
+}
+
+/* ── Tailwind token mapping (utilities flip with .dark) ── */
+@theme inline {
+	--color-canvas: var(--canvas);
+	--color-canvas-soft: var(--canvas-soft);
+	--color-canvas-soft-2: var(--canvas-soft-2);
+	--color-sidebar: var(--sidebar);
+
+	--color-ink: var(--ink);
+	--color-body: var(--body);
+	--color-mute: var(--mute);
+
+	--color-hairline: var(--hairline);
+	--color-hairline-strong: var(--hairline-strong);
+
+	--color-link: var(--link);
+	--color-link-deep: var(--link-deep);
+	--color-accent: var(--accent);
+	--color-accent-soft: var(--accent-soft);
+
+	--color-error: var(--error);
+	--color-error-soft: var(--error-soft);
+	--color-warning: var(--warning);
+	--color-warning-soft: var(--warning-soft);
+	--color-success: var(--success);
+	--color-success-soft: var(--success-soft);
+
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+
+	--color-violet: var(--violet);
+	--color-cyan: var(--cyan);
+
+	--font-sans: var(--font-geist-sans), Inter, system-ui, -apple-system,
+		sans-serif;
+	--font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+		Monaco, monospace;
+
+	--radius-xs: var(--cina-radius-xs);
+	--radius: var(--cina-radius-sm);
+	--radius-sm: var(--cina-radius-sm);
+	--radius-md: var(--cina-radius-md);
+	--radius-lg: 8px;
+	--radius-xl: 8px;
+	--radius-pill: var(--cina-radius-pill);
+}
+
+html,
+body {
+	background: var(--canvas-soft);
+	color: var(--ink);
+	font-family: var(--font-sans);
+	min-height: 100vh;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+	letter-spacing: 0;
+}
+
+html {
+	color-scheme: light;
+}
+
+html.dark {
+	color-scheme: dark;
+}
+
+/* Focus ring — adapts to theme (--focus-ring). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[data-state]:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+	border-radius: var(--radius-sm);
+}
+
+::selection {
+	background: var(--selection-bg);
+	color: var(--selection-fg);
+}
+
+* {
+	scrollbar-color: var(--hairline-strong) transparent;
+	letter-spacing: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+/* Stacked-shadow helper used across cards; tint scales with theme.
+   Usage: class="shadow-card" — but Tailwind v4 needs it as a utility. */
+@utility shadow-card {
+	box-shadow:
+		0 0 0 1px rgb(var(--shadow-rgb) / 0.08) inset,
+		0px 1px 1px rgb(var(--shadow-rgb) / 0.05),
+		0px 2px 2px rgb(var(--shadow-rgb) / 0.06);
+}
+@utility shadow-card-lg {
+	box-shadow:
+		0 0 0 1px rgb(var(--shadow-rgb) / 0.08) inset,
+		0px 1px 1px rgb(var(--shadow-rgb) / 0.05),
+		0px 8px 16px -4px rgb(var(--shadow-rgb) / 0.08);
+}
+@utility shadow-modal {
+	box-shadow:
+		0 0 0 1px rgb(var(--shadow-rgb) / 0.08) inset,
+		0px 1px 1px rgb(var(--shadow-rgb) / 0.05),
+		0px 8px 16px -4px rgb(var(--shadow-rgb) / 0.08),
+		0px 24px 32px -8px rgb(var(--shadow-rgb) / 0.12);
+}
+
+/*
+ * Minimal enter/exit animation utilities for Radix overlays (Dialog, Select,
+ * Tooltip).
+ */
+@layer utilities {
+	@keyframes cg-fade-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+	@keyframes cg-fade-out {
+		from {
+			opacity: 1;
+		}
+		to {
+			opacity: 0;
+		}
+	}
+	@keyframes cg-zoom-in {
+		from {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1);
+		}
+	}
+	@keyframes cg-zoom-out {
+		from {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1);
+		}
+		to {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(0.96);
+		}
+	}
+	.animate-in {
+		animation-duration: 150ms;
+		animation-fill-mode: both;
+	}
+	.animate-out {
+		animation-duration: 150ms;
+		animation-fill-mode: both;
+	}
+	.fade-in-0 {
+		animation-name: cg-fade-in;
+	}
+	.fade-out-0 {
+		animation-name: cg-fade-out;
+	}
+	.zoom-in-95 {
+		animation-name: cg-zoom-in;
+	}
+	.zoom-out-95 {
+		animation-name: cg-zoom-out;
+	}
+}

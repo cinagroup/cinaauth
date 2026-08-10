@@ -43,6 +43,12 @@ export interface SAMLConfig {
 	entryPoint: string;
 	cert: string;
 	callbackUrl: string;
+	/**
+	 * Fallback absolute URL or same-origin relative path for IdP-initiated SAML
+	 * responses when `RelayState` does not contain a safe callback, including
+	 * validation error redirects.
+	 */
+	idpInitiatedCallbackUrl?: string | undefined;
 	audience?: string | undefined;
 	idpMetadata?:
 		| {
@@ -134,7 +140,42 @@ export type SSOProvider<O extends SSOOptions> =
 			} & BaseSSOProvider
 		: BaseSSOProvider;
 
+export interface OrganizationProvisioningOptions {
+	disabled?: boolean;
+	defaultRole?: "member" | "admin";
+	getRole?: (data: {
+		user: User & Record<string, any>;
+		userInfo: Record<string, any>;
+		token?: OAuth2Tokens;
+		provider: SSOProvider<SSOOptions>;
+	}) => Promise<"member" | "admin">;
+	/**
+	 * Wraps the membership existence check and insert as one caller-controlled
+	 * operation. Capacity enforcement can use this hook to hold a distributed
+	 * lock through the actual member write.
+	 */
+	withOrganizationMemberProvisioning?: <T>(
+		data: {
+			organizationId: string;
+			userId: string;
+			provider: SSOProvider<SSOOptions>;
+		},
+		provision: () => Promise<T>,
+	) => Promise<T>;
+}
+
 export interface SSOOptions {
+	/**
+	 * Authorizes use of a resolved SSO provider at request time.
+	 *
+	 * The callback runs after provider lookup and domain-verification checks,
+	 * before redirecting to the IdP or exchanging/processing a callback. Return
+	 * `false` to deny both new sign-ins and in-flight callbacks.
+	 */
+	authorizeProvider?: (data: {
+		provider: SSOProvider<SSOOptions>;
+		flow: "sign-in" | "callback";
+	}) => Awaitable<boolean>;
 	/**
 	 * custom function to provision a user when they sign in with an SSO provider.
 	 */
@@ -171,30 +212,7 @@ export interface SSOOptions {
 	/**
 	 * Organization provisioning options
 	 */
-	organizationProvisioning?:
-		| {
-				disabled?: boolean;
-				defaultRole?: "member" | "admin";
-				getRole?: (data: {
-					/**
-					 * The user object from the database
-					 */
-					user: User & Record<string, any>;
-					/**
-					 * The user info object from the provider
-					 */
-					userInfo: Record<string, any>;
-					/**
-					 * The OAuth2 tokens from the provider
-					 */
-					token?: OAuth2Tokens;
-					/**
-					 * The SSO provider
-					 */
-					provider: SSOProvider<SSOOptions>;
-				}) => Promise<"member" | "admin">;
-		  }
-		| undefined;
+	organizationProvisioning?: OrganizationProvisioningOptions | undefined;
 	/**
 	 * Default SSO provider configurations for testing.
 	 * These will take the precedence over the database providers.
@@ -426,6 +444,12 @@ export interface SSOOptions {
 		 * @default false
 		 */
 		wantLogoutResponseSigned?: boolean;
+		/**
+		 * Fallback absolute URL or same-origin relative path for IdP-initiated SAML
+		 * responses when `RelayState` does not contain a safe callback, including
+		 * validation error redirects.
+		 */
+		idpInitiatedCallbackUrl?: string | undefined;
 	};
 }
 

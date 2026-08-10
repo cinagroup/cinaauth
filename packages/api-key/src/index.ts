@@ -286,7 +286,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.create`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-create)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-create)
 			 */
 			createApiKey: routes.createApiKey,
 			/**
@@ -299,7 +299,7 @@ export function apiKey(
 			 * **server:**
 			 * `auth.api.verifyApiKey`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-verify)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-verify)
 			 */
 			verifyApiKey: routes.verifyApiKey,
 			/**
@@ -315,7 +315,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.get`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-get)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-get)
 			 */
 			getApiKey: routes.getApiKey,
 			/**
@@ -331,7 +331,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.update`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-update)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-update)
 			 */
 			updateApiKey: routes.updateApiKey,
 			/**
@@ -347,7 +347,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.delete`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-delete)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-delete)
 			 */
 			deleteApiKey: routes.deleteApiKey,
 			/**
@@ -363,7 +363,7 @@ export function apiKey(
 			 * **client:**
 			 * `authClient.apiKey.list`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-list)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-list)
 			 */
 			listApiKeys: routes.listApiKeys,
 			/**
@@ -376,7 +376,7 @@ export function apiKey(
 			 * **server:**
 			 * `auth.api.deleteAllExpiredApiKeys`
 			 *
-			 * @see [Read our docs to learn more.](https://better-auth.com/docs/plugins/api-key#api-method-api-key-delete-all-expired-api-keys)
+			 * @see [Read our docs to learn more.](https://cinagroup.com/docs/plugins/api-key#api-method-api-key-delete-all-expired-api-keys)
 			 */
 			deleteAllExpiredApiKeys: routes.deleteAllExpiredApiKeys,
 		},

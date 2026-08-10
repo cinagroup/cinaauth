@@ -18,6 +18,7 @@ import { verificationValueSchema } from "./types/zod";
 import { userNormalClaims } from "./userinfo";
 import {
 	basicToClientCredentials,
+	authorizeOAuthClient,
 	clientAllowsGrant,
 	decryptStoredClientSecret,
 	getJwtPlugin,
@@ -778,6 +779,12 @@ async function handleAuthorizationCodeGrant(
 		scopes,
 		"authorization_code",
 	);
+	await authorizeOAuthClient(
+		opts,
+		client,
+		"token",
+		"authorization_code",
+	);
 
 	// Parse scopes from the authorization request
 	const requestedScopes =
@@ -947,6 +954,12 @@ async function handleClientCredentialsGrant(
 		undefined,
 		"client_credentials",
 	);
+	await authorizeOAuthClient(
+		opts,
+		client,
+		"token",
+		"client_credentials",
+	);
 
 	// OIDC scopes should not be requestable (code authorization grant should be used)
 	let requestedScopes = scope?.split(" ");
@@ -1098,6 +1111,7 @@ async function handleRefreshTokenGrant(
 		requestedScopes ?? scopes,
 		"refresh_token",
 	);
+	await authorizeOAuthClient(opts, client, "token", "refresh_token");
 
 	const user = await ctx.context.internalAdapter.findUserById(
 		refreshToken.userId,

@@ -12,6 +12,7 @@ export const subscriptions = {
 			referenceId: {
 				type: "string",
 				required: true,
+				index: true,
 			},
 			stripeCustomerId: {
 				type: "string",

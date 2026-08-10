@@ -1,0 +1,24 @@
+name = "cinaauth-demo"
+main = ".open-next/worker.js"
+compatibility_date = "2026-08-09"
+compatibility_flags = ["nodejs_compat"]
+keep_names = false
+assets = { directory = ".open-next/assets", binding = "ASSETS" }
+
+routes = [
+  { pattern = "accounts.cinaseek.ai", custom_domain = true },
+  { pattern = "demo-auth.cinagroup.com", custom_domain = true }
+]
+
+# Service binding to the auth Worker API for internal server-side calls.
+[[services]]
+binding = "AUTH_WORKER"
+service = "cinaauth-api"
+
+[vars]
+# Server route handlers call the real auth Worker API, not this demo domain.
+CINAAUTH_URL = "https://auth.cinaseek.ai"
+# Client-side auth API URL — points back at this demo domain, which proxies
+# to the auth worker via the AUTH_WORKER service binding.
+NEXT_PUBLIC_CINAAUTH_API_URL = "https://accounts.cinaseek.ai"
+# CINAAUTH_SECRET is injected via `wrangler secret put` (see CI workflow)

@@ -20,6 +20,7 @@
     "scim",
     "agent-auth",
     "api-key",
+    "privacy-center",
     "jwt",
     "bearer",
     "one-time-token",

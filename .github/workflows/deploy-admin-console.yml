@@ -1,0 +1,76 @@
+name: Deploy Admin Console
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/admin-console/**
+      - packages/auth-proxy/**
+      - packages/auth-web-contract/**
+      - packages/design-tokens/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/deploy-admin-console.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-console-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy admin.cinaseek.ai
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin-console
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Validate Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Cloudflare types
+        run: pnpm run cf-typegen
+
+      - name: Typecheck admin console
+        run: pnpm run typecheck
+
+      - name: Test admin console
+        run: pnpm run test
+
+      - name: Build for Cloudflare
+        run: pnpm run build:cf
+
+      - name: Deploy admin console
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/admin-console
+          command: deploy
+
+      - name: Smoke test admin console
+        run: curl --fail-with-body --show-error --silent --retry 10 --retry-all-errors --retry-delay 6 https://admin.cinaseek.ai/login

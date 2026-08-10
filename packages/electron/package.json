@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/electron",
-  "version": "1.6.23",
+  "version": "1.6.26",
   "description": "CinaAuth integration for Electron applications.",
   "type": "module",
   "license": "MIT",
@@ -89,7 +89,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "cinaauth": "workspace:*",
     "better-sqlite3": "^12.6.2",
-    "electron": "^41.2.2",
+    "electron": "^43.1.1",
     "tsdown": "catalog:"
   },
   "peerDependencies": {

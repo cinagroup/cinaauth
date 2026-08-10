@@ -29,3 +29,6 @@ cinacoin
 upvote
 dedupe
 misrouting
+HMAC
+acks
+cfut

@@ -1,6 +1,6 @@
 {
   "name": "cinaauth",
-  "version": "1.6.23",
+  "version": "1.6.26",
   "description": "The most comprehensive authentication framework for TypeScript.",
   "type": "module",
   "license": "MIT",
@@ -301,6 +301,11 @@
       "types": "./dist/plugins/phone-number/index.d.mts",
       "default": "./dist/plugins/phone-number/index.mjs"
     },
+    "./plugins/privacy-center": {
+      "dev-source": "./src/plugins/privacy-center/index.ts",
+      "types": "./dist/plugins/privacy-center/index.d.mts",
+      "default": "./dist/plugins/privacy-center/index.mjs"
+    },
     "./plugins/two-factor": {
       "dev-source": "./src/plugins/two-factor/index.ts",
       "types": "./dist/plugins/two-factor/index.d.mts",
@@ -330,6 +335,21 @@
       "dev-source": "./src/plugins/mcp/client/adapters.ts",
       "types": "./dist/plugins/mcp/client/adapters.d.mts",
       "default": "./dist/plugins/mcp/client/adapters.mjs"
+    },
+    "./plugins/captcha": {
+      "dev-source": "./src/plugins/captcha/index.ts",
+      "types": "./dist/plugins/captcha/index.d.mts",
+      "default": "./dist/plugins/captcha/index.mjs"
+    },
+    "./plugins/open-api": {
+      "dev-source": "./src/plugins/open-api/index.ts",
+      "types": "./dist/plugins/open-api/index.d.mts",
+      "default": "./dist/plugins/open-api/index.mjs"
+    },
+    "./plugins/last-login-method": {
+      "dev-source": "./src/plugins/last-login-method/index.ts",
+      "types": "./dist/plugins/last-login-method/index.d.mts",
+      "default": "./dist/plugins/last-login-method/index.mjs"
     }
   },
   "typesVersions": {
@@ -481,6 +501,9 @@
       "plugins/phone-number": [
         "./dist/plugins/phone-number/index.d.mts"
       ],
+      "plugins/privacy-center": [
+        "./dist/plugins/privacy-center/index.d.mts"
+      ],
       "plugins/two-factor": [
         "./dist/plugins/two-factor/index.d.mts"
       ],
@@ -522,20 +545,21 @@
   },
   "devDependencies": {
     "@lynx-js/react": "^0.116.3",
-    "@sveltejs/kit": "^2.60.1",
+    "@sveltejs/kit": "^2.70.1",
     "@tanstack/react-start": "^1.168.4",
     "@tanstack/solid-start": "^1.168.4",
     "@types/bun": "^1.3.9",
     "@types/google.accounts": "^0.0.18",
     "@types/pg": "^8.16.0",
     "@types/react": "catalog:react19",
+    "@types/react-dom": "catalog:react19",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/sdk-trace-base": "^1.30.0",
-    "@opentelemetry/sdk-trace-node": "^1.30.0",
+    "@opentelemetry/sdk-trace-base": "^2.10.0",
+    "@opentelemetry/sdk-trace-node": "^2.10.0",
     "happy-dom": "^20.8.9",
     "listhen": "^1.9.0",
     "msw": "^2.12.10",
-    "next": "^16.2.6",
+    "next": "^16.2.11",
     "oauth2-mock-server": "^8.2.2",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
@@ -543,7 +567,7 @@
     "tsdown": "catalog:",
     "type-fest": "^5.4.4",
     "typescript": "catalog:",
-    "vite": "^7.3.2",
+    "vite": "^8.1.5",
     "vitest": "catalog:vitest",
     "vue": "^3.5.29"
   },

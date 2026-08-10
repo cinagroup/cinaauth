@@ -217,6 +217,19 @@ export interface OAuthOptions<
 		session?: Session & Record<string, unknown>;
 	}) => Awaitable<boolean | undefined>;
 	/**
+	 * Authorizes an otherwise valid OAuth client at runtime.
+	 *
+	 * The callback runs after client lookup and built-in grant/credential checks,
+	 * before authorization codes or tokens are issued. Return `false` to deny
+	 * the flow. Revocation and introspection remain available for cleanup and
+	 * security operations.
+	 */
+	authorizeClient?: (context: {
+		client: SchemaClient<Scopes>;
+		endpoint: "authorize" | "token";
+		grantType: "authorization_code" | "client_credentials" | "refresh_token";
+	}) => Awaitable<boolean>;
+	/**
 	 * List default scopes when using the token endpoint's
 	 * grant type "client_credentials". This is used
 	 * only when oauthClients are stored in the database

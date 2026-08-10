@@ -36,6 +36,11 @@ export interface AuditLogPluginOptions {
 	 */
 	allowedRoles?: string[];
 	/**
+	 * Organization role whitelist for tenant-scoped audit queries.
+	 * Defaults to `["owner", "admin"]`.
+	 */
+	organizationAllowedRoles?: string[];
+	/**
 	 * Extra bearer tokens allowed to write via the explicit `/audit/log`
 	 * endpoint (e.g. the admin console service key). Defaults to `[]`.
 	 */

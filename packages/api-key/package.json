@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/api-key",
-  "version": "1.6.23",
+  "version": "1.6.26",
   "description": "API Key plugin for CinaAuth.",
   "type": "module",
   "license": "MIT",
