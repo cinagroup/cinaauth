@@ -3,3 +3,4 @@ export * from "./capabilities";
 export * from "./dto";
 export * from "./endpoints";
 export * from "./entitlements";
+export * from "./oidc-demo";

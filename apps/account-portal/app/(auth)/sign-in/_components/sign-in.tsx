@@ -8,10 +8,15 @@ import { OAuthProviderButtons } from "@/components/oauth-provider-buttons";
 import { Button } from "@/components/ui/button";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
 import { authClient } from "@/lib/auth-client";
+import {
+	buildPreservedAuthPath,
+	hasSignedOidcAuthorizationQuery,
+} from "@/lib/oidc-navigation";
 
 export default function SignIn() {
 	const searchParams = useSearchParams();
 	const callbackURL = searchParams.get("callbackURL") ?? "/dashboard";
+	const hasOidcQuery = hasSignedOidcAuthorizationQuery(searchParams);
 	const capabilities = useAuthCapabilities();
 	const emailOtpReady = capabilities.data?.methods.emailOtp === true;
 
@@ -19,7 +24,11 @@ export default function SignIn() {
 		<div className="flex flex-col gap-3">
 			{emailOtpReady ? (
 				<Link
-					href={`/sign-in/email?callbackURL=${encodeURIComponent(callbackURL)}`}
+					href={buildPreservedAuthPath(
+						"/sign-in/email",
+						searchParams,
+						callbackURL,
+					)}
 				>
 					<Button
 						variant="outline"
@@ -32,7 +41,11 @@ export default function SignIn() {
 			) : null}
 
 			<Link
-				href={`/sign-in/password?callbackURL=${encodeURIComponent(callbackURL)}`}
+				href={buildPreservedAuthPath(
+					"/sign-in/password",
+					searchParams,
+					callbackURL,
+				)}
 			>
 				<Button
 					variant="outline"
@@ -53,7 +66,7 @@ export default function SignIn() {
 						fetchOptions: {
 							onSuccess() {
 								toast.success("Successfully signed in");
-								window.location.href = callbackURL;
+								if (!hasOidcQuery) window.location.href = callbackURL;
 							},
 							onError(context) {
 								toast.error(`Authentication failed: ${context.error.message}`);

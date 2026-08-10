@@ -1,5 +1,9 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import {
+	DEFAULT_AUDIT_RETENTION_DAYS,
+	getAuditRetentionPolicy,
+} from "./audit-retention";
 import type { Auth } from "./auth";
 import {
 	createAuth,
@@ -11,10 +15,6 @@ import {
 	createCanonicalDiscoveryRequest,
 	isAuthHandlerRequestPath,
 } from "./auth-routing";
-import {
-	DEFAULT_AUDIT_RETENTION_DAYS,
-	getAuditRetentionPolicy,
-} from "./audit-retention";
 import { getAuthCapabilities } from "./capabilities";
 import {
 	D1_CUTOVER_MARKER_NAME,
@@ -29,21 +29,26 @@ import {
 	getRequiredDeliveryProvider,
 	handleDeliveryBatch,
 } from "./delivery";
-import type { CloudflareBindings } from "./env";
-import {
-	getBillingRuntimeConfiguration,
-	loadEntitlementSnapshot,
-	type EntitlementSubscription,
-} from "./entitlements";
+import type { EntitlementRequestPolicy } from "./entitlement-enforcement";
 import {
 	evaluateEntitlementAccess,
 	getEntitlementRequestPolicy,
-	type EntitlementRequestPolicy,
 } from "./entitlement-enforcement";
 import {
 	getEntitlementCapacityLockKey,
 	withEntitlementCapacityLock,
 } from "./entitlement-lock";
+import type { EntitlementSubscription } from "./entitlements";
+import {
+	getBillingRuntimeConfiguration,
+	loadEntitlementSnapshot,
+} from "./entitlements";
+import type { CloudflareBindings } from "./env";
+import {
+	ensureOidcDemoClient,
+	isOidcDemoAuthorizationRequest,
+	normalizeOidcDemoAuthorizationResponse,
+} from "./oidc-demo-client";
 import { createAuthPlugins, TRUSTED_ORIGIN_HOSTS } from "./plugins";
 import type { PrivacyExportMessage } from "./privacy-export";
 import {
@@ -364,10 +369,7 @@ const resolveEntitlementSubject = async ({
 		policy.subjectSource === "organization-body" ||
 		policy.subjectSource === "organization-or-user-body"
 	) {
-		const requestedOrganizationId = getSafeSubjectId(
-			body.organizationId,
-			true,
-		);
+		const requestedOrganizationId = getSafeSubjectId(body.organizationId, true);
 		if (body.organizationId !== undefined && !requestedOrganizationId) {
 			return { success: false, code: "ENTITLEMENT_REQUEST_BODY_INVALID" };
 		}
@@ -1006,12 +1008,12 @@ app.get("/api/auth/entitlements", async (c) => {
 				session.user.id,
 			))
 		) {
-				return withNoStore(
-					c.json(
-						{ code: "FORBIDDEN", message: "Organization access denied" },
-						403,
-					),
-				);
+			return withNoStore(
+				c.json(
+					{ code: "FORBIDDEN", message: "Organization access denied" },
+					403,
+				),
+			);
 		}
 
 		const loaded = await loadEntitlementSnapshot({
@@ -1090,10 +1092,7 @@ app.use("/api/auth/*", async (c, next) => {
 		pathname,
 		c.req.method,
 	);
-	const entitlementPolicy = getEntitlementRequestPolicy(
-		pathname,
-		c.req.method,
-	);
+	const entitlementPolicy = getEntitlementRequestPolicy(pathname, c.req.method);
 	if (!requiresFreshSession && !entitlementPolicy) {
 		await next();
 		return;
@@ -1275,7 +1274,6 @@ app.use("/api/auth/*", async (c, next) => {
 	} finally {
 		await database?.end().catch(() => undefined);
 	}
-
 });
 
 // The issuer is the Worker root while CinaAuth's API base path is /api/auth.
@@ -1297,6 +1295,40 @@ app.on(
 );
 
 // Auth catch-all route handler
+app.use("/api/auth/oauth2/authorize", async (c, next) => {
+	if (!isOidcDemoAuthorizationRequest(c.req.raw)) {
+		await next();
+		return;
+	}
+
+	const database = createDatabase(c.env);
+	try {
+		await ensureOidcDemoClient(database);
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.oidc_demo_client.reconcile_failed",
+				error: error instanceof Error ? error.message : String(error),
+			}),
+		);
+		return withNoStore(
+			c.json(
+				{
+					error: "temporarily_unavailable",
+					error_description: "OIDC demo client is temporarily unavailable",
+				},
+				503,
+			),
+		);
+	} finally {
+		await database.end().catch(() => undefined);
+	}
+
+	await next();
+	c.res = await normalizeOidcDemoAuthorizationResponse(c.res);
+});
+
 app.on(
 	["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
 	"/api/auth/*",
@@ -1675,11 +1707,7 @@ const runRetention = async (env: CloudflareBindings) => {
 			await client.query("BEGIN");
 			const nonOrganization = await client.query(
 				'DELETE FROM "auditLog" WHERE ("targetType" IS DISTINCT FROM \'organization\' OR "targetId" IS NULL) AND "timestamp" < $1',
-				[
-					new Date(
-						now - DEFAULT_AUDIT_RETENTION_DAYS * DAY_MS,
-					),
-				],
+				[new Date(now - DEFAULT_AUDIT_RETENTION_DAYS * DAY_MS)],
 			);
 			staleAuditLogs += nonOrganization.rowCount ?? 0;
 

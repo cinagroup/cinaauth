@@ -23,7 +23,7 @@
 	--border: hsl(20 5.9% 90%);
 	--input: hsl(20 5.9% 90%);
 	--ring: hsl(20 14.3% 4.1%);
-	--radius: 0rem;
+	--radius: 0.75rem;
 }
 
 .dark {
@@ -83,6 +83,10 @@
 		font-family:
 			"Geist Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 			Roboto, sans-serif;
+	}
+	button,
+	a {
+		-webkit-tap-highlight-color: transparent;
 	}
 }
 

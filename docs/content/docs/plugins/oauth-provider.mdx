@@ -114,6 +114,8 @@ The plugin has a secured configuration by default providing ease to users unfami
 
     <Callout type="info">
       To create a public client (ie. without a client secret), set `token_endpoint_auth_method: "none"`.
+
+      Discovery advertises `none` whenever the provider is enabled because public clients can be created by an authenticated administrator. This is independent of `allowUnauthenticatedClientRegistration`, which controls who may call Dynamic Client Registration rather than whether public clients exist.
     </Callout>
   </Step>
 </Steps>

@@ -16,7 +16,6 @@ export function authServerMetadata(
 	overrides?: {
 		scopes_supported?: AuthServerMetadata["scopes_supported"];
 		dynamic_client_registration_supported?: boolean;
-		public_client_supported?: boolean;
 		grant_types_supported?: GrantType[];
 		jwt_disabled?: boolean;
 	},
@@ -48,9 +47,7 @@ export function authServerMetadata(
 			"refresh_token",
 		],
 		token_endpoint_auth_methods_supported: [
-			...(overrides?.public_client_supported
-				? (["none"] satisfies TokenEndpointAuthMethod[])
-				: []),
+			"none" satisfies TokenEndpointAuthMethod,
 			"client_secret_basic",
 			"client_secret_post",
 		],
@@ -79,7 +76,6 @@ export function oidcServerMetadata(
 	const authMetadata = authServerMetadata(ctx, jwtPluginOptions, {
 		scopes_supported: opts.advertisedMetadata?.scopes_supported ?? opts.scopes,
 		dynamic_client_registration_supported: opts.allowDynamicClientRegistration,
-		public_client_supported: opts.allowUnauthenticatedClientRegistration,
 		grant_types_supported: opts.grantTypes,
 		jwt_disabled: opts.disableJwtPlugin,
 	});

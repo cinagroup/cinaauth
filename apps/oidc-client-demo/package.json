@@ -5,15 +5,17 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc --noEmit && vite build",
+    "deploy": "pnpm run build && wrangler deploy",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check:production": "node scripts/check-production.mjs"
   },
   "dependencies": {
+    "@cinaauth/auth-web-contract": "workspace:*",
     "@radix-ui/react-avatar": "^1.1.11",
-    "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-slot": "^1.2.4",
-    "cinaauth": "link:../../packages/cinaauth",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "geist": "^1.7.0",
@@ -27,12 +29,15 @@
     "wouter": "^3.9.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "5.20260804.1",
     "@tailwindcss/vite": "^4.2.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react-swc": "^4.2.3",
     "tailwindcss": "^4.2.1",
     "typescript": "^6.0.3",
-    "vite": "^8.1.5"
+    "vite": "^8.1.5",
+    "vitest": "catalog:vitest",
+    "wrangler": "4.120.0"
   }
 }

@@ -245,7 +245,6 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 					opts.advertisedMetadata?.scopes_supported ?? opts.scopes,
 				dynamic_client_registration_supported:
 					opts.allowDynamicClientRegistration,
-				public_client_supported: opts.allowUnauthenticatedClientRegistration,
 				grant_types_supported: opts.grantTypes,
 				jwt_disabled: opts.disableJwtPlugin,
 			});
@@ -602,8 +601,6 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 								opts.advertisedMetadata?.scopes_supported ?? opts.scopes,
 							dynamic_client_registration_supported:
 								opts.allowDynamicClientRegistration,
-							public_client_supported:
-								opts.allowUnauthenticatedClientRegistration,
 							grant_types_supported: opts.grantTypes,
 							jwt_disabled: opts.disableJwtPlugin,
 						});
