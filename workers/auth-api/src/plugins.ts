@@ -3,6 +3,8 @@ import {
 	ADMIN_CONSOLE_ROLES,
 	ADMIN_PERMISSION_STATEMENT,
 	ADMIN_ROLE_PERMISSIONS,
+	OIDC_DEMO_CLIENT_ID,
+	OIDC_DEMO_ORIGIN,
 } from "@cinaauth/auth-web-contract";
 import { electron } from "@cinaauth/electron";
 import { oauthProvider } from "@cinaauth/oauth-provider";
@@ -53,14 +55,14 @@ import {
 	TURNSTILE_PROTECTED_ENDPOINTS,
 } from "./captcha-config";
 import { enqueueDelivery } from "./delivery";
-import type { CloudflareBindings } from "./env";
-import { getBillingRuntimeConfiguration } from "./entitlements";
+import type { RuntimeEntitlementSubject } from "./entitlement-runtime";
 import {
 	getRuntimeEntitlementLimit,
 	isRuntimeEntitlementFeatureEnabled,
-	type RuntimeEntitlementSubject,
 	withRuntimeOrganizationMemberCapacity,
 } from "./entitlement-runtime";
+import { getBillingRuntimeConfiguration } from "./entitlements";
+import type { CloudflareBindings } from "./env";
 import { parseProductionGenericOAuthConfig } from "./oauth-config";
 import { createRequiredPrivacyDeletionProcessor } from "./privacy-deletion";
 import {
@@ -85,6 +87,7 @@ export const TRUSTED_ORIGINS = [
 	ACCOUNT_ORIGIN,
 	LEGACY_ACCOUNT_ORIGIN,
 	ADMIN_ORIGIN,
+	OIDC_DEMO_ORIGIN,
 ];
 
 // Hostnames derived from TRUSTED_ORIGINS, for the CORS origin check in index.ts.
@@ -469,6 +472,7 @@ export const createAuthPlugins = (
 			validAudiences: [baseURL, `${ACCOUNT_ORIGIN}/api/mcp`],
 			allowDynamicClientRegistration: true,
 			allowUnauthenticatedClientRegistration: false,
+			cachedTrustedClients: new Set([OIDC_DEMO_CLIENT_ID]),
 			clientRegistrationDefaultScopes: [
 				"openid",
 				"profile",
@@ -478,6 +482,14 @@ export const createAuthPlugins = (
 			clientPrivileges: ({ session, user }) =>
 				canUseDeveloperOAuthClients({ session, user }),
 			authorizeClient: ({ client }) => {
+				if (client.clientId === OIDC_DEMO_CLIENT_ID) {
+					return (
+						client.public === true &&
+						client.disabled !== true &&
+						client.tokenEndpointAuthMethod === "none" &&
+						client.requirePKCE === true
+					);
+				}
 				const subject = getOwnedRuntimeSubject(client);
 				return subject
 					? isRuntimeEntitlementFeatureEnabled(env, subject, "oauthClients")

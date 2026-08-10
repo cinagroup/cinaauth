@@ -15,6 +15,24 @@ describe("auth proxy contracts", () => {
 		expect(request.url).toBe(
 			"https://auth.cinaseek.ai/api/auth/get-session?fresh=1",
 		);
+		expect(request.redirect).toBe("manual");
+	});
+
+	it("preserves request bodies while keeping upstream redirects visible", async () => {
+		const request = createAuthProxyRequest(
+			new Request("https://accounts.cinaseek.ai/api/auth/sign-in/social", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ provider: "github" }),
+				redirect: "follow",
+			}),
+			"https://auth.cinaseek.ai",
+		);
+
+		expect(request.method).toBe("POST");
+		expect(request.headers.get("content-type")).toBe("application/json");
+		expect(request.redirect).toBe("manual");
+		expect(await request.json()).toEqual({ provider: "github" });
 	});
 
 	it("splits cookies safely and strips upstream Domain attributes", () => {

@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cinaauth-oidc-demo",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-08-10",
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "oidc-demo.cinaseek.ai",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  }
+}

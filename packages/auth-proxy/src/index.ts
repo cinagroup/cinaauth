@@ -30,7 +30,12 @@ export const createAuthProxyRequest = (
 ) => {
 	const sourceURL = new URL(request.url);
 	const targetURL = new URL(sourceURL.pathname + sourceURL.search, baseURL);
-	const proxied = new Request(targetURL, request);
+	// Service-binding fetches otherwise follow OAuth callback redirects inside the
+	// auth Worker. That hides the intermediate Set-Cookie response from the
+	// browser and resolves relative callback URLs against the upstream host.
+	const proxied = new Request(new Request(targetURL, request), {
+		redirect: "manual",
+	});
 	proxied.headers.delete("host");
 	return proxied;
 };

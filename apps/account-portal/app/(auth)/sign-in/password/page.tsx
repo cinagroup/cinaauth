@@ -4,9 +4,15 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { SignInForm } from "@/components/forms/sign-in-form";
+import {
+	buildPreservedAuthPath,
+	hasSignedOidcAuthorizationQuery,
+} from "@/lib/oidc-navigation";
 
 export default function PasswordSignInPage() {
 	const params = useSearchParams();
+	const callbackURL = params.get("callbackURL") ?? "/dashboard";
+	const hasOidcQuery = hasSignedOidcAuthorizationQuery(params);
 
 	return (
 		<div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
@@ -14,7 +20,7 @@ export default function PasswordSignInPage() {
 				<div className="flex flex-col gap-6">
 					{/* Back Link */}
 					<Link
-						href="/sign-in"
+						href={buildPreservedAuthPath("/sign-in", params, callbackURL)}
 						className="text-sm text-body hover:text-ink flex items-center gap-1 w-fit"
 					>
 						<ArrowLeft size={16} />
@@ -29,10 +35,10 @@ export default function PasswordSignInPage() {
 
 					{/* Password Sign In Form */}
 					<SignInForm
-						callbackURL={params.get("callbackURL") ?? "/dashboard"}
-						onSuccess={() =>
-							(window.location.href = params.get("callbackURL") ?? "/dashboard")
-						}
+						callbackURL={callbackURL}
+						onSuccess={() => {
+							if (!hasOidcQuery) window.location.href = callbackURL;
+						}}
 					/>
 				</div>
 			</div>

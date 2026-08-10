@@ -10,6 +10,12 @@ const metadata = {
 	token_endpoint: `${origin}/api/auth/oauth2/token`,
 	userinfo_endpoint: `${origin}/api/auth/oauth2/userinfo`,
 	id_token_signing_alg_values_supported: ["ES256"],
+	token_endpoint_auth_methods_supported: [
+		"none",
+		"client_secret_basic",
+		"client_secret_post",
+	],
+	code_challenge_methods_supported: ["S256"],
 };
 const jwks = {
 	keys: [{ kty: "EC", crv: "P-256", alg: "ES256", kid: "key-1" }],
@@ -45,5 +51,21 @@ describe("OIDC production protocol checks", () => {
 		assert.match(failures.join("\n"), /must not advertise EdDSA/);
 		assert.match(failures.join("\n"), /compatibility alias differs/);
 		assert.match(failures.join("\n"), /EC P-256/);
+	});
+
+	it("rejects metadata that cannot serve a public PKCE client", () => {
+		const failures = evaluateOidcProtocol({
+			origin,
+			canonical: {
+				...metadata,
+				token_endpoint_auth_methods_supported: ["client_secret_basic"],
+				code_challenge_methods_supported: [],
+			},
+			alias: { ...metadata },
+			jwks,
+		});
+
+		assert.match(failures.join("\n"), /public client authentication/);
+		assert.match(failures.join("\n"), /PKCE S256/);
 	});
 });

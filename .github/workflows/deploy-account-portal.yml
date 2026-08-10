@@ -58,7 +58,7 @@ jobs:
         run: pnpm run typecheck
 
       - name: Test account portal contracts
-        run: pnpm exec vitest run middleware.test.ts lib/auth-api.test.ts lib/auth-capabilities.test.ts lib/admin-access.test.ts
+        run: pnpm exec vitest run middleware.test.ts lib/auth-api.test.ts lib/auth-capabilities.test.ts lib/admin-access.test.ts lib/oidc-navigation.test.ts
 
       - name: Test and check OAuth build parity
         env:

@@ -16,7 +16,9 @@ export const evaluateOidcProtocol = ({ origin, canonical, alias, jwks }) => {
 		return failures;
 	}
 	if (!alias || typeof alias !== "object") {
-		failures.push("OIDC Discovery compatibility alias must return a JSON object");
+		failures.push(
+			"OIDC Discovery compatibility alias must return a JSON object",
+		);
 		return failures;
 	}
 	if (canonical.issuer !== expectedOrigin) {
@@ -36,6 +38,17 @@ export const evaluateOidcProtocol = ({ origin, canonical, alias, jwks }) => {
 	}
 	if (Array.isArray(algorithms) && algorithms.includes("EdDSA")) {
 		failures.push("OIDC Discovery must not advertise EdDSA ID token signing");
+	}
+	const tokenAuthMethods = canonical.token_endpoint_auth_methods_supported;
+	if (!Array.isArray(tokenAuthMethods) || !tokenAuthMethods.includes("none")) {
+		failures.push("OIDC Discovery must advertise public client authentication");
+	}
+	const codeChallengeMethods = canonical.code_challenge_methods_supported;
+	if (
+		!Array.isArray(codeChallengeMethods) ||
+		!codeChallengeMethods.includes("S256")
+	) {
+		failures.push("OIDC Discovery must advertise PKCE S256");
 	}
 	for (const field of [
 		"issuer",

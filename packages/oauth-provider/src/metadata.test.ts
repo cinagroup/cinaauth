@@ -97,6 +97,7 @@ describe("oauth metadata", async () => {
 				"refresh_token",
 			],
 			token_endpoint_auth_methods_supported: [
+				"none",
 				"client_secret_basic",
 				"client_secret_post",
 			],
@@ -267,6 +268,7 @@ describe("oauth metadata", async () => {
 				"refresh_token",
 			],
 			token_endpoint_auth_methods_supported: [
+				"none",
 				"client_secret_basic",
 				"client_secret_post",
 			],
@@ -293,6 +295,19 @@ describe("oauth metadata", async () => {
 		expect(metadata.registration_endpoint).toBeUndefined();
 		const oauthMetadata = await auth.api.getOAuthServerConfig();
 		expect(oauthMetadata.registration_endpoint).toBeUndefined();
+	});
+
+	it("should advertise public client token authentication independently of anonymous registration", async () => {
+		const { auth } = await createTestInstance({
+			oauthProviderConfig: {
+				allowDynamicClientRegistration: false,
+				allowUnauthenticatedClientRegistration: false,
+			},
+		});
+		const metadata = await auth.api.getOpenIdConfig();
+
+		expect(metadata.token_endpoint_auth_methods_supported).toContain("none");
+		expect(metadata.registration_endpoint).toBeUndefined();
 	});
 
 	it("should not provide dynamic client registration endpoint when undefined", async () => {
