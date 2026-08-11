@@ -66,9 +66,7 @@ describe("GET /api/admin/settings/security", () => {
 					window: 60,
 					max: 300,
 					storage: "durable-object",
-					customRules: [
-						{ path: "/sign-in/*", window: 60, max: 5 },
-					],
+					customRules: [{ path: "/sign-in/*", window: 60, max: 5 }],
 				},
 				otpTtl: null,
 				otpDailyMax: null,

@@ -45,20 +45,19 @@ export async function createAuthServer(
 ) {
 	const database = new DatabaseSync(":memory:");
 
-	const plugins: NonNullable<CinaAuthOptions["plugins"]> =
-		extras?.oauthProvider
-			? [
-					oauthProvider({
-						loginPage: "/login",
-						consentPage: "/consent",
-						silenceWarnings: {
-							oauthAuthServerConfig: true,
-							openidConfig: true,
-						},
-					}),
-					jwt(),
-				]
-			: [];
+	const plugins: NonNullable<CinaAuthOptions["plugins"]> = extras?.oauthProvider
+		? [
+				oauthProvider({
+					loginPage: "/login",
+					consentPage: "/consent",
+					silenceWarnings: {
+						oauthAuthServerConfig: true,
+						openidConfig: true,
+					},
+				}),
+				jwt(),
+			]
+		: [];
 
 	const auth = CinaAuth({
 		database,

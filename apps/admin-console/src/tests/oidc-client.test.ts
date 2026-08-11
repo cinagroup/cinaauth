@@ -152,9 +152,9 @@ describe("Admin OIDC authorization request", () => {
 			mode: "login",
 		};
 
-		expect(
-			hasRequiredAdminAuthenticationProof(transaction, undefined),
-		).toBe(true);
+		expect(hasRequiredAdminAuthenticationProof(transaction, undefined)).toBe(
+			true,
+		);
 	});
 
 	it("redacts token endpoint failures to safe OAuth fields", () => {

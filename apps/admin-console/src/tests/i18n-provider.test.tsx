@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { cleanup, render, waitFor } from "@testing-library/react";
+import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider, useI18n } from "@/lib/i18n/i18n-context";
 

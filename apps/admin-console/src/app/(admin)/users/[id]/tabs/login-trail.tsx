@@ -2,11 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, RefreshCw, XCircle } from "lucide-react";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
-import { useI18n } from "@/lib/i18n/i18n-context";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { AuditLogDTO } from "@/lib/cinaauth/dto";
 import { fetchAdminJson } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 /**
  * Login history as a vertical timeline. Each event is a node (accent dot for
@@ -36,7 +36,9 @@ export function LoginTrailTab({ userId }: { userId: string }) {
 	if (isFetching) {
 		return (
 			<EmptyState>
-				<div className="text-[14px] leading-5 text-mute">{t("common.loading")}</div>
+				<div className="text-[14px] leading-5 text-mute">
+					{t("common.loading")}
+				</div>
 			</EmptyState>
 		);
 	}
@@ -63,18 +65,14 @@ export function LoginTrailTab({ userId }: { userId: string }) {
 				return (
 					<li key={`${row.timestamp}-${i}`} className="relative">
 						{/* Timeline node */}
-							<span
-								className={`absolute -left-[31px] flex h-5 w-5 items-center justify-center rounded-full ${
-									failed
-										? "bg-error-soft text-error"
-										: "bg-success-soft text-success"
-								}`}
-							>
-							{failed ? (
-								<XCircle size={12} />
-							) : (
-								<CheckCircle2 size={12} />
-							)}
+						<span
+							className={`absolute -left-[31px] flex h-5 w-5 items-center justify-center rounded-full ${
+								failed
+									? "bg-error-soft text-error"
+									: "bg-success-soft text-success"
+							}`}
+						>
+							{failed ? <XCircle size={12} /> : <CheckCircle2 size={12} />}
 						</span>
 						<div
 							className={`rounded-[var(--radius-sm)] border border-hairline bg-canvas px-4 py-3 ${
@@ -98,7 +96,9 @@ export function LoginTrailTab({ userId }: { userId: string }) {
 								)}
 								{row.actorUa && (
 									<span className="max-w-md truncate">
-										<span className="text-mute">{t("loginTrail.deviceLabel")}</span>
+										<span className="text-mute">
+											{t("loginTrail.deviceLabel")}
+										</span>
 										{row.actorUa}
 									</span>
 								)}

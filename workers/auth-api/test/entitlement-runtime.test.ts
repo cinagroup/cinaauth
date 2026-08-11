@@ -3,11 +3,11 @@ import {
 	ENTITLEMENT_LIMITS,
 } from "@cinaauth/auth-web-contract";
 import { describe, expect, it, vi } from "vitest";
-import type { CloudflareBindings } from "../src/env";
 import {
 	getRuntimeEntitlementLimit,
 	isRuntimeEntitlementFeatureEnabled,
 } from "../src/entitlement-runtime";
+import type { CloudflareBindings } from "../src/env";
 
 const completePolicy = JSON.stringify({
 	version: 1,
@@ -40,7 +40,9 @@ describe("runtime entitlement decisions", () => {
 	});
 
 	it("fails closed when billing is active but storage is unavailable", async () => {
-		const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const error = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
 		const env = {
 			STRIPE_SECRET_KEY: "stripe-secret",
 			STRIPE_WEBHOOK_SECRET: "webhook-secret",

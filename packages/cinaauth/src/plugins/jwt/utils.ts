@@ -4,7 +4,7 @@ import { symmetricEncrypt } from "../../crypto";
 import type { TimeString } from "../../utils/time";
 import { sec } from "../../utils/time";
 import { getJwksAdapter } from "./adapter";
-import type { Jwk, JWSAlgorithms, JwtOptions } from "./types";
+import type { JWSAlgorithms, Jwk, JwtOptions } from "./types";
 
 const JWS_ALGORITHMS = new Set<JWSAlgorithms>([
 	"EdDSA",

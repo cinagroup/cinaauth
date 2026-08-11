@@ -1,6 +1,6 @@
 import { sso } from "@cinaauth/sso";
-import { organization } from "cinaauth/plugins";
 import { APIError } from "cinaauth/api";
+import { organization } from "cinaauth/plugins";
 import { getTestInstance } from "cinaauth/test";
 import { describe, expect, it } from "vitest";
 import { scim } from ".";
@@ -41,10 +41,7 @@ describe("SCIM runtime authorization", () => {
 			plugins: [
 				sso(),
 				scim({
-					withOrganizationMemberProvisioning: async (
-						payload,
-						_provision,
-					) => {
+					withOrganizationMemberProvisioning: async (payload, _provision) => {
 						expect(payload.organizationId).toBeTruthy();
 						expect("scimToken" in payload.provider).toBe(false);
 						provisionCalled = true;

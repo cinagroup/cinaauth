@@ -1,6 +1,6 @@
 import type { AdminControlPermission } from "@cinaauth/auth-web-contract";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
 import { resolveAdminSession } from "@/lib/cinaauth/session";
@@ -61,10 +61,7 @@ describe("requireAdminControlPermission", () => {
 
 		let rejection: unknown;
 		try {
-			requireAdminControlPermission(
-				SECURITY_ADMIN,
-				"identity.user.delete",
-			);
+			requireAdminControlPermission(SECURITY_ADMIN, "identity.user.delete");
 		} catch (error) {
 			rejection = error;
 		}
@@ -140,9 +137,7 @@ describe("security_admin identity route enforcement", () => {
 		const userSessionsRoute = await import(
 			"@/app/api/admin/users/[id]/sessions/route"
 		);
-		const revokeRoute = await import(
-			"@/app/api/admin/sessions/revoke/route"
-		);
+		const revokeRoute = await import("@/app/api/admin/sessions/revoke/route");
 
 		const sessionsResponse = await sessionsRoute.GET(
 			request("/api/admin/sessions"),

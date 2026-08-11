@@ -187,17 +187,14 @@ describe("advanced organization mutations", () => {
 			permission: { ac: ["read"] },
 		});
 
-		expect(mocks.$fetch).toHaveBeenCalledWith(
-			"/organization/update-role",
-			{
-				method: "POST",
-				body: {
-					organizationId: "organization-1",
-					roleName: "support_agent",
-					data: { permission: { ac: ["read"] } },
-				},
+		expect(mocks.$fetch).toHaveBeenCalledWith("/organization/update-role", {
+			method: "POST",
+			body: {
+				organizationId: "organization-1",
+				roleName: "support_agent",
+				data: { permission: { ac: ["read"] } },
 			},
-		);
+		});
 	});
 
 	it("surfaces the authoritative server error", async () => {

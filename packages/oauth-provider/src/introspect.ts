@@ -1,8 +1,8 @@
 import type { GenericEndpointContext } from "@cinaauth/core";
 import { logger } from "@cinaauth/core/env";
+import { APIError } from "better-call";
 import { verifyJwsAccessToken } from "cinaauth/oauth2";
 import type { Session, User } from "cinaauth/types";
-import { APIError } from "better-call";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import { decodeRefreshToken } from "./token";
 import type {

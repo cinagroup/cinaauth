@@ -1,6 +1,5 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import {
 	Check,
 	LogOut,
@@ -12,16 +11,10 @@ import {
 	Sun,
 	User,
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { signOutAndRedirect } from "@/lib/cinaauth/sign-out";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { useTheme } from "next-themes";
+import { AdminBrand } from "@/components/layout/admin-brand";
+import { CommandMenu } from "@/components/layout/command-menu";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -30,9 +23,16 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { AdminBrand } from "@/components/layout/admin-brand";
-import { CommandMenu } from "@/components/layout/command-menu";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { useAdminSession } from "@/hooks/use-admin-session";
+import { signOutAndRedirect } from "@/lib/cinaauth/sign-out";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function Topbar({
 	sidebarCollapsed,

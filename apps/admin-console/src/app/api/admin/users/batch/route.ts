@@ -1,4 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
 import { resolveAdminSession } from "@/lib/cinaauth/session";
@@ -48,7 +49,10 @@ export async function POST(request: NextRequest) {
 		? body.userIds.filter((u): u is string => typeof u === "string" && u !== "")
 		: [];
 	if (!userIds.length) {
-		return NextResponse.json({ ok: false, error: "No userIds provided" }, { status: 400 });
+		return NextResponse.json(
+			{ ok: false, error: "No userIds provided" },
+			{ status: 400 },
+		);
 	}
 	if (userIds.length > 100) {
 		return NextResponse.json(

@@ -1,13 +1,13 @@
 "use client";
 
-import { OverviewTab } from "./tabs/overview";
-import { WalletsTab } from "./tabs/wallets";
-import { SessionsTab } from "./tabs/sessions";
-import { LoginTrailTab } from "./tabs/login-trail";
-import { PasskeysTab } from "./tabs/passkeys";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useI18n } from "@/lib/i18n/i18n-context";
 import type { UserDTO } from "@/lib/cinaauth/dto";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import { LoginTrailTab } from "./tabs/login-trail";
+import { OverviewTab } from "./tabs/overview";
+import { PasskeysTab } from "./tabs/passkeys";
+import { SessionsTab } from "./tabs/sessions";
+import { WalletsTab } from "./tabs/wallets";
 
 export function UserTabs({ user }: { user: UserDTO }) {
 	const { t } = useI18n();

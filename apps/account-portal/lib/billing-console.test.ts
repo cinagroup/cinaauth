@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
+import { describe, expect, it } from "vitest";
 import { getBillingActionState, getBillingUiState } from "./billing-console";
 
 const entitlementSnapshot = (

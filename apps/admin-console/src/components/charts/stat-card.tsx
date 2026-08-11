@@ -9,11 +9,8 @@
  *  - `deltaLabel`: the comparison context ("vs last week", "on Jul 9", …).
  *  - `spark`: a short numeric series rendered as an inline sparkline.
  */
-import {
-	TrendingDown,
-	TrendingUp,
-	type LucideIcon,
-} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
 export function StatCard({
 	label,
@@ -47,9 +44,7 @@ export function StatCard({
 	return (
 		<div className="flex min-h-[108px] items-start justify-between gap-3 rounded-[var(--radius-lg)] border border-hairline bg-canvas p-4 shadow-card sm:p-5">
 			<div className="min-w-0">
-				<div className="text-[13px] leading-5 text-body">
-					{label}
-				</div>
+				<div className="text-[13px] leading-5 text-body">{label}</div>
 				<div className="mt-2 text-[26px] font-semibold leading-8 text-ink">
 					{value}
 				</div>
@@ -89,7 +84,12 @@ function Sparkline({ data }: { data: number[] }) {
 	const min = Math.min(...data, 0);
 	const span = max - min || 1;
 	const step = w / (data.length - 1);
-	const pts = data.map((d, i) => `${(i * step).toFixed(1)},${(h - ((d - min) / span) * h).toFixed(1)}`).join(" ");
+	const pts = data
+		.map(
+			(d, i) =>
+				`${(i * step).toFixed(1)},${(h - ((d - min) / span) * h).toFixed(1)}`,
+		)
+		.join(" ");
 	const stroke = "var(--chart-1)";
 	return (
 		<svg width={w} height={h} className="shrink-0 opacity-80" aria-hidden>
@@ -102,7 +102,7 @@ function Sparkline({ data }: { data: number[] }) {
 				strokeLinejoin="round"
 			/>
 			<circle
-				cx={(w).toFixed(1)}
+				cx={w.toFixed(1)}
 				cy={(h - ((data[data.length - 1] - min) / span) * h).toFixed(1)}
 				r={2}
 				fill={stroke}

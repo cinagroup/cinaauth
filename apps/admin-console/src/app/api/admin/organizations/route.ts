@@ -1,8 +1,6 @@
-import { type NextRequest, NextResponse } from "next/server";
-import {
-	requireAdmin,
-	requireAdminControlPermission,
-} from "@/lib/auth-guard";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdmin, requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
 import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
 import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";

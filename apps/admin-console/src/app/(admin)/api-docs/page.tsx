@@ -1,9 +1,9 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { ExternalLink } from "lucide-react";
 
 /**
  * API Documentation page — embeds cinaauth's OpenAPI reference (Scalar UI)

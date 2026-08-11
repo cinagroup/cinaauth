@@ -1,24 +1,18 @@
 "use client";
 
-
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import type { ColumnDef } from "@tanstack/react-table";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import {
-	getCoreRowModel,
-	useReactTable,
-	type ColumnDef,
-} from "@tanstack/react-table";
-import { DataTable } from "@/components/data-table/data-table";
-import { RoleGuard } from "@/components/role-guard";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { DataTable } from "@/components/data-table/data-table";
+import { PageHeader } from "@/components/layout/page-header";
+import { RoleGuard } from "@/components/role-guard";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -26,6 +20,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -33,9 +30,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { PageHeader } from "@/components/layout/page-header";
-import { useI18n } from "@/lib/i18n/i18n-context";
 import { fetchAdminJson, fetchAdminResponse } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { InviteDialog } from "./invite-dialog";
 
 interface MemberDTO {
@@ -100,9 +96,12 @@ export default function OrganizationDetailPage() {
 	const members: MemberDTO[] = membersData ?? [];
 
 	const removeMember = async (memberId: string) => {
-		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/members/${memberId}`, {
-			method: "DELETE",
-		});
+		const r = await fetchAdminResponse(
+			`/api/admin/organizations/${orgId}/members/${memberId}`,
+			{
+				method: "DELETE",
+			},
+		);
 		if (!r.ok) {
 			toast.error(t("toast.deleteFailed"));
 			return false;
@@ -112,11 +111,14 @@ export default function OrganizationDetailPage() {
 	};
 
 	const changeRole = async (memberId: string, role: string) => {
-		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/members/${memberId}/role`, {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ role }),
-		});
+		const r = await fetchAdminResponse(
+			`/api/admin/organizations/${orgId}/members/${memberId}/role`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ role }),
+			},
+		);
 		if (r.ok) {
 			toast.success(t("toast.roleChanged"));
 			await qc.invalidateQueries({ queryKey: ["organization-members", orgId] });
@@ -126,11 +128,14 @@ export default function OrganizationDetailPage() {
 	};
 
 	const saveOrg = async () => {
-		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/update`, {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ name: editName, slug: editSlug }),
-		});
+		const r = await fetchAdminResponse(
+			`/api/admin/organizations/${orgId}/update`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ name: editName, slug: editSlug }),
+			},
+		);
 		if (r.ok) {
 			toast.success(t("toast.orgUpdated"));
 			setEditOpen(false);
@@ -142,9 +147,12 @@ export default function OrganizationDetailPage() {
 	};
 
 	const deleteOrg = async () => {
-		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/delete`, {
-			method: "POST",
-		});
+		const r = await fetchAdminResponse(
+			`/api/admin/organizations/${orgId}/delete`,
+			{
+				method: "POST",
+			},
+		);
 		if (r.ok) {
 			toast.success(t("toast.orgDeleted"));
 			// router.push is a soft navigation, so the cached ['organizations']
@@ -230,11 +238,19 @@ export default function OrganizationDetailPage() {
 	if (orgError) {
 		return (
 			<div className="max-w-2xl">
-				<PageHeader title={t("error.generic.title")} backHref="/organizations" backLabel={t("nav.organizations")} />
+				<PageHeader
+					title={t("error.generic.title")}
+					backHref="/organizations"
+					backLabel={t("nav.organizations")}
+				/>
 				<EmptyState>
 					<AlertCircle size={20} className="text-error" aria-hidden />
 					<span>{t("error.generic.message")}</span>
-					<Button variant="secondary" size="sm" onClick={() => void refetchOrg()}>
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => void refetchOrg()}
+					>
 						<RefreshCw size={15} />
 						{t("error.retry")}
 					</Button>
@@ -245,7 +261,11 @@ export default function OrganizationDetailPage() {
 
 	return (
 		<div>
-			<PageHeader title={org?.name ?? (orgLoading ? "…" : t("organizations.title"))} backHref="/organizations" backLabel={t("nav.organizations")}>
+			<PageHeader
+				title={org?.name ?? (orgLoading ? "…" : t("organizations.title"))}
+				backHref="/organizations"
+				backLabel={t("nav.organizations")}
+			>
 				<RoleGuard allow={["super_admin"]}>
 					<InviteDialog orgId={orgId} />
 					<Button
@@ -260,7 +280,11 @@ export default function OrganizationDetailPage() {
 						{t("organizations.editOrg")}
 					</Button>
 					<ConfirmDialog
-						trigger={<Button variant="danger" size="sm">{t("organizations.deleteOrg")}</Button>}
+						trigger={
+							<Button variant="danger" size="sm">
+								{t("organizations.deleteOrg")}
+							</Button>
+						}
 						title={t("organizations.deleteOrg")}
 						description={t("organizations.deleteConfirm")}
 						danger
@@ -274,8 +298,12 @@ export default function OrganizationDetailPage() {
 				</RoleGuard>
 			</PageHeader>
 			<div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] leading-5 text-body">
-				<span>{t("organizations.slug")}: {org?.slug ?? "—"}</span>
-				<span>{t("organizations.membersLabel")}: {members.length}</span>
+				<span>
+					{t("organizations.slug")}: {org?.slug ?? "—"}
+				</span>
+				<span>
+					{t("organizations.membersLabel")}: {members.length}
+				</span>
 			</div>
 			<DataTable
 				table={table}
@@ -293,11 +321,18 @@ export default function OrganizationDetailPage() {
 					</h3>
 					<div className="space-y-2">
 						{org.invitations.map((inv: Record<string, unknown>) => (
-							<div key={String(inv.id)} className="flex flex-col gap-2 rounded-[var(--radius-sm)] border border-hairline bg-canvas px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+							<div
+								key={String(inv.id)}
+								className="flex flex-col gap-2 rounded-[var(--radius-sm)] border border-hairline bg-canvas px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+							>
 								<div className="flex min-w-0 flex-wrap items-center gap-3 text-[14px]">
-									<span className="font-medium text-ink">{String(inv.email ?? "—")}</span>
+									<span className="font-medium text-ink">
+										{String(inv.email ?? "—")}
+									</span>
 									<Badge variant="muted">{String(inv.role ?? "member")}</Badge>
-									<span className="text-mute">{String(inv.status ?? "pending")}</span>
+									<span className="text-mute">
+										{String(inv.status ?? "pending")}
+									</span>
 								</div>
 								<RoleGuard allow={["super_admin"]}>
 									<ConfirmDialog
@@ -308,13 +343,18 @@ export default function OrganizationDetailPage() {
 										}
 										title={t("organizations.cancelInvite")}
 										onConfirm={async () => {
-											const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/invitations/${inv.id}`, {
-												method: "DELETE",
-											});
+											const r = await fetchAdminResponse(
+												`/api/admin/organizations/${orgId}/invitations/${inv.id}`,
+												{
+													method: "DELETE",
+												},
+											);
 											// Don't claim the invite was cancelled unless it was.
 											if (r.ok) {
 												toast.success(t("organizations.inviteCanceled"));
-												await qc.invalidateQueries({ queryKey: ["organization", orgId] });
+												await qc.invalidateQueries({
+													queryKey: ["organization", orgId],
+												});
 												return true;
 											} else {
 												toast.error(t("toast.actionFailed"));
@@ -329,7 +369,7 @@ export default function OrganizationDetailPage() {
 				</div>
 			)}
 
-				{/* Edit organization dialog */}
+			{/* Edit organization dialog */}
 			<Dialog open={editOpen} onOpenChange={setEditOpen}>
 				<DialogContent>
 					<DialogHeader>
@@ -354,7 +394,11 @@ export default function OrganizationDetailPage() {
 						</div>
 					</div>
 					<DialogFooter>
-						<Button variant="secondary" size="sm" onClick={() => setEditOpen(false)}>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => setEditOpen(false)}
+						>
 							{t("common.cancel")}
 						</Button>
 						<Button variant="primary" size="sm" onClick={saveOrg}>
@@ -376,12 +420,18 @@ function TeamsSection({ orgId }: { orgId: string }) {
 	const qc = useQueryClient();
 	const [newTeamName, setNewTeamName] = useState("");
 
-	const { data: teamsData, isError, refetch } = useQuery({
+	const {
+		data: teamsData,
+		isError,
+		refetch,
+	} = useQuery({
 		queryKey: ["org-teams", orgId],
 		queryFn: async () => {
-			const d = await fetchAdminJson<ApiResponse<{
-				teams?: Array<{ id: string; name: string }>;
-			}>>(`/api/admin/organizations/${orgId}/teams`);
+			const d = await fetchAdminJson<
+				ApiResponse<{
+					teams?: Array<{ id: string; name: string }>;
+				}>
+			>(`/api/admin/organizations/${orgId}/teams`);
 			return d.data?.teams ?? [];
 		},
 	});
@@ -389,11 +439,14 @@ function TeamsSection({ orgId }: { orgId: string }) {
 
 	const createTeam = async () => {
 		if (!newTeamName.trim()) return;
-		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/teams`, {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ name: newTeamName }),
-		});
+		const r = await fetchAdminResponse(
+			`/api/admin/organizations/${orgId}/teams`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ name: newTeamName }),
+			},
+		);
 		if (r.ok) {
 			toast.success(t("toast.teamCreated"));
 			setNewTeamName("");
@@ -404,7 +457,10 @@ function TeamsSection({ orgId }: { orgId: string }) {
 	};
 
 	const deleteTeam = async (teamId: string) => {
-		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/teams/${teamId}`, { method: "DELETE" });
+		const r = await fetchAdminResponse(
+			`/api/admin/organizations/${orgId}/teams/${teamId}`,
+			{ method: "DELETE" },
+		);
 		if (r.ok) {
 			toast.success(t("toast.teamDeleted"));
 			await qc.invalidateQueries({ queryKey: ["org-teams", orgId] });
@@ -423,8 +479,15 @@ function TeamsSection({ orgId }: { orgId: string }) {
 				</h3>
 				<RoleGuard allow={["super_admin"]}>
 					<div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-						<Input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} placeholder={t("organizations.teamName")} className="h-8 sm:w-[180px]" />
-						<Button variant="primary" size="sm" onClick={createTeam}>{t("organizations.createTeam")}</Button>
+						<Input
+							value={newTeamName}
+							onChange={(e) => setNewTeamName(e.target.value)}
+							placeholder={t("organizations.teamName")}
+							className="h-8 sm:w-[180px]"
+						/>
+						<Button variant="primary" size="sm" onClick={createTeam}>
+							{t("organizations.createTeam")}
+						</Button>
 					</div>
 				</RoleGuard>
 			</div>
@@ -442,7 +505,12 @@ function TeamsSection({ orgId }: { orgId: string }) {
 			) : (
 				<div className="space-y-3">
 					{teams.map((team) => (
-						<TeamCard key={team.id} orgId={orgId} team={team} onDelete={() => deleteTeam(team.id)} />
+						<TeamCard
+							key={team.id}
+							orgId={orgId}
+							team={team}
+							onDelete={() => deleteTeam(team.id)}
+						/>
 					))}
 				</div>
 			)}
@@ -450,37 +518,67 @@ function TeamsSection({ orgId }: { orgId: string }) {
 	);
 }
 
-function TeamCard({ orgId, team, onDelete }: { orgId: string; team: { id: string; name: string }; onDelete: () => void }) {
+function TeamCard({
+	orgId,
+	team,
+	onDelete,
+}: {
+	orgId: string;
+	team: { id: string; name: string };
+	onDelete: () => void;
+}) {
 	const { t } = useI18n();
 	const qc = useQueryClient();
 	const [addUserId, setAddUserId] = useState("");
 
-	const { data: membersData, isError, refetch } = useQuery({
+	const {
+		data: membersData,
+		isError,
+		refetch,
+	} = useQuery({
 		queryKey: ["team-members", team.id],
 		queryFn: async () => {
-			const d = await fetchAdminJson<ApiResponse<{
-				members?: Array<{
-					id: string;
-					userId: string;
-					user?: { email?: string };
-				}>;
-			}>>(`/api/admin/organizations/${orgId}/teams/${team.id}/members`);
+			const d = await fetchAdminJson<
+				ApiResponse<{
+					members?: Array<{
+						id: string;
+						userId: string;
+						user?: { email?: string };
+					}>;
+				}>
+			>(`/api/admin/organizations/${orgId}/teams/${team.id}/members`);
 			return d.data?.members ?? [];
 		},
 	});
-	const members: Array<{ id: string; userId: string; user?: { email?: string } }> = membersData ?? [];
+	const members: Array<{
+		id: string;
+		userId: string;
+		user?: { email?: string };
+	}> = membersData ?? [];
 
 	const addMember = async () => {
 		if (!addUserId.trim()) return;
-		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/teams/${team.id}/members`, {
-			method: "POST", headers: { "content-type": "application/json" },
-			body: JSON.stringify({ userId: addUserId }),
-		});
-		if (r.ok) { toast.success(t("toast.memberAdded")); setAddUserId(""); await qc.invalidateQueries({ queryKey: ["team-members", team.id] }); }
-		else { toast.error(t("toast.actionFailed")); }
+		const r = await fetchAdminResponse(
+			`/api/admin/organizations/${orgId}/teams/${team.id}/members`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ userId: addUserId }),
+			},
+		);
+		if (r.ok) {
+			toast.success(t("toast.memberAdded"));
+			setAddUserId("");
+			await qc.invalidateQueries({ queryKey: ["team-members", team.id] });
+		} else {
+			toast.error(t("toast.actionFailed"));
+		}
 	};
 	const removeMember = async (memberId: string) => {
-		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/teams/${team.id}/members/${memberId}`, { method: "DELETE" });
+		const r = await fetchAdminResponse(
+			`/api/admin/organizations/${orgId}/teams/${team.id}/members/${memberId}`,
+			{ method: "DELETE" },
+		);
 		if (r.ok) {
 			toast.success(t("toast.memberRemoved"));
 			await qc.invalidateQueries({ queryKey: ["team-members", team.id] });
@@ -495,28 +593,63 @@ function TeamCard({ orgId, team, onDelete }: { orgId: string; team: { id: string
 			<div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<span className="font-medium text-ink">{team.name}</span>
 				<div className="flex items-center gap-2">
-					<span className="text-[13px] text-mute">{isError ? "—" : members.length} {t("organizations.teamMembers")}</span>
+					<span className="text-[13px] text-mute">
+						{isError ? "—" : members.length} {t("organizations.teamMembers")}
+					</span>
 					<RoleGuard allow={["super_admin"]}>
-						<ConfirmDialog trigger={<Button variant="ghost" size="sm" className="text-error">{t("organizations.deleteTeam")}</Button>} title={t("organizations.deleteTeam")} danger confirmText={t("common.delete")} onConfirm={onDelete} />
+						<ConfirmDialog
+							trigger={
+								<Button variant="ghost" size="sm" className="text-error">
+									{t("organizations.deleteTeam")}
+								</Button>
+							}
+							title={t("organizations.deleteTeam")}
+							danger
+							confirmText={t("common.delete")}
+							onConfirm={onDelete}
+						/>
 					</RoleGuard>
 				</div>
 			</div>
 			{isError && (
 				<div className="mb-3 flex items-center justify-between gap-3 rounded-[var(--radius-sm)] bg-error-soft px-3 py-2 text-[13px] text-error">
 					<span>{t("error.generic.message")}</span>
-					<Button variant="ghost" size="sm" onClick={() => void refetch()}>{t("error.retry")}</Button>
+					<Button variant="ghost" size="sm" onClick={() => void refetch()}>
+						{t("error.retry")}
+					</Button>
 				</div>
 			)}
 			{members.map((m) => (
-				<div key={m.id} className="mb-1 flex flex-col gap-1 rounded-[var(--radius-sm)] bg-canvas-soft px-3 py-2 text-[13px] sm:flex-row sm:items-center sm:justify-between">
-					<span className="break-all text-ink">{m.user?.email ?? m.userId}</span>
-					<RoleGuard allow={["super_admin"]}><Button variant="ghost" size="sm" className="text-error" onClick={() => removeMember(m.id)}>{t("organizations.removeTeamMember")}</Button></RoleGuard>
+				<div
+					key={m.id}
+					className="mb-1 flex flex-col gap-1 rounded-[var(--radius-sm)] bg-canvas-soft px-3 py-2 text-[13px] sm:flex-row sm:items-center sm:justify-between"
+				>
+					<span className="break-all text-ink">
+						{m.user?.email ?? m.userId}
+					</span>
+					<RoleGuard allow={["super_admin"]}>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="text-error"
+							onClick={() => removeMember(m.id)}
+						>
+							{t("organizations.removeTeamMember")}
+						</Button>
+					</RoleGuard>
 				</div>
 			))}
 			<RoleGuard allow={["super_admin"]}>
 				<div className="mt-2 flex flex-col gap-2 sm:flex-row">
-					<Input value={addUserId} onChange={(e) => setAddUserId(e.target.value)} placeholder={t("organizations.teamMemberUserId")} className="h-8" />
-					<Button variant="secondary" size="sm" onClick={addMember}>{t("organizations.addMember")}</Button>
+					<Input
+						value={addUserId}
+						onChange={(e) => setAddUserId(e.target.value)}
+						placeholder={t("organizations.teamMemberUserId")}
+						className="h-8"
+					/>
+					<Button variant="secondary" size="sm" onClick={addMember}>
+						{t("organizations.addMember")}
+					</Button>
 				</div>
 			</RoleGuard>
 		</div>

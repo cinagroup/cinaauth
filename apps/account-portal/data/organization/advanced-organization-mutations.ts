@@ -1,6 +1,6 @@
-import { authClient } from "@/lib/auth-client";
 import type { OrganizationPermissionMap } from "@/lib/advanced-organization-console";
 import type { OrganizationTeamMember } from "@/lib/auth";
+import { authClient } from "@/lib/auth-client";
 
 type TeamMutationIdentity = {
 	organizationId: string;

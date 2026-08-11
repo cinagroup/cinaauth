@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createDatabase } from "../src/database";
 import type { CinaAuthDatabase } from "../src/database";
-import type { CloudflareBindings } from "../src/env";
+import { createDatabase } from "../src/database";
 import { withRuntimeOrganizationMemberCapacity } from "../src/entitlement-runtime";
+import type { CloudflareBindings } from "../src/env";
 
 vi.mock("../src/database", () => ({
 	createDatabase: vi.fn(),

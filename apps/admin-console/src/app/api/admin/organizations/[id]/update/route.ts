@@ -1,8 +1,6 @@
-import { type NextRequest, NextResponse } from "next/server";
-import {
-	requireAdmin,
-	requireAdminControlPermission,
-} from "@/lib/auth-guard";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdmin, requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
 import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
 import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
@@ -20,7 +18,10 @@ export async function POST(
 		return error as Response;
 	}
 	const { id } = await params;
-	const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+	const body = (await request.json().catch(() => ({}))) as Record<
+		string,
+		unknown
+	>;
 	try {
 		await requireRecentAdminAuthentication(request, session);
 	} catch (error) {

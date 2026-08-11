@@ -436,21 +436,21 @@ export function OrganizationConsole({
 							<div>
 								<CardTitle>Plan and entitlements</CardTitle>
 								<CardDescription>
-									This authoritative policy is enforced again by the Auth
-									Worker for protected operations.
+									This authoritative policy is enforced again by the Auth Worker
+									for protected operations.
 								</CardDescription>
 							</div>
 							{initialEntitlements ? (
-								<Badge variant="secondary">
-									{initialEntitlements.plan.id}
-								</Badge>
+								<Badge variant="secondary">{initialEntitlements.plan.id}</Badge>
 							) : null}
 						</CardHeader>
 						<CardContent className="space-y-5">
 							{entitlementsUnavailable || !initialEntitlements ? (
 								<Alert>
 									<AlertTriangle className="h-4 w-4" />
-									<AlertTitle>Plan policy is temporarily unavailable</AlertTitle>
+									<AlertTitle>
+										Plan policy is temporarily unavailable
+									</AlertTitle>
 									<AlertDescription>
 										Protected operations remain fail-closed until the current
 										policy can be loaded.
@@ -471,7 +471,8 @@ export function OrganizationConsole({
 															entitlementFeatureLabels[
 																feature as EntitlementFeature
 															]
-														} {enabled ? "enabled" : "unavailable"}
+														}{" "}
+														{enabled ? "enabled" : "unavailable"}
 													</Badge>
 												),
 											)}

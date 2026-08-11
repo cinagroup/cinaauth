@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { ImpersonateBanner } from "@/components/layout/impersonate-banner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { ImpersonateBanner } from "@/components/layout/impersonate-banner";
 import {
 	Dialog,
 	DialogContent,

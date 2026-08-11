@@ -23,15 +23,23 @@ export async function resolveAdminSessionFromCookie(
 ): Promise<AdminSession | null> {
 	if (!rawCookie) return null;
 
-	const sessionData = extractCookie(rawCookie, "__Secure-cinaauth.session_data");
-	const sessionToken = extractCookie(rawCookie, "__Secure-cinaauth.session_token");
+	const sessionData = extractCookie(
+		rawCookie,
+		"__Secure-cinaauth.session_data",
+	);
+	const sessionToken = extractCookie(
+		rawCookie,
+		"__Secure-cinaauth.session_token",
+	);
 	if (!sessionData && !sessionToken) return null;
 
 	try {
-		const res = await fetchAuthRequest(new Request(new URL(AUTH_WEB_ENDPOINTS.session, cinaauthConfig.baseUrl), {
-			headers: { cookie: rawCookie },
-			cache: "no-store",
-		}));
+		const res = await fetchAuthRequest(
+			new Request(new URL(AUTH_WEB_ENDPOINTS.session, cinaauthConfig.baseUrl), {
+				headers: { cookie: rawCookie },
+				cache: "no-store",
+			}),
+		);
 		if (res.ok) {
 			const data = (await res.json()) as SessionResponse;
 			if (data.session && data.user) {

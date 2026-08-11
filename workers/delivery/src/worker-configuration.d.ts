@@ -13,8 +13,16 @@ declare namespace Cloudflare {
 }
 interface DeliveryWorkerEnv extends Cloudflare.Env {}
 type StringifyValues<EnvType extends Record<string, unknown>> = {
-	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
+	[Binding in keyof EnvType]: EnvType[Binding] extends string
+		? EnvType[Binding]
+		: string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "DELIVERY_ALLOWED_SKEW_SECONDS" | "DELIVERY_REPLAY_TTL_SECONDS">> {}
+	interface ProcessEnv
+		extends StringifyValues<
+			Pick<
+				Cloudflare.Env,
+				"DELIVERY_ALLOWED_SKEW_SECONDS" | "DELIVERY_REPLAY_TTL_SECONDS"
+			>
+		> {}
 }

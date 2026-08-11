@@ -1,9 +1,7 @@
-import {
-	hasAdminControlPermission,
-	type AdminControlPermission,
-} from "@cinaauth/auth-web-contract";
-import { resolveAdminSession } from "@/lib/cinaauth/session";
+import type { AdminControlPermission } from "@cinaauth/auth-web-contract";
+import { hasAdminControlPermission } from "@cinaauth/auth-web-contract";
 import type { NextRequest } from "next/server";
+import { resolveAdminSession } from "@/lib/cinaauth/session";
 import type { AdminSession } from "@/lib/cinaauth/types";
 
 export type AdminPageAccess = "allow" | "sign-in" | "forbidden";

@@ -1,9 +1,9 @@
-import type { NextConfig } from "next";
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import path from "node:path";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+import type { NextConfig } from "next";
 
 if (process.env.NODE_ENV === "development") {
-	initOpenNextCloudflareForDev();
+	await initOpenNextCloudflareForDev();
 }
 
 const nextConfig: NextConfig = {
@@ -17,8 +17,7 @@ const nextConfig: NextConfig = {
 	],
 	env: {
 		NEXT_PUBLIC_CINAUTH_BASE_URL:
-			process.env.NEXT_PUBLIC_CINAUTH_BASE_URL ??
-			"https://auth.cinaseek.ai",
+			process.env.NEXT_PUBLIC_CINAUTH_BASE_URL ?? "https://auth.cinaseek.ai",
 		NEXT_PUBLIC_CINAUTH_AUTH_URL:
 			process.env.NEXT_PUBLIC_CINAUTH_AUTH_URL ??
 			"https://accounts.cinaseek.ai",

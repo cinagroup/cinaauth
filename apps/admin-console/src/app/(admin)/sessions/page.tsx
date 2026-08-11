@@ -1,17 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-	getCoreRowModel,
-	useReactTable,
-	type ColumnDef,
-} from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { useMemo } from "react";
 import { DataTable } from "@/components/data-table/data-table";
 import { PageHeader } from "@/components/layout/page-header";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson } from "@/lib/client-api";
 import type { SessionDTO } from "@/lib/cinaauth/dto";
+import { fetchAdminJson } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function SessionsPage() {
 	const { t } = useI18n();

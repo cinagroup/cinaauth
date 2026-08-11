@@ -66,6 +66,11 @@ import {
 	updateOrganizationTeam,
 } from "@/data/organization/advanced-organization-mutations";
 import { useMemberRoleUpdateMutation } from "@/data/organization/member-role-update-mutation";
+import type {
+	DynamicRoleDraft,
+	OrganizationDynamicRoleSummary,
+	OrganizationTeamSummary,
+} from "@/lib/advanced-organization-console";
 import {
 	createEmptyDynamicRoleDraft,
 	getDynamicRoleDraftError,
@@ -75,11 +80,6 @@ import {
 	ORGANIZATION_PERMISSION_STATEMENT,
 	toggleRolePermission,
 	toRolePermissionPayload,
-} from "@/lib/advanced-organization-console";
-import type {
-	DynamicRoleDraft,
-	OrganizationDynamicRoleSummary,
-	OrganizationTeamSummary,
 } from "@/lib/advanced-organization-console";
 import type { OrganizationMember } from "@/lib/organization-console";
 import {

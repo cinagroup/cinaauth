@@ -1,12 +1,12 @@
 import { ADMIN_OIDC_STEP_UP_MAX_AGE_SECONDS } from "@cinaauth/auth-web-contract";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	ADMIN_OIDC_RECENT_AUTH_COOKIE,
 	sealRecentAuthenticationProof,
 } from "@/lib/cinaauth/oidc-transaction";
 import type { AdminSession } from "@/lib/cinaauth/types";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 const mocks = vi.hoisted(() => ({
 	fetch: vi.fn(),
@@ -171,12 +171,7 @@ describe("high-risk Admin BFF routes", () => {
 			(proof?: string) =>
 				import("@/app/api/admin/users/[id]/unban/route").then(({ POST }) =>
 					POST(
-						request(
-							"/api/admin/users/user-2/unban",
-							"POST",
-							undefined,
-							proof,
-						),
+						request("/api/admin/users/user-2/unban", "POST", undefined, proof),
 						params("user-2"),
 					),
 				),
@@ -186,12 +181,7 @@ describe("high-risk Admin BFF routes", () => {
 			(proof?: string) =>
 				import("@/app/api/admin/users/[id]/route").then(({ DELETE }) =>
 					DELETE(
-						request(
-							"/api/admin/users/user-2",
-							"DELETE",
-							undefined,
-							proof,
-						),
+						request("/api/admin/users/user-2", "DELETE", undefined, proof),
 						params("user-2"),
 					),
 				),
@@ -331,14 +321,18 @@ describe("high-risk Admin BFF routes", () => {
 		],
 	] as const;
 
-	it.each(cases)("requires recent authentication for %s", async (_name, invoke) => {
+	it.each(
+		cases,
+	)("requires recent authentication for %s", async (_name, invoke) => {
 		const response = await invoke();
 
 		await expectSessionNotFresh(response);
 		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
-	it.each(cases)("accepts a valid subject-bound proof for %s", async (_name, invoke) => {
+	it.each(
+		cases,
+	)("accepts a valid subject-bound proof for %s", async (_name, invoke) => {
 		const response = await invoke(await sealProof());
 
 		expect(response.status).toBe(200);

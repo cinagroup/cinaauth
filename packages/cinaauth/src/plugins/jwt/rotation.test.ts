@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { decodeProtectedHeader } from "jose";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { getTestInstance } from "../../test-utils/test-instance";
 import { jwt } from ".";
 import type { Jwk } from "./types";
@@ -162,14 +162,13 @@ describe("jwt rotation", async () => {
 				})
 			).payload?.sub,
 		).toBe("user1");
-		expect((await second.auth.api.getJwks()).keys.map((key) => key.alg)).toEqual([
-			"EdDSA",
-			"ES256",
-		]);
+		expect(
+			(await second.auth.api.getJwks()).keys.map((key) => key.alg),
+		).toEqual(["EdDSA", "ES256"]);
 
 		vi.advanceTimersByTime(30_001);
-		expect((await second.auth.api.getJwks()).keys.map((key) => key.alg)).toEqual([
-			"ES256",
-		]);
+		expect(
+			(await second.auth.api.getJwks()).keys.map((key) => key.alg),
+		).toEqual(["ES256"]);
 	});
 });

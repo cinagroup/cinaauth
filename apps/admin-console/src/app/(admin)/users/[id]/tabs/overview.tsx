@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
 	Select,
 	SelectContent,
@@ -15,10 +16,9 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { useAdminSession } from "@/hooks/use-admin-session";
-import { toast } from "sonner";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminResponse } from "@/lib/client-api";
 import type { UserDTO } from "@/lib/cinaauth/dto";
+import { fetchAdminResponse } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 /**
  * User profile overview: read-only details + an editable form (name / email /
@@ -89,68 +89,97 @@ export function OverviewTab({ user }: { user: UserDTO }) {
 				</CardHeader>
 				<CardContent>
 					<dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-[14px] leading-5">
-						<dt className="whitespace-nowrap text-mute">{t("users.col.email")}</dt>
+						<dt className="whitespace-nowrap text-mute">
+							{t("users.col.email")}
+						</dt>
 						<dd className="break-all text-ink">{user.email}</dd>
-						<dt className="whitespace-nowrap text-mute">{t("users.col.name")}</dt>
+						<dt className="whitespace-nowrap text-mute">
+							{t("users.col.name")}
+						</dt>
 						<dd className="text-ink">{user.name || "—"}</dd>
-						<dt className="whitespace-nowrap text-mute">{t("userDetail.profile.role")}</dt>
+						<dt className="whitespace-nowrap text-mute">
+							{t("userDetail.profile.role")}
+						</dt>
 						<dd>
 							<Badge variant="outline">{user.role}</Badge>
 						</dd>
 						<dt className="whitespace-nowrap text-mute">2FA</dt>
 						<dd>
 							{user.twoFactorEnabled ? (
-								<Badge variant="success">{t("userDetail.profile.2fa.on")}</Badge>
+								<Badge variant="success">
+									{t("userDetail.profile.2fa.on")}
+								</Badge>
 							) : (
-								<Badge variant="warning">{t("userDetail.profile.2fa.off")}</Badge>
+								<Badge variant="warning">
+									{t("userDetail.profile.2fa.off")}
+								</Badge>
 							)}
 						</dd>
-						<dt className="whitespace-nowrap text-mute">{t("userDetail.profile.emailVerified")}</dt>
+						<dt className="whitespace-nowrap text-mute">
+							{t("userDetail.profile.emailVerified")}
+						</dt>
 						<dd className="flex items-center gap-2">
 							{user.emailVerified ? (
-								<Badge variant="success">{t("userDetail.profile.verified")}</Badge>
+								<Badge variant="success">
+									{t("userDetail.profile.verified")}
+								</Badge>
 							) : (
 								<>
-									<Badge variant="muted">{t("userDetail.profile.unverified")}</Badge>
+									<Badge variant="muted">
+										{t("userDetail.profile.unverified")}
+									</Badge>
 									{isSuperAdmin && (
-									<Button
-										type="button"
-										variant="link"
-										size="sm"
-										className="h-auto p-0 text-[12px] max-sm:min-h-11"
+										<Button
+											type="button"
+											variant="link"
+											size="sm"
+											className="h-auto p-0 text-[12px] max-sm:min-h-11"
 											onClick={async () => {
-												const r = await fetchAdminResponse(`/api/admin/users/${user.id}`, {
-													method: "PATCH",
-													headers: { "content-type": "application/json" },
-													body: JSON.stringify({ emailVerified: true }),
-												});
+												const r = await fetchAdminResponse(
+													`/api/admin/users/${user.id}`,
+													{
+														method: "PATCH",
+														headers: { "content-type": "application/json" },
+														body: JSON.stringify({ emailVerified: true }),
+													},
+												);
 												if (r.ok) {
 													toast.success(t("userDetail.profile.verified"));
-													await qc.invalidateQueries({ queryKey: ["user", user.id] });
+													await qc.invalidateQueries({
+														queryKey: ["user", user.id],
+													});
 												} else {
 													toast.error(t("toast.saveFailed"));
 												}
 											}}
 										>
 											{t("userDetail.profile.markVerified")}
-									</Button>
+										</Button>
 									)}
 								</>
 							)}
 						</dd>
-						<dt className="whitespace-nowrap text-mute">{t("userDetail.actions.ban")}</dt>
+						<dt className="whitespace-nowrap text-mute">
+							{t("userDetail.actions.ban")}
+						</dt>
 						<dd>
 							{user.banned ? (
-								<Badge variant="danger">{user.banReason ?? t("userDetail.profile.banned")}</Badge>
+								<Badge variant="danger">
+									{user.banReason ?? t("userDetail.profile.banned")}
+								</Badge>
 							) : (
 								<Badge variant="success">{t("users.status.active")}</Badge>
 							)}
 						</dd>
-						<dt className="whitespace-nowrap text-mute">{t("userDetail.profile.createdAt")}</dt>
+						<dt className="whitespace-nowrap text-mute">
+							{t("userDetail.profile.createdAt")}
+						</dt>
 						<dd className="text-ink">
 							{new Date(user.createdAt).toLocaleString()}
 						</dd>
-						<dt className="whitespace-nowrap text-mute">{t("userDetail.profile.userId")}</dt>
+						<dt className="whitespace-nowrap text-mute">
+							{t("userDetail.profile.userId")}
+						</dt>
 						<dd className="break-all font-mono text-[12px] leading-4 text-mute">
 							{user.id}
 						</dd>

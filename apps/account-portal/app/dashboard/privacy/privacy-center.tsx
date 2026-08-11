@@ -26,15 +26,15 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import type { PrivacyAsyncExportStatus } from "@/lib/privacy-center";
 import {
 	getPersonalDataExportFilename,
-	parsePrivacyAsyncExportStatus,
-	type PrivacyAsyncExportStatus,
 	PRIVACY_ASYNC_EXPORT_DOWNLOAD_PATH,
 	PRIVACY_ASYNC_EXPORT_PATH,
 	PRIVACY_ASYNC_EXPORT_STATUS_PATH,
 	PRIVACY_EXPORT_CATEGORIES,
 	PRIVACY_EXPORT_PATH,
+	parsePrivacyAsyncExportStatus,
 } from "@/lib/privacy-center";
 
 const ACTIVE_ASYNC_EXPORT_STATES = new Set([
@@ -148,7 +148,9 @@ export function PrivacyCenter({
 				);
 			}
 			setAsyncExport(status);
-			toast.success("Encrypted export queued. This page will update automatically.");
+			toast.success(
+				"Encrypted export queued. This page will update automatically.",
+			);
 		} catch (error) {
 			toast.error(
 				error instanceof Error
@@ -325,9 +327,7 @@ export function PrivacyCenter({
 								variant="outline"
 								onClick={requestAsyncExport}
 								disabled={
-									!recentAuthentication ||
-									isQueueingExport ||
-									asyncExportActive
+									!recentAuthentication || isQueueingExport || asyncExportActive
 								}
 							>
 								{isQueueingExport ? (
@@ -358,8 +358,9 @@ export function PrivacyCenter({
 									) : null}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									Stored with a per-object customer encryption key and deleted no
-									later than {new Date(asyncExport.expiresAt).toLocaleString()}.
+									Stored with a per-object customer encryption key and deleted
+									no later than{" "}
+									{new Date(asyncExport.expiresAt).toLocaleString()}.
 								</p>
 								<div className="flex flex-wrap gap-2">
 									{asyncExport.status === "ready" ? (
@@ -394,8 +395,12 @@ export function PrivacyCenter({
 						</CardHeader>
 						<CardContent className="space-y-3 text-sm text-muted-foreground">
 							<p>Only records linked to the signed-in subject are selected.</p>
-							<p>Responses are attachments with no-store and nosniff headers.</p>
-							<p>Oversized sections fail instead of being silently truncated.</p>
+							<p>
+								Responses are attachments with no-store and nosniff headers.
+							</p>
+							<p>
+								Oversized sections fail instead of being silently truncated.
+							</p>
 						</CardContent>
 					</Card>
 
@@ -406,8 +411,8 @@ export function PrivacyCenter({
 							</CardTitle>
 							<CardDescription>
 								Review current retention exceptions and blocking holds before a
-								permanent deletion. CinaSeek downloads a signed JSON receipt after
-								completion.
+								permanent deletion. CinaSeek downloads a signed JSON receipt
+								after completion.
 							</CardDescription>
 						</CardHeader>
 						<CardContent>

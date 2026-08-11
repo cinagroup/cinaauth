@@ -25,7 +25,10 @@ assert.equal(config.redirectUri, redirectUri);
 
 const app = await fetchOk(appOrigin);
 assert.match(await app.text(), /CinaSeek OIDC Lab/);
-assert.match(app.headers.get("content-security-policy") || "", /frame-ancestors 'none'/);
+assert.match(
+	app.headers.get("content-security-policy") || "",
+	/frame-ancestors 'none'/,
+);
 
 const discoveryResponse = await fetchOk(
 	`${issuer}/.well-known/openid-configuration`,
@@ -44,7 +47,10 @@ const corsResponse = await fetch(discovery.token_endpoint, {
 		"Access-Control-Request-Headers": "content-type",
 	},
 });
-assert.equal(corsResponse.headers.get("access-control-allow-origin"), appOrigin);
+assert.equal(
+	corsResponse.headers.get("access-control-allow-origin"),
+	appOrigin,
+);
 
 const authorizationUrl = new URL(discovery.authorization_endpoint);
 authorizationUrl.searchParams.set("client_id", clientId);
@@ -61,7 +67,10 @@ assert.ok(
 	`authorize returned ${authorization.status}`,
 );
 const location = authorization.headers.get("location") || "";
-assert.match(location, /^https:\/\/accounts\.cinaseek\.ai\/(sign-in|oauth\/consent)/);
+assert.match(
+	location,
+	/^https:\/\/accounts\.cinaseek\.ai\/(sign-in|oauth\/consent)/,
+);
 assert.doesNotMatch(location, /[?&]error=/);
 
 console.log(

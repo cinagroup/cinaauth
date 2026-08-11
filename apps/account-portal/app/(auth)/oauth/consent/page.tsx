@@ -101,7 +101,9 @@ export default async function AuthorizePage({
 						<CardContent className="p-6">
 							<div className="flex items-center justify-between p-4 bg-canvas-soft rounded-md mb-6">
 								<div>
-									<div className="font-medium text-ink">{session?.user.name}</div>
+									<div className="font-medium text-ink">
+										{session?.user.name}
+									</div>
 									<div className="text-body">{session?.user.email}</div>
 								</div>
 								<ArrowUpRight className="h-5 w-5 text-mute" />

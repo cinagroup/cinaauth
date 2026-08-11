@@ -324,7 +324,7 @@ describe("privacy-center account deletion evidence", () => {
 		});
 		expect(response.status).toBe(200);
 		expect(response.headers.get("cache-control")).toBe("no-store");
-			expect(await response.json()).toMatchObject({
+		expect(await response.json()).toMatchObject({
 			canDelete: true,
 			policyVersion: "2026-08-09",
 			requiredProcessors: [{ id: "customer-support" }],
@@ -495,9 +495,11 @@ describe("privacy-center account deletion evidence", () => {
 			...payload.deletionReceipt,
 			deletion: {
 				...payload.deletionReceipt.deletion,
-				processors: payload.deletionReceipt.deletion.processors?.map(
-					(processor) => ({ ...processor, status: "not-applicable" }),
-				) ?? [],
+				processors:
+					payload.deletionReceipt.deletion.processors?.map((processor) => ({
+						...processor,
+						status: "not-applicable",
+					})) ?? [],
 			},
 		};
 		expect(
@@ -569,7 +571,8 @@ describe("privacy-center account deletion evidence", () => {
 			payload.deletionReceipt.deletion.retentionExceptions[0];
 		expect(retentionSnapshot?.purgeNoLaterThan).toBe(
 			new Date(
-				Date.parse(payload.deletionReceipt.issuedAt) + 90 * 24 * 60 * 60 * 1_000,
+				Date.parse(payload.deletionReceipt.issuedAt) +
+					90 * 24 * 60 * 60 * 1_000,
 			).toISOString(),
 		);
 		const serialized = JSON.stringify(payload.deletionReceipt);

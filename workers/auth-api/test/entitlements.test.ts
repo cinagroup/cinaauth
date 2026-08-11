@@ -125,9 +125,7 @@ describe("entitlement policy", () => {
 			loadEntitlementSnapshot({
 				subject: { type: "organization", id: "organization-1" },
 				billing,
-				loadSubscriptions: async () => [
-					{ plan: "pro", status: "active" },
-				],
+				loadSubscriptions: async () => [{ plan: "pro", status: "active" }],
 			}),
 		).resolves.toMatchObject({
 			success: true,

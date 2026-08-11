@@ -1,19 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-	getCoreRowModel,
-	useReactTable,
-	type ColumnDef,
-} from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Download, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { DataTable } from "@/components/data-table/data-table";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/layout/page-header";
-import { useI18n } from "@/lib/i18n/i18n-context";
 import {
 	Select,
 	SelectContent,
@@ -23,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import type { AuditLogDTO } from "@/lib/cinaauth/dto";
 import { downloadAdminCsv, fetchAdminJson } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 const CATEGORIES = [
 	"user",
@@ -74,12 +71,13 @@ export default function AuditPage() {
 		const all = data ?? [];
 		const q = search.trim().toLowerCase();
 		if (!q) return all;
-		return all.filter((r) =>
-			(r.actorIp ?? "").toLowerCase().includes(q) ||
-			(r.actorId ?? "").toLowerCase().includes(q) ||
-			(r.action ?? "").toLowerCase().includes(q) ||
-			(r.targetId ?? "").toLowerCase().includes(q) ||
-			(r.category ?? "").toLowerCase().includes(q),
+		return all.filter(
+			(r) =>
+				(r.actorIp ?? "").toLowerCase().includes(q) ||
+				(r.actorId ?? "").toLowerCase().includes(q) ||
+				(r.action ?? "").toLowerCase().includes(q) ||
+				(r.targetId ?? "").toLowerCase().includes(q) ||
+				(r.category ?? "").toLowerCase().includes(q),
 		);
 	}, [data, search]);
 
@@ -101,9 +99,12 @@ export default function AuditPage() {
 					if (!ip) return "—";
 					// Mask last two octets for privacy: 1.2.3.4 → 1.2.x.x
 					const v4 = ip.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
-					if (v4) return (
-						<span className="font-mono text-[12px] text-mute">{v4[1]}.{v4[2]}.x.x</span>
-					);
+					if (v4)
+						return (
+							<span className="font-mono text-[12px] text-mute">
+								{v4[1]}.{v4[2]}.x.x
+							</span>
+						);
 					return <span className="font-mono text-[12px] text-mute">{ip}</span>;
 				},
 			},
@@ -163,8 +164,12 @@ export default function AuditPage() {
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value="all">{t("audit.allResults")}</SelectItem>
-						<SelectItem value="success">{t("common.result.success")}</SelectItem>
-						<SelectItem value="failure">{t("common.result.failure")}</SelectItem>
+						<SelectItem value="success">
+							{t("common.result.success")}
+						</SelectItem>
+						<SelectItem value="failure">
+							{t("common.result.failure")}
+						</SelectItem>
 					</SelectContent>
 				</Select>
 				<Select value={dateRange} onValueChange={setDateRange}>
@@ -179,7 +184,10 @@ export default function AuditPage() {
 					</SelectContent>
 				</Select>
 				<div className="relative flex-1">
-					<Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-mute" />
+					<Search
+						size={14}
+						className="absolute left-3 top-1/2 -translate-y-1/2 text-mute"
+					/>
 					<Input
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}

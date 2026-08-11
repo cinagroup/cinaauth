@@ -1,19 +1,22 @@
 "use client";
 
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { useThemeTokens } from "@/hooks/use-theme-tokens";
+import {
+	Cell,
+	Legend,
+	Pie,
+	PieChart,
+	ResponsiveContainer,
+	Tooltip,
+} from "recharts";
 import { ChartState } from "@/components/charts/chart-state";
+import { useThemeTokens } from "@/hooks/use-theme-tokens";
 
 /**
  * Login-channel distribution pie (email/password, github, siwe). Colors read
  * theme tokens; `themeKey` forces a remount on theme switch so recharts
  * re-tints slices + tooltip.
  */
-export function ChannelPie({
-	channels,
-}: {
-	channels: Record<string, number>;
-}) {
+export function ChannelPie({ channels }: { channels: Record<string, number> }) {
 	const { v, themeKey } = useThemeTokens();
 	const data = [
 		{ name: "Email", value: channels.emailPassword ?? 0 },

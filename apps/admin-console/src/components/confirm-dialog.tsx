@@ -1,6 +1,8 @@
 "use client";
 
-import { useId, useState, type ReactElement, type ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { useId, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogClose,
@@ -11,7 +13,6 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -117,7 +118,12 @@ export function ConfirmDialog({
 					)}
 					<DialogFooter>
 						<DialogClose asChild>
-							<Button type="button" variant="secondary" size="sm" disabled={pending}>
+							<Button
+								type="button"
+								variant="secondary"
+								size="sm"
+								disabled={pending}
+							>
 								{_cancelText}
 							</Button>
 						</DialogClose>

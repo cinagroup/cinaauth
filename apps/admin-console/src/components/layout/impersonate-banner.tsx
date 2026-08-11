@@ -1,7 +1,7 @@
 "use client";
 
-import { useI18n } from "@/lib/i18n/i18n-context";
 import { useAdminSession } from "@/hooks/use-admin-session";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 /**
  * Persistent, non-dismissible banner shown while an admin is impersonating a
@@ -14,7 +14,7 @@ export function ImpersonateBanner() {
 	const { t } = useI18n();
 	const { data: session } = useAdminSession();
 	const acting = session?.impersonatedBy
-		? session.email ?? session.userId
+		? (session.email ?? session.userId)
 		: null;
 
 	if (!acting) return null;

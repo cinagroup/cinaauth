@@ -905,9 +905,7 @@ describe("lastLoginMethod", async () => {
 			);
 
 			const emailCookies = parseCookies(emailHeaders.get("cookie") || "");
-			expect(emailCookies.get("cinaauth.last_used_login_method")).toBe(
-				"email",
-			);
+			expect(emailCookies.get("cinaauth.last_used_login_method")).toBe("email");
 
 			// OAuth login should NOT set cookie
 			const oAuthHeaders = new Headers();
@@ -1013,9 +1011,7 @@ describe("lastLoginMethod", async () => {
 			);
 
 			const emailCookies = parseCookies(emailHeaders.get("cookie") || "");
-			expect(emailCookies.get("cinaauth.last_used_login_method")).toBe(
-				"email",
-			);
+			expect(emailCookies.get("cinaauth.last_used_login_method")).toBe("email");
 
 			// Google OAuth should set cookie
 			const oAuthHeaders = new Headers();
@@ -1089,9 +1085,7 @@ describe("lastLoginMethod", async () => {
 			);
 
 			const cookies1 = parseCookies(headers1.get("cookie") || "");
-			expect(
-				cookies1.get("cinaauth.last_used_login_method"),
-			).toBeUndefined();
+			expect(cookies1.get("cinaauth.last_used_login_method")).toBeUndefined();
 
 			// Simulate user giving consent
 			consentGiven = true;

@@ -17,13 +17,10 @@ describe("POST /api/auth/sign-out", () => {
 	it("rejects cross-site requests before contacting auth", async () => {
 		const fetchMock = vi.spyOn(globalThis, "fetch");
 		const { POST } = await import("@/app/api/auth/sign-out/route");
-		const request = new NextRequest(
-			"https://admin.test/api/auth/sign-out",
-			{
-				method: "POST",
-				headers: { origin: "https://attacker.example" },
-			},
-		);
+		const request = new NextRequest("https://admin.test/api/auth/sign-out", {
+			method: "POST",
+			headers: { origin: "https://attacker.example" },
+		});
 
 		const response = await POST(request);
 
@@ -48,16 +45,13 @@ describe("POST /api/auth/sign-out", () => {
 			}),
 		);
 		const { POST } = await import("@/app/api/auth/sign-out/route");
-		const request = new NextRequest(
-			"https://admin.test/api/auth/sign-out",
-			{
-				method: "POST",
-				headers: {
-					origin: "https://admin.test",
-					cookie: "__Secure-cinaauth.session_token=session-token",
-				},
+		const request = new NextRequest("https://admin.test/api/auth/sign-out", {
+			method: "POST",
+			headers: {
+				origin: "https://admin.test",
+				cookie: "__Secure-cinaauth.session_token=session-token",
 			},
-		);
+		});
 
 		const response = await POST(request);
 
@@ -84,13 +78,10 @@ describe("POST /api/auth/sign-out", () => {
 	it("returns a controlled error when the auth backend is unavailable", async () => {
 		vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 		const { POST } = await import("@/app/api/auth/sign-out/route");
-		const request = new NextRequest(
-			"https://admin.test/api/auth/sign-out",
-			{
-				method: "POST",
-				headers: { origin: "https://admin.test" },
-			},
-		);
+		const request = new NextRequest("https://admin.test/api/auth/sign-out", {
+			method: "POST",
+			headers: { origin: "https://admin.test" },
+		});
 
 		const response = await POST(request);
 

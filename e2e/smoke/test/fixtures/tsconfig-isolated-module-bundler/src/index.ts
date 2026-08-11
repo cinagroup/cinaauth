@@ -1,4 +1,5 @@
 ﻿// Copy and modify from https://github.com/wannabespace/conar/blob/ae42097562d1d57b21e6ca32b31a203cebbaad6f/apps/api/src/lib/auth.ts
+import { emailHarmony } from "better-auth-harmony";
 import type { CinaAuthOptions, CinaAuthPlugin } from "cinaauth";
 import { CinaAuth } from "cinaauth";
 import { createAuthMiddleware } from "cinaauth/api";
@@ -9,7 +10,6 @@ import {
 	organization,
 	twoFactor,
 } from "cinaauth/plugins";
-import { emailHarmony } from "better-auth-harmony";
 
 /**
  * Plugin to prevent setting the "set-cookie" header in responses.

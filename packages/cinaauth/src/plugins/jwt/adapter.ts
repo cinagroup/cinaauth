@@ -1,7 +1,4 @@
-import type {
-	CinaAuthOptions,
-	GenericEndpointContext,
-} from "@cinaauth/core";
+import type { CinaAuthOptions, GenericEndpointContext } from "@cinaauth/core";
 import { getCurrentAdapter } from "@cinaauth/core/context";
 import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import type { Jwk, JwtOptions } from "./types";
@@ -25,9 +22,7 @@ export const getJwksAdapter = (
 				const keys = await options.adapter.getJwks(ctx);
 				return keys
 					?.slice()
-					.sort(
-					(a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-					)[0];
+					.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
 			}
 			const adapter = await getCurrentAdapter(baseAdapter);
 			const keys = await adapter.findMany<Jwk>({
@@ -35,9 +30,7 @@ export const getJwksAdapter = (
 			});
 			return keys
 				.slice()
-				.sort(
-				(a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-				)[0];
+				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
 		},
 		createJwk: async (ctx: GenericEndpointContext, webKey: Omit<Jwk, "id">) => {
 			if (options?.adapter?.createJwk) {

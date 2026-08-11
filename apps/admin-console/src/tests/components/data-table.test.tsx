@@ -1,15 +1,11 @@
-import { describe, expect, it } from "vitest";
+import type { ColumnDef } from "@tanstack/react-table";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { vi } from "vitest";
-import {
-	useReactTable,
-	getCoreRowModel,
-	type ColumnDef,
-} from "@tanstack/react-table";
+import { describe, expect, it, vi } from "vitest";
 import { DataTable } from "@/components/data-table/data-table";
 import { Badge } from "@/components/ui/badge";
 
-function Harness<T,>({
+function Harness<T>({
 	data,
 	columns,
 	rowClassName,
@@ -56,7 +52,9 @@ describe("DataTable", () => {
 	});
 
 	it("renders empty label when no rows", () => {
-		const cols: ColumnDef<{ a: string }>[] = [{ accessorKey: "a", header: "A" }];
+		const cols: ColumnDef<{ a: string }>[] = [
+			{ accessorKey: "a", header: "A" },
+		];
 		render(<Harness data={[]} columns={cols} />);
 		expect(screen.getByText("暂无数据")).toBeTruthy();
 	});
@@ -73,12 +71,16 @@ describe("DataTable", () => {
 				rowClassName={(r) => (r.bad ? "row-danger" : undefined)}
 			/>,
 		);
-		expect(container.querySelector("tbody tr")?.className).toContain("row-danger");
+		expect(container.querySelector("tbody tr")?.className).toContain(
+			"row-danger",
+		);
 	});
 
 	it("renders a retryable error without calling it empty data", () => {
 		const retry = vi.fn();
-		const cols: ColumnDef<{ a: string }>[] = [{ accessorKey: "a", header: "A" }];
+		const cols: ColumnDef<{ a: string }>[] = [
+			{ accessorKey: "a", header: "A" },
+		];
 		render(<Harness data={[]} columns={cols} isError onRetry={retry} />);
 		expect(screen.queryByText("暂无数据")).toBeNull();
 		fireEvent.click(screen.getByText("重试"));

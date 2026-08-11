@@ -1,5 +1,6 @@
 import { AUTH_WEB_ENDPOINTS } from "@cinaauth/auth-web-contract";
-import { type NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { cinaauthConfig } from "@/lib/cinaauth/config";
 import { fetchAuthRequest } from "@/lib/cinaauth/fetcher";
 import {
@@ -24,16 +25,18 @@ export async function POST(request: NextRequest) {
 
 	let upstream: Response;
 	try {
-		upstream = await fetchAuthRequest(new Request(new URL(AUTH_WEB_ENDPOINTS.signOut, cinaauthConfig.baseUrl), {
-			method: "POST",
-			headers: {
-				"content-type": "application/json",
-				origin: cinaauthConfig.requestOrigin,
-				cookie: request.headers.get("cookie") ?? "",
-			},
-			body: "{}",
-			cache: "no-store",
-		}));
+		upstream = await fetchAuthRequest(
+			new Request(new URL(AUTH_WEB_ENDPOINTS.signOut, cinaauthConfig.baseUrl), {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: cinaauthConfig.requestOrigin,
+					cookie: request.headers.get("cookie") ?? "",
+				},
+				body: "{}",
+				cache: "no-store",
+			}),
+		);
 	} catch {
 		return NextResponse.json(
 			{

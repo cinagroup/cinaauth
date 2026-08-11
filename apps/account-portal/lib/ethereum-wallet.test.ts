@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import type { EthereumProvider } from "./ethereum-wallet";
 import {
 	buildSiweMessage,
 	getInjectedEthereumProvider,
 	parseEthereumChainId,
 	requestEthereumWalletIdentity,
 	signSiweMessage,
-	type EthereumProvider,
 } from "./ethereum-wallet";
 
 describe("Ethereum wallet helpers", () => {

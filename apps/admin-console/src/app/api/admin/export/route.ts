@@ -1,5 +1,5 @@
 import { hasAdminControlPermission } from "@cinaauth/auth-web-contract";
-import { type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
 import { resolveAdminSession } from "@/lib/cinaauth/session";
 import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";

@@ -30,8 +30,7 @@ export default defineConfig({
 	},
 	env: {
 		CINAAUTH_VERSION: packageJson.version,
-		CINAAUTH_TELEMETRY_ENDPOINT:
-			process.env.CINAAUTH_TELEMETRY_ENDPOINT ?? "",
+		CINAAUTH_TELEMETRY_ENDPOINT: process.env.CINAAUTH_TELEMETRY_ENDPOINT ?? "",
 	},
 	unbundle: true,
 	treeshake: true,

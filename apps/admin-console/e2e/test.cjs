@@ -66,40 +66,57 @@ async function run() {
 	try {
 		// ── 1. OIDC-authenticated storage state ──
 		console.log("【1. OIDC 会话】");
-		await page.goto(`${BASE}/dashboard`, { waitUntil: "commit", timeout: 45000 });
+		await page.goto(`${BASE}/dashboard`, {
+			waitUntil: "commit",
+			timeout: 45000,
+		});
 		await page.waitForTimeout(5000);
 		const authenticated = assertAuthenticatedAdminPage(page, BASE);
 		log("OIDC storageState 已认证", authenticated, page.url().slice(0, 60));
 
 		// Wait for the admin shell to fully hydrate before proceeding
-		await page.waitForSelector("aside nav a", { timeout: 15000 }).catch(() => {});
+		await page
+			.waitForSelector("aside nav a", { timeout: 15000 })
+			.catch(() => {});
 		await page.waitForTimeout(3000);
 		// Screenshot the dashboard to verify visual state
 		await page.screenshot({ path: join(__dirname, "dashboard.png") });
 
 		// ── 2. Users table row click (before nav loop to avoid session expiry) ──
 		console.log("\n【2. 用户列表行点击】");
-		await page.goto(`${BASE}/users`, { waitUntil: "domcontentloaded", timeout: 30000 });
-		await page.waitForSelector("table tbody tr", { timeout: 30000 }).catch(() => {});
+		await page.goto(`${BASE}/users`, {
+			waitUntil: "domcontentloaded",
+			timeout: 30000,
+		});
+		await page
+			.waitForSelector("table tbody tr", { timeout: 30000 })
+			.catch(() => {});
 		await page.waitForTimeout(3000);
 		const rowCount = await page.locator("table tbody tr").count();
 		if (rowCount > 0) {
 			// Fallback: extract user ID from API and navigate directly
-			const usersData = await page.evaluate(async () => {
-				const r = await fetch("/api/admin/users?limit=1");
-				const d = await r.json();
-				return d.data?.users?.[0]?.id || null;
-			}).catch(() => null);
+			const usersData = await page
+				.evaluate(async () => {
+					const r = await fetch("/api/admin/users?limit=1");
+					const d = await r.json();
+					return d.data?.users?.[0]?.id || null;
+				})
+				.catch(() => null);
 			if (usersData) {
-				await page.goto(`${BASE}/users/${usersData}`, { waitUntil: "commit", timeout: 30000 });
+				await page.goto(`${BASE}/users/${usersData}`, {
+					waitUntil: "commit",
+					timeout: 30000,
+				});
 				await page.waitForTimeout(3000);
 			}
 			const detailUrl = page.url();
-			const isDetail = detailUrl.includes("/users/") && !detailUrl.endsWith("/users");
+			const isDetail =
+				detailUrl.includes("/users/") && !detailUrl.endsWith("/users");
 			log("行点击跳转详情", isDetail, detailUrl.slice(0, 60));
 
 			const bodyText = await page.locator("body").innerText();
-			const hasFail = bodyText.includes("加载失败") || bodyText.includes("not found");
+			const hasFail =
+				bodyText.includes("加载失败") || bodyText.includes("not found");
 			log("详情页数据加载", !hasFail, !hasFail ? "有数据" : "显示加载失败");
 
 			const hasEmail = /\S+@\S+\.\S+/.test(bodyText);
@@ -112,13 +129,18 @@ async function run() {
 		console.log("\n【3. Toast 反馈】");
 		{
 			// Navigate to user detail fresh (ensures we're on a detail page)
-			const uid = await page.evaluate(async () => {
-				const r = await fetch("/api/admin/users?limit=1");
-				const d = await r.json();
-				return d.data?.users?.[0]?.id || null;
-			}).catch(() => null);
+			const uid = await page
+				.evaluate(async () => {
+					const r = await fetch("/api/admin/users?limit=1");
+					const d = await r.json();
+					return d.data?.users?.[0]?.id || null;
+				})
+				.catch(() => null);
 			if (uid) {
-				await page.goto(`${BASE}/users/${uid}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+				await page.goto(`${BASE}/users/${uid}`, {
+					waitUntil: "domcontentloaded",
+					timeout: 30000,
+				});
 				// Wait for the overview tab + edit form to hydrate
 				for (let i = 0; i < 30; i++) {
 					await page.waitForTimeout(1000);
@@ -139,8 +161,13 @@ async function run() {
 					let found = false;
 					for (let i = 0; i < 30; i++) {
 						await page.waitForTimeout(500);
-						const count = await page.locator('[data-sonner-toast], [class*="sonner"]').count();
-						if (count > 0) { found = true; break; }
+						const count = await page
+							.locator('[data-sonner-toast], [class*="sonner"]')
+							.count();
+						if (count > 0) {
+							found = true;
+							break;
+						}
 					}
 					log("Toast 反馈", found, found ? "toast 出现 ✓" : "无 toast");
 				} else {
@@ -164,10 +191,17 @@ async function run() {
 		];
 		for (const nav of navItems) {
 			try {
-				await page.goto(`${BASE}${nav.href}`, { waitUntil: "commit", timeout: 30000 });
+				await page.goto(`${BASE}${nav.href}`, {
+					waitUntil: "commit",
+					timeout: 30000,
+				});
 				await page.waitForTimeout(1500);
 				const ok = page.url().includes(nav.href);
-				log(`导航: ${nav.href}`, ok, ok ? "✓" : `url=${page.url().slice(0, 50)}`);
+				log(
+					`导航: ${nav.href}`,
+					ok,
+					ok ? "✓" : `url=${page.url().slice(0, 50)}`,
+				);
 			} catch (e) {
 				log(`导航: ${nav.href}`, false, e.message.slice(0, 50));
 			}
@@ -175,23 +209,38 @@ async function run() {
 
 		// ── 5. EN/ZH language switch ──
 		console.log("\n【5. 多语言切换】");
-		await page.goto(`${BASE}/dashboard`, { waitUntil: "commit", timeout: 45000 });
+		await page.goto(`${BASE}/dashboard`, {
+			waitUntil: "commit",
+			timeout: 45000,
+		});
 		await page.waitForTimeout(3000); // wait for client hydration
 		// Wait for header to be interactive
-		await page.waitForSelector("header button", { timeout: 10000 }).catch(() => {});
-		const navTextBefore = await page.locator("nav").innerText().catch(() => "");
+		await page
+			.waitForSelector("header button", { timeout: 10000 })
+			.catch(() => {});
+		const _navTextBefore = await page
+			.locator("nav")
+			.innerText()
+			.catch(() => "");
 
 		// Find the language select (combobox in the header)
 		const langTrigger = page.locator('header button[role="combobox"]').first();
 		if ((await langTrigger.count()) > 0) {
 			await langTrigger.click();
 			await page.waitForTimeout(1000);
-			const enOption = page.locator('[role="option"]').filter({ hasText: /^EN$/ }).first();
+			const enOption = page
+				.locator('[role="option"]')
+				.filter({ hasText: /^EN$/ })
+				.first();
 			if ((await enOption.count()) > 0) {
 				await enOption.click();
 				await page.waitForTimeout(1500);
-				const navTextAfter = await page.locator("nav").innerText().catch(() => "");
-				const switched = navTextAfter.includes("Overview") || navTextAfter.includes("Users");
+				const navTextAfter = await page
+					.locator("nav")
+					.innerText()
+					.catch(() => "");
+				const switched =
+					navTextAfter.includes("Overview") || navTextAfter.includes("Users");
 				log("切换到英文", switched, switched ? "侧边栏变英文 ✓" : "未切换");
 			} else {
 				log("切换到英文", false, "EN 选项不可见");
@@ -203,19 +252,28 @@ async function run() {
 		// ── 6. Dark/Light theme ──
 		console.log("\n【6. 暗色/浅色主题切换】");
 		// Find theme toggle button in header (has aria-label containing "theme")
-		const themeBtn = page.locator('header button[aria-label*="theme" i]').first();
+		const themeBtn = page
+			.locator('header button[aria-label*="theme" i]')
+			.first();
 		if ((await themeBtn.count()) > 0) {
 			await themeBtn.click();
 			await page.waitForTimeout(1000);
 			// Click light option
-			const lightOption = page.locator('[role="menuitem"]').filter({ hasText: /浅色|Light/i }).first();
+			const lightOption = page
+				.locator('[role="menuitem"]')
+				.filter({ hasText: /浅色|Light/i })
+				.first();
 			if ((await lightOption.count()) > 0) {
 				await lightOption.click();
 				await page.waitForTimeout(1500);
 				const darkAfter = await page.evaluate(() =>
 					document.documentElement.classList.contains("dark"),
 				);
-				log("切换到浅色主题", !darkAfter, !darkAfter ? "已切浅色 ✓" : "仍为暗色");
+				log(
+					"切换到浅色主题",
+					!darkAfter,
+					!darkAfter ? "已切浅色 ✓" : "仍为暗色",
+				);
 			} else {
 				await page.keyboard.press("Escape");
 				log("暗色/浅色主题", false, "浅色选项不可见");
@@ -237,20 +295,30 @@ async function run() {
 				!e.includes("Download the React DevTools"),
 		);
 		log("无控制台错误", realErrors.length === 0, `${realErrors.length} 个错误`);
-		realErrors.slice(0, 5).forEach((e) => console.log(`    ⚠ ${e.slice(0, 120)}`));
+		realErrors
+			.slice(0, 5)
+			.forEach((e) => console.log(`    ⚠ ${e.slice(0, 120)}`));
 
 		const realNetErrors = networkErrors.filter(
 			(e) => !e.includes("favicon") && !e.includes("_next/image"),
 		);
-		log("无网络请求失败", realNetErrors.length === 0, `${realNetErrors.length} 个失败`);
-		realNetErrors.slice(0, 5).forEach((e) => console.log(`    ⚠ ${e.slice(0, 100)}`));
-
+		log(
+			"无网络请求失败",
+			realNetErrors.length === 0,
+			`${realNetErrors.length} 个失败`,
+		);
+		realNetErrors
+			.slice(0, 5)
+			.forEach((e) => console.log(`    ⚠ ${e.slice(0, 100)}`));
 	} catch (err) {
 		log("测试执行", false, `异常: ${err.message.slice(0, 100)}`);
 	} finally {
 		// Take a screenshot for visual verification
 		try {
-			await page.screenshot({ path: join(__dirname, "screenshot.png"), fullPage: false });
+			await page.screenshot({
+				path: join(__dirname, "screenshot.png"),
+				fullPage: false,
+			});
 			console.log("\n  📸 截图保存到 e2e/screenshot.png");
 		} catch {}
 		await browser.close();
@@ -260,11 +328,15 @@ async function run() {
 	const passed = results.filter((r) => r.pass).length;
 	const failed = results.filter((r) => !r.pass).length;
 	console.log("\n═══════════════════════════════════════════════");
-	console.log(`  结果: ✓ ${passed} 通过 / ✗ ${failed} 失败 / ${results.length} 总计`);
+	console.log(
+		`  结果: ✓ ${passed} 通过 / ✗ ${failed} 失败 / ${results.length} 总计`,
+	);
 	console.log("═══════════════════════════════════════════════");
 	if (failed > 0) {
 		console.log("\n失败项:");
-		results.filter((r) => !r.pass).forEach((r) => console.log(`  ✗ ${r.name}: ${r.detail}`));
+		results
+			.filter((r) => !r.pass)
+			.forEach((r) => console.log(`  ✗ ${r.name}: ${r.detail}`));
 	}
 }
 

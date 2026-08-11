@@ -1,15 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-	Bar,
-	BarChart,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-} from "recharts";
-import { useThemeTokens } from "@/hooks/use-theme-tokens";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { ChartState } from "@/components/charts/chart-state";
+import { useThemeTokens } from "@/hooks/use-theme-tokens";
 import { fetchAdminJson } from "@/lib/client-api";
 
 interface AuditRow {
@@ -42,9 +36,7 @@ export function CohortBars({ days = 14 }: { days?: number }) {
 			const d = await fetchAdminJson<{
 				ok?: boolean;
 				data?: { rows?: AuditRow[] };
-			}>(
-				`/api/admin/audit?action=user.login&result=success&limit=1000`,
-			);
+			}>(`/api/admin/audit?action=user.login&result=success&limit=1000`);
 			return d.data?.rows ?? [];
 		},
 	});
@@ -139,12 +131,7 @@ export function CohortBars({ days = 14 }: { days?: number }) {
 						color: v("--ink", "#171717"),
 					}}
 				/>
-				<Bar
-					dataKey="new"
-					stackId="cohort"
-					fill={c1}
-					radius={[0, 0, 0, 0]}
-				/>
+				<Bar dataKey="new" stackId="cohort" fill={c1} radius={[0, 0, 0, 0]} />
 				<Bar
 					dataKey="returning"
 					stackId="cohort"

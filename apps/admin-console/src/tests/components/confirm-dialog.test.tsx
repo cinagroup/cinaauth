@@ -1,5 +1,11 @@
 import { readFileSync } from "node:fs";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -8,9 +14,10 @@ describe("ConfirmDialog", () => {
 	it("does not nest the trigger button and waits for confirmation to finish", async () => {
 		let finish: (() => void) | undefined;
 		const onConfirm = vi.fn(
-			() => new Promise<void>((resolve) => {
-				finish = resolve;
-			}),
+			() =>
+				new Promise<void>((resolve) => {
+					finish = resolve;
+				}),
 		);
 		const { container } = render(
 			<ConfirmDialog
@@ -28,7 +35,9 @@ describe("ConfirmDialog", () => {
 		expect(screen.getByText("Confirm action")).toBeTruthy();
 
 		await act(async () => finish?.());
-		await waitFor(() => expect(screen.queryByText("Confirm action")).toBeNull());
+		await waitFor(() =>
+			expect(screen.queryByText("Confirm action")).toBeNull(),
+		);
 	});
 
 	it("submits as a form and preserves values when the action reports failure", async () => {

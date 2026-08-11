@@ -43,8 +43,7 @@ const requireSuccess = (result, operation) => {
 };
 
 const getCloudflareRuntime = () => {
-	const token =
-		process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN;
+	const token = process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN;
 	const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 	if (!token || !accountId) {
 		throw new Error(
@@ -62,9 +61,7 @@ const cloudflareFetch = async ({ accountId, token }, path) => {
 		},
 	});
 	if (!response.ok) {
-		throw new Error(
-			`Cloudflare API ${response.status} while reading ${path}`,
-		);
+		throw new Error(`Cloudflare API ${response.status} while reading ${path}`);
 	}
 	const payload = await response.json();
 	if (payload?.success !== true) {
@@ -147,8 +144,7 @@ const main = async () => {
 			createQueue(queueName);
 			continue;
 		}
-		const currentRetentionSeconds =
-			queue.settings?.message_retention_period;
+		const currentRetentionSeconds = queue.settings?.message_retention_period;
 		if (
 			typeof currentRetentionSeconds !== "number" ||
 			!Number.isFinite(currentRetentionSeconds)
@@ -173,7 +169,10 @@ const main = async () => {
 	console.log("Delivery Queue resources use 24-hour retention.");
 };
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+	process.argv[1] &&
+	import.meta.url === pathToFileURL(process.argv[1]).href
+) {
 	main().catch((error) => {
 		console.error(error instanceof Error ? error.message : String(error));
 		process.exitCode = 1;

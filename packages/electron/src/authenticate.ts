@@ -1,9 +1,9 @@
-import type { CinaAuthClientOptions } from "@cinaauth/core";
-import type { User } from "@cinaauth/core/db";
-import { CinaAuthError } from "@cinaauth/core/error";
 import { base64Url } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
 import type { BetterFetch, CreateFetchOption } from "@better-fetch/fetch";
+import type { CinaAuthClientOptions } from "@cinaauth/core";
+import type { User } from "@cinaauth/core/db";
+import { CinaAuthError } from "@cinaauth/core/error";
 import { APIError, getBaseURL, safeJSONParse } from "cinaauth";
 import { signInSocial } from "cinaauth/api";
 import { generateRandomString } from "cinaauth/crypto";

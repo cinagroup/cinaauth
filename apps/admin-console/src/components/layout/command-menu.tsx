@@ -1,8 +1,8 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRight, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
 	Dialog,
 	DialogContent,

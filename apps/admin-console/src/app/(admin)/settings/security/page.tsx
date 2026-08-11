@@ -34,12 +34,18 @@ interface SecurityPolicy {
 
 export default function SecurityPolicyPage() {
 	const { t } = useI18n();
-	const { data: policy, isLoading, isError, refetch } = useQuery({
+	const {
+		data: policy,
+		isLoading,
+		isError,
+		refetch,
+	} = useQuery({
 		queryKey: ["settings", "security"],
 		queryFn: async () => {
-			const payload = await fetchAdminJson<{ ok?: boolean; data?: SecurityPolicy }>(
-				"/api/admin/settings/security",
-			);
+			const payload = await fetchAdminJson<{
+				ok?: boolean;
+				data?: SecurityPolicy;
+			}>("/api/admin/settings/security");
 			return payload.data ?? null;
 		},
 	});
@@ -87,7 +93,9 @@ export default function SecurityPolicyPage() {
 					<CardContent className="space-y-4">
 						<Row label={t("common.enabled")}>
 							<Badge variant={policy.rateLimit.enabled ? "success" : "muted"}>
-								{policy.rateLimit.enabled ? t("common.enabled") : t("common.disabled")}
+								{policy.rateLimit.enabled
+									? t("common.enabled")
+									: t("common.disabled")}
 							</Badge>
 						</Row>
 						<Row label={t("security.rateLimitWindow")}>
@@ -134,7 +142,12 @@ export default function SecurityPolicyPage() {
 							{policy.otpTtl === null ? (
 								<UnavailableValue />
 							) : (
-								<Input value={policy.otpTtl} readOnly disabled className="w-40" />
+								<Input
+									value={policy.otpTtl}
+									readOnly
+									disabled
+									className="w-40"
+								/>
 							)}
 						</Row>
 						<Row label={t("security.otpDailyLimit")}>
@@ -186,13 +199,18 @@ export default function SecurityPolicyPage() {
 							) : policy.trustedOrigins.length > 0 ? (
 								<ul className="space-y-1.5">
 									{policy.trustedOrigins.map((origin) => (
-										<li key={origin} className="break-all font-mono text-[12px] leading-4 text-mute">
+										<li
+											key={origin}
+											className="break-all font-mono text-[12px] leading-4 text-mute"
+										>
 											{origin}
 										</li>
 									))}
 								</ul>
 							) : (
-								<p className="text-[12px] leading-4 text-mute">{t("common.noData")}</p>
+								<p className="text-[12px] leading-4 text-mute">
+									{t("common.noData")}
+								</p>
 							)}
 						</div>
 					</CardContent>
@@ -202,7 +220,13 @@ export default function SecurityPolicyPage() {
 	);
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+	label,
+	children,
+}: {
+	label: string;
+	children: React.ReactNode;
+}) {
 	return (
 		<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
 			<span className="text-[14px] leading-5 text-body">{label}</span>
@@ -212,7 +236,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function TechnicalValue({ children }: { children: React.ReactNode }) {
-	return <span className="break-all font-mono text-[12px] leading-4 text-ink">{children}</span>;
+	return (
+		<span className="break-all font-mono text-[12px] leading-4 text-ink">
+			{children}
+		</span>
+	);
 }
 
 function UnavailableValue() {

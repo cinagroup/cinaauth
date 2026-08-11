@@ -1,13 +1,13 @@
 /// <reference types="electron" />
 
 import { base64Url } from "@better-auth/utils/base64";
+import Database from "better-sqlite3";
 import type { CinaAuthOptions } from "cinaauth";
 import { CinaAuth } from "cinaauth";
 import type { FetchEsque } from "cinaauth/client";
 import { createAuthClient } from "cinaauth/client";
 import { getMigrations } from "cinaauth/db/migration";
 import { oAuthProxy } from "cinaauth/plugins";
-import Database from "better-sqlite3";
 import { afterAll, afterEach, beforeAll, test, vi } from "vitest";
 import { electronClient } from "../src/client";
 import { electron } from "../src/index";

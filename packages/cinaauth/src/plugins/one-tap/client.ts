@@ -1,4 +1,6 @@
 /// <reference types="@types/google.accounts" />
+
+import type { BetterFetch } from "@better-fetch/fetch";
 import type {
 	CinaAuthClientOptions,
 	CinaAuthClientPlugin,
@@ -6,7 +8,6 @@ import type {
 	ClientStore,
 } from "@cinaauth/core";
 import { isSafeUrlScheme } from "@cinaauth/core/utils/url";
-import type { BetterFetch } from "@better-fetch/fetch";
 import { PACKAGE_VERSION } from "../../version";
 
 declare global {

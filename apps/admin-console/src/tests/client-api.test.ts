@@ -46,9 +46,7 @@ describe("fetchAdminJson", () => {
 
 		vi.stubGlobal(
 			"fetch",
-			vi.fn().mockResolvedValue(
-				Response.json(payload, { status: 403 }),
-			),
+			vi.fn().mockResolvedValue(Response.json(payload, { status: 403 })),
 		);
 		await expect(fetchAdminJson("/high-risk-action")).rejects.toMatchObject({
 			status: 403,
@@ -75,7 +73,10 @@ describe("fetchAdminJson", () => {
 			"fetch",
 			vi.fn().mockResolvedValue(
 				new Response(
-					JSON.stringify({ ok: false, error: { message: "upstream unavailable" } }),
+					JSON.stringify({
+						ok: false,
+						error: { message: "upstream unavailable" },
+					}),
 					{ status: 502, headers: { "content-type": "application/json" } },
 				),
 			),
@@ -129,10 +130,7 @@ describe("browser helpers", () => {
 		const freshClient = await import("@/lib/client-api");
 
 		await expect(
-			freshClient.downloadAdminCsv(
-				"/api/admin/export?kind=audit",
-				"audit.csv",
-			),
+			freshClient.downloadAdminCsv("/api/admin/export?kind=audit", "audit.csv"),
 		).resolves.toBe(false);
 		expect(assign).toHaveBeenCalledWith(
 			"/api/auth/oidc/login?mode=step-up&callbackURL=%2Faudit%3Fcategory%3Dadmin",

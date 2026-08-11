@@ -103,7 +103,9 @@ export const formatApiKeyIdentifier = (start: string | null) =>
 	start ? `${start}...` : "Hidden identifier";
 
 export const formatWalletAddress = (address: string) =>
-	address.length > 12 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
+	address.length > 12
+		? `${address.slice(0, 6)}...${address.slice(-4)}`
+		: address;
 
 const WALLET_CHAIN_NAMES: Record<number, string> = {
 	1: "Ethereum",

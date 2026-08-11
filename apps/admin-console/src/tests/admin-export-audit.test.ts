@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
 import { resolveAdminSession } from "@/lib/cinaauth/session";
 import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
@@ -20,10 +20,9 @@ const mockSession = vi.mocked(resolveAdminSession);
 const mockRecentAuthentication = vi.mocked(requireRecentAdminAuthentication);
 
 const request = (kind: "audit" | "users") =>
-	new NextRequest(
-		new URL(`https://admin.test/api/admin/export?kind=${kind}`),
-		{ headers: { cookie: "s=1" } },
-	);
+	new NextRequest(new URL(`https://admin.test/api/admin/export?kind=${kind}`), {
+		headers: { cookie: "s=1" },
+	});
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -161,9 +160,7 @@ describe("admin CSV export audit boundary", () => {
 		const csv = await response.text();
 
 		expect(response.status).toBe(200);
-		expect(csv).toContain(
-			`"'=HYPERLINK(""https://attacker.invalid"")"`,
-		);
+		expect(csv).toContain(`"'=HYPERLINK(""https://attacker.invalid"")"`);
 	});
 
 	it("masks the real IP column when earlier audit fields contain commas", async () => {

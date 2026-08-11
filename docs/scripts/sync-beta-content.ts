@@ -4,8 +4,7 @@ import { join } from "node:path";
 
 const BRANCH = process.env.BETA_DOCS_BRANCH ?? "next";
 const REPO =
-	process.env.BETA_DOCS_REPO ??
-	"https://github.com/cinagroup/cinaauth.git";
+	process.env.BETA_DOCS_REPO ?? "https://github.com/cinagroup/cinaauth.git";
 const REMOTE_PATH = "docs/content/docs";
 const DEST = "content/docs-beta";
 const TMP = ".beta-sync-tmp";

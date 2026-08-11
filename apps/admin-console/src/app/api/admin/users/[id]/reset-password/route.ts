@@ -1,8 +1,6 @@
-import { type NextRequest, NextResponse } from "next/server";
-import {
-	requireAdmin,
-	requireAdminControlPermission,
-} from "@/lib/auth-guard";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdmin, requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
 import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
 import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
@@ -29,13 +27,25 @@ export async function POST(
 	// Password validation: min 8 chars, max 128 chars, must have letter + digit
 	if (!newPassword || newPassword.length < 8 || newPassword.length > 128) {
 		return NextResponse.json(
-			{ ok: false, error: { code: "BAD_REQUEST", message: "Password must be 8-128 characters" } },
+			{
+				ok: false,
+				error: {
+					code: "BAD_REQUEST",
+					message: "Password must be 8-128 characters",
+				},
+			},
 			{ status: 400 },
 		);
 	}
 	if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
 		return NextResponse.json(
-			{ ok: false, error: { code: "BAD_REQUEST", message: "Password must contain letters and numbers" } },
+			{
+				ok: false,
+				error: {
+					code: "BAD_REQUEST",
+					message: "Password must contain letters and numbers",
+				},
+			},
 			{ status: 400 },
 		);
 	}

@@ -1,11 +1,8 @@
 import { logger } from "@cinaauth/core/env";
 import { CinaAuthError } from "@cinaauth/core/error";
-import { verifyAccessToken } from "cinaauth/oauth2";
-import type {
-	CinaAuthClientPlugin,
-	CinaAuthOptions,
-} from "cinaauth/types";
 import { APIError } from "better-call";
+import { verifyAccessToken } from "cinaauth/oauth2";
+import type { CinaAuthClientPlugin, CinaAuthOptions } from "cinaauth/types";
 import type { JWTPayload, JWTVerifyOptions } from "jose";
 import { handleMcpErrors } from "./mcp";
 import type { ResourceServerMetadata } from "./types/oauth";

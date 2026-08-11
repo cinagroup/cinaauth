@@ -1,18 +1,13 @@
 #!/usr/bin/env node
-import { execSync } from "child_process";
-import fs from "fs";
-import path from "path";
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 const appDir = process.cwd();
 const standaloneDir = path.join(appDir, ".next", "standalone");
 // Monorepo: Next.js outputs to .next/standalone/<repo>/docs/.next
 // but OpenNext expects .next/standalone/.next
-const nestedNextDir = path.join(
-	standaloneDir,
-	"cinaauth",
-	"docs",
-	".next",
-);
+const nestedNextDir = path.join(standaloneDir, "cinaauth", "docs", ".next");
 const expectedNextDir = path.join(standaloneDir, ".next");
 
 // Step 1: Build with Next.js (standalone output)

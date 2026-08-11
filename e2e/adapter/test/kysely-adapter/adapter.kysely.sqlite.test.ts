@@ -2,8 +2,8 @@
 import path from "node:path";
 import { kyselyAdapter } from "@cinaauth/kysely-adapter";
 import { testAdapter } from "@cinaauth/test-utils/adapter";
-import { getMigrations } from "cinaauth/db/migration";
 import Database from "better-sqlite3";
+import { getMigrations } from "cinaauth/db/migration";
 import { Kysely, SqliteDialect } from "kysely";
 import {
 	authFlowTestSuite,

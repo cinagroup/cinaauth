@@ -1,10 +1,10 @@
 import type { AuthFetcher } from "@cinaauth/auth-proxy";
 import { createAuthProxyRequest as createSharedAuthProxyRequest } from "@cinaauth/auth-proxy";
-import {
-	AUTH_WEB_ENDPOINTS,
-	type AuthCapabilities,
-	type EntitlementSnapshot,
+import type {
+	AuthCapabilities,
+	EntitlementSnapshot,
 } from "@cinaauth/auth-web-contract";
+import { AUTH_WEB_ENDPOINTS } from "@cinaauth/auth-web-contract";
 
 export type { AuthFetcher } from "@cinaauth/auth-proxy";
 export { createAuthProxyResponse } from "@cinaauth/auth-proxy";

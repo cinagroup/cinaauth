@@ -4,10 +4,7 @@ interface ApiErrorBody {
 	error?: string | { code?: string; message?: string };
 }
 
-type AdminStepUpNavigation = Pick<
-	Location,
-	"pathname" | "search" | "assign"
->;
+type AdminStepUpNavigation = Pick<Location, "pathname" | "search" | "assign">;
 
 const SESSION_NOT_FRESH = "SESSION_NOT_FRESH";
 let stepUpRedirectStarted = false;
@@ -120,7 +117,10 @@ export async function fetchAdminJson<T>(
 		);
 	}
 	if (payload == null) {
-		throw new AdminApiError("The server returned an invalid response", response.status);
+		throw new AdminApiError(
+			"The server returned an invalid response",
+			response.status,
+		);
 	}
 	return payload;
 }
@@ -140,7 +140,8 @@ export async function copyText(text: string): Promise<boolean> {
 export function openExternal(url: string): boolean {
 	try {
 		const target = new URL(url, window.location.origin);
-		if (target.protocol !== "https:" && target.protocol !== "http:") return false;
+		if (target.protocol !== "https:" && target.protocol !== "http:")
+			return false;
 		const link = document.createElement("a");
 		link.href = target.href;
 		link.target = "_blank";

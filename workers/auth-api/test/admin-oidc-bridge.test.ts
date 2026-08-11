@@ -58,9 +58,9 @@ describe("Admin OIDC session bridge policy", () => {
 
 	it("derives Worker freshness from verified OIDC auth_time, never bridge time", () => {
 		const now = Date.parse("2026-08-11T08:00:00.000Z");
-		expect(
-			resolveAdminAuthenticationTime("1786434900", now),
-		).toEqual(new Date("2026-08-11T07:55:00.000Z"));
+		expect(resolveAdminAuthenticationTime("1786434900", now)).toEqual(
+			new Date("2026-08-11T07:55:00.000Z"),
+		);
 		expect(resolveAdminAuthenticationTime(null, now)).toEqual(new Date(0));
 		expect(resolveAdminAuthenticationTime("not-a-time", now)).toEqual(
 			new Date(0),

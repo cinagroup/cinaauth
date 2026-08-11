@@ -10,11 +10,7 @@ describe("API key runtime authorization", () => {
 		const { auth, signInWithTestUser } = await getTestInstance({
 			plugins: [
 				apiKey({
-					authorizeReference: async ({
-						apiKeyId,
-						configId,
-						referenceId,
-					}) => {
+					authorizeReference: async ({ apiKeyId, configId, referenceId }) => {
 						authorization = { apiKeyId, configId, referenceId };
 						return false;
 					},

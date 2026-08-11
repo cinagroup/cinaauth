@@ -1,20 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-	getCoreRowModel,
-	useReactTable,
-	type ColumnDef,
-} from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { DataTable } from "@/components/data-table/data-table";
-import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DataTable } from "@/components/data-table/data-table";
 import { RoleGuard } from "@/components/role-guard";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson, fetchAdminResponse } from "@/lib/client-api";
 import type { WalletDTO } from "@/lib/cinaauth/dto";
+import { fetchAdminJson, fetchAdminResponse } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function WalletsTab({ userId }: { userId: string }) {
 	const { t } = useI18n();
@@ -32,11 +29,14 @@ export function WalletsTab({ userId }: { userId: string }) {
 	const wallets = data ?? [];
 
 	const unbind = async (w: WalletDTO) => {
-		const r = await fetchAdminResponse(`/api/admin/users/${userId}/wallets/${w.address}`, {
-			method: "DELETE",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ chainId: w.chainId }),
-		});
+		const r = await fetchAdminResponse(
+			`/api/admin/users/${userId}/wallets/${w.address}`,
+			{
+				method: "DELETE",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ chainId: w.chainId }),
+			},
+		);
 		if (r.ok) {
 			toast.success(t("toast.walletUnbound"));
 			await refetch();
@@ -59,7 +59,9 @@ export function WalletsTab({ userId }: { userId: string }) {
 		{
 			header: t("wallets.col.primary"),
 			cell: ({ row }) =>
-				row.original.isPrimary ? <Badge variant="success">{t("wallets.col.primary")}</Badge> : null,
+				row.original.isPrimary ? (
+					<Badge variant="success">{t("wallets.col.primary")}</Badge>
+				) : null,
 		},
 		{
 			accessorKey: "boundAt",
@@ -75,7 +77,9 @@ export function WalletsTab({ userId }: { userId: string }) {
 				<RoleGuard allow={["super_admin", "security_admin"]}>
 					<ConfirmDialog
 						trigger={
-							<Button variant="ghost" size="sm" className="text-error">{t("wallets.unbind")}</Button>
+							<Button variant="ghost" size="sm" className="text-error">
+								{t("wallets.unbind")}
+							</Button>
 						}
 						title={t("wallets.unbind.title")}
 						description={`${t("wallets.unbind.hint")} ${row.original.address}`}

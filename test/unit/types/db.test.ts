@@ -3,12 +3,7 @@
 	CinaAuthOptions,
 	CinaAuthPlugin,
 } from "@cinaauth/core";
-import type {
-	Account,
-	Session,
-	User,
-	Verification,
-} from "@cinaauth/core/db";
+import type { Account, Session, User, Verification } from "@cinaauth/core/db";
 import { expectTypeOf, test } from "vitest";
 
 const testPlugin = () => {
@@ -206,10 +201,7 @@ test("User with plugin fields", () => {
 		],
 	} satisfies CinaAuthOptions;
 
-	type FinalUser = User<
-		CinaAuthDBOptions<"user">,
-		(typeof options)["plugins"]
-	>;
+	type FinalUser = User<CinaAuthDBOptions<"user">, (typeof options)["plugins"]>;
 
 	expectTypeOf<FinalUser["pluginField"]>().toEqualTypeOf<string>();
 	expectTypeOf<FinalUser["optionalPluginField"]>().toEqualTypeOf<

@@ -1,7 +1,7 @@
+import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
 import type { OrganizationAuditPage } from "@/data/organization/organization-audit";
 import type {
 	OrganizationDynamicRoleSummary,

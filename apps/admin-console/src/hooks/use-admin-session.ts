@@ -10,7 +10,7 @@ export function useAdminSession() {
 		queryFn: async () => {
 			const r = await fetch("/api/admin/session");
 			const d = (await r.json()) as { ok?: boolean; data?: AdminSession };
-			return d.ok ? d.data ?? null : null;
+			return d.ok ? (d.data ?? null) : null;
 		},
 		staleTime: 60_000,
 	});

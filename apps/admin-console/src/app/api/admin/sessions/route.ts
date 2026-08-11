@@ -1,8 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
-import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
 import { resolveAdminSession } from "@/lib/cinaauth/session";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
 
 /** GET /api/admin/sessions — proxy cinaauth's core /list-sessions endpoint.
  *  The admin plugin doesn't expose a global session list; the core

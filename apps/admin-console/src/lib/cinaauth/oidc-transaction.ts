@@ -4,8 +4,7 @@ const TRANSACTION_MAX_AGE_MS = 10 * 60 * 1000;
 const MINIMUM_SECRET_LENGTH = 32;
 const RECENT_AUTH_SIGNATURE_CONTEXT = "cinaadmin:recent-auth:v1:";
 export const ADMIN_OIDC_TRANSACTION_COOKIE = "__Host-cinaadmin_oidc_tx";
-export const ADMIN_OIDC_RECENT_AUTH_COOKIE =
-	"__Host-cinaadmin_recent_auth";
+export const ADMIN_OIDC_RECENT_AUTH_COOKIE = "__Host-cinaadmin_recent_auth";
 
 export type AdminOidcTransactionMode = "login" | "step-up";
 
@@ -132,7 +131,9 @@ export const sealRecentAuthenticationProof = async (
 	const signature = await crypto.subtle.sign(
 		"HMAC",
 		key,
-		new TextEncoder().encode(`${RECENT_AUTH_SIGNATURE_CONTEXT}${encodedPayload}`),
+		new TextEncoder().encode(
+			`${RECENT_AUTH_SIGNATURE_CONTEXT}${encodedPayload}`,
+		),
 	);
 	return `${encodedPayload}.${bytesToBase64Url(new Uint8Array(signature))}`;
 };
@@ -160,7 +161,11 @@ export const openRecentAuthenticationProof = async (
 		const parsed: unknown = JSON.parse(
 			new TextDecoder().decode(base64UrlToBytes(encodedPayload)),
 		);
-		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+		if (
+			typeof parsed !== "object" ||
+			parsed === null ||
+			Array.isArray(parsed)
+		) {
 			return null;
 		}
 		const candidate = parsed as Record<string, unknown>;
@@ -172,10 +177,7 @@ export const openRecentAuthenticationProof = async (
 			return null;
 		}
 		const age = now - candidate.authenticationTime * 1000;
-		if (
-			age < 0 ||
-			age > ADMIN_OIDC_STEP_UP_MAX_AGE_SECONDS * 1000
-		) {
+		if (age < 0 || age > ADMIN_OIDC_STEP_UP_MAX_AGE_SECONDS * 1000) {
 			return null;
 		}
 		return {

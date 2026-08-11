@@ -15,10 +15,6 @@
   ],
   "ignorePatterns": "**/pnpm-lock.yaml\n**/__snapshots__/**\n.changeset/*.md\n**/drizzle/meta/**",
   "context": {
-    "repos": [
-      "cinaauth/better-call",
-      "cinaauth/better-fetch",
-      "cinaauth/utils"
-    ]
+    "repos": ["cinaauth/better-call", "cinaauth/better-fetch", "cinaauth/utils"]
   }
 }

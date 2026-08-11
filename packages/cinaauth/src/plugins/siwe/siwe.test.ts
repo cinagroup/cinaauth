@@ -1287,9 +1287,9 @@ describe("siwe", async () => {
 			let listed = await client.siwe.listWallets({
 				fetchOptions: { headers },
 			});
-			expect(listed.data?.wallets.filter((wallet) => wallet.isPrimary)).toEqual([
-				expect.objectContaining({ address: otherWallet }),
-			]);
+			expect(listed.data?.wallets.filter((wallet) => wallet.isPrimary)).toEqual(
+				[expect.objectContaining({ address: otherWallet })],
+			);
 
 			const unlinked = await client.siwe.unlinkWallet({
 				walletAddress: otherWallet,
@@ -1341,9 +1341,9 @@ describe("siwe", async () => {
 				headers,
 			});
 			expect(response.error).toBeNull();
-			expect(
-				(response.data as { wallets: unknown[] } | null)?.wallets,
-			).toEqual([]);
+			expect((response.data as { wallets: unknown[] } | null)?.wallets).toEqual(
+				[],
+			);
 		});
 	});
 });

@@ -10,11 +10,9 @@ import { useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-	getBillingActionState,
-	type BillingPlanAction,
-} from "@/lib/billing-console";
 import { authClient } from "@/lib/auth-client";
+import type { BillingPlanAction } from "@/lib/billing-console";
+import { getBillingActionState } from "@/lib/billing-console";
 import { cn } from "@/lib/utils";
 
 function useMediaQuery(query: string) {
@@ -62,7 +60,7 @@ export function Pricing({
 	description = "Choose the plan that works for you.",
 }: PricingProps) {
 	const [isMonthly, setIsMonthly] = useState(true);
-	const isDesktop = useMediaQuery("(min-width: 960px)");
+	const _isDesktop = useMediaQuery("(min-width: 960px)");
 	const switchRef = useRef<HTMLButtonElement>(null);
 
 	const handleToggle = (checked: boolean) => {

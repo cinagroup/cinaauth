@@ -8,11 +8,8 @@
  * @see https://openid.net/specs/openid-connect-discovery-1_0.html
  */
 
-import {
-	classifyHost,
-	isPublicRoutableHost,
-} from "@cinaauth/core/utils/host";
 import { betterFetch } from "@better-fetch/fetch";
+import { classifyHost, isPublicRoutableHost } from "@cinaauth/core/utils/host";
 import type { OIDCConfig } from "../types";
 import type {
 	DiscoverOIDCConfigParams,

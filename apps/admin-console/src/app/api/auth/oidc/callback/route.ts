@@ -1,9 +1,9 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import {
 	ADMIN_OIDC_AUTH_TIME_HEADER,
 	ADMIN_OIDC_STEP_UP_MAX_AGE_SECONDS,
 } from "@cinaauth/auth-web-contract";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { cinaauthConfig } from "@/lib/cinaauth/config";
 import { fetchAuthRequest } from "@/lib/cinaauth/fetcher";
 import {
@@ -117,17 +117,17 @@ export async function GET(request: NextRequest) {
 				new URL("/api/auth/admin-oidc/session", cinaauthConfig.baseUrl),
 				{
 					method: "POST",
-						headers: {
-							authorization: `Bearer ${tokens.accessToken}`,
-							origin: cinaauthConfig.requestOrigin,
-							"x-cinaadmin-bridge-secret": secrets.CINAADMIN_OIDC_BRIDGE_SECRET,
-							[ADMIN_OIDC_AUTH_TIME_HEADER]: String(
-								typeof tokens.authenticationTime === "number" &&
-									Number.isInteger(tokens.authenticationTime)
-									? tokens.authenticationTime
-									: 0,
-							),
-						},
+					headers: {
+						authorization: `Bearer ${tokens.accessToken}`,
+						origin: cinaauthConfig.requestOrigin,
+						"x-cinaadmin-bridge-secret": secrets.CINAADMIN_OIDC_BRIDGE_SECRET,
+						[ADMIN_OIDC_AUTH_TIME_HEADER]: String(
+							typeof tokens.authenticationTime === "number" &&
+								Number.isInteger(tokens.authenticationTime)
+								? tokens.authenticationTime
+								: 0,
+						),
+					},
 					cache: "no-store",
 				},
 			),

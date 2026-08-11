@@ -1,7 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import type { RateLimit } from "cinaauth";
 import type { CloudflareBindings } from "./env";
-import { decideRateLimit, type RateLimitRule } from "./rate-limit-policy";
+import type { RateLimitRule } from "./rate-limit-policy";
+import { decideRateLimit } from "./rate-limit-policy";
 
 type RateLimitRow = {
 	key: string;

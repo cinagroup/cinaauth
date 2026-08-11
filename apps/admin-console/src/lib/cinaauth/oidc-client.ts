@@ -88,10 +88,7 @@ export const createAdminAuthorizationUrl = async (
 			throw new Error("OIDC provider does not advertise prompt=login");
 		}
 		url.searchParams.set("prompt", "login");
-		url.searchParams.set(
-			"max_age",
-			String(ADMIN_OIDC_STEP_UP_MAX_AGE_SECONDS),
-		);
+		url.searchParams.set("max_age", String(ADMIN_OIDC_STEP_UP_MAX_AGE_SECONDS));
 	}
 	return url;
 };
@@ -113,7 +110,8 @@ export const hasRequiredAdminAuthenticationProof = (
 		return false;
 	}
 	const authenticationTimeMs = authenticationTime * 1000;
-	const transactionStartSecond = Math.floor(transaction.createdAt / 1000) * 1000;
+	const transactionStartSecond =
+		Math.floor(transaction.createdAt / 1000) * 1000;
 	if (authenticationTimeMs < transactionStartSecond) return false;
 	if (authenticationTimeMs > now) return false;
 	return (

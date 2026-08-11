@@ -194,7 +194,11 @@ const deletionReceiptSchema = deletionReceiptPayloadSchema.extend({
 });
 
 const canonicalize = (value: unknown): string => {
-	if (value === null || typeof value === "boolean" || typeof value === "number") {
+	if (
+		value === null ||
+		typeof value === "boolean" ||
+		typeof value === "number"
+	) {
 		return JSON.stringify(value);
 	}
 	if (typeof value === "string") return JSON.stringify(value);
@@ -220,7 +224,9 @@ const resolveOptions = (
 ): ResolvedPrivacyDeletionOptions => {
 	const policyVersion = options.policyVersion.trim();
 	if (!policyVersion || policyVersion.length > 128) {
-		throw new Error("deletion.policyVersion must be between 1 and 128 characters");
+		throw new Error(
+			"deletion.policyVersion must be between 1 and 128 characters",
+		);
 	}
 	if (options.receiptSecret && options.receiptSecret.length < 32) {
 		throw new Error("deletion.receiptSecret must be at least 32 characters");
@@ -303,7 +309,10 @@ const createDeletionReceipt = async ({
 		issuedAt,
 		status: "completed",
 		subject: {
-			pseudonymousId: await makeSignature(`${SUBJECT_DOMAIN}\n${userId}`, secret),
+			pseudonymousId: await makeSignature(
+				`${SUBJECT_DOMAIN}\n${userId}`,
+				secret,
+			),
 		},
 		deletion: {
 			scope: "cinaauth-authentication-account",
@@ -348,7 +357,9 @@ const parseProcessorResult = (
 				value.retryAfterSeconds < 1 ||
 				value.retryAfterSeconds > 86_400)
 		) {
-			throw new Error(`Processor ${processorId} returned an invalid retry delay`);
+			throw new Error(
+				`Processor ${processorId} returned an invalid retry delay`,
+			);
 		}
 		return value;
 	}
@@ -362,7 +373,9 @@ const parseProcessorResult = (
 		Number.isNaN(completedAt) ||
 		completedAt > Date.now() + 5 * 60 * 1_000
 	) {
-		throw new Error(`Processor ${processorId} returned invalid erasure evidence`);
+		throw new Error(
+			`Processor ${processorId} returned invalid erasure evidence`,
+		);
 	}
 	return {
 		...value,
@@ -523,8 +536,7 @@ export const createPrivacyDeletionFeatures = (
 	const deletionPaths = new Set(["/delete-user", "/delete-user/callback"]);
 	return {
 		endpoints: {
-			getPrivacyDeletionReadiness:
-				createDeletionReadinessEndpoint(resolved),
+			getPrivacyDeletionReadiness: createDeletionReadinessEndpoint(resolved),
 			verifyPrivacyDeletionReceipt:
 				createVerifyDeletionReceiptEndpoint(resolved),
 		},
@@ -552,16 +564,15 @@ export const createPrivacyDeletionFeatures = (
 								message: "Account deletion is blocked by a retention hold",
 							});
 						}
-						const privacyProcessorAttestations =
-							await eraseProcessorData({
-								options: resolved,
-								request: ctx.request,
-								secret: receiptSecret(resolved, ctx.context.secret),
-								user: {
-									id: session.user.id,
-									email: session.user.email,
-								},
-							});
+						const privacyProcessorAttestations = await eraseProcessorData({
+							options: resolved,
+							request: ctx.request,
+							secret: receiptSecret(resolved, ctx.context.secret),
+							user: {
+								id: session.user.id,
+								email: session.user.email,
+							},
+						});
 						return {
 							context: {
 								context: {
@@ -593,10 +604,8 @@ export const createPrivacyDeletionFeatures = (
 						const deletionReceipt = await createDeletionReceipt({
 							options: resolved,
 							processorAttestations:
-								(
-									ctx.context as typeof ctx.context &
-										PrivacyDeletionHookContext
-								).privacyProcessorAttestations ?? [],
+								(ctx.context as typeof ctx.context & PrivacyDeletionHookContext)
+									.privacyProcessorAttestations ?? [],
 							secret: receiptSecret(resolved, ctx.context.secret),
 							userId: subject.id,
 						});

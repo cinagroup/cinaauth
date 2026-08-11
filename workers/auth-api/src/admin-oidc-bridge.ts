@@ -25,9 +25,7 @@ export const extractBearerToken = (authorization: string | null) => {
 /** Returns true when at least one current user role is an Admin Console role. */
 export const hasAuthorizedAdminRole = (role: string | null | undefined) =>
 	typeof role === "string" &&
-	role
-		.split(",")
-		.some((candidate) => ADMIN_ROLES.has(candidate));
+	role.split(",").some((candidate) => ADMIN_ROLES.has(candidate));
 
 const audienceContains = (audience: unknown, expected: string) =>
 	audience === expected ||

@@ -53,10 +53,13 @@ describe("Cloudflare Access JWKS", () => {
 		});
 	});
 
-	it.each([undefined, null, [], {}, { keys: "invalid" }])(
-		"fails closed for malformed input %#",
-		(value) => {
-			expect(normalizeCloudflareAccessJwks(value)).toEqual({ keys: [] });
-		},
-	);
+	it.each([
+		undefined,
+		null,
+		[],
+		{},
+		{ keys: "invalid" },
+	])("fails closed for malformed input %#", (value) => {
+		expect(normalizeCloudflareAccessJwks(value)).toEqual({ keys: [] });
+	});
 });

@@ -186,9 +186,7 @@ const query = async (sql: string, timeoutMs: number = 30000) => {
 
 	try {
 		// Ensure we're using the cinaauth database for queries
-		const sqlWithContext = sql.includes("USE ")
-			? sql
-			: `USE cinaauth; ${sql}`;
+		const sqlWithContext = sql.includes("USE ") ? sql : `USE cinaauth; ${sql}`;
 
 		const result = (await Promise.race([
 			kyselyDB.getExecutor().executeQuery({

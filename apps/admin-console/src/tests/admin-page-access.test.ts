@@ -1,6 +1,6 @@
+import { describe, expect, it } from "vitest";
 import { getAdminPageAccess } from "@/lib/auth-guard";
 import type { AdminSession } from "@/lib/cinaauth/types";
-import { describe, expect, it } from "vitest";
 
 const session = (
 	role: string,

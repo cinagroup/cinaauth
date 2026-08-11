@@ -77,9 +77,7 @@ describe("Admin OIDC transaction cookie", () => {
 			SIGNING_SECRET,
 		);
 
-		expect(ADMIN_OIDC_RECENT_AUTH_COOKIE).toBe(
-			"__Host-cinaadmin_recent_auth",
-		);
+		expect(ADMIN_OIDC_RECENT_AUTH_COOKIE).toBe("__Host-cinaadmin_recent_auth");
 		await expect(
 			openRecentAuthenticationProof(
 				value,

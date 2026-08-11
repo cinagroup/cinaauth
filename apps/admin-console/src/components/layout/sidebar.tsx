@@ -17,9 +17,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AdminBrand } from "@/components/layout/admin-brand";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { AdminBrand } from "@/components/layout/admin-brand";
 
 export interface NavItem {
 	href: string;

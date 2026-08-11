@@ -19,10 +19,7 @@ describe("admin control permission registry", () => {
 
 	it("matches the Admin plugin's comma-separated role semantics", () => {
 		expect(
-			hasAdminControlPermission(
-				"user,super_admin",
-				"security.policy.publish",
-			),
+			hasAdminControlPermission("user,super_admin", "security.policy.publish"),
 		).toBe(true);
 		expect(
 			hasAdminControlPermission(

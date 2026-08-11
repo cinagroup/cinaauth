@@ -1,9 +1,6 @@
-import { type NextRequest, NextResponse } from "next/server";
-import {
-	requireAdmin,
-	requireRole,
-	SUPER_ADMIN_ONLY,
-} from "@/lib/auth-guard";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdmin, requireRole, SUPER_ADMIN_ONLY } from "@/lib/auth-guard";
 import type { StandardResponse } from "@/lib/cinaauth/types";
 
 /**

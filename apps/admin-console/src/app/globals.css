@@ -131,10 +131,11 @@
 	--color-violet: var(--violet);
 	--color-cyan: var(--cyan);
 
-	--font-sans: var(--font-geist-sans), Inter, system-ui, -apple-system,
-		sans-serif;
-	--font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
-		Monaco, monospace;
+	--font-sans:
+		var(--font-geist-sans), Inter, system-ui, -apple-system, sans-serif;
+	--font-mono:
+		var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
+		monospace;
 
 	--radius-xs: var(--cina-radius-xs);
 	--radius: var(--cina-radius-sm);

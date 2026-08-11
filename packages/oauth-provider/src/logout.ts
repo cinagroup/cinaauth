@@ -1,7 +1,7 @@
 import type { GenericEndpointContext } from "@cinaauth/core";
+import { APIError } from "better-call";
 import { getJwks } from "cinaauth/oauth2";
 import type { Session } from "cinaauth/types";
-import { APIError } from "better-call";
 import type { JWTPayload } from "jose";
 import { compactVerify, createLocalJWKSet, decodeJwt } from "jose";
 import { handleRedirect } from "./authorize";

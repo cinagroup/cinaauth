@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
+import type { BetterFetch } from "@better-fetch/fetch";
 import type { CinaAuthClientOptions, ClientStore } from "@cinaauth/core";
 import type { User } from "@cinaauth/core/db";
 import { CinaAuthError } from "@cinaauth/core/error";
-import type { BetterFetch } from "@better-fetch/fetch";
 import electron from "electron";
 import { authenticate, requestAuth } from "./authenticate";
 import type {
