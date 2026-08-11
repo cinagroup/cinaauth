@@ -62,8 +62,9 @@ binding-to-secret mapping:
 
 Public `/ready` stays redacted and does not resolve V2. When the request carries
 the valid V1 bearer, authorized readiness calls `get()` on the staged binding
-and returns only `staged`, `ok`, and issue names after checking retrievability
-and minimum length. It never returns or logs the value and does not prove V1/V2
+and returns only `staged`, `ok`, and issue names after checking that the value
+can be retrieved and meets the minimum length. It never returns or logs the
+value and does not prove V1/V2
 parity. A failed V2 probe blocks authorized readiness but does not activate V2
 for an erasure request.
 

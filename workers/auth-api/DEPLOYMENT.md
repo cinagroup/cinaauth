@@ -209,8 +209,9 @@ and rejects any additional or incorrectly mapped entry:
 
 The protected Auth `/api/ready` endpoint and the authorized Delivery and
 Privacy Erasure `/ready` responses asynchronously call `get()` on their staged
-bindings. They validate only retrievability and the expected minimum format,
-then return `staged`, `ok`, and issue names. They never return, log, hash, or
+bindings. They validate only that the value can be retrieved and meets the
+expected minimum format, then return `staged`, `ok`, and issue names. They never
+return, log, hash, or
 otherwise expose a secret value, and they do not prove V1/V2 value parity. The
 Admin bindings are configuration-only until the coordinated cutover adds an
 approved runtime resolver.

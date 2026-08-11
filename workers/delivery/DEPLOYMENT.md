@@ -64,8 +64,9 @@ binding-to-secret mapping:
 
 The public `/ready` response remains redacted and does not resolve the staged
 secret. Only an authorized `/ready` request calls `get()` on the V2 binding; it
-reports `staged`, `ok`, and issue names after checking retrievability and minimum
-length. It never returns or logs the value and does not prove that V1 and V2 are
+reports `staged`, `ok`, and issue names after checking that the value can be
+retrieved and meets the minimum length. It never returns or logs the value and
+does not prove that V1 and V2 are
 equal. This probe may fail readiness to block an unsafe future cutover, but the
 delivery request path continues to use V1.
 
