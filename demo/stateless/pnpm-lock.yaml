@@ -12,9 +12,9 @@ importers:
 
   .:
     dependencies:
-      better-auth:
-        specifier: link:../../packages/better-auth
-        version: link:../../packages/better-auth
+      cinaauth:
+        specifier: link:../../packages/cinaauth
+        version: link:../../packages/cinaauth
       next:
         specifier: ^16.2.11
         version: 16.2.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

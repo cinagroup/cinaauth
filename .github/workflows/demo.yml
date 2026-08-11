@@ -17,6 +17,7 @@ env:
 
 jobs:
   demo:
+    name: demo (${{ matrix.demo }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,7 +27,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        demo: [expo, nextjs, electron, oidc-client, stateless]
+        include:
+          - demo: expo
+            directory: demo/expo
+          - demo: nextjs
+            directory: apps/account-portal
+          - demo: electron
+            directory: demo/electron
+          - demo: oidc-client
+            directory: apps/oidc-client-demo
+          - demo: stateless
+            directory: demo/stateless
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -56,5 +67,5 @@ jobs:
         run: pnpm build
 
       - name: Install demo dependencies
-        working-directory: demo/${{ matrix.demo }}
+        working-directory: ${{ matrix.directory }}
         run: pnpm install
