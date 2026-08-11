@@ -2,15 +2,15 @@ import type { ErasureConfigurationStatus } from "./configuration";
 import { isConfigFailure, validateTargetsForHosts } from "./configuration";
 import { getErasureConfigStub } from "./configuration-do";
 import type { PrivacyErasureEnv } from "./env";
+import type { ManagementAction } from "./management";
+import { handleConfigurationAction } from "./management";
+import type { ErasureTarget } from "./protocol";
 import {
 	isProtocolFailure,
 	parseTargets,
 	readAuthenticatedOperation,
 	verifyBearerToken,
 } from "./protocol";
-import type { ErasureTarget } from "./protocol";
-import type { ManagementAction } from "./management";
-import { handleConfigurationAction } from "./management";
 import { resolveErasureWebhookSecret } from "./secrets-store-readiness";
 
 export { ErasureConfigDurableObject } from "./configuration-do";

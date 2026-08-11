@@ -23,9 +23,7 @@ describe("active Secrets Store runtime resolution", () => {
 				`cina_cs_${"c".repeat(40)}`,
 			),
 			CINAADMIN_OIDC_BRIDGE_SECRET: "legacy-bridge-".repeat(4),
-			CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2: binding(
-				"store-bridge-".repeat(4),
-			),
+			CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2: binding("store-bridge-".repeat(4)),
 		} as unknown as CloudflareBindings;
 
 		const resolved = await resolveAuthRuntimeSecrets(raw);

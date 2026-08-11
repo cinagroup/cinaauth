@@ -13,7 +13,9 @@ interface __BaseEnv_CloudflareBindings {
 	VERSION_METADATA: WorkerVersionMetadata;
 	CINAAUTH_URL: "https://auth.cinaseek.ai";
 	CINAAUTH_CUTOVER_STATE: "live";
-	RATE_LIMITER: DurableObjectNamespace<import("./index").RateLimitDurableObject>;
+	RATE_LIMITER: DurableObjectNamespace<
+		import("./index").RateLimitDurableObject
+	>;
 	CINAAUTH_DELIVERY_SERVICE: Fetcher /* cinaauth-delivery */;
 	CINAAUTH_ERASURE_SERVICE: Fetcher /* cinaauth-privacy-erasure */;
 }
@@ -26,8 +28,13 @@ declare namespace Cloudflare {
 }
 interface CloudflareBindings extends __BaseEnv_CloudflareBindings {}
 type StringifyValues<EnvType extends Record<string, unknown>> = {
-	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
+	[Binding in keyof EnvType]: EnvType[Binding] extends string
+		? EnvType[Binding]
+		: string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "CINAAUTH_URL" | "CINAAUTH_CUTOVER_STATE">> {}
+	interface ProcessEnv
+		extends StringifyValues<
+			Pick<Cloudflare.Env, "CINAAUTH_URL" | "CINAAUTH_CUTOVER_STATE">
+		> {}
 }
