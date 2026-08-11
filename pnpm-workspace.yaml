@@ -100,6 +100,7 @@ allowBuilds:
   prisma: true
   protobufjs: true
   sharp: true
+  'unrs-resolver@1.12.2': true
   workerd: true
   electron: false
   electron-winstaller: false
