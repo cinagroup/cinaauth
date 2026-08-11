@@ -35,6 +35,7 @@ model Sessions {
   users     Users    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([token])
+  @@index([expiresAt])
   @@index([userId])
   @@map("sessions")
 }
