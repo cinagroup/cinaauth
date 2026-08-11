@@ -28,7 +28,7 @@ importers:
 
   .:
     dependencies:
-      '@better-auth/electron':
+      '@cinaauth/electron':
         specifier: link:../../packages/electron
         version: link:../../packages/electron
       '@electron-toolkit/utils':
@@ -40,9 +40,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.14)(react@19.2.4)
-      better-auth:
-        specifier: link:../../packages/better-auth
-        version: link:../../packages/better-auth
+      cinaauth:
+        specifier: link:../../packages/cinaauth
+        version: link:../../packages/cinaauth
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -78,7 +78,7 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(vite@7.3.6(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.31.1))
       electron:
-        specifier: ^43.1.1
+        specifier: ^43.1.0
         version: 43.1.1
       electron-builder:
         specifier: ^26.15.3
@@ -1292,6 +1292,10 @@ packages:
   get-stream@5.2.0:
     resolution: {integrity: sha512-nBF+F1rAZVCu/p7rjzgA+Yb4lfYXrpl7a6VmJrU8wF9I1CKvP/QwPNZHnOlwbTkY6dvtFIzFMSyQXbLoTQPRpA==}
     engines: {node: '>=8'}
+
+  glob@7.2.0:
+    resolution: {integrity: sha512-lmLf6gtyrPq8tTjSmrO94wBeQbFR3HbLHbuyD69wuyQkImp2hWqMGB47OX65FBkPffO641IP9jWa1z4ivqG26Q==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
@@ -3266,6 +3270,15 @@ snapshots:
     dependencies:
       pump: 3.0.4
 
+  glob@7.2.0:
+    dependencies:
+      fs.realpath: 1.0.0
+      inflight: 1.0.6
+      inherits: 2.0.4
+      minimatch: 10.2.6
+      once: 1.4.0
+      path-is-absolute: 1.0.1
+
   glob@7.2.3:
     dependencies:
       fs.realpath: 1.0.0
@@ -3674,7 +3687,7 @@ snapshots:
 
   rimraf@2.6.3:
     dependencies:
-      glob: 7.2.3
+      glob: 7.2.0
 
   roarr@2.15.4:
     dependencies:
