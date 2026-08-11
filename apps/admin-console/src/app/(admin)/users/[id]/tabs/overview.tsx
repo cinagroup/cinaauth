@@ -17,6 +17,7 @@ import {
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { fetchAdminResponse } from "@/lib/client-api";
 import type { UserDTO } from "@/lib/cinaauth/dto";
 
 /**
@@ -51,7 +52,7 @@ export function OverviewTab({ user }: { user: UserDTO }) {
 			setSaving(false);
 			return;
 		}
-		const r = await fetch(`/api/admin/users/${user.id}`, {
+		const r = await fetchAdminResponse(`/api/admin/users/${user.id}`, {
 			method: "PATCH",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify(body),
@@ -118,7 +119,7 @@ export function OverviewTab({ user }: { user: UserDTO }) {
 										size="sm"
 										className="h-auto p-0 text-[12px] max-sm:min-h-11"
 											onClick={async () => {
-												const r = await fetch(`/api/admin/users/${user.id}`, {
+												const r = await fetchAdminResponse(`/api/admin/users/${user.id}`, {
 													method: "PATCH",
 													headers: { "content-type": "application/json" },
 													body: JSON.stringify({ emailVerified: true }),

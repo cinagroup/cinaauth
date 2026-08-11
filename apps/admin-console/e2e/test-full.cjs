@@ -2,13 +2,14 @@
  * Comprehensive browser E2E test — full feature coverage.
  * Run: node e2e/test-full.cjs
  */
-const pw = require("/home/cina/.npm/_npx/705bc6b22212b352/node_modules/playwright-core");
+const { join } = require("node:path");
+const { chromium } = require("@playwright/test");
+const {
+	assertAuthenticatedAdminPage,
+	createAuthenticatedContext,
+} = require("./authenticated-context.cjs");
 
 const BASE = "https://admin.cinaseek.ai";
-const EMAIL = "admin@cinagroup.com";
-const PASSWORD = "CinaAdmin-2026!";
-const CHROMIUM =
-	"/home/cina/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell";
 
 const results = [];
 const consoleErrors = [];
@@ -22,15 +23,13 @@ function log(name, pass, detail) {
 
 async function run() {
 	console.log("\n═══════════════════════════════════════════════");
-	console.log("  cinaadmin 全功能浏览器测试 (Playwright)");
+	console.log("  CinaSeek Admin 全功能浏览器测试 (Playwright)");
 	console.log("═══════════════════════════════════════════════\n");
 
-	const browser = await pw.chromium.launch({
+	const browser = await chromium.launch({
 		headless: true,
-		executablePath: CHROMIUM,
-		args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu"],
 	});
-	const context = await browser.newContext({
+	const context = await createAuthenticatedContext(browser, {
 		viewport: { width: 1440, height: 900 },
 		locale: "zh-CN",
 		ignoreHTTPSErrors: true,
@@ -51,53 +50,13 @@ async function run() {
 
 	try {
 		// ═══════════════════════════════════════
-		// 1. 登录
+		// 1. OIDC-authenticated storage state
 		// ═══════════════════════════════════════
-		console.log("【1. 登录流程】");
-		await page.goto(`${BASE}/dashboard`, { waitUntil: "commit", timeout: 30000 });
-		await page.waitForTimeout(3000);
-		log("未登录重定向到内嵌登录页", page.url().includes("/login"), page.url().slice(0, 60));
-
-		// Login via page.request (same-origin, Set-Cookie stored in context).
-		const proxyResp = await page.request.post(`${BASE}/api/auth/sign-in`, {
-			data: { email: EMAIL, password: PASSWORD, callbackURL: `${BASE}/dashboard` },
-			headers: { "content-type": "application/json", origin: BASE },
-			maxRedirects: 0,
-		});
-		log("API 登录", proxyResp.ok(), `${proxyResp.status()}`);
-
-		// Extract session cookies from the response and add to browser context.
-		const setCookie = proxyResp.headers()["set-cookie"] || "";
-		const tokenMatch = setCookie.match(/__Secure-cinaauth\.session_token=([^;]+)/);
-		const dataMatch = setCookie.match(/__Secure-cinaauth\.session_data=([^;]+)/);
-		if (tokenMatch) {
-			await context.addCookies([{
-				name: "__Secure-cinaauth.session_token",
-				value: tokenMatch[1],
-				domain: "admin.cinaseek.ai",
-				path: "/",
-				secure: true,
-				httpOnly: true,
-				sameSite: "Lax",
-			}]);
-		}
-		if (dataMatch) {
-			await context.addCookies([{
-				name: "__Secure-cinaauth.session_data",
-				value: dataMatch[1],
-				domain: "admin.cinaseek.ai",
-				path: "/",
-				secure: true,
-				httpOnly: true,
-				sameSite: "Lax",
-			}]);
-		}
-
+		console.log("【1. OIDC 会话】");
 		await page.goto(`${BASE}/dashboard`, { waitUntil: "commit", timeout: 45000 });
 		await page.waitForTimeout(5000);
-		const loggedIn = page.url().includes("admin.cinaseek.ai") && !page.url().includes("/login");
-		log("登录成功", loggedIn, page.url().slice(0, 60));
-		if (!loggedIn) throw new Error("Login failed");
+		const authenticated = assertAuthenticatedAdminPage(page, BASE);
+		log("OIDC storageState 已认证", authenticated, page.url().slice(0, 60));
 
 		await page.waitForSelector("aside nav a", { timeout: 15000 }).catch(() => {});
 		await page.waitForTimeout(3000);
@@ -184,7 +143,7 @@ async function run() {
 
 			const detailText = await page.locator("body").innerText();
 			log("详情页加载", !detailText.includes("加载失败") && !detailText.includes("not found"), "");
-			log("显示用户邮箱", detailText.includes(EMAIL), "");
+			log("显示用户邮箱", /\S+@\S+\.\S+/.test(detailText), "");
 
 			// Check tabs
 			const tabs = await page.locator('[role="tab"]').count();
@@ -369,7 +328,7 @@ async function run() {
 	} catch (err) {
 		log("测试执行", false, err.message.slice(0, 80));
 	} finally {
-		await page.screenshot({ path: "/home/cina/cinaadmin/e2e/screenshot-full.png" });
+		await page.screenshot({ path: join(__dirname, "screenshot-full.png") });
 		await browser.close();
 	}
 

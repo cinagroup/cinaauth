@@ -3,6 +3,7 @@ export type {
 	AuditLogDTO,
 	OrgDTO,
 	Page,
+	PasskeyDTO,
 	SecurityTodayDTO,
 	SessionDTO,
 	SignupPointDTO,

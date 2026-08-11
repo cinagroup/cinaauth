@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson } from "@/lib/client-api";
+import { fetchAdminJson, fetchAdminResponse } from "@/lib/client-api";
 import { InviteDialog } from "./invite-dialog";
 
 interface MemberDTO {
@@ -100,7 +100,7 @@ export default function OrganizationDetailPage() {
 	const members: MemberDTO[] = membersData ?? [];
 
 	const removeMember = async (memberId: string) => {
-		const r = await fetch(`/api/admin/organizations/${orgId}/members/${memberId}`, {
+		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/members/${memberId}`, {
 			method: "DELETE",
 		});
 		if (!r.ok) {
@@ -112,7 +112,7 @@ export default function OrganizationDetailPage() {
 	};
 
 	const changeRole = async (memberId: string, role: string) => {
-		const r = await fetch(`/api/admin/organizations/${orgId}/members/${memberId}/role`, {
+		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/members/${memberId}/role`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ role }),
@@ -126,7 +126,7 @@ export default function OrganizationDetailPage() {
 	};
 
 	const saveOrg = async () => {
-		const r = await fetch(`/api/admin/organizations/${orgId}/update`, {
+		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/update`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ name: editName, slug: editSlug }),
@@ -142,7 +142,7 @@ export default function OrganizationDetailPage() {
 	};
 
 	const deleteOrg = async () => {
-		const r = await fetch(`/api/admin/organizations/${orgId}/delete`, {
+		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/delete`, {
 			method: "POST",
 		});
 		if (r.ok) {
@@ -265,6 +265,10 @@ export default function OrganizationDetailPage() {
 						description={t("organizations.deleteConfirm")}
 						danger
 						confirmText={t("common.delete")}
+						confirmationText={org?.slug ?? orgId}
+						confirmationLabel={t("common.typeToConfirm", {
+							value: org?.slug ?? orgId,
+						})}
 						onConfirm={deleteOrg}
 					/>
 				</RoleGuard>
@@ -304,7 +308,7 @@ export default function OrganizationDetailPage() {
 										}
 										title={t("organizations.cancelInvite")}
 										onConfirm={async () => {
-											const r = await fetch(`/api/admin/organizations/${orgId}/invitations/${inv.id}`, {
+											const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/invitations/${inv.id}`, {
 												method: "DELETE",
 											});
 											// Don't claim the invite was cancelled unless it was.
@@ -385,7 +389,7 @@ function TeamsSection({ orgId }: { orgId: string }) {
 
 	const createTeam = async () => {
 		if (!newTeamName.trim()) return;
-		const r = await fetch(`/api/admin/organizations/${orgId}/teams`, {
+		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/teams`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ name: newTeamName }),
@@ -400,7 +404,7 @@ function TeamsSection({ orgId }: { orgId: string }) {
 	};
 
 	const deleteTeam = async (teamId: string) => {
-		const r = await fetch(`/api/admin/organizations/${orgId}/teams/${teamId}`, { method: "DELETE" });
+		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/teams/${teamId}`, { method: "DELETE" });
 		if (r.ok) {
 			toast.success(t("toast.teamDeleted"));
 			await qc.invalidateQueries({ queryKey: ["org-teams", orgId] });
@@ -468,7 +472,7 @@ function TeamCard({ orgId, team, onDelete }: { orgId: string; team: { id: string
 
 	const addMember = async () => {
 		if (!addUserId.trim()) return;
-		const r = await fetch(`/api/admin/organizations/${orgId}/teams/${team.id}/members`, {
+		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/teams/${team.id}/members`, {
 			method: "POST", headers: { "content-type": "application/json" },
 			body: JSON.stringify({ userId: addUserId }),
 		});
@@ -476,7 +480,7 @@ function TeamCard({ orgId, team, onDelete }: { orgId: string; team: { id: string
 		else { toast.error(t("toast.actionFailed")); }
 	};
 	const removeMember = async (memberId: string) => {
-		const r = await fetch(`/api/admin/organizations/${orgId}/teams/${team.id}/members/${memberId}`, { method: "DELETE" });
+		const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/teams/${team.id}/members/${memberId}`, { method: "DELETE" });
 		if (r.ok) {
 			toast.success(t("toast.memberRemoved"));
 			await qc.invalidateQueries({ queryKey: ["team-members", team.id] });

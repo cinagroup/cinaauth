@@ -35,7 +35,7 @@ export default function ApiDocsPage() {
 				<iframe
 					src={`${cinaauthUrl}/api/auth/reference`}
 					className="h-[calc(100dvh-180px)] min-h-[32rem] w-full"
-					title="CinaAuth API Reference"
+					title="CinaSeek Identity API Reference"
 					referrerPolicy="no-referrer"
 				/>
 			</div>

@@ -22,7 +22,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { AuditLogDTO } from "@/lib/cinaauth/dto";
-import { fetchAdminJson } from "@/lib/client-api";
+import { downloadAdminCsv, fetchAdminJson } from "@/lib/client-api";
 
 const CATEGORIES = [
 	"user",
@@ -134,11 +134,13 @@ export default function AuditPage() {
 	return (
 		<div>
 			<PageHeader title={t("audit.title")}>
-				<Button asChild variant="secondary" size="sm">
-					<a href={exportHref}>
-						<Download size={15} />
-						{t("audit.export")}
-					</a>
+				<Button
+					variant="secondary"
+					size="sm"
+					onClick={() => void downloadAdminCsv(exportHref, "audit.csv")}
+				>
+					<Download size={15} />
+					{t("audit.export")}
 				</Button>
 			</PageHeader>
 			<div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[160px_160px_140px_minmax(220px,1fr)]">

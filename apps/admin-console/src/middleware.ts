@@ -1,7 +1,15 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 /** Paths that bypass the auth gate. */
-const PUBLIC_PATHS = ["/login", "/sign-in", "/api/auth", "/_next", "/favicon.ico"];
+const PUBLIC_PATHS = [
+	"/login",
+	"/sign-in",
+	"/api/auth",
+	"/_next",
+	"/favicon.ico",
+	"/logo.png",
+];
 
 /**
  * Edge auth gate.
@@ -11,8 +19,8 @@ const PUBLIC_PATHS = ["/login", "/sign-in", "/api/auth", "/_next", "/favicon.ico
  * sidebar clicks ("卡死"). Edge isolates don't share memory, so caching was
  * unreliable.
  *
- * Instead, the middleware now does a fast cookie-presence check (no network):
- * a signed session cookie proves the user authenticated with cinaauth. Role
+ * Instead, the middleware now does a fast cookie-presence check (no network).
+ * Cookie presence is only a routing optimization, never a trust decision. Role
  * enforcement stays where it belongs — in the Route Handlers
  * (resolveAdminSession + hasAdminRole) and Server Components, which run the
  * actual cinaauth call once per page render, not once per RSC flight request.
@@ -36,10 +44,13 @@ export async function middleware(request: NextRequest) {
 				{ status: 401 },
 			);
 		}
-		// Redirect to the embedded /login page (not demo-auth, which has a
-		// SPA hydration bug that prevents the login form from rendering).
+		// Redirect to the local OIDC entry page. Credentials are collected only by
+		// accounts.cinaseek.ai; the Admin Console remains a confidential client.
 		const loginUrl = new URL("/login", request.url);
-		loginUrl.searchParams.set("callbackURL", request.url);
+		loginUrl.searchParams.set(
+			"callbackURL",
+			`${request.nextUrl.pathname}${request.nextUrl.search}`,
+		);
 		return NextResponse.redirect(loginUrl);
 	}
 	return NextResponse.next();

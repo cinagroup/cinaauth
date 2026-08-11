@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
-	ADMIN_AND_SECURITY,
 	requireAdmin,
-	requireRole,
+	requireAdminControlPermission,
 } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /** POST /api/admin/users/[id]/ban — ban user (7d/30d/permanent + reason). */
 export async function POST(
@@ -15,7 +16,7 @@ export async function POST(
 	const session = await requireAdmin(request).catch((e: Response) => e);
 	if (session instanceof Response) return session;
 	try {
-		requireRole(session, ADMIN_AND_SECURITY);
+		requireAdminControlPermission(session, "identity.user.ban");
 	} catch (e) {
 		return e as Response;
 	}
@@ -37,6 +38,11 @@ export async function POST(
 			{ status: 400 },
 		);
 	}
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (e) {
+		return e as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
 	// Spread body first, then pin userId so the path param always wins — a
 	// crafted body must not be able to redirect the ban to another user.
@@ -45,5 +51,5 @@ export async function POST(
 		body: { ...body, userId: id },
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }

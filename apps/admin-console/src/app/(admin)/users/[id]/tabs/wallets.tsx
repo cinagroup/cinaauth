@@ -13,7 +13,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RoleGuard } from "@/components/role-guard";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson } from "@/lib/client-api";
+import { fetchAdminJson, fetchAdminResponse } from "@/lib/client-api";
 import type { WalletDTO } from "@/lib/cinaauth/dto";
 
 export function WalletsTab({ userId }: { userId: string }) {
@@ -32,7 +32,7 @@ export function WalletsTab({ userId }: { userId: string }) {
 	const wallets = data ?? [];
 
 	const unbind = async (w: WalletDTO) => {
-		const r = await fetch(`/api/admin/users/${userId}/wallets/${w.address}`, {
+		const r = await fetchAdminResponse(`/api/admin/users/${userId}/wallets/${w.address}`, {
 			method: "DELETE",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ chainId: w.chainId }),

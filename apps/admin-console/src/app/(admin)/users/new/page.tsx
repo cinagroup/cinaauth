@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { fetchAdminResponse } from "@/lib/client-api";
 import {
 	Select,
 	SelectContent,
@@ -32,7 +33,7 @@ export default function NewUserPage() {
 		setError(null);
 		setSubmitting(true);
 		try {
-			const r = await fetch("/api/admin/users/create", {
+			const r = await fetchAdminResponse("/api/admin/users/create", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ email, name, password, role }),

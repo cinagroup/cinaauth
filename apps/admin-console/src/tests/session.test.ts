@@ -11,6 +11,7 @@ describe("hasAdminRole", () => {
 	it("allows whitelisted roles, rejects others", () => {
 		expect(hasAdminRole("super_admin")).toBe(true);
 		expect(hasAdminRole("security_admin")).toBe(true);
+		expect(hasAdminRole("user,super_admin")).toBe(true);
 		expect(hasAdminRole("admin")).toBe(false);
 		expect(hasAdminRole("user")).toBe(false);
 		expect(hasAdminRole(undefined)).toBe(false);
@@ -41,6 +42,7 @@ describe("resolveAdminSession", () => {
 				JSON.stringify({
 					session: { userId: "u1" },
 					user: { id: "u1", role: "super_admin", email: "a@b.c" },
+					activeOrganizationId: "org-active",
 				}),
 				{ status: 200 },
 			),
@@ -52,6 +54,7 @@ describe("resolveAdminSession", () => {
 		expect(session?.userId).toBe("u1");
 		expect(session?.role).toBe("super_admin");
 		expect(session?.email).toBe("a@b.c");
+		expect(session?.activeOrganizationId).toBe("org-active");
 		fetchMock.mockRestore();
 	});
 

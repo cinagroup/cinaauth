@@ -25,7 +25,7 @@
 		"enabled": true
 	},
 	"vars": {
-		"NEXT_PUBLIC_APP_NAME": "CinaGroup Admin",
+		"NEXT_PUBLIC_APP_NAME": "CinaSeek Admin",
 		"CINAADMIN_ORIGIN": "https://admin.cinaseek.ai",
 		"CINAUTH_REQUEST_ORIGIN": "https://admin.cinaseek.ai",
 		"NEXT_PUBLIC_CINAUTH_BASE_URL": "https://auth.cinaseek.ai",

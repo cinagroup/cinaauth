@@ -16,7 +16,7 @@ import type { SessionDTO } from "@/lib/cinaauth/dto";
 export default function SessionsPage() {
 	const { t } = useI18n();
 	const { data, isFetching, isError, refetch } = useQuery({
-		queryKey: ["sessions", "all"],
+		queryKey: ["sessions", "current-admin"],
 		queryFn: async () => {
 			const d = await fetchAdminJson<{
 				ok: boolean;
@@ -56,6 +56,9 @@ export default function SessionsPage() {
 	return (
 		<div>
 			<PageHeader title={t("sessions.title")} />
+			<p className="mb-4 max-w-3xl text-[13px] leading-5 text-mute">
+				{t("sessions.currentAdminScope")}
+			</p>
 			<DataTable
 				table={table}
 				emptyLabel={t("sessions.empty")}

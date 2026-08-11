@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
 	requireAdmin,
-	requireRole,
-	SUPER_ADMIN_ONLY,
+	requireAdminControlPermission,
 } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /**
  * POST /api/admin/users/[id]/reset-password — admin sets a new password for a
@@ -18,7 +19,7 @@ export async function POST(
 	const session = await requireAdmin(request).catch((e: Response) => e);
 	if (session instanceof Response) return session;
 	try {
-		requireRole(session, SUPER_ADMIN_ONLY);
+		requireAdminControlPermission(session, "identity.user.reset-password");
 	} catch (e) {
 		return e as Response;
 	}
@@ -38,6 +39,11 @@ export async function POST(
 			{ status: 400 },
 		);
 	}
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (e) {
+		return e as Response;
+	}
 
 	const cookie = request.headers.get("cookie") ?? "";
 	const res = await cinaauthFetch("/admin/set-user-password", {
@@ -45,5 +51,5 @@ export async function POST(
 		body: { userId: id, newPassword },
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }

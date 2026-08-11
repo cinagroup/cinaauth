@@ -14,6 +14,13 @@ export async function resolveAdminSession(
 	request: Request,
 ): Promise<AdminSession | null> {
 	const rawCookie = request.headers.get("cookie") ?? "";
+	return resolveAdminSessionFromCookie(rawCookie);
+}
+
+/** Resolve an Admin session from a server-rendered request's Cookie header. */
+export async function resolveAdminSessionFromCookie(
+	rawCookie: string,
+): Promise<AdminSession | null> {
 	if (!rawCookie) return null;
 
 	const sessionData = extractCookie(rawCookie, "__Secure-cinaauth.session_data");
@@ -52,6 +59,7 @@ function toAdminSession(data: SessionResponse): AdminSession {
 		// Better Auth's admin plugin stores impersonatedBy on the session record.
 		impersonatedBy:
 			data.session?.impersonatedBy ?? data.user!.impersonatedBy ?? null,
+		activeOrganizationId: data.activeOrganizationId ?? null,
 	};
 }
 
@@ -66,9 +74,15 @@ interface SessionUser {
 interface SessionResponse {
 	session?: { userId: string; impersonatedBy?: string | null } | null;
 	user?: SessionUser | null;
+	activeOrganizationId?: string | null;
 }
 
 /** Whether `role` is on the admin whitelist (CINAADMIN_ALLOWED_ROLES). */
 export function hasAdminRole(role: string | undefined | null): boolean {
-	return !!role && cinaauthConfig.allowedRoles.includes(role);
+	return (
+		role
+			?.split(",")
+			.some((candidate) => cinaauthConfig.allowedRoles.includes(candidate)) ??
+		false
+	);
 }

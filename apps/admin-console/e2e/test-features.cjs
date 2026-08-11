@@ -3,13 +3,14 @@
  * Uses Playwright's request API for authenticated calls + page navigation for UI checks.
  * Run: node e2e/test-features.cjs
  */
-const pw = require("/home/cina/.npm/_npx/705bc6b22212b352/node_modules/playwright-core");
+const { join } = require("node:path");
+const { chromium } = require("@playwright/test");
+const {
+	assertAuthenticatedAdminPage,
+	createAuthenticatedContext,
+} = require("./authenticated-context.cjs");
 
 const BASE = "https://admin.cinaseek.ai";
-const EMAIL = "admin@cinagroup.com";
-const PASSWORD = "CinaAdmin-2026!";
-const CHROMIUM =
-	"/home/cina/.cache/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell";
 
 const results = [];
 function log(name, pass, detail) {
@@ -19,15 +20,13 @@ function log(name, pass, detail) {
 
 async function run() {
 	console.log("\n═══════════════════════════════════════════════");
-	console.log("  6-Feature Systematic Browser E2E Test");
+	console.log("  CinaSeek Admin Feature Browser E2E Test");
 	console.log("═══════════════════════════════════════════════\n");
 
-	const browser = await pw.chromium.launch({
+	const browser = await chromium.launch({
 		headless: true,
-		executablePath: CHROMIUM,
-		args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu"],
 	});
-	const context = await browser.newContext({
+	const context = await createAuthenticatedContext(browser, {
 		viewport: { width: 1440, height: 900 },
 		ignoreHTTPSErrors: true,
 	});
@@ -50,27 +49,12 @@ async function run() {
 	}
 
 	try {
-		// ═══ Login ═══
-		console.log("【0. 登录】");
-		await page.goto(`${BASE}/dashboard`, { waitUntil: "commit", timeout: 30000 });
-		await page.waitForTimeout(2000);
-
-		const loginResult = await page.evaluate(async ({ email, password }) => {
-			const resp = await fetch("/api/auth/sign-in", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ email, password, callbackURL: "/dashboard" }),
-				credentials: "include",
-			});
-			return { ok: resp.ok, status: resp.status };
-		}, { email: EMAIL, password: PASSWORD });
-		log("登录", loginResult.ok, `HTTP ${loginResult.status}`);
-
+		// ═══ OIDC-authenticated storage state ═══
+		console.log("【0. OIDC 会话】");
 		await page.goto(`${BASE}/dashboard`, { waitUntil: "commit", timeout: 45000 });
 		await page.waitForTimeout(5000);
-		const loggedIn = page.url().includes("admin.cinaseek.ai") && !page.url().includes("sign-in");
-		log("跳转到 admin 控制台", loggedIn, page.url().slice(0, 60));
-		if (!loggedIn) throw new Error("Login failed");
+		const authenticated = assertAuthenticatedAdminPage(page, BASE);
+		log("OIDC storageState 已认证", authenticated, page.url().slice(0, 60));
 
 		// ═══ Feature 1: Organization Detail Page ═══
 		console.log("\n【1. 组织详情页（成员/邀请管理）】");
@@ -229,7 +213,7 @@ async function run() {
 		}
 
 		// Screenshot
-		await page.screenshot({ path: "/home/cina/cinaadmin/e2e/features-test.png" });
+		await page.screenshot({ path: join(__dirname, "features-test.png") });
 
 	} catch (err) {
 		log("测试执行", false, `异常: ${err.message.slice(0, 100)}`);

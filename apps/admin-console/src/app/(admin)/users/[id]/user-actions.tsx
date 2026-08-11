@@ -15,7 +15,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { copyText } from "@/lib/client-api";
+import { fetchAdminResponse } from "@/lib/client-api";
 import { BanDialog } from "./ban-dialog";
 
 /** Role-gated action buttons for a user (ban/delete/reset-2fa). */
@@ -44,7 +44,7 @@ export function UserActions({
 
 	const resetPassword = async () => {
 		if (newPassword.length < 8) return false;
-		const r = await fetch(`/api/admin/users/${userId}/reset-password`, {
+		const r = await fetchAdminResponse(`/api/admin/users/${userId}/reset-password`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ newPassword }),
@@ -59,7 +59,9 @@ export function UserActions({
 		}
 	};
 	const remove = async () => {
-		const r = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+		const r = await fetchAdminResponse(`/api/admin/users/${userId}`, {
+			method: "DELETE",
+		});
 		if (r.ok) {
 			toast.success(t("toast.deleted"));
 			window.location.href = "/users";
@@ -78,7 +80,7 @@ export function UserActions({
 						variant="secondary"
 						size="sm"
 						onClick={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/unban`, {
+							const r = await fetchAdminResponse(`/api/admin/users/${userId}/unban`, {
 								method: "POST",
 							});
 							if (r.ok) {
@@ -134,7 +136,7 @@ export function UserActions({
 						danger
 						confirmText={t("userDetail.reset2fa.confirm")}
 						onConfirm={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/reset-2fa`, {
+							const r = await fetchAdminResponse(`/api/admin/users/${userId}/reset-2fa`, {
 								method: "POST",
 							});
 							if (r.ok) {
@@ -165,7 +167,7 @@ export function UserActions({
 					description={t("userDetail.impersonate.hint")}
 					confirmText={t("userDetail.impersonate.start")}
 					onConfirm={async () => {
-						const r = await fetch(`/api/admin/users/${userId}/impersonate`, {
+						const r = await fetchAdminResponse(`/api/admin/users/${userId}/impersonate`, {
 							method: "POST",
 						});
 						if (r.ok) {
@@ -190,6 +192,8 @@ export function UserActions({
 					description={t("userDetail.delete.confirm")}
 					danger
 					confirmText={t("userDetail.delete.permanent")}
+					confirmationText={userId}
+					confirmationLabel={t("common.typeToConfirm", { value: userId })}
 					onConfirm={remove}
 				/>
 			</RoleGuard>
@@ -204,7 +208,7 @@ export function UserActions({
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						<DropdownMenuItem onClick={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/send-verification`, {
+							const r = await fetchAdminResponse(`/api/admin/users/${userId}/send-verification`, {
 								method: "POST",
 								headers: { "content-type": "application/json" },
 								body: JSON.stringify({ type: "email-otp" }),
@@ -215,7 +219,7 @@ export function UserActions({
 							{t("userDetail.sendVerification.emailOTP")}
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/send-verification`, {
+							const r = await fetchAdminResponse(`/api/admin/users/${userId}/send-verification`, {
 								method: "POST",
 								headers: { "content-type": "application/json" },
 								body: JSON.stringify({ type: "magic-link" }),
@@ -226,7 +230,7 @@ export function UserActions({
 							{t("userDetail.sendVerification.magicLink")}
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/send-verification`, {
+							const r = await fetchAdminResponse(`/api/admin/users/${userId}/send-verification`, {
 								method: "POST",
 								headers: { "content-type": "application/json" },
 								body: JSON.stringify({ type: "phone-number" }),
@@ -238,30 +242,6 @@ export function UserActions({
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
-			</RoleGuard>
-
-			{/* One-time token (super_admin) */}
-			<RoleGuard allow={["super_admin"]}>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={async () => {
-						const r = await fetch(`/api/admin/users/${userId}/one-time-token`, {
-							method: "POST",
-						});
-						const d = (await r.json().catch(() => ({}))) as {
-							ok?: boolean;
-							data?: { token?: string };
-						};
-						if (d.ok && d.data?.token && (await copyText(d.data.token))) {
-							toast.success(t("toast.tokenGenerated"));
-						} else {
-							toast.error(t("toast.saveFailed"));
-						}
-					}}
-				>
-					{t("userDetail.actions.oneTimeToken")}
-				</Button>
 			</RoleGuard>
 		</div>
 	);

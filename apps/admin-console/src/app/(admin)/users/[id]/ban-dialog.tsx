@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { fetchAdminResponse } from "@/lib/client-api";
 
 /** Ban dialog with duration (7d/30d/permanent) + reason. On confirm, POSTs
  *  /api/admin/users/[id]/ban then refreshes the user's detail + list queries. */
@@ -30,7 +31,7 @@ export function BanDialog({ userId }: { userId: string }) {
 				: duration === "30d"
 					? new Date(Date.now() + 30 * 86_400_000).toISOString()
 					: undefined;
-		const r = await fetch(`/api/admin/users/${userId}/ban`, {
+		const r = await fetchAdminResponse(`/api/admin/users/${userId}/ban`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({

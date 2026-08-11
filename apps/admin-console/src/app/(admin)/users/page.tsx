@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { RoleGuard } from "@/components/role-guard";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson } from "@/lib/client-api";
+import { downloadAdminCsv, fetchAdminJson } from "@/lib/client-api";
 import type { UserDTO } from "@/lib/cinaauth/dto";
 
 const PAGE_SIZE = 20;
@@ -132,11 +132,13 @@ export default function UsersPage() {
 	return (
 		<div>
 			<PageHeader title={t("users.title")}>
-				<Button asChild variant="secondary" size="sm">
-					<a href={exportHref}>
-						<Download size={15} />
-						{t("common.export")}
-					</a>
+				<Button
+					variant="secondary"
+					size="sm"
+					onClick={() => void downloadAdminCsv(exportHref, "users.csv")}
+				>
+					<Download size={15} />
+					{t("common.export")}
 				</Button>
 				<RoleGuard allow={["super_admin"]}>
 					<Button asChild variant="primary" size="sm">

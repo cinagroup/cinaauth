@@ -1,3 +1,5 @@
+import { ADMIN_CONSOLE_ROLES } from "@cinaauth/auth-web-contract";
+
 /**
  * Runtime config for the cinaauth integration. Values come from environment
  * (Cloudflare Workers secrets in prod, .env.local in dev).
@@ -21,9 +23,10 @@ export const cinaauthConfig = {
 	baseUrl: required("CINAUTH_BASE_URL", "http://localhost:2025"),
 	/** Frontend host (demo-auth.cinagroup.com) — login/sign-out page redirects. */
 	authUrl: required("CINAUTH_AUTH_URL", "https://accounts.cinaseek.ai"),
-	allowedRoles: (process.env.CINAADMIN_ALLOWED_ROLES ?? ADMIN_CONSOLE_ROLES.join(","))
+	allowedRoles: (
+		process.env.CINAADMIN_ALLOWED_ROLES ?? ADMIN_CONSOLE_ROLES.join(",")
+	)
 		.split(",")
 		.map((r) => r.trim())
 		.filter(Boolean),
 };
-import { ADMIN_CONSOLE_ROLES } from "@cinaauth/auth-web-contract";

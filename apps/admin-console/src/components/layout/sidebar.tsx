@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
 	Building2,
@@ -15,10 +14,12 @@ import {
 	ShieldCheck,
 	Smartphone,
 	Users,
-	type LucideIcon,
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n/i18n-context";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import { AdminBrand } from "@/components/layout/admin-brand";
 
 export interface NavItem {
 	href: string;
@@ -86,7 +87,7 @@ export function Sidebar({
 	return (
 		<aside
 			className={cn(
-				"flex shrink-0 flex-col border-r border-hairline bg-sidebar transition-[width] duration-200",
+				"flex h-full min-w-0 shrink-0 flex-col border-r border-hairline bg-sidebar transition-[width] duration-200",
 				collapsed ? "w-[72px]" : "w-60",
 				className,
 			)}
@@ -97,19 +98,7 @@ export function Sidebar({
 					collapsed ? "justify-center px-2" : "gap-2 px-4",
 				)}
 			>
-				<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-ink text-canvas-soft">
-					<Shield size={16} strokeWidth={2.25} />
-				</div>
-				{!collapsed && (
-					<div className="flex min-w-0 flex-col leading-tight">
-						<span className="truncate text-[14px] font-semibold text-ink">
-							CinaGroup Admin
-						</span>
-						<span className="text-[11px] leading-3 text-mute">
-							Identity operations
-						</span>
-					</div>
-				)}
+				<AdminBrand compact={collapsed} priority />
 			</div>
 
 			<nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3">
@@ -122,8 +111,7 @@ export function Sidebar({
 						)}
 						{section.items.map((item) => {
 							const active =
-								pathname === item.href ||
-								pathname.startsWith(`${item.href}/`);
+								pathname === item.href || pathname.startsWith(`${item.href}/`);
 							const Icon = item.icon;
 							return (
 								<Link
@@ -145,7 +133,9 @@ export function Sidebar({
 										strokeWidth={active ? 2.25 : 2}
 										className={active ? "text-ink" : "text-mute"}
 									/>
-									{!collapsed && <span className="truncate">{t(item.key)}</span>}
+									{!collapsed && (
+										<span className="truncate">{t(item.key)}</span>
+									)}
 								</Link>
 							);
 						})}

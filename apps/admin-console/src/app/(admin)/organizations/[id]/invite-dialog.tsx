@@ -14,6 +14,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { fetchAdminResponse } from "@/lib/client-api";
 
 export function InviteDialog({ orgId }: { orgId: string }) {
 	const { t } = useI18n();
@@ -25,7 +26,7 @@ export function InviteDialog({ orgId }: { orgId: string }) {
 	const invite = async () => {
 		setInviting(true);
 		try {
-			const r = await fetch(`/api/admin/organizations/${orgId}/invite`, {
+			const r = await fetchAdminResponse(`/api/admin/organizations/${orgId}/invite`, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ email, role }),

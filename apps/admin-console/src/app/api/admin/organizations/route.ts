@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { hasAdminRole, resolveAdminSession } from "@/lib/cinaauth/session";
+import {
+	requireAdmin,
+	requireAdminControlPermission,
+} from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /**
  * Generic organization proxy. Forwards GET (list) / POST (create) to cinaauth's
@@ -10,20 +15,26 @@ import { cinaauthFetch } from "@/lib/cinaauth/client";
  * with a legitimately empty organization list.
  */
 export async function GET(request: NextRequest) {
-	const session = await resolveAdminSession(request);
-	if (!session || !hasAdminRole(session.role)) {
-		return NextResponse.json({ ok: false }, { status: 403 });
+	const session = await requireAdmin(request).catch((error: Response) => error);
+	if (session instanceof Response) return session;
+	try {
+		requireAdminControlPermission(session, "organization.read");
+	} catch (error) {
+		return error as Response;
 	}
 	const qs = new URL(request.url).searchParams.toString();
 	const cookie = request.headers.get("cookie") ?? "";
 	const res = await cinaauthFetch(`/organization/list?${qs}`, { cookie });
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }
 
 export async function POST(request: NextRequest) {
-	const session = await resolveAdminSession(request);
-	if (!session || !hasAdminRole(session.role) || session.role !== "super_admin") {
-		return NextResponse.json({ ok: false }, { status: 403 });
+	const session = await requireAdmin(request).catch((error: Response) => error);
+	if (session instanceof Response) return session;
+	try {
+		requireAdminControlPermission(session, "organization.create");
+	} catch (error) {
+		return error as Response;
 	}
 	let body: unknown;
 	try {
@@ -34,11 +45,16 @@ export async function POST(request: NextRequest) {
 			{ status: 400 },
 		);
 	}
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (error) {
+		return error as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
 	const res = await cinaauthFetch("/organization/create", {
 		method: "POST",
 		body,
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }

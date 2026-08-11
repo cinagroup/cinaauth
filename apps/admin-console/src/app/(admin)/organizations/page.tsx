@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson } from "@/lib/client-api";
+import { fetchAdminJson, fetchAdminResponse } from "@/lib/client-api";
 import type { OrgDTO } from "@/lib/cinaauth/dto";
 
 export default function OrganizationsPage() {
@@ -46,7 +46,7 @@ export default function OrganizationsPage() {
 		}
 		setCreating(true);
 		try {
-			const r = await fetch("/api/admin/organizations", {
+			const r = await fetchAdminResponse("/api/admin/organizations", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ name, slug }),
@@ -124,6 +124,9 @@ export default function OrganizationsPage() {
 					</ConfirmDialog>
 				</RoleGuard>
 			</PageHeader>
+			<p className="mb-4 max-w-3xl text-[13px] leading-5 text-mute">
+				{t("organizations.tenantScope")}
+			</p>
 			<DataTable
 				table={table}
 				emptyLabel={t("organizations.empty")}

@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
-	ADMIN_AND_SECURITY,
 	requireAdmin,
-	requireRole,
+	requireAdminControlPermission,
 } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /**
  * POST /api/admin/sessions/revoke — revoke a single session or all sessions
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
 	const session = await requireAdmin(request).catch((e: Response) => e);
 	if (session instanceof Response) return session;
 	try {
-		requireRole(session, ADMIN_AND_SECURITY);
+		requireAdminControlPermission(session, "identity.session.revoke");
 	} catch (e) {
 		return e as Response;
 	}
@@ -38,11 +39,16 @@ export async function POST(request: NextRequest) {
 			{ status: 400 },
 		);
 	}
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (e) {
+		return e as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
 
 	const path = typeof body.userId === "string"
 		? "/admin/revoke-user-sessions"
 		: "/admin/revoke-user-session";
 	const res = await cinaauthFetch(path, { method: "POST", body, cookie });
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }
