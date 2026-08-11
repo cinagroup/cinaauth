@@ -144,7 +144,7 @@ export function PrivacyCenter({
 				throw new Error(
 					response.status === 403
 						? "Sign in again before requesting an encrypted export."
-						: "CinaAuth could not queue the encrypted export.",
+						: "CinaSeek could not queue the encrypted export.",
 				);
 			}
 			setAsyncExport(status);
@@ -153,7 +153,7 @@ export function PrivacyCenter({
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaAuth could not queue the encrypted export.",
+					: "CinaSeek could not queue the encrypted export.",
 			);
 		} finally {
 			setIsQueueingExport(false);
@@ -177,7 +177,7 @@ export function PrivacyCenter({
 				throw new Error(
 					response.status === 403
 						? "Sign in again before exporting personal data."
-						: "CinaAuth could not prepare the personal data export.",
+						: "CinaSeek could not prepare the personal data export.",
 				);
 			}
 
@@ -187,7 +187,7 @@ export function PrivacyCenter({
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaAuth could not prepare the personal data export.",
+					: "CinaSeek could not prepare the personal data export.",
 			);
 		} finally {
 			setIsExporting(false);
@@ -215,7 +215,7 @@ export function PrivacyCenter({
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaAuth could not download the encrypted export.",
+					: "CinaSeek could not download the encrypted export.",
 			);
 		} finally {
 			setIsDownloadingAsync(false);
@@ -239,7 +239,7 @@ export function PrivacyCenter({
 			setAsyncExport(null);
 			toast.success("Encrypted export artifacts deleted.");
 		} catch {
-			toast.error("CinaAuth could not delete the encrypted export.");
+			toast.error("CinaSeek could not delete the encrypted export.");
 		}
 	};
 
@@ -247,7 +247,7 @@ export function PrivacyCenter({
 		<div className="mx-auto w-full max-w-5xl py-6">
 			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<div>
-					<p className="text-sm font-medium text-primary">CinaAuth account</p>
+					<p className="text-sm font-medium text-primary">CinaSeek account</p>
 					<h1 className="text-3xl font-semibold tracking-tight">
 						Privacy Center
 					</h1>
@@ -406,7 +406,7 @@ export function PrivacyCenter({
 							</CardTitle>
 							<CardDescription>
 								Review current retention exceptions and blocking holds before a
-								permanent deletion. CinaAuth downloads a signed JSON receipt after
+								permanent deletion. CinaSeek downloads a signed JSON receipt after
 								completion.
 							</CardDescription>
 						</CardHeader>

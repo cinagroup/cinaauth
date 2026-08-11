@@ -15,7 +15,7 @@ import { SecurityCenter } from "./security-center";
 export const metadata: Metadata = {
 	title: "Security Center",
 	description:
-		"Manage CinaAuth sign-in methods, sessions, and linked identities.",
+		"Manage CinaSeek sign-in methods, sessions, and linked identities.",
 };
 
 const toIsoString = (value: Date | string) => new Date(value).toISOString();

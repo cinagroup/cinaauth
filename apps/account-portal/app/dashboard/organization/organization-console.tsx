@@ -511,7 +511,7 @@ export function OrganizationConsole({
 							<div>
 								<CardTitle>Members</CardTitle>
 								<CardDescription>
-									Role changes are checked again by the CinaAuth organization
+									Role changes are checked again by the CinaSeek organization
 									policy.
 								</CardDescription>
 							</div>

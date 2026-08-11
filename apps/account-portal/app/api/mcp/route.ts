@@ -68,7 +68,7 @@ const handler = mcpHandler(
 			},
 			{
 				serverInfo: {
-					name: "demo-cinaauth",
+					name: "CinaSeek Accounts",
 					version: "1.0.0",
 				},
 			},

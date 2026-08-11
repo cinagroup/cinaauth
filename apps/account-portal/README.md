@@ -1,9 +1,13 @@
-﻿# CinaAuth Demo App
+﻿# CinaSeek Accounts
 
-This is the user-facing CinaAuth login and account center deployed at
-`accounts.cinaseek.ai`.
-This project is built with [Next.js](https://nextjs.org) using
-[`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<p align="center">
+  <img src="./public/logo.png" alt="CinaSeek" width="96" height="96" />
+</p>
+
+This is the user-facing CinaSeek sign-in and account center deployed at
+[`accounts.cinaseek.ai`](https://accounts.cinaseek.ai). It is a separately
+deployed Next.js frontend backed by the authoritative CinaAuth Worker at
+`auth.cinaseek.ai`.
 
 ## Getting Started
 
@@ -34,11 +38,9 @@ Here’s how you can get the app running locally:
 
    * Open `.env` and fill in the required details.
      These will include things like API URLs, client IDs, and secrets needed to
-     connect to the CinaAuth service.
-
-Make sure `TURSO_DATABASE_URL=your_turso_url` and
-`TURSO_AUTH_TOKEN=your_turso_token` is set or `USE_MYSQL=true` and
-`MYSQL_DATABASE_URL=your_mysql_url` is set.
+     connect to the CinaAuth service. The portal does not connect directly to
+     the identity database; PostgreSQL access remains behind the Auth Worker and
+     its Cloudflare Hyperdrive binding.
 
 ### Start the Development Server
 
@@ -56,7 +58,8 @@ Any changes you make will update automatically in the browser.
 
 ## Features
 
-Here’s what this app supports out of the box:
+The account center exposes the user-owned identity workflows enabled by the
+deployed Auth Worker:
 
 * **[Email & Password][]**: Simple and secure authentication.
 * **[Organization / Teams][]**: Manage users within organizations or teams.
@@ -74,8 +77,8 @@ Here’s what this app supports out of the box:
 
 Here are some helpful links if you want to dive deeper:
 
-* [CinaAuth Documentation](https://cinagroup.com/docs) - Everything you
-  need to know to integrate CinaAuth.
+* [CinaAuth Documentation](https://cinagroup.com/docs) - Framework and identity
+  API integration documentation.
 * [Next.js Documentation](https://nextjs.org/docs) - Learn about the framework
   we used to build this app.
 * [Learn Next.js](https://nextjs.org/learn) - A hands-on tutorial for Next.js.
@@ -84,8 +87,6 @@ Here are some helpful links if you want to dive deeper:
 
 If you run into issues or have suggestions, feel free to open an issue or submit
 a pull request on the [GitHub repo](https://github.com/cinagroup/cinaauth).
-
-Happy coding!
 
 [email & password]: https://www.cinagroup.com/docs/basic-usage#email-password
 

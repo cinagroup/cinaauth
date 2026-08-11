@@ -10,18 +10,15 @@ const Header = () => {
 		<header className="h-16 bg-canvas flex items-center justify-between fixed top-0 z-50 w-full px-4 md:px-6 shadow-l1">
 			{/* Logo + wordmark */}
 			<Link href="/" className="flex items-center gap-2 shrink-0">
-				<Logo />
+				<Logo size={28} sizes="28px" className="shrink-0" />
 				<p className="select-none text-[20px] font-semibold leading-[28px] tracking-[-0.6px] text-ink">
-					CinaAuth.
+					CinaSeek
 				</p>
 			</Link>
 
 			{/* Spec: nav-link row — centre, body-sm, body text, rounded-full.
 			 * Hidden on mobile (tucked behind hamburger later). */}
-			<nav
-				aria-label="Primary"
-				className="hidden md:flex items-center gap-1"
-			>
+			<nav aria-label="Primary" className="hidden md:flex items-center gap-1">
 				<NavLink href="/pricing">Pricing</NavLink>
 				<NavLink href="https://www.cinagroup.com/docs">Docs</NavLink>
 				<NavLink href="https://www.cinagroup.com/blog">Blog</NavLink>

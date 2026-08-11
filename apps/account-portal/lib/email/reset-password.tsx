@@ -22,7 +22,7 @@ export const ResetPasswordEmail = ({
 	username,
 	resetLink,
 }: CinaAuthResetPasswordEmailProps) => {
-	const previewText = `Reset your CinaAuth password`;
+	const previewText = `Reset your CinaSeek password`;
 	return (
 		<Html>
 			<Head />
@@ -31,13 +31,13 @@ export const ResetPasswordEmail = ({
 				<Body className="bg-white my-auto mx-auto font-sans px-2">
 					<Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] max-w-[465px]">
 						<Heading className="text-black text-[24px] font-normal text-center p-0 my-[30px] mx-0">
-							Reset your <strong>CinaAuth</strong> password
+							Reset your <strong>CinaSeek</strong> password
 						</Heading>
 						<Text className="text-black text-[14px] leading-[24px]">
 							Hello {username},
 						</Text>
 						<Text className="text-black text-[14px] leading-[24px]">
-							We received a request to reset your password for your CinaAuth
+							We received a request to reset your password for your CinaSeek
 							account. If you didn't make this request, you can safely ignore
 							this email.
 						</Text>

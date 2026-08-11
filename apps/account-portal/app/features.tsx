@@ -8,7 +8,7 @@ export function Features() {
 	return (
 		<>
 			<div className="flex flex-col lg:flex-row bg-canvas dark:bg-ink w-full gap-4 mx-auto px-8">
-				<Card title="CinaAuth" icon={<Logo className="w-44" />}></Card>
+				<Card title="CinaSeek" icon={<Logo className="w-44" />}></Card>
 			</div>
 		</>
 	);
@@ -61,10 +61,7 @@ const Card = ({
 	);
 };
 
-export const Icon = ({
-	className,
-	...rest
-}: React.SVGProps<SVGSVGElement>) => {
+export const Icon = ({ className, ...rest }: React.SVGProps<SVGSVGElement>) => {
 	return (
 		<svg
 			xmlns="http://www.w3.org/2000/svg"

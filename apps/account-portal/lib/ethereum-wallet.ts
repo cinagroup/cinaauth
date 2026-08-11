@@ -61,7 +61,7 @@ export const buildSiweMessage = (input: {
 }) =>
 	`${input.domain} wants you to sign in with your Ethereum account:\n${
 		input.address
-	}\n\nLink this wallet to your CinaAuth account.\n\nURI: ${
+	}\n\nLink this wallet to your CinaSeek account.\n\nURI: ${
 		input.uri
 	}\nVersion: 1\nChain ID: ${input.chainId}\nNonce: ${
 		input.nonce

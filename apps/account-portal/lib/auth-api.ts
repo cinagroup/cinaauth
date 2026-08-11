@@ -362,7 +362,7 @@ export const createServerAuthApi = (
 			}),
 		);
 		if (!response.ok) {
-			throw new Error(`CinaAuth request failed with HTTP ${response.status}`);
+			throw new Error(`CinaSeek request failed with HTTP ${response.status}`);
 		}
 		return parseJson<T>(response);
 	};

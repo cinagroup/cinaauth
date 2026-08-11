@@ -72,11 +72,7 @@ const jsonHeaders = {
 	"Cache-Control": "no-store",
 };
 
-const raise = (
-	status: number,
-	code: string,
-	message: string,
-): never => {
+const raise = (status: number, code: string, message: string): never => {
 	throw { code, message, status } satisfies DeliveryHttpError;
 };
 
@@ -187,7 +183,9 @@ const hmacSha256 = async (secret: string, payload: string) => {
 		false,
 		["sign"],
 	);
-	return hex(await crypto.subtle.sign("HMAC", key, textEncoder.encode(payload)));
+	return hex(
+		await crypto.subtle.sign("HMAC", key, textEncoder.encode(payload)),
+	);
 };
 
 const sha256 = async (value: string) =>
@@ -294,8 +292,10 @@ const isPasswordResetMessage = (
 
 const isPhoneMessage = (
 	value: DeliveryMessage,
-): value is Extract<DeliveryMessage, { kind: "phone-otp" | "phone-reset-otp" }> =>
-	value.kind === "phone-otp" || value.kind === "phone-reset-otp";
+): value is Extract<
+	DeliveryMessage,
+	{ kind: "phone-otp" | "phone-reset-otp" }
+> => value.kind === "phone-otp" || value.kind === "phone-reset-otp";
 
 const isStringRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
@@ -404,7 +404,11 @@ export const verifyCinaAuthRequest = async (
 	);
 	const nowSeconds = Math.floor(now / 1000);
 	if (Math.abs(nowSeconds - timestampSeconds) > allowedSkewSeconds) {
-		return raise(401, "stale_signature", "Delivery signature timestamp is stale");
+		return raise(
+			401,
+			"stale_signature",
+			"Delivery signature timestamp is stale",
+		);
 	}
 
 	const expected = await hmacSha256(
@@ -465,9 +469,9 @@ export const createProviderRequest = (
 		const provider = requireEmailProvider(env);
 		const subject =
 			message.payload.type === "email-verification"
-				? "Verify your CinaAuth email"
-				: "Your CinaAuth verification code";
-		const text = `Your CinaAuth verification code is ${message.payload.otp}.`;
+				? "Verify your CinaSeek email"
+				: "Your CinaSeek verification code";
+		const text = `Your CinaSeek verification code is ${message.payload.otp}.`;
 		return {
 			method: "POST",
 			url: "https://api.resend.com/emails",
@@ -487,7 +491,7 @@ export const createProviderRequest = (
 
 	if (isMagicLinkMessage(message)) {
 		const provider = requireEmailProvider(env);
-		const text = `Sign in to CinaAuth: ${message.payload.url}`;
+		const text = `Sign in to CinaSeek: ${message.payload.url}`;
 		return {
 			method: "POST",
 			url: "https://api.resend.com/emails",
@@ -498,16 +502,16 @@ export const createProviderRequest = (
 			body: JSON.stringify({
 				from: provider.from,
 				to: [message.payload.email],
-				subject: "Your CinaAuth sign-in link",
+				subject: "Your CinaSeek sign-in link",
 				text,
-				html: `<p><a href="${escapeHtml(message.payload.url)}">Sign in to CinaAuth</a></p>`,
+				html: `<p><a href="${escapeHtml(message.payload.url)}">Sign in to CinaSeek</a></p>`,
 			}),
 		};
 	}
 
 	if (isPasswordResetMessage(message)) {
 		const provider = requireEmailProvider(env);
-		const text = `Reset your CinaAuth password: ${message.payload.url}`;
+		const text = `Reset your CinaSeek password: ${message.payload.url}`;
 		return {
 			method: "POST",
 			url: "https://api.resend.com/emails",
@@ -518,9 +522,9 @@ export const createProviderRequest = (
 			body: JSON.stringify({
 				from: provider.from,
 				to: [message.payload.email],
-				subject: "Reset your CinaAuth password",
+				subject: "Reset your CinaSeek password",
 				text,
-				html: `<p><a href="${escapeHtml(message.payload.url)}">Reset your CinaAuth password</a></p>`,
+				html: `<p><a href="${escapeHtml(message.payload.url)}">Reset your CinaSeek password</a></p>`,
 			}),
 		};
 	}
@@ -530,7 +534,7 @@ export const createProviderRequest = (
 		const body = new URLSearchParams({
 			From: provider.from,
 			To: message.payload.phoneNumber,
-			Body: `Your CinaAuth verification code is ${message.payload.code}.`,
+			Body: `Your CinaSeek verification code is ${message.payload.code}.`,
 		});
 		return {
 			method: "POST",
@@ -580,7 +584,9 @@ const isDuplicateDelivery = async (
 	if (!isKVNamespace(env.CINAAUTH_DELIVERY_REPLAY_KV)) {
 		raise(503, "replay_kv_missing", "Replay KV binding is missing");
 	}
-	return Boolean(await env.CINAAUTH_DELIVERY_REPLAY_KV.get(replayKey(deliveryId)));
+	return Boolean(
+		await env.CINAAUTH_DELIVERY_REPLAY_KV.get(replayKey(deliveryId)),
+	);
 };
 
 const markDelivered = async (env: DeliveryWorkerEnv, deliveryId: string) => {
@@ -588,9 +594,13 @@ const markDelivered = async (env: DeliveryWorkerEnv, deliveryId: string) => {
 		env.DELIVERY_REPLAY_TTL_SECONDS,
 		DEFAULT_REPLAY_TTL_SECONDS,
 	);
-	await env.CINAAUTH_DELIVERY_REPLAY_KV.put(replayKey(deliveryId), "delivered", {
-		expirationTtl: ttl,
-	});
+	await env.CINAAUTH_DELIVERY_REPLAY_KV.put(
+		replayKey(deliveryId),
+		"delivered",
+		{
+			expirationTtl: ttl,
+		},
+	);
 };
 
 const handleDelivery = async (request: Request, env: DeliveryWorkerEnv) => {
@@ -668,7 +678,7 @@ const handleFetch = async (request: Request, env: DeliveryWorkerEnv) => {
 	const url = new URL(request.url);
 	if (url.pathname === "/" && request.method === "GET") {
 		return json({
-			name: "CinaAuth Delivery Worker",
+			name: "CinaSeek Delivery Worker",
 			status: "running",
 			version: getVersionMetadata(env),
 		});

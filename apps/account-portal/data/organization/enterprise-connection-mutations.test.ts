@@ -322,4 +322,41 @@ describe("enterprise connection mutations", () => {
 			body: { providerId: "acme-oidc" },
 		});
 	});
+
+	it("uses the CinaSeek brand for malformed enterprise-service responses", async () => {
+		const cases: Array<{
+			invoke: () => Promise<unknown>;
+			expected: string;
+		}> = [
+			{
+				invoke: () => deleteSSOProvider("acme-oidc"),
+				expected:
+					"CinaSeek identity service did not confirm SSO provider deletion",
+			},
+			{
+				invoke: () => requestSSODomainVerification("acme-oidc"),
+				expected:
+					"CinaSeek identity service did not return domain verification material",
+			},
+			{
+				invoke: () =>
+					generateSCIMToken({
+						providerId: "acme-scim",
+						organizationId: "organization-1",
+					}),
+				expected:
+					"CinaSeek identity service did not return the one-time SCIM token",
+			},
+			{
+				invoke: () => revokeSCIMProvider("acme-scim"),
+				expected:
+					"CinaSeek identity service did not confirm SCIM token revocation",
+			},
+		];
+
+		for (const testCase of cases) {
+			mocks.$fetch.mockResolvedValueOnce({ data: {}, error: null });
+			await expect(testCase.invoke()).rejects.toThrow(testCase.expected);
+		}
+	});
 });

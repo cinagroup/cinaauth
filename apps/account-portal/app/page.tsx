@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { headers } from "next/headers";
+import Link from "next/link";
 import EntryButton from "@/components/entry-button";
 import { FeatureCard } from "@/components/feature-card";
 import { auth } from "@/lib/auth";
@@ -73,8 +73,8 @@ export default async function Page() {
 				className="pointer-events-none absolute inset-0 z-0 mesh-gradient-hero"
 			/>
 
-			<main
-				id="main"
+			<section
+				aria-labelledby="home-hero-title"
 				className="relative z-10 flex flex-col gap-8 items-center justify-center py-48 px-4 md:px-6"
 			>
 				<div className="flex flex-col gap-4 text-center max-w-2xl">
@@ -86,20 +86,15 @@ export default async function Page() {
 						</span>
 					</div>
 					{/* Spec: display-xl — 48/600/48/-2.4px, sentence-case, period-terminated. */}
-					<h1 className="text-[48px] font-semibold text-ink tracking-[-2.4px] leading-[48px]">
-						CinaAuth.
+					<h1
+						id="home-hero-title"
+						className="text-[48px] font-semibold text-ink tracking-[-2.4px] leading-[48px]"
+					>
+						CinaSeek.
 					</h1>
 					<p className="text-[18px] leading-[28px] text-body">
-						Official demo to showcase{" "}
-						<a
-							href="https://cinagroup.com"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-link hover:text-link-deep underline underline-offset-4 transition-colors"
-						>
-							cinaauth
-						</a>{" "}
-						features and capabilities.
+						Your secure CinaSeek Identity account center for sign-in, security,
+						privacy, and connected applications.
 					</p>
 				</div>
 
@@ -132,7 +127,7 @@ export default async function Page() {
 						))}
 					</div>
 				</div>
-			</main>
+			</section>
 		</div>
 	);
 }

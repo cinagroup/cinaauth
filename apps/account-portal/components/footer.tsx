@@ -36,16 +36,25 @@ const Footer = () => {
 				<FooterColumn
 					eyebrow="Legal"
 					links={[
-						{ label: "Terms of Service", href: "https://www.cinagroup.com/terms" },
-						{ label: "Privacy Policy", href: "https://www.cinagroup.com/privacy" },
-						{ label: "Cookie Policy", href: "https://www.cinagroup.com/cookies" },
+						{
+							label: "Terms of Service",
+							href: "https://www.cinagroup.com/terms",
+						},
+						{
+							label: "Privacy Policy",
+							href: "https://www.cinagroup.com/privacy",
+						},
+						{
+							label: "Cookie Policy",
+							href: "https://www.cinagroup.com/cookies",
+						},
 						{ label: "DPA", href: "https://www.cinagroup.com/dpa" },
 					]}
 				/>
 			</div>
 			<div className="max-w-[1400px] mx-auto mt-12 pt-6 border-t border-hairline flex flex-col md:flex-row justify-between items-center gap-4">
 				<p className="text-sm text-mute">
-					&copy; {new Date().getFullYear()} Cina Group. All rights reserved.
+					&copy; {new Date().getFullYear()} CinaSeek. A Cina Group service.
 				</p>
 				<p className="text-xs font-mono text-mute">accounts.cinaseek.ai</p>
 			</div>

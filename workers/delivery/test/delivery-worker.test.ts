@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import deliveryWorker, {
+import type { DeliveryWorkerEnv } from "../src/env";
+import type { DeliveryMessage } from "../src/index";
+import {
 	createProviderRequest,
 	getRuntimeConfigIssues,
 	parseDeliveryMessage,
 	secureEqual,
 	verifyCinaAuthRequest,
-	type DeliveryMessage,
 } from "../src/index";
-import type { DeliveryWorkerEnv } from "../src/env";
 
 const encoder = new TextEncoder();
 const strongSecret = "delivery-secret-".repeat(3);
@@ -34,11 +34,7 @@ const createKv = () => {
 	const store = new Map<string, string>();
 	const get = vi.fn(async (key: string) => store.get(key) ?? null);
 	const put = vi.fn(
-		async (
-			key: string,
-			value: string,
-			_options?: KVNamespacePutOptions,
-		) => {
+		async (key: string, value: string, _options?: KVNamespacePutOptions) => {
 			store.set(key, value);
 		},
 	);
@@ -69,7 +65,7 @@ const makeEnv = (
 		DELIVERY_ALLOWED_SKEW_SECONDS: "300",
 		DELIVERY_REPLAY_TTL_SECONDS: "86400",
 		RESEND_API_KEY: "resend-key",
-		RESEND_EMAIL_FROM: "CinaAuth <no-reply@cinagroup.com>",
+		RESEND_EMAIL_FROM: "CinaSeek <no-reply@cinagroup.com>",
 		TWILIO_ACCOUNT_SID: "AC123",
 		TWILIO_AUTH_TOKEN: "twilio-token",
 		TWILIO_FROM_NUMBER: "+15555550123",
@@ -86,10 +82,14 @@ const message: DeliveryMessage = {
 	},
 };
 
-const fetchWorker = deliveryWorker.fetch as unknown as (
-	request: Request,
-	env: DeliveryWorkerEnv,
-) => Promise<Response>;
+const fetchWorker = async (request: Request, env: DeliveryWorkerEnv) => {
+	const { default: deliveryWorker } = await import("../src/index");
+	const fetch = deliveryWorker.fetch as unknown as (
+		request: Request,
+		env: DeliveryWorkerEnv,
+	) => Promise<Response>;
+	return fetch(request, env);
+};
 
 const signedRequest = async (
 	body: string,
@@ -107,17 +107,20 @@ const signedRequest = async (
 		env.CINAAUTH_DELIVERY_WEBHOOK_SECRET,
 		`${timestamp}.${deliveryId}.${body}`,
 	);
-	return new Request("https://cinaauth-delivery.cinagroup.com/cinaauth/delivery", {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${env.CINAAUTH_DELIVERY_WEBHOOK_SECRET}`,
-			"Content-Type": "application/json",
-			"X-CinaAuth-Delivery-Id": deliveryId,
-			"X-CinaAuth-Delivery-Timestamp": timestamp,
-			"X-CinaAuth-Delivery-Signature": `v1=${signature}`,
+	return new Request(
+		"https://cinaauth-delivery.cinagroup.com/cinaauth/delivery",
+		{
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${env.CINAAUTH_DELIVERY_WEBHOOK_SECRET}`,
+				"Content-Type": "application/json",
+				"X-CinaAuth-Delivery-Id": deliveryId,
+				"X-CinaAuth-Delivery-Timestamp": timestamp,
+				"X-CinaAuth-Delivery-Signature": `v1=${signature}`,
+			},
+			body,
 		},
-		body,
-	});
+	);
 };
 
 afterEach(() => {
@@ -172,10 +175,68 @@ describe("provider requests", () => {
 		const headers = new Headers(request.headers);
 		expect(headers.get("Authorization")).toBe("Bearer resend-key");
 		expect(JSON.parse(request.body as string)).toMatchObject({
-			from: "CinaAuth <no-reply@cinagroup.com>",
+			from: "CinaSeek <no-reply@cinagroup.com>",
 			to: ["user@example.com"],
-			subject: "Your CinaAuth verification code",
+			subject: "Your CinaSeek verification code",
 		});
+	});
+
+	it("uses CinaSeek branding in every provider-visible email and SMS field", () => {
+		const emailMessages: DeliveryMessage[] = [
+			message,
+			{
+				kind: "email-otp",
+				payload: {
+					email: "user@example.com",
+					otp: "123456",
+					type: "email-verification",
+				},
+			},
+			{
+				kind: "magic-link",
+				payload: {
+					email: "user@example.com",
+					url: "https://accounts.cinaseek.ai/sign-in/magic-link",
+				},
+			},
+			{
+				kind: "password-reset",
+				payload: {
+					email: "user@example.com",
+					url: "https://accounts.cinaseek.ai/reset-password",
+				},
+			},
+		];
+
+		for (const emailMessage of emailMessages) {
+			const request = createProviderRequest(makeEnv(), emailMessage);
+			const payload = JSON.parse(request.body as string) as {
+				from: string;
+				html: string;
+				subject: string;
+				text: string;
+			};
+			for (const providerVisibleCopy of [
+				payload.from,
+				payload.subject,
+				payload.text,
+				payload.html,
+			]) {
+				expect(providerVisibleCopy).toContain("CinaSeek");
+				expect(providerVisibleCopy).not.toContain("CinaAuth");
+			}
+		}
+
+		for (const kind of ["phone-otp", "phone-reset-otp"] as const) {
+			const request = createProviderRequest(makeEnv(), {
+				kind,
+				payload: { phoneNumber: "+15555550100", code: "654321" },
+			});
+			expect(request.body).toBeInstanceOf(URLSearchParams);
+			const body = (request.body as URLSearchParams).get("Body");
+			expect(body).toBe("Your CinaSeek verification code is 654321.");
+			expect(body).not.toContain("CinaAuth");
+		}
 	});
 
 	it("creates Twilio requests for phone delivery", () => {
@@ -197,6 +258,19 @@ describe("provider requests", () => {
 });
 
 describe("delivery worker", () => {
+	it("identifies the public health endpoint as CinaSeek Delivery Worker", async () => {
+		const response = await fetchWorker(
+			new Request("https://delivery.cinaseek.ai/"),
+			makeEnv(),
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			name: "CinaSeek Delivery Worker",
+			status: "running",
+		});
+	});
+
 	it("dispatches valid deliveries and deduplicates successful delivery ids", async () => {
 		const env = makeEnv();
 		const body = JSON.stringify(message);

@@ -94,9 +94,12 @@ export const getPersonalDataExportFilename = (
 		?.match(/filename="?([^";]+)"?/i)?.[1]
 		?.trim();
 	if (candidate && /^[a-zA-Z0-9._-]{1,128}$/.test(candidate)) {
-		return candidate;
+		return candidate.replace(
+			/^cinaauth-personal-data-/i,
+			"cinaseek-personal-data-",
+		);
 	}
-	return `cinaauth-personal-data-${now.toISOString().slice(0, 10)}.json`;
+	return `cinaseek-personal-data-${now.toISOString().slice(0, 10)}.json`;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -119,9 +122,7 @@ export const parsePrivacyAsyncExportStatus = (
 		typeof value.jobId !== "string" ||
 		!/^[A-Za-z0-9_-]{16,128}$/.test(value.jobId) ||
 		typeof value.status !== "string" ||
-		!PRIVACY_ASYNC_EXPORT_STATES.has(
-			value.status as PrivacyAsyncExportState,
-		) ||
+		!PRIVACY_ASYNC_EXPORT_STATES.has(value.status as PrivacyAsyncExportState) ||
 		typeof value.createdAt !== "string" ||
 		Number.isNaN(Date.parse(value.createdAt)) ||
 		typeof value.expiresAt !== "string" ||
@@ -155,8 +156,7 @@ const isRetentionReceiptSnapshot = (
 	value: unknown,
 ): value is PrivacyRetentionReceiptSnapshot => {
 	if (!isRetentionException(value)) return false;
-	const purgeNoLaterThan = (value as Record<string, unknown>)
-		.purgeNoLaterThan;
+	const purgeNoLaterThan = (value as Record<string, unknown>).purgeNoLaterThan;
 	return (
 		purgeNoLaterThan === undefined ||
 		(typeof purgeNoLaterThan === "string" &&
@@ -250,5 +250,5 @@ export const getPrivacyDeletionReceiptFilename = (
 	const safeId = /^[a-zA-Z0-9_-]{16,128}$/.test(receipt.receiptId)
 		? receipt.receiptId
 		: "receipt";
-	return `cinaauth-deletion-receipt-${safeId}.json`;
+	return `cinaseek-deletion-receipt-${safeId}.json`;
 };

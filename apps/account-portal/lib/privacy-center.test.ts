@@ -1,24 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
+	getPersonalDataExportFilename,
 	getPrivacyDeletionReceipt,
 	getPrivacyDeletionReceiptFilename,
-	getPersonalDataExportFilename,
-	parsePrivacyAsyncExportStatus,
-	parsePrivacyDeletionReadiness,
 	PRIVACY_ASYNC_EXPORT_DOWNLOAD_PATH,
 	PRIVACY_ASYNC_EXPORT_PATH,
 	PRIVACY_ASYNC_EXPORT_STATUS_PATH,
 	PRIVACY_DELETE_ACCOUNT_PATH,
 	PRIVACY_EXPORT_CATEGORIES,
+	parsePrivacyAsyncExportStatus,
+	parsePrivacyDeletionReadiness,
 } from "./privacy-center";
 
 describe("privacy center", () => {
-	it("accepts the constrained CinaAuth attachment filename", () => {
+	it("accepts the constrained CinaSeek attachment filename", () => {
+		expect(
+			getPersonalDataExportFilename(
+				'attachment; filename="cinaseek-personal-data-2026-08-09.json"',
+			),
+		).toBe("cinaseek-personal-data-2026-08-09.json");
+	});
+
+	it("maps the constrained legacy attachment filename to CinaSeek", () => {
 		expect(
 			getPersonalDataExportFilename(
 				'attachment; filename="cinaauth-personal-data-2026-08-09.json"',
 			),
-		).toBe("cinaauth-personal-data-2026-08-09.json");
+		).toBe("cinaseek-personal-data-2026-08-09.json");
 	});
 
 	it("replaces unsafe attachment names with a deterministic fallback", () => {
@@ -27,7 +35,7 @@ describe("privacy center", () => {
 				'attachment; filename="../../account.json"',
 				new Date("2026-08-09T12:00:00.000Z"),
 			),
-		).toBe("cinaauth-personal-data-2026-08-09.json");
+		).toBe("cinaseek-personal-data-2026-08-09.json");
 	});
 
 	it("describes the data families covered by the export", () => {
@@ -79,9 +87,7 @@ describe("privacy center", () => {
 				expiresAt: "invalid",
 			}),
 		).toBeNull();
-		expect(PRIVACY_ASYNC_EXPORT_PATH).toBe(
-			"/api/auth/privacy/async-export",
-		);
+		expect(PRIVACY_ASYNC_EXPORT_PATH).toBe("/api/auth/privacy/async-export");
 		expect(PRIVACY_ASYNC_EXPORT_STATUS_PATH).toContain("/status");
 		expect(PRIVACY_ASYNC_EXPORT_DOWNLOAD_PATH).toContain("/download");
 	});
@@ -148,11 +154,9 @@ describe("privacy center", () => {
 			getPrivacyDeletionReceiptFilename({
 				receiptId: "abcdefghijklmnopqrstuvwxyz123456",
 			}),
-		).toBe(
-			"cinaauth-deletion-receipt-abcdefghijklmnopqrstuvwxyz123456.json",
-		);
+		).toBe("cinaseek-deletion-receipt-abcdefghijklmnopqrstuvwxyz123456.json");
 		expect(getPrivacyDeletionReceiptFilename({ receiptId: "../unsafe" })).toBe(
-			"cinaauth-deletion-receipt-receipt.json",
+			"cinaseek-deletion-receipt-receipt.json",
 		);
 	});
 });

@@ -2,7 +2,7 @@ CINAAUTH_DELIVERY_WEBHOOK_SECRET=replace-with-the-same-secret-used-by-cinaauth-a
 
 # Email delivery through Resend.
 RESEND_API_KEY=
-RESEND_EMAIL_FROM=CinaAuth <no-reply@cinagroup.com>
+RESEND_EMAIL_FROM=CinaSeek <no-reply@cinagroup.com>
 
 # SMS delivery through Twilio.
 TWILIO_ACCOUNT_SID=

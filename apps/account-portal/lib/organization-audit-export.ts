@@ -107,5 +107,5 @@ export const createOrganizationAuditExportFilename = (
 			.replace(/^-+|-+$/g, "")
 			.slice(0, 64) || "organization";
 	const date = new Date(exportedAt).toISOString().slice(0, 10);
-	return `cinaauth-${organizationSlug}-audit-${date}.${format}`;
+	return `cinaseek-${organizationSlug}-audit-${date}.${format}`;
 };

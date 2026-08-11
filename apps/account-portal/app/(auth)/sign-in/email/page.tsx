@@ -1,39 +1,32 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { EmailOtpForm } from "@/components/forms/email-otp-form";
+import {
+	buildPreservedAuthPath,
+	hasSignedOidcAuthorizationQuery,
+} from "@/lib/oidc-navigation";
+import { sanitizeAccountCallbackURL } from "@/lib/sign-in-experience";
 
 export default function EmailSignInPage() {
+	const params = useSearchParams();
+	const callbackURL = sanitizeAccountCallbackURL(
+		params.get("callbackURL") ?? "/dashboard",
+	);
+	const hasOidcQuery = hasSignedOidcAuthorizationQuery(params);
+
 	return (
-		<div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
-			<div className="w-full max-w-[400px]">
-				<div className="flex flex-col gap-6">
-					{/* Back Link */}
-					<Link
-						href="/sign-in"
-						className="text-sm text-body hover:text-ink flex items-center gap-1 w-fit"
-					>
-						<ArrowLeft size={16} />
-						Back to sign in.
-					</Link>
-
-					{/* Header */}
-					{/* Spec: display-lg (32/600/-1.28px), sentence-case + period. */}
-					<h1 className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-ink">
-						Sign in with email.
-					</h1>
-
-					<p className="text-sm text-body">
-						We'll send you a verification code to sign in without a password.
-					</p>
-
-					{/* Email OTP Form */}
-					<EmailOtpForm
-						onSuccess={() => (window.location.href = "/dashboard")}
-					/>
-				</div>
-			</div>
-		</div>
+		<AuthShell
+			title="Check your email"
+			description="We’ll send a short-lived verification code. No password is required."
+			backHref={buildPreservedAuthPath("/sign-in", params, callbackURL)}
+		>
+			<EmailOtpForm
+				onSuccess={() => {
+					if (!hasOidcQuery) window.location.href = callbackURL;
+				}}
+			/>
+		</AuthShell>
 	);
 }

@@ -7,7 +7,7 @@ import { PrivacyCenter } from "./privacy-center";
 
 export const metadata: Metadata = {
 	title: "Privacy Center",
-	description: "Export and control your personal CinaAuth account data.",
+	description: "Export and control your personal CinaSeek account data.",
 };
 
 export default async function PrivacyCenterPage() {
