@@ -220,6 +220,8 @@ jobs:
           CINAAUTH_PRIVACY_EXPORT_KEY: ${{ secrets.CINAAUTH_PRIVACY_EXPORT_KEY }}
           CINAAUTH_ERASURE_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_ERASURE_WEBHOOK_SECRET }}
           CINAAUTH_HYPERDRIVE_ID: ${{ secrets.CINAAUTH_HYPERDRIVE_ID }}
+          CINAADMIN_OIDC_CLIENT_SECRET: ${{ secrets.CINAADMIN_OIDC_CLIENT_SECRET }}
+          CINAADMIN_OIDC_BRIDGE_SECRET: ${{ secrets.CINAADMIN_OIDC_BRIDGE_SECRET }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
@@ -235,6 +237,9 @@ jobs:
           test "${#CINAAUTH_ERASURE_WEBHOOK_SECRET}" -ge 32 || (echo "CINAAUTH_ERASURE_WEBHOOK_SECRET must be at least 32 characters" && exit 1)
           test "$CINAAUTH_HYPERDRIVE_ID" != "00000000000000000000000000000000" || (echo "CINAAUTH_HYPERDRIVE_ID must not be the placeholder" && exit 1)
           test "${#CINAAUTH_HYPERDRIVE_ID}" -eq 32 || (echo "CINAAUTH_HYPERDRIVE_ID must be 32 characters" && exit 1)
+          case "$CINAADMIN_OIDC_CLIENT_SECRET" in cina_cs_*) ;; *) echo "CINAADMIN_OIDC_CLIENT_SECRET must start with cina_cs_" && exit 1 ;; esac
+          test "${#CINAADMIN_OIDC_CLIENT_SECRET}" -ge 40 || (echo "CINAADMIN_OIDC_CLIENT_SECRET payload must be at least 32 characters" && exit 1)
+          test "${#CINAADMIN_OIDC_BRIDGE_SECRET}" -ge 32 || (echo "CINAADMIN_OIDC_BRIDGE_SECRET must be at least 32 characters" && exit 1)
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -284,6 +289,8 @@ jobs:
           STRIPE_DEFAULT_PLAN_NAME: ${{ secrets.STRIPE_DEFAULT_PLAN_NAME }}
           CINAAUTH_ENTITLEMENT_CONFIG: ${{ secrets.CINAAUTH_ENTITLEMENT_CONFIG }}
           CINAUTH_ADMIN_SERVICE_KEY: ${{ secrets.CINAUTH_ADMIN_SERVICE_KEY }}
+          CINAADMIN_OIDC_CLIENT_SECRET: ${{ secrets.CINAADMIN_OIDC_CLIENT_SECRET }}
+          CINAADMIN_OIDC_BRIDGE_SECRET: ${{ secrets.CINAADMIN_OIDC_BRIDGE_SECRET }}
         run: pnpm run provision:secrets
 
       - name: Check Cloudflare remote prerequisites

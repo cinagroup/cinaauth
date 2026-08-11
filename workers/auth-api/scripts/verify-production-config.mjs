@@ -2779,6 +2779,12 @@ checkIncludesAll(
 		"pnpm run check:oauth-build",
 		"CINAAUTH_DEMO_SECRET",
 		'test "${#CINAAUTH_ACCOUNT_SECRET}" -ge 32',
+		"CINAAUTH_MIGRATION_TOKEN",
+		'test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32',
+		"Wait for governed Auth readiness",
+		"super-admin-governance-v1",
+		"provider-namespace-registry-v1",
+		"ready.database?.invariants?.ok",
 		"pnpm run typecheck",
 		"pnpm run build:cf",
 		"cloudflare/wrangler-action@v3",
@@ -2921,10 +2927,29 @@ checkIncludesAll(
 		"CINAADMIN_OIDC_CLIENT_SECRET",
 		"CINAADMIN_OIDC_BRIDGE_SECRET",
 		"CINAADMIN_OIDC_TRANSACTION_SECRET",
+		"CINAAUTH_MIGRATION_TOKEN",
+		"Wait for governed Auth readiness",
+		"super-admin-governance-v1",
+		"provider-namespace-registry-v1",
+		"ready.database?.invariants?.ok",
 		"pnpm run provision:secrets",
 	],
 	adminWorkflowFile,
 	"admin console CI must deploy independently",
+);
+check(
+	accountWorkflow.indexOf("Wait for governed Auth readiness") <
+		accountWorkflow.indexOf("Inject account portal secret") &&
+		accountWorkflow.indexOf("Wait for governed Auth readiness") <
+			accountWorkflow.indexOf("Deploy account portal"),
+	`${rel(accountWorkflowFile)} must verify governed Auth readiness before any frontend write`,
+);
+check(
+	adminWorkflow.indexOf("Wait for governed Auth readiness") <
+		adminWorkflow.indexOf("Provision Admin OIDC secrets") &&
+		adminWorkflow.indexOf("Provision Admin OIDC secrets") <
+			adminWorkflow.indexOf("Deploy admin console"),
+	`${rel(adminWorkflowFile)} must verify Auth readiness and provision secrets before deploy`,
 );
 check(
 	!workflow.includes("https://auth.cinagroup.com") &&

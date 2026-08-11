@@ -551,3 +551,11 @@ sixth request in a 60-second window must return HTTP 429 and `X-Retry-After`.
 CI configures the Hyperdrive ID, runs static and remote gates, deploys, previews
 and applies migrations, then requires authenticated `/api/ready` before the
 demo deployment proceeds.
+
+The Account and Admin deployment workflows independently poll that authenticated
+readiness endpoint before any frontend Worker write. They require both
+`super-admin-governance-v1` and `provider-namespace-registry-v1` to be installed
+and the cutover state to be `live`; this prevents their independent `main`
+workflows from overtaking an Auth migration. The Admin workflow provisions its
+three OIDC secrets only after that gate and before deploying the new console
+bundle.
