@@ -9,7 +9,7 @@
     [
       "cinaauth",
       "@cinaauth/core",
-      "auth",
+      "@cinaauth/cli",
       "@cinaauth/api-key",
       "@cinaauth/drizzle-adapter",
       "@cinaauth/electron",

@@ -1,5 +1,5 @@
 ---
-"auth": patch
+"@cinaauth/cli": patch
 "cinaauth": patch
 ---
 
