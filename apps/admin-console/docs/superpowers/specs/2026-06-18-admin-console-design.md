@@ -3,7 +3,7 @@
 - **日期:** 2026-06-18
 - **状态:** 待评审
 - **仓库:** `cinaadmin`（新建）+ `cinaauth`（增量）
-- **参考:** `admin.cinagroup.com 完整功能详解.md`（附件）；`cinagrop/cinatoken` `web/default`（视觉/风格参考）
+- **参考:** `admin.cinagroup.com 完整功能详解.md`（附件）；`cinagroup/cinatoken` `web/default`（视觉/风格参考）
 
 ---
 

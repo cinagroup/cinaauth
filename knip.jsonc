@@ -11,13 +11,73 @@
 		// CI scripts used by GitHub Actions workflows, not by packages
 		".github/scripts/**"
 	],
-	"ignoreBinaries": ["playwright", "changeset", "open", "remark", "tsx"],
+	"ignoreBinaries": [
+		"playwright",
+		"changeset",
+		// Workflow binaries are declared in their target nested workspaces.
+		"expo",
+		"open",
+		"remark",
+		"tsx",
+		"wrangler"
+	],
 	// exports used only by tests — invisible to --production mode
 	"ignoreIssues": {
+		// Leaf application modules intentionally expose complete component and hook contracts.
+		"apps/account-portal/components/ui/**": ["exports", "types"],
+		"apps/account-portal/data/**": ["exports", "types"],
+		"apps/account-portal/app/(auth)/sign-in/_components/electron.tsx": [
+			"exports",
+			"types"
+		],
+		"apps/account-portal/lib/auth-api.ts": ["exports", "types"],
+		"apps/account-portal/lib/admin-access.ts": ["exports"],
+		"apps/account-portal/lib/auth-capabilities.ts": ["exports"],
+		"apps/account-portal/lib/client-api.ts": ["exports", "types"],
+		"apps/account-portal/lib/ethereum-wallet.ts": ["exports"],
+		"apps/account-portal/lib/infra.ts": ["exports"],
+		"apps/account-portal/lib/metadata.ts": ["exports"],
+		"apps/account-portal/lib/organization-console.ts": ["exports", "types"],
+		"apps/account-portal/lib/security-center.ts": ["exports"],
+		"apps/admin-console/src/components/ui/**": ["exports", "types"],
+		"apps/admin-console/src/components/layout/section.tsx": ["exports"],
+		"apps/admin-console/src/lib/auth-guard.ts": ["exports"],
+		"apps/admin-console/src/lib/client-api.ts": ["exports"],
+		"apps/admin-console/src/lib/cinaauth/admin-api.ts": [
+			"exports",
+			"files",
+			"types"
+		],
+		"apps/admin-console/src/lib/cinaauth/oidc-client.ts": ["exports", "types"],
+		"apps/admin-console/src/lib/integration-tenant-scope.ts": ["exports"],
+		"apps/admin-console/src/tests/setup.ts": ["files"],
+		"apps/oidc-client-demo/src/components/ui/**": ["exports", "types"],
+		// Production builds omit tests that directly exercise these Worker seams.
+		"workers/auth-api/src/admin-oidc-bridge.ts": ["exports"],
+		"workers/auth-api/src/admin-oidc-client.ts": ["exports"],
+		"workers/auth-api/src/admin-send-verification.ts": ["exports"],
+		"workers/auth-api/src/auth-routing.ts": ["exports"],
+		"workers/auth-api/src/auth.ts": ["exports"],
+		"workers/auth-api/src/d1-migration.ts": ["exports"],
+		"workers/auth-api/src/delivery.ts": ["exports"],
+		"workers/auth-api/src/entitlements.ts": ["exports"],
+		"workers/auth-api/src/oauth-config.ts": ["exports"],
+		"workers/auth-api/src/plugins.ts": ["exports"],
+		"workers/auth-api/src/privacy-deletion.ts": ["exports"],
+		"workers/auth-api/src/provider-namespace-governance.ts": ["exports"],
+		"workers/auth-api/src/rate-limit-storage.ts": ["exports"],
+		"workers/auth-api/src/scim-ownership-migration.ts": ["exports"],
+		"workers/auth-api/src/super-admin-database-invariant.ts": ["exports"],
+		"workers/auth-api/src/super-admin-governance.ts": ["exports"],
+		"workers/privacy-erasure/src/protocol.ts": ["exports"],
+		"workers/privacy-erasure/test/cloudflare-workers-stub.ts": ["files"],
 		"packages/cli/src/commands/init/index.ts": ["exports"],
 		"packages/cli/src/commands/init/utility/imports.ts": ["exports"],
 		"packages/sso/src/saml/assertions.ts": ["exports"],
-		"packages/sso/src/oidc/discovery.ts": ["exports"]
+		"packages/sso/src/oidc/discovery.ts": ["exports"],
+		// These equal-valued constants represent distinct OIDC protocol fields.
+		"packages/auth-web-contract/src/admin-oidc.ts": ["duplicates"],
+		"packages/auth-web-contract/src/oidc-demo.ts": ["duplicates"]
 	},
 	"ignoreDependencies": ["@changesets/cli", "@vitest/coverage-istanbul"],
 	"rules": {
@@ -50,6 +110,49 @@
 		"packages/expo": {
 			// neverBundle externals: referenced in bundled output, not in source
 			"ignoreDependencies": ["@better-fetch/fetch", "better-call"]
+		},
+		"apps/account-portal": {
+			"entry": [
+				"build-cf.mjs!",
+				"deploy-cf.mjs!",
+				"lib/email/invitation.tsx!",
+				"lib/email/reset-password.tsx!",
+				"open-next.config.ts!",
+				"post-build-patch.js!",
+				"windows-opennext-symlink-shim.mjs!",
+				"scripts/*.mjs!",
+				"!scripts/*.test.mjs!"
+			],
+			// Invoked directly by the deployment workflow from this workspace.
+			"ignoreDependencies": ["wrangler"]
+		},
+		"apps/admin-console": {
+			"entry": [
+				"custom-worker.ts!",
+				"build-cf.mjs!",
+				"deploy-cf.mjs!",
+				"e2e/*.cjs!",
+				"open-next.config.ts!",
+				"post-build-patch.js!",
+				"windows-opennext-symlink-shim.mjs!",
+				"scripts/*.mjs!"
+			]
+		},
+		"apps/oidc-client-demo": {
+			"entry": ["scripts/*.mjs!"]
+		},
+		"workers/auth-api": {
+			"entry": ["scripts/*.mjs!", "!scripts/*.test.mjs!"],
+			// cloudflare:workers is a virtual runtime module, not a package.
+			"ignoreDependencies": ["cloudflare"]
+		},
+		"workers/delivery": {
+			"entry": ["scripts/*.mjs!"]
+		},
+		"workers/privacy-erasure": {
+			"entry": ["scripts/*.mjs!"],
+			// cloudflare:workers is a virtual runtime module, not a package.
+			"ignoreDependencies": ["cloudflare"]
 		}
 	},
 	"vitest": {

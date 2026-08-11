@@ -68,7 +68,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const hasExactKeys = (value: Record<string, unknown>, keys: string[]) =>
 	Object.keys(value).sort().join("\n") === [...keys].sort().join("\n");
 
-export const protocolFailure = (
+const protocolFailure = (
 	code: string,
 	status: number,
 	message: string,

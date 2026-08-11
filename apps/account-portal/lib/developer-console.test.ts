@@ -26,7 +26,8 @@ describe("developer console policy", () => {
 	it("accepts native custom schemes and removes duplicate callbacks", () => {
 		expect(
 			parseDeveloperRedirectUris(
-				"cinaapp://oauth/callback\ncinaapp://oauth/callback",
+				`cinaapp://oauth/callback
+cinaapp://oauth/callback`,
 				"native",
 			),
 		).toEqual({

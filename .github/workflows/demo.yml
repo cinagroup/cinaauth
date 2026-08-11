@@ -68,4 +68,14 @@ jobs:
 
       - name: Install demo dependencies
         working-directory: ${{ matrix.directory }}
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Expo SDK compatibility
+        if: matrix.demo == 'expo'
+        working-directory: ${{ matrix.directory }}
+        run: pnpm exec expo install --check
+
+      - name: Typecheck Electron main and renderer
+        if: matrix.demo == 'electron'
+        working-directory: ${{ matrix.directory }}
+        run: pnpm run typecheck

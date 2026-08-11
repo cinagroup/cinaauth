@@ -9,8 +9,6 @@ import {
 	LOGIN_RATE_LIMIT_RULES,
 } from "./rate-limit-storage";
 
-export { ac, roles } from "./plugins";
-
 /** Maximum age of a session used for sensitive self-service mutations. */
 export const SECURITY_FRESH_AGE_SECONDS = 15 * 60;
 

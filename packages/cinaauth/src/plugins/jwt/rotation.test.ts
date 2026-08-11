@@ -9,6 +9,83 @@ describe("jwt rotation", async () => {
 		vi.useRealTimers();
 	});
 
+	it("should return a newly created key from one empty JWKS read", async () => {
+		const storage: Jwk[] = [];
+		const getJwks = vi.fn(async () => [...storage]);
+		const { auth } = await getTestInstance({
+			plugins: [
+				jwt({
+					adapter: {
+						getJwks,
+						createJwk: async (data) => {
+							const key = { ...data, id: crypto.randomUUID() };
+							storage.push(key);
+							return key;
+						},
+					},
+				}),
+			],
+		});
+
+		const jwks = await auth.api.getJwks();
+
+		expect(getJwks).toHaveBeenCalledTimes(1);
+		expect(storage).toHaveLength(1);
+		expect(jwks.keys).toHaveLength(1);
+		expect(jwks.keys[0]?.kid).toBe(storage[0]?.id);
+	});
+
+	it("should stop publishing an immutably expired key with no grace period", async () => {
+		let storage: Jwk[] = [];
+		const adapter = {
+			getJwks: async () => storage.map((key) => ({ ...key })),
+			createJwk: async (data: Omit<Jwk, "id">) => {
+				const key = { ...data, id: crypto.randomUUID() };
+				storage = [...storage, key];
+				return { ...key };
+			},
+			expireJwk: async (id: string, expiresAt: Date) => {
+				const key = storage.find((candidate) => candidate.id === id);
+				if (!key) return null;
+				const expiredKey = { ...key, expiresAt };
+				storage = storage.map((candidate) =>
+					candidate.id === id ? expiredKey : candidate,
+				);
+				return { ...expiredKey };
+			},
+		};
+		const first = await getTestInstance({
+			plugins: [
+				jwt({
+					jwks: { disablePrivateKeyEncryption: true },
+					adapter,
+				}),
+			],
+		});
+		await first.auth.api.signJWT({
+			body: { payload: { sub: "user1" } },
+		});
+		expect(storage.map((key) => key.alg)).toEqual(["EdDSA"]);
+
+		const second = await getTestInstance({
+			plugins: [
+				jwt({
+					jwks: {
+						keyPairConfig: { alg: "ES256" },
+						disablePrivateKeyEncryption: true,
+						gracePeriod: 0,
+					},
+					adapter,
+				}),
+			],
+		});
+
+		expect(
+			(await second.auth.api.getJwks()).keys.map((key) => key.alg),
+		).toEqual(["ES256"]);
+		expect(storage[0]?.expiresAt).toBeInstanceOf(Date);
+	});
+
 	it("should rotate keys when expired", async () => {
 		vi.useFakeTimers();
 		const storage: Jwk[] = [];
@@ -149,6 +226,9 @@ describe("jwt rotation", async () => {
 				}),
 			],
 		});
+		expect(
+			(await second.auth.api.getJwks()).keys.map((key) => key.alg),
+		).toEqual(["EdDSA", "ES256"]);
 		const token = await second.auth.api.signJWT({
 			body: { payload: { sub: "user1" } },
 		});
@@ -162,10 +242,6 @@ describe("jwt rotation", async () => {
 				})
 			).payload?.sub,
 		).toBe("user1");
-		expect(
-			(await second.auth.api.getJwks()).keys.map((key) => key.alg),
-		).toEqual(["EdDSA", "ES256"]);
-
 		vi.advanceTimersByTime(30_001);
 		expect(
 			(await second.auth.api.getJwks()).keys.map((key) => key.alg),

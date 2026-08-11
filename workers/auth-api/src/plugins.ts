@@ -106,7 +106,7 @@ export const TRUSTED_ORIGIN_HOSTS = new Set(
  *   - security_admin:  read + ban/unban + session revoke + audit read;
  *                      NO create/delete/set-role/set-password/impersonate
  */
-export const ac = createAccessControl({
+const ac = createAccessControl({
 	user: [...ADMIN_PERMISSION_STATEMENT.user],
 	session: [...ADMIN_PERMISSION_STATEMENT.session],
 	stats: [...ADMIN_PERMISSION_STATEMENT.stats],

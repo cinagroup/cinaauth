@@ -610,7 +610,6 @@ const customSessionCookieHeadersFile = join(
 );
 const protectedFormFiles = [
 	join(nextDemoDir, "components", "forms", "sign-in-form.tsx"),
-	join(nextDemoDir, "components", "forms", "sign-up-form.tsx"),
 	join(nextDemoDir, "components", "forms", "email-otp-form.tsx"),
 	join(nextDemoDir, "components", "forms", "forgot-password-form.tsx"),
 ];

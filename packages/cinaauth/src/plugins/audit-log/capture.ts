@@ -199,7 +199,7 @@ interface CaptureMapping {
 	action: string;
 }
 
-export const CAPTURE_PATH_MAP: Record<string, CaptureMapping> = {
+const CAPTURE_PATH_MAP: Record<string, CaptureMapping> = {
 	// core auth
 	"/sign-in/email": { category: "auth", action: "user.login" },
 	"/sign-in/social": { category: "auth", action: "user.login_social" },
@@ -408,7 +408,7 @@ export const CAPTURE_PATH_MAP: Record<string, CaptureMapping> = {
  * Routes whose path is shared by read and write operations. The HTTP method is
  * part of the allow-list key so a SCIM GET can never be recorded as a mutation.
  */
-export const CAPTURE_METHOD_PATH_MAP: Record<string, CaptureMapping> = {
+const CAPTURE_METHOD_PATH_MAP: Record<string, CaptureMapping> = {
 	"POST /scim/v2/Users": {
 		category: "provisioning",
 		action: "scim.user_create",

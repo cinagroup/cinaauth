@@ -52,7 +52,7 @@ const loadRuntimeEntitlementSnapshotWithDatabase = async (
 };
 
 /** Loads a plugin-safe entitlement snapshot from webhook-synchronized state. */
-export const loadRuntimeEntitlementSnapshot = async (
+const loadRuntimeEntitlementSnapshot = async (
 	env: CloudflareBindings,
 	subject: RuntimeEntitlementSubject,
 ) => {

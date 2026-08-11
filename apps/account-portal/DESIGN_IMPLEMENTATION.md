@@ -49,7 +49,6 @@ Fully implemented the Vercel design system across the CinaAuth demo site (`demo-
 - `app/(auth)/accept-invitation/[id]/page.tsx` — display-md headlines, sentence-case, success/error colors
 - `app/(auth)/oauth/consent/page.tsx` — Polarity-flipped dark band, canvas-soft-2 card, headline fixes
 - `app/client-test/page.tsx` — display-md headline, sentence-case, period-terminated
-- `app/features.tsx` — Removed hardcoded colors, proper shadow, display-sm headline
 
 ### Providers
 - `components/providers.tsx` — Default theme = light, devtools conditional (dev only)

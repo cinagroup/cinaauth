@@ -5,11 +5,12 @@ import {
 	useState,
 	useTransition,
 } from "react";
-import type { authClient } from "../../../lib/auth-client";
+
+type ElectronUser = Awaited<ReturnType<Window["getUser"]>>;
 
 const UserContext = createContext<{
 	loading: boolean;
-	user: (typeof authClient.$Infer.Session)["user"] | null;
+	user: ElectronUser;
 } | null>(null);
 
 export function UserProvider({
@@ -18,9 +19,7 @@ export function UserProvider({
 	children?: React.ReactNode | undefined;
 }) {
 	const [loading, startTransition] = useTransition();
-	const [user, setUser] = useState<
-		(typeof authClient.$Infer.Session)["user"] | null
-	>(null);
+	const [user, setUser] = useState<ElectronUser>(null);
 
 	useEffect(() => {
 		startTransition(async () => {

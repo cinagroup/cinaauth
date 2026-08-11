@@ -10,7 +10,7 @@ import { getJwksAdapter } from "./adapter";
 import { schema } from "./schema";
 import { getJwtToken, signJWT } from "./sign";
 import type { JwtOptions } from "./types";
-import { getJwkAlgorithm, getOrCreateCurrentJwk } from "./utils";
+import { getJwkAlgorithm, getOrCreateCurrentJwkWithKeys } from "./utils";
 import { verifyJWT as verifyJWTHelper } from "./verify";
 
 export { signJWT } from "./sign";
@@ -164,10 +164,14 @@ export const jwt = <O extends JwtOptions>(options?: O) => {
 
 					const adapter = getJwksAdapter(ctx.context.adapter, options);
 
-					await getOrCreateCurrentJwk(ctx, options);
-					const keySets = await adapter.getAllKeys(ctx);
+					const storedKeySets = (await adapter.getAllKeys(ctx)) ?? [];
+					const { keys: keySets } = await getOrCreateCurrentJwkWithKeys(
+						ctx,
+						options,
+						storedKeySets,
+					);
 
-					if (!keySets?.length) {
+					if (!keySets.length) {
 						throw new CinaAuthError(
 							"No key sets found. Make sure you have a key in your database.",
 						);

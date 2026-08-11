@@ -127,26 +127,41 @@ export async function createJwk(
 	return key;
 }
 
-/** Returns a usable key and rotates when the configured algorithm changes. */
-export async function getOrCreateCurrentJwk(
+async function resolveCurrentJwk(
 	ctx: GenericEndpointContext,
 	options?: JwtOptions | undefined,
+	preloadedKeys?: readonly Jwk[] | undefined,
 ) {
 	const adapter = getJwksAdapter(ctx.context.adapter, options);
-	const keys = (await adapter.getAllKeys(ctx)) ?? [];
+	const keys = preloadedKeys ?? (await adapter.getAllKeys(ctx)) ?? [];
 	const now = new Date();
 	const configuredAlgorithm = options?.jwks?.keyPairConfig?.alg;
+	let resolvedKeys = [...keys];
 	if (configuredAlgorithm) {
 		const incompatibleKeys = keys.filter(
 			(key) =>
 				getJwkAlgorithm(key) !== configuredAlgorithm &&
 				(!key.expiresAt || key.expiresAt > now),
 		);
-		await Promise.all(
-			incompatibleKeys.map((key) => adapter.expireJwk(ctx, key.id, now)),
+		const expiredKeysById = new Map(
+			await Promise.all(
+				incompatibleKeys.map(
+					async (key) =>
+						[
+							key.id,
+							{
+								...key,
+								...((await adapter.expireJwk(ctx, key.id, now)) ?? {}),
+								id: key.id,
+								expiresAt: now,
+							},
+						] as const,
+				),
+			),
 		);
+		resolvedKeys = keys.map((key) => expiredKeysById.get(key.id) ?? key);
 	}
-	let key = keys
+	let currentKey = resolvedKeys
 		.filter(
 			(candidate) =>
 				configuredAlgorithm === undefined ||
@@ -154,8 +169,30 @@ export async function getOrCreateCurrentJwk(
 		)
 		.slice()
 		.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
-	if (!key || (key.expiresAt && key.expiresAt < now)) {
-		key = await createJwk(ctx, options);
+	if (!currentKey || (currentKey.expiresAt && currentKey.expiresAt < now)) {
+		currentKey = await createJwk(ctx, options);
 	}
-	return key;
+	return {
+		currentKey,
+		keys: resolvedKeys.some((key) => key.id === currentKey.id)
+			? resolvedKeys
+			: [...resolvedKeys, currentKey],
+	};
+}
+
+/** Returns a usable key and rotates when the configured algorithm changes. */
+export async function getOrCreateCurrentJwk(
+	ctx: GenericEndpointContext,
+	options?: JwtOptions | undefined,
+) {
+	return (await resolveCurrentJwk(ctx, options)).currentKey;
+}
+
+/** Resolves the current key and the updated key set from one preloaded read. */
+export async function getOrCreateCurrentJwkWithKeys(
+	ctx: GenericEndpointContext,
+	options: JwtOptions | undefined,
+	preloadedKeys: readonly Jwk[],
+) {
+	return resolveCurrentJwk(ctx, options, preloadedKeys);
 }

@@ -91,6 +91,7 @@ longer-retained manual backup, or add a longer production schedule without
 updating the public deletion policy.
 
 The 2026-08-10 control-plane review checked every backup then visible on
+<!-- cspell:ignore kctytg ctwhr zlzk zenb njund oxxj -->
 `main` (`kctytg4ctwhr`, `zlzk8yfc106m`, `zenb9njund3t`, and
 `9oxxj2gtq4ui`): all four had **Prevent backup deletion** disabled, under the
 included 12-hour/two-day schedule. This is point-in-time UI evidence only; it
