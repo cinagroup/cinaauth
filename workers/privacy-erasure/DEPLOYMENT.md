@@ -41,6 +41,48 @@ That state is intentionally not production-ready: `/ready` returns 503 and all
 CinaAuth account deletion attempts remain blocked. The normal provisioning
 command and CI reject an empty target list.
 
+## Staged Secrets Store V2 binding
+
+Secrets Store V2 is **staged only**. Erasure readiness authorization, inbound
+signature verification, and downstream coordination still use the active V1
+Worker secret `CINAAUTH_ERASURE_WEBHOOK_SECRET`. Keep the same V1 value on Auth
+and Privacy Erasure; do not remove it while the V2 probe is still staged.
+
+The only allowed staged entry is this exact triple. The Auth production gate
+rejects duplicates, additional entries, a different store, or an incorrect
+binding-to-secret mapping:
+
+```json
+{
+  "binding": "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+  "store_id": "346e2b4b86334bc29083c064116e91cf",
+  "secret_name": "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2"
+}
+```
+
+Public `/ready` stays redacted and does not resolve V2. When the request carries
+the valid V1 bearer, authorized readiness calls `get()` on the staged binding
+and returns only `staged`, `ok`, and issue names after checking retrievability
+and minimum length. It never returns or logs the value and does not prove V1/V2
+parity. A failed V2 probe blocks authorized readiness but does not activate V2
+for an erasure request.
+
+The staged secret must have the `workers` scope. The least-privilege
+`CLOUDFLARE_API_TOKEN` used for deployment needs the existing Worker/route
+permissions plus account-level `Account Secrets Store Edit`; Read alone cannot
+attach the binding. Restrict the token to the production account and required
+zone. See Cloudflare's
+[Secrets Store access-control guide](https://developers.cloudflare.com/secrets-store/access-control/).
+Never place the value in a tracked file, CLI argument, command history, log, or
+readiness response; use an approved secure prompt or stdin-based provisioning
+flow.
+
+For the coordinated cutover, change Auth and Privacy Erasure together only
+after both authorized V2 probes pass while V1 remains active. The governed
+release must update both runtime consumers, preserve a rollback plan, and verify
+signed erasure acceptance for configured downstream targets. Retire V1 only
+after that evidence is complete; a one-sided HMAC cutover must fail closed.
+
 ## Downstream target contract
 
 The Worker sends:

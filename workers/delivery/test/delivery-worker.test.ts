@@ -11,6 +11,14 @@ import {
 
 const encoder = new TextEncoder();
 const strongSecret = "delivery-secret-".repeat(3);
+const stagedStrongSecret = "delivery-v2-secret-".repeat(3);
+
+const createSecretsStoreSecret = (
+	get: () => Promise<string> = async () => stagedStrongSecret,
+) =>
+	({
+		get: vi.fn(get),
+	}) as unknown as SecretsStoreSecret;
 
 const hmacSha256Hex = async (secret: string, payload: string) => {
 	const key = await crypto.subtle.importKey(
@@ -56,6 +64,7 @@ const makeEnv = (
 	const kv = createKv();
 	return {
 		CINAAUTH_DELIVERY_WEBHOOK_SECRET: strongSecret,
+		CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2: createSecretsStoreSecret(),
 		CINAAUTH_DELIVERY_REPLAY_KV: kv.kv,
 		VERSION_METADATA: {
 			id: "version-id",
@@ -298,6 +307,53 @@ describe("delivery worker", () => {
 		expect(issues).toContain("missing_resend_api_key");
 		expect(issues).toContain("missing_twilio_auth_token");
 		expect(JSON.stringify(issues)).not.toContain(strongSecret);
+	});
+
+	it("reports a healthy staged Secrets Store binding to authorized operators", async () => {
+		const env = makeEnv();
+
+		const response = await fetchWorker(
+			new Request("https://cinaauth-delivery.cinagroup.com/ready", {
+				headers: {
+					Authorization: `Bearer ${env.CINAAUTH_DELIVERY_WEBHOOK_SECRET}`,
+				},
+			}),
+			env,
+		);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			success: true,
+			runtimeConfig: { ok: true, issues: [] },
+			secretsStore: { staged: true, ok: true, issues: [] },
+		});
+	});
+
+	it("fails authorized readiness when the staged Store read throws while V1 remains healthy", async () => {
+		const get = async () => {
+			throw new Error("Secrets Store unavailable");
+		};
+		const env = makeEnv({
+			CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2: createSecretsStoreSecret(get),
+		});
+
+		const response = await fetchWorker(
+			new Request("https://cinaauth-delivery.cinagroup.com/ready", {
+				headers: {
+					Authorization: `Bearer ${env.CINAAUTH_DELIVERY_WEBHOOK_SECRET}`,
+				},
+			}),
+			env,
+		);
+		expect(response.status).toBe(503);
+		expect(await response.json()).toMatchObject({
+			success: false,
+			runtimeConfig: { ok: true, issues: [] },
+			secretsStore: {
+				staged: true,
+				ok: false,
+				issues: ["delivery_webhook_secret_store_v2_unavailable"],
+			},
+		});
 	});
 
 	it("hides readiness details unless the shared delivery secret is provided", async () => {

@@ -181,6 +181,59 @@ three Admin OIDC values must be distinct random values of at least 32
 characters. The client and bridge secrets must match across the Auth and Admin
 Workers, while the transaction secret must never be provisioned to Auth.
 
+### Staged Secrets Store V2 bindings
+
+Secrets Store V2 is **staged only**. The request, signing, callback, and session
+paths still read the V1 Worker secrets listed above, including
+`CINAAUTH_DELIVERY_WEBHOOK_SECRET`, `CINAAUTH_ERASURE_WEBHOOK_SECRET`,
+`CINAADMIN_OIDC_CLIENT_SECRET`, `CINAADMIN_OIDC_BRIDGE_SECRET`, and the
+Admin-only `CINAADMIN_OIDC_TRANSACTION_SECRET`. Do not delete those V1 secrets
+or treat the V2 readiness result as proof that traffic has cut over.
+
+All staged bindings use Secrets Store
+`346e2b4b86334bc29083c064116e91cf`. The production gate requires the exact
+binding-to-secret mappings below, rejects duplicate binding or secret names,
+and rejects any additional or incorrectly mapped entry:
+
+| Config | Binding | Secrets Store secret name |
+| --- | --- | --- |
+| Auth | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` |
+| Auth | `CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_ERASURE_WEBHOOK_SECRET_V2` |
+| Auth | `CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2` | `CINAADMIN_OIDC_CLIENT_SECRET_V2` |
+| Auth | `CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2` | `CINAADMIN_OIDC_BRIDGE_SECRET_V2` |
+| Delivery | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` |
+| Privacy Erasure | `CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_ERASURE_WEBHOOK_SECRET_V2` |
+| Admin | `CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2` | `CINAADMIN_OIDC_CLIENT_SECRET_V2` |
+| Admin | `CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2` | `CINAADMIN_OIDC_BRIDGE_SECRET_V2` |
+| Admin | `CINAADMIN_OIDC_TRANSACTION_SECRET_STORE_V2` | `CINAADMIN_OIDC_TRANSACTION_SECRET_V2` |
+
+The protected Auth `/api/ready` endpoint and the authorized Delivery and
+Privacy Erasure `/ready` responses asynchronously call `get()` on their staged
+bindings. They validate only retrievability and the expected minimum format,
+then return `staged`, `ok`, and issue names. They never return, log, hash, or
+otherwise expose a secret value, and they do not prove V1/V2 value parity. The
+Admin bindings are configuration-only until the coordinated cutover adds an
+approved runtime resolver.
+
+Every V2 secret must have the `workers` scope. In addition to the existing
+least-privilege Worker and route permissions, the `CLOUDFLARE_API_TOKEN` used by
+Wrangler or CI to deploy any of these bindings needs account-level
+`Account Secrets Store Edit`; `Account Secrets Store Read` can inspect metadata
+but cannot attach a secret to a Worker. Restrict the token to the production
+account and required zones. See Cloudflare's
+[Secrets Store access-control guide](https://developers.cloudflare.com/secrets-store/access-control/)
+and [Workers integration guide](https://developers.cloudflare.com/secrets-store/integrations/workers/).
+Never pass a secret value with a CLI value flag, print it, or store it in a
+tracked file; use an approved secure prompt or stdin-based provisioning flow.
+
+Cut over only as one coordinated release across Auth, Delivery, Privacy
+Erasure, Admin, CI provisioning, and remote acceptance. First pass every
+authorized V2 readiness probe while V1 remains active; then change all runtime
+consumers with an explicit rollback plan, verify signed delivery, erasure, and
+Admin OIDC acceptance, and only afterward retire the corresponding V1 Worker
+secrets. A partial cutover can split shared HMAC/OIDC credentials and must fail
+closed rather than silently falling back between generations.
+
 Optional plugin inputs include Turnstile, Google One Tap, Google/GitHub social
 OAuth, Generic OAuth, Stripe, pairwise OAuth identifiers, and the admin audit
 service key. Production

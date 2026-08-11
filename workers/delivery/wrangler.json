@@ -12,6 +12,13 @@
   "version_metadata": {
     "binding": "VERSION_METADATA"
   },
+  "secrets_store_secrets": [
+    {
+      "binding": "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2"
+    }
+  ],
   "kv_namespaces": [
     {
       "binding": "CINAAUTH_DELIVERY_REPLAY_KV",

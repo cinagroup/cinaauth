@@ -1,4 +1,5 @@
 import type { DeliveryWorkerEnv } from "./env";
+import { getStagedSecretsStoreReadiness } from "./secrets-store-readiness";
 
 export type DeliveryMessage =
 	| {
@@ -635,9 +636,9 @@ const isAuthorizedReadinessRequest = async (
 
 const handleReady = async (request: Request, env: DeliveryWorkerEnv) => {
 	const issues = getRuntimeConfigIssues(env);
-	const ok = issues.length === 0;
 	const authorized = await isAuthorizedReadinessRequest(request, env);
 	if (!authorized) {
+		const ok = issues.length === 0;
 		return json(
 			{
 				success: ok,
@@ -649,15 +650,18 @@ const handleReady = async (request: Request, env: DeliveryWorkerEnv) => {
 			ok ? 200 : 503,
 		);
 	}
+	const secretsStore = await getStagedSecretsStoreReadiness(env);
+	const ok = issues.length === 0 && secretsStore.ok;
 
 	return json(
 		{
 			success: ok,
 			version: getVersionMetadata(env),
 			runtimeConfig: {
-				ok,
+				ok: issues.length === 0,
 				issues,
 			},
+			secretsStore,
 			providers: {
 				email: Boolean(env.RESEND_API_KEY && env.RESEND_EMAIL_FROM),
 				sms: Boolean(

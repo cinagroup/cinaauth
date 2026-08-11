@@ -23,6 +23,28 @@
       "id": "374f6da17aff4c968cadd8d6aa454c22"
     }
   ],
+  "secrets_store_secrets": [
+    {
+      "binding": "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2"
+    },
+    {
+      "binding": "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2"
+    },
+    {
+      "binding": "CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINAADMIN_OIDC_CLIENT_SECRET_V2"
+    },
+    {
+      "binding": "CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINAADMIN_OIDC_BRIDGE_SECRET_V2"
+    }
+  ],
   "services": [
     {
       "binding": "CINAAUTH_DELIVERY_SERVICE",

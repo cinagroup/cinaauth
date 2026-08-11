@@ -61,6 +61,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate production binding contract
+        working-directory: workers/auth-api
+        run: pnpm run check:production
+
       - name: Generate Cloudflare types
         run: pnpm run cf-typegen
 

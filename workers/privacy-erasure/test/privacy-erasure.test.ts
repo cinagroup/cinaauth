@@ -12,6 +12,7 @@ import {
 
 const inboundSecret = `test-inbound-${"i".repeat(40)}`;
 const storageSecret = `test-storage-${"s".repeat(40)}`;
+const stagedInboundSecret = `test-inbound-v2-${"v".repeat(40)}`;
 const operationId = "a".repeat(44);
 const targetsJson = JSON.stringify([
 	{
@@ -25,6 +26,13 @@ const targetsJson = JSON.stringify([
 		secret: `test-commerce-${"b".repeat(40)}`,
 	},
 ]);
+
+const createSecretsStoreSecret = (
+	get: () => Promise<string> = async () => stagedInboundSecret,
+) =>
+	({
+		get: vi.fn(get),
+	}) as unknown as SecretsStoreSecret;
 
 type SqlValue = ArrayBuffer | string | number | null;
 type SqlRow = Record<string, SqlValue>;
@@ -106,6 +114,7 @@ const createHarness = (overrides: Partial<PrivacyErasureEnv> = {}) => {
 	} as DurableObjectNamespace<ErasureCoordinator>;
 	testEnv = {
 		CINAAUTH_ERASURE_WEBHOOK_SECRET: inboundSecret,
+		CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2: createSecretsStoreSecret(),
 		CINAAUTH_ERASURE_STORAGE_SECRET: storageSecret,
 		CINAAUTH_ERASURE_TARGETS: targetsJson,
 		VERSION_METADATA: {
@@ -404,10 +413,38 @@ describe("privacy erasure Worker and Durable Object", () => {
 			}),
 			harness.env,
 		);
+		expect(authorizedReady.status).toBe(200);
 		expect(await authorizedReady.json()).toMatchObject({
 			runtimeConfig: {
 				ok: true,
 				targetIds: ["commerce-system", "support-system"],
+			},
+			secretsStore: { staged: true, ok: true, issues: [] },
+		});
+	});
+
+	it("fails authorized readiness when the staged Store read throws while V1 remains healthy", async () => {
+		const get = async () => {
+			throw new Error("Secrets Store unavailable");
+		};
+		const harness = createHarness({
+			CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2: createSecretsStoreSecret(get),
+		});
+
+		const response = await dispatch(
+			new Request("https://cinaauth-erasure.cinagroup.com/ready", {
+				headers: { Authorization: `Bearer ${inboundSecret}` },
+			}),
+			harness.env,
+		);
+		expect(response.status).toBe(503);
+		expect(await response.json()).toMatchObject({
+			success: false,
+			runtimeConfig: { ok: true, issues: [] },
+			secretsStore: {
+				staged: true,
+				ok: false,
+				issues: ["erasure_webhook_secret_store_v2_unavailable"],
 			},
 		});
 	});

@@ -21,6 +21,23 @@
 			"service": "cinaauth-api"
 		}
 	],
+	"secrets_store_secrets": [
+		{
+			"binding": "CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2",
+			"store_id": "346e2b4b86334bc29083c064116e91cf",
+			"secret_name": "CINAADMIN_OIDC_CLIENT_SECRET_V2"
+		},
+		{
+			"binding": "CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2",
+			"store_id": "346e2b4b86334bc29083c064116e91cf",
+			"secret_name": "CINAADMIN_OIDC_BRIDGE_SECRET_V2"
+		},
+		{
+			"binding": "CINAADMIN_OIDC_TRANSACTION_SECRET_STORE_V2",
+			"store_id": "346e2b4b86334bc29083c064116e91cf",
+			"secret_name": "CINAADMIN_OIDC_TRANSACTION_SECRET_V2"
+		}
+	],
 	"observability": {
 		"enabled": true
 	},

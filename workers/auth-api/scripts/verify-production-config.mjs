@@ -43,6 +43,120 @@ const readJson = (file) => {
 	}
 };
 
+const SECRETS_STORE_ID = "346e2b4b86334bc29083c064116e91cf";
+
+const expectedSecretsStoreBindings = {
+	auth: [
+		{
+			binding: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+			secret_name: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
+		},
+		{
+			binding: "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+			secret_name: "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2",
+		},
+		{
+			binding: "CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2",
+			secret_name: "CINAADMIN_OIDC_CLIENT_SECRET_V2",
+		},
+		{
+			binding: "CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2",
+			secret_name: "CINAADMIN_OIDC_BRIDGE_SECRET_V2",
+		},
+	],
+	delivery: [
+		{
+			binding: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+			secret_name: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
+		},
+	],
+	privacyErasure: [
+		{
+			binding: "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+			secret_name: "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2",
+		},
+	],
+	admin: [
+		{
+			binding: "CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2",
+			secret_name: "CINAADMIN_OIDC_CLIENT_SECRET_V2",
+		},
+		{
+			binding: "CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2",
+			secret_name: "CINAADMIN_OIDC_BRIDGE_SECRET_V2",
+		},
+		{
+			binding: "CINAADMIN_OIDC_TRANSACTION_SECRET_STORE_V2",
+			secret_name: "CINAADMIN_OIDC_TRANSACTION_SECRET_V2",
+		},
+	],
+};
+
+const secretStoreBindingKey = ({ binding, store_id, secret_name }) =>
+	`${binding}\u0000${store_id}\u0000${secret_name}`;
+
+const checkExactSecretsStoreBindings = (config, file, expectedBindings) => {
+	const configuredBindings = config.secrets_store_secrets;
+	check(
+		Array.isArray(configuredBindings),
+		`${rel(file)} must declare secrets_store_secrets`,
+	);
+	if (!Array.isArray(configuredBindings)) return;
+
+	const entries = configuredBindings.filter(
+		(entry) => entry && typeof entry === "object" && !Array.isArray(entry),
+	);
+	check(
+		entries.length === configuredBindings.length,
+		`${rel(file)} secrets_store_secrets entries must be objects`,
+	);
+	check(
+		configuredBindings.length === expectedBindings.length,
+		`${rel(file)} must declare exactly ${expectedBindings.length} staged Secrets Store binding(s)`,
+	);
+
+	const exactKeys = entries.map(secretStoreBindingKey);
+	check(
+		new Set(exactKeys).size === exactKeys.length,
+		`${rel(file)} must not duplicate Secrets Store binding triples`,
+	);
+	check(
+		new Set(entries.map((entry) => entry.binding)).size === entries.length,
+		`${rel(file)} must not duplicate Secrets Store binding names`,
+	);
+	check(
+		new Set(entries.map((entry) => entry.secret_name)).size === entries.length,
+		`${rel(file)} must not map one staged secret name more than once`,
+	);
+
+	for (const entry of entries) {
+		check(
+			Object.keys(entry).sort().join(",") === "binding,secret_name,store_id",
+			`${rel(file)} Secrets Store entries must contain only binding, store_id, and secret_name`,
+		);
+	}
+
+	const expectedKeys = new Set(
+		expectedBindings.map((entry) =>
+			secretStoreBindingKey({ ...entry, store_id: SECRETS_STORE_ID }),
+		),
+	);
+	for (const expected of expectedBindings) {
+		const expectedKey = secretStoreBindingKey({
+			...expected,
+			store_id: SECRETS_STORE_ID,
+		});
+		check(
+			exactKeys.filter((key) => key === expectedKey).length === 1,
+			`${rel(file)} must map ${expected.binding} exactly once to ${expected.secret_name} in Secrets Store ${SECRETS_STORE_ID}`,
+		);
+	}
+	check(
+		exactKeys.every((key) => expectedKeys.has(key)),
+		`${rel(file)} must not contain unexpected or incorrectly mapped Secrets Store bindings`,
+	);
+};
+
 const packageFile = join(workerDir, "package.json");
 const wranglerFile = join(workerDir, "wrangler.json");
 const devVarsExampleFile = join(workerDir, ".dev.vars.example");
@@ -198,6 +312,12 @@ const deliveryWranglerFile = join(
 	"workers",
 	"delivery",
 	"wrangler.json",
+);
+const deliveryDeploymentFile = join(
+	repoRoot,
+	"workers",
+	"delivery",
+	"DEPLOYMENT.md",
 );
 const privacyErasureDir = join(repoRoot, "workers", "privacy-erasure");
 const privacyErasureIndexFile = join(privacyErasureDir, "src", "index.ts");
@@ -687,6 +807,7 @@ const deliveryAcceptance = read(deliveryAcceptanceFile);
 const productionLifecycleAcceptance = read(productionLifecycleAcceptanceFile);
 const deliveryPackage = readJson(deliveryPackageFile);
 const deliveryWrangler = readJson(deliveryWranglerFile);
+const deliveryDeployment = read(deliveryDeploymentFile);
 const privacyErasureIndex = read(privacyErasureIndexFile);
 const privacyErasureCoordinator = read(privacyErasureCoordinatorFile);
 const privacyErasureProtocol = read(privacyErasureProtocolFile);
@@ -704,6 +825,7 @@ const accountMiddleware = read(accountMiddlewareFile);
 const legacyAdminPage = read(legacyAdminPageFile);
 const adminPackage = readJson(adminPackageFile);
 const adminWrangler = read(adminWranglerFile);
+const adminWranglerConfig = readJson(adminWranglerFile);
 const adminFetcher = read(adminFetcherFile);
 const adminOidcClient = read(adminOidcClientFile);
 const adminOidcCallback = read(adminOidcCallbackFile);
@@ -2112,6 +2234,72 @@ check(
 	"wrangler.json must bind Worker version metadata as VERSION_METADATA",
 );
 
+checkExactSecretsStoreBindings(
+	wrangler,
+	wranglerFile,
+	expectedSecretsStoreBindings.auth,
+);
+checkExactSecretsStoreBindings(
+	deliveryWrangler,
+	deliveryWranglerFile,
+	expectedSecretsStoreBindings.delivery,
+);
+checkExactSecretsStoreBindings(
+	privacyErasureWrangler,
+	privacyErasureWranglerFile,
+	expectedSecretsStoreBindings.privacyErasure,
+);
+checkExactSecretsStoreBindings(
+	adminWranglerConfig,
+	adminWranglerFile,
+	expectedSecretsStoreBindings.admin,
+);
+checkIncludesAll(
+	deploymentDoc,
+	[
+		"Secrets Store V2 is **staged only**",
+		SECRETS_STORE_ID,
+		"CINAADMIN_OIDC_TRANSACTION_SECRET_STORE_V2",
+		"V1 Worker secrets",
+		"call `get()`",
+		"Account Secrets Store Edit",
+		"`workers` scope",
+		"coordinated cutover",
+	],
+	deploymentDocFile,
+	"Auth deployment docs must keep the staged V2 boundary, exact store, permissions, probes, and coordinated cutover explicit",
+);
+checkIncludesAll(
+	deliveryDeployment,
+	[
+		"Secrets Store V2 is **staged only**",
+		SECRETS_STORE_ID,
+		"CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+		"CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
+		"calls `get()`",
+		"Account Secrets Store Edit",
+		"`workers` scope",
+		"coordinated cutover",
+	],
+	deliveryDeploymentFile,
+	"Delivery deployment docs must keep the staged V2 boundary, exact mapping, permissions, authorized probe, and coordinated cutover explicit",
+);
+checkIncludesAll(
+	privacyErasureDeployment,
+	[
+		"Secrets Store V2 is **staged only**",
+		SECRETS_STORE_ID,
+		"CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+		"CINAAUTH_ERASURE_WEBHOOK_SECRET_V2",
+		"calls `get()`",
+		"Account Secrets Store Edit",
+		"`workers` scope",
+		"coordinated cutover",
+	],
+	privacyErasureDeploymentFile,
+	"Privacy Erasure deployment docs must keep the staged V2 boundary, exact mapping, permissions, authorized probe, and coordinated cutover explicit",
+);
+
 const hyperdrive = wrangler.hyperdrive?.find(
 	(binding) => binding.binding === "HYPERDRIVE",
 );
@@ -2622,7 +2810,7 @@ checkIncludesAll(
 	[
 		"/workers/scripts/${config.name}/settings",
 		'item.name === "ERASURE_COORDINATOR"',
-		"/workers/durable_objects/namespaces/${binding.namespace_id}",
+		"/workers/durable_objects/namespaces/${coordinatorBinding.namespace_id}",
 		"durableNamespace.use_sqlite !== true",
 		"/workers/scripts/${config.name}/deployments",
 		'version.resources?.script_runtime?.migration_tag !== "v1"',

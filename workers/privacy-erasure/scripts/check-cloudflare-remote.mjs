@@ -11,6 +11,11 @@ const REQUIRED_SECRETS = [
 	"CINAAUTH_ERASURE_STORAGE_SECRET",
 	"CINAAUTH_ERASURE_TARGETS",
 ];
+const SECRETS_STORE_BINDING = {
+	name: "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+	storeId: "346e2b4b86334bc29083c064116e91cf",
+	secretName: "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2",
+};
 const allowNotReady = process.argv.includes("--allow-not-ready");
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -28,6 +33,41 @@ const warn = (message) => warnings.push(message);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const shouldRetry = (response) =>
 	RETRYABLE_STATUS_CODES.has(response.status) || response.status >= 500;
+
+const isRecord = (value) =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+const containsHttpUrl = (value) => {
+	if (typeof value === "string") return /^https?:\/\//i.test(value);
+	if (Array.isArray(value)) return value.some(containsHttpUrl);
+	if (isRecord(value)) return Object.values(value).some(containsHttpUrl);
+	return false;
+};
+
+const hasOnlyKeys = (value, allowedKeys) =>
+	isRecord(value) && Object.keys(value).every((key) => allowedKeys.has(key));
+
+const hasPublicReadinessShape = (body) => {
+	if (
+		!hasOnlyKeys(
+			body,
+			new Set([
+				"success",
+				"service",
+				"version",
+				"runtimeConfig",
+				"secretsStore",
+			]),
+		) ||
+		!hasOnlyKeys(body.runtimeConfig, new Set(["ok", "issues", "targetIds"]))
+	) {
+		return false;
+	}
+	return (
+		body.secretsStore === undefined ||
+		hasOnlyKeys(body.secretsStore, new Set(["staged", "ok", "issues"]))
+	);
+};
 
 const describeFetchError = (error) => {
 	if (!(error instanceof Error)) return String(error);
@@ -112,21 +152,21 @@ const checkWorkerSettings = async () => {
 	const settings = await cloudflareFetch(
 		`/accounts/${accountId}/workers/scripts/${config.name}/settings`,
 	);
-	const binding = settings.bindings?.find(
+	const coordinatorBinding = settings.bindings?.find(
 		(item) =>
 			item.name === "ERASURE_COORDINATOR" &&
 			item.type === "durable_object_namespace",
 	);
-	if (!binding) {
+	if (!coordinatorBinding) {
 		fail("Remote Worker is missing ERASURE_COORDINATOR Durable Object binding");
 		return;
 	}
-	if (typeof binding.namespace_id !== "string") {
+	if (typeof coordinatorBinding.namespace_id !== "string") {
 		fail("Remote ERASURE_COORDINATOR binding is missing its namespace id");
 		return;
 	}
 	const durableNamespace = await cloudflareFetch(
-		`/accounts/${accountId}/workers/durable_objects/namespaces/${binding.namespace_id}`,
+		`/accounts/${accountId}/workers/durable_objects/namespaces/${coordinatorBinding.namespace_id}`,
 	);
 	if (
 		durableNamespace.script !== config.name ||
@@ -161,6 +201,19 @@ const checkWorkerSettings = async () => {
 	}
 	if (version.resources?.script_runtime?.migration_tag !== "v1") {
 		fail("Remote Privacy Erasure Worker must have Durable Object migration v1");
+	}
+
+	const secretsStoreBinding = settings.bindings?.find(
+		(item) => item.name === SECRETS_STORE_BINDING.name,
+	);
+	if (
+		secretsStoreBinding?.type !== "secrets_store_secret" ||
+		secretsStoreBinding.store_id !== SECRETS_STORE_BINDING.storeId ||
+		secretsStoreBinding.secret_name !== SECRETS_STORE_BINDING.secretName
+	) {
+		fail(
+			`Remote ${SECRETS_STORE_BINDING.name} binding must target ${SECRETS_STORE_BINDING.storeId}/${SECRETS_STORE_BINDING.secretName}`,
+		);
 	}
 };
 
@@ -234,8 +287,16 @@ const checkPublicEndpoints = async () => {
 			"Authorized readiness must expose the configured public-safe target IDs",
 		);
 	}
-	const serialized = JSON.stringify(body);
-	if (/https?:\/\//i.test(serialized) || serialized.includes("secret")) {
+	if (
+		readinessSecret &&
+		(body.secretsStore?.staged !== true ||
+			body.secretsStore?.ok !== true ||
+			!Array.isArray(body.secretsStore?.issues) ||
+			body.secretsStore.issues.length !== 0)
+	) {
+		fail("Authorized readiness must confirm staged Secrets Store bindings");
+	}
+	if (!hasPublicReadinessShape(body) || containsHttpUrl(body)) {
 		fail("Readiness must not expose target URLs or secret fields");
 	}
 };

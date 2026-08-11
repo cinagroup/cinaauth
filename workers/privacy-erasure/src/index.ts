@@ -5,6 +5,7 @@ import {
 	readAuthenticatedOperation,
 	verifyBearerToken,
 } from "./protocol";
+import { getStagedSecretsStoreReadiness } from "./secrets-store-readiness";
 
 export { ErasureCoordinator } from "./coordinator";
 
@@ -46,9 +47,13 @@ const handleReadiness = async (request: Request, env: PrivacyErasureEnv) => {
 	if (authorization && !authorized) {
 		return errorResponse("INVALID_READINESS_TOKEN", 401, "Unauthorized");
 	}
+	const secretsStore = authorized
+		? await getStagedSecretsStoreReadiness(env)
+		: undefined;
+	const ok = assessment.ok && (secretsStore?.ok ?? true);
 	return json(
 		{
-			success: assessment.ok,
+			success: ok,
 			service: SERVICE_NAME,
 			version: env.VERSION_METADATA.id,
 			runtimeConfig: {
@@ -60,8 +65,9 @@ const handleReadiness = async (request: Request, env: PrivacyErasureEnv) => {
 						}
 					: {}),
 			},
+			...(secretsStore ? { secretsStore } : {}),
 		},
-		assessment.ok ? 200 : 503,
+		ok ? 200 : 503,
 	);
 };
 

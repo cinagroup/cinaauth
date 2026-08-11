@@ -87,6 +87,7 @@ import {
 	migrateLegacySCIMProviderOwnership,
 	parseSCIMOwnershipMigrationInput,
 } from "./scim-ownership-migration";
+import { getStagedSecretsStoreReadiness } from "./secrets-store-readiness";
 import { handleSuperAdminGovernedRequest } from "./super-admin-governance";
 
 export { RateLimitDurableObject } from "./rate-limit";
@@ -1735,10 +1736,12 @@ app.get("/api/ready", async (c) => {
 
 	const runtimeConfigIssues = getRuntimeConfigIssues(c.env);
 	try {
+		const secretsStore = await getStagedSecretsStoreReadiness(c.env);
 		const database = await getDatabaseReadiness(c.env);
 		const cutoverState = getCutoverState(c.env);
 		const isReady =
 			runtimeConfigIssues.length === 0 &&
+			secretsStore.ok &&
 			database.ok &&
 			cutoverState === "live";
 		const version = getVersionMetadata(c.env);
@@ -1754,6 +1757,7 @@ app.get("/api/ready", async (c) => {
 						ok: runtimeConfigIssues.length === 0,
 						issues: runtimeConfigIssues,
 					},
+					secretsStore,
 					database,
 					delivery: {
 						queue: isDeliveryQueue(c.env.CINAAUTH_DELIVERY_QUEUE),

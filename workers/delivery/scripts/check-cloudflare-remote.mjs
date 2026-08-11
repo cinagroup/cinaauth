@@ -13,6 +13,11 @@ const REQUIRED_RUNTIME_INPUTS = [
 	"TWILIO_AUTH_TOKEN",
 	"TWILIO_FROM_NUMBER",
 ];
+const SECRETS_STORE_BINDING = {
+	name: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+	storeId: "346e2b4b86334bc29083c064116e91cf",
+	secretName: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
+};
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const workerDir = dirname(scriptDir);
@@ -158,6 +163,24 @@ const checkKVNamespaces = async () => {
 	}
 };
 
+const checkWorkerSettings = async () => {
+	const settings = await cloudflareFetch(
+		`/accounts/${accountId}/workers/scripts/${config.name}/settings`,
+	);
+	const binding = settings.bindings?.find(
+		(item) => item.name === SECRETS_STORE_BINDING.name,
+	);
+	if (
+		binding?.type !== "secrets_store_secret" ||
+		binding.store_id !== SECRETS_STORE_BINDING.storeId ||
+		binding.secret_name !== SECRETS_STORE_BINDING.secretName
+	) {
+		fail(
+			`Remote ${SECRETS_STORE_BINDING.name} binding must target ${SECRETS_STORE_BINDING.storeId}/${SECRETS_STORE_BINDING.secretName}`,
+		);
+	}
+};
+
 const checkRuntimeInputs = async () => {
 	let secrets = [];
 	try {
@@ -250,29 +273,31 @@ const checkPublicEndpoints = async () => {
 		"https://cinaauth-delivery.cinagroup.com/ready",
 	);
 	if (!ready) return;
-	if (ready.status === 404) {
-		warn("Delivery Worker readiness returned 404; it may not be deployed yet");
+	if (!ready.ok) {
+		fail(`Delivery Worker readiness returned HTTP ${ready.status}`);
 		return;
 	}
-	if (ready.ok) {
-		if (!process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET) {
-			warn(
-				"Detailed delivery readiness was not checked because CINAAUTH_DELIVERY_WEBHOOK_SECRET is not available in this process",
-			);
-			return;
-		}
-		const body = await ready.json().catch(() => undefined);
-		if (
-			!body ||
-			typeof body !== "object" ||
-			body.success !== true ||
-			body.runtimeConfig?.ok !== true ||
-			body.providers?.email !== true ||
-			body.providers?.sms !== true ||
-			body.replay?.kv !== true
-		) {
-			fail("Authorized Delivery Worker readiness response is incomplete");
-		}
+	if (!process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET) {
+		warn(
+			"Detailed delivery readiness was not checked because CINAAUTH_DELIVERY_WEBHOOK_SECRET is not available in this process",
+		);
+		return;
+	}
+	const body = await ready.json().catch(() => undefined);
+	if (
+		!body ||
+		typeof body !== "object" ||
+		body.success !== true ||
+		body.runtimeConfig?.ok !== true ||
+		body.secretsStore?.staged !== true ||
+		body.secretsStore?.ok !== true ||
+		!Array.isArray(body.secretsStore?.issues) ||
+		body.secretsStore.issues.length !== 0 ||
+		body.providers?.email !== true ||
+		body.providers?.sms !== true ||
+		body.replay?.kv !== true
+	) {
+		fail("Authorized Delivery Worker readiness response is incomplete");
 	}
 };
 
@@ -282,6 +307,7 @@ const main = async () => {
 		try {
 			await resolveAccountId();
 			if (failures.length === 0) {
+				await checkWorkerSettings();
 				await checkKVNamespaces();
 				await checkRuntimeInputs();
 				await checkZoneAndRoute();
