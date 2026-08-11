@@ -32,6 +32,16 @@ export type SessionDTO = {
 	userAgent: string | null;
 };
 
+/** Non-secret passkey metadata safe for Admin target-user views. */
+export type PasskeyDTO = {
+	id: string;
+	name: string;
+	deviceType: string | null;
+	backedUp: boolean | null;
+	createdAt: Timestamp | null;
+	aaguid: string | null;
+};
+
 export type AuditLogDTO = {
 	id: string;
 	timestamp: string;
@@ -84,11 +94,24 @@ export type OrgDTO = {
 
 export type ApiKeyDTO = {
 	id: string;
-	name: string;
+	configId: string;
+	name: string | null;
+	start: string | null;
+	prefix: string | null;
+	referenceId: string;
+	refillInterval: number | null;
+	refillAmount: number | null;
+	lastRefillAt: Timestamp | null;
 	enabled: boolean;
-	startsAt: string | null;
-	expiresAt: string | null;
-	prefix: string;
-	lastUsedAt: string | null;
+	rateLimitEnabled: boolean;
+	rateLimitTimeWindow: number | null;
+	rateLimitMax: number | null;
+	requestCount: number;
 	remaining: number | null;
+	lastRequest: Timestamp | null;
+	expiresAt: Timestamp | null;
+	createdAt: Timestamp;
+	updatedAt: Timestamp;
+	metadata: Record<string, unknown> | null;
+	permissions: Record<string, string[]> | null;
 };

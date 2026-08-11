@@ -1,4 +1,6 @@
 export * from "./admin";
+export * from "./admin-control";
+export * from "./admin-oidc";
 export * from "./capabilities";
 export * from "./dto";
 export * from "./endpoints";

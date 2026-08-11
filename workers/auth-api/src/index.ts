@@ -1,5 +1,17 @@
+import {
+	hasAdminControlPermission,
+	isValidAdminOidcClientSecret,
+} from "@cinaauth/auth-web-contract";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import {
+	ensureAdminOidcClient,
+	isAdminOidcAuthorizationRequest,
+} from "./admin-oidc-client";
+import {
+	getAdminVerificationServerApi,
+	handleAdminSendVerification,
+} from "./admin-send-verification";
 import {
 	DEFAULT_AUDIT_RETENTION_DAYS,
 	getAuditRetentionPolicy,
@@ -7,6 +19,7 @@ import {
 import type { Auth } from "./auth";
 import {
 	createAuth,
+	getProductionSocialProviders,
 	runWithExecutionCtx,
 	SECURITY_FRESH_AGE_SECONDS,
 } from "./auth";
@@ -27,6 +40,12 @@ import {
 	previewLegacyD1Migration,
 } from "./d1-migration";
 import { createDatabase, isHyperdrive } from "./database";
+import type { DatabaseInvariantReadiness } from "./database-invariants";
+import {
+	DATABASE_INVARIANT_IDS,
+	getDatabaseInvariantReadiness,
+	installDatabaseInvariants,
+} from "./database-invariants";
 import type { DeliveryMessage } from "./delivery";
 import {
 	getDeliveryProviderCapabilities,
@@ -48,6 +67,7 @@ import {
 	loadEntitlementSnapshot,
 } from "./entitlements";
 import type { CloudflareBindings } from "./env";
+import { parseProductionGenericOAuthConfig } from "./oauth-config";
 import {
 	ensureOidcDemoClient,
 	isOidcDemoAuthorizationRequest,
@@ -61,6 +81,13 @@ import {
 	PRIVACY_EXPORT_QUEUE_NAME,
 	sweepExpiredPrivacyExports,
 } from "./privacy-export";
+import { handleProviderNamespaceGovernedRequest } from "./provider-namespace-governance";
+import { createDurableObjectRateLimitStorage } from "./rate-limit-storage";
+import {
+	migrateLegacySCIMProviderOwnership,
+	parseSCIMOwnershipMigrationInput,
+} from "./scim-ownership-migration";
+import { handleSuperAdminGovernedRequest } from "./super-admin-governance";
 
 export { RateLimitDurableObject } from "./rate-limit";
 
@@ -79,6 +106,11 @@ type RateLimitConfig = {
 	customStorage?: unknown;
 	customRules?: unknown;
 };
+
+/** Return whether a verified role may inspect the runtime rate-limit posture. */
+export const canReadAdminRateLimitConfig = (
+	role: string | null | undefined,
+): boolean => hasAdminControlPermission(role, "security.policy.read");
 
 type MigrationTable = {
 	table: string;
@@ -139,6 +171,10 @@ type VersionMetadataSnapshot = {
 type RuntimeConfigIssue =
 	| "missing_cinaauth_secret"
 	| "weak_cinaauth_secret"
+	| "missing_cinaadmin_oidc_client_secret"
+	| "weak_cinaadmin_oidc_client_secret"
+	| "missing_cinaadmin_oidc_bridge_secret"
+	| "weak_cinaadmin_oidc_bridge_secret"
 	| "missing_hyperdrive_binding"
 	| "missing_legacy_d1_binding"
 	| "missing_version_metadata"
@@ -168,6 +204,20 @@ const REQUIRED_DATABASE_TABLES = [
 	"verification",
 	D1_CUTOVER_MARKER_TABLE,
 ] as const;
+const DATABASE_INVARIANT_TABLES = [
+	"user",
+	"account",
+	"ssoProvider",
+	"scimProvider",
+] as const;
+const DATABASE_READINESS_TABLES = [
+	...new Set([...REQUIRED_DATABASE_TABLES, ...DATABASE_INVARIANT_TABLES]),
+];
+
+export const hasDatabaseInvariantTables = (tableNames: Iterable<string>) => {
+	const present = new Set(tableNames);
+	return DATABASE_INVARIANT_TABLES.every((table) => present.has(table));
+};
 
 const reportedRuntimeConfigIssues = new Set<string>();
 
@@ -184,9 +234,29 @@ const MAINTENANCE_PATHS = new Set([
 	"/api/ready",
 	"/api/migrate",
 	"/api/migrate/d1",
+	"/api/migrate/scim-provider-ownership",
 ]);
 
 const FRESH_SESSION_MUTATION_PATHS = new Set([
+	// Removing a sign-in credential is a high-risk self-service mutation.
+	"/api/auth/passkey/delete-passkey",
+	// High-risk global Admin mutations. Keep stop-impersonating outside this
+	// list so an impersonated session can always recover the original admin
+	// session even after the step-up window expires.
+	"/api/auth/admin/create-user",
+	"/api/auth/admin/revoke-user-session",
+	"/api/auth/admin/revoke-user-sessions",
+	"/api/auth/admin/ban-user",
+	"/api/auth/admin/unban-user",
+	"/api/auth/admin/remove-user",
+	"/api/auth/admin/set-role",
+	"/api/auth/admin/update-user",
+	"/api/auth/admin/set-user-password",
+	"/api/auth/admin/reset-2fa",
+	"/api/auth/admin/unbind-wallet",
+	"/api/auth/admin/delete-user-passkey",
+	"/api/auth/admin/update-user-passkey",
+	"/api/auth/admin/impersonate-user",
 	"/api/auth/api-key/create",
 	"/api/auth/api-key/update",
 	"/api/auth/api-key/delete",
@@ -226,6 +296,11 @@ const FRESH_SESSION_MUTATION_PATHS = new Set([
 	"/api/auth/subscription/billing-portal",
 ]);
 
+const FRESH_SESSION_GET_PATHS = new Set(["/api/auth/audit/export"]);
+
+const canonicalizeProtectedPath = (pathname: string) =>
+	pathname.length > 1 ? pathname.replace(/\/+$/, "") || "/" : pathname;
+
 const withNoStore = (response: Response) => {
 	response.headers.set("Cache-Control", "no-store");
 	return response;
@@ -244,12 +319,55 @@ export const isFreshSecuritySession = (
 	);
 };
 
-/** Classifies privileged self-service mutations that require a recent sign-in. */
+/** Classifies privileged operations that require a recent sign-in. */
 export const requiresFreshSessionForMutation = (
 	pathname: string,
 	method: string,
-) =>
-	method.toUpperCase() === "POST" && FRESH_SESSION_MUTATION_PATHS.has(pathname);
+) => {
+	const normalizedMethod = method.toUpperCase();
+	const canonicalPathname = canonicalizeProtectedPath(pathname);
+	return (
+		(normalizedMethod === "POST" &&
+			FRESH_SESSION_MUTATION_PATHS.has(canonicalPathname)) ||
+		(normalizedMethod === "GET" &&
+			FRESH_SESSION_GET_PATHS.has(canonicalPathname))
+	);
+};
+
+type FreshSessionMutationRejection = {
+	status: 401 | 403;
+	code: "UNAUTHORIZED" | "SESSION_NOT_FRESH";
+	message: "Authentication required" | "Recent authentication required";
+};
+
+/**
+ * Returns the authoritative session rejection for a protected mutation.
+ * Unclassified paths are intentionally ignored, including ordinary reads and
+ * impersonation exit.
+ */
+export const getFreshSessionMutationRejection = (
+	pathname: string,
+	method: string,
+	createdAt: Date | string | undefined,
+	now = Date.now(),
+): FreshSessionMutationRejection | undefined => {
+	if (!requiresFreshSessionForMutation(pathname, method)) return undefined;
+	if (createdAt === undefined) {
+		return {
+			status: 401,
+			code: "UNAUTHORIZED",
+			message: "Authentication required",
+		};
+	}
+	if (!isFreshSecuritySession(createdAt, now)) {
+		return {
+			status: 403,
+			code: "SESSION_NOT_FRESH",
+			message: "Recent authentication required",
+		};
+	}
+	return undefined;
+};
 
 const MAX_ENTITLEMENT_REQUEST_BODY_BYTES = 64 * 1024;
 const SAFE_SUBJECT_ID_PATTERN = /^[^\u0000-\u001f\u007f]{1,256}$/;
@@ -561,6 +679,15 @@ const isD1Database = (value: unknown): value is D1Database =>
 export const getCutoverState = (env: CloudflareBindings) =>
 	env.CINAAUTH_CUTOVER_STATE === "live" ? "live" : "maintenance";
 
+export const getConfiguredAccountProviderIds = (env: CloudflareBindings) => [
+	...new Set([
+		...Object.keys(getProductionSocialProviders(env)),
+		...parseProductionGenericOAuthConfig(env.GENERIC_OAUTH_CONFIG).map(
+			(provider) => provider.providerId,
+		),
+	]),
+];
+
 const parseBearerToken = (authorization: string | undefined) => {
 	if (!authorization) return undefined;
 	const match = /^Bearer\s+(.+)$/i.exec(authorization.trim());
@@ -621,6 +748,16 @@ export const getRuntimeConfigIssues = (
 		issues.push("missing_cinaauth_secret");
 	} else if (authSecret.length < 32) {
 		issues.push("weak_cinaauth_secret");
+	}
+	if (!env.CINAADMIN_OIDC_CLIENT_SECRET) {
+		issues.push("missing_cinaadmin_oidc_client_secret");
+	} else if (!isValidAdminOidcClientSecret(env.CINAADMIN_OIDC_CLIENT_SECRET)) {
+		issues.push("weak_cinaadmin_oidc_client_secret");
+	}
+	if (!env.CINAADMIN_OIDC_BRIDGE_SECRET) {
+		issues.push("missing_cinaadmin_oidc_bridge_secret");
+	} else if (env.CINAADMIN_OIDC_BRIDGE_SECRET.length < 32) {
+		issues.push("weak_cinaadmin_oidc_bridge_secret");
 	}
 
 	if (!isHyperdrive(env.HYPERDRIVE)) {
@@ -756,6 +893,7 @@ const getMigrationPlan = async (
 ) => {
 	const { getMigrations } = await import("cinaauth/db/migration");
 	const database = createDatabase(env);
+	const configuredProviderIds = getConfiguredAccountProviderIds(env);
 	let migrations: Awaited<ReturnType<typeof getMigrations>>;
 	try {
 		migrations = await getMigrations({
@@ -778,6 +916,8 @@ const getMigrationPlan = async (
 
 	return {
 		...migrations,
+		installInvariants: () =>
+			installDatabaseInvariants(database, configuredProviderIds),
 		close: () => database.end(),
 		summary: {
 			pendingCount:
@@ -786,11 +926,18 @@ const getMigrationPlan = async (
 			created,
 			added,
 			requiredTables: [...REQUIRED_DATABASE_TABLES],
+			requiredInvariants: [...DATABASE_INVARIANT_IDS],
 		},
 	};
 };
 
 const getDatabaseReadiness = async (env: CloudflareBindings) => {
+	const missingInvariants: DatabaseInvariantReadiness = {
+		ok: false,
+		required: [...DATABASE_INVARIANT_IDS],
+		installed: [] as string[],
+		missing: [...DATABASE_INVARIANT_IDS],
+	};
 	if (!isHyperdrive(env.HYPERDRIVE)) {
 		return {
 			ok: false,
@@ -798,12 +945,14 @@ const getDatabaseReadiness = async (env: CloudflareBindings) => {
 			requiredTables: [...REQUIRED_DATABASE_TABLES],
 			presentTables: [],
 			missingTables: [...REQUIRED_DATABASE_TABLES],
+			invariants: missingInvariants,
 		};
 	}
 
 	const database = createDatabase(env);
 	let rows: DatabaseTableRow[];
 	let cutoverMarker = false;
+	let invariants = missingInvariants;
 	try {
 		const result = await database.query<DatabaseTableRow>(
 			`SELECT table_name AS name
@@ -811,7 +960,7 @@ const getDatabaseReadiness = async (env: CloudflareBindings) => {
 			 WHERE table_schema = ANY(current_schemas(false))
 				AND table_name = ANY($1::text[])
 			 ORDER BY table_name`,
-			[[...REQUIRED_DATABASE_TABLES]],
+			[DATABASE_READINESS_TABLES],
 		);
 		rows = result.rows;
 		if (rows.some((row) => row.name === D1_CUTOVER_MARKER_TABLE)) {
@@ -825,6 +974,13 @@ const getDatabaseReadiness = async (env: CloudflareBindings) => {
 			);
 			cutoverMarker = markerResult.rows[0]?.complete === true;
 		}
+		const presentTableNames = new Set(rows.map((row) => row.name));
+		if (hasDatabaseInvariantTables(presentTableNames)) {
+			invariants = await getDatabaseInvariantReadiness(
+				database,
+				getConfiguredAccountProviderIds(env),
+			);
+		}
 	} finally {
 		await database.end();
 	}
@@ -834,11 +990,12 @@ const getDatabaseReadiness = async (env: CloudflareBindings) => {
 	);
 
 	return {
-		ok: missingTables.length === 0 && cutoverMarker,
+		ok: missingTables.length === 0 && cutoverMarker && invariants.ok,
 		cutoverMarker,
 		requiredTables: [...REQUIRED_DATABASE_TABLES],
 		presentTables: [...presentTables],
 		missingTables,
+		invariants,
 	};
 };
 
@@ -847,8 +1004,7 @@ const isDatabaseCutoverReady = async (env: CloudflareBindings) => {
 	const now = Date.now();
 	if (
 		cutoverReadinessCache?.versionId === versionId &&
-		now - cutoverReadinessCache.checkedAt <
-			(cutoverReadinessCache.ready ? 60_000 : 5_000)
+		now - cutoverReadinessCache.checkedAt < 5_000
 	) {
 		return cutoverReadinessCache.ready;
 	}
@@ -1102,7 +1258,7 @@ app.get("/api/auth/admin/rate-limit-config", async (c) => {
 		headers: c.req.raw.headers,
 	});
 	const role = (session?.user as { role?: string } | undefined)?.role;
-	if (role !== "super_admin") {
+	if (!canReadAdminRateLimitConfig(role)) {
 		return withNoStore(c.json({ error: "Forbidden" }, 403));
 	}
 	const rl = (c.var.auth.options as { rateLimit?: RateLimitConfig }).rateLimit;
@@ -1115,6 +1271,114 @@ app.get("/api/auth/admin/rate-limit-config", async (c) => {
 			customRules: rl?.customRules ?? {},
 		}),
 	);
+});
+
+// Admin-triggered verification must not proxy the public delivery endpoints:
+// all three are intentionally Turnstile-protected. This route authorizes the
+// acting session, resolves the target internally, then invokes trusted server
+// APIs that do not traverse the public HTTP captcha hook.
+app.post("/api/auth/admin/send-verification", async (c) => {
+	const auth = c.var.auth;
+	const headers = c.req.raw.headers;
+	const verificationApi = getAdminVerificationServerApi(auth.api);
+	const rateLimitStorage = c.env.RATE_LIMITER
+		? createDurableObjectRateLimitStorage(c.env)
+		: null;
+	const result = await handleAdminSendVerification(
+		{
+			serverApiAvailable: verificationApi !== null,
+			getSession: async () => {
+				const session = await auth.api.getSession({
+					headers,
+					query: { disableCookieCache: true },
+				});
+				if (!session) return null;
+				return {
+					user: {
+						id: session.user.id,
+						role: (session.user as { role?: string | null }).role,
+					},
+					session: { createdAt: session.session.createdAt },
+				};
+			},
+			findUserById: async (userId) => {
+				const context = await auth.$context;
+				const user = await context.internalAdapter.findUserById(userId);
+				if (!user) return null;
+				return {
+					id: user.id,
+					email: user.email,
+					phoneNumber: (user as { phoneNumber?: unknown }).phoneNumber,
+				};
+			},
+			sendEmailOtp: async (input) => {
+				if (!verificationApi) {
+					throw new Error("Verification delivery API is unavailable");
+				}
+				await verificationApi.sendVerificationOTP({ body: input, headers });
+			},
+			sendMagicLink: async (input) => {
+				if (!verificationApi) {
+					throw new Error("Verification delivery API is unavailable");
+				}
+				await verificationApi.signInMagicLink({ body: input, headers });
+			},
+			sendPhoneOtp: async (input) => {
+				if (!verificationApi) {
+					throw new Error("Verification delivery API is unavailable");
+				}
+				await verificationApi.sendPhoneNumberOTP({ body: input, headers });
+			},
+			consumeRateLimit: rateLimitStorage?.consume,
+			writeAuditEvent: async (event) => {
+				if (!verificationApi) {
+					throw new Error("Verification audit API is unavailable");
+				}
+				await verificationApi.logAudit({
+					headers,
+					body: {
+						category: "identity",
+						action: "identity.user.send_verification",
+						result: "success",
+						actorSite: "admin-console",
+						targetType: "user",
+						targetId: event.targetId,
+						metadata: {
+							actorId: event.actorId,
+							channel: event.channel,
+						},
+					},
+				});
+			},
+			logEvent: (event) => {
+				const payload = JSON.stringify(event);
+				if (event.level === "error") {
+					console.error(payload);
+				} else if (event.level === "warn") {
+					console.warn(payload);
+				} else {
+					console.info(payload);
+				}
+			},
+		},
+		async () => {
+			try {
+				return { ok: true, body: await c.req.json() } as const;
+			} catch {
+				return { ok: false } as const;
+			}
+		},
+	);
+	const response = c.json(result.body, result.status);
+	if (
+		result.status === 429 &&
+		result.retryAfter !== null &&
+		result.retryAfter !== undefined
+	) {
+		response.headers.set("Retry-After", String(result.retryAfter));
+		response.headers.set("X-Retry-After", String(result.retryAfter));
+	}
+	return withNoStore(response);
 });
 
 // Sensitive mutations require a fresh authoritative session. Commercial
@@ -1136,23 +1400,25 @@ app.use("/api/auth/*", async (c, next) => {
 		headers: c.req.raw.headers,
 		query: { disableCookieCache: true },
 	});
-	if (!session) {
-		return withNoStore(
-			c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401),
-		);
-	}
-	if (
-		requiresFreshSession &&
-		!isFreshSecuritySession(session.session.createdAt)
-	) {
+	const freshSessionRejection = getFreshSessionMutationRejection(
+		pathname,
+		c.req.method,
+		session?.session.createdAt,
+	);
+	if (freshSessionRejection) {
 		return withNoStore(
 			c.json(
 				{
-					code: "SESSION_NOT_FRESH",
-					message: "Recent authentication required",
+					code: freshSessionRejection.code,
+					message: freshSessionRejection.message,
 				},
-				403,
+				freshSessionRejection.status,
 			),
+		);
+	}
+	if (!session) {
+		return withNoStore(
+			c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401),
 		);
 	}
 	if (!entitlementPolicy) {
@@ -1330,19 +1596,27 @@ app.on(
 
 // Auth catch-all route handler
 app.use("/api/auth/oauth2/authorize", async (c, next) => {
-	if (!isOidcDemoAuthorizationRequest(c.req.raw)) {
+	const isAdminRequest = isAdminOidcAuthorizationRequest(c.req.raw);
+	const isDemoRequest = isOidcDemoAuthorizationRequest(c.req.raw);
+	if (!isAdminRequest && !isDemoRequest) {
 		await next();
 		return;
 	}
 
 	const database = createDatabase(c.env);
 	try {
-		await ensureOidcDemoClient(database);
+		if (isAdminRequest) {
+			await ensureAdminOidcClient(database, c.env.CINAADMIN_OIDC_CLIENT_SECRET);
+		} else {
+			await ensureOidcDemoClient(database);
+		}
 	} catch (error) {
 		console.error(
 			JSON.stringify({
 				level: "error",
-				message: "cinaauth.oidc_demo_client.reconcile_failed",
+				message: isAdminRequest
+					? "cinaauth.admin_oidc_client.reconcile_failed"
+					: "cinaauth.oidc_demo_client.reconcile_failed",
 				error: error instanceof Error ? error.message : String(error),
 			}),
 		);
@@ -1350,7 +1624,9 @@ app.use("/api/auth/oauth2/authorize", async (c, next) => {
 			c.json(
 				{
 					error: "temporarily_unavailable",
-					error_description: "OIDC demo client is temporarily unavailable",
+					error_description: isAdminRequest
+						? "Admin OIDC client is temporarily unavailable"
+						: "OIDC demo client is temporarily unavailable",
 				},
 				503,
 			),
@@ -1366,14 +1642,67 @@ app.use("/api/auth/oauth2/authorize", async (c, next) => {
 app.on(
 	["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
 	"/api/auth/*",
-	async (c) => withNoStore(await c.var.auth.handler(c.req.raw)),
+	async (c) =>
+		withNoStore(
+			await handleSuperAdminGovernedRequest({
+				request: c.req.raw,
+				openDatabase: () => createDatabase(c.env),
+				consumeSCIMRateLimit: c.env.RATE_LIMITER
+					? createDurableObjectRateLimitStorage(c.env).consume
+					: undefined,
+				getSession: async () => {
+					const session = await c.var.auth.api.getSession({
+						headers: c.req.raw.headers,
+						query: { disableCookieCache: true },
+					});
+					if (!session) return null;
+					return {
+						user: {
+							id: session.user.id,
+							role: (session.user as { role?: string | null }).role,
+						},
+					};
+				},
+				handle: () =>
+					handleProviderNamespaceGovernedRequest({
+						request: c.req.raw,
+						configuredProviderIds: getConfiguredAccountProviderIds(c.env),
+						openDatabase: () => createDatabase(c.env),
+						consumeRateLimit: c.env.RATE_LIMITER
+							? createDurableObjectRateLimitStorage(c.env).consume
+							: undefined,
+						handle: () => c.var.auth.handler(c.req.raw),
+						onFailure: () => {
+							console.error(
+								JSON.stringify({
+									level: "error",
+									message: "cinaauth.provider_namespace_governance.failed",
+									path: new URL(c.req.url).pathname,
+									version: getVersionMetadata(c.env),
+								}),
+							);
+						},
+					}),
+				onFailure: (error) => {
+					console.error(
+						JSON.stringify({
+							level: "error",
+							message: "cinaauth.super_admin_governance.failed",
+							path: new URL(c.req.url).pathname,
+							error: errorMessage(error),
+							version: getVersionMetadata(c.env),
+						}),
+					);
+				},
+			}),
+		),
 );
 
 // Health check
 app.get("/", (c) =>
 	withNoStore(
 		c.json({
-			name: "CinaAuth API",
+			name: "CinaSeek Identity API",
 			status: getCutoverState(c.env) === "live" ? "running" : "maintenance",
 			version: "1.0.0",
 		}),
@@ -1496,11 +1825,13 @@ app.get("/api/migrate", async (c) => {
 	try {
 		const { summary, close } = await getMigrationPlan(c.env, selection.feature);
 		try {
+			const database = await getDatabaseReadiness(c.env);
 			return withNoStore(
 				c.json({
 					success: true,
 					mode: "preview",
 					feature: selection.feature ?? null,
+					invariants: database.invariants,
 					...summary,
 				}),
 			);
@@ -1539,18 +1870,19 @@ app.post("/api/migrate", async (c) => {
 	}
 
 	try {
-		const { runMigrations, summary, close } = await getMigrationPlan(
-			c.env,
-			selection.feature,
-		);
+		const { runMigrations, installInvariants, summary, close } =
+			await getMigrationPlan(c.env, selection.feature);
 		try {
 			await runMigrations();
+			const invariants = await installInvariants();
+			cutoverReadinessCache = undefined;
 			return withNoStore(
 				c.json({
 					success: true,
 					mode: "apply",
 					feature: selection.feature ?? null,
 					message: "Migrations applied successfully",
+					invariants,
 					...summary,
 				}),
 			);
@@ -1576,6 +1908,117 @@ app.post("/api/migrate", async (c) => {
 			),
 		);
 	}
+});
+
+// Claims one fail-closed legacy SCIM connection for a verified organization
+// owner/admin. This is an operations-only data migration, not a public SCIM
+// plugin endpoint. Omitting `apply: true` always performs a preview.
+app.post("/api/migrate/scim-provider-ownership", async (c) => {
+	if (!(await isAuthorizedMigrationRequest(c.req.raw.headers, c.env))) {
+		console.warn(
+			JSON.stringify({
+				level: "warn",
+				message: "cinaauth.scim_ownership_migration.forbidden",
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(c.json({ error: "Forbidden" }, 403));
+	}
+
+	let rawBody: unknown;
+	try {
+		rawBody = await c.req.json();
+	} catch {
+		return withNoStore(c.json({ error: "Invalid JSON body" }, 400));
+	}
+	const reservedProviderIds = getConfiguredAccountProviderIds(c.env);
+	const input = parseSCIMOwnershipMigrationInput(rawBody, reservedProviderIds);
+	if (!input) {
+		return withNoStore(
+			c.json(
+				{
+					error:
+						"providerId, organizationId, and ownerUserId are required; apply must be a boolean",
+				},
+				400,
+			),
+		);
+	}
+
+	return withNoStore(
+		await handleProviderNamespaceGovernedRequest({
+			request: c.req.raw,
+			providerId: input.providerId,
+			configuredProviderIds: getConfiguredAccountProviderIds(c.env),
+			openDatabase: () => createDatabase(c.env),
+			consumeRateLimit: c.env.RATE_LIMITER
+				? createDurableObjectRateLimitStorage(c.env).consume
+				: undefined,
+			handle: async () => {
+				const database = createDatabase(c.env);
+				try {
+					const result = await migrateLegacySCIMProviderOwnership(
+						database,
+						input,
+						{
+							reservedProviderIds,
+							audit: {
+								actorIp:
+									c.req.header("cf-connecting-ip")?.slice(0, 128) ?? undefined,
+								actorUa: c.req.header("user-agent")?.slice(0, 512) ?? undefined,
+								actorSite: "auth.cinaseek.ai",
+								versionId: getVersionMetadata(c.env).id ?? undefined,
+							},
+						},
+					);
+					if (result.status !== "provider_id_collision") {
+						console.info(
+							JSON.stringify({
+								level: "info",
+								message: "cinaauth.scim_ownership_migration.completed",
+								mode: result.mode,
+								status: result.status,
+								providerId: result.providerId,
+								organizationId: result.organizationId,
+								ownerUserId: result.ownerUserId,
+								accountCount: result.accountCount ?? null,
+								tokenRotated: result.tokenRotated,
+								version: getVersionMetadata(c.env),
+							}),
+						);
+					}
+
+					switch (result.status) {
+						case "provider_id_collision":
+							return c.json(result, 400);
+						case "provider_not_found":
+						case "organization_not_found":
+						case "owner_not_found":
+							return c.json(result, 404);
+						case "owner_not_authorized":
+							return c.json(result, 403);
+						case "provider_has_accounts":
+						case "provider_already_owned":
+							return c.json(result, 409);
+						default:
+							return c.json(result);
+					}
+				} finally {
+					await database.end().catch(() => undefined);
+				}
+			},
+			onFailure: () => {
+				console.error(
+					JSON.stringify({
+						level: "error",
+						message: "cinaauth.provider_namespace_governance.failed",
+						path: new URL(c.req.url).pathname,
+						version: getVersionMetadata(c.env),
+					}),
+				);
+			},
+		}),
+	);
 });
 
 const assertD1CutoverRequest = async (

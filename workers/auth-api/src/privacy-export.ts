@@ -1,13 +1,13 @@
 import type { CinaAuthOptions } from "cinaauth";
-import {
-	type PersonalDataExportSummary,
-	type PrivacyAsyncExportProvider,
-	type PrivacyAsyncExportRequest,
-	type PrivacyAsyncExportState,
-	type PrivacyAsyncExportStatus,
-	type PrivacyExportAdapter,
-	writePersonalDataExport,
+import type {
+	PersonalDataExportSummary,
+	PrivacyAsyncExportProvider,
+	PrivacyAsyncExportRequest,
+	PrivacyAsyncExportState,
+	PrivacyAsyncExportStatus,
+	PrivacyExportAdapter,
 } from "cinaauth/plugins/privacy-center";
+import { writePersonalDataExport } from "cinaauth/plugins/privacy-center";
 
 export const PRIVACY_EXPORT_QUEUE_NAME = "cinaauth-privacy-export";
 const PRIVACY_EXPORT_PREFIX = "privacy-exports/v1";
@@ -38,9 +38,7 @@ type PrivacyExportContext = {
 	adapter: PrivacyExportAdapter;
 	options: CinaAuthOptions;
 	internalAdapter: {
-		findUserById: (
-			id: string,
-		) => Promise<{ id: string; email: string } | null>;
+		findUserById: (id: string) => Promise<{ id: string; email: string } | null>;
 	};
 };
 
@@ -85,7 +83,7 @@ export const hasPrivacyExportRuntime = (env: PrivacyExportRuntimeEnv) => {
 	try {
 		runtime(env);
 		return true;
-	} catch (error) {
+	} catch {
 		return false;
 	}
 };
@@ -108,14 +106,13 @@ const hex = (buffer: ArrayBuffer) =>
 
 const subjectPrefix = async (secret: string, subjectId: string) =>
 	`${PRIVACY_EXPORT_PREFIX}/${hex(
-		await hmacSha256(secret, `cinaauth.privacy.export.subject.v1\n${subjectId}`),
+		await hmacSha256(
+			secret,
+			`cinaauth.privacy.export.subject.v1\n${subjectId}`,
+		),
 	)}`;
 
-const objectKeys = async (
-	secret: string,
-	subjectId: string,
-	jobId: string,
-) => {
+const objectKeys = async (secret: string, subjectId: string, jobId: string) => {
 	const prefix = await subjectPrefix(secret, subjectId);
 	return {
 		prefix,
@@ -128,14 +125,9 @@ const customerKey = (secret: string, objectKey: string) =>
 	hmacSha256(secret, `cinaauth.privacy.export.ssec.v1\n${objectKey}`);
 
 const isState = (value: unknown): value is PrivacyAsyncExportState =>
-	[
-		"queued",
-		"processing",
-		"retrying",
-		"ready",
-		"failed",
-		"expired",
-	].includes(typeof value === "string" ? value : "");
+	["queued", "processing", "retrying", "ready", "failed", "expired"].includes(
+		typeof value === "string" ? value : "",
+	);
 
 const parseManifest = (value: unknown): PrivacyExportManifest | null => {
 	if (
@@ -152,7 +144,9 @@ const parseManifest = (value: unknown): PrivacyExportManifest | null => {
 	return value as unknown as PrivacyExportManifest;
 };
 
-const toStatus = (manifest: PrivacyExportManifest): PrivacyAsyncExportStatus => ({
+const toStatus = (
+	manifest: PrivacyExportManifest,
+): PrivacyAsyncExportStatus => ({
 	jobId: manifest.jobId,
 	status: manifest.status,
 	createdAt: manifest.createdAt,
@@ -192,8 +186,10 @@ const getManifest = async (bucket: R2Bucket, secret: string, key: string) => {
 	}
 };
 
-const deleteKeys = (bucket: R2Bucket, keys: { manifest: string; data: string }) =>
-	bucket.delete([keys.manifest, keys.data]);
+const deleteKeys = (
+	bucket: R2Bucket,
+	keys: { manifest: string; data: string },
+) => bucket.delete([keys.manifest, keys.data]);
 
 const isExpired = (manifest: PrivacyExportManifest, now = Date.now()) =>
 	Date.parse(manifest.expiresAt) <= now;
@@ -342,7 +338,9 @@ const processPrivacyExportMessage = async (
 
 	try {
 		const context = await getContext();
-		const user = await context.internalAdapter.findUserById(message.body.userId);
+		const user = await context.internalAdapter.findUserById(
+			message.body.userId,
+		);
 		if (!user) {
 			await deleteKeys(bucket, keys);
 			message.ack();
@@ -356,7 +354,7 @@ const processPrivacyExportMessage = async (
 			httpMetadata: {
 				contentType: "application/json; charset=utf-8",
 				cacheControl: "no-store",
-				contentDisposition: `attachment; filename="cinaauth-personal-data-${manifest.createdAt.slice(0, 10)}.json"`,
+				contentDisposition: `attachment; filename="cinaseek-personal-data-${manifest.createdAt.slice(0, 10)}.json"`,
 			},
 			customMetadata: {
 				kind: "privacy-export-data",

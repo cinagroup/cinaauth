@@ -8,6 +8,8 @@ const REQUIRED_SECRETS = [
 	"CINAAUTH_PRIVACY_EXPORT_KEY",
 	"CINAAUTH_ERASURE_WEBHOOK_URL",
 	"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+	"CINAADMIN_OIDC_CLIENT_SECRET",
+	"CINAADMIN_OIDC_BRIDGE_SECRET",
 ];
 
 const OPTIONAL_SECRETS = [
@@ -28,6 +30,8 @@ const OPTIONAL_SECRETS = [
 ];
 
 const isDryRun = process.argv.includes("--dry-run");
+const ADMIN_OIDC_CLIENT_SECRET_PREFIX = "cina_cs_";
+const ADMIN_OIDC_CLIENT_SECRET_MIN_PAYLOAD_LENGTH = 32;
 const skipDeliveryReadyCheck =
 	process.env.CINAAUTH_SKIP_DELIVERY_READY_CHECK === "1";
 const allowErasureNotReady = process.argv.includes("--allow-erasure-not-ready");
@@ -37,6 +41,8 @@ const STRONG_SECRETS = new Set([
 	"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 	"CINAAUTH_PRIVACY_EXPORT_KEY",
 	"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+	"CINAADMIN_OIDC_CLIENT_SECRET",
+	"CINAADMIN_OIDC_BRIDGE_SECRET",
 ]);
 
 const fail = (message) => {
@@ -55,6 +61,23 @@ const assertStrong = (name) => {
 	}
 	if (STRONG_SECRETS.has(name) && process.env[name].length < 32) {
 		fail(`${name} must be at least 32 characters`);
+	}
+};
+
+const assertAdminOidcClientSecret = () => {
+	const value = process.env.CINAADMIN_OIDC_CLIENT_SECRET;
+	if (!value.startsWith(ADMIN_OIDC_CLIENT_SECRET_PREFIX)) {
+		fail(
+			`CINAADMIN_OIDC_CLIENT_SECRET must start with ${ADMIN_OIDC_CLIENT_SECRET_PREFIX}`,
+		);
+	}
+	if (
+		value.length - ADMIN_OIDC_CLIENT_SECRET_PREFIX.length <
+		ADMIN_OIDC_CLIENT_SECRET_MIN_PAYLOAD_LENGTH
+	) {
+		fail(
+			`CINAADMIN_OIDC_CLIENT_SECRET payload must be at least ${ADMIN_OIDC_CLIENT_SECRET_MIN_PAYLOAD_LENGTH} characters`,
+		);
 	}
 };
 
@@ -145,6 +168,7 @@ const putSecret = (name) => {
 for (const name of REQUIRED_SECRETS) {
 	assertStrong(name);
 }
+assertAdminOidcClientSecret();
 assertHttpsUrl("CINAAUTH_DELIVERY_WEBHOOK_URL");
 assertHttpsUrl("CINAAUTH_ERASURE_WEBHOOK_URL");
 assertPaired(

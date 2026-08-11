@@ -57,12 +57,42 @@ const entitlementEnforcementFile = join(
 	"src",
 	"entitlement-enforcement.ts",
 );
-const entitlementRuntimeFile = join(
+const entitlementRuntimeFile = join(workerDir, "src", "entitlement-runtime.ts");
+const entitlementLockFile = join(workerDir, "src", "entitlement-lock.ts");
+const superAdminGovernanceFile = join(
 	workerDir,
 	"src",
-	"entitlement-runtime.ts",
+	"super-admin-governance.ts",
 );
-const entitlementLockFile = join(workerDir, "src", "entitlement-lock.ts");
+const superAdminDatabaseInvariantFile = join(
+	workerDir,
+	"src",
+	"super-admin-database-invariant.ts",
+);
+const providerNamespaceInvariantFile = join(
+	workerDir,
+	"src",
+	"provider-namespace-invariant.ts",
+);
+const databaseInvariantsFile = join(workerDir, "src", "database-invariants.ts");
+const adminPluginFile = join(
+	repoRoot,
+	"packages",
+	"cinaauth",
+	"src",
+	"plugins",
+	"admin",
+	"admin.ts",
+);
+const adminSuperAdminGuardFile = join(
+	repoRoot,
+	"packages",
+	"cinaauth",
+	"src",
+	"plugins",
+	"admin",
+	"super-admin.ts",
+);
 const auditRetentionFile = join(workerDir, "src", "audit-retention.ts");
 const oauthConfigFile = join(workerDir, "src", "oauth-config.ts");
 const pluginsFile = join(workerDir, "src", "plugins.ts");
@@ -83,6 +113,11 @@ const oauthRegisterFile = join(
 );
 const databaseFile = join(workerDir, "src", "database.ts");
 const d1MigrationFile = join(workerDir, "src", "d1-migration.ts");
+const scimOwnershipMigrationFile = join(
+	workerDir,
+	"src",
+	"scim-ownership-migration.ts",
+);
 const rateLimitFile = join(workerDir, "src", "rate-limit.ts");
 const rateLimitStorageFile = join(workerDir, "src", "rate-limit-storage.ts");
 const deliveryFile = join(workerDir, "src", "delivery.ts");
@@ -222,12 +257,51 @@ const adminFetcherFile = join(
 	"cinaauth",
 	"fetcher.ts",
 );
+const adminOidcClientFile = join(
+	adminConsoleDir,
+	"src",
+	"lib",
+	"cinaauth",
+	"oidc-client.ts",
+);
+const adminOidcCallbackFile = join(
+	adminConsoleDir,
+	"src",
+	"app",
+	"api",
+	"auth",
+	"oidc",
+	"callback",
+	"route.ts",
+);
+const adminOidcLoginFile = join(
+	adminConsoleDir,
+	"src",
+	"app",
+	"api",
+	"auth",
+	"oidc",
+	"login",
+	"route.ts",
+);
+const adminProvisionSecretsFile = join(
+	adminConsoleDir,
+	"scripts",
+	"provision-secrets.mjs",
+);
 const authWebContractFile = join(
 	repoRoot,
 	"packages",
 	"auth-web-contract",
 	"src",
 	"admin.ts",
+);
+const adminOidcContractFile = join(
+	repoRoot,
+	"packages",
+	"auth-web-contract",
+	"src",
+	"admin-oidc.ts",
 );
 const authEntitlementContractFile = join(
 	repoRoot,
@@ -581,6 +655,12 @@ const entitlementsTs = read(entitlementsFile);
 const entitlementEnforcementTs = read(entitlementEnforcementFile);
 const entitlementRuntimeTs = read(entitlementRuntimeFile);
 const entitlementLockTs = read(entitlementLockFile);
+const superAdminGovernanceTs = read(superAdminGovernanceFile);
+const superAdminDatabaseInvariantTs = read(superAdminDatabaseInvariantFile);
+const providerNamespaceInvariantTs = read(providerNamespaceInvariantFile);
+const databaseInvariantsTs = read(databaseInvariantsFile);
+const adminPluginTs = read(adminPluginFile);
+const adminSuperAdminGuardTs = read(adminSuperAdminGuardFile);
 const auditRetentionTs = read(auditRetentionFile);
 const oauthConfigTs = read(oauthConfigFile);
 const pluginsTs = read(pluginsFile);
@@ -588,6 +668,7 @@ const coreRedirectUriTs = read(coreRedirectUriFile);
 const oauthRegisterTs = read(oauthRegisterFile);
 const databaseTs = read(databaseFile);
 const d1MigrationTs = read(d1MigrationFile);
+const scimOwnershipMigrationTs = read(scimOwnershipMigrationFile);
 const rateLimitTs = read(rateLimitFile);
 const rateLimitStorageTs = read(rateLimitStorageFile);
 const deliveryTs = read(deliveryFile);
@@ -625,7 +706,12 @@ const legacyAdminPage = read(legacyAdminPageFile);
 const adminPackage = readJson(adminPackageFile);
 const adminWrangler = read(adminWranglerFile);
 const adminFetcher = read(adminFetcherFile);
+const adminOidcClient = read(adminOidcClientFile);
+const adminOidcCallback = read(adminOidcCallbackFile);
+const adminOidcLogin = read(adminOidcLoginFile);
+const adminProvisionSecrets = read(adminProvisionSecretsFile);
 const authWebContract = read(authWebContractFile);
+const adminOidcContract = read(adminOidcContractFile);
 const authEntitlementContractTs = read(authEntitlementContractFile);
 const stripeSchemaTs = read(stripeSchemaFile);
 const authCapabilitiesTs = read(authCapabilitiesFile);
@@ -843,7 +929,7 @@ checkIncludesAll(
 	[
 		"getAuditRetentionPolicy",
 		'FROM "subscription"',
-		'"subscription"."status" IN (\\\'active\\\', \\\'trialing\\\')',
+		"\"subscription\".\"status\" IN (\\'active\\', \\'trialing\\')",
 		"retentionMode: retention.mode",
 	],
 	indexFile,
@@ -929,6 +1015,127 @@ checkIncludesAll(
 	],
 	indexFile,
 	"API key, organization, enterprise identity, OAuth client, and consent mutations must fail closed unless an authoritative recent session is present",
+);
+checkIncludesAll(
+	superAdminGovernanceTs,
+	[
+		'"/api/auth/admin/set-role"',
+		'"/api/auth/admin/update-user"',
+		'"/api/auth/admin/remove-user"',
+		'"/api/auth/delete-user"',
+		'"/api/auth/delete-user/callback"',
+		'"/api/auth/delete-anonymous-user"',
+		'"/api/auth/scim/v2/Users/"',
+		"pg_advisory_xact_lock",
+		"SUPER_ADMIN_GOVERNANCE_QUEUE_LOCK_KEY",
+		"assertDatabaseInvariantReady",
+		"consumeSCIMRateLimit",
+		"canonicalizeGovernancePath",
+		"CF-Connecting-IP",
+		'code: "ADMIN_GOVERNANCE_RATE_LIMITED"',
+		'code: "YOU_CANNOT_REMOVE_LAST_SUPER_ADMIN"',
+		'code: "ADMIN_GOVERNANCE_UNAVAILABLE"',
+	],
+	superAdminGovernanceFile,
+	"all super-admin removal and account-deletion sinks must use authenticated, rate-limited, invariant-checked deployment governance",
+);
+checkIncludesAll(
+	superAdminDatabaseInvariantTs,
+	[
+		"SUPER_ADMIN_DATABASE_INVARIANT_LOCK_KEY",
+		"LANGUAGE plpgsql VOLATILE",
+		"BEFORE INSERT OR UPDATE OR DELETE",
+		"pg_advisory_xact_lock",
+		"TG_RELID::regclass",
+		"FOR KEY SHARE",
+		"YOU_CANNOT_REMOVE_LAST_SUPER_ADMIN",
+		"ANONYMOUS_USER_CANNOT_BE_SUPER_ADMIN",
+		"ANONYMOUS_SUPER_ADMIN_MUST_BE_DEMOTED_BEFORE_DELETION",
+		'admin_candidate."isAnonymous" IS NOT TRUE',
+		'admin_candidate."isAnonymous" IS TRUE',
+		"getSuperAdminDatabaseInvariantReadiness",
+	],
+	superAdminDatabaseInvariantFile,
+	"the final super-admin invariant must execute inside the actual PostgreSQL user mutation and reject invalid current data",
+);
+check(
+	superAdminGovernanceTs.includes(
+		'"cinaauth:super-admin-governance:queue:v1"',
+	) &&
+		superAdminDatabaseInvariantTs.includes(
+			'"cinaauth:super-admin-governance:invariant:v1"',
+		),
+	"the Worker queue and mutation-transaction super-admin invariant must use distinct advisory-lock keys",
+);
+checkIncludesAll(
+	providerNamespaceInvariantTs,
+	[
+		"cinaauth_provider_namespace",
+		"installProviderNamespaceInvariant",
+		"getProviderNamespaceInvariantReadiness",
+		"Provider namespace collision",
+		'"account"',
+		'"ssoProvider"',
+		'"scimProvider"',
+		"configuredProviderIds",
+	],
+	providerNamespaceInvariantFile,
+	"provider ids must be claimed by a persistent transaction-local PostgreSQL invariant",
+);
+checkIncludesAll(
+	databaseInvariantsTs,
+	[
+		"DATABASE_INVARIANT_IDS",
+		"SUPER_ADMIN_DATABASE_INVARIANT_ID",
+		"PROVIDER_NAMESPACE_INVARIANT_ID",
+		"installDatabaseInvariants",
+		"getDatabaseInvariantReadiness",
+		"BEGIN",
+		"ROLLBACK",
+		"Database invariant verification failed",
+	],
+	databaseInvariantsFile,
+	"database invariants must install transactionally and verify before commit",
+);
+checkIncludesAll(
+	indexTs,
+	[
+		"handleSuperAdminGovernedRequest",
+		"consumeSCIMRateLimit:",
+		"query: { disableCookieCache: true }",
+		"handle: () => c.var.auth.handler(c.req.raw)",
+		'"cinaauth.super_admin_governance.failed"',
+		"installDatabaseInvariants",
+		"getDatabaseInvariantReadiness",
+		"getConfiguredAccountProviderIds",
+		"hasDatabaseInvariantTables",
+		"requiredInvariants",
+		"invariants.ok",
+	],
+	indexFile,
+	"the production catch-all, migration, and readiness paths must preserve responses while enforcing database invariants",
+);
+checkIncludesAll(
+	adminPluginTs,
+	[
+		"getAuthoritativeSessionFromCtx",
+		'context.path === "/delete-user"',
+		'context.path === "/delete-user/callback"',
+		"delete:",
+		"assertSuperAdminCanBeDeleted",
+	],
+	adminPluginFile,
+	"the Admin plugin must guard self-service endpoints before destruction and retain a database deletion backstop",
+);
+checkIncludesAll(
+	adminSuperAdminGuardTs,
+	[
+		'role?.split(",").includes(expected)',
+		"internalAdapter.listUsers",
+		"YOU_CANNOT_REMOVE_LAST_SUPER_ADMIN",
+	],
+	adminSuperAdminGuardFile,
+	"all Admin deletion guards must share the exact role-membership invariant",
 );
 checkIncludesAll(
 	securityCenterPageTs,
@@ -1145,7 +1352,7 @@ checkIncludesAll(
 		"useSCIMTokenGenerateMutation",
 		"useSCIMProviderRevokeMutation",
 		"Copy this SCIM token now",
-		"CinaAuth stores only a hash",
+		"CinaSeek stores only a hash",
 		"router.refresh",
 	],
 	enterpriseConnectionsComponentFile,
@@ -1497,8 +1704,9 @@ checkIncludesAll(
 		"getPrivacyDeletionReceipt",
 		"getPrivacyDeletionReceiptFilename",
 		"PRIVACY_EXPORT_CATEGORIES",
-		"cinaauth-personal-data-",
-		"cinaauth-deletion-receipt-",
+		"/^cinaauth-personal-data-/i",
+		"cinaseek-personal-data-",
+		"cinaseek-deletion-receipt-",
 	],
 	privacyCenterPolicyFile,
 	"privacy download policy must constrain export and signed deletion receipt parsing and filenames",
@@ -2061,11 +2269,19 @@ checkIncludesAll(
 	indexFile,
 	"runtime readiness must cover required production inputs",
 );
-checkIncludes(
+checkIncludesAll(
 	indexTs,
-	"withNoStore(await c.var.auth.handler(c.req.raw))",
+	[
+		"withNoStore(",
+		"await handleSuperAdminGovernedRequest({",
+		"handle: () => c.var.auth.handler(c.req.raw)",
+	],
 	indexFile,
-	"every auth response, including sessions and tokens, must disable intermediary caching",
+	"every catch-all auth response must pass through super-admin governance and disable intermediary caching",
+);
+check(
+	(indexTs.match(/c\.var\.auth\.handler\(c\.req\.raw\)/g) ?? []).length === 1,
+	`${rel(indexFile)} must delegate the raw catch-all request to auth.handler only through the governed handler callback`,
 );
 checkIncludesAll(
 	indexTs,
@@ -2073,6 +2289,7 @@ checkIncludesAll(
 		'app.get("/api/ready"',
 		'app.get("/api/migrate"',
 		'app.post("/api/migrate"',
+		'app.post("/api/migrate/scim-provider-ownership"',
 		'app.get("/api/migrate/d1"',
 		'app.post("/api/migrate/d1"',
 		"getCutoverState",
@@ -2091,6 +2308,42 @@ checkIncludesAll(
 	],
 	indexFile,
 	"protected operations and no-store responses must stay wired",
+);
+checkIncludesAll(
+	scimOwnershipMigrationTs,
+	[
+		"BEGIN ISOLATION LEVEL SERIALIZABLE",
+		"SET LOCAL statement_timeout",
+		"provider_has_accounts",
+		"provider_already_owned",
+		"provider_id_collision",
+		"owner_not_authorized",
+		"RESERVED_ACCOUNT_PROVIDER_IDS",
+		'"credential"',
+		'"email-otp"',
+		'FROM "ssoProvider"',
+		"reservedProviderIds",
+		'\"organizationId\" IS NULL',
+		'\"userId\" IS NULL',
+		'INSERT INTO \"auditLog\"',
+		"createSCIMOwnershipToken",
+		"storedToken",
+	],
+	scimOwnershipMigrationFile,
+	"legacy SCIM ownership claims must stay namespace-safe, explicit, zero-account, non-rebinding, token-rotating, and audited",
+);
+checkIncludesAll(
+	indexTs,
+	[
+		"getProductionSocialProviders",
+		"getConfiguredAccountProviderIds",
+		"parseProductionGenericOAuthConfig",
+		"reservedProviderIds",
+		'case "provider_id_collision"',
+		'if (result.status !== "provider_id_collision")',
+	],
+	indexFile,
+	"the SCIM ownership migration route must reject configured account-provider collisions before mutation or audit",
 );
 check(
 	!indexTs.includes("CINAUTH_ADMIN_SERVICE_KEY"),
@@ -2248,6 +2501,7 @@ checkIncludesAll(
 		"sweepExpiredPrivacyExports",
 		"message.ack()",
 		"message.retry(",
+		"cinaseek-personal-data-",
 	],
 	privacyExportFile,
 	"privacy export generation must stream through Queue into per-object SSE-C encrypted R2 objects with retry and retention handling",
@@ -2492,6 +2746,8 @@ checkIncludesAll(
 		'test "${#CINAAUTH_PRIVACY_EXPORT_KEY}" -ge 32',
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
 		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+		"CINAADMIN_OIDC_CLIENT_SECRET",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
 		"CINAAUTH_ERASURE_STORAGE_SECRET",
 		"CINAAUTH_ERASURE_TARGETS",
 		"CINAAUTH_ENTITLEMENT_CONFIG",
@@ -2586,6 +2842,63 @@ checkIncludesAll(
 	"admin server reads and mutations must resolve the Service Binding",
 );
 checkIncludesAll(
+	adminOidcContract,
+	[
+		'ADMIN_OIDC_CLIENT_ID = "cinaseek-admin-console"',
+		"ADMIN_OIDC_REDIRECT_URI",
+		"ADMIN_OIDC_RESOURCE",
+	],
+	adminOidcContractFile,
+	"Admin OIDC identifiers and exact redirect URI must be shared",
+);
+checkIncludesAll(
+	adminOidcClient,
+	[
+		"ClientSecretBasic",
+		"calculatePKCECodeChallenge",
+		"validateApplicationLevelSignature",
+		"processUserInfoResponse",
+		"resource: ADMIN_OIDC_RESOURCE",
+	],
+	adminOidcClientFile,
+	"Admin must implement confidential Authorization Code, PKCE, and OIDC validation",
+);
+checkIncludesAll(
+	adminOidcLogin,
+	[
+		"generateRandomState",
+		"generateRandomNonce",
+		"generateRandomCodeVerifier",
+		"httpOnly: true",
+		'sameSite: "lax"',
+	],
+	adminOidcLoginFile,
+	"Admin OIDC start route must bind PKCE and nonce to an HttpOnly transaction",
+);
+checkIncludesAll(
+	adminOidcCallback,
+	[
+		"/api/auth/admin-oidc/session",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
+		"toHostOnlyCookie",
+		"admin_forbidden",
+	],
+	adminOidcCallbackFile,
+	"Admin callback must bridge tokens server-side and enforce administrator role",
+);
+checkIncludesAll(
+	adminProvisionSecrets,
+	[
+		"CINAADMIN_OIDC_CLIENT_SECRET",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
+		"CINAADMIN_OIDC_TRANSACTION_SECRET",
+		"spawnSync",
+		"input: value",
+	],
+	adminProvisionSecretsFile,
+	"Admin OIDC secrets must be provisioned through stdin",
+);
+checkIncludesAll(
 	authWebContract,
 	[
 		"ADMIN_CONSOLE_ROLES",
@@ -2605,6 +2918,10 @@ checkIncludesAll(
 		"pnpm run test",
 		"pnpm run build:cf",
 		"cloudflare/wrangler-action@v3",
+		"CINAADMIN_OIDC_CLIENT_SECRET",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
+		"CINAADMIN_OIDC_TRANSACTION_SECRET",
+		"pnpm run provision:secrets",
 	],
 	adminWorkflowFile,
 	"admin console CI must deploy independently",
@@ -2661,6 +2978,8 @@ checkIncludesAll(
 		"CINAAUTH_PRIVACY_EXPORT_KEY",
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
 		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+		"CINAADMIN_OIDC_CLIENT_SECRET",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
 		"migrationToken",
 		"authorizedReadiness",
 		"evaluateRuntimeCapabilities",
@@ -2820,6 +3139,8 @@ checkIncludesAll(
 		"CINAAUTH_PRIVACY_EXPORT_KEY",
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
 		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+		"CINAADMIN_OIDC_CLIENT_SECRET",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
 		"--allow-erasure-not-ready",
 		"CINAAUTH_SKIP_DELIVERY_READY_CHECK",
 		"CLOUDFLARE_TURNSTILE_SITE_KEY",
@@ -2862,6 +3183,8 @@ checkIncludesAll(
 		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
 		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+		"CINAADMIN_OIDC_CLIENT_SECRET",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
 		"pnpm --dir workers/auth-api run check:production",
 		"pnpm --dir workers/auth-api run check:cloudflare",
 		"CINAAUTH_HYPERDRIVE_ID",
@@ -2877,6 +3200,16 @@ checkIncludesAll(
 		"CLOUDFLARE_TURNSTILE_SECRET_KEY",
 		"/api/migrate",
 		"/api/migrate/d1",
+		"/api/migrate/scim-provider-ownership",
+		"requiredInvariants",
+		"database.invariants",
+		"delete-anonymous-user",
+		"60 attempts per",
+		"multi-row",
+		"already_migrated",
+		"plaintext `scimToken` is returned",
+		"configured social or Generic",
+		"before an ownership update, token rotation, or migration audit",
 		"maintenance",
 		"cinaauth_cutover_history",
 		"/api/ready",

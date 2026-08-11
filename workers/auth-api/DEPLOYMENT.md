@@ -6,6 +6,8 @@ This Worker serves `https://auth.cinaseek.ai` with three production primitives:
 - `RateLimitDurableObject` provides 256 deterministic SQLite-backed shards.
 - CinaAuth `rateLimit.customStorage.consume()` applies the atomic limiter to
   every client request, with `/sign-in/*` fixed at 5 attempts per 60 seconds.
+- A Worker queue lock plus a transaction-local PostgreSQL trigger protects
+  every route that can remove a `super_admin` role.
 - A dedicated Queue generates large privacy exports into a private R2 bucket;
   every manifest and data object uses a derived 32-byte SSE-C key and expires.
 
@@ -38,6 +40,32 @@ Use a dedicated `cinaauth-pg` PostgreSQL database and role. Do not reuse the
 Disable Hyperdrive query caching for this configuration: authentication,
 sessions, revocations, permissions, and read-after-write flows require current
 data. Connection pooling and accelerated connection setup remain enabled.
+
+The Worker uses the same PostgreSQL origin as the coordination authority for
+last-`super_admin` governance. A deployment queue transaction serializes
+`admin/set-role`, `admin/update-user`, `admin/remove-user`, `delete-user`, the
+actual `delete-user/callback` sink, `delete-anonymous-user`, and SCIM user
+DELETE. A separate versioned trigger then takes a different advisory lock and
+checks the final invariant in the same transaction and connection as the
+actual `user` mutation. The distinct keys avoid an A/B-connection deadlock;
+the trigger remains authoritative if the outer queue connection is lost.
+Ordinary requests and `admin/stop-impersonating` do not wait on either lock.
+
+The trigger is designed for the production single-user sinks above. Do not use
+ad hoc multi-row `UPDATE`, `DELETE`, `TRUNCATE`, disabled triggers, or direct
+role writes as an administrator-management API. Promote a replacement exact
+`super_admin` in one committed request before demoting or deleting the old one.
+Missing Hyperdrive, invariant readiness, lock acquisition, valid role-count
+state, or database access returns `503 ADMIN_GOVERNANCE_UNAVAILABLE` before the
+Worker invokes a protected handler. A database-trigger rejection rolls back
+the actual mutation even if the outer connection failed after dispatch.
+
+SCIM user DELETE first accepts only a plausible bounded bearer encoding, then
+uses the `RATE_LIMITER` Durable Object's IP-and-route bucket (60 attempts per
+minute) before opening Hyperdrive. Missing or malformed credentials continue
+to the SCIM plugin's authoritative 401 path without opening the governance
+database. A limiter denial returns no-store 429 with `Retry-After`; a missing
+binding or RPC failure returns no-store 503. Never log the bearer value.
 
 ```powershell
 pnpm --dir workers/auth-api exec wrangler hyperdrive update `
@@ -144,6 +172,13 @@ Required values are supplied through environment variables and written by
 - `CINAAUTH_DELIVERY_WEBHOOK_URL`
 - `CINAAUTH_DELIVERY_WEBHOOK_SECRET`
 - `CINAAUTH_PRIVACY_EXPORT_KEY` (dedicated, at least 32 random characters)
+- `CINAADMIN_OIDC_CLIENT_SECRET` (shared only with the Admin Worker)
+- `CINAADMIN_OIDC_BRIDGE_SECRET` (distinct Service Binding bridge secret)
+
+The Admin Worker additionally owns `CINAADMIN_OIDC_TRANSACTION_SECRET`. All
+three Admin OIDC values must be distinct random values of at least 32
+characters. The client and bridge secrets must match across the Auth and Admin
+Workers, while the transaction secret must never be provisioned to Auth.
 
 Optional plugin inputs include Turnstile, Google One Tap, Google/GitHub social
 OAuth, Generic OAuth, Stripe, pairwise OAuth identifiers, and the admin audit
@@ -321,6 +356,23 @@ Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Headers $headers
 Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Method Post -Headers $headers
 ```
 
+The POST applies the framework schema and then installs both deployment-owned
+PostgreSQL invariants in one additional transaction: the final-super-admin
+trigger and the persistent account/SSO/SCIM provider-namespace registry. It
+verifies both before committing. Installation fails if there is no non-anonymous
+exact `super_admin`, if an anonymous exact `super_admin` exists, or if current
+provider rows/configuration collide. Repair those data conditions explicitly;
+do not weaken or skip the invariant. Preview and apply responses list
+`requiredInvariants`, and their `invariants` object reports installed/missing
+IDs without exposing provider IDs or credentials.
+
+Every new Worker version intentionally keeps all `/api/auth/*` routes at 503
+until the POST migration has installed and verified the versioned invariants.
+`/api/migrate` and `/api/ready` remain reachable with the migration token. This
+short fail-closed rollout window prevents new or rotated Generic OAuth/social
+configuration from racing an older database namespace policy. Run the preview,
+apply, and readiness checks immediately after deployment.
+
 When enabling organization teams and dynamic roles on an existing database,
 deploy the migration-capable Worker while the runtime still uses the base
 organization plugin. Then preview and apply the one intentionally exposed
@@ -367,6 +419,77 @@ the origin provider; verify a restore point before applying a production schema
 change. D1 Time Travel protects only the retained rollback source, not the new
 PostgreSQL database.
 
+### Claim a legacy SCIM provider safely
+
+When `providerOwnership.enabled` is enabled, a legacy `scimProvider` row whose
+`organizationId` and `userId` are both null remains hidden from normal session
+management. Do not temporarily disable ownership or edit those columns by hand.
+The Auth Worker exposes one operations-only endpoint protected by
+`CINAAUTH_MIGRATION_TOKEN`:
+
+```powershell
+$headers = @{ Authorization = "Bearer $env:CINAAUTH_MIGRATION_TOKEN" }
+$claim = @{
+  providerId = "verified-legacy-provider-id"
+  organizationId = "destination-organization-id"
+  ownerUserId = "verified-owner-user-id"
+} | ConvertTo-Json
+
+# Preview is the default and does not modify the provider.
+$preview = Invoke-RestMethod `
+  https://auth.cinaseek.ai/api/migrate/scim-provider-ownership `
+  -Method Post -Headers $headers -ContentType "application/json" -Body $claim
+$preview
+```
+
+Preview returns `status: ready` only when the exact provider exists, both owner
+fields are null, no `account` row uses that provider id, the destination
+organization and owner exist, and that user is an `owner` or `admin` member of
+the organization. A provider with any existing owner field or any provisioned
+account fails closed; the endpoint never moves accounts, memberships, or a
+connection between tenants.
+
+The provider id must also be absent from the shared account-provider namespace.
+Built-in ids such as `credential` and `email-otp`, configured social or Generic
+OAuth ids, and ids present in `ssoProvider` are rejected in both preview and
+apply mode before an ownership update, token rotation, or migration audit. Do
+not rename another identity provider as part of this claim workflow.
+
+The database registry keeps provider-id claims after an SSO or SCIM provider is
+deleted, so a later account provider cannot silently reuse that historical
+namespace. Same-kind delete-and-recreate remains supported. Registration,
+SCIM token creation, and ownership migration retain per-provider Worker
+coordination and Durable Object throttling, while the PostgreSQL triggers are
+the final transaction-local collision guard.
+
+After independently checking the provider and destination, apply the same
+request with the explicit switch:
+
+```powershell
+$apply = @{
+  providerId = "verified-legacy-provider-id"
+  organizationId = "destination-organization-id"
+  ownerUserId = "verified-owner-user-id"
+  apply = $true
+} | ConvertTo-Json
+
+$result = Invoke-RestMethod `
+  https://auth.cinaseek.ai/api/migrate/scim-provider-ownership `
+  -Method Post -Headers $headers -ContentType "application/json" -Body $apply
+$newSCIMToken = $result.scimToken
+```
+
+Apply uses a serializable PostgreSQL transaction, row/statement timeouts, a
+conditional null-owner update, and an audit row committed with the claim. It
+rotates the bearer so the encoded token is bound to the destination
+organization; only its SHA-256 is stored. The plaintext `scimToken` is returned
+once in the successful apply response and is never written to logs or audit
+metadata. Transfer it directly to the approved IdP secret store, then clear the
+PowerShell variable. Repeating the exact claim is idempotent and returns
+`already_migrated` without issuing another token. If the one-time value is lost,
+rotate through the normal organization-authorized SCIM token flow; do not rerun
+the ownership claim expecting the token to be revealed again.
+
 ## 7. Verify readiness and rate limiting
 
 ```powershell
@@ -378,9 +501,11 @@ Invoke-WebRequest https://auth.cinaseek.ai/api/auth/.well-known/openid-configura
 ```
 
 `/api/ready` returns 200 only when runtime secrets, Hyperdrive, PostgreSQL base
-tables, Queue delivery, and the Durable Object limiter binding are ready. It
+tables, the D1 cutover marker, every database invariant and its current data
+coverage, Queue delivery, and the Durable Object limiter binding are ready.
+The `database.invariants` object lists required, installed, and missing IDs. It
 returns `Cache-Control: no-store` and includes `VERSION_METADATA`, but never
-returns secret values or the PostgreSQL connection string.
+returns provider IDs, secret values, or the PostgreSQL connection string.
 
 OIDC Discovery is canonical at `/.well-known/openid-configuration`; the
 `/api/auth/.well-known/openid-configuration` compatibility alias returns the
