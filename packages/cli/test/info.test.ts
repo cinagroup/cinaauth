@@ -45,7 +45,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"cinaauth": "^1.0.0",
+					cinaauth: "^1.0.0",
 				},
 			}),
 		);
@@ -80,7 +80,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"cinaauth": "^1.0.0",
+					cinaauth: "^1.0.0",
 					next: "^14.0.0",
 					react: "^18.0.0",
 				},
@@ -148,7 +148,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"cinaauth": "^1.0.0",
+					cinaauth: "^1.0.0",
 				},
 			}),
 		);
@@ -187,7 +187,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"cinaauth": "^1.0.0",
+					cinaauth: "^1.0.0",
 					next: "^14.0.0",
 					react: "^18.0.0",
 				},
@@ -229,7 +229,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"cinaauth": "^1.0.0",
+					cinaauth: "^1.0.0",
 					"@prisma/client": "^5.0.0",
 					kysely: "^0.26.0",
 				},
@@ -271,7 +271,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"cinaauth": "^1.0.0",
+					cinaauth: "^1.0.0",
 				},
 			}),
 		);
@@ -318,7 +318,7 @@ describe("info command", () => {
 				name: "test-project",
 				version: "1.0.0",
 				dependencies: {
-					"cinaauth": "^1.0.0",
+					cinaauth: "^1.0.0",
 				},
 			}),
 		);

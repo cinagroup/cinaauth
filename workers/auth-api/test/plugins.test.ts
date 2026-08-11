@@ -3,13 +3,17 @@ import {
 	ENTITLEMENT_LIMITS,
 } from "@cinaauth/auth-web-contract";
 import { describe, expect, it } from "vitest";
+import {
+	getConfiguredSocialProviders,
+	getProductionSocialProviders,
+} from "../src/auth";
 import type { CloudflareBindings } from "../src/env";
-import { getConfiguredSocialProviders } from "../src/auth";
 import {
 	canManageOrganizationBilling,
 	createAuthPlugins,
 	JWT_GRACE_PERIOD_SECONDS,
 	JWT_ROTATION_INTERVAL_SECONDS,
+	roles,
 } from "../src/plugins";
 
 const getOrganizationSchema = (advancedOrganization: boolean) => {
@@ -78,6 +82,26 @@ describe("organization schema mode", () => {
 	});
 });
 
+describe("authoritative Admin role permissions", () => {
+	it("keeps security_admin scoped to reversible security operations", () => {
+		expect(roles.security_admin.authorize({ user: ["ban"] }).success).toBe(
+			true,
+		);
+		expect(
+			roles.security_admin.authorize({ session: ["revoke"] }).success,
+		).toBe(true);
+		expect(roles.security_admin.authorize({ user: ["update"] }).success).toBe(
+			false,
+		);
+		expect(roles.security_admin.authorize({ user: ["set-role"] }).success).toBe(
+			false,
+		);
+		expect(
+			roles.security_admin.authorize({ user: ["set-password"] }).success,
+		).toBe(false);
+	});
+});
+
 describe("OIDC signing and social provider configuration", () => {
 	it("uses ES256 with bounded rotation and grace periods", () => {
 		const plugin = createAuthPlugins({} as CloudflareBindings).find(
@@ -111,15 +135,37 @@ describe("OIDC signing and social provider configuration", () => {
 			google: {
 				clientId: "google-client-id",
 				clientSecret: "google-secret",
-				redirectURI:
-					"https://accounts.cinaseek.ai/api/auth/callback/google",
+				redirectURI: "https://accounts.cinaseek.ai/api/auth/callback/google",
 			},
 			github: {
 				clientId: "github-client-id",
 				clientSecret: "github-secret",
-				redirectURI:
-					"https://accounts.cinaseek.ai/api/auth/callback/github",
+				redirectURI: "https://accounts.cinaseek.ai/api/auth/callback/github",
 			},
+		});
+	});
+
+	it("keeps Google and GitHub ids reserved when credentials are temporarily absent", () => {
+		expect(getProductionSocialProviders({})).toEqual({
+			google: {
+				clientId: "provider-id-reservation-only",
+				clientSecret: "provider-id-reservation-only",
+				enabled: false,
+			},
+			github: {
+				clientId: "provider-id-reservation-only",
+				clientSecret: "provider-id-reservation-only",
+				enabled: false,
+			},
+		});
+		expect(
+			getProductionSocialProviders({
+				GOOGLE_CLIENT_ID: "google-client-id",
+				GOOGLE_CLIENT_SECRET: "google-secret",
+			}),
+		).toMatchObject({
+			google: { clientId: "google-client-id", clientSecret: "google-secret" },
+			github: { enabled: false },
 		});
 	});
 });

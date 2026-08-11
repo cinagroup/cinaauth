@@ -1,15 +1,16 @@
-import type { SVGProps } from "react";
-import Image from "next/image";
+import Image, { type ImageProps } from "next/image";
 
-export const Logo = (props: SVGProps<any>) => {
-  return (
-    <Image
-      src="/logo.png"
-      alt="CinaAuth"
-      width={28}
-      height={28}
-      className="w-5 h-5"
-      priority
-    />
-  );
+type LogoProps = Omit<ImageProps, "src" | "alt" | "width" | "height"> & {
+	size?: number;
 };
+
+export const Logo = ({ size = 28, ...props }: LogoProps) => (
+	<Image
+		src="/logo.png"
+		alt="CinaSeek"
+		width={size}
+		height={size}
+		priority
+		{...props}
+	/>
+);

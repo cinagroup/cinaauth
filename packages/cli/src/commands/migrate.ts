@@ -1,12 +1,9 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import {
-	createTelemetry,
-	getTelemetryAuthConfig,
-} from "@cinaauth/telemetry";
+import { createTelemetry, getTelemetryAuthConfig } from "@cinaauth/telemetry";
+import chalk from "chalk";
 import { getAdapter } from "cinaauth/db/adapter";
 import { getMigrations } from "cinaauth/db/migration";
-import chalk from "chalk";
 import { Command } from "commander";
 import prompts from "prompts";
 import yoctoSpinner from "yocto-spinner";

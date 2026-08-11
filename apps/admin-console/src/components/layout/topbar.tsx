@@ -1,6 +1,5 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import {
 	Check,
 	LogOut,
@@ -9,20 +8,13 @@ import {
 	Moon,
 	PanelLeftClose,
 	PanelLeftOpen,
-	Shield,
 	Sun,
 	User,
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { signOutAndRedirect } from "@/lib/cinaauth/sign-out";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { useTheme } from "next-themes";
+import { AdminBrand } from "@/components/layout/admin-brand";
+import { CommandMenu } from "@/components/layout/command-menu";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -31,8 +23,16 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { CommandMenu } from "@/components/layout/command-menu";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { useAdminSession } from "@/hooks/use-admin-session";
+import { signOutAndRedirect } from "@/lib/cinaauth/sign-out";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function Topbar({
 	sidebarCollapsed,
@@ -53,8 +53,8 @@ export function Topbar({
 		.toUpperCase();
 
 	return (
-		<header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-canvas px-3 sm:px-4">
-			<div className="flex min-w-0 items-center gap-2">
+		<header className="flex h-14 min-w-0 shrink-0 items-center justify-between gap-2 overflow-hidden border-b border-hairline bg-canvas px-3 sm:gap-3 sm:px-4">
+			<div className="flex min-w-0 flex-1 items-center gap-2">
 				<Button
 					variant="ghost"
 					size="icon"
@@ -64,14 +64,11 @@ export function Topbar({
 				>
 					<Menu size={17} />
 				</Button>
-				<div className="mr-1 flex min-w-0 items-center gap-2 lg:hidden">
-					<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-ink text-canvas-soft">
-						<Shield size={15} />
-					</span>
-					<span className="hidden truncate text-[13px] font-semibold text-ink min-[360px]:inline">
-						CinaAdmin
-					</span>
-				</div>
+				<AdminBrand
+					className="mr-1 lg:hidden"
+					labelClassName="hidden min-[520px]:flex"
+					priority
+				/>
 				<Button
 					variant="ghost"
 					size="icon"

@@ -1,10 +1,11 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { fetchAdminResponse } from "@/lib/client-api";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 /**
@@ -27,7 +28,7 @@ export function BatchActionBar({
 	const runBatch = async (action: "ban" | "delete") => {
 		setLoading(true);
 		try {
-			const r = await fetch("/api/admin/users/batch", {
+			const r = await fetchAdminResponse("/api/admin/users/batch", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ action, userIds: selectedIds }),
@@ -90,6 +91,10 @@ export function BatchActionBar({
 				title={t("batch.delete.title")}
 				description={t("batch.delete.confirm", { count: selectedIds.length })}
 				danger
+				confirmationText={`DELETE ${selectedIds.length}`}
+				confirmationLabel={t("common.typeToConfirm", {
+					value: `DELETE ${selectedIds.length}`,
+				})}
 				onConfirm={() => runBatch("delete")}
 			/>
 			<Button variant="ghost" size="sm" onClick={onClear}>

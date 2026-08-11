@@ -39,6 +39,9 @@ describe("db", async () => {
 	it("db hooks", async () => {
 		let callback = false;
 		const { client } = await getTestInstance({
+			session: {
+				storeSessionInDatabase: true,
+			},
 			databaseHooks: {
 				user: {
 					create: {
@@ -235,7 +238,10 @@ describe("db", async () => {
 		const hookUserDeleteBefore = vi.fn();
 		const hookUserDeleteAfter = vi.fn();
 
-		const { client } = await getTestInstance({
+		const { auth, client } = await getTestInstance({
+			session: {
+				storeSessionInDatabase: true,
+			},
 			user: {
 				deleteUser: {
 					enabled: true,
@@ -289,5 +295,46 @@ describe("db", async () => {
 			}),
 			expect.any(Object),
 		);
+
+		const context = await auth.$context;
+		expect(await context.internalAdapter.findUserById(userId!)).not.toBeNull();
+		expect(await context.internalAdapter.findAccounts(userId!)).toHaveLength(1);
+		expect(await context.internalAdapter.listSessions(userId!)).toHaveLength(1);
+	});
+
+	it("fails closed before cascading when the user delete snapshot cannot be read", async () => {
+		const storageDelete = vi.fn();
+		const { auth, signInWithTestUser } = await getTestInstance({
+			session: { storeSessionInDatabase: true },
+			secondaryStorage: {
+				set() {},
+				get() {
+					return null;
+				},
+				delete: storageDelete,
+			},
+		});
+		const { user } = await signInWithTestUser();
+		const context = await auth.$context;
+		const adapter = context.adapter;
+		const originalFindMany = adapter.findMany.bind(adapter);
+		vi.spyOn(adapter, "findMany").mockImplementation(async (input) => {
+			if (input.model === "user") {
+				throw new Error("user snapshot unavailable");
+			}
+			return originalFindMany(input);
+		});
+		vi.spyOn(adapter, "transaction").mockImplementation(async (callback) =>
+			callback(adapter),
+		);
+		const deleteMany = vi.spyOn(adapter, "deleteMany");
+		storageDelete.mockClear();
+
+		await expect(context.internalAdapter.deleteUser(user.id)).rejects.toThrow(
+			"user snapshot unavailable",
+		);
+
+		expect(storageDelete).not.toHaveBeenCalled();
+		expect(deleteMany).not.toHaveBeenCalled();
 	});
 });

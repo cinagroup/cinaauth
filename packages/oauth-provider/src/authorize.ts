@@ -1,10 +1,10 @@
 import type { GenericEndpointContext } from "@cinaauth/core";
 import { isBrowserFetchRequest } from "@cinaauth/core/utils/fetch-metadata";
 import { isLoopbackHost, isLoopbackIP } from "@cinaauth/core/utils/host";
+import { APIError } from "better-call";
 import { getSessionFromCtx } from "cinaauth/api";
 import { generateRandomString, makeSignature } from "cinaauth/crypto";
 import type { Verification } from "cinaauth/db";
-import { APIError } from "better-call";
 import { oAuthState } from "./oauth";
 import {
 	canonicalizeOAuthQueryParams,
@@ -21,8 +21,8 @@ import type {
 } from "./types";
 
 import {
-	clientAllowsGrant,
 	authorizeOAuthClient,
+	clientAllowsGrant,
 	getClient,
 	getJwtPlugin,
 	isPKCERequired,
@@ -281,12 +281,7 @@ export async function authorizeEndpoint(
 		);
 	}
 	try {
-		await authorizeOAuthClient(
-			opts,
-			client,
-			"authorize",
-			"authorization_code",
-		);
+		await authorizeOAuthClient(opts, client, "authorize", "authorization_code");
 	} catch {
 		return handleRedirect(
 			ctx,

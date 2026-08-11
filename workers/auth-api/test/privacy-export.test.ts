@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import type { PrivacyExportMessage } from "../src/privacy-export";
 import {
 	createR2PrivacyExportProvider,
 	handlePrivacyExportBatch,
-	type PrivacyExportMessage,
 } from "../src/privacy-export";
-
-const encoder = new TextEncoder();
 
 const createMemoryBucket = () => {
 	type Entry = {
@@ -55,9 +53,7 @@ const createMemoryBucket = () => {
 		) => {
 			putCalls.push({ key, options });
 			const bytes = value
-				? new Uint8Array(
-						await new Response(value as BodyInit).arrayBuffer(),
-					)
+				? new Uint8Array(await new Response(value as BodyInit).arrayBuffer())
 				: new Uint8Array();
 			const entry: Entry = {
 				bytes,
@@ -208,14 +204,14 @@ describe("privacy export R2 provider", () => {
 					findMany: async <T>({ model }: { model: string }) =>
 						(model === "user"
 							? [
-								{
-									id: request.subject.id,
-									email: request.subject.email,
-									name: "Stream Subject",
-									password: "must-not-export",
-									token: "must-not-export",
-								},
-							]
+									{
+										id: request.subject.id,
+										email: request.subject.email,
+										name: "Stream Subject",
+										password: "must-not-export",
+										token: "must-not-export",
+									},
+								]
 							: []) as T[],
 				},
 				internalAdapter: {
@@ -251,5 +247,9 @@ describe("privacy export R2 provider", () => {
 			call.key.endsWith(".data.json"),
 		);
 		expect(dataPut?.options?.ssecKey).toBeInstanceOf(ArrayBuffer);
+		expect(dataPut?.options?.httpMetadata).toMatchObject({
+			contentDisposition:
+				'attachment; filename="cinaseek-personal-data-2099-08-09.json"',
+		});
 	});
 });

@@ -1,9 +1,9 @@
 "use client";
 
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { signOutAndRedirect } from "@/lib/cinaauth/sign-out";
 import { LogOut, ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { signOutAndRedirect } from "@/lib/cinaauth/sign-out";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function ForbiddenPage() {
 	const { t } = useI18n();

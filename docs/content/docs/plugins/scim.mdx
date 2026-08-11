@@ -132,7 +132,7 @@ A SCIM token is a simple bearer token that you can generate:
   ```
 </APIMethod>
 
-A `SCIM` token is always restricted to a provider, thus you are required to specify a `providerId`. This can be any provider your instance supports (e.g one of the built-in providers such as `credentials` or an external provider registered through an external plugin such as `@cinaauth/sso`).
+A `SCIM` token is always restricted to a provider, thus you are required to specify a `providerId`. Use an identifier dedicated to the SCIM connection. It must not collide with a built-in account provider, a social or Generic OAuth provider, an SSO connection, or another account-producing provider.
 Additionally, when the `organization` plugin is registered, you can optionally restrict the token to an organization via the `organizationId`.
 
 <Callout>
@@ -222,6 +222,41 @@ When enabled:
 * Personal connections store the creating user's `userId`
 * Only the owner can regenerate, list, inspect, or delete those personal connections later
 * Organization-scoped connections continue to use the organization role checks configured by `requiredRole`
+
+<Callout type="warn">
+  Enabling ownership is fail-closed for legacy personal connections whose
+  `userId` is missing: they are hidden from list responses and cannot be read,
+  regenerated, or deleted through the management API. Before enabling this
+  option in production, migrate each legacy connection to its verified owner or
+  replace it through an authenticated, audited administrator workflow. Do not
+  assign an owner based only on a caller-supplied provider id. A safe claim flow
+  should be server-only, preview by default, verify the destination organization
+  and an owner/admin member, reject connections that have already provisioned
+  accounts, reject identifiers reserved by built-in, social, or SSO account
+  providers, refuse any existing or partial ownership, rotate the bearer token,
+  and commit the ownership update with its audit record. Provider-id collision
+  checks must run before any ownership update or migration audit. This is
+  deliberately an application migration concern rather than a public SCIM
+  plugin endpoint.
+</Callout>
+
+<Callout type="info">
+  A configuration-only collision check is not a durable namespace boundary. In
+  a PostgreSQL deployment that combines SCIM, SSO, social login, and Generic
+  OAuth, enforce the claim in the same database transaction that writes
+  `account`, `ssoProvider`, or `scimProvider`. The CinaSeek production Worker
+  uses a persistent provider registry with a primary key and write triggers;
+  deletion leaves a same-kind tombstone so SCIM token rotation can recreate its
+  connection while a retired social or Generic OAuth id cannot later be claimed
+  by SSO or SCIM. Its outer per-provider advisory lock is only a traffic queue,
+  not the database invariant.
+
+  Seed built-in ids, fixed production social ids, and every currently configured
+  provider during the protected database migration. Add or rename Generic OAuth
+  providers through a fail-closed maintenance and migration rollout before the
+  new configuration accepts traffic. Do not treat removal from configuration as
+  permission to reuse an identifier for a different provider kind.
+</Callout>
 
 Once enabled, make sure you migrate the database schema (again).
 

@@ -43,6 +43,7 @@ model Session {
   activeOrganizationId String?  @db.Text
 
   @@unique([token])
+  @@index([expiresAt])
   @@index([userId(length: 191)])
   @@map("session")
 }

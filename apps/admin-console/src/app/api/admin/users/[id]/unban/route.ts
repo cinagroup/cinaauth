@@ -1,10 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
-import {
-	ADMIN_AND_SECURITY,
-	requireAdmin,
-	requireRole,
-} from "@/lib/auth-guard";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdmin, requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /** POST /api/admin/users/[id]/unban */
 export async function POST(
@@ -15,18 +14,23 @@ export async function POST(
 	const session = await requireAdmin(request).catch((e: Response) => e);
 	if (session instanceof Response) return session;
 	try {
-		requireRole(session, ADMIN_AND_SECURITY);
+		requireAdminControlPermission(session, "identity.user.ban");
 	} catch (e) {
 		return e as Response;
 	}
 	// Consume request body to prevent request smuggling.
 	// No validation needed: this is an action-only route (no body expected).
 	await request.json().catch(() => ({}));
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (e) {
+		return e as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
 	const res = await cinaauthFetch("/admin/unban-user", {
 		method: "POST",
 		body: { userId: id },
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }

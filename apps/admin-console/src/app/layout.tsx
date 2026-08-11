@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -8,8 +8,14 @@ import { I18nProvider } from "@/lib/i18n/i18n-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
-	title: "CinaGroup Admin",
-	description: "CinaGroup user & audit management console",
+	title: "CinaSeek Admin",
+	description: "CinaSeek identity operations and audit management console",
+	applicationName: "CinaSeek Admin",
+	icons: {
+		icon: "/favicon.ico",
+		shortcut: "/favicon.ico",
+		apple: "/logo.png",
+	},
 };
 
 export default function RootLayout({

@@ -138,7 +138,7 @@ describe("server auth API", () => {
 			fetch: async () => jsonResponse({ error: "Forbidden" }, 403),
 		});
 		await expect(failedApi.listSessions()).rejects.toThrow(
-			"CinaAuth request failed with HTTP 403",
+			"CinaSeek request failed with HTTP 403",
 		);
 	});
 

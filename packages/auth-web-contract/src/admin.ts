@@ -1,7 +1,4 @@
-export const ADMIN_CONSOLE_ROLES = [
-	"super_admin",
-	"security_admin",
-] as const;
+export const ADMIN_CONSOLE_ROLES = ["super_admin", "security_admin"] as const;
 
 export type AdminConsoleRole = (typeof ADMIN_CONSOLE_ROLES)[number];
 export type AdminRole =
@@ -9,6 +6,16 @@ export type AdminRole =
 	| "admin"
 	| "user"
 	| (string & Record<never, never>);
+
+/** Parse the comma-separated role representation used by the Admin plugin. */
+export const getAdminConsoleRoles = (
+	role: string | null | undefined,
+): AdminConsoleRole[] =>
+	role
+		?.split(",")
+		.filter((candidate): candidate is AdminConsoleRole =>
+			(ADMIN_CONSOLE_ROLES as readonly string[]).includes(candidate),
+		) ?? [];
 
 export const ADMIN_PERMISSION_STATEMENT = {
 	user: [
@@ -26,19 +33,22 @@ export const ADMIN_PERMISSION_STATEMENT = {
 	],
 	session: ["list", "revoke", "delete"],
 	stats: ["read"],
+	passkey: ["list", "revoke", "update"],
 } as const;
 
 export const ADMIN_ROLE_PERMISSIONS = {
 	super_admin: ADMIN_PERMISSION_STATEMENT,
 	security_admin: {
-		user: ["list", "ban", "get", "update"],
+		user: ["list", "ban", "get"],
 		session: ["list", "revoke", "delete"],
 		stats: ["read"],
+		passkey: ["list", "revoke"],
 	},
 	user: {
 		user: [],
 		session: [],
 		stats: [],
+		passkey: [],
 	},
 } as const;
 
@@ -82,8 +92,9 @@ const SUPER_ADMIN_ACCESS: AdminAccess = {
 export const getAdminAccess = (
 	role: string | null | undefined,
 ): AdminAccess => {
-	if (role === "super_admin") return SUPER_ADMIN_ACCESS;
-	if (role === "security_admin") return SECURITY_ADMIN_ACCESS;
+	const roles = getAdminConsoleRoles(role);
+	if (roles.includes("super_admin")) return SUPER_ADMIN_ACCESS;
+	if (roles.includes("security_admin")) return SECURITY_ADMIN_ACCESS;
 	return NO_ADMIN_ACCESS;
 };
 
@@ -93,6 +104,8 @@ export type AdminSession = {
 	email?: string;
 	name?: string;
 	impersonatedBy?: string | null;
+	/** Organization currently selected in the authoritative CinaAuth session. */
+	activeOrganizationId?: string | null;
 };
 
 export type StandardResponse<T> = {

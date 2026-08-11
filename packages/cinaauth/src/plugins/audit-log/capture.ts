@@ -1,6 +1,7 @@
 import { createAuthMiddleware } from "@cinaauth/core/api";
 import { APIError } from "@cinaauth/core/error";
 import { getSessionFromCtx } from "../../api";
+import { getEndpointResponse } from "../../utils/plugin-helper";
 
 /**
  * Context shape for audit capture: enough to read request headers and the
@@ -138,6 +139,37 @@ export async function writeAuditLog(
 }
 
 /**
+ * Resolve the result of an endpoint for audit capture without assuming every
+ * successful response is `200 application/json`. SCIM creates use 201 and the
+ * audit export returns CSV, while 204 responses legitimately have no body.
+ */
+export async function resolveAuditCaptureResponse<T>(ctx: {
+	context: { returned?: unknown };
+}): Promise<{ ok: boolean; response: T | null }> {
+	const returned = ctx.context.returned;
+	if (returned instanceof Response) {
+		if (!returned.ok) return { ok: false, response: null };
+		const contentType =
+			returned.headers.get("content-type")?.toLowerCase() ?? "";
+		if (returned.status === 204 || !contentType.includes("json")) {
+			return { ok: true, response: null };
+		}
+		try {
+			return {
+				ok: true,
+				response: (await returned.clone().json()) as T,
+			};
+		} catch {
+			// The endpoint completed successfully; malformed or empty response data
+			// only means target enrichment is unavailable for this audit row.
+			return { ok: true, response: null };
+		}
+	}
+	const response = await getEndpointResponse<T>(ctx);
+	return { ok: response !== null, response };
+}
+
+/**
  * Session-enforcing middleware for audit endpoints. Mirrors the admin plugin's
  * `adminMiddleware` shape (ensures a valid session or throws UNAUTHORIZED)
  * without reaching into the admin plugin's private symbols. Per-endpoint
@@ -162,10 +194,12 @@ export const auditSessionMiddleware = createAuthMiddleware(async (ctx) => {
  * an explicit allow-list — NOT a catch-all — so future endpoints are never
  * audited by accident and cannot conflict.
  */
-export const CAPTURE_PATH_MAP: Record<
-	string,
-	{ category: string; action: string }
-> = {
+interface CaptureMapping {
+	category: string;
+	action: string;
+}
+
+const CAPTURE_PATH_MAP: Record<string, CaptureMapping> = {
 	// core auth
 	"/sign-in/email": { category: "auth", action: "user.login" },
 	"/sign-in/social": { category: "auth", action: "user.login_social" },
@@ -291,6 +325,22 @@ export const CAPTURE_PATH_MAP: Record<
 		action: "admin.user_set_password",
 	},
 	"/admin/impersonate-user": { category: "admin", action: "admin.impersonate" },
+	"/admin/stop-impersonating": {
+		category: "admin",
+		action: "admin.stop_impersonating",
+	},
+	"/admin/delete-user-passkey": {
+		category: "authenticator",
+		action: "admin.passkey_revoke",
+	},
+	"/admin/update-user-passkey": {
+		category: "authenticator",
+		action: "admin.passkey_update",
+	},
+	"/admin/reset-2fa": {
+		category: "admin",
+		action: "admin.user_reset_2fa",
+	},
 	"/admin/revoke-user-session": {
 		category: "session",
 		action: "session.revoke",
@@ -299,6 +349,82 @@ export const CAPTURE_PATH_MAP: Record<
 		category: "session",
 		action: "session.revoke_all",
 	},
+	// SSO provider and verified-domain administration. Sign-in initiation is
+	// intentionally excluded: a redirect being issued is not a completed login.
+	"/sso/register": {
+		category: "integration",
+		action: "sso.provider_create",
+	},
+	"/sso/update-provider": {
+		category: "integration",
+		action: "sso.provider_update",
+	},
+	"/sso/delete-provider": {
+		category: "integration",
+		action: "sso.provider_delete",
+	},
+	"/sso/request-domain-verification": {
+		category: "integration",
+		action: "sso.domain_verification_request",
+	},
+	"/sso/verify-domain": {
+		category: "integration",
+		action: "sso.domain_verify",
+	},
+	// SCIM connection lifecycle. User provisioning routes are method-sensitive
+	// and therefore live in CAPTURE_METHOD_PATH_MAP below.
+	"/scim/generate-token": {
+		category: "credential",
+		action: "scim.token_generate",
+	},
+	"/scim/delete-provider-connection": {
+		category: "integration",
+		action: "scim.connection_delete",
+	},
+	// Subscription operations currently exposed by the Stripe plugin and used
+	// by the account/admin applications when the deployment enables billing.
+	"/subscription/upgrade": {
+		category: "billing",
+		action: "subscription.upgrade",
+	},
+	"/subscription/cancel": {
+		category: "billing",
+		action: "subscription.cancel",
+	},
+	"/subscription/restore": {
+		category: "billing",
+		action: "subscription.restore",
+	},
+	"/subscription/billing-portal": {
+		category: "billing",
+		action: "subscription.billing_portal",
+	},
+	// This is the Auth plugin's real CSV endpoint. CSV produced solely inside an
+	// application proxy must instead write explicitly through POST /audit/log.
+	"/audit/export": { category: "audit", action: "audit.export_csv" },
+};
+
+/**
+ * Routes whose path is shared by read and write operations. The HTTP method is
+ * part of the allow-list key so a SCIM GET can never be recorded as a mutation.
+ */
+const CAPTURE_METHOD_PATH_MAP: Record<string, CaptureMapping> = {
+	"POST /scim/v2/Users": {
+		category: "provisioning",
+		action: "scim.user_create",
+	},
+	"PUT /scim/v2/Users/:userId": {
+		category: "provisioning",
+		action: "scim.user_update",
+	},
+	"PATCH /scim/v2/Users/:userId": {
+		category: "provisioning",
+		action: "scim.user_update",
+	},
+	"DELETE /scim/v2/Users/:userId": {
+		category: "provisioning",
+		action: "scim.user_delete",
+	},
 };
 
 /**
@@ -306,10 +432,15 @@ export const CAPTURE_PATH_MAP: Record<
  * capture whitelist. Accepts undefined for type-safety with cinaauth's hook
  * matcher context (whose `path` may be undefined).
  */
-export function matchCapturePath(path: string | undefined): {
-	category: string;
-	action: string;
-} | null {
+export function matchCapturePath(
+	path: string | undefined,
+	method?: string,
+): CaptureMapping | null {
 	if (!path) return null;
+	if (method) {
+		const methodMapping =
+			CAPTURE_METHOD_PATH_MAP[`${method.toUpperCase()} ${path}`];
+		if (methodMapping) return methodMapping;
+	}
 	return CAPTURE_PATH_MAP[path] ?? null;
 }

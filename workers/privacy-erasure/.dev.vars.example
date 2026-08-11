@@ -1,4 +1,6 @@
 # Never place production values in this file.
+# Legacy local fallback only; production uses the Secrets Store V2 binding.
 CINAAUTH_ERASURE_WEBHOOK_SECRET=
 CINAAUTH_ERASURE_STORAGE_SECRET=
+# Optional migration fallback only; post-deploy configuration is preferred.
 CINAAUTH_ERASURE_TARGETS=[]

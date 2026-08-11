@@ -1,29 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Download, Plus } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import {
 	getCoreRowModel,
 	getFilteredRowModel,
 	useReactTable,
-	type ColumnDef,
-	type RowSelectionState,
 } from "@tanstack/react-table";
-import { DataTable } from "@/components/data-table/data-table";
+import { Download, Plus } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { BatchActionBar } from "@/components/data-table/batch-action-bar";
-import { FilterBar, type FilterState } from "@/components/data-table/filter-bar";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Pagination } from "@/components/ui/pagination";
-import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table/data-table";
+import type { FilterState } from "@/components/data-table/filter-bar";
+import { FilterBar } from "@/components/data-table/filter-bar";
 import { PageHeader } from "@/components/layout/page-header";
 import { RoleGuard } from "@/components/role-guard";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson } from "@/lib/client-api";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Pagination } from "@/components/ui/pagination";
 import type { UserDTO } from "@/lib/cinaauth/dto";
+import { downloadAdminCsv, fetchAdminJson } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 const PAGE_SIZE = 20;
 
@@ -40,12 +40,8 @@ export default function UsersPage() {
 			const params = new URLSearchParams({
 				limit: String(PAGE_SIZE),
 				offset: String(offset),
-				...(filter.searchField
-					? { searchField: filter.searchField }
-					: {}),
-				...(filter.searchValue
-					? { searchValue: filter.searchValue }
-					: {}),
+				...(filter.searchField ? { searchField: filter.searchField } : {}),
+				...(filter.searchValue ? { searchValue: filter.searchValue } : {}),
 			});
 			return fetchAdminJson<{
 				ok: boolean;
@@ -132,11 +128,13 @@ export default function UsersPage() {
 	return (
 		<div>
 			<PageHeader title={t("users.title")}>
-				<Button asChild variant="secondary" size="sm">
-					<a href={exportHref}>
-						<Download size={15} />
-						{t("common.export")}
-					</a>
+				<Button
+					variant="secondary"
+					size="sm"
+					onClick={() => void downloadAdminCsv(exportHref, "users.csv")}
+				>
+					<Download size={15} />
+					{t("common.export")}
 				</Button>
 				<RoleGuard allow={["super_admin"]}>
 					<Button asChild variant="primary" size="sm">

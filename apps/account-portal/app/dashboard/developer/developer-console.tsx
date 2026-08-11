@@ -140,7 +140,7 @@ const mutateAuth = async <T,>(path: string, body: unknown): Promise<T> => {
 	}
 	if (!response.ok) {
 		throw new Error(
-			getApiError(payload, `CinaAuth returned HTTP ${response.status}`),
+			getApiError(payload, `CinaSeek returned HTTP ${response.status}`),
 		);
 	}
 	return payload as T;
@@ -417,7 +417,7 @@ export function DeveloperConsole({
 					{ client_id: client.clientId },
 				);
 				if (!response.client_secret) {
-					throw new Error("CinaAuth did not return the newly rotated secret.");
+					throw new Error("CinaSeek did not return the newly rotated secret.");
 				}
 				showSecret(client.clientId, response.client_secret, "rotated");
 				toast.success("Client secret rotated");
@@ -472,8 +472,8 @@ export function DeveloperConsole({
 							Developer Console
 						</h1>
 						<p className="text-sm text-muted-foreground">
-							Register OAuth applications against the authoritative CinaAuth
-							service.
+							Register OAuth applications against the authoritative CinaSeek
+							Identity service.
 						</p>
 					</div>
 				</div>
@@ -541,7 +541,7 @@ export function DeveloperConsole({
 					<ShieldCheck className="h-4 w-4" />
 					<AlertTitle>Protected developer access</AlertTitle>
 					<AlertDescription>
-						Ownership is enforced by CinaAuth. Every write also requires a
+						Ownership is enforced by CinaSeek. Every write also requires a
 						verified account and a fresh session.
 					</AlertDescription>
 				</Alert>
@@ -897,7 +897,7 @@ export function DeveloperConsole({
 					<DialogHeader>
 						<DialogTitle>Copy this client secret now</DialogTitle>
 						<DialogDescription>
-							This value is shown only once. CinaAuth stores a one-way hash and
+							This value is shown only once. CinaSeek stores a one-way hash and
 							cannot reveal it later.
 						</DialogDescription>
 					</DialogHeader>

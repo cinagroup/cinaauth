@@ -154,8 +154,10 @@ describe("privacy-center asynchronous personal data export", () => {
 	};
 
 	it("creates, reports, downloads, and cancels a subject-scoped export", async () => {
-		const createdAt = "2026-08-09T00:00:00.000Z";
-		const expiresAt = "2026-08-10T00:00:00.000Z";
+		const now = Date.now();
+		const createdAt = new Date(now - 60_000).toISOString();
+		const readyAt = new Date(now - 30_000).toISOString();
+		const expiresAt = new Date(now + 86_400_000).toISOString();
 		const provider = createProvider({
 			jobId: "privacy-job-1234567890",
 			status: "queued",
@@ -192,7 +194,7 @@ describe("privacy-center asynchronous personal data export", () => {
 			status: "ready",
 			createdAt,
 			expiresAt,
-			readyAt: "2026-08-09T00:01:00.000Z",
+			readyAt,
 			size: 19,
 		});
 		const status = await auth.api.getAsyncPersonalDataExport!({
@@ -324,7 +326,7 @@ describe("privacy-center account deletion evidence", () => {
 		});
 		expect(response.status).toBe(200);
 		expect(response.headers.get("cache-control")).toBe("no-store");
-			expect(await response.json()).toMatchObject({
+		expect(await response.json()).toMatchObject({
 			canDelete: true,
 			policyVersion: "2026-08-09",
 			requiredProcessors: [{ id: "customer-support" }],
@@ -495,9 +497,11 @@ describe("privacy-center account deletion evidence", () => {
 			...payload.deletionReceipt,
 			deletion: {
 				...payload.deletionReceipt.deletion,
-				processors: payload.deletionReceipt.deletion.processors?.map(
-					(processor) => ({ ...processor, status: "not-applicable" }),
-				) ?? [],
+				processors:
+					payload.deletionReceipt.deletion.processors?.map((processor) => ({
+						...processor,
+						status: "not-applicable",
+					})) ?? [],
 			},
 		};
 		expect(
@@ -569,7 +573,8 @@ describe("privacy-center account deletion evidence", () => {
 			payload.deletionReceipt.deletion.retentionExceptions[0];
 		expect(retentionSnapshot?.purgeNoLaterThan).toBe(
 			new Date(
-				Date.parse(payload.deletionReceipt.issuedAt) + 90 * 24 * 60 * 60 * 1_000,
+				Date.parse(payload.deletionReceipt.issuedAt) +
+					90 * 24 * 60 * 60 * 1_000,
 			).toISOString(),
 		);
 		const serialized = JSON.stringify(payload.deletionReceipt);

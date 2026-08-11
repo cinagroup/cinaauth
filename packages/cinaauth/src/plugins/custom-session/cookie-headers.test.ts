@@ -22,9 +22,6 @@ describe("custom session cookie headers", () => {
 			getSetCookie: () => ["session=one", "cache=two"],
 		} as unknown as Headers;
 
-		expect(getSetCookieHeaders(headers)).toEqual([
-			"session=one",
-			"cache=two",
-		]);
+		expect(getSetCookieHeaders(headers)).toEqual(["session=one", "cache=two"]);
 	});
 });

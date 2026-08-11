@@ -14,6 +14,35 @@ import * as z from "zod";
 import { getEndpoints } from "../../api";
 import { getAuthTables } from "../../db";
 
+export interface OpenAPIInfoOptions {
+	/**
+	 * The public title included in the generated schema. When configured, the
+	 * same title is also used by the Scalar reference page.
+	 *
+	 * @default "CinaAuth"
+	 */
+	title?: string | undefined;
+	/**
+	 * The public description included in the generated schema and reference page.
+	 *
+	 * @default "API Reference for your CinaAuth Instance"
+	 */
+	description?: string | undefined;
+}
+
+export interface OpenAPIInfo {
+	title: string;
+	description: string;
+}
+
+export const resolveOpenAPIInfo = (
+	options: OpenAPIInfoOptions = {},
+): OpenAPIInfo => ({
+	title: options.title ?? "CinaAuth",
+	description:
+		options.description ?? "API Reference for your CinaAuth Instance",
+});
+
 export interface Path {
 	get?: OpenAPIOperation | undefined;
 	post?: OpenAPIOperation | undefined;
@@ -846,7 +875,11 @@ function cloneOpenAPIValue<T>(value: T): T {
 	return value;
 }
 
-export async function generator(ctx: AuthContext, options: CinaAuthOptions) {
+export async function generator(
+	ctx: AuthContext,
+	options: CinaAuthOptions,
+	infoOptions?: OpenAPIInfoOptions | undefined,
+) {
 	const baseEndpoints = getEndpoints(ctx, {
 		...options,
 		plugins: [],
@@ -1075,8 +1108,7 @@ export async function generator(ctx: AuthContext, options: CinaAuthOptions) {
 	const res = {
 		openapi: "3.1.1",
 		info: {
-			title: "CinaAuth",
-			description: "API Reference for your CinaAuth Instance",
+			...resolveOpenAPIInfo(infoOptions),
 			version: "1.1.0",
 		},
 		components: {

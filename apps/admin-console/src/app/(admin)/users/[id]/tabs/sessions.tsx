@@ -1,19 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-	getCoreRowModel,
-	useReactTable,
-	type ColumnDef,
-} from "@tanstack/react-table";
-import { DataTable } from "@/components/data-table/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DataTable } from "@/components/data-table/data-table";
 import { RoleGuard } from "@/components/role-guard";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { useI18n } from "@/lib/i18n/i18n-context";
 import type { SessionDTO } from "@/lib/cinaauth/dto";
-import { fetchAdminJson } from "@/lib/client-api";
+import { fetchAdminJson, fetchAdminResponse } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function SessionsTab({ userId }: { userId: string }) {
 	const { t } = useI18n();
@@ -31,7 +28,7 @@ export function SessionsTab({ userId }: { userId: string }) {
 	const sessions = data ?? [];
 
 	const revokeAll = async () => {
-		const r = await fetch("/api/admin/sessions/revoke", {
+		const r = await fetchAdminResponse("/api/admin/sessions/revoke", {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ userId }),

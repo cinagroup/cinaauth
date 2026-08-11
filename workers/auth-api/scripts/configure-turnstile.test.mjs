@@ -9,9 +9,14 @@ import {
 } from "./configure-turnstile.mjs";
 
 test("uses a unique and sorted production hostname allow-list", () => {
-	assert.deepEqual(parseTurnstileDomains(), [...DEFAULT_TURNSTILE_DOMAINS].sort());
 	assert.deepEqual(
-		parseTurnstileDomains("demo-auth.cinagroup.com,AUTH.CINASEEK.AI,demo-auth.cinagroup.com"),
+		parseTurnstileDomains(),
+		[...DEFAULT_TURNSTILE_DOMAINS].sort(),
+	);
+	assert.deepEqual(
+		parseTurnstileDomains(
+			"demo-auth.cinagroup.com,AUTH.CINASEEK.AI,demo-auth.cinagroup.com",
+		),
 		["auth.cinaseek.ai", "demo-auth.cinagroup.com"],
 	);
 });
@@ -41,8 +46,10 @@ test("requires an unambiguous Cloudflare account", () => {
 
 test("never chooses between duplicate widget names", () => {
 	assert.equal(
-		selectTurnstileWidget([{ name: "CinaAuth Production", sitekey: "one" }], "CinaAuth Production")
-			?.sitekey,
+		selectTurnstileWidget(
+			[{ name: "CinaAuth Production", sitekey: "one" }],
+			"CinaAuth Production",
+		)?.sitekey,
 		"one",
 	);
 	assert.throws(

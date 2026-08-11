@@ -1,7 +1,7 @@
+import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
 import type { OrganizationAuditPage } from "@/data/organization/organization-audit";
 import type {
 	OrganizationDynamicRoleSummary,
@@ -18,7 +18,7 @@ import { OrganizationConsole } from "./organization-console";
 
 export const metadata: Metadata = {
 	title: "Organization Console",
-	description: "Manage CinaAuth organization members, roles, and invitations.",
+	description: "Manage CinaSeek organization members, roles, and invitations.",
 };
 
 const toIsoString = (value: Date | string) => new Date(value).toISOString();

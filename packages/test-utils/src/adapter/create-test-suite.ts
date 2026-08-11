@@ -1,10 +1,5 @@
 ﻿import type { CinaAuthOptions } from "@cinaauth/core";
-import type {
-	Account,
-	Session,
-	User,
-	Verification,
-} from "@cinaauth/core/db";
+import type { Account, Session, User, Verification } from "@cinaauth/core/db";
 import { getAuthTables } from "@cinaauth/core/db";
 import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import {
@@ -318,9 +313,7 @@ export const createTestSuite = <
 									return res as any;
 								},
 								consumeOne: async <T>(
-									args: Parameters<
-										DBAdapter<CinaAuthOptions>["consumeOne"]
-									>[0],
+									args: Parameters<DBAdapter<CinaAuthOptions>["consumeOne"]>[0],
 								) => {
 									adapter = await helpers.adapter();
 									return adapter.consumeOne<T>(args);

@@ -1,3 +1,4 @@
+import type { APIError } from "better-call";
 import { createAuthClient } from "cinaauth/client";
 import { generateRandomString } from "cinaauth/crypto";
 import {
@@ -6,7 +7,6 @@ import {
 } from "cinaauth/oauth2";
 import { jwt } from "cinaauth/plugins/jwt";
 import { getTestInstance } from "cinaauth/test";
-import type { APIError } from "better-call";
 import { beforeAll, describe, expect, it } from "vitest";
 import { oauthProviderClient } from "./client";
 import { oauthProvider } from "./oauth";

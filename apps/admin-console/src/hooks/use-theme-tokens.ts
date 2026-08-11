@@ -19,7 +19,7 @@ export function useThemeTokens() {
 	useEffect(() => setMounted(true), []);
 
 	// Re-run whenever resolvedTheme flips (dark/light/system resolve).
-	const themeKey = mounted ? resolvedTheme ?? "dark" : "ssr";
+	const themeKey = mounted ? (resolvedTheme ?? "dark") : "ssr";
 
 	const v = (name: string, fallback: string) => {
 		if (typeof window === "undefined") return fallback;

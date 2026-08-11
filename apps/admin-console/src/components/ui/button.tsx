@@ -1,5 +1,6 @@
 import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "@/lib/cn";
 
@@ -9,8 +10,7 @@ const buttonVariants = cva(
 		variants: {
 			variant: {
 				// Ink-filled primary CTA — the brand's single conversion colour.
-				primary:
-					"bg-ink text-canvas hover:bg-ink/90 active:bg-ink",
+				primary: "bg-ink text-canvas hover:bg-ink/90 active:bg-ink",
 				secondary:
 					"bg-canvas text-ink border border-hairline hover:bg-canvas-soft-2",
 				outline:

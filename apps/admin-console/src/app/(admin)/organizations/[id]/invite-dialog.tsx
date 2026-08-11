@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { fetchAdminResponse } from "@/lib/client-api";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function InviteDialog({ orgId }: { orgId: string }) {
@@ -25,11 +26,14 @@ export function InviteDialog({ orgId }: { orgId: string }) {
 	const invite = async () => {
 		setInviting(true);
 		try {
-			const r = await fetch(`/api/admin/organizations/${orgId}/invite`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ email, role }),
-			});
+			const r = await fetchAdminResponse(
+				`/api/admin/organizations/${orgId}/invite`,
+				{
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ email, role }),
+				},
+			);
 			if (!r.ok) {
 				toast.error(t("toast.actionFailed"));
 				return false;
@@ -48,7 +52,11 @@ export function InviteDialog({ orgId }: { orgId: string }) {
 
 	return (
 		<ConfirmDialog
-			trigger={<Button variant="primary" size="sm">{t("organizations.invite")}</Button>}
+			trigger={
+				<Button variant="primary" size="sm">
+					{t("organizations.invite")}
+				</Button>
+			}
 			title={t("organizations.invite")}
 			confirmText={inviting ? t("common.inviting") : t("common.send")}
 			onConfirm={invite}

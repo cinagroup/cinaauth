@@ -1,6 +1,10 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { hasAdminRole, resolveAdminSession } from "@/lib/cinaauth/session";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { resolveAdminSession } from "@/lib/cinaauth/session";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /**
  * DELETE /api/admin/api-keys/[id] — delete an API key.
@@ -11,18 +15,28 @@ export async function DELETE(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const session = await resolveAdminSession(request);
-	if (!session || !hasAdminRole(session.role) || session.role !== "super_admin") {
+	if (!session) {
 		return NextResponse.json({ ok: false }, { status: 403 });
 	}
-	// Consume request body to prevent request smuggling.
-	// No validation needed: this is an action-only route (no body expected).
-	await request.json().catch(() => ({}));
+	try {
+		requireAdminControlPermission(session, "integration.api-key.revoke");
+	} catch (error) {
+		return error as Response;
+	}
 	const { id } = await params;
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (error) {
+		return error as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
 	const res = await cinaauthFetch(`/api-key/delete`, {
 		method: "POST",
 		body: { keyId: id },
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, {
+		status: adminUpstreamResponseStatus(res),
+		headers: { "Cache-Control": "no-store" },
+	});
 }

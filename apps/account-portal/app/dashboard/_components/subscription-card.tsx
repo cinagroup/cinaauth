@@ -1,8 +1,8 @@
 ﻿"use client";
 
+import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
 import { ArrowUpFromLine, CreditCard, RefreshCcw } from "lucide-react";
 import { useId, useState } from "react";
-import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
 import { SubscriptionTierLabel } from "@/components/subscription-tier";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

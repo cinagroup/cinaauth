@@ -1,6 +1,6 @@
+import type { BetterFetch } from "@better-fetch/fetch";
 import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import type { DBFieldAttribute } from "@cinaauth/core/db";
-import type { BetterFetch } from "@better-fetch/fetch";
 import { atom } from "nanostores";
 import { useAuthQuery } from "../../client";
 import type {

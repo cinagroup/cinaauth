@@ -236,7 +236,9 @@ export async function deleteSSOProvider(providerId: string): Promise<void> {
 		throw new Error(getErrorMessage(error, "Unable to delete SSO provider"));
 	}
 	if (getBooleanField(data, "success") !== true) {
-		throw new Error("CinaAuth did not confirm SSO provider deletion");
+		throw new Error(
+			"CinaSeek identity service did not confirm SSO provider deletion",
+		);
 	}
 }
 
@@ -289,7 +291,9 @@ export async function requestSSODomainVerification(
 	}
 	const token = getStringField(data, "domainVerificationToken");
 	if (!token) {
-		throw new Error("CinaAuth did not return domain verification material");
+		throw new Error(
+			"CinaSeek identity service did not return domain verification material",
+		);
 	}
 	return token;
 }
@@ -317,7 +321,9 @@ export async function generateSCIMToken({
 	}
 	const token = getStringField(data, "scimToken");
 	if (!token) {
-		throw new Error("CinaAuth did not return the one-time SCIM token");
+		throw new Error(
+			"CinaSeek identity service did not return the one-time SCIM token",
+		);
 	}
 	return token;
 }
@@ -334,7 +340,9 @@ export async function revokeSCIMProvider(providerId: string): Promise<void> {
 		throw new Error(getErrorMessage(error, "Unable to revoke the SCIM token"));
 	}
 	if (getBooleanField(data, "success") !== true) {
-		throw new Error("CinaAuth did not confirm SCIM token revocation");
+		throw new Error(
+			"CinaSeek identity service did not confirm SCIM token revocation",
+		);
 	}
 }
 

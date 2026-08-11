@@ -31,7 +31,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
 					);
 				}, 1000);
 			}
-		} catch (error) {
+		} catch (_error) {
 			// Silently ignore electron-related errors in web context
 		}
 	}, []);
@@ -39,7 +39,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
 		try {
 			const id = authClient.ensureElectronRedirect();
 			return () => clearInterval(id);
-		} catch (error) {
+		} catch (_error) {
 			// Silently ignore electron-related errors in web context
 		}
 	}, []);

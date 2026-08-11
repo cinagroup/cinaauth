@@ -83,10 +83,10 @@ export async function listUsers(
 		offset?: number;
 	},
 ): Promise<Page<UserDTO>> {
-	const res = await cinaauthFetch<{ users: Record<string, unknown>[]; total: number }>(
-		`/admin/list-users${qs(params)}`,
-		{ cookie },
-	);
+	const res = await cinaauthFetch<{
+		users: Record<string, unknown>[];
+		total: number;
+	}>(`/admin/list-users${qs(params)}`, { cookie });
 	if (!res.ok || !res.data) {
 		throw new Error(res.error?.message ?? "listUsers failed");
 	}

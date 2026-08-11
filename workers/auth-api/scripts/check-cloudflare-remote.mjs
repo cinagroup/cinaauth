@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkAuthReadiness } from "./check-auth-readiness.mjs";
 import {
 	evaluateDeliveryCapabilityParity,
 	evaluateRuntimeCapabilities,
@@ -21,10 +22,34 @@ const REQUIRED_WORKER_SECRETS = [
 	"CINAAUTH_SECRET",
 	"CINAAUTH_MIGRATION_TOKEN",
 	"CINAAUTH_DELIVERY_WEBHOOK_URL",
-	"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 	"CINAAUTH_PRIVACY_EXPORT_KEY",
 	"CINAAUTH_ERASURE_WEBHOOK_URL",
-	"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+];
+const SECRETS_STORE_BINDINGS = [
+	{
+		name: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
+	},
+	{
+		name: "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2",
+	},
+	{
+		name: "CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINAADMIN_OIDC_CLIENT_SECRET_V2",
+	},
+	{
+		name: "CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINAADMIN_OIDC_BRIDGE_SECRET_V2",
+	},
+];
+const SERVICE_BINDINGS = [
+	{ name: "CINAAUTH_DELIVERY_SERVICE", service: "cinaauth-delivery" },
+	{ name: "CINAAUTH_ERASURE_SERVICE", service: "cinaauth-privacy-erasure" },
 ];
 const OPTIONAL_PLUGIN_INPUT_GROUPS = [
 	{
@@ -323,31 +348,79 @@ const checkQueues = async () => {
 	}
 };
 
-const checkServiceBindings = async () => {
-	const expected = config.services?.find(
-		(binding) => binding.binding === "CINAAUTH_DELIVERY_SERVICE",
-	);
-	if (expected?.service !== "cinaauth-delivery") {
+const checkWorkerBindings = async () => {
+	const configuredServices = config.services ?? [];
+	if (configuredServices.length !== SERVICE_BINDINGS.length) {
 		fail(
-			"wrangler.json must bind CINAAUTH_DELIVERY_SERVICE to cinaauth-delivery",
+			`wrangler.json must declare exactly ${SERVICE_BINDINGS.length} service bindings`,
 		);
-		return;
 	}
+	for (const expected of SERVICE_BINDINGS) {
+		const configured = configuredServices.find(
+			(binding) => binding.binding === expected.name,
+		);
+		if (configured?.service !== expected.service) {
+			fail(`wrangler.json must bind ${expected.name} to ${expected.service}`);
+		}
+	}
+	const configuredSecretsStoreBindings = config.secrets_store_secrets ?? [];
+	if (configuredSecretsStoreBindings.length !== SECRETS_STORE_BINDINGS.length) {
+		fail(
+			`wrangler.json must declare exactly ${SECRETS_STORE_BINDINGS.length} Secrets Store bindings`,
+		);
+	}
+	for (const expected of SECRETS_STORE_BINDINGS) {
+		const configured = configuredSecretsStoreBindings.find(
+			(binding) => binding.binding === expected.name,
+		);
+		if (
+			configured?.store_id !== expected.storeId ||
+			configured.secret_name !== expected.secretName
+		) {
+			fail(
+				`wrangler.json must map ${expected.name} to ${expected.storeId}/${expected.secretName}`,
+			);
+		}
+	}
+
 	const settings = await cloudflareFetch(
 		`/accounts/${accountId}/workers/scripts/${config.name}/settings`,
 	);
-	const binding = settings.bindings?.find(
-		(item) =>
-			item.name === "CINAAUTH_DELIVERY_SERVICE" && item.type === "service",
+	const remoteServices = (settings.bindings ?? []).filter(
+		(item) => item.type === "service",
 	);
-	if (!binding) {
-		fail("Remote Auth Worker is missing CINAAUTH_DELIVERY_SERVICE binding");
-		return;
-	}
-	if (binding.service && binding.service !== expected.service) {
+	if (remoteServices.length !== SERVICE_BINDINGS.length) {
 		fail(
-			`Remote delivery service binding targets ${binding.service}, expected ${expected.service}`,
+			`Remote Auth Worker must expose exactly ${SERVICE_BINDINGS.length} service bindings`,
 		);
+	}
+	for (const expected of SERVICE_BINDINGS) {
+		const binding = remoteServices.find((item) => item.name === expected.name);
+		if (binding?.service !== expected.service) {
+			fail(`Remote ${expected.name} binding must target ${expected.service}`);
+		}
+	}
+
+	const remoteSecretsStoreBindings = (settings.bindings ?? []).filter(
+		(item) => item.type === "secrets_store_secret",
+	);
+	if (remoteSecretsStoreBindings.length !== SECRETS_STORE_BINDINGS.length) {
+		fail(
+			`Remote Auth Worker must expose exactly ${SECRETS_STORE_BINDINGS.length} Secrets Store bindings`,
+		);
+	}
+	for (const expected of SECRETS_STORE_BINDINGS) {
+		const binding = remoteSecretsStoreBindings.find(
+			(item) => item.name === expected.name,
+		);
+		if (
+			binding?.store_id !== expected.storeId ||
+			binding.secret_name !== expected.secretName
+		) {
+			fail(
+				`Remote ${expected.name} binding must target ${expected.storeId}/${expected.secretName}`,
+			);
+		}
 	}
 };
 
@@ -482,10 +555,12 @@ const checkZoneAndRoute = async () => {
 };
 
 const checkDeliveryCapabilityParity = async (capabilities) => {
-	const secret = process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET;
+	const secret =
+		process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2 ||
+		process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET;
 	if (!secret) {
 		warn(
-			"Delivery capability parity was not checked because CINAAUTH_DELIVERY_WEBHOOK_SECRET is not available in this process",
+			"Delivery capability parity was not checked because neither CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2 nor its legacy fallback is available in this process",
 		);
 		return;
 	}
@@ -578,56 +653,13 @@ const checkPublicEndpoints = async () => {
 		}
 	}
 
-	const readyUrl = new URL("/api/ready", origin).href;
-	const readiness = await publicFetch(readyUrl, { method: "GET" });
-	if (!readiness) {
-		return;
-	}
-	if (readiness.status === 404) {
-		warn(
-			`Public readiness endpoint ${readyUrl} returned 404; the hardened Worker is not deployed yet`,
-		);
-		return;
-	}
-	if (readiness.ok) {
-		fail(
-			`Public readiness endpoint ${readyUrl} returned HTTP ${readiness.status} without a migration token; it must stay protected`,
-		);
-	}
-
-	if (!migrationToken) {
-		warn(
-			"Authorized auth readiness was not checked because CINAAUTH_MIGRATION_TOKEN is not available in this process",
-		);
-		return;
-	}
-
-	const authorizedReadiness = await publicFetch(readyUrl, {
-		method: "GET",
-		headers: {
-			Accept: "application/json",
-			Authorization: `Bearer ${migrationToken}`,
-		},
+	await checkAuthReadiness({
+		origin,
+		migrationToken,
+		publicFetch,
+		fail,
+		warn,
 	});
-	if (!authorizedReadiness) return;
-	const cacheControl = authorizedReadiness.headers.get("cache-control") || "";
-	if (!cacheControl.toLowerCase().includes("no-store")) {
-		fail("Authorized auth readiness must return Cache-Control: no-store");
-	}
-	const body = await authorizedReadiness.json().catch(() => undefined);
-	if (
-		!authorizedReadiness.ok ||
-		!body ||
-		typeof body !== "object" ||
-		body.success !== true ||
-		body.runtimeConfig?.ok !== true ||
-		body.database?.ok !== true ||
-		body.cutover?.state !== "live"
-	) {
-		fail(
-			`Authorized auth readiness failed with HTTP ${authorizedReadiness.status}`,
-		);
-	}
 };
 
 const main = async () => {
@@ -640,7 +672,7 @@ const main = async () => {
 				await checkLegacyD1();
 				await checkPrivacyExportBucket();
 				await checkQueues();
-				await checkServiceBindings();
+				await checkWorkerBindings();
 				await checkSecrets();
 				checkOptionalPluginInputs();
 				await checkTurnstileResource();

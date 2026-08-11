@@ -4,19 +4,19 @@ import type {
 	EntitlementSnapshot,
 } from "@cinaauth/auth-web-contract";
 import { APIError, isAPIError } from "cinaauth/api";
-import { createDatabase } from "./database";
 import type { CinaAuthDatabase } from "./database";
-import type { CloudflareBindings } from "./env";
+import { createDatabase } from "./database";
 import {
 	getEntitlementCapacityLockKey,
 	withEntitlementCapacityLock,
 } from "./entitlement-lock";
+import type { EntitlementSubscription } from "./entitlements";
 import {
 	getBillingRuntimeConfiguration,
 	loadEntitlementSnapshot,
 	MAX_ENTITLEMENT_LIMIT,
-	type EntitlementSubscription,
 } from "./entitlements";
+import type { CloudflareBindings } from "./env";
 
 type RuntimeEntitlementSubscriptionRow = {
 	plan: string;
@@ -52,7 +52,7 @@ const loadRuntimeEntitlementSnapshotWithDatabase = async (
 };
 
 /** Loads a plugin-safe entitlement snapshot from webhook-synchronized state. */
-export const loadRuntimeEntitlementSnapshot = async (
+const loadRuntimeEntitlementSnapshot = async (
 	env: CloudflareBindings,
 	subject: RuntimeEntitlementSubject,
 ) => {
@@ -130,7 +130,8 @@ export const withRuntimeOrganizationMemberCapacity = async <T>(
 					if (current >= maximum) {
 						throw new APIError("CONFLICT", {
 							code: "ENTITLEMENT_LIMIT_REACHED",
-							message: "The current plan organization member limit has been reached",
+							message:
+								"The current plan organization member limit has been reached",
 							limit: "organizationMembers",
 							current,
 							maximum,

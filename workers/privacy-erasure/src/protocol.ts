@@ -68,7 +68,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const hasExactKeys = (value: Record<string, unknown>, keys: string[]) =>
 	Object.keys(value).sort().join("\n") === [...keys].sort().join("\n");
 
-export const protocolFailure = (
+const protocolFailure = (
 	code: string,
 	status: number,
 	message: string,
@@ -158,7 +158,7 @@ export const verifyBearerToken = async (
 	return constantTimeTextEqual(authorization.slice(7), secret);
 };
 
-const readBoundedBody = async (
+export const readBoundedBody = async (
 	source: BodySource,
 	maximumBytes = MAX_BODY_BYTES,
 ) => {
@@ -299,13 +299,22 @@ const parseHttpsUrl = (value: unknown) => {
 	if (typeof value !== "string" || value.length > 2_048) return undefined;
 	try {
 		const url = new URL(value);
+		const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+		const isIpLiteral =
+			hostname.includes(":") || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
 		if (
 			url.protocol !== "https:" ||
 			url.username ||
 			url.password ||
 			url.hash ||
-			url.hostname === "localhost" ||
-			url.hostname.endsWith(".local")
+			(url.port && url.port !== "443") ||
+			isIpLiteral ||
+			hostname === "localhost" ||
+			hostname.endsWith(".localhost") ||
+			hostname.endsWith(".local") ||
+			hostname.endsWith(".internal") ||
+			hostname.endsWith(".lan") ||
+			hostname.endsWith(".home")
 		) {
 			return undefined;
 		}

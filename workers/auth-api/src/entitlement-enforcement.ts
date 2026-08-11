@@ -145,8 +145,14 @@ const requestPolicies = new Map<string, EntitlementRequestPolicy>([
 ]);
 
 /** Classifies Auth requests that are governed by commercial feature policy. */
-export const getEntitlementRequestPolicy = (pathname: string, method: string) =>
-	requestPolicies.get(`${method.toUpperCase()} ${pathname}`);
+export const getEntitlementRequestPolicy = (
+	pathname: string,
+	method: string,
+) => {
+	const canonicalPathname =
+		pathname.length > 1 ? pathname.replace(/\/+$/, "") || "/" : pathname;
+	return requestPolicies.get(`${method.toUpperCase()} ${canonicalPathname}`);
+};
 
 export type EntitlementAccessResult =
 	| { success: true }

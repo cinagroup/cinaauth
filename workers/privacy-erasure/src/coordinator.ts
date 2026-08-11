@@ -3,14 +3,10 @@ import type { PrivacyErasureEnv } from "./env";
 import type {
 	CompletedTargetResult,
 	ErasureOperation,
+	ErasureTarget,
 	TargetErasureResult,
 } from "./protocol";
-import {
-	assessRuntime,
-	eraseTarget,
-	hmacDigest,
-	parseTargets,
-} from "./protocol";
+import { eraseTarget, hmacDigest, parseTargets } from "./protocol";
 
 export type CoordinatorResult =
 	| {
@@ -32,6 +28,7 @@ type OperationRow = {
 	operationId: string;
 	subjectDigest: string;
 	targetSetDigest: string;
+	targetSetVersion: number;
 	status: "pending" | "completed";
 	completedAt: string | null;
 	evidenceId: string | null;
@@ -55,7 +52,8 @@ type TargetOutcome = {
 const LEASE_DURATION_MS = 20_000;
 const DEFAULT_RETRY_SECONDS = 30;
 const SUBJECT_DIGEST_DOMAIN = "cinaauth.privacy.erasure.subject.v1";
-const TARGET_SET_DOMAIN = "cinaauth.privacy.erasure.target-set.v1";
+const TARGET_SET_DOMAIN_V1 = "cinaauth.privacy.erasure.target-set.v1";
+const TARGET_SET_DOMAIN_V2 = "cinaauth.privacy.erasure.target-set.v2";
 const TARGET_EVIDENCE_DOMAIN = "cinaauth.privacy.erasure.target-evidence.v1";
 const FINAL_EVIDENCE_DOMAIN = "cinaauth.privacy.erasure.final-evidence.v1";
 
@@ -117,6 +115,14 @@ export class ErasureCoordinator extends DurableObject<PrivacyErasureEnv> {
 				VALUES (1, datetime('now'));
 			`);
 		}
+		if (version < 2) {
+			this.ctx.storage.sql.exec(`
+				ALTER TABLE erasure_operations
+					ADD COLUMN target_set_version INTEGER NOT NULL DEFAULT 1;
+				INSERT INTO _sql_schema_migrations (id, applied_at)
+				VALUES (2, datetime('now'));
+			`);
+		}
 	}
 
 	private readOperation() {
@@ -125,6 +131,7 @@ export class ErasureCoordinator extends DurableObject<PrivacyErasureEnv> {
 				`SELECT operation_id AS operationId,
 					subject_digest AS subjectDigest,
 					target_set_digest AS targetSetDigest,
+					target_set_version AS targetSetVersion,
 					status,
 					completed_at AS completedAt,
 					evidence_id AS evidenceId,
@@ -159,9 +166,10 @@ export class ErasureCoordinator extends DurableObject<PrivacyErasureEnv> {
 		const now = new Date().toISOString();
 		this.ctx.storage.sql.exec(
 			`INSERT INTO erasure_operations (
-				operation_id, subject_digest, target_set_digest, status,
+				operation_id, subject_digest, target_set_digest, target_set_version,
+				status,
 				created_at, updated_at
-			 ) VALUES (?, ?, ?, 'pending', ?, ?)`,
+			 ) VALUES (?, ?, ?, 2, 'pending', ?, ?)`,
 			operation.operationId,
 			subjectDigest,
 			targetSetDigest,
@@ -260,22 +268,35 @@ export class ErasureCoordinator extends DurableObject<PrivacyErasureEnv> {
 
 	async processOperation(
 		operation: ErasureOperation,
+		configuredTargets: ErasureTarget[],
 	): Promise<CoordinatorResult> {
-		const runtime = assessRuntime({
-			webhookSecret: this.env.CINAAUTH_ERASURE_WEBHOOK_SECRET,
-			storageSecret: this.env.CINAAUTH_ERASURE_STORAGE_SECRET,
-			targetsJson: this.env.CINAAUTH_ERASURE_TARGETS,
-		});
-		if (!runtime.ok) return { kind: "unavailable" };
-		const targets = parseTargets(this.env.CINAAUTH_ERASURE_TARGETS);
+		if (
+			!this.env.CINAAUTH_ERASURE_STORAGE_SECRET ||
+			this.env.CINAAUTH_ERASURE_STORAGE_SECRET.length < 32
+		) {
+			return { kind: "unavailable" };
+		}
+		let targets: ErasureTarget[];
+		try {
+			targets = parseTargets(JSON.stringify(configuredTargets));
+		} catch {
+			return { kind: "unavailable" };
+		}
+		if (targets.length === 0) return { kind: "unavailable" };
+		const targetIds = targets.map(({ id }) => id);
 		const subjectDigest = await hmacDigest(
 			SUBJECT_DIGEST_DOMAIN,
 			`${operation.subject.id}\n${operation.subject.email}`,
 			this.env.CINAAUTH_ERASURE_STORAGE_SECRET,
 		);
-		const targetSetDigest = await hmacDigest(
-			TARGET_SET_DOMAIN,
-			runtime.targetIds.join("\n"),
+		const targetSetDigestV1 = await hmacDigest(
+			TARGET_SET_DOMAIN_V1,
+			targetIds.join("\n"),
+			this.env.CINAAUTH_ERASURE_STORAGE_SECRET,
+		);
+		const targetSetDigestV2 = await hmacDigest(
+			TARGET_SET_DOMAIN_V2,
+			targets.map(({ id, url }) => `${id}\n${url}`).join("\n---\n"),
 			this.env.CINAAUTH_ERASURE_STORAGE_SECRET,
 		);
 
@@ -284,8 +305,8 @@ export class ErasureCoordinator extends DurableObject<PrivacyErasureEnv> {
 			this.createOperation(
 				operation,
 				subjectDigest,
-				targetSetDigest,
-				runtime.targetIds,
+				targetSetDigestV2,
+				targetIds,
 			);
 			stored = this.readOperation();
 		}
@@ -301,7 +322,9 @@ export class ErasureCoordinator extends DurableObject<PrivacyErasureEnv> {
 				code: "OPERATION_SUBJECT_CONFLICT",
 			};
 		}
-		if (stored.targetSetDigest !== targetSetDigest) {
+		const expectedTargetSetDigest =
+			stored.targetSetVersion === 1 ? targetSetDigestV1 : targetSetDigestV2;
+		if (stored.targetSetDigest !== expectedTargetSetDigest) {
 			return { kind: "conflict", code: "TARGET_SET_CHANGED" };
 		}
 		if (
@@ -336,8 +359,8 @@ export class ErasureCoordinator extends DurableObject<PrivacyErasureEnv> {
 
 		const rows = this.readTargets();
 		if (
-			rows.length !== runtime.targetIds.length ||
-			rows.some((row, index) => row.targetId !== runtime.targetIds[index])
+			rows.length !== targetIds.length ||
+			rows.some((row, index) => row.targetId !== targetIds[index])
 		) {
 			return { kind: "conflict", code: "TARGET_SET_CHANGED" };
 		}

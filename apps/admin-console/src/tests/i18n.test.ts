@@ -14,4 +14,14 @@ describe("translation dictionaries", () => {
 			}
 		}
 	});
+
+	it("localizes post-deploy configuration progress and structural blockers", () => {
+		for (const key of [
+			"configuration.operationInProgress",
+			"configuration.structuralUnavailableHint",
+		]) {
+			expect(en[key as keyof typeof en], `en:${key}`).toBeTruthy();
+			expect(zh[key as keyof typeof zh], `zh:${key}`).toBeTruthy();
+		}
+	});
 });

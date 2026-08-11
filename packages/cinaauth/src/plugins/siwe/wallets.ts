@@ -74,13 +74,15 @@ export const createSiweWalletEndpoints = (options: SIWEWalletOptions) => ({
 				sortBy: { field: "createdAt", direction: "asc" },
 			});
 			return ctx.json({
-				wallets: wallets.map(({ id, address, chainId, isPrimary, createdAt }) => ({
-					id,
-					address,
-					chainId,
-					isPrimary,
-					createdAt,
-				})),
+				wallets: wallets.map(
+					({ id, address, chainId, isPrimary, createdAt }) => ({
+						id,
+						address,
+						chainId,
+						isPrimary,
+						createdAt,
+					}),
+				),
 			});
 		},
 	),
@@ -94,11 +96,7 @@ export const createSiweWalletEndpoints = (options: SIWEWalletOptions) => ({
 		},
 		async (ctx) => {
 			const userId = ctx.context.session.user.id;
-			const walletAddress = await verifySiweProof(
-				ctx,
-				ctx.body,
-				options,
-			);
+			const walletAddress = await verifySiweProof(ctx, ctx.body, options);
 			const { chainId } = ctx.body;
 			const result = await ctx.context.adapter.transaction(async (trx) => {
 				const addressOwner = await trx.findOne<WalletAddress>({
@@ -266,10 +264,7 @@ export const createSiweWalletEndpoints = (options: SIWEWalletOptions) => ({
 				if (walletAccount) {
 					await trx.delete({
 						model: "account",
-						where: [
-							eq("id", walletAccount.id),
-							eq("userId", userId),
-						],
+						where: [eq("id", walletAccount.id), eq("userId", userId)],
 					});
 				}
 

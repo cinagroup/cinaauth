@@ -9,8 +9,6 @@ import {
 	LOGIN_RATE_LIMIT_RULES,
 } from "./rate-limit-storage";
 
-export { ac, roles } from "./plugins";
-
 /** Maximum age of a session used for sensitive self-service mutations. */
 export const SECURITY_FRESH_AGE_SECONDS = 15 * 60;
 
@@ -71,6 +69,25 @@ export const getConfiguredSocialProviders = (env: SocialProviderEnv) => ({
 		: {}),
 });
 
+const RESERVED_SOCIAL_PROVIDER_CONFIG = {
+	clientId: "provider-id-reservation-only",
+	clientSecret: "provider-id-reservation-only",
+	enabled: false,
+} as const;
+
+/**
+ * Preserves the production provider-id namespace across credential outages.
+ * Disabled placeholders are not usable providers, but their raw option keys
+ * keep SSO and SCIM from claiming the well-known Google/GitHub identifiers.
+ */
+export const getProductionSocialProviders = (env: SocialProviderEnv) => {
+	const configured = getConfiguredSocialProviders(env);
+	return {
+		google: configured.google ?? RESERVED_SOCIAL_PROVIDER_CONFIG,
+		github: configured.github ?? RESERVED_SOCIAL_PROVIDER_CONFIG,
+	};
+};
+
 export const runWithExecutionCtx = <T>(
 	ctx: BackgroundTaskContext,
 	fn: () => T,
@@ -86,7 +103,7 @@ const buildAuth = (env: CloudflareBindings) =>
 		baseURL: env.CINAAUTH_URL || "https://auth.cinaseek.ai",
 		secret: env.CINAAUTH_SECRET,
 		database: createDatabase(env),
-		socialProviders: getConfiguredSocialProviders(env),
+		socialProviders: getProductionSocialProviders(env),
 		emailAndPassword: {
 			enabled: true,
 			revokeSessionsOnPasswordReset: true,

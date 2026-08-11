@@ -59,9 +59,10 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { formatOAuthProviderName } from "@/lib/auth-capabilities";
 import { DEFAULT_CINAAUTH_API_URL } from "@/lib/auth-api";
+import { formatOAuthProviderName } from "@/lib/auth-capabilities";
 import { authClient } from "@/lib/auth-client";
+import { deleteAccountPasskey } from "@/lib/client-api";
 import {
 	buildSiweMessage,
 	getInjectedEthereumProvider,
@@ -69,23 +70,23 @@ import {
 	signSiweMessage,
 } from "@/lib/ethereum-wallet";
 import type {
-	SecurityAccount,
-	SecurityApiKey,
-	SecurityPasskey,
-	SecuritySession,
-	SecurityWallet,
-} from "@/lib/security-center";
-import type {
 	PrivacyDeletionReadiness,
 	PrivacyDeletionReceipt,
 } from "@/lib/privacy-center";
 import {
 	getPrivacyDeletionReceipt,
 	getPrivacyDeletionReceiptFilename,
-	parsePrivacyDeletionReadiness,
 	PRIVACY_DELETE_ACCOUNT_PATH,
 	PRIVACY_DELETION_READINESS_PATH,
+	parsePrivacyDeletionReadiness,
 } from "@/lib/privacy-center";
+import type {
+	SecurityAccount,
+	SecurityApiKey,
+	SecurityPasskey,
+	SecuritySession,
+	SecurityWallet,
+} from "@/lib/security-center";
 import {
 	canUnlinkAccount,
 	formatApiKeyIdentifier,
@@ -312,10 +313,7 @@ export function SecurityCenter({
 		runAction(
 			`passkey:${passkey.id}`,
 			async () => {
-				const { error } = await authClient.passkey.deletePasskey({
-					id: passkey.id,
-				});
-				if (error) throw error;
+				await deleteAccountPasskey(authClient, passkey.id);
 				setPasskeys((current) =>
 					current.filter((item) => item.id !== passkey.id),
 				);
@@ -468,17 +466,15 @@ export function SecurityCenter({
 			method: "GET",
 		});
 		if (error) throw error;
-		const result = data as
-			| {
-					wallets: Array<{
-						id: string;
-						address: string;
-						chainId: number;
-						isPrimary: boolean;
-						createdAt: Date | string;
-					}>;
-				}
-			| null;
+		const result = data as {
+			wallets: Array<{
+				id: string;
+				address: string;
+				chainId: number;
+				isPrimary: boolean;
+				createdAt: Date | string;
+			}>;
+		} | null;
 		setWallets((result?.wallets ?? []).map(toSecurityWallet));
 	};
 
@@ -499,7 +495,7 @@ export function SecurityCenter({
 				});
 				if (nonceResult.error) throw nonceResult.error;
 				if (!nonceResult.data?.nonce) {
-					throw new Error("CinaAuth did not return a wallet nonce");
+					throw new Error("CinaSeek did not return a wallet nonce");
 				}
 				const identityURL = new URL(DEFAULT_CINAAUTH_API_URL);
 				const message = buildSiweMessage({
@@ -533,16 +529,13 @@ export function SecurityCenter({
 		runAction(
 			`wallet:primary:${wallet.id}`,
 			async () => {
-				const { error } = await authClient.$fetch(
-					"/siwe/set-primary-wallet",
-					{
-						method: "POST",
-						body: {
-							walletAddress: wallet.address,
-							chainId: wallet.chainId,
-						},
+				const { error } = await authClient.$fetch("/siwe/set-primary-wallet", {
+					method: "POST",
+					body: {
+						walletAddress: wallet.address,
+						chainId: wallet.chainId,
 					},
-				);
+				});
 				if (error) throw error;
 				setWallets((current) =>
 					current.map((item) => ({
@@ -622,20 +615,22 @@ export function SecurityCenter({
 				throw new Error(
 					response.status === 403
 						? "Sign in again before deleting this account."
-						: "CinaAuth could not verify deletion readiness.",
+						: "CinaSeek could not verify deletion readiness.",
 				);
 			}
 			const readiness = parsePrivacyDeletionReadiness(
 				(await response.json()) as unknown,
 			);
 			if (!readiness) {
-				throw new Error("CinaAuth returned an invalid deletion policy response.");
+				throw new Error(
+					"CinaSeek returned an invalid deletion policy response.",
+				);
 			}
 			setDeletionReadiness(readiness);
 		} catch (error) {
 			setDeletionReadiness(null);
 			setDeletionReadinessError(
-				getErrorMessage(error, "CinaAuth could not verify deletion readiness."),
+				getErrorMessage(error, "CinaSeek could not verify deletion readiness."),
 			);
 		} finally {
 			setDeletionReadinessLoading(false);
@@ -688,8 +683,7 @@ export function SecurityCenter({
 						throw new Error("Account deletion is blocked by a retention hold.");
 					}
 					if (
-						getResponseErrorCode(data) ===
-						"PRIVACY_PROCESSOR_ERASURE_FAILED"
+						getResponseErrorCode(data) === "PRIVACY_PROCESSOR_ERASURE_FAILED"
 					) {
 						throw new Error(
 							"A required external processor could not confirm erasure. No local account data was deleted; try again later.",
@@ -698,7 +692,7 @@ export function SecurityCenter({
 					if (response.status === 401 || response.status === 403) {
 						throw new Error("Sign in again before deleting this account.");
 					}
-					throw new Error("CinaAuth could not delete this account.");
+					throw new Error("CinaSeek could not delete this account.");
 				}
 				const receipt = getPrivacyDeletionReceipt(data);
 				if (receipt) {
@@ -1017,8 +1011,8 @@ export function SecurityCenter({
 						<KeyRound className="h-5 w-5" /> Personal API keys
 					</CardTitle>
 					<CardDescription>
-						Create scoped CinaAuth credentials for scripts and integrations. The
-						full secret is shown only once.
+						Create personal credentials bound to this account for scripts and
+						integrations. The full secret is shown only once.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -1172,7 +1166,7 @@ export function SecurityCenter({
 					<DialogHeader>
 						<DialogTitle>Copy your API key now</DialogTitle>
 						<DialogDescription>
-							This is the only time CinaAuth will show the full secret for
+							This is the only time CinaSeek will show the full secret for
 							{createdApiKey ? ` ${createdApiKey.name}` : " this key"}. Store it
 							in a secrets manager; never commit it to source control.
 						</DialogDescription>
@@ -1272,8 +1266,8 @@ export function SecurityCenter({
 							<WalletCards className="h-5 w-5" /> Ethereum wallets
 						</CardTitle>
 						<CardDescription className="mt-1.5">
-							Prove wallet control with ERC-4361, choose a primary wallet,
-							and manage wallet sign-in access.
+							Prove wallet control with ERC-4361, choose a primary wallet, and
+							manage wallet sign-in access.
 						</CardDescription>
 					</div>
 					<Button
@@ -1368,7 +1362,7 @@ export function SecurityCenter({
 							{walletToUnlink
 								? `${formatWalletAddress(walletToUnlink.address)} on ${formatWalletChain(walletToUnlink.chainId)}`
 								: "This wallet"}{" "}
-							will no longer be able to sign in. CinaAuth will refuse the change
+							will no longer be able to sign in. CinaSeek will refuse the change
 							if it would remove your last login method.
 						</DialogDescription>
 					</DialogHeader>
@@ -1376,9 +1370,7 @@ export function SecurityCenter({
 						<Button
 							variant="destructive"
 							onClick={unlinkWallet}
-							disabled={
-								busyAction === `wallet:unlink:${walletToUnlink?.id}`
-							}
+							disabled={busyAction === `wallet:unlink:${walletToUnlink?.id}`}
 						>
 							{busyAction === `wallet:unlink:${walletToUnlink?.id}` ? (
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1397,7 +1389,7 @@ export function SecurityCenter({
 						<Link2 className="h-5 w-5" /> Linked identities
 					</CardTitle>
 					<CardDescription>
-						Review every sign-in identity attached to this CinaAuth account.
+						Review every sign-in identity attached to this CinaSeek account.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -1461,7 +1453,10 @@ export function SecurityCenter({
 				</CardContent>
 			</Card>
 
-			<Card id="delete-account" className="mt-6 border-destructive/40 scroll-mt-6">
+			<Card
+				id="delete-account"
+				className="mt-6 border-destructive/40 scroll-mt-6"
+			>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2 text-destructive">
 						<AlertTriangle className="h-5 w-5" /> Danger zone
@@ -1492,11 +1487,11 @@ export function SecurityCenter({
 						</DialogTrigger>
 						<DialogContent>
 							<DialogHeader>
-								<DialogTitle>Delete this CinaAuth account?</DialogTitle>
+								<DialogTitle>Delete this CinaSeek account?</DialogTitle>
 								<DialogDescription>
-									This cannot be undone. Review the retention snapshot, then type
-									the full account email to confirm. A signed JSON deletion receipt
-									will download after completion.
+									This cannot be undone. Review the retention snapshot, then
+									type the full account email to confirm. A signed JSON deletion
+									receipt will download after completion.
 								</DialogDescription>
 							</DialogHeader>
 							<div className="space-y-4">
@@ -1547,15 +1542,16 @@ export function SecurityCenter({
 										{deletionReadiness.requiredProcessors.length > 0 ? (
 											<Alert>
 												<ShieldCheck className="h-4 w-4" />
-												<AlertTitle>External erasure confirmation required</AlertTitle>
+												<AlertTitle>
+													External erasure confirmation required
+												</AlertTitle>
 												<AlertDescription>
-													Before local deletion, CinaAuth requires signed,
+													Before local deletion, CinaSeek requires signed,
 													idempotent confirmation from{" "}
 													{deletionReadiness.requiredProcessors
-														.map((processor) =>
-															formatProcessorId(processor.id),
-														)
-														.join(", ")}.
+														.map((processor) => formatProcessorId(processor.id))
+														.join(", ")}
+													.
 												</AlertDescription>
 											</Alert>
 										) : null}

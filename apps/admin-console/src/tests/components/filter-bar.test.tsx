@@ -1,5 +1,11 @@
+import {
+	act,
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FilterBar } from "@/components/data-table/filter-bar";
 
 const FIELDS = [
@@ -16,7 +22,9 @@ describe("FilterBar", () => {
 	it("debounces and fires onChange once with the typed value", () => {
 		vi.useFakeTimers();
 		const onChange = vi.fn();
-		render(<FilterBar fields={FIELDS} onChange={onChange} searchLabel="Search…" />);
+		render(
+			<FilterBar fields={FIELDS} onChange={onChange} searchLabel="Search…" />,
+		);
 
 		// Initial debounced fire (empty search) after mount.
 		act(() => vi.advanceTimersByTime(350));
@@ -31,7 +39,10 @@ describe("FilterBar", () => {
 
 		act(() => vi.advanceTimersByTime(350));
 		expect(onChange).toHaveBeenCalledTimes(1);
-		expect(onChange).toHaveBeenCalledWith({ searchField: "email", searchValue: "abc" });
+		expect(onChange).toHaveBeenCalledWith({
+			searchField: "email",
+			searchValue: "abc",
+		});
 	});
 
 	it("does not fire perpetually when the parent passes a new onChange each render", () => {
@@ -70,10 +81,15 @@ describe("FilterBar", () => {
 		const input = screen.getByPlaceholderText("Search…");
 		fireEvent.change(input, { target: { value: "x" } });
 		// Swap the handler before the debounce elapses.
-		rerender(<FilterBar fields={FIELDS} onChange={second} searchLabel="Search…" />);
+		rerender(
+			<FilterBar fields={FIELDS} onChange={second} searchLabel="Search…" />,
+		);
 		act(() => vi.advanceTimersByTime(350));
 
 		expect(first).not.toHaveBeenCalled();
-		expect(second).toHaveBeenCalledWith({ searchField: "email", searchValue: "x" });
+		expect(second).toHaveBeenCalledWith({
+			searchField: "email",
+			searchValue: "x",
+		});
 	});
 });

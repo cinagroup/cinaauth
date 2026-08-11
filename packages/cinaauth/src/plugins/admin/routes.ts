@@ -1,4 +1,5 @@
 import { createAuthEndpoint, createAuthMiddleware } from "@cinaauth/core/api";
+import { runWithTransaction } from "@cinaauth/core/context";
 import type { Session } from "@cinaauth/core/db";
 import type { Where } from "@cinaauth/core/db/adapter";
 import { whereOperators } from "@cinaauth/core/db/adapter";
@@ -16,6 +17,11 @@ import type { AccessControl, ArrayElement } from "../access";
 import type { defaultStatements } from "./access";
 import { ADMIN_ERROR_CODES } from "./error-codes";
 import { hasPermission } from "./has-permission";
+import {
+	assertAnonymousUserIsNotSuperAdmin,
+	assertSuperAdminCanBeDeleted,
+	assertSuperAdminRemains,
+} from "./super-admin";
 import type {
 	AdminOptions,
 	InferAdminRolesFromOption,
@@ -151,17 +157,28 @@ export const setRole = <O extends AdminOptions>(opts: O) =>
 				}
 			}
 
-			const isUserExist = await ctx.context.internalAdapter.findUserById(
-				ctx.body.userId,
-			);
-			if (!isUserExist) {
-				throw APIError.from("NOT_FOUND", BASE_ERROR_CODES.USER_NOT_FOUND);
-			}
-
-			const updatedUser = await ctx.context.internalAdapter.updateUser(
-				ctx.body.userId,
-				{
-					role: parseRoles(ctx.body.role),
+			const nextRole = parseRoles(ctx.body.role);
+			const updatedUser = await runWithTransaction(
+				ctx.context.adapter,
+				async () => {
+					const isUserExist = await ctx.context.internalAdapter.findUserById(
+						ctx.body.userId,
+					);
+					if (!isUserExist) {
+						throw APIError.from("NOT_FOUND", BASE_ERROR_CODES.USER_NOT_FOUND);
+					}
+					assertAnonymousUserIsNotSuperAdmin(opts, isUserExist, {
+						role: nextRole,
+					});
+					await assertSuperAdminRemains(
+						ctx.context.internalAdapter,
+						opts,
+						isUserExist,
+						nextRole,
+					);
+					return ctx.context.internalAdapter.updateUser(ctx.body.userId, {
+						role: nextRole,
+					});
 				},
 			);
 			return ctx.json({
@@ -653,16 +670,39 @@ export const adminUpdateUser = (opts: AdminOptions) =>
 				}
 			}
 
-			const isUserExist = await ctx.context.internalAdapter.findUserById(
-				ctx.body.userId,
-			);
-			if (!isUserExist) {
-				throw APIError.from("NOT_FOUND", BASE_ERROR_CODES.USER_NOT_FOUND);
-			}
-
-			const updatedUser = await ctx.context.internalAdapter.updateUser(
-				ctx.body.userId,
-				ctx.body.data,
+			const updatedUser = await runWithTransaction(
+				ctx.context.adapter,
+				async () => {
+					const isUserExist = await ctx.context.internalAdapter.findUserById(
+						ctx.body.userId,
+					);
+					if (!isUserExist) {
+						throw APIError.from("NOT_FOUND", BASE_ERROR_CODES.USER_NOT_FOUND);
+					}
+					assertAnonymousUserIsNotSuperAdmin(opts, isUserExist, {
+						role: hasDataKey("role")
+							? String(updateData.role)
+							: "role" in isUserExist && typeof isUserExist.role === "string"
+								? isUserExist.role
+								: undefined,
+						isAnonymous: hasDataKey("isAnonymous")
+							? updateData.isAnonymous === true
+							: "isAnonymous" in isUserExist &&
+								isUserExist.isAnonymous === true,
+					});
+					if (hasDataKey("role")) {
+						await assertSuperAdminRemains(
+							ctx.context.internalAdapter,
+							opts,
+							isUserExist,
+							String(updateData.role),
+						);
+					}
+					return ctx.context.internalAdapter.updateUser(
+						ctx.body.userId,
+						ctx.body.data,
+					);
+				},
 			);
 
 			// Match the ban-user endpoint: banning a user must revoke their sessions.
@@ -1650,16 +1690,21 @@ export const removeUser = (opts: AdminOptions) =>
 				);
 			}
 
-			const user = await ctx.context.internalAdapter.findUserById(
-				ctx.body.userId,
-			);
+			await runWithTransaction(ctx.context.adapter, async () => {
+				const user = await ctx.context.internalAdapter.findUserById(
+					ctx.body.userId,
+				);
 
-			if (!user) {
-				throw APIError.from("NOT_FOUND", BASE_ERROR_CODES.USER_NOT_FOUND);
-			}
-
-			await ctx.context.internalAdapter.deleteUserSessions(ctx.body.userId);
-			await ctx.context.internalAdapter.deleteUser(ctx.body.userId);
+				if (!user) {
+					throw APIError.from("NOT_FOUND", BASE_ERROR_CODES.USER_NOT_FOUND);
+				}
+				await assertSuperAdminCanBeDeleted(
+					ctx.context.internalAdapter,
+					opts,
+					user,
+				);
+				await ctx.context.internalAdapter.deleteUser(ctx.body.userId);
+			});
 			return ctx.json({
 				success: true,
 			});

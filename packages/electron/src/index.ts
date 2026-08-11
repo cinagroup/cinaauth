@@ -1,12 +1,12 @@
 /// <reference types="electron" />
 
+import { base64Url } from "@better-auth/utils/base64";
 import type {
 	GenericEndpointContext,
 	HookEndpointContext,
 } from "@cinaauth/core";
 import { createAuthMiddleware } from "@cinaauth/core/api";
 import { APIError } from "@cinaauth/core/error";
-import { base64Url } from "@better-auth/utils/base64";
 import type { CinaAuthPlugin } from "cinaauth";
 import { safeJSONParse } from "cinaauth";
 import { generateRandomString } from "cinaauth/crypto";

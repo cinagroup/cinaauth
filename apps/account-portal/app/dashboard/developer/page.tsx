@@ -10,7 +10,7 @@ import { DeveloperConsole } from "./developer-console";
 
 export const metadata: Metadata = {
 	title: "Developer Console",
-	description: "Manage CinaAuth OAuth clients, callbacks, and consent grants.",
+	description: "Manage CinaSeek OAuth clients, callbacks, and consent grants.",
 };
 
 export default async function DeveloperConsolePage() {

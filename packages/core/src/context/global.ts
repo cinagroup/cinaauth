@@ -21,8 +21,7 @@ const symbol = Symbol.for("cinaauth:global");
 let bind: CinaAuthGlobal | null = null;
 
 const __context: Record<string, AsyncLocalStorage<unknown>> = {};
-const __CinaAuthVersion: string = import.meta.env
-	.CINAAUTH_VERSION as string;
+const __CinaAuthVersion: string = import.meta.env.CINAAUTH_VERSION as string;
 
 /**
  * We store context instance in the globalThis.

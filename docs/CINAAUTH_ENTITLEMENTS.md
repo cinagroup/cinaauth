@@ -15,9 +15,9 @@ computed from local PostgreSQL state rather than an inline Stripe request.
 
 There are two modes:
 
-- `unmetered`: the Stripe group is absent or incomplete. Existing product
+* `unmetered`: the Stripe group is absent or incomplete. Existing product
   access is preserved explicitly and checkout stays disabled.
-- `subscription`: the complete Stripe group and policy are valid. An active or
+* `subscription`: the complete Stripe group and policy are valid. An active or
   trialing webhook-synchronized subscription selects its mapped plan; otherwise
   the configured default plan applies.
 
@@ -28,11 +28,11 @@ policies fail closed. They never silently fall back to a more permissive plan.
 
 Billing is advertised only when all of these inputs agree:
 
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_DEFAULT_PRICE_ID`
-- `CINAAUTH_ENTITLEMENT_CONFIG`
-- optional `STRIPE_DEFAULT_PLAN_NAME` (defaults to `default`)
+* `STRIPE_SECRET_KEY`
+* `STRIPE_WEBHOOK_SECRET`
+* `STRIPE_DEFAULT_PRICE_ID`
+* `CINAAUTH_ENTITLEMENT_CONFIG`
+* optional `STRIPE_DEFAULT_PLAN_NAME` (defaults to `default`)
 
 The selected Stripe plan name must exist in the entitlement policy. Provision
 the values together through environment variables and Wrangler stdin; do not
@@ -93,12 +93,12 @@ session under the same recent-authentication policy as other sensitive writes.
 
 The Auth Worker applies the same snapshot before these protected operations:
 
-- API Key and OAuth Client creation, including finite count limits;
-- team creation, team updates, and team-member addition;
-- dynamic-role creation and updates;
-- SSO registration, provider updates, and domain verification;
-- SCIM token generation;
-- organization audit reads.
+* API Key and OAuth Client creation, including finite count limits;
+* team creation, team updates, and team-member addition;
+* dynamic-role creation and updates;
+* SSO registration, provider updates, and domain verification;
+* SCIM token generation;
+* organization audit reads.
 
 Feature denial returns `ENTITLEMENT_FEATURE_DISABLED` with HTTP 403. A reached
 finite limit returns `ENTITLEMENT_LIMIT_REACHED` with HTTP 409. Ambiguous

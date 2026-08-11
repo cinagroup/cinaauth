@@ -1,7 +1,8 @@
-import type { AuthContext, GenericEndpointContext } from "@cinaauth/core";
-import { CinaAuthError } from "@cinaauth/core/error";
 import { base64, base64Url } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
+import type { AuthContext, GenericEndpointContext } from "@cinaauth/core";
+import { CinaAuthError } from "@cinaauth/core/error";
+import { APIError } from "better-call";
 import {
 	constantTimeEqual,
 	makeSignature,
@@ -9,7 +10,6 @@ import {
 	symmetricEncrypt,
 } from "cinaauth/crypto";
 import type { jwt } from "cinaauth/plugins";
-import { APIError } from "better-call";
 import type { oauthProvider } from "../oauth";
 import { canonicalizeOAuthQueryParams } from "../signed-query";
 import type {
@@ -399,8 +399,21 @@ export function basicToClientCredentials(authorization: string) {
 				error: "invalid_client",
 			});
 		}
-		const id = decoded.slice(0, separatorIndex);
-		const secret = decoded.slice(separatorIndex + 1);
+		let id: string;
+		let secret: string;
+		try {
+			id = decodeURIComponent(
+				decoded.slice(0, separatorIndex).replaceAll("+", " "),
+			);
+			secret = decodeURIComponent(
+				decoded.slice(separatorIndex + 1).replaceAll("+", " "),
+			);
+		} catch {
+			throw new APIError("BAD_REQUEST", {
+				error_description: "invalid authorization header format",
+				error: "invalid_client",
+			});
+		}
 		if (!id || !secret) {
 			throw new APIError("BAD_REQUEST", {
 				error_description: "invalid authorization header format",

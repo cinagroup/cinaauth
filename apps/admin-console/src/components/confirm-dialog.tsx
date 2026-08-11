@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, type ReactElement, type ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { useId, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogClose,
@@ -11,7 +13,8 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 /**
@@ -30,6 +33,8 @@ export function ConfirmDialog({
 	confirmText,
 	cancelText,
 	danger,
+	confirmationText,
+	confirmationLabel,
 	onConfirm,
 }: {
 	trigger: ReactElement;
@@ -39,16 +44,21 @@ export function ConfirmDialog({
 	confirmText?: string;
 	cancelText?: string;
 	danger?: boolean;
+	confirmationText?: string;
+	confirmationLabel?: string;
 	onConfirm: () => unknown | Promise<unknown>;
 }) {
 	const { t } = useI18n();
+	const confirmationInputId = useId();
 	const [open, setOpen] = useState(false);
 	const [pending, setPending] = useState(false);
 	const [actionError, setActionError] = useState<string | null>(null);
+	const [confirmationValue, setConfirmationValue] = useState("");
 	const _confirmText = confirmText ?? t("common.confirm");
 	const _cancelText = cancelText ?? t("common.cancel");
 
 	const confirm = async () => {
+		if (confirmationText && confirmationValue !== confirmationText) return;
 		setPending(true);
 		setActionError(null);
 		try {
@@ -67,7 +77,10 @@ export function ConfirmDialog({
 			onOpenChange={(nextOpen) => {
 				if (pending) return;
 				setOpen(nextOpen);
-				if (!nextOpen) setActionError(null);
+				if (!nextOpen) {
+					setActionError(null);
+					setConfirmationValue("");
+				}
 			}}
 		>
 			<DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -84,6 +97,20 @@ export function ConfirmDialog({
 					}}
 				>
 					{children && <div className="space-y-3">{children}</div>}
+					{confirmationText && (
+						<div className="space-y-1.5">
+							<Label htmlFor={confirmationInputId}>
+								{confirmationLabel ?? `Type ${confirmationText} to confirm`}
+							</Label>
+							<Input
+								id={confirmationInputId}
+								value={confirmationValue}
+								onChange={(event) => setConfirmationValue(event.target.value)}
+								autoComplete="off"
+								spellCheck={false}
+							/>
+						</div>
+					)}
 					{actionError && (
 						<p role="alert" className="text-[13px] leading-5 text-error">
 							{actionError}
@@ -91,7 +118,12 @@ export function ConfirmDialog({
 					)}
 					<DialogFooter>
 						<DialogClose asChild>
-							<Button type="button" variant="secondary" size="sm" disabled={pending}>
+							<Button
+								type="button"
+								variant="secondary"
+								size="sm"
+								disabled={pending}
+							>
 								{_cancelText}
 							</Button>
 						</DialogClose>
@@ -99,7 +131,12 @@ export function ConfirmDialog({
 							type="submit"
 							variant={danger ? "danger" : "primary"}
 							size="sm"
-							disabled={pending}
+							disabled={
+								pending ||
+								Boolean(
+									confirmationText && confirmationValue !== confirmationText,
+								)
+							}
 						>
 							{_confirmText}
 						</Button>

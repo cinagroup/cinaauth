@@ -75,10 +75,7 @@ export interface PrivacyAsyncExportProvider {
 		subjectId: string;
 	}) => Awaitable<PrivacyAsyncExportDownload | null>;
 	/** Delete one manifest and artifact. This operation must be idempotent. */
-	deleteJob: (input: {
-		jobId: string;
-		subjectId: string;
-	}) => Awaitable<void>;
+	deleteJob: (input: { jobId: string; subjectId: string }) => Awaitable<void>;
 	/** Delete every manifest and artifact for the subject before account deletion. */
 	deleteSubjectExports: (input: { subjectId: string }) => Awaitable<void>;
 }
@@ -202,7 +199,11 @@ export const createPrivacyAsyncExportFeatures = (
 				subjectId: ctx.context.session.user.id,
 			});
 			if (!status) {
-				return errorResponse(404, "PRIVACY_EXPORT_NOT_FOUND", "Export not found");
+				return errorResponse(
+					404,
+					"PRIVACY_EXPORT_NOT_FOUND",
+					"Export not found",
+				);
 			}
 			if (isExpired(status)) {
 				return jsonResponse({ ...status, status: "expired" }, 410);
@@ -237,7 +238,11 @@ export const createPrivacyAsyncExportFeatures = (
 			};
 			const status = await findStatus(options.provider, input);
 			if (!status) {
-				return errorResponse(404, "PRIVACY_EXPORT_NOT_FOUND", "Export not found");
+				return errorResponse(
+					404,
+					"PRIVACY_EXPORT_NOT_FOUND",
+					"Export not found",
+				);
 			}
 			if (isExpired(status)) {
 				return errorResponse(410, "PRIVACY_EXPORT_EXPIRED", "Export expired");

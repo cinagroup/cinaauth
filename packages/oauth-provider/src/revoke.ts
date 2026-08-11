@@ -1,7 +1,7 @@
 import type { GenericEndpointContext } from "@cinaauth/core";
 import { logger } from "@cinaauth/core/env";
-import { verifyJwsAccessToken } from "cinaauth/oauth2";
 import { APIError } from "better-call";
+import { verifyJwsAccessToken } from "cinaauth/oauth2";
 import type { JSONWebKeySet } from "jose";
 import { decodeRefreshToken, invalidateRefreshFamily } from "./token";
 import type {

@@ -108,9 +108,7 @@ function handleClaudeCodeAction() {
 		),
 	);
 	console.log(
-		chalk.gray(
-			"• You can now use CinaAuth features directly in Claude Code",
-		),
+		chalk.gray("• You can now use CinaAuth features directly in Claude Code"),
 	);
 }
 
@@ -120,7 +118,7 @@ function handleOpenCodeAction() {
 	const openCodeConfig = {
 		$schema: "https://opencode.ai/config.json",
 		mcp: {
-			"cinaauth": {
+			cinaauth: {
 				type: "remote",
 				url: REMOTE_MCP_URL,
 				enabled: true,
@@ -174,7 +172,7 @@ function handleManualAction() {
 	console.log(chalk.bold.blue("📝 CinaAuth MCP Configuration..."));
 
 	const manualConfig = {
-		"cinaauth": {
+		cinaauth: {
 			url: REMOTE_MCP_URL,
 		},
 	};

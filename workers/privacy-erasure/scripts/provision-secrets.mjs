@@ -1,12 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const REQUIRED_SECRETS = [
-	"CINAAUTH_ERASURE_WEBHOOK_SECRET",
-	"CINAAUTH_ERASURE_STORAGE_SECRET",
-	"CINAAUTH_ERASURE_TARGETS",
-];
-const allowEmptyTargets = process.argv.includes("--allow-empty-targets");
+const REQUIRED_WORKER_SECRETS = ["CINAAUTH_ERASURE_STORAGE_SECRET"];
+const includeLegacyWebhook = process.argv.includes("--include-legacy-webhook");
+const includeLegacyTargets = process.argv.includes("--include-legacy-targets");
 const isDryRun = process.argv.includes("--dry-run");
 const wranglerCli = fileURLToPath(import.meta.resolve("wrangler"));
 
@@ -20,72 +17,37 @@ const hasValue = (name) => {
 	return typeof value === "string" && value.length > 0;
 };
 
-const parseHttpsUrl = (value) => {
-	if (typeof value !== "string") return false;
-	try {
-		const url = new URL(value);
-		return (
-			url.protocol === "https:" &&
-			!url.username &&
-			!url.password &&
-			!url.hash &&
-			url.hostname !== "localhost" &&
-			!url.hostname.endsWith(".local")
-		);
-	} catch {
-		return false;
-	}
-};
-
-for (const name of REQUIRED_SECRETS) {
+for (const name of REQUIRED_WORKER_SECRETS) {
 	if (!hasValue(name)) fail(`Missing required environment variable ${name}`);
 }
-for (const name of [
-	"CINAAUTH_ERASURE_WEBHOOK_SECRET",
-	"CINAAUTH_ERASURE_STORAGE_SECRET",
-]) {
-	if (process.env[name].length < 32) {
-		fail(`${name} must be at least 32 characters`);
-	}
+if (process.env.CINAAUTH_ERASURE_STORAGE_SECRET.length < 32) {
+	fail("CINAAUTH_ERASURE_STORAGE_SECRET must be at least 32 characters");
 }
 
-let targets;
-try {
-	targets = JSON.parse(process.env.CINAAUTH_ERASURE_TARGETS);
-} catch {
-	fail("CINAAUTH_ERASURE_TARGETS must be valid JSON");
-}
-if (!Array.isArray(targets) || targets.length > 20) {
-	fail("CINAAUTH_ERASURE_TARGETS must be an array with at most 20 targets");
-}
-if (targets.length === 0 && !allowEmptyTargets) {
-	fail(
-		"CINAAUTH_ERASURE_TARGETS must contain at least one target; use --allow-empty-targets only for a fail-closed bootstrap",
-	);
-}
-const ids = new Set();
-for (const target of targets) {
-	if (
-		!target ||
-		typeof target !== "object" ||
-		Array.isArray(target) ||
-		Object.keys(target).sort().join(",") !== "id,secret,url" ||
-		typeof target.id !== "string" ||
-		!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(target.id) ||
-		!parseHttpsUrl(target.url) ||
-		typeof target.secret !== "string" ||
-		target.secret.length < 32 ||
-		target.secret.length > 512
-	) {
-		fail("CINAAUTH_ERASURE_TARGETS contains an invalid target");
+const selected = [...REQUIRED_WORKER_SECRETS];
+if (includeLegacyWebhook) {
+	const name = "CINAAUTH_ERASURE_WEBHOOK_SECRET";
+	if (!hasValue(name) || process.env[name].length < 32) {
+		fail(`${name} must be present and at least 32 characters`);
 	}
-	if (ids.has(target.id)) {
-		fail(`CINAAUTH_ERASURE_TARGETS contains duplicate target id ${target.id}`);
+	selected.push(name);
+}
+if (includeLegacyTargets) {
+	const name = "CINAAUTH_ERASURE_TARGETS";
+	if (!hasValue(name)) fail(`${name} must be present`);
+	let targets;
+	try {
+		targets = JSON.parse(process.env[name]);
+	} catch {
+		fail(`${name} must be valid JSON`);
 	}
-	ids.add(target.id);
+	if (!Array.isArray(targets) || targets.length === 0 || targets.length > 20) {
+		fail(`${name} must contain between 1 and 20 targets`);
+	}
+	selected.push(name);
 }
 
-for (const name of REQUIRED_SECRETS) {
+for (const name of selected) {
 	if (isDryRun) {
 		console.log(`Would provision ${name}`);
 		continue;
@@ -106,5 +68,5 @@ for (const name of REQUIRED_SECRETS) {
 }
 
 console.log(
-	`Privacy Erasure Worker secret provisioning complete (${targets.length} target ids validated; values were not printed).`,
+	"Privacy Erasure Worker core secret provisioning complete. Secrets Store V2 webhook and config KEK values are managed separately; target configuration is staged post-deploy through the authenticated control plane.",
 );

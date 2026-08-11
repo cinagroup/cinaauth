@@ -1,23 +1,36 @@
 # CinaAuth Delivery Worker Deployment
 
-This Worker receives signed delivery jobs from `cinaauth-api`, verifies the
-HMAC headers, deduplicates successful delivery IDs with KV, and sends email via
-Resend plus SMS via Twilio.
+This Worker receives signed delivery jobs from `cinaauth-api`, deduplicates
+successful IDs with KV, and sends email through Resend or SMS through Twilio.
+Provider credentials can be configured after the Worker is deployed; they are
+not build inputs and are never returned by the management API.
 
-## Cloudflare Setup
+## Bootstrap resources
 
-The replay KV namespace has already been created in Cloudflare:
+The checked-in configuration binds:
 
-```json
-{
-  "binding": "CINAAUTH_DELIVERY_REPLAY_KV",
-  "id": "d5a6d9a4e8b7469ab2de82c53bf6b7f8"
-}
-```
+- replay KV `CINAAUTH_DELIVERY_REPLAY_KV`;
+- SQLite Durable Object `DELIVERY_CONFIG` (`DeliveryProviderConfig`);
+- active shared webhook secret `CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2`;
+- provider-configuration KEK `CINAAUTH_DELIVERY_CONFIG_KEK_STORE`.
 
-Deploy the Worker once after local checks so the script and route exist. It will
-return `503` from `/ready` until provider secrets are set, but the hostname is
-not used by `cinaauth-api` until you later set `CINAAUTH_DELIVERY_WEBHOOK_URL`.
+Both Secrets Store entries must have the `workers` scope in store
+`346e2b4b86334bc29083c064116e91cf`:
+
+| Binding | Secret name | Purpose |
+| --- | --- | --- |
+| `CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` | Authorize and sign Delivery and management traffic |
+| `CINAAUTH_DELIVERY_CONFIG_KEK_STORE` | `CINAAUTH_DELIVERY_CONFIG_KEK_V1` | HKDF input for per-version AES-256-GCM keys |
+
+The KEK must be an independently generated high-entropy value of at least 32
+characters. Never put either value in a tracked file, command argument, log, or
+browser response. The browser and Admin Worker must not receive a Cloudflare
+Secrets Store write token. Do not replace the KEK in place: existing dynamic
+versions would become undecryptable. A future KEK rotation must stage a new
+binding/version, re-encrypt all retained slots, verify them, and only then
+retire V1.
+
+Run the local release gates and deploy the bootstrap Worker:
 
 ```sh
 pnpm --dir workers/delivery run test
@@ -27,51 +40,114 @@ pnpm --dir workers/delivery run build
 pnpm --dir workers/delivery run deploy
 ```
 
-Then set runtime secrets. Use the same `CINAAUTH_DELIVERY_WEBHOOK_SECRET`
-value on this Worker and on the main `cinaauth-api` Worker. The provisioning
-script reads values from environment variables and sends them to Wrangler over
-stdin, so secret values do not appear in command-line arguments.
+The Worker can be structurally healthy while `/ready` returns `503` with
+operational state `disabled` or `degraded`. That is the expected bootstrap
+state until both channels are configured, tested, and activated.
 
-```sh
-pnpm --dir workers/delivery run provision:secrets
+## Active webhook secret and rollback
+
+Delivery verification, management authorization, and readiness authorization
+resolve `CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2` on every request. If its
+`get()` fails or the value is weak, the request fails closed. The legacy Worker
+secret `CINAAUTH_DELIVERY_WEBHOOK_SECRET` is used only when the Store binding is
+absent, allowing a deliberate code/config rollback; it is never used to bypass
+a present but unhealthy Store binding.
+
+Authorized `/ready` reports `secretsStore.active`, `ok`, and public-safe issue
+names. It never returns or logs the value.
+
+## Post-deploy provider configuration
+
+The Auth Worker calls these private management endpoints through its Delivery
+Service Binding:
+
+```text
+POST /cinaauth/delivery/config/status
+POST /cinaauth/delivery/config/stage
+POST /cinaauth/delivery/config/test
+POST /cinaauth/delivery/config/activate
+POST /cinaauth/delivery/config/rollback
 ```
 
-Point the main Worker at this endpoint:
+Every request uses the same Bearer token, timestamp, request ID, and HMAC
+signature as normal delivery. Mutation `idempotencyKey` must equal
+`X-CinaAuth-Delivery-Id`. All request bodies are exact-parsed; unknown fields
+are rejected. Every response includes `Cache-Control: no-store`,
+`Pragma: no-cache`, and `X-Content-Type-Options: nosniff`.
 
-```sh
-pnpm --dir workers/auth-api exec wrangler secret put CINAAUTH_DELIVERY_WEBHOOK_URL
-# value: https://cinaauth-delivery.cinagroup.com/cinaauth/delivery
+The lifecycle is:
+
+1. `stage` validates and encrypts a new channel `NEXT` version.
+2. `test` sends a real provider message to the explicit recipient and marks
+   that exact `NEXT` tested only after a successful provider response.
+3. `activate` atomically moves `ACTIVE` to `PREVIOUS` and `NEXT` to `ACTIVE`.
+4. `rollback` atomically swaps `ACTIVE` and `PREVIOUS`.
+
+All mutations require `expectedVersion` (the global repository revision) and
+an idempotency key. A stale revision or reuse of a key with another payload is
+rejected with `409`. Successful mutation responses contain only:
+
+```json
+{
+  "operation": "stage",
+  "revision": 1,
+  "version": 1,
+  "validated": false,
+  "updatedAt": "2026-08-11T00:00:00.000Z"
+}
 ```
 
-## Verify And Deploy
+The SQLite Durable Object persists ciphertext, random HKDF salt, random GCM IV,
+version slots, timestamps, and keyed idempotency digests. It does not persist
+plaintext credentials or test recipients. The management API is write-only:
+status exposes only provider names, configured/validated booleans, revisions,
+version slots, and timestamps.
+
+At runtime, each channel resolves configuration in this order:
+
+1. decrypted dynamic `ACTIVE`;
+2. a complete legacy environment group;
+3. disabled.
+
+If a dynamic `ACTIVE` exists but cannot be decrypted or read, delivery fails
+closed and does not silently fall back to legacy values.
+
+## Legacy migration only
+
+`provision:secrets` is retained for rollback or migration. It provisions only
+legacy values that are actually present in the invoking process and requires
+each provider group to be complete. A normal bootstrap does not require
+Resend/Twilio values in CI:
 
 ```sh
-CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... pnpm --dir workers/delivery run check:cloudflare
-curl https://cinaauth-delivery.cinagroup.com/ready \
-  -H "Authorization: Bearer $CINAAUTH_DELIVERY_WEBHOOK_SECRET"
+pnpm --dir workers/delivery run provision:secrets -- --dry-run
 ```
 
-`check:cloudflare` verifies the replay KV namespace, zone/route ownership,
-required Worker secrets, and public endpoint state. It never prints secret
-values.
+## Readiness and verification
 
-`GET /ready` returns HTTP 200 only when the shared delivery secret, replay KV,
-Resend, Twilio, and Worker version metadata are present. Without authorization
-it returns only a compact status. With `Authorization: Bearer
-$CINAAUTH_DELIVERY_WEBHOOK_SECRET`, it reports missing input names but not
-values.
+```sh
+CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... \
+  pnpm --dir workers/delivery run check:cloudflare
+```
 
-## Webhook Contract
+`GET /` is structural health and reports `structuralReady` without resolving or
+returning provider credentials. `GET /ready` is operational readiness and is
+`200` only when both email and SMS are usable; bootstrap `503` is valid. The
+remote preflight accepts that bootstrap state, verifies both Store bindings,
+the Durable Object binding, replay KV, route ownership, and response shape, and
+warns that provider activation is still required.
 
-The main Worker sends:
+## Delivery webhook contract
 
-- `Authorization: Bearer $CINAAUTH_DELIVERY_WEBHOOK_SECRET`
+The Auth Worker sends:
+
+- `Authorization: Bearer <active shared webhook secret>`
 - `X-CinaAuth-Delivery-Id`
 - `X-CinaAuth-Delivery-Timestamp`
 - `X-CinaAuth-Delivery-Signature`
 
-The signature is `v1=` + hex HMAC-SHA256 over
+The signature is `v1=` plus hex HMAC-SHA256 over
 `{timestamp}.{deliveryId}.{rawRequestBody}`. Requests older than
 `DELIVERY_ALLOWED_SKEW_SECONDS` are rejected. Delivery IDs are recorded in KV
-only after the provider succeeds, so failed sends can still retry through the
-main Worker queue while successful duplicates become idempotent no-ops.
+only after the provider succeeds, so failed sends remain retryable while
+successful duplicates become idempotent no-ops.

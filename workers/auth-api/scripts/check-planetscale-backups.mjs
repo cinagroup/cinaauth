@@ -49,7 +49,9 @@ export const evaluateBackupEvidence = ({
 }) => {
 	const failures = [];
 	const productionPolicies = policies.filter(isProductionPolicy);
-	const requiredPolicies = productionPolicies.filter((policy) => policy.required);
+	const requiredPolicies = productionPolicies.filter(
+		(policy) => policy.required,
+	);
 	if (requiredPolicies.length === 0) {
 		failures.push("No required production backup policy was returned");
 	}
@@ -79,7 +81,9 @@ export const evaluateBackupEvidence = ({
 	const activeBackups = backups.filter((backup) => !backup.deleted_at);
 	for (const backup of activeBackups) {
 		if (backup.protected === true) {
-			failures.push(`Backup ${backup.id ?? "unknown"} is protected from deletion`);
+			failures.push(
+				`Backup ${backup.id ?? "unknown"} is protected from deletion`,
+			);
 		}
 		if (!backup.expires_at || Number.isNaN(Date.parse(backup.expires_at))) {
 			failures.push(`Backup ${backup.id ?? "unknown"} has no valid expiry`);
@@ -125,7 +129,10 @@ export const evaluateBackupEvidence = ({
 			pending = now.getTime() < purgeNoLaterThan;
 			if (!pending) {
 				for (const backup of eligibleBackups) {
-					if (!backup.deleted_at || Number.isNaN(Date.parse(backup.deleted_at))) {
+					if (
+						!backup.deleted_at ||
+						Number.isNaN(Date.parse(backup.deleted_at))
+					) {
 						failures.push(
 							`Pre-deletion backup ${backup.id ?? "unknown"} is not deleted after the signed deadline`,
 						);
@@ -282,10 +289,14 @@ const main = async () => {
 		.update(canonicalize(report))
 		.digest("hex");
 	console.log(JSON.stringify({ ...report, reportDigest }, null, 2));
-	process.exitCode = evidence.status === "verified" ? 0 : evidence.status === "pending" ? 2 : 1;
+	process.exitCode =
+		evidence.status === "verified" ? 0 : evidence.status === "pending" ? 2 : 1;
 };
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+	process.argv[1] &&
+	import.meta.url === pathToFileURL(process.argv[1]).href
+) {
 	main().catch((error) => {
 		console.error(error instanceof Error ? error.message : String(error));
 		process.exitCode = 1;

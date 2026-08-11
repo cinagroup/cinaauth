@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 /**
@@ -43,11 +43,15 @@ export function PageHeader({
 						{title}
 					</h1>
 					{description && (
-						<p className="mt-1 text-[14px] leading-5 text-body">{description}</p>
+						<p className="mt-1 text-[14px] leading-5 text-body">
+							{description}
+						</p>
 					)}
 				</div>
 				{children && (
-					<div className="flex w-full max-w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">{children}</div>
+					<div className="flex w-full max-w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+						{children}
+					</div>
 				)}
 			</div>
 		</div>

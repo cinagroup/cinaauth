@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { PageHeader } from "@/components/layout/page-header";
-import { useI18n } from "@/lib/i18n/i18n-context";
 import {
 	Select,
 	SelectContent,
@@ -16,6 +15,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { fetchAdminResponse } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function NewUserPage() {
 	const { t } = useI18n();
@@ -32,7 +33,7 @@ export default function NewUserPage() {
 		setError(null);
 		setSubmitting(true);
 		try {
-			const r = await fetch("/api/admin/users/create", {
+			const r = await fetchAdminResponse("/api/admin/users/create", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ email, name, password, role }),
@@ -54,7 +55,11 @@ export default function NewUserPage() {
 
 	return (
 		<div className="max-w-md">
-			<PageHeader title={t("users.create.manual")} backHref="/users" backLabel={t("users.back")} />
+			<PageHeader
+				title={t("users.create.manual")}
+				backHref="/users"
+				backLabel={t("users.back")}
+			/>
 			<Card>
 				<CardContent>
 					<form onSubmit={submit} className="space-y-4">
@@ -104,9 +109,15 @@ export default function NewUserPage() {
 							</Select>
 						</div>
 						{error && (
-							<div role="alert" className="text-[14px] leading-5 text-error">{error}</div>
+							<div role="alert" className="text-[14px] leading-5 text-error">
+								{error}
+							</div>
 						)}
-						<Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+						<Button
+							type="submit"
+							disabled={submitting}
+							className="w-full sm:w-auto"
+						>
 							<Plus size={15} />
 							{submitting ? t("common.creating") : t("users.create")}
 						</Button>

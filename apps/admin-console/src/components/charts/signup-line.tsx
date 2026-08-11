@@ -9,8 +9,8 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import { useThemeTokens } from "@/hooks/use-theme-tokens";
 import { ChartState } from "@/components/charts/chart-state";
+import { useThemeTokens } from "@/hooks/use-theme-tokens";
 
 /**
  * Daily signup trend line chart. Colors read from CSS custom properties so

@@ -1,35 +1,35 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { StatCard } from "@/components/charts/stat-card";
-import { ChannelPie } from "@/components/charts/channel-pie";
-import { CohortBars } from "@/components/charts/cohort-bars";
-import { SignupLine } from "@/components/charts/signup-line";
-import { ActiveUsersChart } from "@/components/charts/active-users-chart";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/layout/page-header";
-import { Section } from "@/components/layout/section";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson } from "@/lib/client-api";
-import type {
-	SignupPointDTO,
-	StatsOverviewDTO,
-	SecurityTodayDTO,
-} from "@/lib/cinaauth/dto";
 import {
-	Building2,
 	AlertTriangle,
+	Building2,
 	KeyRound,
 	MonitorSmartphone,
+	RefreshCw,
 	ShieldAlert,
 	ShieldCheck,
 	UserPlus,
 	UserRoundX,
 	Users,
-	RefreshCw,
 } from "lucide-react";
+import { ActiveUsersChart } from "@/components/charts/active-users-chart";
+import { ChannelPie } from "@/components/charts/channel-pie";
+import { CohortBars } from "@/components/charts/cohort-bars";
+import { SignupLine } from "@/components/charts/signup-line";
+import { StatCard } from "@/components/charts/stat-card";
+import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/section";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import type {
+	SecurityTodayDTO,
+	SignupPointDTO,
+	StatsOverviewDTO,
+} from "@/lib/cinaauth/dto";
+import { fetchAdminJson } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 /** Sum counts in `series` whose date falls within the last `days` days. */
 function sumLastDays(series: SignupPointDTO[], days: number): number {
@@ -113,7 +113,13 @@ export default function DashboardPage() {
 		queryFn: async () => {
 			const d = await fetchAdminJson<{
 				ok?: boolean;
-				data?: { alerts?: Array<{ actorId?: string; failureCount?: number; lastIp?: string }> };
+				data?: {
+					alerts?: Array<{
+						actorId?: string;
+						failureCount?: number;
+						lastIp?: string;
+					}>;
+				};
 			}>("/api/admin/audit/alerts?windowHours=24&failThreshold=5");
 			return d.data?.alerts ?? [];
 		},
@@ -262,64 +268,64 @@ export default function DashboardPage() {
 						<CardContent className="pt-0">
 							<ActiveUsersChart days={14} />
 						</CardContent>
-				</Card>
-			</div>
-		</Section>
+					</Card>
+				</div>
+			</Section>
 
-		{/* Organizations + security section */}
-		<Section label={t("dashboard.section.orgSecurity")}>
-			<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-				<StatCard
-					label={t("dashboard.orgCount")}
-					value={overviewQuery.isError ? "—" : ov.organizationCount}
-					icon={Building2}
-				/>
-				<StatCard
-					label={t("dashboard.no2fa")}
-					value={overviewQuery.isError ? "—" : ov.usersWithout2FA}
-					hint={t("dashboard.no2fa.hint")}
-					icon={ShieldCheck}
-					tone="warning"
-				/>
-				<StatCard
-					label={t("dashboard.failedLogins")}
-					value={securityQuery.isError ? "—" : sec.failedLoginsToday}
-					icon={ShieldAlert}
-					tone="danger"
-				/>
-				<StatCard
-					label={t("dashboard.otpRequests")}
-					value={securityQuery.isError ? "—" : sec.otpRequestsToday}
-					icon={KeyRound}
-					tone="info"
-				/>
-			</div>
-		</Section>
+			{/* Organizations + security section */}
+			<Section label={t("dashboard.section.orgSecurity")}>
+				<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+					<StatCard
+						label={t("dashboard.orgCount")}
+						value={overviewQuery.isError ? "—" : ov.organizationCount}
+						icon={Building2}
+					/>
+					<StatCard
+						label={t("dashboard.no2fa")}
+						value={overviewQuery.isError ? "—" : ov.usersWithout2FA}
+						hint={t("dashboard.no2fa.hint")}
+						icon={ShieldCheck}
+						tone="warning"
+					/>
+					<StatCard
+						label={t("dashboard.failedLogins")}
+						value={securityQuery.isError ? "—" : sec.failedLoginsToday}
+						icon={ShieldAlert}
+						tone="danger"
+					/>
+					<StatCard
+						label={t("dashboard.otpRequests")}
+						value={securityQuery.isError ? "—" : sec.otpRequestsToday}
+						icon={KeyRound}
+						tone="info"
+					/>
+				</div>
+			</Section>
 
-		<Section label={t("dashboard.signupTrend")}>
-		<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-			<Card>
-				<CardHeader>
-					<div className="text-[14px] leading-5 text-body">
-							{t("dashboard.signupTrend")}
-						</div>
-					</CardHeader>
-					<CardContent className="pt-0">
-						<SignupLine data={signupSeries} />
-					</CardContent>
-				</Card>
-				<Card>
-					<CardHeader>
-						<div className="text-[14px] leading-5 text-body">
-							{t("dashboard.channelDist")}
-						</div>
-					</CardHeader>
-					<CardContent className="pt-0">
-						<ChannelPie channels={ov.loginChannels} />
-					</CardContent>
-				</Card>
-			</div>
-		</Section>
+			<Section label={t("dashboard.signupTrend")}>
+				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+					<Card>
+						<CardHeader>
+							<div className="text-[14px] leading-5 text-body">
+								{t("dashboard.signupTrend")}
+							</div>
+						</CardHeader>
+						<CardContent className="pt-0">
+							<SignupLine data={signupSeries} />
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader>
+							<div className="text-[14px] leading-5 text-body">
+								{t("dashboard.channelDist")}
+							</div>
+						</CardHeader>
+						<CardContent className="pt-0">
+							<ChannelPie channels={ov.loginChannels} />
+						</CardContent>
+					</Card>
+				</div>
+			</Section>
 
 			{/* Security alerts — flagged actors from audit/alerts */}
 			{(alerts?.length ?? 0) > 0 && (
@@ -328,13 +334,26 @@ export default function DashboardPage() {
 						<CardContent className="pt-6">
 							<div className="space-y-2">
 								{(alerts ?? []).map((a, i) => (
-									<div key={i} className="flex items-center justify-between rounded-[var(--radius-sm)] bg-error-soft px-4 py-2 text-[14px]">
+									<div
+										key={i}
+										className="flex items-center justify-between rounded-[var(--radius-sm)] bg-error-soft px-4 py-2 text-[14px]"
+									>
 										<span className="font-medium text-ink">
-											{t("dashboard.securityAlerts.actor")}: {a.actorId || "unknown"}
+											{t("dashboard.securityAlerts.actor")}:{" "}
+											{a.actorId || "unknown"}
 										</span>
 										<div className="flex items-center gap-4 text-body">
-											<span>{t("dashboard.securityAlerts.failures")}: <strong className="text-error">{a.failureCount ?? 0}</strong></span>
-											{a.lastIp && <span className="font-mono text-[12px]">{a.lastIp}</span>}
+											<span>
+												{t("dashboard.securityAlerts.failures")}:{" "}
+												<strong className="text-error">
+													{a.failureCount ?? 0}
+												</strong>
+											</span>
+											{a.lastIp && (
+												<span className="font-mono text-[12px]">
+													{a.lastIp}
+												</span>
+											)}
 										</div>
 									</div>
 								))}
@@ -343,7 +362,6 @@ export default function DashboardPage() {
 					</Card>
 				</Section>
 			)}
-
 		</div>
 	);
 }

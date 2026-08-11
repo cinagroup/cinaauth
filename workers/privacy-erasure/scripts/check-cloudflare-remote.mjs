@@ -6,10 +6,18 @@ const API_BASE = "https://api.cloudflare.com/client/v4";
 const ORIGIN = "https://cinaauth-erasure.cinagroup.com";
 const MAX_ATTEMPTS = 3;
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
-const REQUIRED_SECRETS = [
-	"CINAAUTH_ERASURE_WEBHOOK_SECRET",
-	"CINAAUTH_ERASURE_STORAGE_SECRET",
-	"CINAAUTH_ERASURE_TARGETS",
+const REQUIRED_SECRETS = ["CINAAUTH_ERASURE_STORAGE_SECRET"];
+const SECRETS_STORE_BINDINGS = [
+	{
+		name: "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2",
+	},
+	{
+		name: "CINAAUTH_ERASURE_CONFIG_KEK_STORE",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINAAUTH_ERASURE_CONFIG_KEK_V1",
+	},
 ];
 const allowNotReady = process.argv.includes("--allow-not-ready");
 
@@ -28,6 +36,55 @@ const warn = (message) => warnings.push(message);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const shouldRetry = (response) =>
 	RETRYABLE_STATUS_CODES.has(response.status) || response.status >= 500;
+
+const isRecord = (value) =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+const containsHttpUrl = (value) => {
+	if (typeof value === "string") return /^https?:\/\//i.test(value);
+	if (Array.isArray(value)) return value.some(containsHttpUrl);
+	if (isRecord(value)) return Object.values(value).some(containsHttpUrl);
+	return false;
+};
+
+const hasOnlyKeys = (value, allowedKeys) =>
+	isRecord(value) && Object.keys(value).every((key) => allowedKeys.has(key));
+
+const hasPublicReadinessShape = (body) => {
+	if (
+		!hasOnlyKeys(
+			body,
+			new Set([
+				"success",
+				"service",
+				"version",
+				"runtimeConfig",
+				"webhookAuthentication",
+			]),
+		) ||
+		!hasOnlyKeys(
+			body.runtimeConfig,
+			new Set([
+				"ok",
+				"structuralReady",
+				"operationalReady",
+				"source",
+				"issues",
+				"targetIds",
+				"configuration",
+			]),
+		)
+	) {
+		return false;
+	}
+	return (
+		body.webhookAuthentication === undefined ||
+		hasOnlyKeys(
+			body.webhookAuthentication,
+			new Set(["active", "ok", "source", "issues"]),
+		)
+	);
+};
 
 const describeFetchError = (error) => {
 	if (!(error instanceof Error)) return String(error);
@@ -112,30 +169,37 @@ const checkWorkerSettings = async () => {
 	const settings = await cloudflareFetch(
 		`/accounts/${accountId}/workers/scripts/${config.name}/settings`,
 	);
-	const binding = settings.bindings?.find(
-		(item) =>
-			item.name === "ERASURE_COORDINATOR" &&
-			item.type === "durable_object_namespace",
-	);
-	if (!binding) {
-		fail("Remote Worker is missing ERASURE_COORDINATOR Durable Object binding");
-		return;
-	}
-	if (typeof binding.namespace_id !== "string") {
-		fail("Remote ERASURE_COORDINATOR binding is missing its namespace id");
-		return;
-	}
-	const durableNamespace = await cloudflareFetch(
-		`/accounts/${accountId}/workers/durable_objects/namespaces/${binding.namespace_id}`,
-	);
-	if (
-		durableNamespace.script !== config.name ||
-		durableNamespace.class !== "ErasureCoordinator" ||
-		durableNamespace.use_sqlite !== true
-	) {
-		fail(
-			"Remote ErasureCoordinator namespace must use SQLite Durable Object storage",
+	for (const expected of [
+		{ binding: "ERASURE_COORDINATOR", className: "ErasureCoordinator" },
+		{ binding: "ERASURE_CONFIG", className: "ErasureConfigDurableObject" },
+	]) {
+		const binding = settings.bindings?.find(
+			(item) =>
+				item.name === expected.binding &&
+				item.type === "durable_object_namespace",
 		);
+		if (!binding) {
+			fail(
+				`Remote Worker is missing ${expected.binding} Durable Object binding`,
+			);
+			continue;
+		}
+		if (typeof binding.namespace_id !== "string") {
+			fail(`Remote ${expected.binding} binding is missing its namespace id`);
+			continue;
+		}
+		const durableNamespace = await cloudflareFetch(
+			`/accounts/${accountId}/workers/durable_objects/namespaces/${binding.namespace_id}`,
+		);
+		if (
+			durableNamespace.script !== config.name ||
+			durableNamespace.class !== expected.className ||
+			durableNamespace.use_sqlite !== true
+		) {
+			fail(
+				`Remote ${expected.className} namespace must use SQLite Durable Object storage`,
+			);
+		}
 	}
 
 	const deployments = await cloudflareFetch(
@@ -151,16 +215,43 @@ const checkWorkerSettings = async () => {
 	const version = await cloudflareFetch(
 		`/accounts/${accountId}/workers/scripts/${config.name}/versions/${currentVersion}`,
 	);
-	const durableHandler = version.resources?.script?.named_handlers?.find(
-		(handler) =>
-			handler.name === "ErasureCoordinator" &&
-			handler.handlers?.includes("class"),
-	);
-	if (!durableHandler) {
-		fail("Remote Worker version does not export ErasureCoordinator");
+	for (const className of [
+		"ErasureCoordinator",
+		"ErasureConfigDurableObject",
+	]) {
+		const durableHandler = version.resources?.script?.named_handlers?.find(
+			(handler) =>
+				handler.name === className && handler.handlers?.includes("class"),
+		);
+		if (!durableHandler) {
+			fail(`Remote Worker version does not export ${className}`);
+		}
 	}
-	if (version.resources?.script_runtime?.migration_tag !== "v1") {
-		fail("Remote Privacy Erasure Worker must have Durable Object migration v1");
+	if (version.resources?.script_runtime?.migration_tag !== "v2") {
+		fail("Remote Privacy Erasure Worker must have Durable Object migration v2");
+	}
+
+	for (const expected of SECRETS_STORE_BINDINGS) {
+		const binding = settings.bindings?.find(
+			(item) => item.name === expected.name,
+		);
+		if (
+			binding?.type !== "secrets_store_secret" ||
+			binding.store_id !== expected.storeId ||
+			binding.secret_name !== expected.secretName
+		) {
+			fail(
+				`Remote ${expected.name} binding must target ${expected.storeId}/${expected.secretName}`,
+			);
+		}
+	}
+	const allowHostsBinding = settings.bindings?.find(
+		(item) => item.name === "CINAAUTH_ERASURE_ALLOWED_HOSTS",
+	);
+	if (allowHostsBinding?.type !== "plain_text") {
+		fail(
+			"Remote Worker is missing static CINAAUTH_ERASURE_ALLOWED_HOSTS policy",
+		);
 	}
 };
 
@@ -200,7 +291,9 @@ const checkPublicEndpoints = async () => {
 		fail("Privacy Erasure Worker root must return Cache-Control: no-store");
 	}
 
-	const readinessSecret = process.env.CINAAUTH_ERASURE_WEBHOOK_SECRET;
+	const readinessSecret =
+		process.env.CINAAUTH_ERASURE_WEBHOOK_SECRET_V2 ||
+		process.env.CINAAUTH_ERASURE_WEBHOOK_SECRET;
 	const ready = await publicFetch(`${ORIGIN}/ready`, {
 		headers: {
 			Accept: "application/json",
@@ -211,14 +304,22 @@ const checkPublicEndpoints = async () => {
 	});
 	const body = await ready.json().catch(() => undefined);
 	if (allowNotReady && ready.status === 503) {
-		if (!body || body.runtimeConfig?.ok !== false) {
+		if (
+			!body ||
+			body.runtimeConfig?.ok !== false ||
+			body.runtimeConfig?.operationalReady !== false ||
+			body.runtimeConfig?.structuralReady !== true
+		) {
 			fail(
-				"Fail-closed bootstrap readiness must report runtimeConfig.ok=false",
+				"Bootstrap must be structurally ready and operationally fail closed",
 			);
 		} else {
 			warn(
 				"Privacy Erasure Worker is intentionally fail-closed with no ready target",
 			);
+		}
+		if (!hasPublicReadinessShape(body) || containsHttpUrl(body)) {
+			fail("Readiness must not expose target URLs or secret fields");
 		}
 		return;
 	}
@@ -229,13 +330,28 @@ const checkPublicEndpoints = async () => {
 	if (!body || body.success !== true || body.runtimeConfig?.ok !== true) {
 		fail("Privacy Erasure Worker readiness response is incomplete");
 	}
+	if (
+		body.runtimeConfig?.structuralReady !== true ||
+		body.runtimeConfig?.operationalReady !== true
+	) {
+		fail("Operational readiness must also confirm structural readiness");
+	}
 	if (readinessSecret && !Array.isArray(body.runtimeConfig?.targetIds)) {
 		fail(
 			"Authorized readiness must expose the configured public-safe target IDs",
 		);
 	}
-	const serialized = JSON.stringify(body);
-	if (/https?:\/\//i.test(serialized) || serialized.includes("secret")) {
+	if (
+		readinessSecret &&
+		(body.webhookAuthentication?.active !== true ||
+			body.webhookAuthentication?.ok !== true ||
+			body.webhookAuthentication?.source !== "secrets-store-v2" ||
+			!Array.isArray(body.webhookAuthentication?.issues) ||
+			body.webhookAuthentication.issues.length !== 0)
+	) {
+		fail("Authorized readiness must confirm active Secrets Store V2 auth");
+	}
+	if (!hasPublicReadinessShape(body) || containsHttpUrl(body)) {
 		fail("Readiness must not expose target URLs or secret fields");
 	}
 };

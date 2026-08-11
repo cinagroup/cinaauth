@@ -1,17 +1,25 @@
 name: Deploy to Cloudflare
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - workers/auth-api/**
-      - workers/delivery/**
-      - workers/privacy-erasure/**
-      - packages/auth-web-contract/**
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - .github/workflows/deploy-cloudflare.yml
   workflow_dispatch:
+    inputs:
+      restore_rehearsal_completed:
+        description: Confirm an isolated PostgreSQL restore rehearsal succeeded
+        required: true
+        default: false
+        type: boolean
+      restore_rehearsal_reference:
+        description: Restore rehearsal evidence URL or run identifier
+        required: true
+        type: string
+      backup_reference:
+        description: Active PlanetScale main backup ID approved for rollback
+        required: true
+        type: string
+      operator_attestation:
+        description: Type DEPLOY CINAAUTH PRODUCTION to authorize writes and migration
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,9 +29,95 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-deployment-contract:
+    name: Validate deployment workflow contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test bootstrap and deployment ordering
+        run: node --test .github/workflows/deployment-workflows.test.mjs
+
+  authorize-production:
+    name: Authorize production deployment
+    runs-on: ubuntu-latest
+    needs: validate-deployment-contract
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Validate restore rehearsal and operator attestation
+        env:
+          RESTORE_REHEARSAL_COMPLETED: ${{ inputs.restore_rehearsal_completed }}
+          RESTORE_REHEARSAL_REFERENCE: ${{ inputs.restore_rehearsal_reference }}
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          OPERATOR_ATTESTATION: ${{ inputs.operator_attestation }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main" || (echo "Production deployment must run from main" && exit 1)
+          test "$RESTORE_REHEARSAL_COMPLETED" = "true" || (echo "Restore rehearsal must be completed" && exit 1)
+          normalized_restore_reference="$(printf '%s' "$RESTORE_REHEARSAL_REFERENCE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          test "${#normalized_restore_reference}" -ge 8 || (echo "Restore rehearsal reference must contain durable evidence" && exit 1)
+          case "$normalized_restore_reference" in none|n/a|na|pending|unknown) echo "Restore rehearsal reference must not be a placeholder"; exit 1;; esac
+          printf '%s' "$BACKUP_REFERENCE" | grep -Eq '^[A-Za-z0-9_-]{8,128}$' || (echo "Backup reference must be a PlanetScale backup ID" && exit 1)
+          test "$OPERATOR_ATTESTATION" = "DEPLOY CINAAUTH PRODUCTION" || (echo "Operator attestation does not authorize production deployment" && exit 1)
+
+      - name: Validate PlanetScale audit credentials
+        env:
+          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_ID }}
+          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN }}
+        run: |
+          test -n "$PLANETSCALE_SERVICE_TOKEN_ID" || (echo "Missing PLANETSCALE_SERVICE_TOKEN_ID" && exit 1)
+          test -n "$PLANETSCALE_SERVICE_TOKEN" || (echo "Missing PLANETSCALE_SERVICE_TOKEN" && exit 1)
+
+      - name: Audit PlanetScale production backups
+        env:
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_ID }}
+          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN }}
+        run: |
+          report_file="$RUNNER_TEMP/planetscale-backups.json"
+          pnpm --silent --dir workers/auth-api run check:planetscale-backups > "$report_file"
+          node -e '
+            const fs = require("node:fs");
+            const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const backupReference = process.env.BACKUP_REFERENCE;
+            if (report.status !== "verified") {
+              console.error("PlanetScale backup audit is not verified");
+              process.exit(1);
+            }
+            if (!report.activeBackups?.some(({ id }) => id === backupReference)) {
+              console.error("Attested backup is not an active successful main backup");
+              process.exit(1);
+            }
+            console.log(JSON.stringify({
+              status: report.status,
+              backupReference,
+              reportDigest: report.reportDigest,
+            }));
+          ' "$report_file"
+
   deploy-delivery:
     name: Deploy Delivery Worker
     runs-on: ubuntu-latest
+    needs: authorize-production
+    environment: production
     defaults:
       run:
         working-directory: workers/delivery
@@ -41,26 +135,13 @@ jobs:
         with:
           version: 11
 
-      - name: Validate required delivery secrets
+      - name: Validate Cloudflare credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RESEND_EMAIL_FROM: ${{ secrets.RESEND_EMAIL_FROM }}
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
-          test -n "$CINAAUTH_DELIVERY_WEBHOOK_SECRET" || (echo "Missing CINAAUTH_DELIVERY_WEBHOOK_SECRET" && exit 1)
-          test "${#CINAAUTH_DELIVERY_WEBHOOK_SECRET}" -ge 32 || (echo "CINAAUTH_DELIVERY_WEBHOOK_SECRET must be at least 32 characters" && exit 1)
-          test -n "$RESEND_API_KEY" || (echo "Missing RESEND_API_KEY" && exit 1)
-          test -n "$RESEND_EMAIL_FROM" || (echo "Missing RESEND_EMAIL_FROM" && exit 1)
-          test -n "$TWILIO_ACCOUNT_SID" || (echo "Missing TWILIO_ACCOUNT_SID" && exit 1)
-          test -n "$TWILIO_AUTH_TOKEN" || (echo "Missing TWILIO_AUTH_TOKEN" && exit 1)
-          test -n "$TWILIO_FROM_NUMBER" || (echo "Missing TWILIO_FROM_NUMBER" && exit 1)
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -79,36 +160,17 @@ jobs:
           workingDirectory: workers/delivery
           command: deploy
 
-      - name: Provision Delivery Worker secrets
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RESEND_EMAIL_FROM: ${{ secrets.RESEND_EMAIL_FROM }}
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
-        run: pnpm run provision:secrets
-
-      - name: Check Delivery Worker remote prerequisites
+      - name: Verify Delivery Worker structural bootstrap
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm run check:cloudflare
 
-      - name: Check Delivery Worker readiness
-        env:
-          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
-        run: |
-          curl --fail-with-body --show-error --silent \
-            --retry 10 --retry-all-errors --retry-delay 6 \
-            https://cinaauth-delivery.cinagroup.com/ready \
-            -H "Authorization: Bearer $CINAAUTH_DELIVERY_WEBHOOK_SECRET"
-
   deploy-privacy-erasure:
     name: Deploy Privacy Erasure Worker
     runs-on: ubuntu-latest
+    needs: authorize-production
+    environment: production
     defaults:
       run:
         working-directory: workers/privacy-erasure
@@ -126,19 +188,15 @@ jobs:
         with:
           version: 11
 
-      - name: Validate required erasure secrets
+      - name: Validate Cloudflare credentials and core storage secret
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_ERASURE_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_ERASURE_WEBHOOK_SECRET }}
           CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-          CINAAUTH_ERASURE_TARGETS: ${{ secrets.CINAAUTH_ERASURE_TARGETS }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
-          test "${#CINAAUTH_ERASURE_WEBHOOK_SECRET}" -ge 32 || (echo "CINAAUTH_ERASURE_WEBHOOK_SECRET must be at least 32 characters" && exit 1)
           test "${#CINAAUTH_ERASURE_STORAGE_SECRET}" -ge 32 || (echo "CINAAUTH_ERASURE_STORAGE_SECRET must be at least 32 characters" && exit 1)
-          test -n "$CINAAUTH_ERASURE_TARGETS" || (echo "Missing CINAAUTH_ERASURE_TARGETS" && exit 1)
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -146,11 +204,9 @@ jobs:
       - name: Check Privacy Erasure Worker
         run: pnpm run check
 
-      - name: Validate non-empty erasure target configuration
+      - name: Validate Privacy Erasure core secret input
         env:
-          CINAAUTH_ERASURE_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_ERASURE_WEBHOOK_SECRET }}
           CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-          CINAAUTH_ERASURE_TARGETS: ${{ secrets.CINAAUTH_ERASURE_TARGETS }}
         run: pnpm run provision:secrets -- --dry-run
 
       - name: Build Privacy Erasure Worker dry run
@@ -164,35 +220,24 @@ jobs:
           workingDirectory: workers/privacy-erasure
           command: deploy
 
-      - name: Provision Privacy Erasure Worker secrets
+      - name: Provision Privacy Erasure core storage secret
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_ERASURE_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_ERASURE_WEBHOOK_SECRET }}
           CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-          CINAAUTH_ERASURE_TARGETS: ${{ secrets.CINAAUTH_ERASURE_TARGETS }}
         run: pnpm run provision:secrets
 
-      - name: Check Privacy Erasure Worker remote prerequisites
+      - name: Verify Privacy Erasure structural bootstrap
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_ERASURE_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_ERASURE_WEBHOOK_SECRET }}
-        run: pnpm run check:cloudflare
-
-      - name: Check Privacy Erasure Worker readiness
-        env:
-          CINAAUTH_ERASURE_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_ERASURE_WEBHOOK_SECRET }}
-        run: |
-          curl --fail-with-body --show-error --silent \
-            --retry 10 --retry-all-errors --retry-delay 6 \
-            https://cinaauth-erasure.cinagroup.com/ready \
-            -H "Authorization: Bearer $CINAAUTH_ERASURE_WEBHOOK_SECRET"
+        run: pnpm run check:cloudflare -- --allow-not-ready
 
   deploy-worker:
     name: Deploy Worker API
     runs-on: ubuntu-latest
     needs: [deploy-delivery, deploy-privacy-erasure]
+    environment: production
     defaults:
       run:
         working-directory: workers/auth-api
@@ -216,9 +261,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CINAAUTH_SECRET: ${{ secrets.CINAAUTH_SECRET }}
           CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
-          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
           CINAAUTH_PRIVACY_EXPORT_KEY: ${{ secrets.CINAAUTH_PRIVACY_EXPORT_KEY }}
-          CINAAUTH_ERASURE_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_ERASURE_WEBHOOK_SECRET }}
           CINAAUTH_HYPERDRIVE_ID: ${{ secrets.CINAAUTH_HYPERDRIVE_ID }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
@@ -227,12 +270,8 @@ jobs:
           test "${#CINAAUTH_SECRET}" -ge 32 || (echo "CINAAUTH_SECRET must be at least 32 characters" && exit 1)
           test -n "$CINAAUTH_MIGRATION_TOKEN" || (echo "Missing CINAAUTH_MIGRATION_TOKEN" && exit 1)
           test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32 || (echo "CINAAUTH_MIGRATION_TOKEN must be at least 32 characters" && exit 1)
-          test -n "$CINAAUTH_DELIVERY_WEBHOOK_SECRET" || (echo "Missing CINAAUTH_DELIVERY_WEBHOOK_SECRET" && exit 1)
-          test "${#CINAAUTH_DELIVERY_WEBHOOK_SECRET}" -ge 32 || (echo "CINAAUTH_DELIVERY_WEBHOOK_SECRET must be at least 32 characters" && exit 1)
           test -n "$CINAAUTH_PRIVACY_EXPORT_KEY" || (echo "Missing CINAAUTH_PRIVACY_EXPORT_KEY" && exit 1)
           test "${#CINAAUTH_PRIVACY_EXPORT_KEY}" -ge 32 || (echo "CINAAUTH_PRIVACY_EXPORT_KEY must be at least 32 characters" && exit 1)
-          test -n "$CINAAUTH_ERASURE_WEBHOOK_SECRET" || (echo "Missing CINAAUTH_ERASURE_WEBHOOK_SECRET" && exit 1)
-          test "${#CINAAUTH_ERASURE_WEBHOOK_SECRET}" -ge 32 || (echo "CINAAUTH_ERASURE_WEBHOOK_SECRET must be at least 32 characters" && exit 1)
           test "$CINAAUTH_HYPERDRIVE_ID" != "00000000000000000000000000000000" || (echo "CINAAUTH_HYPERDRIVE_ID must not be the placeholder" && exit 1)
           test "${#CINAAUTH_HYPERDRIVE_ID}" -eq 32 || (echo "CINAAUTH_HYPERDRIVE_ID must be 32 characters" && exit 1)
 
@@ -259,17 +298,14 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm run configure:privacy-export
 
-      - name: Provision Worker secrets
+      - name: Provision Auth Worker core and optional secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CINAAUTH_SECRET: ${{ secrets.CINAAUTH_SECRET }}
           CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
           CINAAUTH_DELIVERY_WEBHOOK_URL: https://cinaauth-delivery.cinagroup.com/cinaauth/delivery
-          CINAAUTH_DELIVERY_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
           CINAAUTH_PRIVACY_EXPORT_KEY: ${{ secrets.CINAAUTH_PRIVACY_EXPORT_KEY }}
-          CINAAUTH_ERASURE_WEBHOOK_URL: https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase
-          CINAAUTH_ERASURE_WEBHOOK_SECRET: ${{ secrets.CINAAUTH_ERASURE_WEBHOOK_SECRET }}
           OAUTH_PAIRWISE_SECRET: ${{ secrets.OAUTH_PAIRWISE_SECRET }}
           GENERIC_OAUTH_CONFIG: ${{ secrets.GENERIC_OAUTH_CONFIG }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -285,12 +321,6 @@ jobs:
           CINAAUTH_ENTITLEMENT_CONFIG: ${{ secrets.CINAAUTH_ENTITLEMENT_CONFIG }}
           CINAUTH_ADMIN_SERVICE_KEY: ${{ secrets.CINAUTH_ADMIN_SERVICE_KEY }}
         run: pnpm run provision:secrets
-
-      - name: Check Cloudflare remote prerequisites
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm run check:cloudflare
 
       - name: Build Worker dry run
         run: pnpm run build
@@ -329,5 +359,24 @@ jobs:
             https://auth.cinaseek.ai/api/ready \
             -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN"
 
+      - name: Verify deployed Cloudflare resources and bindings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
+        run: pnpm run check:cloudflare
+
       - name: Verify deployed OIDC Discovery and ES256 JWKS
         run: pnpm run check:oidc
+
+  deploy-account-portal:
+    name: Deploy Account Portal
+    needs: deploy-worker
+    uses: ./.github/workflows/deploy-account-portal.yml
+    secrets: inherit
+
+  deploy-admin-console:
+    name: Deploy Admin Console
+    needs: deploy-worker
+    uses: ./.github/workflows/deploy-admin-console.yml
+    secrets: inherit

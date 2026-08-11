@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
 	createContext,
 	useCallback,
@@ -7,9 +8,9 @@ import {
 	useEffect,
 	useMemo,
 	useState,
-	type ReactNode,
 } from "react";
-import { DEFAULT_LANG, DICTIONARIES, translate, type Lang } from "./dictionary";
+import type { Lang } from "./dictionary";
+import { DEFAULT_LANG, DICTIONARIES, translate } from "./dictionary";
 
 const STORAGE_KEY = "cinaadmin.lang";
 

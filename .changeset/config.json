@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://unpkg.com/@changesets/config@3.1.3/schema.json",
   "changelog": [
     "@changesets/changelog-github",
@@ -9,7 +9,7 @@
     [
       "cinaauth",
       "@cinaauth/core",
-      "auth",
+      "@cinaauth/cli",
       "@cinaauth/api-key",
       "@cinaauth/drizzle-adapter",
       "@cinaauth/electron",

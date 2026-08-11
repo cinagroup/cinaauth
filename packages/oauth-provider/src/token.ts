@@ -17,8 +17,8 @@ import type { GrantType } from "./types/oauth";
 import { verificationValueSchema } from "./types/zod";
 import { userNormalClaims } from "./userinfo";
 import {
-	basicToClientCredentials,
 	authorizeOAuthClient,
+	basicToClientCredentials,
 	clientAllowsGrant,
 	decryptStoredClientSecret,
 	getJwtPlugin,
@@ -779,12 +779,7 @@ async function handleAuthorizationCodeGrant(
 		scopes,
 		"authorization_code",
 	);
-	await authorizeOAuthClient(
-		opts,
-		client,
-		"token",
-		"authorization_code",
-	);
+	await authorizeOAuthClient(opts, client, "token", "authorization_code");
 
 	// Parse scopes from the authorization request
 	const requestedScopes =
@@ -954,12 +949,7 @@ async function handleClientCredentialsGrant(
 		undefined,
 		"client_credentials",
 	);
-	await authorizeOAuthClient(
-		opts,
-		client,
-		"token",
-		"client_credentials",
-	);
+	await authorizeOAuthClient(opts, client, "token", "client_credentials");
 
 	// OIDC scopes should not be requestable (code authorization grant should be used)
 	let requestedScopes = scope?.split(" ");

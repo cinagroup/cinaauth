@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
 	Building2,
@@ -11,14 +10,18 @@ import {
 	LayoutDashboard,
 	MonitorSmartphone,
 	ScrollText,
+	Send,
 	Shield,
 	ShieldCheck,
 	Smartphone,
+	UserRoundX,
 	Users,
-	type LucideIcon,
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n/i18n-context";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { AdminBrand } from "@/components/layout/admin-brand";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface NavItem {
 	href: string;
@@ -48,6 +51,11 @@ export const NAV: NavSection[] = [
 	{
 		groupKey: "nav.compliance",
 		items: [
+			{
+				href: "/settings/privacy-erasure",
+				key: "nav.privacyErasure",
+				icon: UserRoundX,
+			},
 			{ href: "/audit", key: "nav.auditLog", icon: ScrollText },
 			{
 				href: "/settings/security",
@@ -59,6 +67,11 @@ export const NAV: NavSection[] = [
 	{
 		groupKey: "nav.integrations",
 		items: [
+			{
+				href: "/settings/delivery",
+				key: "nav.delivery",
+				icon: Send,
+			},
 			{ href: "/settings/sso", key: "nav.sso", icon: Shield },
 			{ href: "/settings/scim", key: "nav.scim", icon: Key },
 			{ href: "/devices", key: "nav.devices", icon: Smartphone },
@@ -86,7 +99,7 @@ export function Sidebar({
 	return (
 		<aside
 			className={cn(
-				"flex shrink-0 flex-col border-r border-hairline bg-sidebar transition-[width] duration-200",
+				"flex h-full min-w-0 shrink-0 flex-col border-r border-hairline bg-sidebar transition-[width] duration-200",
 				collapsed ? "w-[72px]" : "w-60",
 				className,
 			)}
@@ -97,19 +110,7 @@ export function Sidebar({
 					collapsed ? "justify-center px-2" : "gap-2 px-4",
 				)}
 			>
-				<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-ink text-canvas-soft">
-					<Shield size={16} strokeWidth={2.25} />
-				</div>
-				{!collapsed && (
-					<div className="flex min-w-0 flex-col leading-tight">
-						<span className="truncate text-[14px] font-semibold text-ink">
-							CinaGroup Admin
-						</span>
-						<span className="text-[11px] leading-3 text-mute">
-							Identity operations
-						</span>
-					</div>
-				)}
+				<AdminBrand compact={collapsed} priority />
 			</div>
 
 			<nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3">
@@ -122,8 +123,7 @@ export function Sidebar({
 						)}
 						{section.items.map((item) => {
 							const active =
-								pathname === item.href ||
-								pathname.startsWith(`${item.href}/`);
+								pathname === item.href || pathname.startsWith(`${item.href}/`);
 							const Icon = item.icon;
 							return (
 								<Link
@@ -145,7 +145,9 @@ export function Sidebar({
 										strokeWidth={active ? 2.25 : 2}
 										className={active ? "text-ink" : "text-mute"}
 									/>
-									{!collapsed && <span className="truncate">{t(item.key)}</span>}
+									{!collapsed && (
+										<span className="truncate">{t(item.key)}</span>
+									)}
 								</Link>
 							);
 						})}

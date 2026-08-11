@@ -1,11 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
-import {
-	requireAdmin,
-	requireRole,
-	ADMIN_AND_SECURITY,
-	SUPER_ADMIN_ONLY,
-} from "@/lib/auth-guard";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdmin, requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /** Role values the console may assign (mirrors the role selector UI). */
 const VALID_ROLES = ["user", "security_admin", "super_admin"];
@@ -18,13 +16,41 @@ export async function GET(
 	const { id } = await params;
 	const session = await requireAdmin(request).catch((e: Response) => e);
 	if (session instanceof Response) return session;
+	try {
+		requireAdminControlPermission(session, "identity.user.read");
+	} catch (e) {
+		return e as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
-	const res = await cinaauthFetch(`/admin/get-user?id=${encodeURIComponent(id)}`, { cookie });
+	const res = await cinaauthFetch<Record<string, unknown>>(
+		`/admin/get-user?id=${encodeURIComponent(id)}`,
+		{ cookie },
+	);
 	if (!res.ok) {
-		const status = res.error?.status === 404 ? 404 : 502;
+		const status = adminUpstreamResponseStatus(res, { allowNotFound: true });
 		return NextResponse.json({ ok: false, error: res.error }, { status });
 	}
-	return NextResponse.json(res, { status: 200 });
+	if (!res.data || typeof res.data !== "object" || Array.isArray(res.data)) {
+		return NextResponse.json(
+			{
+				ok: false,
+				error: {
+					code: "CINAUTH_INVALID_USER_RESPONSE",
+					message: "CinaSeek Identity returned an invalid user response",
+					status: 502,
+				},
+			},
+			{ status: 502 },
+		);
+	}
+
+	// CinaAuth's get-user endpoint returns the user record directly. Keep the
+	// console BFF contract explicit so the detail page can distinguish a valid
+	// user from a successful response with missing data.
+	return NextResponse.json(
+		{ ok: true, data: { user: res.data } },
+		{ status: 200 },
+	);
 }
 
 /** DELETE /api/admin/users/[id] — remove user (super_admin only). */
@@ -36,7 +62,7 @@ export async function DELETE(
 	const session = await requireAdmin(request).catch((e: Response) => e);
 	if (session instanceof Response) return session;
 	try {
-		requireRole(session, SUPER_ADMIN_ONLY);
+		requireAdminControlPermission(session, "identity.user.delete");
 	} catch (e) {
 		return e as Response;
 	}
@@ -52,21 +78,25 @@ export async function DELETE(
 			{ status: 400 },
 		);
 	}
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (e) {
+		return e as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
 	const res = await cinaauthFetch("/admin/remove-user", {
 		method: "POST",
 		body: { userId: id },
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }
 
 /**
  * PATCH /api/admin/users/[id] — update a user profile.
  * Body fields (all optional, whitelisted):
- *   - name  : any admin+security role
- *   - email : super_admin only (maps to user:set-email)
- *   - role  : super_admin only (maps to user:set-role)
+ *   - name / email / emailVerified : identity.user.update
+ *   - role                         : identity.user.set-role
  *
  * Forwards to cinaauth `/admin/update-user` (POST { userId, data }).
  */
@@ -78,7 +108,12 @@ export async function PATCH(
 	const session = await requireAdmin(request).catch((e: Response) => e);
 	if (session instanceof Response) return session;
 
-	let body: { name?: string; email?: string; role?: string; emailVerified?: boolean };
+	let body: {
+		name?: string;
+		email?: string;
+		role?: string;
+		emailVerified?: boolean;
+	};
 	try {
 		body = await request.json();
 	} catch {
@@ -88,46 +123,51 @@ export async function PATCH(
 		);
 	}
 
-	// Build the whitelisted data payload; escalate role for sensitive fields.
+	// Build the whitelisted data payload and authorize every requested field.
 	const data: Record<string, unknown> = {};
 	const cookie = request.headers.get("cookie") ?? "";
 
 	if (typeof body.name === "string") {
-		// name change: admin + security
 		try {
-			requireRole(session, ADMIN_AND_SECURITY);
+			requireAdminControlPermission(session, "identity.user.update");
 		} catch (e) {
 			return e as Response;
 		}
 		data.name = body.name;
 	}
-	// emailVerified: super_admin only (manual verification override)
+	// A manual verification override is still an identity update.
 	if (body.emailVerified !== undefined) {
 		try {
-			requireRole(session, SUPER_ADMIN_ONLY);
+			requireAdminControlPermission(session, "identity.user.update");
 		} catch (e) {
 			return e as Response;
 		}
 		data.emailVerified = body.emailVerified;
 	}
-	// email + role changes require super_admin.
-	const wantsSensitive = body.email !== undefined || body.role !== undefined;
-	if (wantsSensitive) {
+	if (body.email !== undefined) {
 		try {
-			requireRole(session, SUPER_ADMIN_ONLY);
+			requireAdminControlPermission(session, "identity.user.update");
 		} catch (e) {
 			return e as Response;
 		}
 	}
 	if (typeof body.email === "string") data.email = body.email;
 	if (typeof body.role === "string") {
+		try {
+			requireAdminControlPermission(session, "identity.user.set-role");
+		} catch (e) {
+			return e as Response;
+		}
 		// Lockout protection: changing your own role can strip console access
 		// with no one left to restore it.
 		if (id === session.userId) {
 			return NextResponse.json(
 				{
 					ok: false,
-					error: { code: "SELF_TARGET", message: "Cannot change your own role" },
+					error: {
+						code: "SELF_TARGET",
+						message: "Cannot change your own role",
+					},
 				},
 				{ status: 400 },
 			);
@@ -153,11 +193,16 @@ export async function PATCH(
 			{ status: 400 },
 		);
 	}
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (e) {
+		return e as Response;
+	}
 
 	const res = await cinaauthFetch("/admin/update-user", {
 		method: "POST",
 		body: { userId: id, data },
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }

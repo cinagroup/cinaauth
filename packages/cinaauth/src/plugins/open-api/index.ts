@@ -3,7 +3,8 @@ import { createAuthEndpoint } from "@cinaauth/core/api";
 import { APIError } from "../../api";
 import { HIDE_METADATA } from "../../utils";
 import { PACKAGE_VERSION } from "../../version";
-import { generator } from "./generator";
+import type { OpenAPIInfo, OpenAPIInfoOptions } from "./generator";
+import { generator, resolveOpenAPIInfo } from "./generator";
 import { logo } from "./logo";
 
 declare module "@cinaauth/core" {
@@ -30,16 +31,37 @@ type ScalarTheme =
 	| "laserwave"
 	| "none";
 
+const escapeHTML = (value: string) =>
+	value
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#39;");
+
+const serializeForInlineScript = (value: unknown) =>
+	JSON.stringify(value)
+		.replaceAll("<", "\\u003c")
+		.replaceAll("\u2028", "\\u2028")
+		.replaceAll("\u2029", "\\u2029");
+
 const getHTML = (
-	apiReference: Record<string, any>,
+	apiReference: Record<string, unknown>,
+	info: OpenAPIInfo,
+	infoOptions?: OpenAPIInfoOptions | undefined,
 	theme?: ScalarTheme | undefined,
 	nonce?: string | undefined,
 ) => {
-	const nonceAttr = nonce ? `nonce="${nonce}"` : "";
+	const nonceAttr = nonce ? `nonce="${escapeHTML(nonce)}"` : "";
+	const pageTitle = infoOptions?.title ?? "Scalar API Reference";
+	const scalarInfo = {
+		title: infoOptions?.title ?? "CinaAuth API",
+		description: info.description,
+	};
 	return `<!doctype html>
 <html>
   <head>
-    <title>Scalar API Reference</title>
+    <title>${escapeHTML(pageTitle)}</title>
     <meta charset="utf-8" />
     <meta
       name="viewport"
@@ -49,16 +71,13 @@ const getHTML = (
     <script
       id="api-reference"
       type="application/json">
-    ${JSON.stringify(apiReference)}
+    ${serializeForInlineScript(apiReference)}
     </script>
 	 <script ${nonceAttr}>
       var configuration = {
 	  	favicon: "data:image/svg+xml;utf8,${encodeURIComponent(logo)}",
 	   	theme: "${theme || "default"}",
-        metaData: {
-			title: "CinaAuth API",
-			description: "API Reference for your CinaAuth Instance",
-		}
+		metaData: ${serializeForInlineScript(scalarInfo)}
       }
 
       document.getElementById('api-reference').dataset.configuration =
@@ -69,7 +88,7 @@ const getHTML = (
 </html>`;
 };
 
-export interface OpenAPIOptions {
+export interface OpenAPIOptions extends OpenAPIInfoOptions {
 	/**
 	 * The path to the OpenAPI reference page
 	 *
@@ -101,6 +120,7 @@ export interface OpenAPIOptions {
 
 export const openAPI = <O extends OpenAPIOptions>(options?: O | undefined) => {
 	const path = options?.path ?? "/reference";
+	const info = resolveOpenAPIInfo(options);
 	return {
 		id: "open-api",
 		version: PACKAGE_VERSION,
@@ -111,7 +131,11 @@ export const openAPI = <O extends OpenAPIOptions>(options?: O | undefined) => {
 					method: "GET",
 				},
 				async (ctx) => {
-					const schema = await generator(ctx.context, ctx.context.options);
+					const schema = await generator(
+						ctx.context,
+						ctx.context.options,
+						info,
+					);
 					return ctx.json(schema);
 				},
 			),
@@ -125,12 +149,19 @@ export const openAPI = <O extends OpenAPIOptions>(options?: O | undefined) => {
 					if (options?.disableDefaultReference) {
 						throw new APIError("NOT_FOUND");
 					}
-					const schema = await generator(ctx.context, ctx.context.options);
-					return new Response(getHTML(schema, options?.theme, options?.nonce), {
-						headers: {
-							"Content-Type": "text/html",
+					const schema = await generator(
+						ctx.context,
+						ctx.context.options,
+						info,
+					);
+					return new Response(
+						getHTML(schema, info, options, options?.theme, options?.nonce),
+						{
+							headers: {
+								"Content-Type": "text/html",
+							},
 						},
-					});
+					);
 				},
 			),
 		},

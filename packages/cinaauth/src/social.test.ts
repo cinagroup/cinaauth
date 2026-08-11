@@ -1407,7 +1407,7 @@ describe("Apple Provider", async () => {
 			},
 		});
 
-		expect(session.data?.user.name).toBe("CinaAuth");
+		expect(session.data?.user.name).toBe("Better Auth");
 	});
 
 	it("should pass user name via idToken body for Apple sign-in", async () => {

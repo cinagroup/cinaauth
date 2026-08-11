@@ -1,6 +1,6 @@
+import { statusCodes } from "better-call";
 import type { Status } from "cinaauth";
 import { APIError } from "cinaauth";
-import { statusCodes } from "better-call";
 
 /**
  * SCIM compliant error

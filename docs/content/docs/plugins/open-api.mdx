@@ -1,4 +1,4 @@
-﻿---
+---
 title: Open API
 description: Open API reference for CinaAuth.
 ---
@@ -21,7 +21,10 @@ This is a plugin that provides an Open API reference for CinaAuth. It shows all 
 
     export const auth = CinaAuth({
         plugins: [
-            openAPI(), // [!code highlight]
+            openAPI({
+              title: "Acme Identity",
+              description: "Identity and access management API for Acme",
+            }), // [!code highlight]
         ]
     })
     ```
@@ -79,6 +82,10 @@ app.get("/docs", Scalar({
 `disableDefaultReference` - If set to `true`, the default Open API reference UI by Scalar will be disabled. Default is `false`.
 
 This allows you to display both your application's API and CinaAuth's authentication endpoints in a unified documentation interface.
+
+`title` - Sets one public API title across the generated OpenAPI schema, the HTML document title, and Scalar metadata. When omitted, the plugin preserves its established defaults: `CinaAuth` in the schema, `Scalar API Reference` in the HTML document, and `CinaAuth API` in Scalar metadata.
+
+`description` - The public API description used by both the generated OpenAPI schema and Scalar metadata. Default is `API Reference for your CinaAuth Instance`.
 
 `theme` - Allows you to change the theme of the OpenAPI reference page. Default is `default`.
 

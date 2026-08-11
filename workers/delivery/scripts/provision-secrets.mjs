@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 
-const REQUIRED_SECRETS = [
+const LEGACY_SECRETS = [
 	"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 	"RESEND_API_KEY",
 	"RESEND_EMAIL_FROM",
@@ -21,16 +21,27 @@ const hasValue = (name) => {
 	return typeof value === "string" && value.length > 0;
 };
 
-for (const name of REQUIRED_SECRETS) {
-	if (!hasValue(name)) {
-		fail(`Missing required environment variable ${name}`);
-	}
-}
-if (process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET.length < 32) {
+const selectedSecrets = LEGACY_SECRETS.filter(hasValue);
+if (
+	hasValue("CINAAUTH_DELIVERY_WEBHOOK_SECRET") &&
+	process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET.length < 32
+) {
 	fail("CINAAUTH_DELIVERY_WEBHOOK_SECRET must be at least 32 characters");
 }
+const legacyProviderGroups = [
+	["RESEND_API_KEY", "RESEND_EMAIL_FROM"],
+	["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"],
+];
+for (const group of legacyProviderGroups) {
+	const configured = group.filter(hasValue);
+	if (configured.length > 0 && configured.length !== group.length) {
+		fail(
+			`Legacy provider values must be supplied together: ${group.join(", ")}`,
+		);
+	}
+}
 
-for (const name of REQUIRED_SECRETS) {
+for (const name of selectedSecrets) {
 	if (isDryRun) {
 		console.log(`Would provision ${name}`);
 		continue;
@@ -46,4 +57,8 @@ for (const name of REQUIRED_SECRETS) {
 	console.log(`Provisioned ${name}`);
 }
 
-console.log("Delivery Worker secret provisioning complete.");
+console.log(
+	selectedSecrets.length > 0
+		? "Legacy Delivery Worker secret provisioning complete."
+		: "No legacy Worker secrets selected; post-deploy provider configuration remains enabled.",
+);

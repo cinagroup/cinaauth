@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 beforeEach(() => {
 	vi.stubEnv("CINAUTH_BASE_URL", "https://auth.test");
@@ -19,10 +19,15 @@ function buildRequest(pathname: string, withSession: boolean): NextRequest {
 	return new NextRequest(new URL(`https://admin.test${pathname}`), { headers });
 }
 
-async function runMiddleware(pathname: string, withSession: boolean): Promise<Response> {
+async function runMiddleware(
+	pathname: string,
+	withSession: boolean,
+): Promise<Response> {
 	vi.resetModules();
 	const mod = await import("@/middleware");
-	const middleware = (mod as { middleware: (req: NextRequest) => Promise<Response> }).middleware;
+	const middleware = (
+		mod as { middleware: (req: NextRequest) => Promise<Response> }
+	).middleware;
 	return middleware(buildRequest(pathname, withSession));
 }
 
@@ -63,6 +68,12 @@ describe("middleware access control", () => {
 		const res = await runMiddleware("/sign-in", false);
 		expect(res.status).toBe(200);
 		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("serves the public CinaSeek logo without a session cookie", async () => {
+		const res = await runMiddleware("/logo.png", false);
+		expect(res.status).toBe(200);
+		expect(res.headers.get("location")).toBeNull();
 	});
 
 	it("does not call cinaauth on navigation (cookie-only check)", async () => {

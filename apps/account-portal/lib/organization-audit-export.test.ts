@@ -66,6 +66,6 @@ describe("organization audit export", () => {
 				"json",
 				"2026-08-10T10:00:00.000Z",
 			),
-		).toBe("cinaauth-cina-group-production-audit-2026-08-10.json");
+		).toBe("cinaseek-cina-group-production-audit-2026-08-10.json");
 	});
 });

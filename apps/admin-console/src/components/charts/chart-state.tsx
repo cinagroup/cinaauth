@@ -25,7 +25,9 @@ export function ChartState({
 			style={{ height }}
 			role={status === "error" ? "alert" : undefined}
 		>
-			{status === "error" && <AlertCircle size={20} className="text-error" aria-hidden />}
+			{status === "error" && (
+				<AlertCircle size={20} className="text-error" aria-hidden />
+			)}
 			<span>
 				{status === "error" ? t("error.generic.message") : t("common.noData")}
 			</span>

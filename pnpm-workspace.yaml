@@ -1,10 +1,10 @@
-﻿packages:
-  - apps/**
-  - workers/**
-  - packages/**
+packages:
+  - apps/*
+  - workers/*
+  - packages/*
   - docs
   - e2e/**
-  - demo/**
+  - demo/*
   - test
 
 overrides:
@@ -100,6 +100,7 @@ allowBuilds:
   prisma: true
   protobufjs: true
   sharp: true
+  'unrs-resolver@1.12.2': true
   workerd: true
   electron: false
   electron-winstaller: false

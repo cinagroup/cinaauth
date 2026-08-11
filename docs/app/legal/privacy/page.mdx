@@ -1,4 +1,4 @@
-﻿---
+---
 title: Privacy Policy
 ---
 

@@ -1,9 +1,11 @@
+import type {
+	EntitlementFeatures,
+	EntitlementLimits,
+	EntitlementSnapshot,
+} from "@cinaauth/auth-web-contract";
 import {
 	ENTITLEMENT_FEATURES,
 	ENTITLEMENT_LIMITS,
-	type EntitlementFeatures,
-	type EntitlementLimits,
-	type EntitlementSnapshot,
 } from "@cinaauth/auth-web-contract";
 
 const MAX_CONFIG_BYTES = 64 * 1024;
@@ -178,17 +180,18 @@ const allFeaturesEnabled = () =>
 		ENTITLEMENT_FEATURES.map((feature) => [feature, true]),
 	) as EntitlementFeatures;
 
-const deploymentDefaultLimits = (): EntitlementLimits => ({
-	...Object.fromEntries(ENTITLEMENT_LIMITS.map((limit) => [limit, null])),
-	// These are the organization plugin's existing deployment ceilings. Expose
-	// them instead of claiming that pre-billing access is unlimited.
-	organizationMembers: 100,
-	teams: 50,
-	teamMembers: 100,
-	dynamicRoles: 25,
-	// The scheduled retention job has always removed audit logs after 90 days.
-	auditRetentionDays: 90,
-}) as EntitlementLimits;
+const deploymentDefaultLimits = (): EntitlementLimits =>
+	({
+		...Object.fromEntries(ENTITLEMENT_LIMITS.map((limit) => [limit, null])),
+		// These are the organization plugin's existing deployment ceilings. Expose
+		// them instead of claiming that pre-billing access is unlimited.
+		organizationMembers: 100,
+		teams: 50,
+		teamMembers: 100,
+		dynamicRoles: 25,
+		// The scheduled retention job has always removed audit logs after 90 days.
+		auditRetentionDays: 90,
+	}) as EntitlementLimits;
 
 /** Preserves the pre-billing product contract explicitly while checkout is disabled. */
 export const createUnmeteredEntitlementSnapshot = (
@@ -265,9 +268,7 @@ export type EntitlementLoadResult =
 	| { success: true; snapshot: EntitlementSnapshot }
 	| {
 			success: false;
-			code:
-				| "ENTITLEMENT_SUBSCRIPTION_AMBIGUOUS"
-				| "ENTITLEMENT_PLAN_UNMAPPED";
+			code: "ENTITLEMENT_SUBSCRIPTION_AMBIGUOUS" | "ENTITLEMENT_PLAN_UNMAPPED";
 	  };
 
 /**

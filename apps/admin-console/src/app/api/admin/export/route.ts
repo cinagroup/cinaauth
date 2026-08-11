@@ -1,10 +1,18 @@
-import { type NextRequest } from "next/server";
-import { hasAdminRole, resolveAdminSession } from "@/lib/cinaauth/session";
+import { hasAdminControlPermission } from "@cinaauth/auth-web-contract";
+import type { NextRequest } from "next/server";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { resolveAdminSession } from "@/lib/cinaauth/session";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
+
+type ExportKind = "audit" | "users";
 
 const esc = (v: unknown): string => {
-	const s = v == null ? "" : String(v);
-	return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+	const raw = v == null ? "" : String(v);
+	// Spreadsheet applications can execute user-controlled fields beginning
+	// with formula sigils. A leading apostrophe keeps the value as text.
+	const s = /^\s*[=+\-@]/.test(raw) ? `'${raw}` : raw;
+	return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
 /**
@@ -26,23 +34,112 @@ function maskIp(ip: string | null | undefined): string {
 	return ip; // not an IP, return as-is
 }
 
-/** Mask IPs in CSV text (audit export from cinaauth). */
+const parseCsvRows = (csv: string): string[][] => {
+	const rows: string[][] = [];
+	let row: string[] = [];
+	let field = "";
+	let quoted = false;
+
+	for (let index = 0; index < csv.length; index += 1) {
+		const character = csv[index];
+		if (quoted) {
+			if (character === '"' && csv[index + 1] === '"') {
+				field += '"';
+				index += 1;
+			} else if (character === '"') {
+				quoted = false;
+			} else {
+				field += character;
+			}
+			continue;
+		}
+
+		if (character === '"' && field.length === 0) {
+			quoted = true;
+		} else if (character === ",") {
+			row.push(field);
+			field = "";
+		} else if (character === "\n" || character === "\r") {
+			if (character === "\r" && csv[index + 1] === "\n") index += 1;
+			row.push(field);
+			rows.push(row);
+			row = [];
+			field = "";
+		} else {
+			field += character;
+		}
+	}
+
+	if (field.length > 0 || row.length > 0) {
+		row.push(field);
+		rows.push(row);
+	}
+	return rows;
+};
+
+/** Mask IPs without losing RFC 4180 quoting in the Auth Worker CSV. */
 function maskIpsInCsv(csv: string): string {
-	// Split into lines, find the IP column index from header, mask values.
-	const lines = csv.split("\n");
-	if (lines.length < 2) return csv;
-	const header = lines[0].split(",");
-	const ipCol = header.findIndex((h) => h.trim().toLowerCase().includes("ip"));
-	if (ipCol < 0) return csv; // no IP column
-	return lines
-		.map((line, lineIdx) => {
-			if (lineIdx === 0) return line; // header
-			const cols = line.split(",");
-			if (cols[ipCol]) cols[ipCol] = maskIp(cols[ipCol]);
-			return cols.join(",");
-		})
-		.join("\n");
+	const rows = parseCsvRows(csv);
+	if (rows.length < 2) return csv;
+	const ipCol = rows[0].findIndex((field) =>
+		field.trim().toLowerCase().includes("ip"),
+	);
+	if (ipCol < 0) return csv;
+
+	for (const row of rows.slice(1)) {
+		if (row[ipCol]) row[ipCol] = maskIp(row[ipCol]);
+	}
+	return rows.map((row) => row.map(esc).join(",")).join("\n");
 }
+
+const createAuditedCsvResponse = async ({
+	csv,
+	kind,
+	cookie,
+}: {
+	csv: string;
+	kind: ExportKind;
+	cookie: string;
+}) => {
+	// `/audit/export` is captured by the Auth plugin's after hook. The users
+	// export exists only in this BFF, so it needs an explicit audit event.
+	if (kind === "users") {
+		const audit = await cinaauthFetch("/audit/log", {
+			method: "POST",
+			cookie,
+			body: {
+				category: "admin",
+				action: "admin.export_csv",
+				result: "success",
+				actorSite: "admin",
+				targetType: "user",
+				metadata: { kind },
+			},
+		});
+		if (!audit.ok) {
+			const status = adminUpstreamResponseStatus(audit);
+			if (status === 401 || status === 403) {
+				return Response.json(audit, {
+					status,
+					headers: { "cache-control": "no-store" },
+				});
+			}
+			return new Response("audit unavailable", {
+				status: 502,
+				headers: { "cache-control": "no-store" },
+			});
+		}
+	}
+
+	return new Response(csv, {
+		headers: {
+			"cache-control": "no-store",
+			"content-type": "text/csv; charset=utf-8",
+			"content-disposition": `attachment; filename="${kind}-${Date.now()}.csv"`,
+			"x-content-type-options": "nosniff",
+		},
+	});
+};
 
 /**
  * GET /api/admin/export?kind=users|audit
@@ -53,8 +150,16 @@ function maskIpsInCsv(csv: string): string {
  */
 export async function GET(request: NextRequest) {
 	const session = await resolveAdminSession(request);
-	if (!session || !hasAdminRole(session.role)) {
+	if (
+		!session ||
+		!hasAdminControlPermission(session.role, "security.audit.export")
+	) {
 		return new Response("forbidden", { status: 403 });
+	}
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (e) {
+		return e as Response;
 	}
 	const { searchParams } = new URL(request.url);
 	const kind = searchParams.get("kind") ?? "users";
@@ -67,16 +172,18 @@ export async function GET(request: NextRequest) {
 		// Fail loudly: a silent empty CSV reads as "no audit rows", which is a
 		// dangerous conclusion to hand an auditor when the upstream call failed.
 		if (!res.ok || typeof res.data !== "string") {
+			const status = adminUpstreamResponseStatus(res);
+			if (status === 401 || status === 403) {
+				return Response.json(res, {
+					status,
+					headers: { "cache-control": "no-store" },
+				});
+			}
 			return new Response("upstream error", { status: 502 });
 		}
 		// Mask IP addresses in the exported CSV for privacy.
 		const csv = maskIpsInCsv(res.data);
-		return new Response(csv, {
-			headers: {
-				"content-type": "text/csv; charset=utf-8",
-				"content-disposition": `attachment; filename="audit-${Date.now()}.csv"`,
-			},
-		});
+		return createAuditedCsvResponse({ csv, kind: "audit", cookie });
 	}
 
 	// users
@@ -84,16 +191,25 @@ export async function GET(request: NextRequest) {
 		`/admin/list-users?${searchParams}&limit=10000`,
 		{ cookie },
 	);
-	if (!res.ok || !res.data) return new Response("upstream error", { status: 502 });
+	if (!res.ok) {
+		const status = adminUpstreamResponseStatus(res);
+		if (status === 401 || status === 403) {
+			return Response.json(res, {
+				status,
+				headers: { "cache-control": "no-store" },
+			});
+		}
+		return new Response("upstream error", { status: 502 });
+	}
+	if (!res.data) return new Response("upstream error", { status: 502 });
 	const cols = ["id", "email", "name", "role", "banned", "createdAt"];
 	const lines = [
 		cols.join(","),
 		...res.data.users.map((u) => cols.map((c) => esc(u[c])).join(",")),
 	];
-	return new Response(lines.join("\n"), {
-		headers: {
-			"content-type": "text/csv; charset=utf-8",
-			"content-disposition": `attachment; filename="users-${Date.now()}.csv"`,
-		},
+	return createAuditedCsvResponse({
+		csv: lines.join("\n"),
+		kind: "users",
+		cookie,
 	});
 }

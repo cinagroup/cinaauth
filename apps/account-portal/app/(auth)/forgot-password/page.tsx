@@ -23,10 +23,10 @@ export default function Page() {
 			<main className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
 				<Card className="w-[350px]">
 					<CardHeader>
-							<CardTitle>Check your email.</CardTitle>
-							<CardDescription>
-								We've sent a password reset link to your email.
-							</CardDescription>
+						<CardTitle>Check your email.</CardTitle>
+						<CardDescription>
+							We've sent a password reset link to your email.
+						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<Alert variant="default">
@@ -53,7 +53,7 @@ export default function Page() {
 		<main className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
 			<Card className="w-[350px]">
 				<CardHeader>
-						<CardTitle>Forgot password.</CardTitle>
+					<CardTitle>Forgot password.</CardTitle>
 					<CardDescription>
 						Enter your email to reset your password
 					</CardDescription>

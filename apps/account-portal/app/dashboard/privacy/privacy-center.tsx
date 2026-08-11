@@ -26,15 +26,15 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import type { PrivacyAsyncExportStatus } from "@/lib/privacy-center";
 import {
 	getPersonalDataExportFilename,
-	parsePrivacyAsyncExportStatus,
-	type PrivacyAsyncExportStatus,
 	PRIVACY_ASYNC_EXPORT_DOWNLOAD_PATH,
 	PRIVACY_ASYNC_EXPORT_PATH,
 	PRIVACY_ASYNC_EXPORT_STATUS_PATH,
 	PRIVACY_EXPORT_CATEGORIES,
 	PRIVACY_EXPORT_PATH,
+	parsePrivacyAsyncExportStatus,
 } from "@/lib/privacy-center";
 
 const ACTIVE_ASYNC_EXPORT_STATES = new Set([
@@ -144,16 +144,18 @@ export function PrivacyCenter({
 				throw new Error(
 					response.status === 403
 						? "Sign in again before requesting an encrypted export."
-						: "CinaAuth could not queue the encrypted export.",
+						: "CinaSeek could not queue the encrypted export.",
 				);
 			}
 			setAsyncExport(status);
-			toast.success("Encrypted export queued. This page will update automatically.");
+			toast.success(
+				"Encrypted export queued. This page will update automatically.",
+			);
 		} catch (error) {
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaAuth could not queue the encrypted export.",
+					: "CinaSeek could not queue the encrypted export.",
 			);
 		} finally {
 			setIsQueueingExport(false);
@@ -177,7 +179,7 @@ export function PrivacyCenter({
 				throw new Error(
 					response.status === 403
 						? "Sign in again before exporting personal data."
-						: "CinaAuth could not prepare the personal data export.",
+						: "CinaSeek could not prepare the personal data export.",
 				);
 			}
 
@@ -187,7 +189,7 @@ export function PrivacyCenter({
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaAuth could not prepare the personal data export.",
+					: "CinaSeek could not prepare the personal data export.",
 			);
 		} finally {
 			setIsExporting(false);
@@ -215,7 +217,7 @@ export function PrivacyCenter({
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaAuth could not download the encrypted export.",
+					: "CinaSeek could not download the encrypted export.",
 			);
 		} finally {
 			setIsDownloadingAsync(false);
@@ -239,7 +241,7 @@ export function PrivacyCenter({
 			setAsyncExport(null);
 			toast.success("Encrypted export artifacts deleted.");
 		} catch {
-			toast.error("CinaAuth could not delete the encrypted export.");
+			toast.error("CinaSeek could not delete the encrypted export.");
 		}
 	};
 
@@ -247,7 +249,7 @@ export function PrivacyCenter({
 		<div className="mx-auto w-full max-w-5xl py-6">
 			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<div>
-					<p className="text-sm font-medium text-primary">CinaAuth account</p>
+					<p className="text-sm font-medium text-primary">CinaSeek account</p>
 					<h1 className="text-3xl font-semibold tracking-tight">
 						Privacy Center
 					</h1>
@@ -325,9 +327,7 @@ export function PrivacyCenter({
 								variant="outline"
 								onClick={requestAsyncExport}
 								disabled={
-									!recentAuthentication ||
-									isQueueingExport ||
-									asyncExportActive
+									!recentAuthentication || isQueueingExport || asyncExportActive
 								}
 							>
 								{isQueueingExport ? (
@@ -358,8 +358,9 @@ export function PrivacyCenter({
 									) : null}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									Stored with a per-object customer encryption key and deleted no
-									later than {new Date(asyncExport.expiresAt).toLocaleString()}.
+									Stored with a per-object customer encryption key and deleted
+									no later than{" "}
+									{new Date(asyncExport.expiresAt).toLocaleString()}.
 								</p>
 								<div className="flex flex-wrap gap-2">
 									{asyncExport.status === "ready" ? (
@@ -394,8 +395,12 @@ export function PrivacyCenter({
 						</CardHeader>
 						<CardContent className="space-y-3 text-sm text-muted-foreground">
 							<p>Only records linked to the signed-in subject are selected.</p>
-							<p>Responses are attachments with no-store and nosniff headers.</p>
-							<p>Oversized sections fail instead of being silently truncated.</p>
+							<p>
+								Responses are attachments with no-store and nosniff headers.
+							</p>
+							<p>
+								Oversized sections fail instead of being silently truncated.
+							</p>
 						</CardContent>
 					</Card>
 
@@ -406,8 +411,8 @@ export function PrivacyCenter({
 							</CardTitle>
 							<CardDescription>
 								Review current retention exceptions and blocking holds before a
-								permanent deletion. CinaAuth downloads a signed JSON receipt after
-								completion.
+								permanent deletion. CinaSeek downloads a signed JSON receipt
+								after completion.
 							</CardDescription>
 						</CardHeader>
 						<CardContent>

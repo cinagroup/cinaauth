@@ -1,13 +1,16 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { requireAdmin, requireRole, SUPER_ADMIN_ONLY } from "@/lib/auth-guard";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdmin, requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /** POST /api/admin/users/create — create user (super_admin only). */
 export async function POST(request: NextRequest) {
 	const session = await requireAdmin(request).catch((e: Response) => e);
 	if (session instanceof Response) return session;
 	try {
-		requireRole(session, SUPER_ADMIN_ONLY);
+		requireAdminControlPermission(session, "identity.user.create");
 	} catch (e) {
 		return e as Response;
 	}
@@ -20,11 +23,16 @@ export async function POST(request: NextRequest) {
 			{ status: 400 },
 		);
 	}
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (e) {
+		return e as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
 	const res = await cinaauthFetch("/admin/create-user", {
 		method: "POST",
 		body,
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }

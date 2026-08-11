@@ -1,14 +1,19 @@
 import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const REQUIRED_SECRETS = [
 	"CINAAUTH_SECRET",
 	"CINAAUTH_MIGRATION_TOKEN",
 	"CINAAUTH_DELIVERY_WEBHOOK_URL",
-	"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 	"CINAAUTH_PRIVACY_EXPORT_KEY",
-	"CINAAUTH_ERASURE_WEBHOOK_URL",
-	"CINAAUTH_ERASURE_WEBHOOK_SECRET",
 ];
+
+export const CANONICAL_ERASURE_WEBHOOK_URL =
+	"https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase";
+const FIXED_SECRETS = {
+	CINAAUTH_ERASURE_WEBHOOK_URL: CANONICAL_ERASURE_WEBHOOK_URL,
+};
 
 const OPTIONAL_SECRETS = [
 	"OAUTH_PAIRWISE_SECRET",
@@ -27,150 +32,134 @@ const OPTIONAL_SECRETS = [
 	"CINAUTH_ADMIN_SERVICE_KEY",
 ];
 
-const isDryRun = process.argv.includes("--dry-run");
-const skipDeliveryReadyCheck =
-	process.env.CINAAUTH_SKIP_DELIVERY_READY_CHECK === "1";
-const allowErasureNotReady = process.argv.includes("--allow-erasure-not-ready");
 const STRONG_SECRETS = new Set([
 	"CINAAUTH_SECRET",
 	"CINAAUTH_MIGRATION_TOKEN",
-	"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 	"CINAAUTH_PRIVACY_EXPORT_KEY",
-	"CINAAUTH_ERASURE_WEBHOOK_SECRET",
 ]);
 
-const fail = (message) => {
-	console.error(message);
-	process.exit(1);
-};
-
-const hasValue = (name) => {
-	const value = process.env[name];
+const hasValue = (env, name) => {
+	const value = env[name];
 	return typeof value === "string" && value.length > 0;
 };
 
-const assertStrong = (name) => {
-	if (!hasValue(name)) {
-		fail(`Missing required environment variable ${name}`);
+const assertStrong = (env, name) => {
+	if (!hasValue(env, name)) {
+		throw new Error(`Missing required environment variable ${name}`);
 	}
-	if (STRONG_SECRETS.has(name) && process.env[name].length < 32) {
-		fail(`${name} must be at least 32 characters`);
+	if (STRONG_SECRETS.has(name) && env[name].length < 32) {
+		throw new Error(`${name} must be at least 32 characters`);
 	}
 };
 
-const assertHttpsUrl = (name) => {
+const assertHttpsUrl = (env, name) => {
 	try {
-		const url = new URL(process.env[name]);
+		const url = new URL(env[name]);
 		if (url.protocol !== "https:") {
-			fail(`${name} must be an HTTPS URL`);
+			throw new Error(`${name} must be an HTTPS URL`);
 		}
-	} catch {
-		fail(`${name} must be a valid HTTPS URL`);
+	} catch (error) {
+		if (
+			error instanceof Error &&
+			error.message.endsWith("must be an HTTPS URL")
+		) {
+			throw error;
+		}
+		throw new Error(`${name} must be a valid HTTPS URL`);
 	}
 };
 
-const assertPaired = (first, second) => {
-	if (hasValue(first) !== hasValue(second)) {
-		fail(`${first} and ${second} must be configured together`);
+const assertPaired = (env, first, second) => {
+	if (hasValue(env, first) !== hasValue(env, second)) {
+		throw new Error(`${first} and ${second} must be configured together`);
 	}
 };
 
-const assertConfiguredTogether = (names) => {
-	const configured = names.filter(hasValue);
+const assertConfiguredTogether = (env, names) => {
+	const configured = names.filter((name) => hasValue(env, name));
 	if (configured.length !== 0 && configured.length !== names.length) {
-		fail(`${names.join(", ")} must be configured together`);
+		throw new Error(`${names.join(", ")} must be configured together`);
 	}
 };
 
-const checkDeliveryReady = async () => {
-	if (skipDeliveryReadyCheck || isDryRun) return;
-	const url = new URL(process.env.CINAAUTH_DELIVERY_WEBHOOK_URL);
-	const readyUrl = new URL("/ready", url.origin);
-	const response = await fetch(readyUrl, {
-		headers: {
-			Accept: "application/json",
-			Authorization: `Bearer ${process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET}`,
-		},
-		signal: AbortSignal.timeout(10_000),
-	}).catch((error) => {
-		fail(`Delivery Worker readiness check failed: ${error.message}`);
-	});
-	if (!response.ok) {
-		fail(
-			`Delivery Worker readiness must pass before provisioning auth secrets; ${readyUrl.href} returned HTTP ${response.status}`,
-		);
+const getSelectedSecretNames = (env) => {
+	for (const name of REQUIRED_SECRETS) {
+		assertStrong(env, name);
 	}
+	assertHttpsUrl(env, "CINAAUTH_DELIVERY_WEBHOOK_URL");
+	assertPaired(
+		env,
+		"CLOUDFLARE_TURNSTILE_SITE_KEY",
+		"CLOUDFLARE_TURNSTILE_SECRET_KEY",
+	);
+	if (
+		hasValue(env, "GOOGLE_CLIENT_SECRET") &&
+		!hasValue(env, "GOOGLE_CLIENT_ID")
+	) {
+		throw new Error("GOOGLE_CLIENT_SECRET requires GOOGLE_CLIENT_ID");
+	}
+	assertPaired(env, "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET");
+	assertConfiguredTogether(env, [
+		"STRIPE_SECRET_KEY",
+		"STRIPE_WEBHOOK_SECRET",
+		"STRIPE_DEFAULT_PRICE_ID",
+		"CINAAUTH_ENTITLEMENT_CONFIG",
+	]);
+	return [
+		...REQUIRED_SECRETS,
+		...Object.keys(FIXED_SECRETS),
+		...OPTIONAL_SECRETS.filter((name) => hasValue(env, name)),
+	];
 };
 
-const checkErasureReady = async () => {
-	if (isDryRun) return;
-	const url = new URL(process.env.CINAAUTH_ERASURE_WEBHOOK_URL);
-	const readyUrl = new URL("/ready", url.origin);
-	const response = await fetch(readyUrl, {
-		headers: {
-			Accept: "application/json",
-			Authorization: `Bearer ${process.env.CINAAUTH_ERASURE_WEBHOOK_SECRET}`,
-		},
-		signal: AbortSignal.timeout(10_000),
-	}).catch((error) => {
-		fail(`Privacy Erasure Worker readiness check failed: ${error.message}`);
-	});
-	if (allowErasureNotReady && response.status === 503) {
-		const body = await response.json().catch(() => undefined);
-		if (body?.runtimeConfig?.ok === false) return;
-	}
-	if (!response.ok) {
-		fail(
-			`Privacy Erasure Worker readiness must pass before provisioning auth secrets; ${readyUrl.href} returned HTTP ${response.status}`,
-		);
-	}
-};
-
-const putSecret = (name) => {
-	if (isDryRun) {
-		console.log(`Would provision ${name}`);
+export const runProvisionSecrets = ({
+	args = process.argv.slice(2),
+	env = process.env,
+	log = console.log,
+	spawnSyncImpl = spawnSync,
+	wranglerCli = fileURLToPath(import.meta.resolve("wrangler")),
+} = {}) => {
+	const names = getSelectedSecretNames(env);
+	if (args.includes("--dry-run")) {
+		for (const name of names) log(`Would provision ${name}`);
+		log("Auth Worker secret provisioning dry run complete.");
 		return;
 	}
-	const result = spawnSync("wrangler", ["secret", "put", name], {
-		input: process.env[name],
-		shell: true,
-		stdio: ["pipe", "inherit", "inherit"],
-	});
-	if (result.status !== 0) {
-		process.exit(result.status ?? 1);
+
+	const values = Object.fromEntries(
+		names.map((name) => [name, FIXED_SECRETS[name] ?? env[name]]),
+	);
+	const result = spawnSyncImpl(
+		process.execPath,
+		[wranglerCli, "secret", "bulk"],
+		{
+			input: `${JSON.stringify(values)}\n`,
+			stdio: ["pipe", "inherit", "inherit"],
+		},
+	);
+	if (result.error) {
+		throw new Error(`Failed to start Wrangler: ${result.error.message}`);
 	}
-	console.log(`Provisioned ${name}`);
+	if (result.status !== 0) {
+		const error = new Error("Wrangler secret bulk failed");
+		error.exitCode = result.status ?? 1;
+		throw error;
+	}
+	log(`Provisioned ${names.length} Auth Worker secrets in one bulk operation.`);
 };
 
-for (const name of REQUIRED_SECRETS) {
-	assertStrong(name);
-}
-assertHttpsUrl("CINAAUTH_DELIVERY_WEBHOOK_URL");
-assertHttpsUrl("CINAAUTH_ERASURE_WEBHOOK_URL");
-assertPaired(
-	"CLOUDFLARE_TURNSTILE_SITE_KEY",
-	"CLOUDFLARE_TURNSTILE_SECRET_KEY",
-);
-if (hasValue("GOOGLE_CLIENT_SECRET") && !hasValue("GOOGLE_CLIENT_ID")) {
-	fail("GOOGLE_CLIENT_SECRET requires GOOGLE_CLIENT_ID");
-}
-assertPaired("GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET");
-assertConfiguredTogether([
-	"STRIPE_SECRET_KEY",
-	"STRIPE_WEBHOOK_SECRET",
-	"STRIPE_DEFAULT_PRICE_ID",
-	"CINAAUTH_ENTITLEMENT_CONFIG",
-]);
-await checkDeliveryReady();
-await checkErasureReady();
+const isMain =
+	typeof process.argv[1] === "string" &&
+	pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
 
-for (const name of REQUIRED_SECRETS) {
-	putSecret(name);
-}
-for (const name of OPTIONAL_SECRETS) {
-	if (hasValue(name)) {
-		putSecret(name);
+if (isMain) {
+	try {
+		runProvisionSecrets();
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exitCode =
+			error && typeof error === "object" && "exitCode" in error
+				? Number(error.exitCode)
+				: 1;
 	}
 }
-
-console.log("Auth Worker secret provisioning complete.");

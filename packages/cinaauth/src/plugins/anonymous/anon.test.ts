@@ -391,6 +391,46 @@ describe("anonymous", async () => {
 		expect(session.data?.user.isAnonymous).toBe(true);
 	});
 
+	it("preserves the established session-deletion error for anonymous cleanup", async () => {
+		const values = new Map<string, string>();
+		let failDeletes = false;
+		const requestHeaders = new Headers();
+		const { client, sessionSetter } = await getTestInstance(
+			{
+				plugins: [anonymous()],
+				secondaryStorage: {
+					set(key, value) {
+						values.set(key, value);
+					},
+					get(key) {
+						return values.get(key) ?? null;
+					},
+					delete(key) {
+						if (failDeletes) throw new Error("secondary storage unavailable");
+						values.delete(key);
+					},
+				},
+			},
+			{
+				clientOptions: { plugins: [anonymousClient()] },
+			},
+		);
+		await client.signIn.anonymous({
+			fetchOptions: {
+				onSuccess: sessionSetter(requestHeaders),
+			},
+		});
+
+		failDeletes = true;
+		const result = await client.deleteAnonymousUser({
+			fetchOptions: { headers: requestHeaders },
+		});
+
+		expect(result.error?.message).toBe(
+			"Failed to delete anonymous user sessions",
+		);
+	});
+
 	it("should reject subsequent anonymous sign-in attempts once signed in", async () => {
 		const { client, sessionSetter } = await getTestInstance(
 			{

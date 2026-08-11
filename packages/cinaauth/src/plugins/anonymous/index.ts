@@ -13,6 +13,7 @@ import {
 	setSessionCookie,
 } from "../../cookies";
 import { mergeSchema, parseUserOutput } from "../../db/schema";
+import { isUserDeletionSessionCascadeError } from "../../db/user-deletion-error";
 import { PACKAGE_VERSION } from "../../version";
 import { ANONYMOUS_ERROR_CODES } from "./error-codes";
 import { schema } from "./schema";
@@ -216,24 +217,15 @@ export const anonymous = (options?: AnonymousOptions | undefined) => {
 					}
 
 					try {
-						await ctx.context.internalAdapter.deleteUserSessions(
-							session.user.id,
-						);
-					} catch (error) {
-						ctx.context.logger.error(
-							"Failed to delete anonymous user sessions",
-							error,
-						);
-						throw APIError.from(
-							"INTERNAL_SERVER_ERROR",
-							ANONYMOUS_ERROR_CODES.FAILED_TO_DELETE_ANONYMOUS_USER_SESSIONS,
-						);
-					}
-
-					try {
 						await ctx.context.internalAdapter.deleteUser(session.user.id);
 					} catch (error) {
 						ctx.context.logger.error("Failed to delete anonymous user", error);
+						if (isUserDeletionSessionCascadeError(error)) {
+							throw APIError.from(
+								"INTERNAL_SERVER_ERROR",
+								ANONYMOUS_ERROR_CODES.FAILED_TO_DELETE_ANONYMOUS_USER_SESSIONS,
+							);
+						}
 						throw APIError.from(
 							"INTERNAL_SERVER_ERROR",
 							ANONYMOUS_ERROR_CODES.FAILED_TO_DELETE_ANONYMOUS_USER,

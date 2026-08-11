@@ -144,6 +144,9 @@
       "!**/dev/cloudflare/drizzle",
       "!**/playwright-report",
       "!**/.output",
+      "!**/.open-next",
+      "!**/.wrangler",
+      "!**/.wrangler-direct-dist",
       "!**/.tmp",
       "!**/tmp-docs-fetch",
       "!**/.claude/worktrees/**"

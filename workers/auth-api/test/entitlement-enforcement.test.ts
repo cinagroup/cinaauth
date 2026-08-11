@@ -1,7 +1,7 @@
+import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
 import {
 	ENTITLEMENT_FEATURES,
 	ENTITLEMENT_LIMITS,
-	type EntitlementSnapshot,
 } from "@cinaauth/auth-web-contract";
 import { describe, expect, it } from "vitest";
 import {
@@ -33,10 +33,7 @@ const snapshot = (): EntitlementSnapshot => ({
 describe("entitlement request enforcement", () => {
 	it("maps commercial create and management paths without blocking cleanup", () => {
 		expect(
-			getEntitlementRequestPolicy(
-				"/api/auth/organization/create-team",
-				"POST",
-			),
+			getEntitlementRequestPolicy("/api/auth/organization/create-team", "POST"),
 		).toMatchObject({ feature: "teams", limit: "teams" });
 		expect(
 			getEntitlementRequestPolicy("/api/auth/sso/update-provider", "POST"),
@@ -55,10 +52,7 @@ describe("entitlement request enforcement", () => {
 			usageSource: "organization-members",
 		});
 		expect(
-			getEntitlementRequestPolicy(
-				"/api/auth/organization/add-member",
-				"POST",
-			),
+			getEntitlementRequestPolicy("/api/auth/organization/add-member", "POST"),
 		).toEqual({
 			limit: "organizationMembers",
 			subjectSource: "organization-body",
@@ -74,18 +68,26 @@ describe("entitlement request enforcement", () => {
 			"/api/auth/oauth2/delete-client",
 			"/api/auth/api-key/delete",
 		]) {
-			expect(
-				getEntitlementRequestPolicy(cleanupPath, "POST"),
-			).toBeUndefined();
+			expect(getEntitlementRequestPolicy(cleanupPath, "POST")).toBeUndefined();
 		}
+	});
+
+	it("keeps protected trailing-slash variants inside the exact policy boundary", () => {
+		expect(
+			getEntitlementRequestPolicy("/api/auth/sso/register///", "POST"),
+		).toMatchObject({ feature: "sso" });
+		expect(
+			getEntitlementRequestPolicy(
+				"/api/auth/scim/generate-token/extra",
+				"POST",
+			),
+		).toBeUndefined();
 	});
 
 	it("fails closed when a feature is disabled", () => {
 		const value = snapshot();
 		value.features.sso = false;
-		expect(
-			evaluateEntitlementAccess(value, { feature: "sso" }),
-		).toEqual({
+		expect(evaluateEntitlementAccess(value, { feature: "sso" })).toEqual({
 			success: false,
 			code: "ENTITLEMENT_FEATURE_DISABLED",
 			feature: "sso",
@@ -104,11 +106,7 @@ describe("entitlement request enforcement", () => {
 
 		value.limits.teams = 3;
 		expect(
-			evaluateEntitlementAccess(
-				value,
-				{ feature: "teams", limit: "teams" },
-				3,
-			),
+			evaluateEntitlementAccess(value, { feature: "teams", limit: "teams" }, 3),
 		).toEqual({
 			success: false,
 			code: "ENTITLEMENT_LIMIT_REACHED",
@@ -140,11 +138,7 @@ describe("entitlement request enforcement", () => {
 		const value = snapshot();
 		value.limits.organizationMembers = 2;
 		expect(
-			evaluateEntitlementAccess(
-				value,
-				{ limit: "organizationMembers" },
-				1,
-			),
+			evaluateEntitlementAccess(value, { limit: "organizationMembers" }, 1),
 		).toEqual({ success: true });
 	});
 });

@@ -78,7 +78,7 @@ export const OAUTH_POPUP_COMPLETE_SCRIPT = `(function () {
  * sha256 of `OAUTH_POPUP_COMPLETE_SCRIPT`, pinned in the completion CSP.
  */
 export const OAUTH_POPUP_SCRIPT_CSP_HASH =
-	"sha256-tIo2K8VBC9SnhvdZ+9GsGkQoZm+jm/JcxL+d+i8b8KQ=";
+	"sha256-1Gmmo8Z8os4VcVzDnFF6exJzKceSqheRXX+SP667wWE=";
 
 /**
  * Renders the page that posts the outcome (token or error) to the opener. The

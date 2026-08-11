@@ -6,6 +6,8 @@ This Worker serves `https://auth.cinaseek.ai` with three production primitives:
 - `RateLimitDurableObject` provides 256 deterministic SQLite-backed shards.
 - CinaAuth `rateLimit.customStorage.consume()` applies the atomic limiter to
   every client request, with `/sign-in/*` fixed at 5 attempts per 60 seconds.
+- A Worker queue lock plus a transaction-local PostgreSQL trigger protects
+  every route that can remove a `super_admin` role.
 - A dedicated Queue generates large privacy exports into a private R2 bucket;
   every manifest and data object uses a derived 32-byte SSE-C key and expires.
 
@@ -39,6 +41,32 @@ Disable Hyperdrive query caching for this configuration: authentication,
 sessions, revocations, permissions, and read-after-write flows require current
 data. Connection pooling and accelerated connection setup remain enabled.
 
+The Worker uses the same PostgreSQL origin as the coordination authority for
+last-`super_admin` governance. A deployment queue transaction serializes
+`admin/set-role`, `admin/update-user`, `admin/remove-user`, `delete-user`, the
+actual `delete-user/callback` sink, `delete-anonymous-user`, and SCIM user
+DELETE. A separate versioned trigger then takes a different advisory lock and
+checks the final invariant in the same transaction and connection as the
+actual `user` mutation. The distinct keys avoid an A/B-connection deadlock;
+the trigger remains authoritative if the outer queue connection is lost.
+Ordinary requests and `admin/stop-impersonating` do not wait on either lock.
+
+The trigger is designed for the production single-user sinks above. Do not use
+ad hoc multi-row `UPDATE`, `DELETE`, `TRUNCATE`, disabled triggers, or direct
+role writes as an administrator-management API. Promote a replacement exact
+`super_admin` in one committed request before demoting or deleting the old one.
+Missing Hyperdrive, invariant readiness, lock acquisition, valid role-count
+state, or database access returns `503 ADMIN_GOVERNANCE_UNAVAILABLE` before the
+Worker invokes a protected handler. A database-trigger rejection rolls back
+the actual mutation even if the outer connection failed after dispatch.
+
+SCIM user DELETE first accepts only a plausible bounded bearer encoding, then
+uses the `RATE_LIMITER` Durable Object's IP-and-route bucket (60 attempts per
+minute) before opening Hyperdrive. Missing or malformed credentials continue
+to the SCIM plugin's authoritative 401 path without opening the governance
+database. A limiter denial returns no-store 429 with `Retry-After`; a missing
+binding or RPC failure returns no-store 503. Never log the bearer value.
+
 ```powershell
 pnpm --dir workers/auth-api exec wrangler hyperdrive update `
   <32-character-hyperdrive-id> --caching-disabled
@@ -63,6 +91,7 @@ longer-retained manual backup, or add a longer production schedule without
 updating the public deletion policy.
 
 The 2026-08-10 control-plane review checked every backup then visible on
+<!-- cspell:ignore kctytg ctwhr zlzk zenb njund oxxj -->
 `main` (`kctytg4ctwhr`, `zlzk8yfc106m`, `zenb9njund3t`, and
 `9oxxj2gtq4ui`): all four had **Prevent backup deletion** disabled, under the
 included 12-hour/two-day schedule. This is point-in-time UI evidence only; it
@@ -134,25 +163,137 @@ not the raw ID or email. R2's platform encryption remains enabled and the
 Worker additionally supplies a unique customer encryption key for every
 manifest and data object.
 
-## 4. Provision Worker secrets
+## 4. Provision Auth-owned Worker secrets
 
-Required values are supplied through environment variables and written by
+Required deployment-owned values are supplied through environment variables and written by
 `provision-secrets.mjs` through Wrangler stdin:
 
 - `CINAAUTH_SECRET`
 - `CINAAUTH_MIGRATION_TOKEN`
 - `CINAAUTH_DELIVERY_WEBHOOK_URL`
-- `CINAAUTH_DELIVERY_WEBHOOK_SECRET`
 - `CINAAUTH_PRIVACY_EXPORT_KEY` (dedicated, at least 32 random characters)
+
+The provisioner also writes `CINAAUTH_ERASURE_WEBHOOK_URL`, but never accepts
+that endpoint from the operator environment. It is pinned in repository code to
+`https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase`, preventing a
+deployment-time override from redirecting signed deletion requests to another
+HTTPS origin. Changing this endpoint requires a reviewed repository change.
+
+The script validates only these deployment-owned inputs and never probes the
+Delivery or Privacy Erasure operational `/ready` endpoints. This is deliberate:
+a structurally valid bootstrap deployment must not be blocked merely because
+email/SMS providers or erasure targets have not yet been configured.
+
+### Active Secrets Store V2 bindings
+
+Secrets Store V2 is active. Every configured binding is binding-first: the
+runtime asynchronously calls `get()` and uses that Store value as the only
+authority. If a configured binding is unavailable, throws, or returns a weak
+value, the request fails closed and does not fall back to a V1 Worker secret.
+A V1 value is consulted only by a legacy/local deployment in which the
+corresponding V2 binding is completely absent.
+
+All active bindings use Secrets Store
+`346e2b4b86334bc29083c064116e91cf`. The production gate requires the exact
+binding-to-secret mappings below, rejects duplicate binding or secret names,
+and rejects any additional or incorrectly mapped entry:
+
+| Config | Binding | Secrets Store secret name |
+| --- | --- | --- |
+| Auth | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` |
+| Auth | `CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_ERASURE_WEBHOOK_SECRET_V2` |
+| Auth | `CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2` | `CINAADMIN_OIDC_CLIENT_SECRET_V2` |
+| Auth | `CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2` | `CINAADMIN_OIDC_BRIDGE_SECRET_V2` |
+| Delivery | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` |
+| Delivery | `CINAAUTH_DELIVERY_CONFIG_KEK_STORE` | `CINAAUTH_DELIVERY_CONFIG_KEK_V1` |
+| Privacy Erasure | `CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_ERASURE_WEBHOOK_SECRET_V2` |
+| Privacy Erasure | `CINAAUTH_ERASURE_CONFIG_KEK_STORE` | `CINAAUTH_ERASURE_CONFIG_KEK_V1` |
+| Admin | `CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2` | `CINAADMIN_OIDC_CLIENT_SECRET_V2` |
+| Admin | `CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2` | `CINAADMIN_OIDC_BRIDGE_SECRET_V2` |
+| Admin | `CINAADMIN_OIDC_TRANSACTION_SECRET_STORE_V2` | `CINAADMIN_OIDC_TRANSACTION_SECRET_V2` |
+
+The client and bridge OIDC values are shared by Auth and Admin; the transaction
+value is Admin-only. All three must be distinct random values of at least 32
+characters, and the client secret retains the `cina_cs_` prefix followed by at
+least 32 random characters. The two webhook values are shared only with their
+named child Worker. Each configuration KEK is independent and must have at
+least 32 bytes of entropy. Never replace a KEK in place while encrypted
+ACTIVE/NEXT/PREVIOUS versions exist; introduce a separately named key and an
+explicit re-encryption migration.
+
+The protected Auth `/api/ready` endpoint and the authorized child-Worker
+readiness responses probe the active bindings without returning values. Auth
+reports `active: true`, `source: "secrets-store-v2"`, `ok`, and public-safe
+issue names. A successful probe proves retrieval and minimum format, not that
+the shared copies were generated correctly; signed Delivery, Privacy Erasure,
+and Admin OIDC acceptance remain required.
+
+Every V2 secret must have the `workers` scope. In addition to the existing
+least-privilege Worker and route permissions, the `CLOUDFLARE_API_TOKEN` used by
+Wrangler or CI to deploy any of these bindings needs account-level
+`Account Secrets Store Edit`; `Account Secrets Store Read` can inspect metadata
+but cannot attach a secret to a Worker. Restrict the token to the production
+account and required zones. See Cloudflare's
+[Secrets Store access-control guide](https://developers.cloudflare.com/secrets-store/access-control/)
+and [Workers integration guide](https://developers.cloudflare.com/secrets-store/integrations/workers/).
+Never pass a secret value with a CLI value flag, print it, store it in a tracked
+file, or send a Secrets Store write token to either frontend. Create or rotate
+Store values through an approved server-side control-plane flow.
+
+### Two-phase bootstrap and post-deploy control plane
+
+Phase 1 is structural deployment:
+
+1. Create the two shared webhook values, three Admin OIDC values, and two
+   independent configuration KEKs in Secrets Store.
+2. Deploy Delivery and Privacy Erasure with their Store bindings and SQLite
+   configuration Durable Objects. Their operational `/ready` endpoints may
+   return HTTP 503 until provider/target configuration is ACTIVE; that is an
+   expected fail-closed bootstrap state, not a structural deployment failure.
+3. Provision the five Auth-owned Worker values above, deploy Auth with the exact
+   `CINAAUTH_DELIVERY_SERVICE` and `CINAAUTH_ERASURE_SERVICE` bindings, then run
+   the governed database migrations and Auth `/api/ready` gate.
+4. Deploy Account and Admin only after governed Auth readiness succeeds.
+
+Phase 2 is operational activation. A `super_admin` uses the protected Admin
+console, whose server-side BFF calls the authoritative Auth routes below. The
+browser never receives Store values, a Secrets Store API token, or a direct
+child-Worker credential:
+
+```text
+POST /api/admin/configuration/delivery/status
+POST /api/admin/configuration/delivery/stage
+POST /api/admin/configuration/delivery/test
+POST /api/admin/configuration/delivery/activate
+POST /api/admin/configuration/delivery/rollback
+POST /api/admin/configuration/erasure/status
+POST /api/admin/configuration/erasure/stage
+POST /api/admin/configuration/erasure/test
+POST /api/admin/configuration/erasure/activate
+POST /api/admin/configuration/erasure/rollback
+```
+
+Auth enforces role, recent authentication, no-impersonation, origin, rate-limit,
+strict-schema, audit-before-mutation, revision, and idempotency checks, then
+signs fixed Service Binding requests. Every dispatched mutation receives a
+redacted authoritative terminal `completed` or `failed` audit outcome; terminal
+audit persistence never causes an already-dispatched operation to be retried.
+Privacy management signatures bind the exact body to `X-CinaAuth-Timestamp`
+(Unix seconds) and `X-CinaAuth-Nonce`; the child accepts at most 300 seconds of
+clock skew, and mutation nonces equal the body idempotency key. Stage writes
+encrypted NEXT state; test must validate it before activate. Only after ACTIVE
+configuration exists should the child operational readiness and real
+provider/target acceptance gates be required. Rollback selects the retained
+validated PREVIOUS version.
 
 Optional plugin inputs include Turnstile, Google One Tap, Google/GitHub social
 OAuth, Generic OAuth, Stripe, pairwise OAuth identifiers, and the admin audit
 service key. Production
-account deletion always registers the external erasure processor, so configure
-both `CINAAUTH_ERASURE_WEBHOOK_URL` and
-`CINAAUTH_ERASURE_WEBHOOK_SECRET`. If the pair is missing, deletion fails
-closed while other authentication features remain available. The fixed
-production endpoint is
+account deletion always registers the external erasure processor. The
+provisioner pins `CINAAUTH_ERASURE_WEBHOOK_URL`; configure the active
+`CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2` binding. If either is unavailable,
+deletion fails closed while other authentication features remain available.
+The fixed production endpoint is
 `https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase`; its dedicated
 deployment and downstream target contract are documented in
 [`workers/privacy-erasure/DEPLOYMENT.md`](../privacy-erasure/DEPLOYMENT.md).
@@ -223,19 +364,15 @@ reuse the widget without mutating Cloudflare.
 pnpm --dir workers/auth-api run provision:secrets
 ```
 
-The delivery webhook must be HTTPS and ready before the provisioning script
-accepts it. Delivery requests are signed with
-`X-CinaAuth-Delivery-Signature`.
-The Auth and Delivery Workers must share the same webhook secret; it authorizes
-both the internal `/ready` probe and signed delivery requests. A `503` readiness
-response may still report one ready channel and one unavailable channel. Auth
-accepts that partial state, advertises only the ready channel, and fails closed
-for the unavailable one.
-The Privacy Erasure Worker must also pass its authorized readiness check. A
-one-time fail-closed bootstrap may use
-`provision:secrets -- --allow-erasure-not-ready`; this accepts only an explicit
-503 response with `runtimeConfig.ok=false`, and account deletion remains
-blocked until real targets are configured.
+The script requires an HTTPS Delivery URL and always provisions the
+repository-reviewed Privacy Erasure endpoint
+`https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase`; an operator
+environment variable cannot redirect deletion payloads. It performs no
+child-service readiness request and does not provision the shared V2 webhook or
+Admin OIDC values. Delivery requests remain signed with
+`X-CinaAuth-Delivery-Signature`. A child `/ready` HTTP 503 is valid during phase
+1; user-facing delivery and account erasure remain fail closed until phase 2
+has tested and activated the required configuration.
 
 ## 5. Validate and deploy
 
@@ -249,17 +386,20 @@ pnpm --dir workers/auth-api run deploy
 `check:cloudflare` requires `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID`. Set `CINAAUTH_REQUIRE_ALL_PLUGIN_INPUTS=1` to make all
 optional commercial plugin inputs mandatory.
-The remote gate also verifies the `cinaauth-delivery` Service Binding and, when
-`CINAAUTH_DELIVERY_WEBHOOK_SECRET` is present in the current process, requires
-public Auth capabilities to match the authorized Delivery provider readiness.
+The remote gate verifies both `cinaauth-delivery` and
+`cinaauth-privacy-erasure` Service Bindings plus all four exact active Auth
+Secrets Store bindings. When `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` (or an
+explicit legacy fallback value) is present in the operator process, it also
+requires public Auth capabilities to match authorized Delivery provider
+readiness.
 When `CINAAUTH_MIGRATION_TOKEN` is also available, the same command performs an
 authorized `/api/ready` acceptance check and requires live cutover, database,
 and runtime configuration readiness. Without that token it verifies that the
 endpoint stays protected and reports the detailed check as skipped.
 
 Real email/SMS provider acceptance is intentionally opt-in. Set an approved
-`CINAAUTH_ACCEPTANCE_EMAIL`, `CINAAUTH_ACCEPTANCE_PHONE` (E.164), and
-`CINAAUTH_DELIVERY_WEBHOOK_SECRET`, then run:
+`CINAAUTH_ACCEPTANCE_EMAIL`, `CINAAUTH_ACCEPTANCE_PHONE` (E.164), and the
+active `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2`, then run:
 
 ```powershell
 pnpm --dir workers/delivery run acceptance:providers -- --send
@@ -321,6 +461,23 @@ Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Headers $headers
 Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Method Post -Headers $headers
 ```
 
+The POST applies the framework schema and then installs both deployment-owned
+PostgreSQL invariants in one additional transaction: the final-super-admin
+trigger and the persistent account/SSO/SCIM provider-namespace registry. It
+verifies both before committing. Installation fails if there is no non-anonymous
+exact `super_admin`, if an anonymous exact `super_admin` exists, or if current
+provider rows/configuration collide. Repair those data conditions explicitly;
+do not weaken or skip the invariant. Preview and apply responses list
+`requiredInvariants`, and their `invariants` object reports installed/missing
+IDs without exposing provider IDs or credentials.
+
+Every new Worker version intentionally keeps all `/api/auth/*` routes at 503
+until the POST migration has installed and verified the versioned invariants.
+`/api/migrate` and `/api/ready` remain reachable with the migration token. This
+short fail-closed rollout window prevents new or rotated Generic OAuth/social
+configuration from racing an older database namespace policy. Run the preview,
+apply, and readiness checks immediately after deployment.
+
 When enabling organization teams and dynamic roles on an existing database,
 deploy the migration-capable Worker while the runtime still uses the base
 organization plugin. Then preview and apply the one intentionally exposed
@@ -367,6 +524,77 @@ the origin provider; verify a restore point before applying a production schema
 change. D1 Time Travel protects only the retained rollback source, not the new
 PostgreSQL database.
 
+### Claim a legacy SCIM provider safely
+
+When `providerOwnership.enabled` is enabled, a legacy `scimProvider` row whose
+`organizationId` and `userId` are both null remains hidden from normal session
+management. Do not temporarily disable ownership or edit those columns by hand.
+The Auth Worker exposes one operations-only endpoint protected by
+`CINAAUTH_MIGRATION_TOKEN`:
+
+```powershell
+$headers = @{ Authorization = "Bearer $env:CINAAUTH_MIGRATION_TOKEN" }
+$claim = @{
+  providerId = "verified-legacy-provider-id"
+  organizationId = "destination-organization-id"
+  ownerUserId = "verified-owner-user-id"
+} | ConvertTo-Json
+
+# Preview is the default and does not modify the provider.
+$preview = Invoke-RestMethod `
+  https://auth.cinaseek.ai/api/migrate/scim-provider-ownership `
+  -Method Post -Headers $headers -ContentType "application/json" -Body $claim
+$preview
+```
+
+Preview returns `status: ready` only when the exact provider exists, both owner
+fields are null, no `account` row uses that provider id, the destination
+organization and owner exist, and that user is an `owner` or `admin` member of
+the organization. A provider with any existing owner field or any provisioned
+account fails closed; the endpoint never moves accounts, memberships, or a
+connection between tenants.
+
+The provider id must also be absent from the shared account-provider namespace.
+Built-in ids such as `credential` and `email-otp`, configured social or Generic
+OAuth ids, and ids present in `ssoProvider` are rejected in both preview and
+apply mode before an ownership update, token rotation, or migration audit. Do
+not rename another identity provider as part of this claim workflow.
+
+The database registry keeps provider-id claims after an SSO or SCIM provider is
+deleted, so a later account provider cannot silently reuse that historical
+namespace. Same-kind delete-and-recreate remains supported. Registration,
+SCIM token creation, and ownership migration retain per-provider Worker
+coordination and Durable Object throttling, while the PostgreSQL triggers are
+the final transaction-local collision guard.
+
+After independently checking the provider and destination, apply the same
+request with the explicit switch:
+
+```powershell
+$apply = @{
+  providerId = "verified-legacy-provider-id"
+  organizationId = "destination-organization-id"
+  ownerUserId = "verified-owner-user-id"
+  apply = $true
+} | ConvertTo-Json
+
+$result = Invoke-RestMethod `
+  https://auth.cinaseek.ai/api/migrate/scim-provider-ownership `
+  -Method Post -Headers $headers -ContentType "application/json" -Body $apply
+$newSCIMToken = $result.scimToken
+```
+
+Apply uses a serializable PostgreSQL transaction, row/statement timeouts, a
+conditional null-owner update, and an audit row committed with the claim. It
+rotates the bearer so the encoded token is bound to the destination
+organization; only its SHA-256 is stored. The plaintext `scimToken` is returned
+once in the successful apply response and is never written to logs or audit
+metadata. Transfer it directly to the approved IdP secret store, then clear the
+PowerShell variable. Repeating the exact claim is idempotent and returns
+`already_migrated` without issuing another token. If the one-time value is lost,
+rotate through the normal organization-authorized SCIM token flow; do not rerun
+the ownership claim expecting the token to be revealed again.
+
 ## 7. Verify readiness and rate limiting
 
 ```powershell
@@ -377,10 +605,15 @@ Invoke-WebRequest https://auth.cinaseek.ai/.well-known/openid-configuration -Hea
 Invoke-WebRequest https://auth.cinaseek.ai/api/auth/.well-known/openid-configuration -Headers @{ Accept = "application/json" }
 ```
 
-`/api/ready` returns 200 only when runtime secrets, Hyperdrive, PostgreSQL base
-tables, Queue delivery, and the Durable Object limiter binding are ready. It
+`/api/ready` returns 200 only when Auth runtime inputs, all four active Secrets
+Store bindings, Hyperdrive, PostgreSQL base tables, the D1 cutover marker,
+every database invariant and its current data coverage, Queue and Service
+Bindings, and the Durable Object limiter binding are structurally ready. It
+does not require Resend/Twilio providers or erasure targets to be operational;
+those are phase-2 child readiness gates.
+The `database.invariants` object lists required, installed, and missing IDs. It
 returns `Cache-Control: no-store` and includes `VERSION_METADATA`, but never
-returns secret values or the PostgreSQL connection string.
+returns provider IDs, secret values, or the PostgreSQL connection string.
 
 OIDC Discovery is canonical at `/.well-known/openid-configuration`; the
 `/api/auth/.well-known/openid-configuration` compatibility alias returns the
@@ -408,21 +641,67 @@ sixth request in a 60-second window must return HTTP 429 and `X-Retry-After`.
 `.github/workflows/deploy-cloudflare.yml` expects these GitHub secrets:
 
 - `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+- `PLANETSCALE_SERVICE_TOKEN_ID` and `PLANETSCALE_SERVICE_TOKEN`, scoped to
+  `cinagroup/cinaauth` with only `read_backups`
 - `CINAAUTH_HYPERDRIVE_ID`
 - `CINAAUTH_SECRET` and `CINAAUTH_MIGRATION_TOKEN`
-- `CINAAUTH_DELIVERY_WEBHOOK_SECRET`
-- required `CINAAUTH_ERASURE_WEBHOOK_SECRET`, shared by the Auth Worker and
-  Privacy Erasure Worker; the URL is fixed by CI to the production custom domain
-- `CINAAUTH_ERASURE_STORAGE_SECRET` and a non-empty
-  `CINAAUTH_ERASURE_TARGETS` JSON array for the Privacy Erasure Worker
+- `CINAAUTH_PRIVACY_EXPORT_KEY` and the Privacy Worker-owned
+  `CINAAUTH_ERASURE_STORAGE_SECRET`
 - when Billing is enabled, the complete Stripe group:
   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_DEFAULT_PRICE_ID`, and
   `CINAAUTH_ENTITLEMENT_CONFIG`; optionally `STRIPE_DEFAULT_PLAN_NAME`
-- delivery-provider and optional plugin credentials already listed above
+- optional plugin credentials already listed above
 - when social login is enabled, `GOOGLE_CLIENT_ID` plus
   `GOOGLE_CLIENT_SECRET`, and/or `GITHUB_CLIENT_ID` plus
   `GITHUB_CLIENT_SECRET`; Google One Tap may use `GOOGLE_CLIENT_ID` alone
 
-CI configures the Hyperdrive ID, runs static and remote gates, deploys, previews
-and applies migrations, then requires authenticated `/api/ready` before the
-demo deployment proceeds.
+Put production credentials in the GitHub `production` environment. Create that
+environment before the first run, restrict it to `main`, require an independent
+reviewer, disable administrator bypass where repository policy permits it, and
+prevent the initiating operator from approving their own deployment. Every job
+that can write a production Cloudflare resource references this environment.
+The Account and Admin reusable workflows set the environment on their actual
+`deploy` jobs because GitHub does not allow `environment` on a caller job that
+uses another workflow.
+
+Production deployment has no `push` trigger. Start `Deploy to Cloudflare`
+manually from the default branch and provide all four inputs:
+
+- `restore_rehearsal_completed`: `true` only after an isolated restored branch,
+  temporary Hyperdrive, and non-production Auth Worker have passed migration
+  preview/readiness rehearsal
+- `restore_rehearsal_reference`: a durable run, ticket, or evidence URL for
+  that rehearsal; placeholders are rejected
+- `backup_reference`: the exact active successful PlanetScale `main` backup ID
+  selected for rollback
+- `operator_attestation`: exactly `DEPLOY CINAAUTH PRODUCTION`, authorizing the
+  Cloudflare writes and the production migration POST in this run
+
+The `authorize-production` job runs before any Cloudflare write. It fails closed
+unless the inputs are present, the production environment has released the job,
+both PlanetScale credentials exist, the live read-only backup audit passes, and
+`backup_reference` is present in the audit's active successful backups. The
+restore reference is operator-attested evidence; the workflow does not create,
+modify, or delete a PlanetScale branch.
+
+The seven active Store values in the table above are created separately through
+the Secrets Store control plane and are attached by the checked-in bindings;
+they are not duplicated as V1 GitHub/Worker secrets. Resend, Twilio, and
+`CINAAUTH_ERASURE_TARGETS` are also absent from the deployment environment and
+are written after deployment through the audited configuration control plane.
+
+After authorization, CI keeps the ordered rollout: Delivery and Privacy Erasure
+Workers first, Auth Worker second, then Account and Admin frontends. It configures
+the Hyperdrive ID, runs static and remote structural gates, deploys Auth, previews
+and applies migrations, then requires authenticated Auth `/api/ready` before
+either frontend deploys. Operational child readiness is a separate
+post-activation acceptance gate.
+
+The Account and Admin deployment workflows are reusable-only and cannot be
+manually dispatched outside the central recovery gate. Each polls the
+authenticated readiness endpoint before any frontend Worker write. They require both
+`super-admin-governance-v1` and `provider-namespace-registry-v1` to be installed
+and the cutover state to be `live`. The central backend workflow invokes them
+only after the Auth job succeeds, preventing either frontend from overtaking an
+Auth migration. The Admin console consumes its three existing active Store
+bindings and does not provision V1 OIDC secrets.

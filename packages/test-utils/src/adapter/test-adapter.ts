@@ -85,9 +85,9 @@ export const testAdapter = async ({
 		} satisfies CinaAuthOptions;
 	})();
 
-	let adapter: DBAdapter<CinaAuthOptions> = (
-		await getAdapter(CinaAuthOptions)
-	)(CinaAuthOptions);
+	let adapter: DBAdapter<CinaAuthOptions> = (await getAdapter(CinaAuthOptions))(
+		CinaAuthOptions,
+	);
 
 	const adapterName = adapter.options?.adapterConfig.adapterName;
 	const adapterId = adapter.options?.adapterConfig.adapterId || adapter.id;

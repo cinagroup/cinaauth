@@ -7,12 +7,8 @@ vi.mock("@/lib/cinaauth/client", () => ({
 }));
 
 // Import AFTER the mock is registered so admin-api picks up the mock.
-const {
-	listUsers,
-	listAudit,
-	statsOverview,
-	statsSecurityToday,
-} = await import("@/lib/cinaauth/admin-api");
+const { listUsers, listAudit, statsOverview, statsSecurityToday } =
+	await import("@/lib/cinaauth/admin-api");
 
 beforeEach(() => {
 	fetchMock.mockReset();

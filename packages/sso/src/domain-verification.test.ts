@@ -330,9 +330,7 @@ describe("Domain verification", async () => {
 			const provider = await registerSSOProvider(headers);
 
 			dnsMock.resolveTxt.mockResolvedValue([
-				[
-					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
-				],
+				[`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`],
 			]);
 
 			const domainVerificationResponse = await auth.api.verifyDomain({
@@ -450,7 +448,7 @@ describe("Domain verification", async () => {
 			dnsMock.resolveTxt.mockResolvedValue([
 				[`prefix-${provider.domainVerificationToken}-suffix`],
 				[
-					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}-suffix`,
+					`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}-suffix`,
 				],
 			]);
 
@@ -539,10 +537,7 @@ describe("Domain verification", async () => {
 				[
 					"v=spf1 ip4:50.242.118.232/29 include:_spf.google.com include:mail.zendesk.com ~all",
 				],
-				[
-					"_better-auth-token-saml-provider-1=",
-					provider.domainVerificationToken,
-				],
+				["_cinaauth-token-saml-provider-1=", provider.domainVerificationToken],
 			]);
 
 			const response = await auth.api.verifyDomain({
@@ -555,7 +550,7 @@ describe("Domain verification", async () => {
 
 			expect(response.status).toBe(204);
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_better-auth-token-saml-provider-1.hello.com",
+				"_cinaauth-token-saml-provider-1.hello.com",
 			);
 		});
 
@@ -620,7 +615,7 @@ describe("Domain verification", async () => {
 			const { domainVerificationToken } = await requestResponse.json();
 
 			dnsMock.resolveTxt.mockResolvedValue([
-				[`_better-auth-token-bare-domain-provider=${domainVerificationToken}`],
+				[`_cinaauth-token-bare-domain-provider=${domainVerificationToken}`],
 			]);
 
 			const verifyResponse = await auth.api.verifyDomain({
@@ -631,7 +626,7 @@ describe("Domain verification", async () => {
 
 			expect(verifyResponse.status).toBe(204);
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_better-auth-token-bare-domain-provider.hello.com",
+				"_cinaauth-token-bare-domain-provider.hello.com",
 			);
 		});
 
@@ -677,9 +672,7 @@ describe("Domain verification", async () => {
 			const provider = await registerSSOProvider(headers);
 
 			dnsMock.resolveTxt.mockResolvedValue([
-				[
-					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
-				],
+				[`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`],
 			]);
 
 			const firstResponse = await auth.api.verifyDomain({
@@ -737,10 +730,10 @@ describe("Domain verification", async () => {
 
 			// Only attacker.com publishes the verifying record; victim.com does not.
 			dnsMock.resolveTxt.mockImplementation(async (name: string) => {
-				if (name === "_better-auth-token-multi-domain-provider.attacker.com") {
+				if (name === "_cinaauth-token-multi-domain-provider.attacker.com") {
 					return [
 						[
-							`_better-auth-token-multi-domain-provider=${domainVerificationToken}`,
+							`_cinaauth-token-multi-domain-provider=${domainVerificationToken}`,
 						],
 					];
 				}
@@ -761,7 +754,7 @@ describe("Domain verification", async () => {
 				code: "DOMAIN_VERIFICATION_FAILED",
 			});
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_better-auth-token-multi-domain-provider.victim.com",
+				"_cinaauth-token-multi-domain-provider.victim.com",
 			);
 		});
 
@@ -802,10 +795,10 @@ describe("Domain verification", async () => {
 
 			expect(verifyResponse.status).toBe(204);
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_better-auth-token-owned-multi-domain.company.com",
+				"_cinaauth-token-owned-multi-domain.company.com",
 			);
 			expect(dnsMock.resolveTxt).toHaveBeenCalledWith(
-				"_better-auth-token-owned-multi-domain.subsidiary.com",
+				"_cinaauth-token-owned-multi-domain.subsidiary.com",
 			);
 		});
 	});
@@ -852,9 +845,7 @@ describe("Domain verification", async () => {
 
 			// Verify domain via DNS
 			dnsMock.resolveTxt.mockResolvedValue([
-				[
-					`_better-auth-token-saml-provider-1=${provider.domainVerificationToken}`,
-				],
+				[`_cinaauth-token-saml-provider-1=${provider.domainVerificationToken}`],
 			]);
 
 			const verifyResponse = await auth.api.verifyDomain({

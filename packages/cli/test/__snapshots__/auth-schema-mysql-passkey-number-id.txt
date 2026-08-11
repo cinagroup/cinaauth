@@ -38,7 +38,10 @@ export const custom_session = mysqlTable(
       .notNull()
       .references(() => custom_user.id, { onDelete: "cascade" }),
   },
-  (table) => [index("custom_session_userId_idx").on(table.userId)],
+  (table) => [
+    index("custom_session_expiresAt_idx").on(table.expiresAt),
+    index("custom_session_userId_idx").on(table.userId),
+  ],
 );
 
 export const custom_account = mysqlTable(

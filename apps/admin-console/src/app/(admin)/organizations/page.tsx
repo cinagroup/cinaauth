@@ -1,23 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-	getCoreRowModel,
-	useReactTable,
-	type ColumnDef,
-} from "@tanstack/react-table";
-import { toast } from "sonner";
+import type { ColumnDef } from "@tanstack/react-table";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
-import { DataTable } from "@/components/data-table/data-table";
-import { RoleGuard } from "@/components/role-guard";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DataTable } from "@/components/data-table/data-table";
+import { PageHeader } from "@/components/layout/page-header";
+import { RoleGuard } from "@/components/role-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/layout/page-header";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { fetchAdminJson } from "@/lib/client-api";
 import type { OrgDTO } from "@/lib/cinaauth/dto";
+import { fetchAdminJson, fetchAdminResponse } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function OrganizationsPage() {
 	const { t } = useI18n();
@@ -46,7 +43,7 @@ export default function OrganizationsPage() {
 		}
 		setCreating(true);
 		try {
-			const r = await fetch("/api/admin/organizations", {
+			const r = await fetchAdminResponse("/api/admin/organizations", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ name, slug }),
@@ -82,7 +79,8 @@ export default function OrganizationsPage() {
 			{
 				accessorKey: "createdAt",
 				header: t("organizations.col.createdAt"),
-				cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+				cell: ({ row }) =>
+					new Date(row.original.createdAt).toLocaleDateString(),
 			},
 		],
 		[t],
@@ -124,6 +122,9 @@ export default function OrganizationsPage() {
 					</ConfirmDialog>
 				</RoleGuard>
 			</PageHeader>
+			<p className="mb-4 max-w-3xl text-[13px] leading-5 text-mute">
+				{t("organizations.tenantScope")}
+			</p>
 			<DataTable
 				table={table}
 				emptyLabel={t("organizations.empty")}

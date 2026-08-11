@@ -12,6 +12,32 @@
   "version_metadata": {
     "binding": "VERSION_METADATA"
   },
+  "secrets_store_secrets": [
+    {
+      "binding": "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2"
+    },
+    {
+      "binding": "CINAAUTH_DELIVERY_CONFIG_KEK_STORE",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINAAUTH_DELIVERY_CONFIG_KEK_V1"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DELIVERY_CONFIG",
+        "class_name": "DeliveryProviderConfig"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["DeliveryProviderConfig"]
+    }
+  ],
   "kv_namespaces": [
     {
       "binding": "CINAAUTH_DELIVERY_REPLAY_KV",

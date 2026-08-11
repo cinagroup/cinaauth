@@ -1499,8 +1499,7 @@ export const auth = CinaAuth({
 	const connectResponse = await prompts({
 		type: "confirm",
 		name: "connect",
-		message:
-			"Would you like to connect your app to CinaAuth infrastructure?",
+		message: "Would you like to connect your app to CinaAuth infrastructure?",
 		initial: true,
 	});
 	// If the user cancels the prompt, `connect` will be undefined.
@@ -1524,8 +1523,7 @@ export const auth = CinaAuth({
 	if (connectResponse.connect) {
 		await open("https://dash.cinagroup.com/onboarding");
 		console.log(
-			chalk.cyan("\n→ ") +
-				"Opening CinaAuth onboarding in your browser...\n",
+			chalk.cyan("\n→ ") + "Opening CinaAuth onboarding in your browser...\n",
 		);
 	}
 

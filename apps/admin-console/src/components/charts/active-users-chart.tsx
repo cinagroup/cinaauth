@@ -10,8 +10,8 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import { useThemeTokens } from "@/hooks/use-theme-tokens";
 import { ChartState } from "@/components/charts/chart-state";
+import { useThemeTokens } from "@/hooks/use-theme-tokens";
 import { fetchAdminJson } from "@/lib/client-api";
 
 interface AuditRow {
@@ -36,9 +36,7 @@ export function ActiveUsersChart({ days = 14 }: { days?: number }) {
 			const d = await fetchAdminJson<{
 				ok?: boolean;
 				data?: { rows?: AuditRow[] };
-			}>(
-				`/api/admin/audit?action=user.login&result=success&limit=1000`,
-			);
+			}>(`/api/admin/audit?action=user.login&result=success&limit=1000`);
 			return d.data?.rows ?? [];
 		},
 	});
@@ -65,8 +63,10 @@ export function ActiveUsersChart({ days = 14 }: { days?: number }) {
 	}));
 
 	if (isLoading) return <ChartState status="loading" />;
-	if (isError) return <ChartState status="error" onRetry={() => void refetch()} />;
-	if (chartData.every((point) => point.active === 0)) return <ChartState status="empty" />;
+	if (isError)
+		return <ChartState status="error" onRetry={() => void refetch()} />;
+	if (chartData.every((point) => point.active === 0))
+		return <ChartState status="empty" />;
 
 	return (
 		<ResponsiveContainer width="100%" height={240}>

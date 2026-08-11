@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlogLeftPanel } from "@/components/blog/blog-left-panel";
-import { BlogTOC } from "@/components/blog/blog-toc";
 import Footer from "@/components/landing/footer";
 import { BlogTweet } from "@/components/mdx/tweet";
 import { Callout } from "@/components/ui/callout";
@@ -201,8 +200,6 @@ export default async function Page({
 
 	const MDX = page.data?.body;
 	const { title, description, date } = page.data;
-	const toc = page.data.toc ?? [];
-
 	return (
 		<div
 			id="fd-glass-layout"
@@ -279,77 +276,53 @@ export default async function Page({
 											className={`text-[11px] font-semibold tracking-wide not-prose block select-none ${colors[variant]}`}
 										>
 											{children}
-										</Callout>
-									),
-									HeaderLabel: ({
-										children,
-										variant = "default",
-									}: {
-										children: React.ReactNode;
-										variant?: "default" | "info" | "warning";
-									}) => {
-										const colors = {
-											default: "text-neutral-600 dark:text-neutral-300",
-											info: "text-blue-500 dark:text-blue-400",
-											warning: "text-amber-600 dark:text-amber-400",
-										};
+										</span>
+									);
+								},
+								Contributors: ({ usernames }: { usernames: string[] }) => (
+									<div className="flex flex-wrap gap-1.5 not-prose">
+										{usernames.map((username) => (
+											<a
+												key={username}
+												href={`https://github.com/${username}`}
+												target="_blank"
+												rel="noreferrer noopener"
+												className="text-xs font-mono px-2 py-1 border border-foreground/10 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-foreground/20 transition-colors"
+											>
+												@{username}
+											</a>
+										))}
+									</div>
+								),
+								a: ({ className, href, children, ...props }: any) => {
+									const isExternal =
+										typeof href === "string" && /^(https?:)?\/\//.test(href);
+									const classes = cn(
+										"font-medium underline decoration-dashed underline-offset-4",
+										className,
+									);
+									if (isExternal) {
 										return (
-											<span
-												data-header-label="true"
-												className={`text-[11px] font-semibold tracking-wide not-prose block select-none ${colors[variant]}`}
+											<a
+												className={classes}
+												href={href}
+												target="_blank"
+												rel="noreferrer noopener"
+												{...props}
 											>
 												{children}
-											</span>
+											</a>
 										);
-									},
-									Contributors: ({ usernames }: { usernames: string[] }) => (
-										<div className="flex flex-wrap gap-1.5 not-prose">
-											{usernames.map((username) => (
-												<a
-													key={username}
-													href={`https://github.com/${username}`}
-													target="_blank"
-													rel="noreferrer noopener"
-													className="text-xs font-mono px-2 py-1 border border-foreground/10 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-foreground/20 transition-colors"
-												>
-													@{username}
-												</a>
-											))}
-										</div>
-									),
-									a: ({ className, href, children, ...props }: any) => {
-										const isExternal =
-											typeof href === "string" && /^(https?:)?\/\//.test(href);
-										const classes = cn(
-											"font-medium underline decoration-dashed underline-offset-4",
-											className,
-										);
-										if (isExternal) {
-											return (
-												<a
-													className={classes}
-													href={href}
-													target="_blank"
-													rel="noreferrer noopener"
-													{...props}
-												>
-													{children}
-												</a>
-											);
-										}
-										return (
-											<Link className={classes} href={href} {...(props as any)}>
-												{children}
-											</Link>
-										);
-									},
-								}}
-							/>
-						</article>
-					</div>
-					<div className="lg:hidden">
-						<Footer />
-					</div>
+									}
+									return (
+										<Link className={classes} href={href} {...(props as any)}>
+											{children}
+										</Link>
+									);
+								},
+							}}
+						/>
+					</article>
 				</div>
 				<div className="lg:hidden">
 					<Footer />

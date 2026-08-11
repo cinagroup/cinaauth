@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound } from "lucide-react";
+import { Github, KeyRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -60,10 +60,10 @@ export function OAuthProviderButtons({
 
 	return (
 		<>
-			<div className="relative flex items-center my-2">
+			<div className="relative my-1 flex items-center" role="separator">
 				<div className="flex-grow border-t border-border" />
-				<span className="flex-shrink mx-4 text-xs text-muted-foreground">
-					or
+				<span className="mx-4 flex-shrink text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+					Or use a connected account
 				</span>
 				<div className="flex-grow border-t border-border" />
 			</div>
@@ -81,8 +81,9 @@ export function OAuthProviderButtons({
 			{visibleProviders.map((provider) => (
 				<Button
 					key={provider.id}
+					type="button"
 					variant="outline"
-					className="w-full gap-2 flex relative justify-center"
+					className="relative flex w-full justify-center gap-2"
 					onClick={() => {
 						if (provider.type === "social") {
 							void authClient.signIn.social({
@@ -97,7 +98,11 @@ export function OAuthProviderButtons({
 						});
 					}}
 				>
-					<KeyRound size={16} />
+					{provider.id === "github" ? (
+						<Github size={17} aria-hidden />
+					) : (
+						<KeyRound size={17} aria-hidden />
+					)}
 					<span>Continue with {formatOAuthProviderName(provider.id)}</span>
 				</Button>
 			))}

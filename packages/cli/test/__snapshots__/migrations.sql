@@ -6,6 +6,8 @@ create table "account" ("id" text not null primary key, "accountId" text not nul
 
 create table "verification" ("id" text not null primary key, "identifier" text not null, "value" text not null, "expiresAt" date not null, "createdAt" date not null, "updatedAt" date not null);
 
+create index "session_expiresAt_idx" on "session" ("expiresAt");
+
 create index "session_userId_idx" on "session" ("userId");
 
 create index "account_userId_idx" on "account" ("userId");

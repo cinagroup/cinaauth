@@ -1,9 +1,6 @@
 import type { AuthContext } from "@cinaauth/core";
 import type { RequestStateWeakMap } from "@cinaauth/core/context";
-import {
-	hasRequestState,
-	runWithRequestState,
-} from "@cinaauth/core/context";
+import { hasRequestState, runWithRequestState } from "@cinaauth/core/context";
 import { APIError, CinaAuthError } from "@cinaauth/core/error";
 import type {
 	Endpoint,

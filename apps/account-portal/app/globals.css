@@ -7,7 +7,7 @@
 /* ─── Vercel-inspired design tokens ─────────────────────────────────────────
  *
  * Token mapping follows the `Vercel-Inspired-design-analysis` spec.
- * Shadcn-compatible aliases (--background, --foreground, --primary, ...)
+ * shadcn-compatible aliases (--background, --foreground, --primary, ...)
  * coexist with the Vercel-semantic tokens (--ink, --body, --mute, --canvas, ...).
  *
  * Surfaces:
@@ -73,7 +73,7 @@
 	--selection-bg: hsl(0 0% 9%); /* #171717 */
 	--selection-fg: hsl(0 0% 95%); /* #f2f2f2 */
 
-	/* Shadcn-compatible aliases (map to Vercel tokens) */
+	/* shadcn-compatible aliases (map to Vercel tokens) */
 	--background: var(--canvas-soft);
 	--foreground: var(--ink);
 	--card: var(--canvas);
@@ -212,7 +212,7 @@
 	--color-selection-bg: var(--selection-bg);
 	--color-selection-fg: var(--selection-fg);
 
-	/* Shadcn color tokens */
+	/* shadcn color tokens */
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);

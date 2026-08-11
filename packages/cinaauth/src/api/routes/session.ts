@@ -669,13 +669,11 @@ export const requestOnlySessionMiddleware = createAuthMiddleware(
 );
 
 /**
- * This middleware forces the endpoint to require a valid session,
- * as well as making sure the session is fresh before proceeding.
- *
- * Session freshness check will be skipped if the session config's freshAge
- * is set to 0
+ * Resolve the session from its authoritative source and enforce the configured
+ * freshness window. Shared by the middleware and endpoints that conditionally
+ * accept a non-session credential before falling back to fresh-session auth.
  */
-export const freshSessionMiddleware = createAuthMiddleware(async (ctx) => {
+export const getFreshSessionFromCtx = async (ctx: GenericEndpointContext) => {
 	const session = await getAuthoritativeSessionFromCtx(ctx);
 	if (!session?.session) {
 		throw APIError.from("UNAUTHORIZED", {
@@ -698,7 +696,18 @@ export const freshSessionMiddleware = createAuthMiddleware(async (ctx) => {
 	return {
 		session,
 	};
-});
+};
+
+/**
+ * This middleware forces the endpoint to require a valid session,
+ * as well as making sure the session is fresh before proceeding.
+ *
+ * Session freshness check will be skipped if the session config's freshAge
+ * is set to 0.
+ */
+export const freshSessionMiddleware = createAuthMiddleware(async (ctx) =>
+	getFreshSessionFromCtx(ctx),
+);
 /**
  * user active sessions list
  */

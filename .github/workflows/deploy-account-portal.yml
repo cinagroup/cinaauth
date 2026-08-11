@@ -1,17 +1,7 @@
 name: Deploy Account Portal
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - apps/account-portal/**
-      - packages/auth-proxy/**
-      - packages/auth-web-contract/**
-      - packages/design-tokens/**
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - .github/workflows/deploy-account-portal.yml
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -24,6 +14,7 @@ jobs:
   deploy:
     name: Deploy accounts.cinaseek.ai
     runs-on: ubuntu-latest
+    environment: production
     defaults:
       run:
         working-directory: apps/account-portal
@@ -45,11 +36,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_ACCOUNT_SECRET: ${{ secrets.CINAAUTH_DEMO_SECRET }}
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
-          test "${#CINAAUTH_ACCOUNT_SECRET}" -ge 32 || (echo "CINAAUTH_DEMO_SECRET must be at least 32 characters" && exit 1)
+          test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32 || (echo "CINAAUTH_MIGRATION_TOKEN must be at least 32 characters" && exit 1)
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -74,12 +65,38 @@ jobs:
           NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
 
-      - name: Inject account portal secret
+      - name: Wait for governed Auth readiness
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_SECRET: ${{ secrets.CINAAUTH_DEMO_SECRET }}
-        run: echo "$CINAAUTH_SECRET" | pnpm exec wrangler secret put CINAAUTH_SECRET
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
+        run: |
+          ready_file="$RUNNER_TEMP/cinaauth-ready.json"
+          for attempt in $(seq 1 30); do
+            if curl --fail-with-body --show-error --silent \
+              https://auth.cinaseek.ai/api/ready \
+              -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN" \
+              --output "$ready_file"; then
+              if node -e '
+                const fs = require("node:fs");
+                const ready = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+                const required = [
+                  "super-admin-governance-v1",
+                  "provider-namespace-registry-v1",
+                ];
+                const installed = new Set(ready.database?.invariants?.installed ?? []);
+                if (
+                  ready.success !== true ||
+                  ready.cutover?.state !== "live" ||
+                  ready.database?.invariants?.ok !== true ||
+                  required.some((id) => !installed.has(id))
+                ) process.exit(1);
+              ' "$ready_file"; then
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "Auth Worker did not reach governed readiness" >&2
+          exit 1
 
       - name: Deploy account portal
         uses: cloudflare/wrangler-action@v3

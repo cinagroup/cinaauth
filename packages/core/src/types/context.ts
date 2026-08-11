@@ -13,10 +13,7 @@ import type { createLogger } from "../env";
 import type { OAuthProvider } from "../oauth2";
 import type { CinaAuthCookie, CinaAuthCookies } from "./cookie";
 import type { Awaitable, LiteralString } from "./helper";
-import type {
-	CinaAuthOptions,
-	CinaAuthRateLimitOptions,
-} from "./init-options";
+import type { CinaAuthOptions, CinaAuthRateLimitOptions } from "./init-options";
 import type { CinaAuthPlugin } from "./plugin";
 import type { SecretConfig } from "./secret";
 

@@ -1,47 +1,33 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { SignInForm } from "@/components/forms/sign-in-form";
 import {
 	buildPreservedAuthPath,
 	hasSignedOidcAuthorizationQuery,
 } from "@/lib/oidc-navigation";
+import { sanitizeAccountCallbackURL } from "@/lib/sign-in-experience";
 
 export default function PasswordSignInPage() {
 	const params = useSearchParams();
-	const callbackURL = params.get("callbackURL") ?? "/dashboard";
+	const callbackURL = sanitizeAccountCallbackURL(
+		params.get("callbackURL") ?? "/dashboard",
+	);
 	const hasOidcQuery = hasSignedOidcAuthorizationQuery(params);
 
 	return (
-		<div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
-			<div className="w-full max-w-[400px]">
-				<div className="flex flex-col gap-6">
-					{/* Back Link */}
-					<Link
-						href={buildPreservedAuthPath("/sign-in", params, callbackURL)}
-						className="text-sm text-body hover:text-ink flex items-center gap-1 w-fit"
-					>
-						<ArrowLeft size={16} />
-						Back to sign in.
-					</Link>
-
-					{/* Header */}
-					{/* Spec: display-lg (32/600/-1.28px), sentence-case + period. */}
-					<h1 className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-ink">
-						Sign in with password.
-					</h1>
-
-					{/* Password Sign In Form */}
-					<SignInForm
-						callbackURL={callbackURL}
-						onSuccess={() => {
-							if (!hasOidcQuery) window.location.href = callbackURL;
-						}}
-					/>
-				</div>
-			</div>
-		</div>
+		<AuthShell
+			title="Sign in with your password"
+			description="Enter the credentials for your CinaSeek account."
+			backHref={buildPreservedAuthPath("/sign-in", params, callbackURL)}
+		>
+			<SignInForm
+				callbackURL={callbackURL}
+				onSuccess={() => {
+					if (!hasOidcQuery) window.location.href = callbackURL;
+				}}
+			/>
+		</AuthShell>
 	);
 }

@@ -2,7 +2,7 @@ import { createAuthEndpoint } from "@cinaauth/core/api";
 import type { CleanedWhere } from "@cinaauth/core/db/adapter";
 import { APIError } from "@cinaauth/core/error";
 import * as z from "zod";
-import { getSessionFromCtx } from "../../api";
+import { getFreshSessionFromCtx, getSessionFromCtx } from "../../api";
 import { auditSessionMiddleware, writeAuditLog } from "./capture";
 import { AUDIT_LOG_ERROR_CODES } from "./error-codes";
 import type { AuditLogPluginOptions } from "./types";
@@ -285,8 +285,10 @@ const logAuditBodySchema = z.object({
  * Explicit audit write, used by the admin console proxy for console-only
  * actions (e.g. CSV export) that have no corresponding cinaauth endpoint.
  *
- * Auth: a bearer token listed in `writeTokens` OR a session whose role is on
- * `allowedRoles`. The actor (id/role/IP/UA) is recorded from the request.
+ * Auth: a bearer token listed in `writeTokens` OR an authoritative fresh
+ * session whose role is on `allowedRoles`. Write tokens are service credentials
+ * and do not require a browser session. The actor (id/role/IP/UA) is recorded
+ * from the request.
  *
  * **server:** `auth.api.logAudit`
  */
@@ -312,8 +314,21 @@ export const logAudit = (opts: ResolvedOptions) =>
 			let actorId: string | null = null;
 			let actorRole: string | null = null;
 			if (!hasWriteToken) {
-				// Fall back to session + role check.
-				const session = await getSessionFromCtx(ctx);
+				// Preserve the endpoint's established forbidden response when no
+				// session credential was supplied. This initial read is never used
+				// to authorize the write.
+				const sessionCandidate = await getSessionFromCtx(ctx);
+				if (!sessionCandidate) {
+					throw APIError.from(
+						"FORBIDDEN",
+						AUDIT_LOG_ERROR_CODES.AUDIT_LOG_WRITE_NOT_ALLOWED,
+					);
+				}
+				// Fall back to an authoritative fresh session + role check. Invoke
+				// the same helper as freshSessionMiddleware only on this branch so
+				// configured service bearer tokens remain valid without a browser
+				// session.
+				const { session } = await getFreshSessionFromCtx(ctx);
 				const role = session?.user?.role ?? null;
 				if (!role || !opts.allowedRoles.includes(role)) {
 					throw APIError.from(

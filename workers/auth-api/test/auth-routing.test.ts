@@ -16,6 +16,9 @@ describe("Auth issuer routing", () => {
 			expect(isAuthHandlerRequestPath(path)).toBe(true);
 		}
 		expect(isAuthHandlerRequestPath("/api/auth/sign-in/email")).toBe(true);
+		expect(
+			isAuthHandlerRequestPath("/api/admin/configuration/delivery/status"),
+		).toBe(true);
 		expect(isAuthHandlerRequestPath("/api/ready")).toBe(false);
 	});
 

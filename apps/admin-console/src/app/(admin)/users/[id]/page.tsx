@@ -1,17 +1,17 @@
 "use client";
 
-import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PageHeader } from "@/components/layout/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { AdminApiError, fetchAdminJson } from "@/lib/client-api";
-import { mapUserDTO } from "@/lib/cinaauth/mappers";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { UserTabs } from "./user-tabs";
-import { UserActions } from "./user-actions";
+import { use } from "react";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { UserDTO } from "@/lib/cinaauth/dto";
+import { mapUserDTO } from "@/lib/cinaauth/mappers";
+import { AdminApiError, fetchAdminJson } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import { UserActions } from "./user-actions";
+import { UserTabs } from "./user-tabs";
 
 /**
  * User detail page — client component.
@@ -29,7 +29,13 @@ export default function UserDetailPage({
 }) {
 	const { id } = use(params);
 	const { t } = useI18n();
-	const { data: user, isLoading, isError, error, refetch } = useQuery<UserDTO | null>({
+	const {
+		data: user,
+		isLoading,
+		isError,
+		error,
+		refetch,
+	} = useQuery<UserDTO | null>({
 		queryKey: ["user", id],
 		queryFn: async () => {
 			const d = await fetchAdminJson<{
@@ -64,12 +70,19 @@ export default function UserDetailPage({
 					backLabel={t("users.back")}
 				/>
 				{!notFound && (
-					<div role="alert" className="flex items-center justify-between gap-4 rounded-[var(--radius-md)] border border-error/30 bg-error-soft p-4 text-[14px] text-error">
+					<div
+						role="alert"
+						className="flex items-center justify-between gap-4 rounded-[var(--radius-md)] border border-error/30 bg-error-soft p-4 text-[14px] text-error"
+					>
 						<span className="flex items-center gap-2">
 							<AlertCircle size={16} />
 							{t("error.generic.message")}
 						</span>
-						<Button variant="secondary" size="sm" onClick={() => void refetch()}>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void refetch()}
+						>
 							<RefreshCw size={15} />
 							{t("error.retry")}
 						</Button>

@@ -26,8 +26,7 @@ export type BaseRateLimit = z.infer<typeof rateLimitSchema>;
  * Rate limit schema type used by cinaauth for rate limiting
  */
 export type RateLimit<
-	DBOptions extends
-		CinaAuthOptions["rateLimit"] = CinaAuthOptions["rateLimit"],
+	DBOptions extends CinaAuthOptions["rateLimit"] = CinaAuthOptions["rateLimit"],
 	Plugins extends CinaAuthOptions["plugins"] = CinaAuthOptions["plugins"],
 > = Prettify<
 	BaseRateLimit &

@@ -1,21 +1,22 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 
 const badgeVariants = cva(
 	// caption typography + pill shape, per badge-secondary spec.
 	"inline-flex items-center rounded-full px-2 text-[12px] leading-4 font-normal whitespace-nowrap",
 	{
-			variants: {
-				variant: {
-					// canvas-soft + body text — the default metadata pill.
-					default: "bg-canvas-soft text-body",
-					outline: "border border-hairline text-body",
-					success: "bg-success-soft text-success",
-					warning: "bg-warning-soft text-warning",
-					danger: "bg-error-soft text-error",
-					muted: "bg-canvas-soft-2 text-mute",
-				},
+		variants: {
+			variant: {
+				// canvas-soft + body text — the default metadata pill.
+				default: "bg-canvas-soft text-body",
+				outline: "border border-hairline text-body",
+				success: "bg-success-soft text-success",
+				warning: "bg-warning-soft text-warning",
+				danger: "bg-error-soft text-error",
+				muted: "bg-canvas-soft-2 text-mute",
 			},
+		},
 		defaultVariants: {
 			variant: "default",
 		},

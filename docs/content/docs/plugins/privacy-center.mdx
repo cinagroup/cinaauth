@@ -57,12 +57,12 @@ GET /api/auth/privacy/export
 The endpoint requires an authoritative recent session and returns an attachment
 named `cinaauth-personal-data-YYYY-MM-DD.json`. The response includes:
 
-- schema version, export timestamp, and the authenticated subject ID;
-- subject-linked profile, session, account, authenticator, wallet, API key,
+* schema version, export timestamp, and the authenticated subject ID;
+* subject-linked profile, session, account, authenticator, wallet, API key,
   organization, OAuth authorization, and audit metadata when those models are
   installed;
-- per-model counts proving the returned section was not silently truncated;
-- an explicit safety declaration describing the export limits.
+* per-model counts proving the returned section was not silently truncated;
+* an explicit safety declaration describing the export limits.
 
 The response uses `Cache-Control: no-store`, `Pragma: no-cache`,
 `X-Content-Type-Options: nosniff`, and a restrictive Content Security Policy.
@@ -72,10 +72,10 @@ The response uses `Cache-Control: no-store`, `Pragma: no-cache`,
 CinaAuth excludes credentials even when an installed plugin's schema would
 normally return the field. The export never includes:
 
-- passwords, session tokens, one-time verification values, or device codes;
-- OAuth access, refresh, ID tokens, or client secrets;
-- API key hashes, private keys, TOTP secrets, or backup codes;
-- WebAuthn public-key and credential-ID material.
+* passwords, session tokens, one-time verification values, or device codes;
+* OAuth access, refresh, ID tokens, or client secrets;
+* API key hashes, private keys, TOTP secrets, or backup codes;
+* WebAuthn public-key and credential-ID material.
 
 Rows are selected only by the authenticated subject's `id` or email. Models
 that cannot be linked to that subject are skipped rather than exported broadly.
@@ -137,10 +137,10 @@ GET /api/auth/privacy/deletion-readiness
 
 The endpoint requires an authoritative recent session and returns:
 
-- the controller's `policyVersion`;
-- declared `retentionExceptions`, including their maximum duration;
-- current `blockingHolds` resolved for the authenticated subject;
-- `canDelete`, which is `false` whenever a hold is active.
+* the controller's `policyVersion`;
+* declared `retentionExceptions`, including their maximum duration;
+* current `blockingHolds` resolved for the authenticated subject;
+* `canDelete`, which is `false` whenever a hold is active.
 
 `resolveBlockingHolds` is called again in a `before` hook immediately before
 `/delete-user` or `/delete-user/callback` performs destructive work. An active
@@ -184,12 +184,12 @@ CinaAuth derives a stable keyed `operationId` from the subject, processor, and
 policy version. Processor adapters must use it as their idempotency key. Every
 required processor runs before local destructive work:
 
-- `pending` returns HTTP `409` with `PRIVACY_PROCESSOR_ERASURE_PENDING` and an
+* `pending` returns HTTP `409` with `PRIVACY_PROCESSOR_ERASURE_PENDING` and an
   optional `retryAfterSeconds`; repeating the same deletion request supplies
   the same operation ID;
-- an exception or malformed result returns
+* an exception or malformed result returns
   `PRIVACY_PROCESSOR_ERASURE_FAILED` and preserves the local account;
-- only `completed` or `not-applicable` lets local deletion continue.
+* only `completed` or `not-applicable` lets local deletion continue.
 
 The readiness response exposes only the public-safe processor IDs in
 `requiredProcessors`. Never return raw provider evidence in a deletion receipt.
@@ -201,14 +201,14 @@ status, and completion timestamp inside the signed receipt.
 After a successful JSON account-deletion response, the plugin adds a
 `deletionReceipt` field. The receipt contains:
 
-- a random receipt ID, completion timestamp, and policy version;
-- the exact retention-exception snapshot shown before deletion;
-- a signed `purgeNoLaterThan` deadline for every exception with a finite
+* a random receipt ID, completion timestamp, and policy version;
+* the exact retention-exception snapshot shown before deletion;
+* a signed `purgeNoLaterThan` deadline for every exception with a finite
   `maximumRetentionDays`, calculated from the receipt's `issuedAt` timestamp;
-- a keyed pseudonymous subject identifier, never the raw user ID or email;
-- required processor erasure attestations containing a keyed operation ID and
+* a keyed pseudonymous subject identifier, never the raw user ID or email;
+* required processor erasure attestations containing a keyed operation ID and
   HMAC evidence digest, never the provider's raw evidence reference;
-- an HMAC-SHA256 proof over a canonical JSON payload.
+* an HMAC-SHA256 proof over a canonical JSON payload.
 
 Save the receipt in the client before navigating away. Verify it later with:
 

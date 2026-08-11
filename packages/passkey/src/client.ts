@@ -1,9 +1,9 @@
+import type { BetterFetch } from "@better-fetch/fetch";
 import type {
 	CinaAuthClientPlugin,
 	ClientFetchOption,
 	ClientStore,
 } from "@cinaauth/core";
-import type { BetterFetch } from "@better-fetch/fetch";
 import type {
 	PublicKeyCredentialCreationOptionsJSON,
 	PublicKeyCredentialRequestOptionsJSON,

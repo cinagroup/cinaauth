@@ -18,6 +18,7 @@ export function RoleGuard({
 
 	useEffect(() => setMounted(true), []);
 
-	if (!mounted || !session || !allow.includes(session.role)) return <>{fallback}</>;
+	if (!mounted || !session || !allow.includes(session.role))
+		return <>{fallback}</>;
 	return <>{children}</>;
 }

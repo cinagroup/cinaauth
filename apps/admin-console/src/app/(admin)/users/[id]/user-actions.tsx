@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
-import { RoleGuard } from "@/components/role-guard";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { RoleGuard } from "@/components/role-guard";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { fetchAdminResponse } from "@/lib/client-api";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { copyText } from "@/lib/client-api";
 import { BanDialog } from "./ban-dialog";
 
 /** Role-gated action buttons for a user (ban/delete/reset-2fa). */
@@ -44,11 +44,14 @@ export function UserActions({
 
 	const resetPassword = async () => {
 		if (newPassword.length < 8) return false;
-		const r = await fetch(`/api/admin/users/${userId}/reset-password`, {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ newPassword }),
-		});
+		const r = await fetchAdminResponse(
+			`/api/admin/users/${userId}/reset-password`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ newPassword }),
+			},
+		);
 		if (r.ok) {
 			toast.success(t("toast.passwordReset"));
 			setNewPassword("");
@@ -59,7 +62,9 @@ export function UserActions({
 		}
 	};
 	const remove = async () => {
-		const r = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+		const r = await fetchAdminResponse(`/api/admin/users/${userId}`, {
+			method: "DELETE",
+		});
 		if (r.ok) {
 			toast.success(t("toast.deleted"));
 			window.location.href = "/users";
@@ -78,9 +83,12 @@ export function UserActions({
 						variant="secondary"
 						size="sm"
 						onClick={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/unban`, {
-								method: "POST",
-							});
+							const r = await fetchAdminResponse(
+								`/api/admin/users/${userId}/unban`,
+								{
+									method: "POST",
+								},
+							);
 							if (r.ok) {
 								toast.success(t("toast.unbanned"));
 								await refreshUser();
@@ -108,7 +116,9 @@ export function UserActions({
 					onConfirm={resetPassword}
 				>
 					<div className="space-y-1.5">
-						<Label htmlFor="new-password">{t("userDetail.resetPassword.label")}</Label>
+						<Label htmlFor="new-password">
+							{t("userDetail.resetPassword.label")}
+						</Label>
 						<Input
 							id="new-password"
 							type="password"
@@ -134,9 +144,12 @@ export function UserActions({
 						danger
 						confirmText={t("userDetail.reset2fa.confirm")}
 						onConfirm={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/reset-2fa`, {
-								method: "POST",
-							});
+							const r = await fetchAdminResponse(
+								`/api/admin/users/${userId}/reset-2fa`,
+								{
+									method: "POST",
+								},
+							);
 							if (r.ok) {
 								toast.success(t("toast.reset2fa"));
 								await refreshUser();
@@ -156,7 +169,11 @@ export function UserActions({
 							variant="outline"
 							size="sm"
 							disabled={role === "super_admin" || role === "security_admin"}
-							title={role === "super_admin" || role === "security_admin" ? t("userDetail.actions.impersonateBlocked") : undefined}
+							title={
+								role === "super_admin" || role === "security_admin"
+									? t("userDetail.actions.impersonateBlocked")
+									: undefined
+							}
 						>
 							{t("userDetail.actions.impersonate")}
 						</Button>
@@ -165,9 +182,12 @@ export function UserActions({
 					description={t("userDetail.impersonate.hint")}
 					confirmText={t("userDetail.impersonate.start")}
 					onConfirm={async () => {
-						const r = await fetch(`/api/admin/users/${userId}/impersonate`, {
-							method: "POST",
-						});
+						const r = await fetchAdminResponse(
+							`/api/admin/users/${userId}/impersonate`,
+							{
+								method: "POST",
+							},
+						);
 						if (r.ok) {
 							toast.success(t("toast.impersonating"));
 							window.location.reload();
@@ -190,6 +210,8 @@ export function UserActions({
 					description={t("userDetail.delete.confirm")}
 					danger
 					confirmText={t("userDetail.delete.permanent")}
+					confirmationText={userId}
+					confirmationLabel={t("common.typeToConfirm", { value: userId })}
 					onConfirm={remove}
 				/>
 			</RoleGuard>
@@ -203,65 +225,56 @@ export function UserActions({
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
-						<DropdownMenuItem onClick={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/send-verification`, {
-								method: "POST",
-								headers: { "content-type": "application/json" },
-								body: JSON.stringify({ type: "email-otp" }),
-							});
-							if (r.ok) toast.success(t("toast.otpSent"));
-							else toast.error(t("toast.saveFailed"));
-						}}>
+						<DropdownMenuItem
+							onClick={async () => {
+								const r = await fetchAdminResponse(
+									`/api/admin/users/${userId}/send-verification`,
+									{
+										method: "POST",
+										headers: { "content-type": "application/json" },
+										body: JSON.stringify({ type: "email-otp" }),
+									},
+								);
+								if (r.ok) toast.success(t("toast.otpSent"));
+								else toast.error(t("toast.saveFailed"));
+							}}
+						>
 							{t("userDetail.sendVerification.emailOTP")}
 						</DropdownMenuItem>
-						<DropdownMenuItem onClick={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/send-verification`, {
-								method: "POST",
-								headers: { "content-type": "application/json" },
-								body: JSON.stringify({ type: "magic-link" }),
-							});
-							if (r.ok) toast.success(t("toast.magicLinkSent"));
-							else toast.error(t("toast.saveFailed"));
-						}}>
+						<DropdownMenuItem
+							onClick={async () => {
+								const r = await fetchAdminResponse(
+									`/api/admin/users/${userId}/send-verification`,
+									{
+										method: "POST",
+										headers: { "content-type": "application/json" },
+										body: JSON.stringify({ type: "magic-link" }),
+									},
+								);
+								if (r.ok) toast.success(t("toast.magicLinkSent"));
+								else toast.error(t("toast.saveFailed"));
+							}}
+						>
 							{t("userDetail.sendVerification.magicLink")}
 						</DropdownMenuItem>
-						<DropdownMenuItem onClick={async () => {
-							const r = await fetch(`/api/admin/users/${userId}/send-verification`, {
-								method: "POST",
-								headers: { "content-type": "application/json" },
-								body: JSON.stringify({ type: "phone-number" }),
-							});
-							if (r.ok) toast.success(t("toast.otpSent"));
-							else toast.error(t("toast.saveFailed"));
-						}}>
+						<DropdownMenuItem
+							onClick={async () => {
+								const r = await fetchAdminResponse(
+									`/api/admin/users/${userId}/send-verification`,
+									{
+										method: "POST",
+										headers: { "content-type": "application/json" },
+										body: JSON.stringify({ type: "phone-number" }),
+									},
+								);
+								if (r.ok) toast.success(t("toast.otpSent"));
+								else toast.error(t("toast.saveFailed"));
+							}}
+						>
 							{t("userDetail.sendVerification.phoneNumber")}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
-			</RoleGuard>
-
-			{/* One-time token (super_admin) */}
-			<RoleGuard allow={["super_admin"]}>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={async () => {
-						const r = await fetch(`/api/admin/users/${userId}/one-time-token`, {
-							method: "POST",
-						});
-						const d = (await r.json().catch(() => ({}))) as {
-							ok?: boolean;
-							data?: { token?: string };
-						};
-						if (d.ok && d.data?.token && (await copyText(d.data.token))) {
-							toast.success(t("toast.tokenGenerated"));
-						} else {
-							toast.error(t("toast.saveFailed"));
-						}
-					}}
-				>
-					{t("userDetail.actions.oneTimeToken")}
-				</Button>
 			</RoleGuard>
 		</div>
 	);

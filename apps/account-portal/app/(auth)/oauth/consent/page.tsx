@@ -92,7 +92,7 @@ export default async function AuthorizePage({
 
 					{/* Spec: display-lg (32/600/-1.28px), sentence-case + period. */}
 					<h1 className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-on-primary text-center mb-8">
-						{clientDetails.client_name} is requesting access to your CinaAuth
+						{clientDetails.client_name} is requesting access to your CinaSeek
 						account.
 					</h1>
 
@@ -101,7 +101,9 @@ export default async function AuthorizePage({
 						<CardContent className="p-6">
 							<div className="flex items-center justify-between p-4 bg-canvas-soft rounded-md mb-6">
 								<div>
-									<div className="font-medium text-ink">{session?.user.name}</div>
+									<div className="font-medium text-ink">
+										{session?.user.name}
+									</div>
 									<div className="text-body">{session?.user.email}</div>
 								</div>
 								<ArrowUpRight className="h-5 w-5 text-mute" />
@@ -114,7 +116,7 @@ export default async function AuthorizePage({
 								{scope.includes("profile") && (
 									<div className="flex items-center gap-3 text-body">
 										<User className="h-5 w-5" />
-										<span>Read your CinaAuth user data.</span>
+										<span>Read your CinaSeek user data.</span>
 									</div>
 								)}
 

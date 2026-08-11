@@ -306,9 +306,7 @@ function InstallBlock() {
 									<div className="relative">
 										{mode === "skills" ? (
 											<button
-												onClick={() =>
-													copy("npx skills add cinaauth/skills")
-												}
+												onClick={() => copy("npx skills add cinaauth/skills")}
 												className="text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors p-1"
 												aria-label="Copy command"
 											>
@@ -526,8 +524,8 @@ function InstallBlock() {
 									</p>
 									<div className="relative mt-1.5">
 										<p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed line-clamp-2">
-											Install cinaauth. If I already have a database
-											configured, use that. Create lib/auth.ts with{" "}
+											Install cinaauth. If I already have a database configured,
+											use that. Create lib/auth.ts with{" "}
 											<code className="text-neutral-500 dark:text-neutral-400">
 												CinaAuth()
 											</code>

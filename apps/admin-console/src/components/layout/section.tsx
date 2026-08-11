@@ -7,9 +7,7 @@ import type { ReactNode } from "react";
  */
 export function SectionLabel({ children }: { children: ReactNode }) {
 	return (
-		<h2 className="text-[16px] font-semibold leading-6 text-ink">
-			{children}
-		</h2>
+		<h2 className="text-[16px] font-semibold leading-6 text-ink">{children}</h2>
 	);
 }
 

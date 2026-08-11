@@ -11,13 +11,10 @@ const badgeVariants = cva(
 		variants: {
 			variant: {
 				// Primary badge — ink bg, white text (for "New", "Beta" pills on dark).
-				default:
-					"bg-primary text-primary-foreground",
+				default: "bg-primary text-primary-foreground",
 				// Spec: badge-secondary — canvas-soft bg, body text.
-				secondary:
-					"bg-canvas-soft text-body",
-				destructive:
-					"bg-destructive text-destructive-foreground",
+				secondary: "bg-canvas-soft text-body",
+				destructive: "bg-destructive text-destructive-foreground",
 				// Outline keeps hairline border for informational badges.
 				outline: "border border-hairline text-foreground",
 			},

@@ -1,17 +1,17 @@
-import type { Awaitable, CinaAuthOptions, CinaAuthPlugin } from "@cinaauth/core";
+import type {
+	Awaitable,
+	CinaAuthOptions,
+	CinaAuthPlugin,
+} from "@cinaauth/core";
 import { createAuthEndpoint } from "@cinaauth/core/api";
 import type { DBFieldAttribute } from "@cinaauth/core/db";
 import { getAuthTables } from "@cinaauth/core/db";
 import { APIError } from "@cinaauth/core/error";
 import { freshSessionMiddleware } from "../../api";
-import {
-	createPrivacyDeletionFeatures,
-	type PrivacyDeletionOptions,
-} from "./deletion";
-import {
-	createPrivacyAsyncExportFeatures,
-	type PrivacyAsyncExportOptions,
-} from "./async-export";
+import type { PrivacyAsyncExportOptions } from "./async-export";
+import { createPrivacyAsyncExportFeatures } from "./async-export";
+import type { PrivacyDeletionOptions } from "./deletion";
+import { createPrivacyDeletionFeatures } from "./deletion";
 
 export type {
 	PrivacyAsyncExportDownload,
@@ -287,11 +287,7 @@ export const writePersonalDataExport = async ({
 			`${JSON.stringify(section.model)}:{"count":${section.count},"records":[`,
 		);
 		let recordIndex = 0;
-		for (
-			let offset = 0;
-			offset < section.count;
-			offset += EXPORT_BATCH_SIZE
-		) {
+		for (let offset = 0; offset < section.count; offset += EXPORT_BATCH_SIZE) {
 			const batch = await adapter.findMany<ExportRecord>({
 				model: section.model,
 				where: toWhere(section.selector),

@@ -25,6 +25,12 @@ export const ADMIN_ERROR_CODES = defineErrorCodes({
 	NO_DATA_TO_UPDATE: "No data to update",
 	YOU_ARE_NOT_ALLOWED_TO_UPDATE_USERS: "You are not allowed to update users",
 	YOU_CANNOT_REMOVE_YOURSELF: "You cannot remove yourself",
+	YOU_CANNOT_REMOVE_LAST_SUPER_ADMIN:
+		"You cannot remove or demote the last super admin",
+	ANONYMOUS_USER_CANNOT_BE_SUPER_ADMIN:
+		"Anonymous users cannot be assigned the super admin role",
+	ANONYMOUS_SUPER_ADMIN_MUST_BE_DEMOTED_BEFORE_DELETION:
+		"Demote the anonymous super admin before deleting it",
 	YOU_ARE_NOT_ALLOWED_TO_SET_NON_EXISTENT_VALUE:
 		"You are not allowed to set a non-existent role value",
 	YOU_CANNOT_IMPERSONATE_ADMINS: "You cannot impersonate admins",
@@ -35,6 +41,13 @@ export const ADMIN_ERROR_CODES = defineErrorCodes({
 		"You are not allowed to list user wallets",
 	YOU_ARE_NOT_ALLOWED_TO_UNBIND_WALLETS:
 		"You are not allowed to unbind wallets",
+	YOU_ARE_NOT_ALLOWED_TO_LIST_USER_PASSKEYS:
+		"You are not allowed to list user passkeys",
+	YOU_ARE_NOT_ALLOWED_TO_REVOKE_USER_PASSKEYS:
+		"You are not allowed to revoke user passkeys",
+	YOU_ARE_NOT_ALLOWED_TO_UPDATE_USER_PASSKEYS:
+		"You are not allowed to update user passkeys",
+	TARGET_USER_PASSKEY_NOT_FOUND: "Passkey not found for the target user",
 	YOU_ARE_NOT_ALLOWED_TO_READ_STATS: "You are not allowed to read stats",
 	PASSWORD_CANNOT_BE_UPDATED_VIA_UPDATE_USER:
 		"Password cannot be updated through update-user. Use the set-user-password endpoint instead",

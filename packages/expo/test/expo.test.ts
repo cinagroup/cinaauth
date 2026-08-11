@@ -243,29 +243,20 @@ describe("expo", async () => {
 		const { hasCinaAuthCookies } = await import("../src/client");
 
 		const CinaAuthOnlyHeader = "cinaauth.session_token=abc; Path=/";
-		expect(hasCinaAuthCookies(CinaAuthOnlyHeader, "cinaauth")).toBe(
-			true,
-		);
+		expect(hasCinaAuthCookies(CinaAuthOnlyHeader, "cinaauth")).toBe(true);
 
 		const sessionDataHeader = "cinaauth.session_data=xyz; Path=/";
 		expect(hasCinaAuthCookies(sessionDataHeader, "cinaauth")).toBe(true);
 
-		const secureCinaAuthHeader =
-			"__Secure-cinaauth.session_token=abc; Path=/";
-		expect(hasCinaAuthCookies(secureCinaAuthHeader, "cinaauth")).toBe(
-			true,
-		);
+		const secureCinaAuthHeader = "__Secure-cinaauth.session_token=abc; Path=/";
+		expect(hasCinaAuthCookies(secureCinaAuthHeader, "cinaauth")).toBe(true);
 
 		const secureSessionDataHeader =
 			"__Secure-cinaauth.session_data=xyz; Path=/";
-		expect(hasCinaAuthCookies(secureSessionDataHeader, "cinaauth")).toBe(
-			true,
-		);
+		expect(hasCinaAuthCookies(secureSessionDataHeader, "cinaauth")).toBe(true);
 
 		const nonCinaAuthHeader = "__cf_bm=abc123; Path=/; HttpOnly; Secure";
-		expect(hasCinaAuthCookies(nonCinaAuthHeader, "cinaauth")).toBe(
-			false,
-		);
+		expect(hasCinaAuthCookies(nonCinaAuthHeader, "cinaauth")).toBe(false);
 
 		const mixedHeader =
 			"__cf_bm=abc123; Path=/; HttpOnly; Secure, cinaauth.session_token=xyz; Path=/";
@@ -289,15 +280,13 @@ describe("expo", async () => {
 
 		const multipleNonCinaAuthHeader =
 			"__cf_bm=abc123; Path=/, _ga=GA1.2.123456789.1234567890; Path=/";
-		expect(
-			hasCinaAuthCookies(multipleNonCinaAuthHeader, "cinaauth"),
-		).toBe(false);
+		expect(hasCinaAuthCookies(multipleNonCinaAuthHeader, "cinaauth")).toBe(
+			false,
+		);
 
 		// Non-session cinaauth cookies should still be detected (e.g., passkey cookies)
 		const nonSessionCinaAuthHeader = "cinaauth.other_cookie=abc; Path=/";
-		expect(
-			hasCinaAuthCookies(nonSessionCinaAuthHeader, "cinaauth"),
-		).toBe(true);
+		expect(hasCinaAuthCookies(nonSessionCinaAuthHeader, "cinaauth")).toBe(true);
 
 		// Passkey cookie should be detected
 		const passkeyHeader = "cinaauth-passkey=xyz; Path=/";
@@ -837,36 +826,32 @@ describe("expo with cookieCache", async () => {
 
 		// Test with multiple prefixes - should match any of them
 		const CinaAuthHeader = "cinaauth.session_token=abc; Path=/";
-		expect(
-			hasCinaAuthCookies(CinaAuthHeader, ["cinaauth", "my-app"]),
-		).toBe(true);
-
-		const myAppHeader = "my-app.session_data=xyz; Path=/";
-		expect(hasCinaAuthCookies(myAppHeader, ["cinaauth", "my-app"])).toBe(
+		expect(hasCinaAuthCookies(CinaAuthHeader, ["cinaauth", "my-app"])).toBe(
 			true,
 		);
 
+		const myAppHeader = "my-app.session_data=xyz; Path=/";
+		expect(hasCinaAuthCookies(myAppHeader, ["cinaauth", "my-app"])).toBe(true);
+
 		const otherAppHeader = "other-app.session_token=def; Path=/";
-		expect(
-			hasCinaAuthCookies(otherAppHeader, ["cinaauth", "my-app"]),
-		).toBe(false);
+		expect(hasCinaAuthCookies(otherAppHeader, ["cinaauth", "my-app"])).toBe(
+			false,
+		);
 
 		// Test with passkey cookies
 		const passkeyHeader1 = "cinaauth-passkey=xyz; Path=/";
-		expect(
-			hasCinaAuthCookies(passkeyHeader1, ["cinaauth", "my-app"]),
-		).toBe(true);
+		expect(hasCinaAuthCookies(passkeyHeader1, ["cinaauth", "my-app"])).toBe(
+			true,
+		);
 
 		const passkeyHeader2 = "my-app-passkey=xyz; Path=/";
-		expect(
-			hasCinaAuthCookies(passkeyHeader2, ["cinaauth", "my-app"]),
-		).toBe(true);
+		expect(hasCinaAuthCookies(passkeyHeader2, ["cinaauth", "my-app"])).toBe(
+			true,
+		);
 
 		// Test with __Secure- prefix
 		const secureHeader = "__Secure-my-app.session_token=abc; Path=/";
-		expect(hasCinaAuthCookies(secureHeader, ["cinaauth", "my-app"])).toBe(
-			true,
-		);
+		expect(hasCinaAuthCookies(secureHeader, ["cinaauth", "my-app"])).toBe(true);
 
 		// Test with empty array (should check for suffixes)
 		const sessionTokenHeader = "session_token=abc; Path=/";

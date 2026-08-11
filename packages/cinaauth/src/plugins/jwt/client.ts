@@ -1,10 +1,10 @@
+import type { BetterFetch } from "@better-fetch/fetch";
 import type {
 	CinaAuthClientOptions,
 	CinaAuthClientPlugin,
 	ClientFetchOption,
 	ClientStore,
 } from "@cinaauth/core";
-import type { BetterFetch } from "@better-fetch/fetch";
 import type { JSONWebKeySet } from "jose";
 import { PACKAGE_VERSION } from "../../version";
 import type { jwt } from "./index";

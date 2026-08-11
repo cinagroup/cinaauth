@@ -22,13 +22,7 @@ export const authFlowTestSuite = createTestSuite(
 		},
 	},
 	(
-		{
-			generate,
-			getAuth,
-			modifyCinaAuthOptions,
-			tryCatch,
-			getCinaAuthOptions,
-		},
+		{ generate, getAuth, modifyCinaAuthOptions, tryCatch, getCinaAuthOptions },
 		debug?: { showDB?: () => Promise<void> } | undefined,
 	) => ({
 		"should successfully sign up": async () => {

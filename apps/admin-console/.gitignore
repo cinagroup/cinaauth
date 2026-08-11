@@ -46,3 +46,7 @@ nul
 
 # Agent working files
 .zcode/
+
+# Sensitive Playwright authentication state must remain ephemeral/untracked.
+e2e/.auth/
+e2e/*.storage-state.json

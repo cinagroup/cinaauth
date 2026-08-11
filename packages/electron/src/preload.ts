@@ -1,7 +1,7 @@
+import type { BetterFetchError } from "@better-fetch/fetch";
 import type { Awaitable } from "@cinaauth/core";
 import type { User } from "@cinaauth/core/db";
 import { CinaAuthError } from "@cinaauth/core/error";
-import type { BetterFetchError } from "@better-fetch/fetch";
 import electron, { contextBridge } from "electron";
 import type { ElectronRequestAuthOptions } from "./authenticate";
 import type { ElectronClientOptions } from "./types/client";

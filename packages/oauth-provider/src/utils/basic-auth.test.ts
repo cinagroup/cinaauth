@@ -13,6 +13,15 @@ function encodeBasic(clientId: string, clientSecret: string) {
  * @see https://datatracker.ietf.org/doc/html/rfc7617#section-2
  */
 describe("basicToClientCredentials", () => {
+	it("decodes form-encoded client credentials per RFC 6749", () => {
+		const result = basicToClientCredentials(
+			encodeBasic("cinaseek%2Dadmin%2Dconsole", "cina%5Fcs%5Fsecret%2Bvalue"),
+		);
+
+		expect(result?.client_id).toBe("cinaseek-admin-console");
+		expect(result?.client_secret).toBe("cina_cs_secret+value");
+	});
+
 	it("preserves colons inside client_secret per RFC 7617", () => {
 		const clientId = "cid";
 		const clientSecret = "pa:ss:word";

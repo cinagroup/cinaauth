@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import type { RateLimit } from "cinaauth";
+import { describe, expect, it, vi } from "vitest";
 import { decideRateLimit } from "../src/rate-limit-policy";
 import {
 	createDurableObjectRateLimitStorage,

@@ -34,3 +34,11 @@ cinaauth
 cinaadmin
 Cina
 Zitadel
+cinaseek
+Cinaseek
+CINASEEK
+cinaapp
+cinatoken
+cinawalletkit
+cinachain
+cinashop

@@ -1,6 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { hasAdminRole, resolveAdminSession } from "@/lib/cinaauth/session";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdmin, requireAdminControlPermission } from "@/lib/auth-guard";
 import { cinaauthFetch } from "@/lib/cinaauth/client";
+import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
+import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 /**
  * DELETE /api/admin/organizations/[id]/members/[memberId] — remove a member
@@ -11,18 +14,26 @@ export async function DELETE(
 	request: NextRequest,
 	{ params }: { params: Promise<{ id: string; memberId: string }> },
 ) {
-	const session = await resolveAdminSession(request);
-	if (!session || !hasAdminRole(session.role) || session.role !== "super_admin") {
-		return NextResponse.json({ ok: false }, { status: 403 });
+	const session = await requireAdmin(request).catch((error: Response) => error);
+	if (session instanceof Response) return session;
+	try {
+		requireAdminControlPermission(session, "organization.member.remove");
+	} catch (error) {
+		return error as Response;
 	}
 	const { id, memberId } = await params;
 	// Consume request body to prevent request smuggling.
 	await request.json().catch(() => ({}));
+	try {
+		await requireRecentAdminAuthentication(request, session);
+	} catch (error) {
+		return error as Response;
+	}
 	const cookie = request.headers.get("cookie") ?? "";
 	const res = await cinaauthFetch(`/organization/remove-member`, {
 		method: "POST",
 		body: { organizationId: id, memberId },
 		cookie,
 	});
-	return NextResponse.json(res, { status: res.ok ? 200 : 502 });
+	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }

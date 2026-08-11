@@ -1,7 +1,4 @@
-import type {
-	CinaAuthPlugin,
-	GenericEndpointContext,
-} from "@cinaauth/core";
+import type { CinaAuthPlugin, GenericEndpointContext } from "@cinaauth/core";
 import { APIError, createAuthMiddleware, isAPIError } from "cinaauth/api";
 import { parseCookies } from "cinaauth/cookies";
 import type { I18nOptions, LocaleDetectionStrategy } from "./types";

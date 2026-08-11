@@ -372,7 +372,7 @@ export function EnterpriseConnectionsCard({
 					<DialogHeader>
 						<DialogTitle>Copy this SCIM token now</DialogTitle>
 						<DialogDescription>
-							CinaAuth stores only a hash. Closing this dialog permanently hides
+							CinaSeek stores only a hash. Closing this dialog permanently hides
 							the token; rotate it to obtain another one.
 						</DialogDescription>
 					</DialogHeader>

@@ -56,6 +56,7 @@ import { useSessionQuery } from "@/data/user/session-query";
 import { useSignOutMutation } from "@/data/user/sign-out-mutation";
 import type { Session } from "@/lib/auth";
 import { authClient } from "@/lib/auth-client";
+import { deleteAccountPasskey } from "@/lib/client-api";
 
 const UserCard = (props: { session: Session | null }) => {
 	const router = useRouter();
@@ -473,22 +474,19 @@ function ListPasskeys() {
 									<TableCell className="text-right">
 										<button
 											onClick={async () => {
-												await authClient.passkey.deletePasskey({
-													id: passkey.id,
-													fetchOptions: {
-														onRequest: () => {
-															setIsDeletePasskey(true);
-														},
-														onSuccess: () => {
-															toast("Passkey deleted successfully");
-															setIsDeletePasskey(false);
-														},
-														onError: (error) => {
-															toast.error(error.error.message);
-															setIsDeletePasskey(false);
-														},
-													},
-												});
+												setIsDeletePasskey(true);
+												try {
+													await deleteAccountPasskey(authClient, passkey.id);
+													toast.success("Passkey deleted successfully");
+												} catch (error) {
+													toast.error(
+														error instanceof Error
+															? error.message
+															: "Unable to remove the passkey",
+													);
+												} finally {
+													setIsDeletePasskey(false);
+												}
 											}}
 										>
 											{isDeletePasskey ? (

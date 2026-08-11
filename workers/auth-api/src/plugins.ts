@@ -1,6 +1,8 @@
 import { apiKey } from "@cinaauth/api-key";
 import {
 	ADMIN_CONSOLE_ROLES,
+	ADMIN_OIDC_CLIENT_ID,
+	ADMIN_OIDC_CLIENT_SECRET_PREFIX,
 	ADMIN_PERMISSION_STATEMENT,
 	ADMIN_ROLE_PERMISSIONS,
 	OIDC_DEMO_CLIENT_ID,
@@ -49,6 +51,7 @@ import { siwe } from "cinaauth/plugins/siwe";
 import { twoFactor } from "cinaauth/plugins/two-factor";
 import { username } from "cinaauth/plugins/username";
 import Stripe from "stripe";
+import { adminOidcBridge } from "./admin-oidc-bridge";
 import {
 	getTurnstileConfig,
 	TURNSTILE_ACTION,
@@ -103,10 +106,11 @@ export const TRUSTED_ORIGIN_HOSTS = new Set(
  *   - security_admin:  read + ban/unban + session revoke + audit read;
  *                      NO create/delete/set-role/set-password/impersonate
  */
-export const ac = createAccessControl({
+const ac = createAccessControl({
 	user: [...ADMIN_PERMISSION_STATEMENT.user],
 	session: [...ADMIN_PERMISSION_STATEMENT.session],
 	stats: [...ADMIN_PERMISSION_STATEMENT.stats],
+	passkey: [...ADMIN_PERMISSION_STATEMENT.passkey],
 });
 
 export const roles = {
@@ -114,17 +118,20 @@ export const roles = {
 		user: [...ADMIN_ROLE_PERMISSIONS.super_admin.user],
 		session: [...ADMIN_ROLE_PERMISSIONS.super_admin.session],
 		stats: [...ADMIN_ROLE_PERMISSIONS.super_admin.stats],
+		passkey: [...ADMIN_ROLE_PERMISSIONS.super_admin.passkey],
 	}),
 	security_admin: ac.newRole({
 		// read + ban/unban + sessions + stats; NO create/delete/role/password/impersonate.
 		user: [...ADMIN_ROLE_PERMISSIONS.security_admin.user],
 		session: [...ADMIN_ROLE_PERMISSIONS.security_admin.session],
 		stats: [...ADMIN_ROLE_PERMISSIONS.security_admin.stats],
+		passkey: [...ADMIN_ROLE_PERMISSIONS.security_admin.passkey],
 	}),
 	user: ac.newRole({
 		user: [...ADMIN_ROLE_PERMISSIONS.user.user],
 		session: [...ADMIN_ROLE_PERMISSIONS.user.session],
 		stats: [...ADMIN_ROLE_PERMISSIONS.user.stats],
+		passkey: [...ADMIN_ROLE_PERMISSIONS.user.passkey],
 	}),
 };
 
@@ -253,6 +260,7 @@ export const createAuthPlugins = (
 			},
 		}),
 		bearer(),
+		adminOidcBridge(env),
 		anonymous({
 			emailDomainName: "auth.cinaseek.ai",
 		}),
@@ -338,7 +346,7 @@ export const createAuthPlugins = (
 		}),
 		passkey({
 			rpID: "cinaseek.ai",
-			rpName: "CinaAuth",
+			rpName: "CinaSeek",
 			origin: [baseURL],
 		}),
 		emailOTP({
@@ -469,10 +477,33 @@ export const createAuthPlugins = (
 				shouldRedirect: () => false,
 			},
 			scopes: ["openid", "profile", "email", "offline_access"],
-			validAudiences: [baseURL, `${ACCOUNT_ORIGIN}/api/mcp`],
+			advertisedMetadata: {
+				claims_supported: [
+					"sub",
+					"iss",
+					"aud",
+					"exp",
+					"iat",
+					"sid",
+					"scope",
+					"azp",
+					"email",
+					"email_verified",
+					"name",
+					"picture",
+					"family_name",
+					"given_name",
+					"auth_time",
+					"acr",
+				],
+			},
+			validAudiences: [baseURL, ADMIN_ORIGIN, `${ACCOUNT_ORIGIN}/api/mcp`],
 			allowDynamicClientRegistration: true,
 			allowUnauthenticatedClientRegistration: false,
-			cachedTrustedClients: new Set([OIDC_DEMO_CLIENT_ID]),
+			cachedTrustedClients: new Set([
+				OIDC_DEMO_CLIENT_ID,
+				ADMIN_OIDC_CLIENT_ID,
+			]),
 			clientRegistrationDefaultScopes: [
 				"openid",
 				"profile",
@@ -482,6 +513,14 @@ export const createAuthPlugins = (
 			clientPrivileges: ({ session, user }) =>
 				canUseDeveloperOAuthClients({ session, user }),
 			authorizeClient: ({ client }) => {
+				if (client.clientId === ADMIN_OIDC_CLIENT_ID) {
+					return (
+						client.public === false &&
+						client.disabled !== true &&
+						client.tokenEndpointAuthMethod === "client_secret_basic" &&
+						client.requirePKCE === true
+					);
+				}
 				if (client.clientId === OIDC_DEMO_CLIENT_ID) {
 					return (
 						client.public === true &&
@@ -499,7 +538,7 @@ export const createAuthPlugins = (
 			prefix: {
 				opaqueAccessToken: "cina_at_",
 				refreshToken: "cina_rt_",
-				clientSecret: "cina_cs_",
+				clientSecret: ADMIN_OIDC_CLIENT_SECRET_PREFIX,
 			},
 			rateLimit: {
 				token: { window: 60, max: 20 },
@@ -567,7 +606,10 @@ export const createAuthPlugins = (
 			productionURL: baseURL,
 		}),
 		oneTimeToken(),
-		openAPI(),
+		openAPI({
+			title: "CinaSeek Identity",
+			description: "CinaSeek identity and access management API",
+		}),
 		haveIBeenPwned(),
 		siwe({
 			domain: "auth.cinaseek.ai",

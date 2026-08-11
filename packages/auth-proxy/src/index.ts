@@ -24,10 +24,7 @@ export const isAllowedProxyOrigin = (
 	expectedOrigin: string,
 ) => requestOrigin === expectedOrigin;
 
-export const createAuthProxyRequest = (
-	request: Request,
-	baseURL: string,
-) => {
+export const createAuthProxyRequest = (request: Request, baseURL: string) => {
 	const sourceURL = new URL(request.url);
 	const targetURL = new URL(sourceURL.pathname + sourceURL.search, baseURL);
 	// Service-binding fetches otherwise follow OAuth callback redirects inside the

@@ -10,10 +10,11 @@ import { createMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = createMetadata({
 	title: {
-		template: "%s | CinaAuth",
-		default: "CinaAuth",
+		template: "%s | CinaSeek",
+		default: "CinaSeek Accounts",
 	},
-	description: "CinaAuth - 企业级认证授权解决方案",
+	description:
+		"Secure access to your CinaSeek account and connected applications.",
 	metadataBase: new URL("https://accounts.cinaseek.ai"),
 });
 

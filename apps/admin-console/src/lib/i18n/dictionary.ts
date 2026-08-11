@@ -9,8 +9,9 @@
  * zero async, zero hydration mismatch. Language switching via a React
  * context swaps the active dictionary (see I18nProvider).
  */
-import zh from "./locales/zh.json";
+
 import en from "./locales/en.json";
+import zh from "./locales/zh.json";
 
 export type Lang = "zh" | "en";
 

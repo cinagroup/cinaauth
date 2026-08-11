@@ -1,6 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const API_BASE_URL = "https://api.cloudflare.com/client/v4";
@@ -66,7 +66,9 @@ export const selectCloudflareAccount = (accounts, configuredAccountId) => {
 export const selectTurnstileWidget = (widgets, name) => {
 	const matches = widgets.filter((widget) => widget.name === name);
 	if (matches.length > 1) {
-		fail(`Multiple Turnstile widgets are named ${name}; resolve the duplicate first`);
+		fail(
+			`Multiple Turnstile widgets are named ${name}; resolve the duplicate first`,
+		);
 	}
 	return matches[0] ?? null;
 };
@@ -86,7 +88,10 @@ const parseApiResponse = async (response, operation) => {
 	if (!response.ok || body?.success !== true) {
 		const details = Array.isArray(body?.errors)
 			? body.errors
-					.map((error) => `${error.code ?? "unknown"}: ${error.message ?? "unknown"}`)
+					.map(
+						(error) =>
+							`${error.code ?? "unknown"}: ${error.message ?? "unknown"}`,
+					)
 					.join("; ")
 			: "unknown Cloudflare API error";
 		fail(`${operation} failed with HTTP ${response.status}: ${details}`);
@@ -145,7 +150,9 @@ export const configureTurnstile = async ({
 	const domains = parseTurnstileDomains(env.CLOUDFLARE_TURNSTILE_DOMAINS);
 	const api = createApiClient(token);
 	const accountsBody = await api.request("/accounts?per_page=50");
-	const accounts = Array.isArray(accountsBody.result) ? accountsBody.result : [];
+	const accounts = Array.isArray(accountsBody.result)
+		? accountsBody.result
+		: [];
 	const account = selectCloudflareAccount(
 		accounts,
 		nonEmpty(env.CLOUDFLARE_ACCOUNT_ID),
@@ -186,9 +193,7 @@ export const configureTurnstile = async ({
 			})
 		).result;
 	} else {
-		widget = (
-			await api.request(`${widgetsPath}/${existing.sitekey}`)
-		).result;
+		widget = (await api.request(`${widgetsPath}/${existing.sitekey}`)).result;
 	}
 
 	if (!nonEmpty(widget?.sitekey) || !nonEmpty(widget?.secret)) {

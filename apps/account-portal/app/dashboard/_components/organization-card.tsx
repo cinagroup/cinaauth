@@ -120,7 +120,9 @@ const OrganizationCard = (props: { session: Session | null }) => {
 							<div className="flex items-center gap-2">
 								<Avatar>
 									<AvatarImage src={session?.user.image || undefined} />
-									<AvatarFallback>{session?.user.name?.charAt(0)}</AvatarFallback>
+									<AvatarFallback>
+										{session?.user.name?.charAt(0)}
+									</AvatarFallback>
 								</Avatar>
 								<div>
 									<p className="text-sm">{session?.user.name}</p>

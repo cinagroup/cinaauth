@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { ImpersonateBanner } from "@/components/layout/impersonate-banner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { ImpersonateBanner } from "@/components/layout/impersonate-banner";
 import {
 	Dialog,
 	DialogContent,
@@ -18,7 +18,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
 	return (
-		<div className="flex h-dvh overflow-hidden bg-canvas-soft">
+		<div className="flex h-dvh w-full min-w-0 overflow-hidden bg-canvas-soft">
 			<Sidebar collapsed={sidebarCollapsed} className="hidden lg:flex" />
 
 			<Dialog
@@ -37,15 +37,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 				</DialogContent>
 			</Dialog>
 
-			<div className="flex min-w-0 flex-1 flex-col">
+			<div className="flex w-0 min-w-0 flex-1 flex-col">
 				<Topbar
 					sidebarCollapsed={sidebarCollapsed}
 					onOpenNavigation={() => setMobileNavigationOpen(true)}
 					onToggleSidebar={() => setSidebarCollapsed((current) => !current)}
 				/>
 				<ImpersonateBanner />
-				<main className="min-h-0 flex-1 overflow-y-auto">
-					<div className="mx-auto w-full max-w-[1480px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
+				<main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+					<div className="mx-auto box-border w-full min-w-0 max-w-[1480px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
 						{children}
 					</div>
 				</main>
