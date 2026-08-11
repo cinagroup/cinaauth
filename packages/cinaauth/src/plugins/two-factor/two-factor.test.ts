@@ -112,8 +112,8 @@ describe("two factor", async () => {
 		});
 
 		const totpURI = res.data?.totpURI;
-		expect(totpURI).toMatch(/^otpauth:\/\/totp\/Better%20Auth:/);
-		expect(totpURI).toContain("&issuer=Better+Auth&");
+		expect(totpURI).toMatch(/^otpauth:\/\/totp\/CinaAuth:/);
+		expect(totpURI).toContain("&issuer=CinaAuth&");
 	});
 
 	it("should enable twoFactor", async () => {

@@ -154,8 +154,10 @@ describe("privacy-center asynchronous personal data export", () => {
 	};
 
 	it("creates, reports, downloads, and cancels a subject-scoped export", async () => {
-		const createdAt = "2026-08-09T00:00:00.000Z";
-		const expiresAt = "2026-08-10T00:00:00.000Z";
+		const now = Date.now();
+		const createdAt = new Date(now - 60_000).toISOString();
+		const readyAt = new Date(now - 30_000).toISOString();
+		const expiresAt = new Date(now + 86_400_000).toISOString();
 		const provider = createProvider({
 			jobId: "privacy-job-1234567890",
 			status: "queued",
@@ -192,7 +194,7 @@ describe("privacy-center asynchronous personal data export", () => {
 			status: "ready",
 			createdAt,
 			expiresAt,
-			readyAt: "2026-08-09T00:01:00.000Z",
+			readyAt,
 			size: 19,
 		});
 		const status = await auth.api.getAsyncPersonalDataExport!({
