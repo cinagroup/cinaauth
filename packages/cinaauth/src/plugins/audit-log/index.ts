@@ -1,11 +1,11 @@
 import type { CinaAuthPlugin } from "@cinaauth/core";
 import { createAuthMiddleware } from "@cinaauth/core/api";
 import { mergeSchema } from "../../db/schema";
-import { getEndpointResponse } from "../../utils/plugin-helper";
 import { PACKAGE_VERSION } from "../../version";
 import {
 	extractActorFromCtx,
 	matchCapturePath,
+	resolveAuditCaptureResponse,
 	resolveOrganizationAuditTarget,
 	writeAuditLog,
 } from "./capture";
@@ -52,22 +52,18 @@ export const auditLog = (options?: AuditLogPluginOptions) => {
 			after: [
 				{
 					matcher(context) {
-						return matchCapturePath(context.path) !== null;
+						return matchCapturePath(context.path, context.method) !== null;
 					},
 					handler: createAuthMiddleware(async (ctx) => {
-						const mapped = matchCapturePath(ctx.path as string);
+						const mapped = matchCapturePath(ctx.path as string, ctx.method);
 						if (!mapped) {
 							return;
 						}
-						// `getEndpointResponse` returns null for non-200 responses or
-						// APIErrors (see utils/plugin-helper.ts), so a null result is a
-						// reliable failure signal without guessing status fields.
-						const response = await getEndpointResponse<{
+						const { ok, response } = await resolveAuditCaptureResponse<{
 							user?: { id?: string };
 							walletAddress?: string;
 							chainId?: number;
 						}>(ctx);
-						const ok = response !== null;
 						const actor = extractActorFromCtx(ctx);
 
 						// SIWE mutations expose the same minimal target metadata so bind

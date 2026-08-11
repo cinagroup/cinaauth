@@ -224,6 +224,7 @@ async function assertSCIMProviderAccess(
 	userId: string,
 	provider: SCIMProvider,
 	requiredRole: string[],
+	opts: SCIMOptions,
 ): Promise<void> {
 	if (provider.organizationId) {
 		if (!ctx.context.hasPlugin("organization")) {
@@ -250,10 +251,16 @@ async function assertSCIMProviderAccess(
 				message: "Insufficient role for this operation",
 			});
 		}
-	} else if (provider.userId && provider.userId !== userId) {
-		throw new APIError("FORBIDDEN", {
-			message: "You must be the owner to access this provider",
-		});
+	} else {
+		const ownershipRequired = isProviderOwnershipEnabled(opts);
+		if (
+			(ownershipRequired && !provider.userId) ||
+			(provider.userId && provider.userId !== userId)
+		) {
+			throw new APIError("FORBIDDEN", {
+				message: "You must be the owner to access this provider",
+			});
+		}
 	}
 }
 
@@ -262,6 +269,7 @@ async function checkSCIMProviderAccess(
 	userId: string,
 	providerId: string,
 	requiredRole: string[],
+	opts: SCIMOptions,
 ): Promise<SCIMProvider> {
 	const provider = await ctx.context.adapter.findOne<SCIMProvider>({
 		model: "scimProvider",
@@ -274,7 +282,7 @@ async function checkSCIMProviderAccess(
 		});
 	}
 
-	await assertSCIMProviderAccess(ctx, userId, provider, requiredRole);
+	await assertSCIMProviderAccess(ctx, userId, provider, requiredRole, opts);
 
 	return provider;
 }
@@ -486,6 +494,7 @@ export const generateSCIMToken = (opts: SCIMOptions) =>
 					user.id,
 					scimProvider,
 					requiredRole,
+					opts,
 				);
 				await ctx.context.adapter.delete<SCIMProvider>({
 					model: "scimProvider",
@@ -597,8 +606,12 @@ export const listSCIMProviderConnections = (opts: SCIMOptions) =>
 								roles.some((role) => requiredRole.includes(role))
 						: false;
 				}
-				// Owned by this user, or legacy provider without ownership tracking
-				return p.userId === userId || !p.userId;
+				if (p.userId) return p.userId === userId;
+				// Legacy unowned providers stay visible only when the deployment has
+				// explicitly kept ownership tracking disabled. Once ownership is
+				// enabled, they require a controlled migration instead of becoming
+				// implicitly manageable by every authenticated user.
+				return !isProviderOwnershipEnabled(opts);
 			});
 
 			const providers = accessibleProviders.map((p) =>
@@ -660,6 +673,7 @@ export const getSCIMProviderConnection = (opts: SCIMOptions) =>
 				userId,
 				providerId,
 				requiredRole,
+				opts,
 			);
 
 			return ctx.json(normalizeSCIMProvider(provider));
@@ -707,7 +721,13 @@ export const deleteSCIMProviderConnection = (opts: SCIMOptions) =>
 			const userId = ctx.context.session.user.id;
 			const requiredRole = resolveRequiredRoles(ctx, opts);
 
-			await checkSCIMProviderAccess(ctx, userId, providerId, requiredRole);
+			await checkSCIMProviderAccess(
+				ctx,
+				userId,
+				providerId,
+				requiredRole,
+				opts,
+			);
 
 			await ctx.context.adapter.delete<SCIMProvider>({
 				model: "scimProvider",
@@ -835,7 +855,8 @@ export const createSCIMUser = (
 				if (!organizationId || !opts.withOrganizationMemberProvisioning) {
 					return provision();
 				}
-				const provider = ctx.context.scimProvider as typeof ctx.context.scimProvider & {
+				const provider = ctx.context
+					.scimProvider as typeof ctx.context.scimProvider & {
 					id?: unknown;
 				};
 
@@ -1444,7 +1465,6 @@ export const deleteSCIMUser = (authMiddleware: AuthMiddleware) =>
 				return;
 			}
 
-			await ctx.context.internalAdapter.deleteUserSessions(userId);
 			await ctx.context.internalAdapter.deleteUser(userId);
 
 			ctx.setStatus(204);

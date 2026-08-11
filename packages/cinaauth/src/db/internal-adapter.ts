@@ -22,6 +22,7 @@ import {
 	parseSessionOutput,
 	parseUserOutput,
 } from "./schema";
+import { createUserDeletionSessionCascadeError } from "./user-deletion-error";
 import {
 	getStorageOption,
 	processIdentifier,
@@ -319,31 +320,46 @@ export const createInternalAdapter = (
 			return total;
 		},
 		deleteUser: async (userId: string) => {
-			await deleteSecondaryStorageSessions(userId);
-			if (databaseStoresSessions) {
-				await deleteDatabaseSessions(userId);
-			}
-			await deleteManyWithHooks(
-				[
+			await runWithTransaction(adapter, async () => {
+				await deleteWithHooks(
+					[
+						{
+							field: "id",
+							value: userId,
+						},
+					],
+					"user",
 					{
-						field: "userId",
-						value: userId,
+						executeMainFn: true,
+						failOnSnapshotReadError: true,
+						fn: async () => {
+							// Run the user delete.before lifecycle before any cascade. A
+							// veto or exception must preserve the user's identities and
+							// sessions rather than leaving a live but unusable account.
+							// A successful empty snapshot still runs orphan cleanup, matching
+							// deleteUser's established missing-user semantics.
+							try {
+								await deleteSecondaryStorageSessions(userId);
+								if (databaseStoresSessions) {
+									await deleteDatabaseSessions(userId);
+								}
+							} catch (error) {
+								throw createUserDeletionSessionCascadeError(error);
+							}
+							await deleteManyWithHooks(
+								[
+									{
+										field: "userId",
+										value: userId,
+									},
+								],
+								"account",
+								undefined,
+							);
+						},
 					},
-				],
-				"account",
-				undefined,
-			);
-
-			await deleteWithHooks(
-				[
-					{
-						field: "id",
-						value: userId,
-					},
-				],
-				"user",
-				undefined,
-			);
+				);
+			});
 		},
 		createSession: async (
 			userId: string,

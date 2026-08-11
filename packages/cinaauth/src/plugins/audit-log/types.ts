@@ -9,7 +9,15 @@ export type AuditCategory =
 	| "risk"
 	| "wallet"
 	| "org"
-	| "apikey";
+	| "apikey"
+	| "identity"
+	| "authenticator"
+	| "credential"
+	| "privacy"
+	| "integration"
+	| "provisioning"
+	| "billing"
+	| "audit";
 
 export type AuditResult = "success" | "failure";
 
@@ -31,7 +39,8 @@ export interface AuditLogEntry {
 
 export interface AuditLogPluginOptions {
 	/**
-	 * Role whitelist: only these roles may query/write audit logs.
+	 * Role whitelist: only these roles may query audit logs or write with an
+	 * authoritative fresh session.
 	 * Defaults to `["admin"]`.
 	 */
 	allowedRoles?: string[];
@@ -42,7 +51,8 @@ export interface AuditLogPluginOptions {
 	organizationAllowedRoles?: string[];
 	/**
 	 * Extra bearer tokens allowed to write via the explicit `/audit/log`
-	 * endpoint (e.g. the admin console service key). Defaults to `[]`.
+	 * endpoint without a browser session (e.g. the admin console service key).
+	 * Defaults to `[]`.
 	 */
 	writeTokens?: string[];
 	schema?: Partial<CinaAuthPluginDBSchema>;

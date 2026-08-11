@@ -439,6 +439,68 @@ describe("passkey", async () => {
 		expect(deleteResult.status).toBe(true);
 	});
 
+	it("requires a fresh session before deleting a passkey", async () => {
+		const {
+			auth: freshAuth,
+			client: freshClient,
+			signInWithTestUser: signInFreshUser,
+			db,
+		} = await getTestInstance({
+			session: { freshAge: 60 },
+			plugins: [passkey()],
+		});
+		const { headers, user } = await signInFreshUser();
+		const context = await freshAuth.$context;
+		const session = await freshAuth.api.getSession({ headers });
+		expect(session?.session.id).toBeDefined();
+
+		const passkeyRecord = await context.adapter.create<
+			Omit<Passkey, "id">,
+			Passkey
+		>({
+			model: "passkey",
+			data: {
+				userId: user.id,
+				publicKey: "mockPublicKey",
+				name: "stale-session-passkey",
+				counter: 0,
+				deviceType: "singleDevice",
+				credentialID: "stale-session-delete-test",
+				createdAt: new Date(),
+				backedUp: false,
+				transports: "internal",
+				aaguid: "mockAAGUID",
+			} satisfies Omit<Passkey, "id">,
+		});
+		await db.update({
+			model: "session",
+			where: [{ field: "id", value: session!.session.id }],
+			update: {
+				createdAt: new Date(Date.now() - 5 * 60 * 1000),
+				updatedAt: new Date(),
+			},
+		});
+
+		const response = await freshClient.$fetch("/passkey/delete-passkey", {
+			method: "POST",
+			headers,
+			body: { id: passkeyRecord.id },
+		});
+
+		expect(response.data).toBeNull();
+		expect(response.error).toMatchObject({
+			status: 403,
+			statusText: "FORBIDDEN",
+			code: "SESSION_NOT_FRESH",
+		});
+		expect(
+			await context.adapter.findOne({
+				model: "passkey",
+				where: [{ field: "id", value: passkeyRecord.id }],
+			}),
+		).not.toBeNull();
+	});
+
 	/**
 	 * @see https://github.com/cinagroup/cinaauth/security/advisories/GHSA-4vcf-q4xf-f48m
 	 */

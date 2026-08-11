@@ -20,6 +20,14 @@ describe("security_admin role permissions", () => {
 				userId: "x",
 				role: "security_admin",
 				options: opts,
+				permissions: { passkey: ["list", "revoke"] },
+			}),
+		).toBe(true);
+		expect(
+			hasPermission({
+				userId: "x",
+				role: "security_admin",
+				options: opts,
 				permissions: { user: ["list"] },
 			}),
 		).toBe(true);
@@ -79,6 +87,14 @@ describe("security_admin role permissions", () => {
 				userId: "x",
 				role: "security_admin",
 				options: opts,
+				permissions: { passkey: ["update"] },
+			}),
+		).toBe(false);
+		expect(
+			hasPermission({
+				userId: "x",
+				role: "security_admin",
+				options: opts,
 				permissions: { user: ["delete"] },
 			}),
 		).toBe(false);
@@ -131,6 +147,14 @@ describe("security_admin role permissions", () => {
 				role: "admin",
 				options: opts,
 				permissions: { user: ["delete"] },
+			}),
+		).toBe(true);
+		expect(
+			hasPermission({
+				userId: "x",
+				role: "admin",
+				options: opts,
+				permissions: { passkey: ["list", "revoke", "update"] },
 			}),
 		).toBe(true);
 	});

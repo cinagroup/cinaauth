@@ -550,7 +550,6 @@ export const deleteUser = createAuthEndpoint(
 			await beforeDelete(session.user, ctx.request);
 		}
 		await ctx.context.internalAdapter.deleteUser(session.user.id);
-		await ctx.context.internalAdapter.deleteUserSessions(session.user.id);
 		deleteSessionCookie(ctx);
 		const afterDelete = ctx.context.options.user.deleteUser?.afterDelete;
 		if (afterDelete) {
@@ -647,8 +646,6 @@ export const deleteUserCallback = createAuthEndpoint(
 			await beforeDelete(session.user, ctx.request);
 		}
 		await ctx.context.internalAdapter.deleteUser(session.user.id);
-		await ctx.context.internalAdapter.deleteUserSessions(session.user.id);
-		await ctx.context.internalAdapter.deleteAccounts(session.user.id);
 
 		deleteSessionCookie(ctx);
 

@@ -5,7 +5,7 @@ import { memoryAdapter } from "cinaauth/adapters/memory";
 import { createAuthClient } from "cinaauth/client";
 import { setCookieToHeader } from "cinaauth/cookies";
 import { admin, bearer, organization } from "cinaauth/plugins";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { scim } from ".";
 import { scimClient } from "./client";
 import type { SCIMOptions } from "./types";
@@ -658,6 +658,56 @@ describe("SCIM", () => {
 					},
 				}),
 			);
+		});
+
+		it("preserves the SCIM user's account and session when user.delete.before vetoes", async () => {
+			const userDeleteBefore = vi.fn(async () => false);
+			const vetoPlugin = {
+				id: "veto-user-delete",
+				init() {
+					return {
+						options: {
+							databaseHooks: {
+								user: {
+									delete: { before: userDeleteBefore },
+								},
+							},
+						},
+					};
+				},
+			} satisfies CinaAuthPlugin;
+			const { auth, getSCIMToken } = createTestInstance(undefined, [
+				vetoPlugin,
+			]);
+			const scimToken = await getSCIMToken("veto-provider");
+			const provisioned = await auth.api.createSCIMUser({
+				body: { userName: "vetoed-user@example.com" },
+				headers: { authorization: `Bearer ${scimToken}` },
+			});
+			const context = await auth.$context;
+			await context.internalAdapter.createSession(provisioned.id);
+			const accountsBefore = await context.internalAdapter.findAccounts(
+				provisioned.id,
+			);
+			const sessionsBefore = await context.internalAdapter.listSessions(
+				provisioned.id,
+			);
+
+			await auth.api.deleteSCIMUser({
+				params: { userId: provisioned.id },
+				headers: { authorization: `Bearer ${scimToken}` },
+			});
+
+			expect(userDeleteBefore).toHaveBeenCalledOnce();
+			expect(
+				await context.internalAdapter.findUserById(provisioned.id),
+			).not.toBeNull();
+			expect(
+				await context.internalAdapter.findAccounts(provisioned.id),
+			).toEqual(accountsBefore);
+			expect(
+				await context.internalAdapter.listSessions(provisioned.id),
+			).toEqual(sessionsBefore);
 		});
 
 		/**

@@ -293,6 +293,25 @@ describe("open-api", async () => {
 			}),
 		],
 	});
+	const { auth: authWithCustomInfo } = await getTestInstance({
+		plugins: [
+			openAPI({
+				title: "CinaSeek Identity",
+				description: "CinaSeek identity and access management API",
+			}),
+		],
+	});
+	const unsafeTitle = "</title><script>globalThis.compromised=true</script>";
+	const unsafeDescription =
+		"</script><script>globalThis.compromised=true</script>";
+	const { auth: authWithUnsafeInfo } = await getTestInstance({
+		plugins: [
+			openAPI({
+				title: unsafeTitle,
+				description: unsafeDescription,
+			}),
+		],
+	});
 	const { auth: authWithNullableIntersection } = await getTestInstance({
 		plugins: [openAPI(), nullableIntersectionPlugin],
 	});
@@ -319,6 +338,60 @@ describe("open-api", async () => {
 		const schema = await auth.api.generateOpenAPISchema();
 		expect(schema).toBeDefined();
 		expect(schema).toMatchSnapshot("openAPISchema");
+	});
+
+	it("preserves the existing default public metadata when options are omitted", async () => {
+		const schema = await auth.api.generateOpenAPISchema();
+		expect(schema.info).toMatchObject({
+			title: "CinaAuth",
+			description: "API Reference for your CinaAuth Instance",
+		});
+
+		const response = await auth.api.openAPIReference({ asResponse: true });
+		const html = await response.text();
+		expect(html).toContain("<title>Scalar API Reference</title>");
+		expect(html).toContain('"title":"CinaAuth API"');
+		expect(html).toContain(
+			'"description":"API Reference for your CinaAuth Instance"',
+		);
+	});
+
+	it("uses configured public metadata consistently in the schema and Scalar HTML", async () => {
+		const schema = await authWithCustomInfo.api.generateOpenAPISchema();
+		expect(schema.info).toMatchObject({
+			title: "CinaSeek Identity",
+			description: "CinaSeek identity and access management API",
+		});
+
+		const response = await authWithCustomInfo.api.openAPIReference({
+			asResponse: true,
+		});
+		const html = await response.text();
+		expect(html).toContain("<title>CinaSeek Identity</title>");
+		expect(html).toContain('"title":"CinaSeek Identity"');
+		expect(html).toContain(
+			'"description":"CinaSeek identity and access management API"',
+		);
+	});
+
+	it("escapes configured metadata in every inline HTML context", async () => {
+		const schema = await authWithUnsafeInfo.api.generateOpenAPISchema();
+		expect(schema.info).toMatchObject({
+			title: unsafeTitle,
+			description: unsafeDescription,
+		});
+
+		const response = await authWithUnsafeInfo.api.openAPIReference({
+			asResponse: true,
+		});
+		const html = await response.text();
+		expect(html).toContain(
+			"<title>&lt;/title&gt;&lt;script&gt;globalThis.compromised=true&lt;/script&gt;</title>",
+		);
+		expect(html).not.toContain("</title><script>");
+		expect(html).not.toContain("</script><script>");
+		expect(html).toContain('"title":"\\u003c/title>');
+		expect(html).toContain('"description":"\\u003c/script>');
 	});
 
 	it("should mark model id fields as required and read-only", async () => {

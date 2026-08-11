@@ -905,6 +905,44 @@ describe("SCIM provider management", () => {
 			});
 			expect(resUserB.providers).toHaveLength(0);
 		});
+
+		it("fails closed for legacy unowned providers when ownership is enabled", async () => {
+			const { auth, getAuthCookieHeaders } = createTestInstance({
+				providerOwnership: { enabled: true },
+			});
+			const headers = await getAuthCookieHeaders(policyUserA);
+			const context = await auth.$context;
+			await context.adapter.create({
+				model: "scimProvider",
+				data: {
+					providerId: "legacy-unowned-provider",
+					scimToken: "legacy-token-digest",
+					organizationId: null,
+				},
+			});
+
+			const list = await auth.api.listSCIMProviderConnections({ headers });
+			expect(list.providers).toHaveLength(0);
+
+			await expect(
+				auth.api.getSCIMProviderConnection({
+					query: { providerId: "legacy-unowned-provider" },
+					headers,
+				}),
+			).rejects.toMatchObject({ status: "FORBIDDEN" });
+			await expect(
+				auth.api.deleteSCIMProviderConnection({
+					body: { providerId: "legacy-unowned-provider" },
+					headers,
+				}),
+			).rejects.toMatchObject({ status: "FORBIDDEN" });
+
+			const retained = await context.adapter.findOne({
+				model: "scimProvider",
+				where: [{ field: "providerId", value: "legacy-unowned-provider" }],
+			});
+			expect(retained).not.toBeNull();
+		});
 	});
 
 	describe("GET /scim/get-provider-connection", () => {

@@ -7,17 +7,15 @@ export const isSafeSAMLRedirectPath = (url: string): boolean =>
 	url.startsWith("/") && !unsafeSAMLRedirectPathPrefix.test(url);
 
 /**
- * Detect whether X509Certificate is available at runtime. On Cloudflare
- * Workers (nodejs_compat), node:crypto is partially implemented and
+ * Detect whether the `node:crypto` X509Certificate export is available at
+ * runtime. Node.js exposes it from the module, not on `globalThis`. Cloudflare
+ * Workers with nodejs_compat may only partially implement node:crypto, and
  * X509Certificate is NOT available — calling new X509Certificate() throws
  * "X509Certificate is not defined" at runtime. This guard lets the SSO
- * plugin load without crashing; parseCertificate degrades to a
- * Web-Crypto-based fingerprint when X509Certificate is unavailable.
+ * plugin load without crashing; parseCertificate uses its compatibility
+ * fallback when the module export is unavailable.
  */
-const hasX509Certificate =
-	typeof X509Certificate !== "undefined" &&
-	typeof (globalThis as Record<string, unknown>).X509Certificate !==
-		"undefined";
+const hasX509Certificate = typeof X509Certificate === "function";
 
 /**
  * Safely parses a value that might be a JSON string or already a parsed object.

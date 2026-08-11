@@ -886,7 +886,8 @@ export const listOrganizations = <O extends OrganizationOptions>(options: O) =>
 			requireHeaders: true,
 			metadata: {
 				openapi: {
-					description: "List all organizations",
+					description:
+						"List the organizations the current authenticated user belongs to",
 					responses: {
 						"200": {
 							description: "Success",

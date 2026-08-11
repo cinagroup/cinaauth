@@ -42,10 +42,14 @@ const auth = new CinaAuth({
 ### Options
 
 - `allowedRoles` (default `["admin"]`) — roles permitted to query/export/alerts
-  and to write via session (in addition to `writeTokens`).
+  and to write via an authoritative fresh session (in addition to
+  `writeTokens`). Session freshness follows `session.freshAge`; the plugin
+  bypasses cookie cache for this sensitive write. Set `freshAge: 0` only when
+  the deployment intentionally disables freshness checks globally.
 - `writeTokens` (default `[]`) — bearer tokens permitted to call `POST /audit/log`
-  (e.g. the admin console's service key). Token comparison is plain `includes`
-  (acceptable for internal service tokens).
+  without a browser session (e.g. the admin console's service key). This
+  service-to-service branch is independent of session freshness. Token
+  comparison is plain `includes` (acceptable for internal service tokens).
 - `schema` — extend the `auditLog` table fields.
 
 ## Schema
@@ -57,7 +61,7 @@ auditLog
   result, metadata
 ```
 
-- `category` ∈ `user | session | auth | admin | risk | wallet | privacy | org | apikey`
+- `category` ∈ `user | session | auth | admin | risk | wallet | org | apikey | identity | authenticator | credential | privacy | integration | provisioning | billing | audit`
 - `result` ∈ `success | failure`
 - `metadata` — JSON string (event-specific details, e.g. wallet address/chainId)
 
@@ -85,8 +89,11 @@ POST /audit/log
 body: { category, action, result, actorSite?, targetType?, targetId?, metadata? }
 ```
 
-Auth: a bearer token in `writeTokens` **or** an `allowedRoles` session. The
-actor (id/role/IP/UA) is recorded from the request.
+Auth: a bearer token in `writeTokens` **or** an authoritative fresh
+`allowedRoles` session. The session branch re-reads stateful sessions from the
+server-side store and rejects stale sessions with `SESSION_NOT_FRESH`. A valid
+write token does not require a browser session. The actor (id/role/IP/UA) is
+recorded from the request; service-token writes have no user actor id/role.
 
 ### Export audit logs as CSV
 

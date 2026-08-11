@@ -1,11 +1,17 @@
 import type { CinaAuthPlugin } from "@cinaauth/core";
 import { createAuthMiddleware } from "@cinaauth/core/api";
 import { APIError, CinaAuthError } from "@cinaauth/core/error";
+import { getAuthoritativeSessionFromCtx } from "../../api";
 import { mergeSchema } from "../../db/schema";
 import { getEndpointResponse } from "../../utils/plugin-helper";
 import { PACKAGE_VERSION } from "../../version";
 import { defaultRoles } from "./access";
 import { ADMIN_ERROR_CODES } from "./error-codes";
+import {
+	adminDeleteUserPasskey,
+	adminListUserPasskeys,
+	adminUpdateUserPasskey,
+} from "./passkeys";
 import {
 	adminUpdateUser,
 	banUser,
@@ -26,6 +32,10 @@ import {
 } from "./routes";
 import { schema } from "./schema";
 import { statsOverview, statsSecurityToday, statsSignups } from "./stats";
+import {
+	assertAnonymousUserIsNotSuperAdmin,
+	assertSuperAdminCanBeDeleted,
+} from "./super-admin";
 import type {
 	AdminOptions,
 	SessionWithImpersonatedBy,
@@ -74,19 +84,40 @@ export const admin = <O extends AdminOptions>(options?: O | undefined) => {
 	return {
 		id: "admin",
 		version: PACKAGE_VERSION,
-		init() {
+		init(context) {
 			return {
 				options: {
 					databaseHooks: {
 						user: {
 							create: {
 								async before(user) {
-									return {
-										data: {
-											role: options?.defaultRole ?? "user",
-											...user,
-										},
+									const data = {
+										role: options?.defaultRole ?? "user",
+										...user,
 									};
+									assertAnonymousUserIsNotSuperAdmin(opts, {
+										role: typeof data.role === "string" ? data.role : undefined,
+										isAnonymous:
+											"isAnonymous" in data && data.isAnonymous === true,
+									});
+									return {
+										data,
+									};
+								},
+							},
+							delete: {
+								async before(user) {
+									await assertSuperAdminCanBeDeleted(
+										context.internalAdapter,
+										opts,
+										{
+											id: user.id,
+											role:
+												typeof user.role === "string" ? user.role : undefined,
+											isAnonymous:
+												"isAnonymous" in user && user.isAnonymous === true,
+										},
+									);
 								},
 							},
 						},
@@ -129,6 +160,35 @@ export const admin = <O extends AdminOptions>(options?: O | undefined) => {
 			};
 		},
 		hooks: {
+			before: [
+				{
+					matcher(context) {
+						return (
+							context.path === "/delete-user" ||
+							context.path === "/delete-user/callback" ||
+							context.path === "/delete-anonymous-user"
+						);
+					},
+					handler: createAuthMiddleware(async (ctx) => {
+						const session = await getAuthoritativeSessionFromCtx(ctx);
+						if (!session) return;
+						await assertSuperAdminCanBeDeleted(
+							ctx.context.internalAdapter,
+							opts,
+							{
+								id: session.user.id,
+								role:
+									typeof session.user.role === "string"
+										? session.user.role
+										: undefined,
+								isAnonymous:
+									"isAnonymous" in session.user &&
+									session.user.isAnonymous === true,
+							},
+						);
+					}),
+				},
+			],
 			after: [
 				{
 					matcher(context) {
@@ -151,6 +211,9 @@ export const admin = <O extends AdminOptions>(options?: O | undefined) => {
 			],
 		},
 		endpoints: {
+			adminListUserPasskeys: adminListUserPasskeys(opts),
+			adminDeleteUserPasskey: adminDeleteUserPasskey(opts),
+			adminUpdateUserPasskey: adminUpdateUserPasskey(opts),
 			setRole: setRole(opts),
 			getUser: getUser(opts),
 			createUser: createUser(opts),

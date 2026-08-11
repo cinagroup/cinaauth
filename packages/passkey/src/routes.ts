@@ -1,7 +1,7 @@
+import { base64 } from "@better-auth/utils/base64";
 import type { GenericEndpointContext } from "@cinaauth/core";
 import { createAuthEndpoint } from "@cinaauth/core/api";
 import { APIError } from "@cinaauth/core/error";
-import { base64 } from "@better-auth/utils/base64";
 import type {
 	AuthenticationExtensionsClientInputs,
 	AuthenticationResponseJSON,
@@ -996,7 +996,7 @@ export const deletePasskey = createAuthEndpoint(
 		method: "POST",
 		body: deletePasskeyBodySchema,
 		use: [
-			sessionMiddleware,
+			freshSessionMiddleware,
 			requireResourceOwnership({
 				model: "passkey",
 				idParam: "id",

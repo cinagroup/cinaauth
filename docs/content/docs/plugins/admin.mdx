@@ -423,12 +423,11 @@ Hard deletes a user from the database.
   ```
 </APIMethod>
 
-## Stats & Wallet Endpoints (CinaGroup Console)
+## Stats, Wallet & Passkey Endpoints (CinaSeek Admin)
 
 The admin plugin additionally exposes read/aggregation endpoints for the
-`admin.cinagroup.com` dashboard, plus SIWE wallet management. All require the
-`admin` (or, where noted, `security_admin`) role via the `stats:read` and
-`wallet:list`/`wallet:unbind` permission statements.
+CinaSeek Admin dashboard, plus SIWE wallet and target-user passkey management.
+All operations are authorized through explicit resource permissions.
 
 ### Stats Overview
 
@@ -491,6 +490,51 @@ Force-unbinds a SIWE wallet: deletes the `walletAddress` row and the matching
 matching is case-insensitive (addresses are stored checksummed). Requires
 `wallet:unbind`.
 
+### List a User's Passkeys
+
+**Server:** `auth.api.adminListUserPasskeys({ headers, body })`
+
+```
+POST /admin/list-user-passkeys
+body: { userId }
+```
+
+Returns only non-secret metadata:
+`{ passkeys: [{ id, name, deviceType, backedUp, createdAt, aaguid }] }`.
+Credential IDs, public keys, counters, and the stored owner ID are never
+returned. Requires `passkey:list`.
+
+### Revoke a User's Passkey
+
+**Server:** `auth.api.adminDeleteUserPasskey({ headers, body })`
+
+```
+POST /admin/delete-user-passkey
+body: { userId, passkeyId }
+```
+
+The endpoint verifies that `passkeyId` belongs to the explicit `userId` before
+deleting it. Requires `passkey:revoke`.
+
+### Rename a User's Passkey
+
+**Server:** `auth.api.adminUpdateUserPasskey({ headers, body })`
+
+```
+POST /admin/update-user-passkey
+body: { userId, passkeyId, name }
+```
+
+The endpoint verifies the same target-user ownership boundary before updating
+the label and returns only non-secret metadata. Requires `passkey:update`.
+
+These Admin endpoints use the adapter's `passkey` model and do not depend on
+the `@cinaauth/passkey` package at runtime. A deployment that has not installed
+the passkey schema receives the adapter's normal missing-model/table error.
+The CinaSeek production Worker requires a fresh authoritative session for
+revoke and rename, while listing remains a read-only operation; Admin Console
+fulfills that step-up through its OIDC recent-auth proof.
+
 ### Wallet address search in list-users
 
 `list-users` now accepts `searchField=wallet` to find users by SIWE wallet
@@ -506,16 +550,67 @@ By default, there are three roles:
 
 `admin`: Users with the admin role have full control over other users.
 
-`security_admin`: A scoped admin role for the CinaGroup console. Can list/get
+`security_admin`: A scoped admin role for the CinaSeek console. Can list/get
 users, ban/unban, manage sessions (revoke), manage SIWE wallets (list/unbind),
-and read stats — but cannot create or delete users, set roles, impersonate,
-set passwords, or edit security policy. Intended for security operators.
+list/revoke passkeys, and read stats — but cannot rename passkeys, create or
+delete users, set roles, impersonate, set passwords, or edit security policy.
+Intended for security operators.
 
 `user`: Users with the user role have no control over other users.
 
 <Callout>
   A user can have multiple roles. Multiple roles are stored as string separated by comma (",").
 </Callout>
+
+### Last `super_admin` safeguard
+
+When a custom Admin role map defines the exact `super_admin` role, CinaAuth
+prevents `set-role`, `update-user`, and `remove-user` from removing that role
+from the final user who holds it. Rejected requests return
+`YOU_CANNOT_REMOVE_LAST_SUPER_ADMIN`. The Admin `remove-user` endpoint also
+continues to reject deleting the acting administrator with
+`YOU_CANNOT_REMOVE_YOURSELF`.
+
+Anonymous identities cannot hold the exact `super_admin` role. Admin
+`create-user`, `set-role`, and `update-user` reject attempts to create that
+state with `ANONYMOUS_USER_CANNOT_BE_SUPER_ADMIN`. If legacy or direct database
+data already contains an anonymous exact `super_admin`, every internal-adapter
+deletion path rejects it with
+`ANONYMOUS_SUPER_ADMIN_MUST_BE_DEMOTED_BEFORE_DELETION`, even when another
+super administrator exists. Demote the identity first, then delete it.
+
+Role membership follows the Admin plugin's established comma-separated
+semantics: `user,super_admin` contains the protected role, while
+`user, super_admin` does not because role tokens are not trimmed. Removing or
+demoting one super administrator remains allowed when another exact
+`super_admin` user exists. Deployments using the default `admin`/`user` role
+map are unchanged.
+
+The Admin mutation check and write run in one adapter transaction. The plugin
+also checks self-service `delete-user`, `delete-user/callback`, and
+`delete-anonymous-user` before destructive work, and installs a
+`user.delete.before` database hook as the final guard for post-link cleanup,
+SCIM, and other internal-adapter deletion paths. CinaAuth now runs that user
+preflight before deleting sessions or accounts; a hook veto or read failure
+therefore preserves the complete identity rather than leaving a user row that
+can no longer sign in. Ordinary-user deletion and user-provided hook ordering
+remain unchanged. Because the runtime-agnostic adapter contract does not
+expose a portable row or advisory lock, deployments that allow concurrent
+super-administrator mutations must still serialize every role-removal and
+deletion sink at the deployment boundary.
+
+The included Cloudflare Auth Worker adds two deployment layers. A PostgreSQL
+transaction-level queue lock serializes all three Admin mutation routes, both
+self-service deletion sinks, anonymous deletion, and SCIM user DELETE. A
+versioned PostgreSQL trigger uses a distinct lock key and enforces the final
+condition in the same transaction and connection as the actual user write, so
+loss of the queue connection cannot release the invariant prematurely.
+Session-backed paths are authoritatively authenticated before opening the
+queue, and plausible SCIM deletes pass a Durable Object IP-and-route rate limit
+before Hyperdrive is opened. Missing authentication storage, rate limiting,
+Hyperdrive, the installed trigger, or lock acquisition fails closed. The
+deployment trigger targets these single-user API sinks; direct multi-row SQL is
+not a supported administrator-management path.
 
 ### Permissions
 
@@ -526,6 +621,9 @@ By default, there are two resources with the following permissions.
 
 **session**:
 `list` `revoke` `delete`
+
+**passkey**:
+`list` `revoke` `update`
 
 Users with the admin role have full control over all the resources and actions. Users with the user role have no control over any of those actions.
 

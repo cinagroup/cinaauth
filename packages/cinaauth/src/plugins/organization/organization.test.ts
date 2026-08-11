@@ -19,6 +19,7 @@ import { adminAc, defaultStatements, memberAc, ownerAc } from "./access";
 import { inferOrgAdditionalFields, organizationClient } from "./client";
 import { ORGANIZATION_ERROR_CODES } from "./error-codes";
 import { organization } from "./organization";
+import { listOrganizations } from "./routes/crud-org";
 import type {
 	InferInvitation,
 	InferMember,
@@ -28,6 +29,14 @@ import type {
 import type { OrganizationOptions } from "./types";
 
 describe("organization type", () => {
+	it("describes organization listing as scoped to the authenticated user", () => {
+		const endpoint = listOrganizations({});
+
+		expect(endpoint.options.metadata?.openapi?.description).toBe(
+			"List the organizations the current authenticated user belongs to",
+		);
+	});
+
 	it("empty org type should works", () => {
 		expectTypeOf({} satisfies OrganizationOptions);
 		expectTypeOf({ schema: {} } satisfies OrganizationOptions);

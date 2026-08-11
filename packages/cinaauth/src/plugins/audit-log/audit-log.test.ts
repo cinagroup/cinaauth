@@ -4,6 +4,7 @@ import { admin } from "../admin/admin";
 import { organization } from "../organization/organization";
 import {
 	matchCapturePath,
+	resolveAuditCaptureResponse,
 	resolveOrganizationAuditTarget,
 	writeAuditLog,
 } from "./capture";
@@ -104,6 +105,150 @@ describe("audit-log plugin skeleton", () => {
 				{ category: "org", action: "org.team_create" },
 			],
 		]);
+	});
+
+	it("maps enabled admin, SSO, SCIM, subscription, and audit export operations", () => {
+		expect(
+			[
+				["/admin/reset-2fa", "POST"],
+				["/admin/stop-impersonating", "POST"],
+				["/admin/delete-user-passkey", "POST"],
+				["/admin/update-user-passkey", "POST"],
+				["/sso/register", "POST"],
+				["/sso/update-provider", "POST"],
+				["/sso/delete-provider", "POST"],
+				["/sso/request-domain-verification", "POST"],
+				["/sso/verify-domain", "POST"],
+				["/scim/generate-token", "POST"],
+				["/scim/delete-provider-connection", "POST"],
+				["/scim/v2/Users", "POST"],
+				["/scim/v2/Users/:userId", "PUT"],
+				["/scim/v2/Users/:userId", "PATCH"],
+				["/scim/v2/Users/:userId", "DELETE"],
+				["/subscription/upgrade", "POST"],
+				["/subscription/cancel", "POST"],
+				["/subscription/restore", "POST"],
+				["/subscription/billing-portal", "POST"],
+				["/audit/export", "GET"],
+			].map(([path, method]) => [
+				`${method} ${path}`,
+				matchCapturePath(path, method),
+			]),
+		).toEqual([
+			[
+				"POST /admin/reset-2fa",
+				{ category: "admin", action: "admin.user_reset_2fa" },
+			],
+			[
+				"POST /admin/stop-impersonating",
+				{ category: "admin", action: "admin.stop_impersonating" },
+			],
+			[
+				"POST /admin/delete-user-passkey",
+				{ category: "authenticator", action: "admin.passkey_revoke" },
+			],
+			[
+				"POST /admin/update-user-passkey",
+				{ category: "authenticator", action: "admin.passkey_update" },
+			],
+			[
+				"POST /sso/register",
+				{ category: "integration", action: "sso.provider_create" },
+			],
+			[
+				"POST /sso/update-provider",
+				{ category: "integration", action: "sso.provider_update" },
+			],
+			[
+				"POST /sso/delete-provider",
+				{ category: "integration", action: "sso.provider_delete" },
+			],
+			[
+				"POST /sso/request-domain-verification",
+				{ category: "integration", action: "sso.domain_verification_request" },
+			],
+			[
+				"POST /sso/verify-domain",
+				{ category: "integration", action: "sso.domain_verify" },
+			],
+			[
+				"POST /scim/generate-token",
+				{ category: "credential", action: "scim.token_generate" },
+			],
+			[
+				"POST /scim/delete-provider-connection",
+				{ category: "integration", action: "scim.connection_delete" },
+			],
+			[
+				"POST /scim/v2/Users",
+				{ category: "provisioning", action: "scim.user_create" },
+			],
+			[
+				"PUT /scim/v2/Users/:userId",
+				{ category: "provisioning", action: "scim.user_update" },
+			],
+			[
+				"PATCH /scim/v2/Users/:userId",
+				{ category: "provisioning", action: "scim.user_update" },
+			],
+			[
+				"DELETE /scim/v2/Users/:userId",
+				{ category: "provisioning", action: "scim.user_delete" },
+			],
+			[
+				"POST /subscription/upgrade",
+				{ category: "billing", action: "subscription.upgrade" },
+			],
+			[
+				"POST /subscription/cancel",
+				{ category: "billing", action: "subscription.cancel" },
+			],
+			[
+				"POST /subscription/restore",
+				{ category: "billing", action: "subscription.restore" },
+			],
+			[
+				"POST /subscription/billing-portal",
+				{ category: "billing", action: "subscription.billing_portal" },
+			],
+			["GET /audit/export", { category: "audit", action: "audit.export_csv" }],
+		]);
+	});
+
+	it("does not misclassify read-only or retired flows as successful mutations", () => {
+		expect(matchCapturePath("/scim/v2/Users", "GET")).toBeNull();
+		expect(matchCapturePath("/scim/v2/Users/:userId", "GET")).toBeNull();
+		// This endpoint always redirects, including several no-op/error branches;
+		// a generic after-hook cannot truthfully call the redirect a completed sale.
+		expect(matchCapturePath("/subscription/success", "GET")).toBeNull();
+		expect(matchCapturePath("/one-time-token/generate", "GET")).toBeNull();
+		expect(matchCapturePath("/device/approve", "POST")).toBeNull();
+		expect(matchCapturePath("/device/deny", "POST")).toBeNull();
+	});
+
+	it("treats valid non-JSON and non-200 2xx responses as successful captures", async () => {
+		const created = await resolveAuditCaptureResponse<{ id: string }>({
+			context: {
+				returned: new Response(JSON.stringify({ id: "scim-user" }), {
+					status: 201,
+					headers: { "content-type": "application/scim+json" },
+				}),
+			},
+		});
+		expect(created).toEqual({
+			ok: true,
+			response: { id: "scim-user" },
+		});
+
+		const csv = await resolveAuditCaptureResponse({
+			context: {
+				returned: new Response("id,action\n1,audit.export_csv", {
+					status: 200,
+					headers: { "content-type": "text/csv" },
+				}),
+			},
+		});
+		expect(csv).toEqual({ ok: true, response: null });
 	});
 
 	it("resolves organization targets from response, body, then active session", () => {
@@ -230,6 +375,73 @@ describe("audit-log endpoints", () => {
 		expect(row).not.toBeNull();
 	});
 
+	it("rejects an allowed-role audit write when the authoritative session is stale", async () => {
+		const { auth, signInWithTestUser, db } = await getTestInstance({
+			session: {
+				freshAge: 60,
+				cookieCache: { enabled: true, maxAge: 600 },
+			},
+			plugins: [admin(), auditLog({ allowedRoles: ["user"] })],
+		});
+		const { headers } = await signInWithTestUser();
+		const currentSession = await auth.api.getSession({ headers });
+		const sessionId = currentSession?.session.id;
+		expect(sessionId).toBeDefined();
+
+		await db.update({
+			model: "session",
+			where: [{ field: "id", value: sessionId! }],
+			update: {
+				createdAt: new Date(Date.now() - 5 * 60 * 1000),
+			},
+		});
+
+		await expect(
+			auth.api.logAudit({
+				headers,
+				body: {
+					category: "admin",
+					action: "admin.stale_session_probe",
+					result: "success",
+				},
+			}),
+		).rejects.toMatchObject({
+			status: "FORBIDDEN",
+			body: { code: "SESSION_NOT_FRESH" },
+		});
+	});
+
+	it("allows an allowed-role audit write with a fresh session", async () => {
+		const { auth, signInWithTestUser } = await getTestInstance({
+			session: { freshAge: 60 },
+			plugins: [admin(), auditLog({ allowedRoles: ["user"] })],
+		});
+		const { headers, user } = await signInWithTestUser();
+
+		const result = await auth.api.logAudit({
+			headers,
+			body: {
+				category: "admin",
+				action: "admin.fresh_session_probe",
+				result: "success",
+			},
+		});
+		expect(result.ok).toBe(true);
+
+		const ctx = await auth.$context;
+		const row = await ctx.adapter.findOne({
+			model: "auditLog",
+			where: [
+				{
+					field: "action",
+					operator: "eq",
+					value: "admin.fresh_session_probe",
+				},
+			],
+		});
+		expect(row).toMatchObject({ actorId: user.id, actorRole: "user" });
+	});
+
 	it("logAudit without a token or session is rejected (403)", async () => {
 		const { auth } = await getTestInstance({
 			plugins: [auditLog({ writeTokens: ["svc-test-key"] })],
@@ -239,7 +451,10 @@ describe("audit-log endpoints", () => {
 				headers: new Headers(),
 				body: { category: "admin", action: "x", result: "success" },
 			}),
-		).rejects.toThrow();
+		).rejects.toMatchObject({
+			status: "FORBIDDEN",
+			body: { code: "AUDIT_LOG_WRITE_NOT_ALLOWED" },
+		});
 	});
 
 	it("GET /audit/list filters by category/action (verified via adapter)", async () => {
@@ -398,6 +613,12 @@ describe("audit-log export + alerts", () => {
 		const text = await res.text();
 		expect(text).toContain("category");
 		expect(text).toContain("siwe.bind");
+		const exportRow = await ctx.adapter.findOne({
+			model: "auditLog",
+			where: [{ field: "action", operator: "eq", value: "audit.export_csv" }],
+		});
+		expect(exportRow).not.toBeNull();
+		expect((exportRow as { result: string }).result).toBe("success");
 	});
 });
 

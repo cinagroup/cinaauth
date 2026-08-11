@@ -285,6 +285,8 @@ export const auth = CinaAuth({
 
 You can delete a passkey by calling `passkey.delete` and providing the passkey ID.
 
+Deleting a passkey requires a fresh, authoritative session according to your configured [`session.freshAge`](/docs/concepts/session-management#session-freshness). A stale session receives a `403 SESSION_NOT_FRESH` response. Client applications should send the user through an explicit sign-in or step-up flow before retrying; they must not treat that response as a successful deletion.
+
 <APIMethod path="/passkey/delete-passkey" method="POST" requireSession>
   ```ts
   type deletePasskey = {

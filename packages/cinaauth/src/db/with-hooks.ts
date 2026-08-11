@@ -257,6 +257,7 @@ export function getWithHooks(
 			| {
 					fn: (where: Where[]) => void | Promise<any>;
 					executeMainFn?: boolean;
+					failOnSnapshotReadError?: boolean;
 			  }
 			| undefined,
 	) {
@@ -270,7 +271,8 @@ export function getWithHooks(
 				limit: 1,
 			});
 			entityToDelete = entities[0] || null;
-		} catch {
+		} catch (error) {
+			if (customDeleteFn?.failOnSnapshotReadError) throw error;
 			// If we can't find the entity, we'll still proceed with deletion
 		}
 
