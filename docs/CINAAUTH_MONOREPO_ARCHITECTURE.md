@@ -31,13 +31,13 @@ migration.
 
 ## Deployment boundaries
 
-| Deployment | Audience | Authority | Cloudflare dependency |
-| --- | --- | --- | --- |
-| `accounts.cinaseek.ai` | normal users | login, recovery, account and organization self-service | `AUTH_WORKER -> cinaauth-api` |
-| `admin.cinaseek.ai` | `super_admin`, `security_admin` | privileged operational workflows | `AUTH_WORKER -> cinaauth-api` |
-| `auth.cinaseek.ai` | applications and internal frontends | session issuance, policy enforcement, OAuth/OIDC and identity data | Hyperdrive, Durable Objects, Queues, `CINAAUTH_DELIVERY_SERVICE -> cinaauth-delivery` |
-| `cinaauth-delivery.cinagroup.com` | Auth Worker and provider acceptance only | signed email/SMS dispatch and per-channel readiness | Resend, Twilio, replay-prevention KV |
-| `cinaauth-erasure.cinagroup.com` | Auth Worker only | idempotent downstream privacy erasure coordination | SQLite Durable Objects, signed HTTPS targets |
+| Deployment                        | Audience                                 | Authority                                                          | Cloudflare dependency                                                                 |
+| --------------------------------- | ---------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `accounts.cinaseek.ai`            | normal users                             | login, recovery, account and organization self-service             | `AUTH_WORKER -> cinaauth-api`                                                         |
+| `admin.cinaseek.ai`               | `super_admin`, `security_admin`          | privileged operational workflows                                   | `AUTH_WORKER -> cinaauth-api`                                                         |
+| `auth.cinaseek.ai`                | applications and internal frontends      | session issuance, policy enforcement, OAuth/OIDC and identity data | Hyperdrive, Durable Objects, Queues, `CINAAUTH_DELIVERY_SERVICE -> cinaauth-delivery` |
+| `cinaauth-delivery.cinagroup.com` | Auth Worker and provider acceptance only | signed email/SMS dispatch and per-channel readiness                | Resend, Twilio, replay-prevention KV                                                  |
+| `cinaauth-erasure.cinagroup.com`  | Auth Worker only                         | idempotent downstream privacy erasure coordination                 | SQLite Durable Objects, signed HTTPS targets                                          |
 
 Browser authentication stays same-origin on each frontend. Server route
 handlers rebuild the upstream request and call the Auth Worker through Service
@@ -50,12 +50,12 @@ caching for authentication responses.
 `packages/auth-web-contract` is the source of truth for the admin role names and
 permission matrix:
 
-- `super_admin`: user lifecycle, role changes, bans, session revocation,
+* `super_admin`: user lifecycle, role changes, bans, session revocation,
   impersonation, and statistics.
-- `security_admin`: user/security reads, bans, session revocation, and
+* `security_admin`: user/security reads, bans, session revocation, and
   statistics; no user creation/deletion, role changes, password changes, or
   impersonation.
-- `user`: no admin permissions.
+* `user`: no admin permissions.
 
 The Auth Worker enforces these permissions. Frontend checks only hide or disable
 controls and are never treated as the security boundary. The admin console
@@ -69,19 +69,19 @@ unavailable readiness as disabled, while Auth independently returns a fail-close
 
 ## Entry-point policy
 
-- `/admin` on the account portal permanently redirects to
+* `/admin` on the account portal permanently redirects to
   `https://admin.cinaseek.ai`.
-- `demo-auth.cinagroup.com` remains temporarily attached to the account Worker
+* `demo-auth.cinagroup.com` remains temporarily attached to the account Worker
   only to issue a permanent redirect to `accounts.cinaseek.ai`.
-- The legacy hostname remains in the explicit Auth/Turnstile allow-list during
+* The legacy hostname remains in the explicit Auth/Turnstile allow-list during
   the redirect window. It can be removed after traffic and OAuth callback logs
   show no remaining clients.
 
 ## Independent delivery
 
-- `.github/workflows/deploy-account-portal.yml` deploys only the account portal.
-- `.github/workflows/deploy-admin-console.yml` deploys only the admin console.
-- `.github/workflows/deploy-cloudflare.yml` deploys Delivery, Privacy Erasure,
+* `.github/workflows/deploy-account-portal.yml` deploys only the account portal.
+* `.github/workflows/deploy-admin-console.yml` deploys only the admin console.
+* `.github/workflows/deploy-cloudflare.yml` deploys Delivery, Privacy Erasure,
   and the authoritative Auth Worker. Auth deploy waits for both supporting
   workers to pass their remote gates.
 

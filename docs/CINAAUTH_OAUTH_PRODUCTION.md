@@ -7,12 +7,12 @@ Generic OAuth 回调改到 Auth Worker 域名，否则 `state` 与登录会话 C
 
 ## 域名与回调矩阵
 
-| 能力 | 供应商控制台配置 | 生产值 |
-| --- | --- | --- |
-| Google One Tap / Sign in with Google | Authorized JavaScript origin | `https://accounts.cinaseek.ai` |
-| Google Social OAuth | Redirect URI | `https://accounts.cinaseek.ai/api/auth/callback/google` |
-| GitHub OAuth App | Authorization callback URL | `https://accounts.cinaseek.ai/api/auth/callback/github` |
-| Generic OAuth/OIDC，供应商 ID 为 `<providerId>` | Redirect URI / Callback URL | `https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>` |
+| 能力                                         | 供应商控制台配置                     | 生产值                                                                  |
+| ------------------------------------------ | ---------------------------- | -------------------------------------------------------------------- |
+| Google One Tap / Sign in with Google       | Authorized JavaScript origin | `https://accounts.cinaseek.ai`                                       |
+| Google Social OAuth                        | Redirect URI                 | `https://accounts.cinaseek.ai/api/auth/callback/google`              |
+| GitHub OAuth App                           | Authorization callback URL   | `https://accounts.cinaseek.ai/api/auth/callback/github`              |
+| Generic OAuth/OIDC，供应商 ID 为 `<providerId>` | Redirect URI / Callback URL  | `https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>` |
 
 不要为当前登录 UI 添加 `admin.cinaseek.ai`、`auth.cinaseek.ai`、旧 Demo 域名、通配符或
 带路径的 Google JavaScript origin。只有相应域名真正承载登录 UI 并通过端到端验收后，
@@ -44,17 +44,17 @@ Google Identity Services 需要从 Google 域加载脚本、iframe 和请求。�
 
 ## Google 与 GitHub Social OAuth
 
-- Google 常规 OAuth 登录需要同时配置 `GOOGLE_CLIENT_ID` 与
+* Google 常规 OAuth 登录需要同时配置 `GOOGLE_CLIENT_ID` 与
   `GOOGLE_CLIENT_SECRET`。只有 Client ID 时仍可启用 One Tap，但公开 capabilities
   不会宣告 Google Social Provider。
-- GitHub 登录需要同时配置 `GITHUB_CLIENT_ID` 与 `GITHUB_CLIENT_SECRET`；任一缺失时
+* GitHub 登录需要同时配置 `GITHUB_CLIENT_ID` 与 `GITHUB_CLIENT_SECRET`；任一缺失时
   失败关闭，不注册 Provider，也不显示登录按钮。
-- 两个供应商的回调都固定在 `accounts.cinaseek.ai`，由账号中心的 Service Binding
+* 两个供应商的回调都固定在 `accounts.cinaseek.ai`，由账号中心的 Service Binding
   转发到 Auth Worker。不要改成 `auth.cinaseek.ai`，否则发起登录时写入账号中心的
   state Cookie 不会随跨域回调返回。
-- Google 控制台同时登记账号中心 JavaScript origin 和精确 Google 回调；GitHub OAuth
+* Google 控制台同时登记账号中心 JavaScript origin 和精确 Google 回调；GitHub OAuth
   App 只登记精确 GitHub 回调。不要使用通配符或旧 Demo 域名。
-- 账号中心根据 `oauthProviders[].type === "social"` 调用 `signIn.social`；Generic OAuth
+* 账号中心根据 `oauthProviders[].type === "social"` 调用 `signIn.social`；Generic OAuth
   仍调用 `signIn.oauth2`。Google One Tap 可用时不会再重复渲染 Google Social 按钮。
 
 发布后分别验证 `/api/auth/sign-in/social` 发出的 `redirect_uri`、成功回调、拒绝授权、
@@ -65,13 +65,13 @@ state 不匹配、会话建立、注销和账号删除。只有真实供应商�
 
 ### 供应商控制台
 
-- `<providerId>` 必须是 1–64 位小写字母、数字、点、下划线或连字符，首尾必须是字母或
+* `<providerId>` 必须是 1–64 位小写字母、数字、点、下划线或连字符，首尾必须是字母或
   数字；一个生产配置中不得重复。
-- 在供应商控制台登记且仅登记精确回调：
+* 在供应商控制台登记且仅登记精确回调：
   `https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>`。
-- 优先使用 HTTPS OIDC discovery URL，并启用 PKCE。能提供 issuer identification 的
+* 优先使用 HTTPS OIDC discovery URL，并启用 PKCE。能提供 issuer identification 的
   供应商应配置 `issuer` 并启用 `requireIssuerValidation`。
-- 只申请登录所需的最小 scopes。不要把业务 API 的高权限授权与身份登录混在一起。
+* 只申请登录所需的最小 scopes。不要把业务 API 的高权限授权与身份登录混在一起。
 
 ### `GENERIC_OAUTH_CONFIG`
 
@@ -132,8 +132,8 @@ pnpm --dir workers/auth-api run check:cloudflare
 
 “控制台已配置”或“capabilities 已出现”都不等于上线完成。每个 OAuth 连接器必须同时有：
 
-- 供应商控制台截图或导出的非敏感配置证据；
-- CinaAuth 静态门禁和远端预检通过；
-- 真实供应商成功与失败路径端到端证据；
-- 注销、解绑和账号删除时的令牌撤销/外部保留责任说明；
-- 凭据轮换负责人、到期时间和回滚方案。
+* 供应商控制台截图或导出的非敏感配置证据；
+* CinaAuth 静态门禁和远端预检通过；
+* 真实供应商成功与失败路径端到端证据；
+* 注销、解绑和账号删除时的令牌撤销/外部保留责任说明；
+* 凭据轮换负责人、到期时间和回滚方案。

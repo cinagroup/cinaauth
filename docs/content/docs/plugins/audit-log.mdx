@@ -14,7 +14,7 @@ Events are captured via two complementary, non-overlapping paths:
 
 1. **Automatic capture** — a whitelisted `hooks.after` matcher records core
    auth events (sign-in, sign-up, sign-out, password change, 2FA enable/disable,
-  email-otp send/verify, SIWE wallet lifecycle, privacy export) and all `admin/*` mutations. No
+   email-otp send/verify, SIWE wallet lifecycle, privacy export) and all `admin/*` mutations. No
    extra code is needed on those endpoints.
 2. **Explicit capture** — the console proxy calls `POST /audit/log` for
    console-only actions (e.g. CSV export) that have no corresponding cinaauth
@@ -41,16 +41,16 @@ const auth = new CinaAuth({
 
 ### Options
 
-- `allowedRoles` (default `["admin"]`) — roles permitted to query/export/alerts
+* `allowedRoles` (default `["admin"]`) — roles permitted to query/export/alerts
   and to write via an authoritative fresh session (in addition to
   `writeTokens`). Session freshness follows `session.freshAge`; the plugin
   bypasses cookie cache for this sensitive write. Set `freshAge: 0` only when
   the deployment intentionally disables freshness checks globally.
-- `writeTokens` (default `[]`) — bearer tokens permitted to call `POST /audit/log`
+* `writeTokens` (default `[]`) — bearer tokens permitted to call `POST /audit/log`
   without a browser session (e.g. the admin console's service key). This
   service-to-service branch is independent of session freshness. Token
   comparison is plain `includes` (acceptable for internal service tokens).
-- `schema` — extend the `auditLog` table fields.
+* `schema` — extend the `auditLog` table fields.
 
 ## Schema
 
@@ -61,9 +61,9 @@ auditLog
   result, metadata
 ```
 
-- `category` ∈ `user | session | auth | admin | risk | wallet | org | apikey | identity | authenticator | credential | privacy | integration | provisioning | billing | audit`
-- `result` ∈ `success | failure`
-- `metadata` — JSON string (event-specific details, e.g. wallet address/chainId)
+* `category` ∈ `user | session | auth | admin | risk | wallet | org | apikey | identity | authenticator | credential | privacy | integration | provisioning | billing | audit`
+* `result` ∈ `success | failure`
+* `metadata` — JSON string (event-specific details, e.g. wallet address/chainId)
 
 Retention is enforced by a D1 lifecycle/cron cleanup (deployment config, not
 code); rows are never deleted by the console.
@@ -126,21 +126,21 @@ Requires an `allowedRoles` session.
 
 ## Captured events
 
-| Path | category | action |
-| --- | --- | --- |
-| `/sign-in/email`, `/sign-in/social` | auth | user.login / user.login_social |
-| `/sign-up/email` | auth | user.register |
-| `/sign-out` | auth | user.logout |
-| `/change-password` | auth | user.password_change |
-| `/two-factor/enable` `/disable` | auth | user.2fa_enable / user.2fa_disable |
-| `/email-otp/send-verification-otp` `/verify-email` | auth | user.otp_send / user.otp_verify |
-| `/siwe/verify`, `/siwe/link-wallet` | wallet | siwe.bind (carries `targetId`=user, `metadata.address`) |
-| `/siwe/set-primary-wallet`, `/siwe/unlink-wallet` | wallet | siwe.set_primary / siwe.unbind |
-| `/admin/ban-user` `/unban-user` | admin | admin.user_ban / admin.user_unban |
-| `/admin/create-user` `/update-user` `/remove-user` `/set-user-password` | admin | admin.user_* |
-| `/admin/set-role` | admin | admin.set_role |
-| `/admin/impersonate-user` | admin | admin.impersonate |
-| `/admin/revoke-user-session(s)` | session | session.revoke / session.revoke_all |
+| Path                                                                    | category | action                                                  |
+| ----------------------------------------------------------------------- | -------- | ------------------------------------------------------- |
+| `/sign-in/email`, `/sign-in/social`                                     | auth     | user.login / user.login\_social                         |
+| `/sign-up/email`                                                        | auth     | user.register                                           |
+| `/sign-out`                                                             | auth     | user.logout                                             |
+| `/change-password`                                                      | auth     | user.password\_change                                   |
+| `/two-factor/enable` `/disable`                                         | auth     | user.2fa\_enable / user.2fa\_disable                    |
+| `/email-otp/send-verification-otp` `/verify-email`                      | auth     | user.otp\_send / user.otp\_verify                       |
+| `/siwe/verify`, `/siwe/link-wallet`                                     | wallet   | siwe.bind (carries `targetId`=user, `metadata.address`) |
+| `/siwe/set-primary-wallet`, `/siwe/unlink-wallet`                       | wallet   | siwe.set\_primary / siwe.unbind                         |
+| `/admin/ban-user` `/unban-user`                                         | admin    | admin.user\_ban / admin.user\_unban                     |
+| `/admin/create-user` `/update-user` `/remove-user` `/set-user-password` | admin    | admin.user\_\*                                          |
+| `/admin/set-role`                                                       | admin    | admin.set\_role                                         |
+| `/admin/impersonate-user`                                               | admin    | admin.impersonate                                       |
+| `/admin/revoke-user-session(s)`                                         | session  | session.revoke / session.revoke\_all                    |
 
 Success vs. failure is derived from the endpoint response (`getEndpointResponse`
 returns null for non-200/APIError → `result: "failure"`).

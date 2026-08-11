@@ -8,18 +8,18 @@ independent deployment and session boundary.
 
 ## Fixed client contract
 
-| Field | Value |
-| --- | --- |
-| Client ID | `cinaseek-admin-console` |
-| Issuer | `https://auth.cinaseek.ai` |
-| Redirect URI | `https://admin.cinaseek.ai/api/auth/oidc/callback` |
-| Post-logout URI | `https://admin.cinaseek.ai/login` |
-| Grant | `authorization_code` |
-| Client authentication | `client_secret_basic` |
-| PKCE | required, `S256` |
-| Scopes | `openid profile email` |
-| Access-token resource | `https://admin.cinaseek.ai` |
-| ID/access-token signing | `ES256` |
+| Field                   | Value                                              |
+| ----------------------- | -------------------------------------------------- |
+| Client ID               | `cinaseek-admin-console`                           |
+| Issuer                  | `https://auth.cinaseek.ai`                         |
+| Redirect URI            | `https://admin.cinaseek.ai/api/auth/oidc/callback` |
+| Post-logout URI         | `https://admin.cinaseek.ai/login`                  |
+| Grant                   | `authorization_code`                               |
+| Client authentication   | `client_secret_basic`                              |
+| PKCE                    | required, `S256`                                   |
+| Scopes                  | `openid profile email`                             |
+| Access-token resource   | `https://admin.cinaseek.ai`                        |
+| ID/access-token signing | `ES256`                                            |
 
 The Auth Worker reconciles this exact client immediately before resolving its
 authorization request. Only a SHA-256 base64url hash of the client secret is
@@ -80,9 +80,9 @@ authorization decision.
 
 Create three distinct random values of at least 32 characters:
 
-- `CINAADMIN_OIDC_CLIENT_SECRET`: same value in Auth Worker and Admin Worker.
-- `CINAADMIN_OIDC_BRIDGE_SECRET`: same value in Auth Worker and Admin Worker.
-- `CINAADMIN_OIDC_TRANSACTION_SECRET`: Admin Worker only.
+* `CINAADMIN_OIDC_CLIENT_SECRET`: same value in Auth Worker and Admin Worker.
+* `CINAADMIN_OIDC_BRIDGE_SECRET`: same value in Auth Worker and Admin Worker.
+* `CINAADMIN_OIDC_TRANSACTION_SECRET`: Admin Worker only.
 
 Secrets are read from environment variables and written with Wrangler stdin;
 they must not be placed in `wrangler.jsonc`, Git, command arguments, or logs.

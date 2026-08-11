@@ -1,4 +1,4 @@
-﻿---
+---
 title: Migrating from Supabase Auth to CinaAuth
 description: A step-by-step guide to transitioning from Supabase Auth to CinaAuth.
 ---
@@ -1382,7 +1382,7 @@ If you're using Supabase's Enterprise SSO (SAML), follow these additional steps 
 
     **Update these settings in your IdP:**
 
-    | Setting              | Old Value (Supabase)                                      | New Value (CinaAuth)                                                      |
+    | Setting              | Old Value (Supabase)                                      | New Value (CinaAuth)                                                         |
     | -------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------- |
     | ACS URL / Reply URL  | `https://<project>.supabase.co/auth/v1/sso/saml/acs`      | `https://yourapp.com/api/auth/sso/saml2/sp/acs/<providerId>`                 |
     | Entity ID / Audience | `https://<project>.supabase.co/auth/v1/sso/saml/metadata` | `https://yourapp.com/api/auth/sso/saml2/sp/metadata?providerId=<providerId>` |

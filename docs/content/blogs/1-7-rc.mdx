@@ -233,11 +233,11 @@ export const auth = CinaAuth({
 
 ### Deprecations and removals
 
-| Change                                     | Replacement                          |
-| ------------------------------------------ | ------------------------------------ |
-| `oidcProvider` plugin removed              | Use `@cinaauth/oauth-provider`.      |
+| Change                                  | Replacement                          |
+| --------------------------------------- | ------------------------------------ |
+| `oidcProvider` plugin removed           | Use `@cinaauth/oauth-provider`.      |
 | MCP plugin path moved out of `cinaauth` | Use `@cinaauth/mcp`.                 |
-| Generic OAuth client APIs changed          | Use the standard social client APIs. |
+| Generic OAuth client APIs changed       | Use the standard social client APIs. |
 
 ***
 
@@ -255,7 +255,7 @@ Then run `npx auth@rc generate` for any schema changes; the unscoped `npx auth` 
 
 | If you use                                     | What to expect                                                                                       |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Basic CinaAuth setup                        | Usually just the `@rc` install and any generated schema changes                                      |
+| Basic CinaAuth setup                           | Usually just the `@rc` install and any generated schema changes                                      |
 | Social login, generic OAuth, One Tap, or SSO   | New login-client behavior, especially generic OAuth, identity-token verification, and Google One Tap |
 | `@cinaauth/oauth-provider`                     | The largest set of changes: resources, DPoP, back-channel logout, `max_age`, and safer OAuth checks  |
 | MCP                                            | A package move to `@cinaauth/mcp`, new imports, new endpoint paths, and a schema migration           |

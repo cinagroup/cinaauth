@@ -1,4 +1,4 @@
-﻿---
+---
 title: Security Plugin (sentinel)
 description: The `sentinel()` plugin provides comprehensive security and abuse protection for your authentication system. It detects and prevents various attack vectors including credential stuffing, impossible travel, free trial abuse, and more.
 ---
@@ -26,7 +26,7 @@ export const auth = CinaAuth({
 
 | Option       | Type              | Description                                                           |
 | ------------ | ----------------- | --------------------------------------------------------------------- |
-| `apiUrl`     | `string`          | CinaAuth Infrastructure API URL                                    |
+| `apiUrl`     | `string`          | CinaAuth Infrastructure API URL                                       |
 | `kvUrl`      | `string`          | KV store URL for rate limiting data                                   |
 | `apiKey`     | `string`          | Your API key for authentication                                       |
 | `apiTimeout` | `number`          | Timeout in ms for Infra API HTTP requests (`apiUrl`). Default: `3000` |
@@ -424,15 +424,15 @@ export const authClient = createAuthClient({
 
 #### `sentinelNativeClient` options
 
-| Option                | Type                            | Default                                                 | Description                                                                 |
-| --------------------- | ------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Option                | Type                            | Default                                            | Description                                                                 |
+| --------------------- | ------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- |
 | `identifyUrl`         | `string`                        | `CINAAUTH_KV_URL`, then `https://kv.cinagroup.com` | KV identify endpoint base URL                                               |
-| `kvTimeout`           | `number`                        | `1000`                                                  | Timeout in ms for KV identify and related HTTP requests                     |
-| `autoSolveChallenge`  | `boolean`                       | `true`                                                  | On `423` with `X-PoW-Challenge`, solve and retry once with `X-PoW-Solution` |
-| `onChallengeReceived` | `(reason: string) => void`      | —                                                       | Called when a PoW challenge is received                                     |
-| `onChallengeSolved`   | `(solveTimeMs: number) => void` | —                                                       | Called after a successful solve                                             |
-| `onChallengeFailed`   | `(error: Error) => void`        | —                                                       | Called if solving fails                                                     |
-| `storage`             | `{ getItem, setItem }`          | Async Storage when installed                            | Persistent async storage for a stable per-install visitor ID                |
+| `kvTimeout`           | `number`                        | `1000`                                             | Timeout in ms for KV identify and related HTTP requests                     |
+| `autoSolveChallenge`  | `boolean`                       | `true`                                             | On `423` with `X-PoW-Challenge`, solve and retry once with `X-PoW-Solution` |
+| `onChallengeReceived` | `(reason: string) => void`      | —                                                  | Called when a PoW challenge is received                                     |
+| `onChallengeSolved`   | `(solveTimeMs: number) => void` | —                                                  | Called after a successful solve                                             |
+| `onChallengeFailed`   | `(error: Error) => void`        | —                                                  | Called if solving fails                                                     |
+| `storage`             | `{ getItem, setItem }`          | Async Storage when installed                       | Persistent async storage for a stable per-install visitor ID                |
 
 ## Security Events
 

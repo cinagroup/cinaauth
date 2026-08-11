@@ -1,4 +1,4 @@
-﻿---
+---
 title: "CinaAuth 1.5"
 description: "Auth CLI, MCP Auth, OAuth 2.1 Provider, Electron integration, i18n, adapter extraction, dynamic base URL, Cloudflare D1 support, CLI init wizard, seat-based billing, SAML Single Logout, test utilities, secret key rotation, and more!"
 date: 2026-02-28
@@ -581,8 +581,8 @@ This is useful when you have additional session fields that need to change witho
 
 Database adapters have been extracted into their own packages. This is a major architectural change that reduces bundle size and allows adapters to be versioned independently.
 
-| Package                        | Description         |
-| ------------------------------ | ------------------- |
+| Package                     | Description         |
+| --------------------------- | ------------------- |
 | `@cinaauth/drizzle-adapter` | Drizzle ORM adapter |
 | `@cinaauth/prisma-adapter`  | Prisma adapter      |
 | `@cinaauth/kysely-adapter`  | Kysely adapter      |
@@ -777,18 +777,18 @@ If you are building a plugin on top of CinaAuth, there are a few things you shou
 
 All previously deprecated APIs have been removed. This includes deprecated adapter types, client types, helper types, and plugin options. If you were relying on any `@deprecated` methods or options, you'll need to migrate to their replacements:
 
-| Removed                                                         | Replacement                              |
-| --------------------------------------------------------------- | ---------------------------------------- |
-| `Adapter`                                                       | `DBAdapter`                              |
-| `TransactionAdapter`                                            | `DBTransactionAdapter`                   |
-| `Store` (client)                                                | `ClientStore`                            |
-| `AtomListener` (client)                                         | `ClientAtomListener`                     |
-| `ClientOptions`                                                 | `CinaAuthClientOptions`                |
-| `LiteralUnion`, `DeepPartial` (from `cinaauth/types/helper`) | Import from `@cinaauth/core`          |
-| `onEmailVerification`                                           | `afterEmailVerification`                 |
-| `sendChangeEmailVerification`                                   | `sendChangeEmailConfirmation`            |
-| `advanced.database.useNumberId`                                 | `advanced.database.generateId: "serial"` |
-| Organization `permission` field                                 | `permissions` (plural)                   |
+| Removed                                                      | Replacement                              |
+| ------------------------------------------------------------ | ---------------------------------------- |
+| `Adapter`                                                    | `DBAdapter`                              |
+| `TransactionAdapter`                                         | `DBTransactionAdapter`                   |
+| `Store` (client)                                             | `ClientStore`                            |
+| `AtomListener` (client)                                      | `ClientAtomListener`                     |
+| `ClientOptions`                                              | `CinaAuthClientOptions`                  |
+| `LiteralUnion`, `DeepPartial` (from `cinaauth/types/helper`) | Import from `@cinaauth/core`             |
+| `onEmailVerification`                                        | `afterEmailVerification`                 |
+| `sendChangeEmailVerification`                                | `sendChangeEmailConfirmation`            |
+| `advanced.database.useNumberId`                              | `advanced.database.generateId: "serial"` |
+| Organization `permission` field                              | `permissions` (plural)                   |
 
 ### `@cinaauth/core/utils` Barrel Export Removed
 

@@ -39,6 +39,25 @@ function noSetCookiePlugin() {
 	} satisfies CinaAuthPlugin;
 }
 
+type CinaAuthBeforeHook = NonNullable<
+	NonNullable<CinaAuthPlugin["hooks"]>["before"]
+>[number];
+
+const harmonyPlugin = emailHarmony();
+// The locked harmony package's Bundler runtime contract is compatible, but its
+// matchers retain Better Auth's nominal context type. Bridge only that boundary
+// so init, schema, and handler compatibility remain compile-time checked.
+const harmonyPluginForBundler = {
+	...harmonyPlugin,
+	hooks: {
+		...harmonyPlugin.hooks,
+		before: harmonyPlugin.hooks.before.map((hook) => ({
+			...hook,
+			matcher: hook.matcher as unknown as CinaAuthBeforeHook["matcher"],
+		})),
+	},
+} satisfies CinaAuthPlugin;
+
 const config = {
 	basePath: "/auth",
 	plugins: [
@@ -62,7 +81,7 @@ const config = {
 			},
 		}),
 		lastLoginMethod(),
-		emailHarmony(),
+		harmonyPluginForBundler,
 		noSetCookiePlugin(),
 		anonymous(),
 	],

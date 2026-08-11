@@ -1,4 +1,4 @@
-﻿<picture>
+<picture>
   <source media="(prefers-color-scheme: dark)" srcset="public/branding/svg/cinaauth-wordmark-light.svg" />
 
   <source media="(prefers-color-scheme: light)" srcset="public/branding/svg/cinaauth-wordmark-dark.svg" />
