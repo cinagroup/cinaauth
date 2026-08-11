@@ -1,10 +1,10 @@
-﻿packages:
-  - apps/**
-  - workers/**
-  - packages/**
+packages:
+  - apps/*
+  - workers/*
+  - packages/*
   - docs
   - e2e/**
-  - demo/**
+  - demo/*
   - test
 
 overrides:
