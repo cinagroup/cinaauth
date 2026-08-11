@@ -841,6 +841,12 @@ const privacyErasureDeployment = read(privacyErasureDeploymentFile);
 const workflow = read(workflowFile);
 const accountWorkflow = read(accountWorkflowFile);
 const adminWorkflow = read(adminWorkflowFile);
+const workflowJobBlock = (source, job, nextJob) => {
+	const start = source.indexOf(`  ${job}:`);
+	if (start === -1) return "";
+	const end = nextJob ? source.indexOf(`  ${nextJob}:`, start + 1) : -1;
+	return source.slice(start, end === -1 ? undefined : end);
+};
 const accountPackage = readJson(accountPackageFile);
 const accountWrangler = read(accountWranglerFile);
 const accountMiddleware = read(accountMiddlewareFile);
@@ -3007,6 +3013,17 @@ checkIncludesAll(
 checkIncludesAll(
 	workflow,
 	[
+		"workflow_dispatch:",
+		"restore_rehearsal_completed:",
+		"restore_rehearsal_reference:",
+		"backup_reference:",
+		"operator_attestation:",
+		"DEPLOY CINAAUTH PRODUCTION",
+		"authorize-production",
+		"PLANETSCALE_SERVICE_TOKEN_ID",
+		"PLANETSCALE_SERVICE_TOKEN",
+		"pnpm --silent --dir workers/auth-api run check:planetscale-backups",
+		"report.activeBackups",
 		"pnpm run check",
 		"pnpm run check:cloudflare",
 		"pnpm run provision:secrets",
@@ -3021,6 +3038,7 @@ checkIncludesAll(
 		"Verify Delivery Worker structural bootstrap",
 		"Verify Privacy Erasure structural bootstrap",
 		"--allow-not-ready",
+		"needs: authorize-production",
 		"needs: [deploy-delivery, deploy-privacy-erasure]",
 		"deploy-account-portal",
 		"deploy-admin-console",
@@ -3050,8 +3068,76 @@ checkIncludesAll(
 		"https://auth.cinaseek.ai/api/ready",
 	],
 	workflowFile,
-	"backend CI must deploy child Workers structurally, gate Auth migrations/readiness, then invoke both reusable frontend deployments",
+	"backend CI must require manual recovery evidence and a live backup audit before deploying child Workers, Auth migrations, and reusable frontends",
 );
+const centralTrigger = workflow.slice(
+	workflow.indexOf("on:"),
+	workflow.indexOf("permissions:"),
+);
+check(
+	!centralTrigger.includes("\n  push:") &&
+		!centralTrigger.includes("\n  workflow_call:"),
+	`${rel(workflowFile)} must expose workflow_dispatch as its only production entrypoint`,
+);
+const authorizationJob = workflowJobBlock(
+	workflow,
+	"authorize-production",
+	"deploy-delivery",
+);
+checkIncludesAll(
+	authorizationJob,
+	[
+		"environment: production",
+		"needs: validate-deployment-contract",
+		"inputs.restore_rehearsal_completed",
+		"inputs.restore_rehearsal_reference",
+		"inputs.backup_reference",
+		"inputs.operator_attestation",
+		"refs/heads/main",
+		"PLANETSCALE_SERVICE_TOKEN_ID",
+		"PLANETSCALE_SERVICE_TOKEN",
+		"report.activeBackups",
+	],
+	workflowFile,
+	"the pre-write production job must fail closed on environment approval, recovery evidence, the attested active backup, and read-only PlanetScale credentials",
+);
+check(
+	!authorizationJob.includes("cloudflare/wrangler-action") &&
+		!authorizationJob.includes("command: deploy") &&
+		!authorizationJob.includes("-X POST"),
+	`${rel(workflowFile)} production authorization must remain read-only`,
+);
+checkIncludesAll(
+	deploymentDoc,
+	[
+		"Production deployment has no `push` trigger",
+		"restore_rehearsal_completed",
+		"restore_rehearsal_reference",
+		"backup_reference",
+		"operator_attestation",
+		"DEPLOY CINAAUTH PRODUCTION",
+		"PLANETSCALE_SERVICE_TOKEN_ID",
+		"PLANETSCALE_SERVICE_TOKEN",
+		"read_backups",
+		"GitHub `production` environment",
+		"workflow does not create,",
+		"modify, or delete a PlanetScale branch",
+	],
+	deploymentDocFile,
+	"the deployment runbook must describe the manual recovery attestation, live backup gate, production environment, and automation boundary",
+);
+for (const [job, nextJob] of [
+	["deploy-delivery", "deploy-privacy-erasure"],
+	["deploy-privacy-erasure", "deploy-worker"],
+	["deploy-worker", "deploy-account-portal"],
+]) {
+	checkIncludes(
+		workflowJobBlock(workflow, job, nextJob),
+		"environment: production",
+		workflowFile,
+		`${job} is a production deployment job`,
+	);
+}
 check(
 	[
 		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
@@ -3071,7 +3157,7 @@ checkIncludesAll(
 	accountWorkflow,
 	[
 		"workflow_call",
-		"workflow_dispatch",
+		"environment: production",
 		"apps/account-portal",
 		"accounts.cinaseek.ai",
 		"NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai",
@@ -3090,13 +3176,14 @@ checkIncludesAll(
 		"demo-auth.cinagroup.com",
 	],
 	accountWorkflowFile,
-	"account portal CI must remain reusable and manually invocable with governed readiness and redirect smoke coverage",
+	"account portal CI must remain a reusable production-environment unit with governed readiness and redirect smoke coverage",
 );
 check(
 	!accountWorkflow.includes("CINAAUTH_DEMO_SECRET") &&
 		!accountWorkflow.includes("wrangler secret put") &&
+		!accountWorkflow.includes("workflow_dispatch:") &&
 		!accountWorkflow.includes("push:"),
-	`${rel(accountWorkflowFile)} must not provision a duplicate Auth secret or race the central backend push deployment`,
+	`${rel(accountWorkflowFile)} must not provision a duplicate Auth secret or bypass the central production gate`,
 );
 check(
 	accountPackage.name === "@cinaauth/account-portal" &&
@@ -3222,7 +3309,7 @@ checkIncludesAll(
 	adminWorkflow,
 	[
 		"workflow_call",
-		"workflow_dispatch",
+		"environment: production",
 		"apps/admin-console",
 		"admin.cinaseek.ai",
 		"pnpm run cf-typegen",
@@ -3237,15 +3324,16 @@ checkIncludesAll(
 		"ready.database?.invariants?.ok",
 	],
 	adminWorkflowFile,
-	"admin console CI must remain reusable and manually invocable after governed Auth readiness",
+	"admin console CI must remain a reusable production-environment unit after governed Auth readiness",
 );
 check(
 	!adminWorkflow.includes("CINAADMIN_OIDC_CLIENT_SECRET") &&
 		!adminWorkflow.includes("CINAADMIN_OIDC_BRIDGE_SECRET") &&
 		!adminWorkflow.includes("CINAADMIN_OIDC_TRANSACTION_SECRET") &&
 		!adminWorkflow.includes("provision:secrets") &&
+		!adminWorkflow.includes("workflow_dispatch:") &&
 		!adminWorkflow.includes("push:"),
-	`${rel(adminWorkflowFile)} must use active Store bindings without V1 OIDC provisioning or an independent push race`,
+	`${rel(adminWorkflowFile)} must use active Store bindings without V1 OIDC provisioning or bypassing the central production gate`,
 );
 check(
 	accountWorkflow.indexOf("Wait for governed Auth readiness") <

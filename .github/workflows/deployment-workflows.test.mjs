@@ -16,18 +16,14 @@ const jobBlock = (source, job, nextJob) => {
 	return source.slice(start, end === -1 ? undefined : end);
 };
 
-test("central workflow owns automatic production ordering", () => {
-	for (const path of [
-		"apps/account-portal/**",
-		"apps/admin-console/**",
-		"packages/auth-proxy/**",
-		"packages/auth-web-contract/**",
-		"packages/design-tokens/**",
-		".github/workflows/deploy-account-portal.yml",
-		".github/workflows/deploy-admin-console.yml",
-	]) {
-		assert.match(central, new RegExp(path.replaceAll("*", "\\*")));
-	}
+test("central workflow is the only manually dispatched production entrypoint", () => {
+	const trigger = central.slice(
+		central.indexOf("on:"),
+		central.indexOf("permissions:"),
+	);
+	assert.match(trigger, /workflow_dispatch:/);
+	assert.doesNotMatch(trigger, /\n  push:/);
+	assert.doesNotMatch(trigger, /\n  workflow_call:/);
 
 	for (const [job, workflow] of [
 		["deploy-account-portal", "deploy-account-portal.yml"],
@@ -43,15 +39,56 @@ test("central workflow owns automatic production ordering", () => {
 	}
 });
 
-test("application workflows are reusable or manually dispatched only", () => {
+test("production attestation and live backup audit gate every Cloudflare write", () => {
+	for (const input of [
+		"restore_rehearsal_completed",
+		"restore_rehearsal_reference",
+		"backup_reference",
+		"operator_attestation",
+	]) {
+		assert.match(central, new RegExp(`${input}:`));
+	}
+	assert.match(central, /type: boolean/);
+	assert.match(central, /DEPLOY CINAAUTH PRODUCTION/);
+
+	const gate = jobBlock(central, "authorize-production", "deploy-delivery");
+	assert.match(gate, /environment: production/);
+	assert.match(gate, /PLANETSCALE_SERVICE_TOKEN_ID/);
+	assert.match(gate, /PLANETSCALE_SERVICE_TOKEN/);
+	assert.match(gate, /GITHUB_REF.*refs\/heads\/main/);
+	assert.match(gate, /tr -d '\[:space:\]'/);
+	assert.match(
+		gate,
+		/pnpm .*--dir workers\/auth-api run check:planetscale-backups/,
+	);
+	assert.match(gate, /report\.activeBackups/);
+	assert.match(gate, /inputs\.backup_reference/);
+	assert.doesNotMatch(gate, /cloudflare\/wrangler-action|command: deploy/);
+
+	for (const [job, nextJob] of [
+		["deploy-delivery", "deploy-privacy-erasure"],
+		["deploy-privacy-erasure", "deploy-worker"],
+	]) {
+		const block = jobBlock(central, job, nextJob);
+		assert.match(block, /needs: authorize-production/);
+		assert.match(block, /environment: production/);
+	}
+	assert.match(
+		jobBlock(central, "deploy-worker", "deploy-account-portal"),
+		/environment: production/,
+	);
+});
+
+test("application workflows are reusable production-environment units only", () => {
 	for (const source of [account, admin]) {
 		const trigger = source.slice(
 			source.indexOf("on:"),
 			source.indexOf("permissions:"),
 		);
 		assert.match(trigger, /workflow_call:/);
-		assert.match(trigger, /workflow_dispatch:/);
+		assert.doesNotMatch(trigger, /workflow_dispatch:/);
 		assert.doesNotMatch(trigger, /\n  push:/);
+		assert.match(jobBlock(source, "deploy"), /environment: production/);
 	}
 });
 

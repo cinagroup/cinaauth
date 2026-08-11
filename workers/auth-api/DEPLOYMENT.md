@@ -641,6 +641,8 @@ sixth request in a 60-second window must return HTTP 429 and `X-Retry-After`.
 `.github/workflows/deploy-cloudflare.yml` expects these GitHub secrets:
 
 - `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+- `PLANETSCALE_SERVICE_TOKEN_ID` and `PLANETSCALE_SERVICE_TOKEN`, scoped to
+  `cinagroup/cinaauth` with only `read_backups`
 - `CINAAUTH_HYPERDRIVE_ID`
 - `CINAAUTH_SECRET` and `CINAAUTH_MIGRATION_TOKEN`
 - `CINAAUTH_PRIVACY_EXPORT_KEY` and the Privacy Worker-owned
@@ -653,19 +655,51 @@ sixth request in a 60-second window must return HTTP 429 and `X-Retry-After`.
   `GOOGLE_CLIENT_SECRET`, and/or `GITHUB_CLIENT_ID` plus
   `GITHUB_CLIENT_SECRET`; Google One Tap may use `GOOGLE_CLIENT_ID` alone
 
+Put production credentials in the GitHub `production` environment. Create that
+environment before the first run, restrict it to `main`, require an independent
+reviewer, disable administrator bypass where repository policy permits it, and
+prevent the initiating operator from approving their own deployment. Every job
+that can write a production Cloudflare resource references this environment.
+The Account and Admin reusable workflows set the environment on their actual
+`deploy` jobs because GitHub does not allow `environment` on a caller job that
+uses another workflow.
+
+Production deployment has no `push` trigger. Start `Deploy to Cloudflare`
+manually from the default branch and provide all four inputs:
+
+- `restore_rehearsal_completed`: `true` only after an isolated restored branch,
+  temporary Hyperdrive, and non-production Auth Worker have passed migration
+  preview/readiness rehearsal
+- `restore_rehearsal_reference`: a durable run, ticket, or evidence URL for
+  that rehearsal; placeholders are rejected
+- `backup_reference`: the exact active successful PlanetScale `main` backup ID
+  selected for rollback
+- `operator_attestation`: exactly `DEPLOY CINAAUTH PRODUCTION`, authorizing the
+  Cloudflare writes and the production migration POST in this run
+
+The `authorize-production` job runs before any Cloudflare write. It fails closed
+unless the inputs are present, the production environment has released the job,
+both PlanetScale credentials exist, the live read-only backup audit passes, and
+`backup_reference` is present in the audit's active successful backups. The
+restore reference is operator-attested evidence; the workflow does not create,
+modify, or delete a PlanetScale branch.
+
 The seven active Store values in the table above are created separately through
 the Secrets Store control plane and are attached by the checked-in bindings;
 they are not duplicated as V1 GitHub/Worker secrets. Resend, Twilio, and
 `CINAAUTH_ERASURE_TARGETS` are also absent from the deployment environment and
 are written after deployment through the audited configuration control plane.
 
-CI configures the Hyperdrive ID, runs static and remote structural gates,
-deploys, previews and applies migrations, then requires authenticated Auth
-`/api/ready` before either frontend deploys. Operational child readiness is a
-separate post-activation acceptance gate.
+After authorization, CI keeps the ordered rollout: Delivery and Privacy Erasure
+Workers first, Auth Worker second, then Account and Admin frontends. It configures
+the Hyperdrive ID, runs static and remote structural gates, deploys Auth, previews
+and applies migrations, then requires authenticated Auth `/api/ready` before
+either frontend deploys. Operational child readiness is a separate
+post-activation acceptance gate.
 
-The reusable Account and Admin deployment workflows each poll that authenticated
-readiness endpoint before any frontend Worker write. They require both
+The Account and Admin deployment workflows are reusable-only and cannot be
+manually dispatched outside the central recovery gate. Each polls the
+authenticated readiness endpoint before any frontend Worker write. They require both
 `super-admin-governance-v1` and `provider-namespace-registry-v1` to be installed
 and the cutover state to be `live`. The central backend workflow invokes them
 only after the Auth job succeeds, preventing either frontend from overtaking an

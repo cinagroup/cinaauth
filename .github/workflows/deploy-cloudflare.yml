@@ -1,24 +1,25 @@
 name: Deploy to Cloudflare
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - apps/account-portal/**
-      - apps/admin-console/**
-      - workers/auth-api/**
-      - workers/delivery/**
-      - workers/privacy-erasure/**
-      - packages/auth-proxy/**
-      - packages/auth-web-contract/**
-      - packages/design-tokens/**
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - .github/workflows/deploy-account-portal.yml
-      - .github/workflows/deploy-admin-console.yml
-      - .github/workflows/deploy-cloudflare.yml
-      - .github/workflows/deployment-workflows.test.mjs
   workflow_dispatch:
+    inputs:
+      restore_rehearsal_completed:
+        description: Confirm an isolated PostgreSQL restore rehearsal succeeded
+        required: true
+        default: false
+        type: boolean
+      restore_rehearsal_reference:
+        description: Restore rehearsal evidence URL or run identifier
+        required: true
+        type: string
+      backup_reference:
+        description: Active PlanetScale main backup ID approved for rollback
+        required: true
+        type: string
+      operator_attestation:
+        description: Type DEPLOY CINAAUTH PRODUCTION to authorize writes and migration
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -43,10 +44,80 @@ jobs:
       - name: Test bootstrap and deployment ordering
         run: node --test .github/workflows/deployment-workflows.test.mjs
 
+  authorize-production:
+    name: Authorize production deployment
+    runs-on: ubuntu-latest
+    needs: validate-deployment-contract
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Validate restore rehearsal and operator attestation
+        env:
+          RESTORE_REHEARSAL_COMPLETED: ${{ inputs.restore_rehearsal_completed }}
+          RESTORE_REHEARSAL_REFERENCE: ${{ inputs.restore_rehearsal_reference }}
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          OPERATOR_ATTESTATION: ${{ inputs.operator_attestation }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main" || (echo "Production deployment must run from main" && exit 1)
+          test "$RESTORE_REHEARSAL_COMPLETED" = "true" || (echo "Restore rehearsal must be completed" && exit 1)
+          normalized_restore_reference="$(printf '%s' "$RESTORE_REHEARSAL_REFERENCE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          test "${#normalized_restore_reference}" -ge 8 || (echo "Restore rehearsal reference must contain durable evidence" && exit 1)
+          case "$normalized_restore_reference" in none|n/a|na|pending|unknown) echo "Restore rehearsal reference must not be a placeholder"; exit 1;; esac
+          printf '%s' "$BACKUP_REFERENCE" | grep -Eq '^[A-Za-z0-9_-]{8,128}$' || (echo "Backup reference must be a PlanetScale backup ID" && exit 1)
+          test "$OPERATOR_ATTESTATION" = "DEPLOY CINAAUTH PRODUCTION" || (echo "Operator attestation does not authorize production deployment" && exit 1)
+
+      - name: Validate PlanetScale audit credentials
+        env:
+          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_ID }}
+          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN }}
+        run: |
+          test -n "$PLANETSCALE_SERVICE_TOKEN_ID" || (echo "Missing PLANETSCALE_SERVICE_TOKEN_ID" && exit 1)
+          test -n "$PLANETSCALE_SERVICE_TOKEN" || (echo "Missing PLANETSCALE_SERVICE_TOKEN" && exit 1)
+
+      - name: Audit PlanetScale production backups
+        env:
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_ID }}
+          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN }}
+        run: |
+          report_file="$RUNNER_TEMP/planetscale-backups.json"
+          pnpm --silent --dir workers/auth-api run check:planetscale-backups > "$report_file"
+          node -e '
+            const fs = require("node:fs");
+            const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const backupReference = process.env.BACKUP_REFERENCE;
+            if (report.status !== "verified") {
+              console.error("PlanetScale backup audit is not verified");
+              process.exit(1);
+            }
+            if (!report.activeBackups?.some(({ id }) => id === backupReference)) {
+              console.error("Attested backup is not an active successful main backup");
+              process.exit(1);
+            }
+            console.log(JSON.stringify({
+              status: report.status,
+              backupReference,
+              reportDigest: report.reportDigest,
+            }));
+          ' "$report_file"
+
   deploy-delivery:
     name: Deploy Delivery Worker
     runs-on: ubuntu-latest
-    needs: validate-deployment-contract
+    needs: authorize-production
+    environment: production
     defaults:
       run:
         working-directory: workers/delivery
@@ -98,7 +169,8 @@ jobs:
   deploy-privacy-erasure:
     name: Deploy Privacy Erasure Worker
     runs-on: ubuntu-latest
-    needs: validate-deployment-contract
+    needs: authorize-production
+    environment: production
     defaults:
       run:
         working-directory: workers/privacy-erasure
@@ -165,6 +237,7 @@ jobs:
     name: Deploy Worker API
     runs-on: ubuntu-latest
     needs: [deploy-delivery, deploy-privacy-erasure]
+    environment: production
     defaults:
       run:
         working-directory: workers/auth-api
