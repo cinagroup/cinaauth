@@ -39,9 +39,9 @@ const probeSecret = async (
 const isStrongSecret = (value: string) => value.length >= 32;
 
 /**
- * Probes staged V2 account-secret bindings without exposing or activating them.
+ * Probes active V2 account-secret bindings without exposing their values.
  */
-export const getStagedSecretsStoreReadiness = async (
+export const getActiveSecretsStoreReadiness = async (
 	env: StagedSecretsStoreEnv,
 ) => {
 	const results = await Promise.all([
@@ -73,5 +73,10 @@ export const getStagedSecretsStoreReadiness = async (
 	const issues = results.filter(
 		(issue): issue is StagedSecretsStoreIssue => issue !== undefined,
 	);
-	return { staged: true as const, ok: issues.length === 0, issues };
+	return {
+		active: true as const,
+		source: "secrets-store-v2" as const,
+		ok: issues.length === 0,
+		issues,
+	};
 };

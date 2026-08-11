@@ -5,19 +5,18 @@ import { fileURLToPath } from "node:url";
 const API_BASE = "https://api.cloudflare.com/client/v4";
 const MAX_ATTEMPTS = 3;
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
-const REQUIRED_RUNTIME_INPUTS = [
-	"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
-	"RESEND_API_KEY",
-	"RESEND_EMAIL_FROM",
-	"TWILIO_ACCOUNT_SID",
-	"TWILIO_AUTH_TOKEN",
-	"TWILIO_FROM_NUMBER",
+const SECRETS_STORE_BINDINGS = [
+	{
+		name: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
+	},
+	{
+		name: "CINAAUTH_DELIVERY_CONFIG_KEK_STORE",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINAAUTH_DELIVERY_CONFIG_KEK_V1",
+	},
 ];
-const SECRETS_STORE_BINDING = {
-	name: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
-	storeId: "346e2b4b86334bc29083c064116e91cf",
-	secretName: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
-};
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const workerDir = dirname(scriptDir);
@@ -26,7 +25,6 @@ const config = JSON.parse(
 );
 const token = process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN;
 let accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-const configuredRuntimeInputs = new Set(Object.keys(config.vars ?? {}));
 const failures = [];
 const warnings = [];
 
@@ -117,10 +115,6 @@ const resolveAccountId = async () => {
 	accountId = accounts[0].id;
 };
 
-const isMissingWorkerError = (error) =>
-	error instanceof Error &&
-	/Worker does not exist|script.*not found|not exist/i.test(error.message);
-
 const publicFetch = async (url) => {
 	const headers = { Accept: "application/json" };
 	if (process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET) {
@@ -167,41 +161,25 @@ const checkWorkerSettings = async () => {
 	const settings = await cloudflareFetch(
 		`/accounts/${accountId}/workers/scripts/${config.name}/settings`,
 	);
-	const binding = settings.bindings?.find(
-		(item) => item.name === SECRETS_STORE_BINDING.name,
+	for (const expected of SECRETS_STORE_BINDINGS) {
+		const binding = settings.bindings?.find(
+			(item) => item.name === expected.name,
+		);
+		if (
+			binding?.type !== "secrets_store_secret" ||
+			binding.store_id !== expected.storeId ||
+			binding.secret_name !== expected.secretName
+		) {
+			fail(
+				`Remote ${expected.name} binding must target ${expected.storeId}/${expected.secretName}`,
+			);
+		}
+	}
+	const durableObject = settings.bindings?.find(
+		(item) => item.name === "DELIVERY_CONFIG",
 	);
-	if (
-		binding?.type !== "secrets_store_secret" ||
-		binding.store_id !== SECRETS_STORE_BINDING.storeId ||
-		binding.secret_name !== SECRETS_STORE_BINDING.secretName
-	) {
-		fail(
-			`Remote ${SECRETS_STORE_BINDING.name} binding must target ${SECRETS_STORE_BINDING.storeId}/${SECRETS_STORE_BINDING.secretName}`,
-		);
-	}
-};
-
-const checkRuntimeInputs = async () => {
-	let secrets = [];
-	try {
-		secrets = await cloudflareFetch(
-			`/accounts/${accountId}/workers/scripts/${config.name}/secrets`,
-		);
-	} catch (error) {
-		if (!isMissingWorkerError(error)) {
-			throw error;
-		}
-		fail(
-			`Delivery Worker ${config.name} is not deployed yet; deploy it before remote secret names can be verified`,
-		);
-	}
-	for (const secret of secrets) {
-		configuredRuntimeInputs.add(secret.name);
-	}
-	for (const input of REQUIRED_RUNTIME_INPUTS) {
-		if (!configuredRuntimeInputs.has(input)) {
-			fail(`Delivery Worker runtime input ${input} is missing`);
-		}
+	if (durableObject?.type !== "durable_object_namespace") {
+		fail("Remote DELIVERY_CONFIG Durable Object binding is missing");
 	}
 };
 
@@ -264,17 +242,23 @@ const checkZoneAndRoute = async () => {
 
 const checkPublicEndpoints = async () => {
 	const root = await publicFetch("https://cinaauth-delivery.cinagroup.com/");
-	if (root && root.status === 404) {
-		warn(
-			"Delivery Worker public root returned 404; it may not be deployed yet",
-		);
+	if (root) {
+		const rootBody = await root.json().catch(() => undefined);
+		if (
+			!root.ok ||
+			!rootBody ||
+			typeof rootBody !== "object" ||
+			rootBody.structuralReady !== true
+		) {
+			fail("Delivery Worker structural health response is incomplete");
+		}
 	}
 	const ready = await publicFetch(
 		"https://cinaauth-delivery.cinagroup.com/ready",
 	);
 	if (!ready) return;
-	if (!ready.ok) {
-		fail(`Delivery Worker readiness returned HTTP ${ready.status}`);
+	if (!ready.ok && ready.status !== 503) {
+		fail(`Delivery Worker readiness returned unexpected HTTP ${ready.status}`);
 		return;
 	}
 	if (!process.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET) {
@@ -287,17 +271,22 @@ const checkPublicEndpoints = async () => {
 	if (
 		!body ||
 		typeof body !== "object" ||
-		body.success !== true ||
-		body.runtimeConfig?.ok !== true ||
-		body.secretsStore?.staged !== true ||
+		typeof body.success !== "boolean" ||
+		typeof body.runtimeConfig?.ok !== "boolean" ||
+		body.secretsStore?.active !== true ||
 		body.secretsStore?.ok !== true ||
 		!Array.isArray(body.secretsStore?.issues) ||
 		body.secretsStore.issues.length !== 0 ||
-		body.providers?.email !== true ||
-		body.providers?.sms !== true ||
+		typeof body.providers?.email !== "boolean" ||
+		typeof body.providers?.sms !== "boolean" ||
 		body.replay?.kv !== true
 	) {
 		fail("Authorized Delivery Worker readiness response is incomplete");
+	}
+	if (body.success !== true) {
+		warn(
+			`Delivery Worker is structurally deployed but operational state is ${body.runtimeConfig?.operationalState ?? "unknown"}; finish provider configuration after deployment`,
+		);
 	}
 };
 
@@ -309,7 +298,6 @@ const main = async () => {
 			if (failures.length === 0) {
 				await checkWorkerSettings();
 				await checkKVNamespaces();
-				await checkRuntimeInputs();
 				await checkZoneAndRoute();
 				await checkPublicEndpoints();
 			}

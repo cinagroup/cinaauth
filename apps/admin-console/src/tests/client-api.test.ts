@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+	AdminApiError,
 	copyText,
 	downloadAdminCsv,
 	fetchAdminJson,
+	getAdminApiErrorMessage,
 	handleAdminStepUpError,
 	openExternal,
 } from "@/lib/client-api";
@@ -13,6 +15,23 @@ afterEach(() => {
 });
 
 describe("fetchAdminJson", () => {
+	it("uses only sanitized Admin API messages for operator diagnostics", () => {
+		const fallback = "Configuration action failed";
+
+		expect(
+			getAdminApiErrorMessage(
+				new AdminApiError("Provider rejected the test recipient", 422),
+				fallback,
+			),
+		).toBe("Provider rejected the test recipient");
+		expect(
+			getAdminApiErrorMessage(new Error("raw internal error"), fallback),
+		).toBe(fallback);
+		expect(
+			getAdminApiErrorMessage(new AdminApiError("   ", 502), fallback),
+		).toBe(fallback);
+	});
+
 	it("uses current path and search for one structured step-up redirect", async () => {
 		const assign = vi.fn();
 		const navigation = {

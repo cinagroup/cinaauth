@@ -1,5 +1,17 @@
 import type { DeliveryWorkerEnv } from "./env";
-import { getStagedSecretsStoreReadiness } from "./secrets-store-readiness";
+import type {
+	DeliveryProviderKind,
+	EmailProviderConfig,
+	ProviderConfigResult,
+	ProviderMutationValue,
+	SmsProviderConfig,
+} from "./provider-config";
+import {
+	getActiveSecretsStoreReadiness,
+	resolveDeliveryWebhookSecret,
+} from "./secrets-store-readiness";
+
+export { DeliveryProviderConfig } from "./provider-config";
 
 export type DeliveryMessage =
 	| {
@@ -62,6 +74,52 @@ type RuntimeConfigIssue =
 	| "missing_twilio_auth_token"
 	| "missing_twilio_from_number";
 
+type ResolvedProvider =
+	| {
+			state: "configured";
+			source: "dynamic" | "legacy";
+			config: EmailProviderConfig | SmsProviderConfig;
+	  }
+	| { state: "disabled" }
+	| { state: "unavailable" };
+
+type DeliveryConfigurationOperation =
+	| "stage"
+	| "test"
+	| "activate"
+	| "rollback";
+
+type DeliveryConfigurationStatus = {
+	structuralReady: boolean;
+	operationalState: "disabled" | "degraded" | "ready";
+	revision: number;
+	validated: boolean;
+	updatedAt: string | null;
+	capabilities: { email: boolean; sms: boolean };
+	channels: {
+		email: {
+			provider: "resend";
+			configured: boolean;
+			validated: boolean;
+			activeVersion: number | null;
+			nextVersion: number | null;
+			previousVersion: number | null;
+			updatedAt: string | null;
+			lastTestedAt: string | null;
+		};
+		sms: {
+			provider: "twilio";
+			configured: boolean;
+			validated: boolean;
+			activeVersion: number | null;
+			nextVersion: number | null;
+			previousVersion: number | null;
+			updatedAt: string | null;
+			lastTestedAt: string | null;
+		};
+	};
+};
+
 const MAX_BODY_BYTES = 32_768;
 const DEFAULT_ALLOWED_SKEW_SECONDS = 300;
 const DEFAULT_REPLAY_TTL_SECONDS = 86_400;
@@ -69,8 +127,10 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 const jsonHeaders = {
-	"Content-Type": "application/json",
+	"Content-Type": "application/json; charset=utf-8",
 	"Cache-Control": "no-store",
+	Pragma: "no-cache",
+	"X-Content-Type-Options": "nosniff",
 };
 
 const raise = (status: number, code: string, message: string): never => {
@@ -85,9 +145,6 @@ const isDeliveryHttpError = (error: unknown): error is DeliveryHttpError => {
 		typeof value.status === "number"
 	);
 };
-
-const errorMessage = (error: unknown) =>
-	error instanceof Error ? error.message : String(error);
 
 const json = (body: unknown, status = 200) =>
 	new Response(JSON.stringify(body), {
@@ -248,14 +305,16 @@ export const getRuntimeConfigIssues = (
 	env: DeliveryWorkerEnv,
 ): RuntimeConfigIssue[] => {
 	const issues: RuntimeConfigIssue[] = [];
+	const hasStoreWebhookSecret =
+		typeof env.CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2?.get === "function";
 	const webhookSecret =
 		typeof env.CINAAUTH_DELIVERY_WEBHOOK_SECRET === "string"
 			? env.CINAAUTH_DELIVERY_WEBHOOK_SECRET
 			: "";
 
-	if (!webhookSecret) {
+	if (!hasStoreWebhookSecret && !webhookSecret) {
 		issues.push("missing_delivery_webhook_secret");
-	} else if (webhookSecret.length < 32) {
+	} else if (!hasStoreWebhookSecret && webhookSecret.length < 32) {
 		issues.push("weak_delivery_webhook_secret");
 	}
 
@@ -372,14 +431,18 @@ export const verifyCinaAuthRequest = async (
 	rawBody: string,
 	now = Date.now(),
 ) => {
-	if (!env.CINAAUTH_DELIVERY_WEBHOOK_SECRET) {
-		raise(503, "delivery_secret_missing", "Delivery secret is not configured");
+	const secretResolution = await resolveDeliveryWebhookSecret(env);
+	if (secretResolution.ok === false) {
+		return raise(
+			503,
+			"delivery_secret_unavailable",
+			"Delivery secret is unavailable",
+		);
 	}
+	const webhookSecret = secretResolution.value;
 
 	const providedBearer = parseBearerToken(request.headers.get("authorization"));
-	if (
-		!(await secureEqual(providedBearer, env.CINAAUTH_DELIVERY_WEBHOOK_SECRET))
-	) {
+	if (!(await secureEqual(providedBearer, webhookSecret))) {
 		return raise(401, "unauthorized", "Delivery authorization is invalid");
 	}
 
@@ -413,7 +476,7 @@ export const verifyCinaAuthRequest = async (
 	}
 
 	const expected = await hmacSha256(
-		env.CINAAUTH_DELIVERY_WEBHOOK_SECRET,
+		webhookSecret,
 		`${timestamp}.${deliveryId}.${rawBody}`,
 	);
 	if (!(await secureEqual(signature.slice(3), expected))) {
@@ -430,9 +493,7 @@ const escapeHtml = (value: string) =>
 		.replaceAll(">", "&gt;")
 		.replaceAll('"', "&quot;");
 
-const requireEmailProvider = (
-	env: DeliveryWorkerEnv,
-): { apiKey: string; from: string } => {
+const requireEmailProvider = (env: DeliveryWorkerEnv): EmailProviderConfig => {
 	if (!env.RESEND_API_KEY || !env.RESEND_EMAIL_FROM) {
 		return raise(
 			503,
@@ -446,9 +507,7 @@ const requireEmailProvider = (
 	};
 };
 
-const requireSmsProvider = (
-	env: DeliveryWorkerEnv,
-): { accountSid: string; authToken: string; from: string } => {
+const requireSmsProvider = (env: DeliveryWorkerEnv): SmsProviderConfig => {
 	const accountSid = env.TWILIO_ACCOUNT_SID;
 	const authToken = env.TWILIO_AUTH_TOKEN;
 	const from = env.TWILIO_FROM_NUMBER;
@@ -462,12 +521,19 @@ const requireSmsProvider = (
 	};
 };
 
-export const createProviderRequest = (
-	env: DeliveryWorkerEnv,
+export const createProviderRequestForConfig = (
 	message: DeliveryMessage,
+	config: EmailProviderConfig | SmsProviderConfig,
 ): ProviderRequest => {
 	if (isEmailOtpMessage(message)) {
-		const provider = requireEmailProvider(env);
+		if (!("apiKey" in config)) {
+			return raise(
+				503,
+				"email_provider_missing",
+				"Email provider is unavailable",
+			);
+		}
+		const provider = config;
 		const subject =
 			message.payload.type === "email-verification"
 				? "Verify your CinaSeek email"
@@ -491,7 +557,14 @@ export const createProviderRequest = (
 	}
 
 	if (isMagicLinkMessage(message)) {
-		const provider = requireEmailProvider(env);
+		if (!("apiKey" in config)) {
+			return raise(
+				503,
+				"email_provider_missing",
+				"Email provider is unavailable",
+			);
+		}
+		const provider = config;
 		const text = `Sign in to CinaSeek: ${message.payload.url}`;
 		return {
 			method: "POST",
@@ -511,7 +584,14 @@ export const createProviderRequest = (
 	}
 
 	if (isPasswordResetMessage(message)) {
-		const provider = requireEmailProvider(env);
+		if (!("apiKey" in config)) {
+			return raise(
+				503,
+				"email_provider_missing",
+				"Email provider is unavailable",
+			);
+		}
+		const provider = config;
 		const text = `Reset your CinaSeek password: ${message.payload.url}`;
 		return {
 			method: "POST",
@@ -531,7 +611,10 @@ export const createProviderRequest = (
 	}
 
 	if (isPhoneMessage(message)) {
-		const provider = requireSmsProvider(env);
+		if (!("accountSid" in config)) {
+			return raise(503, "sms_provider_missing", "SMS provider is unavailable");
+		}
+		const provider = config;
 		const body = new URLSearchParams({
 			From: provider.from,
 			To: message.payload.phoneNumber,
@@ -555,11 +638,113 @@ export const createProviderRequest = (
 	return raise(400, "invalid_payload", "Delivery payload kind is unsupported");
 };
 
+export const createProviderRequest = (
+	env: DeliveryWorkerEnv,
+	message: DeliveryMessage,
+): ProviderRequest =>
+	createProviderRequestForConfig(
+		message,
+		isPhoneMessage(message)
+			? requireSmsProvider(env)
+			: requireEmailProvider(env),
+	);
+
+const isDeliveryConfigNamespace = (
+	value: unknown,
+): value is DeliveryWorkerEnv["DELIVERY_CONFIG"] =>
+	typeof (value as DeliveryWorkerEnv["DELIVERY_CONFIG"] | undefined)
+		?.getByName === "function";
+
+const getDeliveryConfigStub = (env: DeliveryWorkerEnv) =>
+	env.DELIVERY_CONFIG.getByName("delivery-provider-config-v1");
+
+const getLegacyProvider = (
+	env: DeliveryWorkerEnv,
+	provider: DeliveryProviderKind,
+): ResolvedProvider => {
+	if (provider === "email") {
+		return env.RESEND_API_KEY && env.RESEND_EMAIL_FROM
+			? {
+					state: "configured",
+					source: "legacy",
+					config: {
+						apiKey: env.RESEND_API_KEY,
+						from: env.RESEND_EMAIL_FROM,
+					},
+				}
+			: { state: "disabled" };
+	}
+	return env.TWILIO_ACCOUNT_SID &&
+		env.TWILIO_AUTH_TOKEN &&
+		env.TWILIO_FROM_NUMBER
+		? {
+				state: "configured",
+				source: "legacy",
+				config: {
+					accountSid: env.TWILIO_ACCOUNT_SID,
+					authToken: env.TWILIO_AUTH_TOKEN,
+					from: env.TWILIO_FROM_NUMBER,
+				},
+			}
+		: { state: "disabled" };
+};
+
+export const resolveDeliveryProvider = async (
+	env: DeliveryWorkerEnv,
+	provider: DeliveryProviderKind,
+): Promise<ResolvedProvider> => {
+	if (!isDeliveryConfigNamespace(env.DELIVERY_CONFIG)) {
+		return getLegacyProvider(env, provider);
+	}
+	try {
+		const active = await getDeliveryConfigStub(env).getActive(provider);
+		if (!active.configured) return getLegacyProvider(env, provider);
+		if (
+			(provider === "email" && !("apiKey" in active.config)) ||
+			(provider === "sms" && !("accountSid" in active.config))
+		) {
+			return { state: "unavailable" };
+		}
+		return {
+			state: "configured",
+			source: "dynamic",
+			config: active.config,
+		};
+	} catch {
+		// A present dynamic binding fails closed so legacy values cannot silently
+		// bypass corrupt ciphertext, KEK loss, or a repository outage.
+		return { state: "unavailable" };
+	}
+};
+
 export const dispatchDelivery = async (
 	env: DeliveryWorkerEnv,
 	message: DeliveryMessage,
 ) => {
-	const providerRequest = createProviderRequest(env, message);
+	const provider = await resolveDeliveryProvider(
+		env,
+		isPhoneMessage(message) ? "sms" : "email",
+	);
+	if (provider.state === "disabled") {
+		return raise(
+			503,
+			isPhoneMessage(message)
+				? "sms_provider_missing"
+				: "email_provider_missing",
+			"Delivery provider is not configured",
+		);
+	}
+	if (provider.state === "unavailable") {
+		return raise(
+			503,
+			"provider_configuration_unavailable",
+			"Delivery provider configuration is unavailable",
+		);
+	}
+	const providerRequest = createProviderRequestForConfig(
+		message,
+		provider.config,
+	);
 	const response = await fetch(providerRequest.url, {
 		method: providerRequest.method,
 		headers: providerRequest.headers,
@@ -627,54 +812,568 @@ const isAuthorizedReadinessRequest = async (
 	request: Request,
 	env: DeliveryWorkerEnv,
 ) => {
-	if (!env.CINAAUTH_DELIVERY_WEBHOOK_SECRET) return false;
+	const resolution = await resolveDeliveryWebhookSecret(env);
+	if (!resolution.ok) return false;
 	return secureEqual(
 		parseBearerToken(request.headers.get("authorization")),
-		env.CINAAUTH_DELIVERY_WEBHOOK_SECRET,
+		resolution.value,
+	);
+};
+
+const hasExactKeys = (
+	value: Record<string, unknown>,
+	keys: readonly string[],
+) => {
+	const actual = Object.keys(value).sort();
+	const expected = [...keys].sort();
+	return (
+		actual.length === expected.length &&
+		actual.every((key, index) => key === expected[index])
+	);
+};
+
+const isRevision = (value: unknown): value is number =>
+	typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+
+const isIdempotencyKey = (value: unknown): value is string =>
+	typeof value === "string" &&
+	value.length >= 16 &&
+	value.length <= 128 &&
+	/^[A-Za-z0-9._:-]+$/.test(value);
+
+const isEmail = (value: unknown): value is string =>
+	typeof value === "string" &&
+	value.length >= 3 &&
+	value.length <= 320 &&
+	!/\r|\n/.test(value) &&
+	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+const isEmailFrom = (value: unknown): value is string => {
+	if (typeof value !== "string" || /\r|\n/.test(value) || value.length > 384) {
+		return false;
+	}
+	const match = value.match(/^(?:[^<>]{1,64}\s*<)?([^<>\s]+@[^<>\s]+)>?$/);
+	return Boolean(match?.[1] && isEmail(match[1]));
+};
+
+const isE164 = (value: unknown): value is string =>
+	typeof value === "string" && /^\+[1-9]\d{7,14}$/.test(value);
+
+type DeliveryStageInput =
+	| {
+			expectedVersion: number;
+			idempotencyKey: string;
+			channel: "email";
+			config: { provider: "resend"; apiKey: string; from: string };
+	  }
+	| {
+			expectedVersion: number;
+			idempotencyKey: string;
+			channel: "sms";
+			config: {
+				provider: "twilio";
+				accountSid: string;
+				authToken: string;
+				fromNumber: string;
+			};
+	  };
+
+type DeliveryTestInput = {
+	expectedVersion: number;
+	idempotencyKey: string;
+	channel: DeliveryProviderKind;
+	recipient: string;
+};
+
+type DeliveryConfirmationInput = {
+	expectedVersion: number;
+	idempotencyKey: string;
+	channel: DeliveryProviderKind;
+	confirmation: "ACTIVATE" | "ROLLBACK";
+};
+
+const parseBaseMutation = (value: Record<string, unknown>) =>
+	isRevision(value.expectedVersion) && isIdempotencyKey(value.idempotencyKey);
+
+const parseStageInput = (value: unknown): DeliveryStageInput => {
+	if (
+		!isStringRecord(value) ||
+		!hasExactKeys(value, [
+			"expectedVersion",
+			"idempotencyKey",
+			"channel",
+			"config",
+		]) ||
+		!parseBaseMutation(value) ||
+		!isStringRecord(value.config)
+	) {
+		return raise(
+			400,
+			"invalid_config_request",
+			"Configuration request is invalid",
+		);
+	}
+	if (
+		value.channel === "email" &&
+		hasExactKeys(value.config, ["provider", "apiKey", "from"]) &&
+		value.config.provider === "resend" &&
+		typeof value.config.apiKey === "string" &&
+		value.config.apiKey.startsWith("re_") &&
+		value.config.apiKey.length >= 16 &&
+		value.config.apiKey.length <= 512 &&
+		isEmailFrom(value.config.from)
+	) {
+		return {
+			expectedVersion: value.expectedVersion as number,
+			idempotencyKey: value.idempotencyKey as string,
+			channel: "email",
+			config: {
+				provider: "resend",
+				apiKey: value.config.apiKey,
+				from: value.config.from,
+			},
+		};
+	}
+	if (
+		value.channel === "sms" &&
+		hasExactKeys(value.config, [
+			"provider",
+			"accountSid",
+			"authToken",
+			"fromNumber",
+		]) &&
+		value.config.provider === "twilio" &&
+		typeof value.config.accountSid === "string" &&
+		/^AC[0-9a-f]{32}$/i.test(value.config.accountSid) &&
+		typeof value.config.authToken === "string" &&
+		value.config.authToken.length >= 16 &&
+		value.config.authToken.length <= 128 &&
+		isE164(value.config.fromNumber)
+	) {
+		return {
+			expectedVersion: value.expectedVersion as number,
+			idempotencyKey: value.idempotencyKey as string,
+			channel: "sms",
+			config: {
+				provider: "twilio",
+				accountSid: value.config.accountSid,
+				authToken: value.config.authToken,
+				fromNumber: value.config.fromNumber,
+			},
+		};
+	}
+	return raise(
+		400,
+		"invalid_config_request",
+		"Configuration request is invalid",
+	);
+};
+
+const parseTestInput = (value: unknown): DeliveryTestInput => {
+	if (
+		!isStringRecord(value) ||
+		!hasExactKeys(value, [
+			"expectedVersion",
+			"idempotencyKey",
+			"channel",
+			"recipient",
+		]) ||
+		!parseBaseMutation(value) ||
+		!(
+			(value.channel === "email" && isEmail(value.recipient)) ||
+			(value.channel === "sms" && isE164(value.recipient))
+		)
+	) {
+		return raise(
+			400,
+			"invalid_config_request",
+			"Configuration request is invalid",
+		);
+	}
+	return {
+		expectedVersion: value.expectedVersion as number,
+		idempotencyKey: value.idempotencyKey as string,
+		channel: value.channel,
+		recipient: value.recipient,
+	};
+};
+
+const parseConfirmationInput = (
+	value: unknown,
+	confirmation: "ACTIVATE" | "ROLLBACK",
+): DeliveryConfirmationInput => {
+	if (
+		!isStringRecord(value) ||
+		!hasExactKeys(value, [
+			"expectedVersion",
+			"idempotencyKey",
+			"channel",
+			"confirmation",
+		]) ||
+		!parseBaseMutation(value) ||
+		(value.channel !== "email" && value.channel !== "sms") ||
+		value.confirmation !== confirmation
+	) {
+		return raise(
+			400,
+			"invalid_config_request",
+			"Configuration request is invalid",
+		);
+	}
+	return {
+		expectedVersion: value.expectedVersion as number,
+		idempotencyKey: value.idempotencyKey as string,
+		channel: value.channel,
+		confirmation,
+	};
+};
+
+const parseJsonObject = (rawBody: string) => {
+	let value: unknown;
+	try {
+		value = JSON.parse(rawBody);
+	} catch {
+		return raise(
+			400,
+			"invalid_json",
+			"Configuration request must be valid JSON",
+		);
+	}
+	if (!isStringRecord(value)) {
+		return raise(
+			400,
+			"invalid_config_request",
+			"Configuration request is invalid",
+		);
+	}
+	return value;
+};
+
+const structuralReady = (env: DeliveryWorkerEnv) =>
+	isKVNamespace(env.CINAAUTH_DELIVERY_REPLAY_KV) &&
+	isVersionMetadata(env.VERSION_METADATA) &&
+	isDeliveryConfigNamespace(env.DELIVERY_CONFIG) &&
+	typeof env.CINAAUTH_DELIVERY_CONFIG_KEK_STORE?.get === "function" &&
+	(typeof env.CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2?.get === "function" ||
+		(typeof env.CINAAUTH_DELIVERY_WEBHOOK_SECRET === "string" &&
+			env.CINAAUTH_DELIVERY_WEBHOOK_SECRET.length >= 32));
+
+export const getDeliveryConfigurationStatus = async (
+	env: DeliveryWorkerEnv,
+): Promise<DeliveryConfigurationStatus> => {
+	if (!isDeliveryConfigNamespace(env.DELIVERY_CONFIG)) {
+		throw new Error("Delivery configuration repository is unavailable");
+	}
+	const [repository, email, sms, encryptionKeyReady] = await Promise.all([
+		getDeliveryConfigStub(env).status(),
+		resolveDeliveryProvider(env, "email"),
+		resolveDeliveryProvider(env, "sms"),
+		getDeliveryConfigStub(env)
+			.checkEncryptionKey()
+			.then(
+				() => true,
+				() => false,
+			),
+	]);
+	const emailConfigured = email.state === "configured";
+	const smsConfigured = sms.state === "configured";
+	const emailValidated =
+		emailConfigured &&
+		(repository.channels.email.activeVersion !== null
+			? repository.channels.email.validated
+			: true);
+	const smsValidated =
+		smsConfigured &&
+		(repository.channels.sms.activeVersion !== null
+			? repository.channels.sms.validated
+			: true);
+	const structureOk = structuralReady(env) && encryptionKeyReady;
+	const operationalState =
+		!emailConfigured && !smsConfigured
+			? "disabled"
+			: structureOk &&
+					emailConfigured &&
+					smsConfigured &&
+					emailValidated &&
+					smsValidated
+				? "ready"
+				: "degraded";
+	return {
+		structuralReady: structureOk,
+		operationalState,
+		revision: repository.revision,
+		validated: emailValidated && smsValidated,
+		updatedAt: repository.updatedAt,
+		capabilities: { email: emailConfigured, sms: smsConfigured },
+		channels: {
+			email: {
+				provider: "resend",
+				configured: emailConfigured,
+				...repository.channels.email,
+				validated: emailValidated,
+			},
+			sms: {
+				provider: "twilio",
+				configured: smsConfigured,
+				...repository.channels.sms,
+				validated: smsValidated,
+			},
+		},
+	};
+};
+
+const providerFailureResponse = (
+	result: Exclude<ProviderConfigResult<ProviderMutationValue>, { ok: true }>,
+): never =>
+	raise(
+		result.code === "invalid_provider_config" ? 400 : 409,
+		result.code,
+		`Configuration mutation was rejected at revision ${result.currentVersion}`,
+	);
+
+const unwrapMutation = (result: ProviderConfigResult<ProviderMutationValue>) =>
+	result.ok ? result.value : providerFailureResponse(result);
+
+export const sendProviderConfigurationTest = async (
+	provider: DeliveryProviderKind,
+	config: EmailProviderConfig | SmsProviderConfig,
+	recipient: string,
+	fetcher: typeof fetch = fetch,
+) => {
+	const request =
+		provider === "email"
+			? createProviderRequestForConfig(
+					{
+						kind: "email-otp",
+						payload: {
+							email: recipient,
+							otp: "CONFIGURED",
+							type: "delivery-configuration-test",
+						},
+					},
+					config,
+				)
+			: createProviderRequestForConfig(
+					{
+						kind: "phone-otp",
+						payload: { phoneNumber: recipient, code: "CONFIGURED" },
+					},
+					config,
+				);
+	const response = await fetcher(request.url, {
+		method: request.method,
+		headers: request.headers,
+		body: request.body,
+		signal: AbortSignal.timeout(10_000),
+	});
+	if (!response.ok) {
+		return raise(502, "provider_test_failed", "Delivery provider test failed");
+	}
+};
+
+const handleConfigurationManagement = async (
+	request: Request,
+	env: DeliveryWorkerEnv,
+	operation: "status" | DeliveryConfigurationOperation,
+) => {
+	if (request.method !== "POST") {
+		return raise(
+			405,
+			"method_not_allowed",
+			"Use POST for configuration requests",
+		);
+	}
+	const rawBody = await readLimitedStream(request.body, MAX_BODY_BYTES);
+	const { deliveryId } = await verifyCinaAuthRequest(request, env, rawBody);
+	const value = parseJsonObject(rawBody);
+	if (operation === "status") {
+		if (!hasExactKeys(value, [])) {
+			return raise(
+				400,
+				"invalid_config_request",
+				"Configuration request is invalid",
+			);
+		}
+		return json(await getDeliveryConfigurationStatus(env));
+	}
+	if (!isDeliveryConfigNamespace(env.DELIVERY_CONFIG)) {
+		return raise(
+			503,
+			"config_repository_unavailable",
+			"Configuration is unavailable",
+		);
+	}
+	const repository = getDeliveryConfigStub(env);
+	if (operation === "stage") {
+		const input = parseStageInput(value);
+		if (input.idempotencyKey !== deliveryId) {
+			return raise(
+				400,
+				"idempotency_mismatch",
+				"Configuration request is invalid",
+			);
+		}
+		const result =
+			input.channel === "email"
+				? await repository.stage({
+						provider: "email",
+						config: {
+							apiKey: input.config.apiKey,
+							from: input.config.from,
+						},
+						expectedVersion: input.expectedVersion,
+						idempotencyKey: input.idempotencyKey,
+					})
+				: await repository.stage({
+						provider: "sms",
+						config: {
+							accountSid: input.config.accountSid,
+							authToken: input.config.authToken,
+							from: input.config.fromNumber,
+						},
+						expectedVersion: input.expectedVersion,
+						idempotencyKey: input.idempotencyKey,
+					});
+		return json(unwrapMutation(result));
+	}
+	if (operation === "test") {
+		const input = parseTestInput(value);
+		if (input.idempotencyKey !== deliveryId) {
+			return raise(
+				400,
+				"idempotency_mismatch",
+				"Configuration request is invalid",
+			);
+		}
+		const prepared = await repository.prepareTest({
+			provider: input.channel,
+			target: input.recipient,
+			expectedVersion: input.expectedVersion,
+			idempotencyKey: input.idempotencyKey,
+		});
+		if (!prepared.ok) return providerFailureResponse(prepared);
+		if (prepared.value.kind === "completed") {
+			return json(prepared.value.result);
+		}
+		try {
+			await sendProviderConfigurationTest(
+				input.channel,
+				prepared.value.config,
+				input.recipient,
+			);
+		} catch (error) {
+			await repository.abortTest({
+				idempotencyKey: input.idempotencyKey,
+				operationToken: prepared.value.operationToken,
+			});
+			throw error;
+		}
+		return json(
+			unwrapMutation(
+				await repository.completeTest({
+					provider: input.channel,
+					version: prepared.value.version,
+					idempotencyKey: input.idempotencyKey,
+					operationToken: prepared.value.operationToken,
+				}),
+			),
+		);
+	}
+	if (operation === "activate") {
+		const input = parseConfirmationInput(value, "ACTIVATE");
+		if (input.idempotencyKey !== deliveryId) {
+			return raise(
+				400,
+				"idempotency_mismatch",
+				"Configuration request is invalid",
+			);
+		}
+		return json(
+			unwrapMutation(
+				await repository.activate({
+					provider: input.channel,
+					expectedVersion: input.expectedVersion,
+					idempotencyKey: input.idempotencyKey,
+				}),
+			),
+		);
+	}
+	const input = parseConfirmationInput(value, "ROLLBACK");
+	if (input.idempotencyKey !== deliveryId) {
+		return raise(
+			400,
+			"idempotency_mismatch",
+			"Configuration request is invalid",
+		);
+	}
+	return json(
+		unwrapMutation(
+			await repository.rollback({
+				provider: input.channel,
+				expectedVersion: input.expectedVersion,
+				idempotencyKey: input.idempotencyKey,
+			}),
+		),
 	);
 };
 
 const handleReady = async (request: Request, env: DeliveryWorkerEnv) => {
-	const issues = getRuntimeConfigIssues(env);
+	const webhookSecret = await resolveDeliveryWebhookSecret(env);
+	if (!webhookSecret.ok) {
+		return json(
+			{
+				success: false,
+				version: getVersionMetadata(env),
+				runtimeConfig: { ok: false },
+			},
+			503,
+		);
+	}
 	const authorized = await isAuthorizedReadinessRequest(request, env);
+	let status: DeliveryConfigurationStatus;
+	try {
+		status = await getDeliveryConfigurationStatus(env);
+	} catch {
+		return json(
+			{
+				success: false,
+				version: getVersionMetadata(env),
+				runtimeConfig: { ok: false },
+			},
+			503,
+		);
+	}
+	const ok = status.operationalState === "ready";
 	if (!authorized) {
-		const ok = issues.length === 0;
 		return json(
 			{
 				success: ok,
 				version: getVersionMetadata(env),
 				runtimeConfig: {
 					ok,
+					operationalState: status.operationalState,
 				},
 			},
 			ok ? 200 : 503,
 		);
 	}
-	const secretsStore = await getStagedSecretsStoreReadiness(env);
-	const ok = issues.length === 0 && secretsStore.ok;
+	const secretsStore = await getActiveSecretsStoreReadiness(env);
 
 	return json(
 		{
-			success: ok,
+			success: ok && secretsStore.ok,
 			version: getVersionMetadata(env),
 			runtimeConfig: {
-				ok: issues.length === 0,
-				issues,
+				ok,
+				operationalState: status.operationalState,
 			},
 			secretsStore,
-			providers: {
-				email: Boolean(env.RESEND_API_KEY && env.RESEND_EMAIL_FROM),
-				sms: Boolean(
-					env.TWILIO_ACCOUNT_SID &&
-						env.TWILIO_AUTH_TOKEN &&
-						env.TWILIO_FROM_NUMBER,
-				),
-			},
+			providers: status.capabilities,
 			replay: {
 				kv: isKVNamespace(env.CINAAUTH_DELIVERY_REPLAY_KV),
 			},
 		},
-		ok ? 200 : 503,
+		ok && secretsStore.ok ? 200 : 503,
 	);
 };
 
@@ -684,6 +1383,7 @@ const handleFetch = async (request: Request, env: DeliveryWorkerEnv) => {
 		return json({
 			name: "CinaSeek Delivery Worker",
 			status: "running",
+			structuralReady: structuralReady(env),
 			version: getVersionMetadata(env),
 		});
 	}
@@ -692,6 +1392,26 @@ const handleFetch = async (request: Request, env: DeliveryWorkerEnv) => {
 	}
 	if (url.pathname === "/cinaauth/delivery") {
 		return handleDelivery(request, env);
+	}
+	const configurationMatch =
+		/^\/cinaauth\/delivery\/config\/(status|stage|test|activate|rollback)$/.exec(
+			url.pathname,
+		);
+	if (configurationMatch?.[1]) {
+		try {
+			return await handleConfigurationManagement(
+				request,
+				env,
+				configurationMatch[1] as "status" | DeliveryConfigurationOperation,
+			);
+		} catch (error) {
+			if (isDeliveryHttpError(error)) throw error;
+			return raise(
+				503,
+				"config_repository_unavailable",
+				"Delivery configuration is unavailable",
+			);
+		}
 	}
 	return json({ error: "Not found" }, 404);
 };
@@ -714,7 +1434,6 @@ export default {
 					message: "cinaauth.delivery.request_failed",
 					code,
 					status,
-					error: isDeliveryHttpError(error) ? undefined : errorMessage(error),
 					version: getVersionMetadata(env),
 				}),
 			);

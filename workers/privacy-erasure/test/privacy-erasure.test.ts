@@ -12,7 +12,7 @@ import {
 
 const inboundSecret = `test-inbound-${"i".repeat(40)}`;
 const storageSecret = `test-storage-${"s".repeat(40)}`;
-const stagedInboundSecret = `test-inbound-v2-${"v".repeat(40)}`;
+const stagedInboundSecret = inboundSecret;
 const operationId = "a".repeat(44);
 const targetsJson = JSON.stringify([
 	{
@@ -105,9 +105,10 @@ const createHarness = (overrides: Partial<PrivacyErasureEnv> = {}) => {
 			return {
 				async processOperation(
 					operation: Parameters<ErasureCoordinator["processOperation"]>[0],
+					targets: Parameters<ErasureCoordinator["processOperation"]>[1],
 				) {
 					await selected.waitForInitialization();
-					return selected.coordinator.processOperation(operation);
+					return selected.coordinator.processOperation(operation, targets);
 				},
 			} as DurableObjectStub<ErasureCoordinator>;
 		},
@@ -117,12 +118,32 @@ const createHarness = (overrides: Partial<PrivacyErasureEnv> = {}) => {
 		CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2: createSecretsStoreSecret(),
 		CINAAUTH_ERASURE_STORAGE_SECRET: storageSecret,
 		CINAAUTH_ERASURE_TARGETS: targetsJson,
+		CINAAUTH_ERASURE_ALLOWED_HOSTS:
+			"commerce.example.test,support.example.test",
+		CINAAUTH_ERASURE_CONFIG_KEK_STORE: createSecretsStoreSecret(
+			async () => `test-config-kek-${"k".repeat(40)}`,
+		),
 		VERSION_METADATA: {
 			id: "test-worker-version",
 			tag: "test",
 			timestamp: "2026-08-10T00:00:00.000Z",
 		},
 		ERASURE_COORDINATOR: namespace,
+		ERASURE_CONFIG: {
+			getByName: () => ({
+				status: async () => ({
+					revision: 0,
+					structuralReady: true,
+					operationalReady: false,
+					source: "none",
+					active: null,
+					next: null,
+					previous: null,
+				}),
+				checkEncryptionKey: async () => ({ ok: true as const }),
+				activeTargets: async () => null,
+			}),
+		} as unknown as PrivacyErasureEnv["ERASURE_CONFIG"],
 		...overrides,
 	} as PrivacyErasureEnv;
 	return { env: testEnv, entries };
@@ -222,6 +243,59 @@ describe("privacy erasure runtime contract", () => {
 });
 
 describe("privacy erasure Worker and Durable Object", () => {
+	it("prefers a validated dynamic ACTIVE target set over legacy targets", async () => {
+		const dynamicTarget = {
+			id: "dynamic-system",
+			url: "https://dynamic.example.test/privacy/erase",
+			secret: `test-dynamic-${"d".repeat(40)}`,
+		};
+		const now = "2026-08-11T00:00:00.000Z";
+		const harness = createHarness({
+			CINAAUTH_ERASURE_ALLOWED_HOSTS:
+				"commerce.example.test,support.example.test,dynamic.example.test",
+			ERASURE_CONFIG: {
+				getByName: () => ({
+					status: async () => ({
+						revision: 3,
+						structuralReady: true,
+						operationalReady: true,
+						source: "dynamic",
+						active: {
+							version: 1,
+							targetIds: [dynamicTarget.id],
+							targetCount: 1,
+							configured: true,
+							validated: true,
+							createdAt: now,
+							testedAt: now,
+							activatedAt: now,
+						},
+						next: null,
+						previous: null,
+					}),
+					checkEncryptionKey: async () => ({ ok: true as const }),
+					activeTargets: async () => [dynamicTarget],
+				}),
+			} as unknown as PrivacyErasureEnv["ERASURE_CONFIG"],
+		});
+		const targetFetch = vi.fn(async (_input: RequestInfo | URL) =>
+			Response.json({
+				status: "completed",
+				completedAt: "2026-08-10T23:59:00.000Z",
+				evidenceId: "dynamic-evidence",
+			}),
+		);
+		vi.stubGlobal("fetch", targetFetch);
+
+		const response = await dispatch(
+			await makeRequest({ operationId: "z".repeat(44) }),
+			harness.env,
+		);
+		expect(response.status).toBe(200);
+		expect(targetFetch).toHaveBeenCalledOnce();
+		expect(String(targetFetch.mock.calls[0]?.[0])).toBe(dynamicTarget.url);
+	});
+
 	it("rejects unsigned and malformed ingress before calling a target", async () => {
 		const harness = createHarness();
 		const targetFetch = vi.fn();
@@ -242,9 +316,9 @@ describe("privacy erasure Worker and Durable Object", () => {
 			async (input: RequestInfo | URL, init?: RequestInit) => {
 				const body = String(init?.body);
 				const targetId = new Headers(init?.headers).get("x-cinaauth-target-id");
-				const target = parseTargets(harness.env.CINAAUTH_ERASURE_TARGETS).find(
-					(item) => item.id === targetId,
-				);
+				const target = parseTargets(
+					harness.env.CINAAUTH_ERASURE_TARGETS ?? "",
+				).find((item) => item.id === targetId);
 				expect(target).toBeDefined();
 				expect(String(input)).toBe(target?.url);
 				expect(
@@ -345,6 +419,41 @@ describe("privacy erasure Worker and Durable Object", () => {
 		expect(calls.get("commerce-system")).toBe(2);
 	});
 
+	it("blocks a pending operation when a target URL changes under the same id", async () => {
+		const harness = createHarness();
+		const changedOperationId = "u".repeat(44);
+		const targetFetch = vi.fn(
+			async () =>
+				new Response(null, { status: 202, headers: { "Retry-After": "30" } }),
+		);
+		vi.stubGlobal("fetch", targetFetch);
+
+		const first = await dispatch(
+			await makeRequest({ operationId: changedOperationId }),
+			harness.env,
+		);
+		expect(first.status).toBe(202);
+
+		const changedTargets = parseTargets(targetsJson).map((target) =>
+			target.id === "support-system"
+				? {
+						...target,
+						url: "https://support-v2.example.test/privacy/erase",
+					}
+				: target,
+		);
+		harness.env.CINAAUTH_ERASURE_ALLOWED_HOSTS =
+			"commerce.example.test,support.example.test,support-v2.example.test";
+		harness.env.CINAAUTH_ERASURE_TARGETS = JSON.stringify(changedTargets);
+		const conflict = await dispatch(
+			await makeRequest({ operationId: changedOperationId }),
+			harness.env,
+		);
+		expect(conflict.status).toBe(409);
+		expect(await conflict.json()).toMatchObject({ code: "TARGET_SET_CHANGED" });
+		expect(targetFetch).toHaveBeenCalledTimes(2);
+	});
+
 	it("rejects operation reuse for another subject", async () => {
 		const harness = createHarness();
 		const conflictOperationId = "c".repeat(44);
@@ -405,7 +514,12 @@ describe("privacy erasure Worker and Durable Object", () => {
 		const publicBody = await publicReady.json<{
 			runtimeConfig: Record<string, unknown>;
 		}>();
-		expect(publicBody.runtimeConfig).toEqual({ ok: true });
+		expect(publicBody.runtimeConfig).toEqual({
+			ok: true,
+			structuralReady: true,
+			operationalReady: true,
+			source: "legacy",
+		});
 
 		const authorizedReady = await dispatch(
 			new Request("https://cinaauth-erasure.cinagroup.com/ready", {
@@ -417,13 +531,21 @@ describe("privacy erasure Worker and Durable Object", () => {
 		expect(await authorizedReady.json()).toMatchObject({
 			runtimeConfig: {
 				ok: true,
+				structuralReady: true,
+				operationalReady: true,
+				source: "legacy",
 				targetIds: ["commerce-system", "support-system"],
 			},
-			secretsStore: { staged: true, ok: true, issues: [] },
+			webhookAuthentication: {
+				active: true,
+				ok: true,
+				source: "secrets-store-v2",
+				issues: [],
+			},
 		});
 	});
 
-	it("fails authorized readiness when the staged Store read throws while V1 remains healthy", async () => {
+	it("fails closed when the active Store V2 read throws while V1 remains healthy", async () => {
 		const get = async () => {
 			throw new Error("Secrets Store unavailable");
 		};
@@ -440,12 +562,7 @@ describe("privacy erasure Worker and Durable Object", () => {
 		expect(response.status).toBe(503);
 		expect(await response.json()).toMatchObject({
 			success: false,
-			runtimeConfig: { ok: true, issues: [] },
-			secretsStore: {
-				staged: true,
-				ok: false,
-				issues: ["erasure_webhook_secret_store_v2_unavailable"],
-			},
+			code: "ERASURE_WEBHOOK_SECRET_UNAVAILABLE",
 		});
 	});
 });

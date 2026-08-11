@@ -49,6 +49,10 @@
     {
       "binding": "CINAAUTH_DELIVERY_SERVICE",
       "service": "cinaauth-delivery"
+    },
+    {
+      "binding": "CINAAUTH_ERASURE_SERVICE",
+      "service": "cinaauth-privacy-erasure"
     }
   ],
   "d1_databases": [

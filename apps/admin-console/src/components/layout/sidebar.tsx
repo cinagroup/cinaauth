@@ -10,9 +10,11 @@ import {
 	LayoutDashboard,
 	MonitorSmartphone,
 	ScrollText,
+	Send,
 	Shield,
 	ShieldCheck,
 	Smartphone,
+	UserRoundX,
 	Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -49,6 +51,11 @@ export const NAV: NavSection[] = [
 	{
 		groupKey: "nav.compliance",
 		items: [
+			{
+				href: "/settings/privacy-erasure",
+				key: "nav.privacyErasure",
+				icon: UserRoundX,
+			},
 			{ href: "/audit", key: "nav.auditLog", icon: ScrollText },
 			{
 				href: "/settings/security",
@@ -60,6 +67,11 @@ export const NAV: NavSection[] = [
 	{
 		groupKey: "nav.integrations",
 		items: [
+			{
+				href: "/settings/delivery",
+				key: "nav.delivery",
+				icon: Send,
+			},
 			{ href: "/settings/sso", key: "nav.sso", icon: Shield },
 			{ href: "/settings/scim", key: "nav.scim", icon: Key },
 			{ href: "/devices", key: "nav.devices", icon: Smartphone },

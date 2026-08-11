@@ -20,11 +20,19 @@
   "version_metadata": {
     "binding": "VERSION_METADATA"
   },
+  "vars": {
+    "CINAAUTH_ERASURE_ALLOWED_HOSTS": ""
+  },
   "secrets_store_secrets": [
     {
       "binding": "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
       "store_id": "346e2b4b86334bc29083c064116e91cf",
       "secret_name": "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2"
+    },
+    {
+      "binding": "CINAAUTH_ERASURE_CONFIG_KEK_STORE",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINAAUTH_ERASURE_CONFIG_KEK_V1"
     }
   ],
   "durable_objects": {
@@ -32,6 +40,10 @@
       {
         "name": "ERASURE_COORDINATOR",
         "class_name": "ErasureCoordinator"
+      },
+      {
+        "name": "ERASURE_CONFIG",
+        "class_name": "ErasureConfigDurableObject"
       }
     ]
   },
@@ -39,6 +51,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["ErasureCoordinator"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["ErasureConfigDurableObject"]
     }
   ],
   "routes": [

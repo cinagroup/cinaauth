@@ -4,6 +4,11 @@ import {
 } from "@cinaauth/auth-web-contract";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import type {
+	AdminConfigurationAction,
+	AdminConfigurationService,
+} from "./admin-configuration";
+import { handleAdminConfiguration } from "./admin-configuration";
 import {
 	ensureAdminOidcClient,
 	isAdminOidcAuthorizationRequest,
@@ -83,11 +88,12 @@ import {
 } from "./privacy-export";
 import { handleProviderNamespaceGovernedRequest } from "./provider-namespace-governance";
 import { createDurableObjectRateLimitStorage } from "./rate-limit-storage";
+import { resolveAuthRuntimeSecrets } from "./runtime-secrets";
 import {
 	migrateLegacySCIMProviderOwnership,
 	parseSCIMOwnershipMigrationInput,
 } from "./scim-ownership-migration";
-import { getStagedSecretsStoreReadiness } from "./secrets-store-readiness";
+import { getActiveSecretsStoreReadiness } from "./secrets-store-readiness";
 import { handleSuperAdminGovernedRequest } from "./super-admin-governance";
 
 export { RateLimitDurableObject } from "./rate-limit";
@@ -96,6 +102,8 @@ const app = new Hono<{
 	Bindings: CloudflareBindings;
 	Variables: {
 		auth: Auth;
+		runtimeEnv: CloudflareBindings;
+		activeSecretsUnavailable: boolean;
 	};
 }>();
 
@@ -170,6 +178,7 @@ type VersionMetadataSnapshot = {
 };
 
 type RuntimeConfigIssue =
+	| "active_secrets_store_unavailable"
 	| "missing_cinaauth_secret"
 	| "weak_cinaauth_secret"
 	| "missing_cinaadmin_oidc_client_secret"
@@ -183,6 +192,7 @@ type RuntimeConfigIssue =
 	| "weak_cinaauth_migration_token"
 	| "missing_delivery_queue"
 	| "missing_delivery_service"
+	| "missing_erasure_service"
 	| "missing_delivery_webhook_url"
 	| "invalid_delivery_webhook_url"
 	| "missing_delivery_webhook_secret"
@@ -394,7 +404,15 @@ type EntitlementSubjectResolution =
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
-const readBoundedJsonBody = async (
+const cancelRequestBody = async (request: Request, reason: string) => {
+	try {
+		await request.body?.cancel(reason);
+	} catch {
+		// Rejection is already final; cancellation is best-effort cleanup.
+	}
+};
+
+export const readBoundedJsonBody = async (
 	request: Request,
 ): Promise<Record<string, unknown> | undefined> => {
 	const declaredLength = Number(request.headers.get("content-length"));
@@ -402,16 +420,67 @@ const readBoundedJsonBody = async (
 		Number.isFinite(declaredLength) &&
 		declaredLength > MAX_ENTITLEMENT_REQUEST_BODY_BYTES
 	) {
+		await cancelRequestBody(
+			request,
+			"Request body exceeds the configured limit",
+		);
 		return undefined;
 	}
-	const bytes = await request.clone().arrayBuffer();
-	if (bytes.byteLength > MAX_ENTITLEMENT_REQUEST_BODY_BYTES) return undefined;
+
+	let inspectionBody: ReadableStream<Uint8Array> | null;
 	try {
-		const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
-		return isRecord(parsed) ? parsed : undefined;
+		inspectionBody = request.clone().body;
 	} catch {
 		return undefined;
 	}
+	if (!inspectionBody) return undefined;
+
+	const reader = inspectionBody.getReader();
+	const chunks: Uint8Array[] = [];
+	let byteLength = 0;
+	try {
+		while (true) {
+			const chunk = await reader.read();
+			if (chunk.done) break;
+			byteLength += chunk.value.byteLength;
+			if (byteLength > MAX_ENTITLEMENT_REQUEST_BODY_BYTES) {
+				const clonedCancellation = reader
+					.cancel("Request body exceeds the configured limit")
+					.catch(() => undefined);
+				await cancelRequestBody(
+					request,
+					"Request body exceeds the configured limit",
+				);
+				await clonedCancellation;
+				return undefined;
+			}
+			chunks.push(chunk.value);
+		}
+	} catch {
+		const clonedCancellation = reader
+			.cancel("Request body could not be read")
+			.catch(() => undefined);
+		await cancelRequestBody(request, "Request body could not be read");
+		await clonedCancellation;
+		return undefined;
+	} finally {
+		reader.releaseLock();
+	}
+
+	const bytes = new Uint8Array(byteLength);
+	let offset = 0;
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+	try {
+		const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+		if (isRecord(parsed)) return parsed;
+	} catch {
+		// Fall through to cancel the preserved body for a rejected request.
+	}
+	await cancelRequestBody(request, "Request body must be a JSON object");
+	return undefined;
 };
 
 const getSafeSubjectId = (
@@ -784,6 +853,9 @@ export const getRuntimeConfigIssues = (
 	if (!isFetcher(env.CINAAUTH_DELIVERY_SERVICE)) {
 		issues.push("missing_delivery_service");
 	}
+	if (!isFetcher(env.CINAAUTH_ERASURE_SERVICE)) {
+		issues.push("missing_erasure_service");
+	}
 
 	if (!env.CINAAUTH_DELIVERY_WEBHOOK_URL) {
 		issues.push("missing_delivery_webhook_url");
@@ -1036,7 +1108,30 @@ app.use(
 // Create auth instance per request with current env bindings.
 app.use("*", async (c, next) => {
 	const pathname = new URL(c.req.url).pathname;
-	const runtimeConfigIssues = getRuntimeConfigIssues(c.env);
+	let runtimeEnv: CloudflareBindings;
+	try {
+		runtimeEnv = await resolveAuthRuntimeSecrets(c.env);
+		c.set("activeSecretsUnavailable", false);
+	} catch (error) {
+		c.set("activeSecretsUnavailable", true);
+		c.set("runtimeEnv", c.env);
+		logRuntimeConfigIssuesOnce(["active_secrets_store_unavailable"], c.env);
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.active_secrets.unavailable",
+				error: errorMessage(error),
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		if (pathname === "/api/ready") {
+			await next();
+			return;
+		}
+		return withNoStore(c.json({ error: "Server misconfigured" }, 503));
+	}
+	c.set("runtimeEnv", runtimeEnv);
+	const runtimeConfigIssues = getRuntimeConfigIssues(runtimeEnv);
 	if (runtimeConfigIssues.length > 0) {
 		logRuntimeConfigIssuesOnce(runtimeConfigIssues, c.env);
 		if (pathname === "/api/ready") {
@@ -1084,7 +1179,7 @@ app.use("*", async (c, next) => {
 
 	const requiredDeliveryProvider = getRequiredDeliveryProvider(pathname);
 	if (requiredDeliveryProvider) {
-		const delivery = await getDeliveryProviderCapabilities(c.env);
+		const delivery = await getDeliveryProviderCapabilities(runtimeEnv);
 		if (!delivery[requiredDeliveryProvider]) {
 			return withNoStore(
 				c.json(
@@ -1103,7 +1198,7 @@ app.use("*", async (c, next) => {
 	// background-task handler can reach ctx.waitUntil — including any task the
 	// first-time instance construction (plugin init) might schedule.
 	await runWithExecutionCtx(c.executionCtx, async () => {
-		c.set("auth", createAuth(c.env));
+		c.set("auth", createAuth(runtimeEnv));
 		await next();
 	});
 });
@@ -1111,7 +1206,7 @@ app.use("*", async (c, next) => {
 // Public, secret-free capability discovery. Login surfaces use this to avoid
 // advertising providers that are not configured on the production Worker.
 app.get("/api/auth/capabilities", async (c) => {
-	const delivery = await getDeliveryProviderCapabilities(c.env);
+	const delivery = await getDeliveryProviderCapabilities(c.var.runtimeEnv);
 	return withNoStore(c.json(getAuthCapabilities(c.env, delivery)));
 });
 
@@ -1382,6 +1477,171 @@ app.post("/api/auth/admin/send-verification", async (c) => {
 	return withNoStore(response);
 });
 
+const ADMIN_CONFIGURATION_SERVICES = new Set<AdminConfigurationService>([
+	"delivery",
+	"erasure",
+]);
+const ADMIN_CONFIGURATION_ACTIONS = new Set<AdminConfigurationAction>([
+	"status",
+	"stage",
+	"test",
+	"activate",
+	"rollback",
+]);
+
+// Secrets entered in the Admin console terminate at this authoritative route.
+// The browser never receives a Cloudflare management token or a Service Binding;
+// Auth validates, rate-limits, audits, signs, and forwards only fixed operations.
+app.post("/api/admin/configuration/:service/:action", async (c) => {
+	const serviceValue = c.req.param("service");
+	const actionValue = c.req.param("action");
+	if (
+		!ADMIN_CONFIGURATION_SERVICES.has(
+			serviceValue as AdminConfigurationService,
+		) ||
+		!ADMIN_CONFIGURATION_ACTIONS.has(actionValue as AdminConfigurationAction)
+	) {
+		return withNoStore(
+			c.json(
+				{
+					ok: false,
+					error: {
+						code: "CONFIGURATION_ROUTE_NOT_FOUND",
+						message: "Configuration route not found",
+						status: 404,
+					},
+				},
+				404,
+			),
+		);
+	}
+	const service = serviceValue as AdminConfigurationService;
+	const action = actionValue as AdminConfigurationAction;
+	const auth = c.var.auth;
+	const headers = c.req.raw.headers;
+	const rateLimitStorage = c.env.RATE_LIMITER
+		? createDurableObjectRateLimitStorage(c.env)
+		: null;
+	const result = await handleAdminConfiguration({
+		service,
+		action,
+		origin: headers.get("origin"),
+		dependencies: {
+			getSession: async () => {
+				const session = await auth.api.getSession({
+					headers,
+					query: { disableCookieCache: true },
+				});
+				if (!session) return null;
+				return {
+					user: {
+						id: session.user.id,
+						role: (session.user as { role?: string | null }).role,
+					},
+					session: {
+						createdAt: session.session.createdAt,
+						impersonatedBy: (
+							session.session as typeof session.session & {
+								impersonatedBy?: string | null;
+							}
+						).impersonatedBy,
+					},
+				};
+			},
+			consumeRateLimit: rateLimitStorage?.consume,
+			resolveSecret: async (selectedService) => {
+				const secret =
+					selectedService === "delivery"
+						? c.var.runtimeEnv.CINAAUTH_DELIVERY_WEBHOOK_SECRET
+						: c.var.runtimeEnv.CINAAUTH_ERASURE_WEBHOOK_SECRET;
+				if (!secret || secret.length < 32) {
+					throw new Error("Configuration service secret is unavailable");
+				}
+				return secret;
+			},
+			fetchService: async (selectedService, request) => {
+				const binding =
+					selectedService === "delivery"
+						? c.env.CINAAUTH_DELIVERY_SERVICE
+						: c.env.CINAAUTH_ERASURE_SERVICE;
+				if (!isFetcher(binding)) {
+					throw new Error("Configuration Service Binding is unavailable");
+				}
+				return binding.fetch(request);
+			},
+			writeAudit: async (event) => {
+				const auditApi = auth.api as typeof auth.api & {
+					logAudit?: (input: {
+						headers: Headers;
+						body: {
+							category: string;
+							action: string;
+							result: "success" | "failure";
+							actorSite: string;
+							targetType: string;
+							targetId: string;
+							metadata: Record<string, unknown>;
+						};
+					}) => Promise<unknown>;
+				};
+				if (typeof auditApi.logAudit !== "function") {
+					throw new Error("Configuration audit API is unavailable");
+				}
+				await auditApi.logAudit({
+					headers,
+					body: {
+						category: event.service === "delivery" ? "integration" : "privacy",
+						action: `configuration.${event.service}.${event.action}.${event.phase}`,
+						result: event.phase === "failed" ? "failure" : "success",
+						actorSite: "admin-console",
+						targetType: "configuration",
+						targetId: event.service,
+						metadata: {
+							actorId: event.actorId,
+							expectedVersion: event.expectedVersion,
+							...(event.resultVersion !== undefined
+								? { resultVersion: event.resultVersion }
+								: {}),
+							...(event.resultRevision !== undefined
+								? { resultRevision: event.resultRevision }
+								: {}),
+							...(event.failureCode !== undefined
+								? { failureCode: event.failureCode }
+								: {}),
+							...(event.failureStatus !== undefined
+								? { failureStatus: event.failureStatus }
+								: {}),
+						},
+					},
+				});
+			},
+			logEvent: (event) => {
+				const serialized = JSON.stringify(event);
+				if (event.level === "error") console.error(serialized);
+				else if (event.level === "warn") console.warn(serialized);
+				else console.info(serialized);
+			},
+		},
+		readBody: async () => {
+			if (!headers.get("content-type")?.startsWith("application/json")) {
+				return { ok: false } as const;
+			}
+			const body = await readBoundedJsonBody(c.req.raw);
+			return body
+				? ({ ok: true, value: body } as const)
+				: ({ ok: false } as const);
+		},
+	});
+	const response = c.json(result.body, result.status);
+	response.headers.set("Pragma", "no-cache");
+	response.headers.set("X-Content-Type-Options", "nosniff");
+	if (result.status === 429 && result.retryAfter) {
+		response.headers.set("Retry-After", String(result.retryAfter));
+		response.headers.set("X-Retry-After", String(result.retryAfter));
+	}
+	return withNoStore(response);
+});
+
 // Sensitive mutations require a fresh authoritative session. Commercial
 // management paths also evaluate the webhook-synchronized feature/limit policy
 // before delegating to the public plugin endpoint contract.
@@ -1607,7 +1867,10 @@ app.use("/api/auth/oauth2/authorize", async (c, next) => {
 	const database = createDatabase(c.env);
 	try {
 		if (isAdminRequest) {
-			await ensureAdminOidcClient(database, c.env.CINAADMIN_OIDC_CLIENT_SECRET);
+			await ensureAdminOidcClient(
+				database,
+				c.var.runtimeEnv.CINAADMIN_OIDC_CLIENT_SECRET,
+			);
 		} else {
 			await ensureOidcDemoClient(database);
 		}
@@ -1734,9 +1997,13 @@ app.get("/api/ready", async (c) => {
 	);
 	if (forbidden) return forbidden;
 
-	const runtimeConfigIssues = getRuntimeConfigIssues(c.env);
+	const runtimeEnv = c.var.runtimeEnv;
+	const runtimeConfigIssues = getRuntimeConfigIssues(runtimeEnv);
+	if (c.var.activeSecretsUnavailable) {
+		runtimeConfigIssues.unshift("active_secrets_store_unavailable");
+	}
 	try {
-		const secretsStore = await getStagedSecretsStoreReadiness(c.env);
+		const secretsStore = await getActiveSecretsStoreReadiness(c.env);
 		const database = await getDatabaseReadiness(c.env);
 		const cutoverState = getCutoverState(c.env);
 		const isReady =
@@ -1762,10 +2029,17 @@ app.get("/api/ready", async (c) => {
 					delivery: {
 						queue: isDeliveryQueue(c.env.CINAAUTH_DELIVERY_QUEUE),
 						service: isFetcher(c.env.CINAAUTH_DELIVERY_SERVICE),
-						webhookUrl: isHttpsUrl(c.env.CINAAUTH_DELIVERY_WEBHOOK_URL),
+						webhookUrl: isHttpsUrl(runtimeEnv.CINAAUTH_DELIVERY_WEBHOOK_URL),
 						webhookSecret:
-							typeof c.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET === "string" &&
-							c.env.CINAAUTH_DELIVERY_WEBHOOK_SECRET.length >= 32,
+							typeof runtimeEnv.CINAAUTH_DELIVERY_WEBHOOK_SECRET === "string" &&
+							runtimeEnv.CINAAUTH_DELIVERY_WEBHOOK_SECRET.length >= 32,
+					},
+					privacyErasure: {
+						service: isFetcher(c.env.CINAAUTH_ERASURE_SERVICE),
+						webhookUrl: isHttpsUrl(runtimeEnv.CINAAUTH_ERASURE_WEBHOOK_URL),
+						webhookSecret:
+							typeof runtimeEnv.CINAAUTH_ERASURE_WEBHOOK_SECRET === "string" &&
+							runtimeEnv.CINAAUTH_ERASURE_WEBHOOK_SECRET.length >= 32,
 					},
 					privacyExport: {
 						queue: isPrivacyExportQueue(c.env.CINAAUTH_PRIVACY_EXPORT_QUEUE),
@@ -2231,15 +2505,16 @@ const handleQueueBatch = async (
 	batch: MessageBatch<WorkerQueueMessage>,
 	env: CloudflareBindings,
 ) => {
+	const runtimeEnv = await resolveAuthRuntimeSecrets(env);
 	if (batch.queue === PRIVACY_EXPORT_QUEUE_NAME) {
 		await handlePrivacyExportBatch(
 			batch as MessageBatch<PrivacyExportMessage>,
-			env,
-			async () => createAuth(env).$context,
+			runtimeEnv,
+			async () => createAuth(runtimeEnv).$context,
 		);
 		return;
 	}
-	await handleDeliveryBatch(batch as MessageBatch<DeliveryMessage>, env);
+	await handleDeliveryBatch(batch as MessageBatch<DeliveryMessage>, runtimeEnv);
 };
 
 export default {
@@ -2247,16 +2522,18 @@ export default {
 	queue: handleQueueBatch,
 	scheduled: (_event, env, ctx) => {
 		ctx.waitUntil(
-			runRetention(env).catch((error) => {
-				console.error(
-					JSON.stringify({
-						level: "error",
-						message: "cinaauth.retention.failed",
-						error: errorMessage(error),
-						version: getVersionMetadata(env),
-					}),
-				);
-			}),
+			resolveAuthRuntimeSecrets(env)
+				.then(runRetention)
+				.catch((error) => {
+					console.error(
+						JSON.stringify({
+							level: "error",
+							message: "cinaauth.retention.failed",
+							error: errorMessage(error),
+							version: getVersionMetadata(env),
+						}),
+					);
+				}),
 		);
 		if (hasPrivacyExportRuntime(env)) {
 			ctx.waitUntil(

@@ -69,11 +69,19 @@ const expectedSecretsStoreBindings = {
 			binding: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
 			secret_name: "CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
 		},
+		{
+			binding: "CINAAUTH_DELIVERY_CONFIG_KEK_STORE",
+			secret_name: "CINAAUTH_DELIVERY_CONFIG_KEK_V1",
+		},
 	],
 	privacyErasure: [
 		{
 			binding: "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
 			secret_name: "CINAAUTH_ERASURE_WEBHOOK_SECRET_V2",
+		},
+		{
+			binding: "CINAAUTH_ERASURE_CONFIG_KEK_STORE",
+			secret_name: "CINAAUTH_ERASURE_CONFIG_KEK_V1",
 		},
 	],
 	admin: [
@@ -112,7 +120,7 @@ const checkExactSecretsStoreBindings = (config, file, expectedBindings) => {
 	);
 	check(
 		configuredBindings.length === expectedBindings.length,
-		`${rel(file)} must declare exactly ${expectedBindings.length} staged Secrets Store binding(s)`,
+		`${rel(file)} must declare exactly ${expectedBindings.length} active Secrets Store binding(s)`,
 	);
 
 	const exactKeys = entries.map(secretStoreBindingKey);
@@ -126,7 +134,7 @@ const checkExactSecretsStoreBindings = (config, file, expectedBindings) => {
 	);
 	check(
 		new Set(entries.map((entry) => entry.secret_name)).size === entries.length,
-		`${rel(file)} must not map one staged secret name more than once`,
+		`${rel(file)} must not map one active secret name more than once`,
 	);
 
 	for (const entry of entries) {
@@ -161,6 +169,7 @@ const packageFile = join(workerDir, "package.json");
 const wranglerFile = join(workerDir, "wrangler.json");
 const devVarsExampleFile = join(workerDir, ".dev.vars.example");
 const indexFile = join(workerDir, "src", "index.ts");
+const adminConfigurationFile = join(workerDir, "src", "admin-configuration.ts");
 const authFile = join(workerDir, "src", "auth.ts");
 const authRoutingFile = join(workerDir, "src", "auth-routing.ts");
 const captchaConfigFile = join(workerDir, "src", "captcha-config.ts");
@@ -247,6 +256,11 @@ const remotePreflightFile = join(
 	"scripts",
 	"check-cloudflare-remote.mjs",
 );
+const authReadinessCheckFile = join(
+	workerDir,
+	"scripts",
+	"check-auth-readiness.mjs",
+);
 const runtimeCapabilitiesCheckFile = join(
 	workerDir,
 	"scripts",
@@ -330,6 +344,11 @@ const privacyErasureProtocolFile = join(
 	privacyErasureDir,
 	"src",
 	"protocol.ts",
+);
+const privacyErasureManagementFile = join(
+	privacyErasureDir,
+	"src",
+	"management.ts",
 );
 const privacyErasurePackageFile = join(privacyErasureDir, "package.json");
 const privacyErasureWranglerFile = join(privacyErasureDir, "wrangler.json");
@@ -766,6 +785,7 @@ const gitignoreFile = join(repoRoot, ".gitignore");
 const packageJson = readJson(packageFile);
 const wrangler = readJson(wranglerFile);
 const indexTs = read(indexFile);
+const adminConfigurationTs = read(adminConfigurationFile);
 const authTs = read(authFile);
 const authRoutingTs = read(authRoutingFile);
 const captchaConfigTs = read(captchaConfigFile);
@@ -795,6 +815,7 @@ const privacyExportTs = read(privacyExportFile);
 const privacyDeletionRuntimeTs = read(privacyDeletionRuntimeFile);
 const envTs = read(envFile);
 const remotePreflight = read(remotePreflightFile);
+const authReadinessCheck = read(authReadinessCheckFile);
 const runtimeCapabilitiesCheck = read(runtimeCapabilitiesCheckFile);
 const configureHyperdrive = read(configureHyperdriveFile);
 const configureTurnstile = read(configureTurnstileFile);
@@ -811,6 +832,7 @@ const deliveryDeployment = read(deliveryDeploymentFile);
 const privacyErasureIndex = read(privacyErasureIndexFile);
 const privacyErasureCoordinator = read(privacyErasureCoordinatorFile);
 const privacyErasureProtocol = read(privacyErasureProtocolFile);
+const privacyErasureManagement = read(privacyErasureManagementFile);
 const privacyErasurePackage = readJson(privacyErasurePackageFile);
 const privacyErasureWrangler = readJson(privacyErasureWranglerFile);
 const privacyErasureProvision = read(privacyErasureProvisionFile);
@@ -2194,6 +2216,12 @@ check(
 	`${rel(packageFile)} must expose provision:secrets`,
 );
 check(
+	packageJson.scripts?.["test:provision-secrets"] ===
+		"node --test ./scripts/provision-secrets.test.mjs" &&
+		packageJson.scripts?.check?.includes("pnpm run test:provision-secrets"),
+	`${rel(packageFile)} must expose and run the bulk secret provisioning tests`,
+);
+check(
 	packageJson.scripts?.check?.includes("pnpm run test"),
 	`${rel(packageFile)} check script must run Worker regression tests`,
 );
@@ -2257,47 +2285,106 @@ checkExactSecretsStoreBindings(
 checkIncludesAll(
 	deploymentDoc,
 	[
-		"Secrets Store V2 is **staged only**",
+		"Secrets Store V2 is active",
 		SECRETS_STORE_ID,
 		"CINAADMIN_OIDC_TRANSACTION_SECRET_STORE_V2",
-		"V1 Worker secrets",
-		"call `get()`",
+		"CINAAUTH_DELIVERY_CONFIG_KEK_STORE",
+		"CINAAUTH_ERASURE_CONFIG_KEK_STORE",
+		"binding-first",
+		"does not fall back to a V1 Worker secret",
+		"reports `active: true`",
 		"Account Secrets Store Edit",
 		"`workers` scope",
-		"coordinated cutover",
+		"Two-phase bootstrap and post-deploy control plane",
+		"/api/admin/configuration/delivery/stage",
+		"/api/admin/configuration/erasure/stage",
+		"CINAAUTH_ERASURE_SERVICE",
+		"X-CinaAuth-Timestamp",
+		"X-CinaAuth-Nonce",
+		"300 seconds",
+		"terminal `completed` or `failed` audit outcome",
 	],
 	deploymentDocFile,
-	"Auth deployment docs must keep the staged V2 boundary, exact store, permissions, probes, and coordinated cutover explicit",
+	"Auth deployment docs must define active binding-first secrets, exact mappings, two-phase bootstrap, and the post-deploy control plane",
+);
+checkIncludesAll(
+	adminConfigurationTs,
+	[
+		'phase: "requested" | "completed" | "failed"',
+		'phase: "failed"',
+		'code: "AUDIT_TERMINAL_WRITE_FAILED"',
+		"`v1=${signature}`",
+		'"X-CinaAuth-Nonce": input.idempotencyKey',
+		'"X-CinaAuth-Timestamp": timestamp',
+		"`${timestamp}.${input.idempotencyKey}.${input.body}`",
+	],
+	adminConfigurationFile,
+	"Auth configuration mutations must produce redacted terminal audit outcomes and time-bind signed child requests",
+);
+checkIncludesAll(
+	indexTs,
+	[
+		'event.phase === "failed" ? "failure" : "success"',
+		"failureCode: event.failureCode",
+		"failureStatus: event.failureStatus",
+	],
+	indexFile,
+	"Auth must persist failed configuration outcomes as authoritative audit failures",
+);
+checkIncludesAll(
+	privacyErasureManagement,
+	[
+		"MANAGEMENT_SIGNATURE_ALLOWED_SKEW_SECONDS = 300",
+		'request.headers.get("x-cinaauth-nonce")',
+		'request.headers.get("x-cinaauth-timestamp")',
+		"`${timestamp}.${nonce}.${body}`",
+		"value.idempotencyKey !== nonce",
+	],
+	privacyErasureManagementFile,
+	"Privacy configuration management must reject stale or nonce-mismatched signed requests",
+);
+check(
+	!deploymentDoc.includes("Secrets Store V2 is **staged only**") &&
+		!deploymentDoc.includes("--allow-erasure-not-ready") &&
+		!deploymentDoc.includes("ready before the provisioning script"),
+	`${rel(deploymentDocFile)} must not document staged V2 or child operational readiness as an Auth structural-deploy prerequisite`,
 );
 checkIncludesAll(
 	deliveryDeployment,
 	[
-		"Secrets Store V2 is **staged only**",
 		SECRETS_STORE_ID,
 		"CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
 		"CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2",
-		"calls `get()`",
-		"Account Secrets Store Edit",
+		"CINAAUTH_DELIVERY_CONFIG_KEK_STORE",
+		"CINAAUTH_DELIVERY_CONFIG_KEK_V1",
 		"`workers` scope",
-		"coordinated cutover",
+		"structurally healthy",
+		"operational state",
+		"ACTIVE",
+		"NEXT",
+		"PREVIOUS",
 	],
 	deliveryDeploymentFile,
-	"Delivery deployment docs must keep the staged V2 boundary, exact mapping, permissions, authorized probe, and coordinated cutover explicit",
+	"Delivery deployment docs must define active Secrets Store bindings, encrypted versioned configuration, and split readiness",
 );
 checkIncludesAll(
 	privacyErasureDeployment,
 	[
-		"Secrets Store V2 is **staged only**",
 		SECRETS_STORE_ID,
 		"CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
 		"CINAAUTH_ERASURE_WEBHOOK_SECRET_V2",
-		"calls `get()`",
-		"Account Secrets Store Edit",
-		"`workers` scope",
-		"coordinated cutover",
+		"CINAAUTH_ERASURE_CONFIG_KEK_STORE",
+		"CINAAUTH_ERASURE_CONFIG_KEK_V1",
+		"Structural readiness",
+		"Operational readiness",
+		"ACTIVE/NEXT/PREVIOUS",
+		"domain-separated HKDF/HMAC",
+		"legacy unkeyed idempotency cache rows",
+		"authenticated Auth",
+		"control plane",
 	],
 	privacyErasureDeploymentFile,
-	"Privacy Erasure deployment docs must keep the staged V2 boundary, exact mapping, permissions, authorized probe, and coordinated cutover explicit",
+	"Privacy Erasure deployment docs must define active Secrets Store bindings, encrypted target versions, and split readiness",
 );
 
 const hyperdrive = wrangler.hyperdrive?.find(
@@ -2313,9 +2400,17 @@ check(
 const deliveryService = wrangler.services?.find(
 	(binding) => binding.binding === "CINAAUTH_DELIVERY_SERVICE",
 );
+const erasureService = wrangler.services?.find(
+	(binding) => binding.binding === "CINAAUTH_ERASURE_SERVICE",
+);
 check(
 	deliveryService?.service === "cinaauth-delivery",
 	"wrangler.json must bind CINAAUTH_DELIVERY_SERVICE to cinaauth-delivery",
+);
+check(
+	wrangler.services?.length === 2 &&
+		erasureService?.service === "cinaauth-privacy-erasure",
+	"wrangler.json must bind exactly CINAAUTH_DELIVERY_SERVICE and CINAAUTH_ERASURE_SERVICE to their authoritative Workers",
 );
 const rateLimiter = wrangler.durable_objects?.bindings?.find(
 	(binding) => binding.name === "RATE_LIMITER",
@@ -2796,41 +2891,47 @@ checkIncludesAll(
 	[
 		"CINAAUTH_ERASURE_STORAGE_SECRET",
 		"CINAAUTH_ERASURE_TARGETS",
-		"--allow-empty-targets",
+		"--include-legacy-webhook",
+		"--include-legacy-targets",
 		'fileURLToPath(import.meta.resolve("wrangler"))',
 		"process.execPath",
 		"input: `${process.env[name]}\\n`",
 		'stdio: ["pipe", "inherit", "inherit"]',
 	],
 	privacyErasureProvisionFile,
-	"erasure secrets must be validated and provisioned through stdin with an explicit bootstrap escape hatch",
+	"erasure provisioning must keep only the storage key required and make legacy webhook/targets explicit stdin-only migration inputs",
 );
 checkIncludesAll(
 	privacyErasureRemote,
 	[
 		"/workers/scripts/${config.name}/settings",
-		'item.name === "ERASURE_COORDINATOR"',
-		"/workers/durable_objects/namespaces/${coordinatorBinding.namespace_id}",
+		'{ binding: "ERASURE_COORDINATOR", className: "ErasureCoordinator" }',
+		'{ binding: "ERASURE_CONFIG", className: "ErasureConfigDurableObject" }',
+		"/workers/durable_objects/namespaces/${binding.namespace_id}",
 		"durableNamespace.use_sqlite !== true",
 		"/workers/scripts/${config.name}/deployments",
-		'version.resources?.script_runtime?.migration_tag !== "v1"',
-		"body.runtimeConfig?.ok !== false",
-		"must not expose target URLs or secret fields",
+		'version.resources?.script_runtime?.migration_tag !== "v2"',
+		"CINAAUTH_ERASURE_CONFIG_KEK_STORE",
+		"body.runtimeConfig?.structuralReady !== true",
+		"body.runtimeConfig?.operationalReady !== false",
+		"Readiness must not expose target URLs or secret fields",
 	],
 	privacyErasureRemoteFile,
-	"remote erasure acceptance must verify the SQLite DO, fail-closed bootstrap, and redacted readiness",
+	"remote erasure acceptance must verify both SQLite DOs, active Store bindings, fail-closed bootstrap, and redacted readiness",
 );
 checkIncludesAll(
 	privacyErasureDeployment,
 	[
-		"Raw user IDs, email addresses",
+		"Raw",
+		"user IDs, emails",
 		"CINAAUTH_ERASURE_STORAGE_SECRET",
-		"CINAAUTH_ERASURE_TARGETS=[]",
-		"X-CinaAuth-Target-Id",
-		"policyVersion",
+		"CINAAUTH_ERASURE_TARGETS",
+		"/internal/config/erasure/stage",
+		"X-CinaAuth-Operation-Id",
+		"privacy-center policy",
 	],
 	privacyErasureDeploymentFile,
-	"erasure deployment docs must define persistence, bootstrap, target, and policy-version contracts",
+	"erasure deployment docs must define persistence, dynamic bootstrap, target, and policy-version contracts",
 );
 
 checkIncludesAll(
@@ -2884,6 +2985,7 @@ checkIncludesAll(
 		"extends Cloudflare.Env",
 		"CINAAUTH_SECRET: string",
 		"CINAAUTH_DELIVERY_QUEUE: Queue<DeliveryMessage>",
+		"CINAAUTH_ERASURE_SERVICE: Fetcher",
 		"VERSION_METADATA: WorkerVersionMetadata",
 		"CINAAUTH_MIGRATION_TOKEN?: string",
 		"CINAAUTH_D1_MIGRATION_TOKEN?: string",
@@ -2916,7 +3018,16 @@ checkIncludesAll(
 		"deploy-privacy-erasure",
 		"Deploy Privacy Erasure Worker",
 		"workers/privacy-erasure",
+		"Verify Delivery Worker structural bootstrap",
+		"Verify Privacy Erasure structural bootstrap",
+		"--allow-not-ready",
 		"needs: [deploy-delivery, deploy-privacy-erasure]",
+		"deploy-account-portal",
+		"deploy-admin-console",
+		"uses: ./.github/workflows/deploy-account-portal.yml",
+		"uses: ./.github/workflows/deploy-admin-console.yml",
+		"needs: deploy-worker",
+		"secrets: inherit",
 		"CLOUDFLARE_API_TOKEN",
 		"CLOUDFLARE_ACCOUNT_ID",
 		"CINAAUTH_HYPERDRIVE_ID",
@@ -2927,45 +3038,46 @@ checkIncludesAll(
 		'test "${#CINAAUTH_SECRET}" -ge 32',
 		"CINAAUTH_MIGRATION_TOKEN",
 		'test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32',
-		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
-		'test "${#CINAAUTH_DELIVERY_WEBHOOK_SECRET}" -ge 32',
 		"CINAAUTH_PRIVACY_EXPORT_KEY",
 		'test "${#CINAAUTH_PRIVACY_EXPORT_KEY}" -ge 32',
-		"CINAAUTH_ERASURE_WEBHOOK_URL",
-		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
-		"CINAADMIN_OIDC_CLIENT_SECRET",
-		"CINAADMIN_OIDC_BRIDGE_SECRET",
 		"CINAAUTH_ERASURE_STORAGE_SECRET",
-		"CINAAUTH_ERASURE_TARGETS",
 		"CINAAUTH_ENTITLEMENT_CONFIG",
-		"https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase",
-		"https://cinaauth-erasure.cinagroup.com/ready",
 		"https://cinaauth-delivery.cinagroup.com/cinaauth/delivery",
-		"https://cinaauth-delivery.cinagroup.com/ready",
-		'-H "Authorization: Bearer $CINAAUTH_DELIVERY_WEBHOOK_SECRET"',
-		"RESEND_API_KEY",
-		"RESEND_EMAIL_FROM",
-		"TWILIO_ACCOUNT_SID",
-		"TWILIO_AUTH_TOKEN",
-		"TWILIO_FROM_NUMBER",
+		"Provision Auth Worker core and optional secrets",
+		"run: pnpm run provision:secrets",
 		"https://auth.cinaseek.ai/api/migrate",
 		"-X POST https://auth.cinaseek.ai/api/migrate",
 		"https://auth.cinaseek.ai/api/ready",
 	],
 	workflowFile,
-	"backend CI must gate delivery, Auth Worker migrations, and readiness",
+	"backend CI must deploy child Workers structurally, gate Auth migrations/readiness, then invoke both reusable frontend deployments",
+);
+check(
+	[
+		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
+		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+		"CINAADMIN_OIDC_CLIENT_SECRET",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
+		"CINAAUTH_ERASURE_TARGETS",
+		"RESEND_API_KEY",
+		"RESEND_EMAIL_FROM",
+		"TWILIO_ACCOUNT_SID",
+		"TWILIO_AUTH_TOKEN",
+		"TWILIO_FROM_NUMBER",
+	].every((name) => !workflow.includes(name)),
+	`${rel(workflowFile)} must not require active Store values or post-deploy provider/target configuration as deployment secrets`,
 );
 checkIncludesAll(
 	accountWorkflow,
 	[
+		"workflow_call",
+		"workflow_dispatch",
 		"apps/account-portal",
 		"accounts.cinaseek.ai",
 		"NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai",
 		"NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}",
 		"pnpm run test:oauth-build",
 		"pnpm run check:oauth-build",
-		"CINAAUTH_DEMO_SECRET",
-		'test "${#CINAAUTH_ACCOUNT_SECRET}" -ge 32',
 		"CINAAUTH_MIGRATION_TOKEN",
 		'test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32',
 		"Wait for governed Auth readiness",
@@ -2975,11 +3087,16 @@ checkIncludesAll(
 		"pnpm run typecheck",
 		"pnpm run build:cf",
 		"cloudflare/wrangler-action@v3",
-		"pnpm exec wrangler secret put CINAAUTH_SECRET",
 		"demo-auth.cinagroup.com",
 	],
 	accountWorkflowFile,
-	"account portal CI must deploy independently with redirect smoke coverage",
+	"account portal CI must remain reusable and manually invocable with governed readiness and redirect smoke coverage",
+);
+check(
+	!accountWorkflow.includes("CINAAUTH_DEMO_SECRET") &&
+		!accountWorkflow.includes("wrangler secret put") &&
+		!accountWorkflow.includes("push:"),
+	`${rel(accountWorkflowFile)} must not provision a duplicate Auth secret or race the central backend push deployment`,
 );
 check(
 	accountPackage.name === "@cinaauth/account-portal" &&
@@ -3104,6 +3221,8 @@ checkIncludesAll(
 checkIncludesAll(
 	adminWorkflow,
 	[
+		"workflow_call",
+		"workflow_dispatch",
 		"apps/admin-console",
 		"admin.cinaseek.ai",
 		"pnpm run cf-typegen",
@@ -3111,32 +3230,39 @@ checkIncludesAll(
 		"pnpm run test",
 		"pnpm run build:cf",
 		"cloudflare/wrangler-action@v3",
-		"CINAADMIN_OIDC_CLIENT_SECRET",
-		"CINAADMIN_OIDC_BRIDGE_SECRET",
-		"CINAADMIN_OIDC_TRANSACTION_SECRET",
 		"CINAAUTH_MIGRATION_TOKEN",
 		"Wait for governed Auth readiness",
 		"super-admin-governance-v1",
 		"provider-namespace-registry-v1",
 		"ready.database?.invariants?.ok",
-		"pnpm run provision:secrets",
 	],
 	adminWorkflowFile,
-	"admin console CI must deploy independently",
+	"admin console CI must remain reusable and manually invocable after governed Auth readiness",
+);
+check(
+	!adminWorkflow.includes("CINAADMIN_OIDC_CLIENT_SECRET") &&
+		!adminWorkflow.includes("CINAADMIN_OIDC_BRIDGE_SECRET") &&
+		!adminWorkflow.includes("CINAADMIN_OIDC_TRANSACTION_SECRET") &&
+		!adminWorkflow.includes("provision:secrets") &&
+		!adminWorkflow.includes("push:"),
+	`${rel(adminWorkflowFile)} must use active Store bindings without V1 OIDC provisioning or an independent push race`,
 );
 check(
 	accountWorkflow.indexOf("Wait for governed Auth readiness") <
-		accountWorkflow.indexOf("Inject account portal secret") &&
-		accountWorkflow.indexOf("Wait for governed Auth readiness") <
-			accountWorkflow.indexOf("Deploy account portal"),
-	`${rel(accountWorkflowFile)} must verify governed Auth readiness before any frontend write`,
+		accountWorkflow.indexOf("Deploy account portal"),
+	`${rel(accountWorkflowFile)} must verify governed Auth readiness before deployment`,
 );
 check(
 	adminWorkflow.indexOf("Wait for governed Auth readiness") <
-		adminWorkflow.indexOf("Provision Admin OIDC secrets") &&
-		adminWorkflow.indexOf("Provision Admin OIDC secrets") <
-			adminWorkflow.indexOf("Deploy admin console"),
-	`${rel(adminWorkflowFile)} must verify Auth readiness and provision secrets before deploy`,
+		adminWorkflow.indexOf("Deploy admin console"),
+	`${rel(adminWorkflowFile)} must verify Auth readiness before deployment`,
+);
+check(
+	workflow.indexOf("deploy-worker:") <
+		workflow.indexOf("deploy-account-portal:") &&
+		workflow.indexOf("deploy-worker:") <
+			workflow.indexOf("deploy-admin-console:"),
+	`${rel(workflowFile)} must serialize both frontend workflows after Auth`,
 );
 check(
 	!workflow.includes("https://auth.cinagroup.com") &&
@@ -3178,31 +3304,60 @@ checkIncludesAll(
 		"MAX_QUEUE_RETENTION_SECONDS",
 		"message_retention_period",
 		"/workers/scripts/",
-		"checkServiceBindings",
-		'CINAAUTH_DELIVERY_SERVICE" && item.type === "service"',
+		"checkWorkerBindings",
+		"CINAAUTH_DELIVERY_SERVICE",
+		"CINAAUTH_ERASURE_SERVICE",
+		"cinaauth-privacy-erasure",
+		"SECRETS_STORE_BINDINGS",
+		"CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+		"CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2",
+		"CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2",
+		"CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2",
+		'item.type === "secrets_store_secret"',
 		"/workers/domains",
-		"/api/ready",
-		"Cache-Control: no-store",
 		"CINAAUTH_SECRET",
 		"CINAAUTH_MIGRATION_TOKEN",
 		"CINAAUTH_DELIVERY_WEBHOOK_URL",
-		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 		"CINAAUTH_PRIVACY_EXPORT_KEY",
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
-		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
-		"CINAADMIN_OIDC_CLIENT_SECRET",
-		"CINAADMIN_OIDC_BRIDGE_SECRET",
-		"migrationToken",
-		"authorizedReadiness",
+		"checkAuthReadiness",
 		"evaluateRuntimeCapabilities",
 		"evaluateDeliveryCapabilityParity",
 		"DELIVERY_READY_URL",
 		'new URL("/api/auth/capabilities", origin)',
-		"body.database?.ok",
-		'body.cutover?.state !== "live"',
 	],
 	remotePreflightFile,
 	"Cloudflare remote preflight must verify deploy prerequisites without printing secret values",
+);
+checkIncludesAll(
+	authReadinessCheck,
+	[
+		'new URL("/api/ready", origin)',
+		"migrationToken",
+		"authorizedReadiness",
+		"Authorized auth readiness is unreachable",
+		"!authorizedReadiness.ok",
+		"Cache-Control: no-store",
+		"body.secretsStore?.active !== true",
+		'body.secretsStore?.source !== "secrets-store-v2"',
+		"body.database?.ok",
+		'body.cutover?.state !== "live"',
+	],
+	authReadinessCheckFile,
+	"Auth readiness verification must fail closed on unreachable or non-success authorized responses",
+);
+const remoteRequiredSecrets =
+	remotePreflight.match(
+		/const REQUIRED_WORKER_SECRETS = \[([\s\S]*?)\];/,
+	)?.[1] ?? "";
+check(
+	[
+		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
+		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
+		"CINAADMIN_OIDC_CLIENT_SECRET",
+		"CINAADMIN_OIDC_BRIDGE_SECRET",
+	].every((name) => !remoteRequiredSecrets.includes(`"${name}"`)),
+	`${rel(remotePreflightFile)} must not require legacy V1 shared secrets when active V2 bindings exist`,
 );
 checkIncludesAll(
 	runtimeCapabilitiesCheck,
@@ -3346,42 +3501,59 @@ check(
 checkIncludesAll(
 	provisionSecrets,
 	[
+		"CINAAUTH_SECRET",
+		"CINAAUTH_MIGRATION_TOKEN",
 		"CINAAUTH_DELIVERY_WEBHOOK_URL",
-		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 		"CINAAUTH_PRIVACY_EXPORT_KEY",
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
-		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
-		"CINAADMIN_OIDC_CLIENT_SECRET",
-		"CINAADMIN_OIDC_BRIDGE_SECRET",
-		"--allow-erasure-not-ready",
-		"CINAAUTH_SKIP_DELIVERY_READY_CHECK",
+		"CANONICAL_ERASURE_WEBHOOK_URL",
+		"https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase",
+		"FIXED_SECRETS[name] ?? env[name]",
 		"CLOUDFLARE_TURNSTILE_SITE_KEY",
 		"CLOUDFLARE_TURNSTILE_SECRET_KEY",
 		"CINAAUTH_ENTITLEMENT_CONFIG",
 		"must be configured together",
-		"Authorization",
+		'fileURLToPath(import.meta.resolve("wrangler"))',
+		"process.execPath",
+		"Object.fromEntries",
+		"JSON.stringify(values)",
 		"wrangler",
 		"secret",
-		"put",
+		"bulk",
+		"spawnSyncImpl",
 		"stdio",
 		"pipe",
-		"Delivery Worker readiness must pass",
-		"Privacy Erasure Worker readiness must pass",
 	],
 	provisionSecretsFile,
-	"secret provisioning must write through stdin and require delivery readiness before auth deploy",
+	"Auth secret provisioning must write required and configured optional values through one Wrangler bulk stdin call",
 );
 check(
 	!provisionSecrets.includes("process.argv.push") &&
-		!provisionSecrets.includes("echo "),
-	`${rel(provisionSecretsFile)} must not pass secret values through command-line arguments`,
+		!provisionSecrets.includes("echo ") &&
+		!provisionSecrets.includes("fetch(") &&
+		!provisionSecrets.includes('"put"') &&
+		!provisionSecrets.includes("writeFile") &&
+		!provisionSecrets.includes("mkdtemp") &&
+		!provisionSecrets.includes("CINAAUTH_DELIVERY_WEBHOOK_SECRET") &&
+		!provisionSecrets.includes("CINAAUTH_ERASURE_WEBHOOK_SECRET") &&
+		!provisionSecrets.includes("CINAADMIN_OIDC_CLIENT_SECRET") &&
+		!provisionSecrets.includes("CINAADMIN_OIDC_BRIDGE_SECRET"),
+	`${rel(provisionSecretsFile)} must not pass values in arguments, write temporary files, probe child readiness, or provision active V2 shared secrets as V1 Worker secrets`,
+);
+check(
+	!provisionSecrets.includes(
+		'assertHttpsUrl(env, "CINAAUTH_ERASURE_WEBHOOK_URL")',
+	),
+	`${rel(provisionSecretsFile)} must pin the erasure webhook instead of accepting an operator URL override`,
 );
 check(
 	workflow.includes("CLOUDFLARE_TURNSTILE_SITE_KEY") &&
 		workflow.includes("CLOUDFLARE_TURNSTILE_SECRET_KEY") &&
-		accountWorkflow.includes("pnpm exec wrangler secret put CINAAUTH_SECRET") &&
+		workflow.includes("run: pnpm run provision:secrets") &&
+		!workflow.includes("node - <<") &&
+		!workflow.includes("wrangler secret bulk") &&
 		!workflow.includes("npx wrangler"),
-	`${rel(workflowFile)} must provision paired Turnstile inputs and use the repository pnpm toolchain`,
+	`${rel(workflowFile)} must delegate Auth bulk provisioning to the tested provisioner without duplicating inline selection logic`,
 );
 
 checkIncludesAll(
@@ -3392,11 +3564,13 @@ checkIncludesAll(
 		"CINAAUTH_SECRET",
 		"CINAAUTH_MIGRATION_TOKEN",
 		"CINAAUTH_DELIVERY_WEBHOOK_URL",
-		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
-		"CINAAUTH_ERASURE_WEBHOOK_SECRET",
-		"CINAADMIN_OIDC_CLIENT_SECRET",
-		"CINAADMIN_OIDC_BRIDGE_SECRET",
+		"Active Secrets Store V2 bindings",
+		"binding-first",
+		"CINAAUTH_DELIVERY_CONFIG_KEK_STORE",
+		"CINAAUTH_ERASURE_CONFIG_KEK_STORE",
+		"Two-phase bootstrap and post-deploy control plane",
+		"CINAAUTH_ERASURE_SERVICE",
 		"pnpm --dir workers/auth-api run check:production",
 		"pnpm --dir workers/auth-api run check:cloudflare",
 		"CINAAUTH_HYPERDRIVE_ID",

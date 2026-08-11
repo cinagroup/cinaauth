@@ -1,6 +1,14 @@
+import type { DeliveryProviderConfig } from "./provider-config";
+
 export interface DeliveryWorkerEnv extends Cloudflare.Env {
 	/** Shared HMAC secret used by the CinaAuth API Worker delivery client. */
-	CINAAUTH_DELIVERY_WEBHOOK_SECRET: string;
+	CINAAUTH_DELIVERY_WEBHOOK_SECRET?: string;
+	/** Preferred shared HMAC secret from the account Secrets Store. */
+	CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2?: SecretsStoreSecret;
+	/** KEK used only to derive per-version provider configuration keys. */
+	CINAAUTH_DELIVERY_CONFIG_KEK_STORE: SecretsStoreSecret;
+	/** Strongly consistent encrypted provider configuration repository. */
+	DELIVERY_CONFIG: DurableObjectNamespace<DeliveryProviderConfig>;
 	/** Short-lived delivery-id replay cache. */
 	CINAAUTH_DELIVERY_REPLAY_KV: KVNamespace;
 	/** Worker version metadata for readiness and logs. */

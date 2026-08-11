@@ -1,6 +1,9 @@
+# Optional legacy rollback path. Production prefers the active Secrets Store
+# binding and fails closed if that present binding cannot be resolved.
 CINAAUTH_DELIVERY_WEBHOOK_SECRET=replace-with-the-same-secret-used-by-cinaauth-api
 
-# Email delivery through Resend.
+# Optional legacy provider fallback. Normal production setup stages these
+# values through the authenticated post-deploy configuration API instead.
 RESEND_API_KEY=
 RESEND_EMAIL_FROM=CinaSeek <no-reply@cinagroup.com>
 

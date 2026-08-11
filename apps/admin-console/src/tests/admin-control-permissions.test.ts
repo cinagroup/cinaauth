@@ -51,6 +51,21 @@ describe("admin control permission registry", () => {
 		expect(
 			hasAdminControlPermission("security_admin", "security.policy.publish"),
 		).toBe(false);
+		expect(
+			hasAdminControlPermission("security_admin", "integration.delivery.read"),
+		).toBe(true);
+		expect(
+			hasAdminControlPermission("security_admin", "privacy.erasure.read"),
+		).toBe(true);
+		expect(
+			hasAdminControlPermission(
+				"security_admin",
+				"integration.delivery.manage",
+			),
+		).toBe(false);
+		expect(
+			hasAdminControlPermission("security_admin", "privacy.erasure.manage"),
+		).toBe(false);
 	});
 
 	it("denies unrecognized and missing roles by default", () => {

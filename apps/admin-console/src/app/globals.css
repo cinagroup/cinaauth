@@ -65,7 +65,7 @@
 
 	--ink: #fafafa; /* neutral-50 */
 	--body: #a3a3a3; /* neutral-400 */
-	--mute: #737373; /* neutral-500 */
+	--mute: #7a7a7a; /* WCAG AA for small text on neutral-950 */
 
 	--hairline: #262626; /* neutral-800 */
 	--hairline-strong: #404040; /* neutral-700 */

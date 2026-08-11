@@ -45,6 +45,9 @@ const makeEnv = (
 		CINAAUTH_DELIVERY_SERVICE: {
 			fetch: async () => Response.json({ success: true }),
 		},
+		CINAAUTH_ERASURE_SERVICE: {
+			fetch: async () => Response.json({ success: true }),
+		},
 		CINAAUTH_PRIVACY_EXPORT_QUEUE: {
 			send: async () => undefined,
 		} as unknown as Queue<PrivacyExportMessage>,
@@ -132,6 +135,7 @@ describe("runtime config guardrails", () => {
 				CINAAUTH_MIGRATION_TOKEN: "",
 				CINAAUTH_DELIVERY_QUEUE: undefined as unknown as Queue<DeliveryMessage>,
 				CINAAUTH_DELIVERY_SERVICE: undefined as unknown as Fetcher,
+				CINAAUTH_ERASURE_SERVICE: undefined as unknown as Fetcher,
 				CINAAUTH_PRIVACY_EXPORT_QUEUE:
 					undefined as unknown as Queue<PrivacyExportMessage>,
 				CINAAUTH_PRIVACY_EXPORTS: undefined as unknown as R2Bucket,
@@ -155,6 +159,7 @@ describe("runtime config guardrails", () => {
 			"missing_cinaauth_migration_token",
 			"missing_delivery_queue",
 			"missing_delivery_service",
+			"missing_erasure_service",
 			"invalid_delivery_webhook_url",
 			"missing_delivery_webhook_secret",
 			"missing_privacy_export_queue",

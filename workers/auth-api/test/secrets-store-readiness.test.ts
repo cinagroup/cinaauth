@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getStagedSecretsStoreReadiness } from "../src/secrets-store-readiness";
+import { getActiveSecretsStoreReadiness } from "../src/secrets-store-readiness";
 
 const binding = (value: string) => ({
 	get: vi.fn(async () => value),
@@ -7,8 +7,8 @@ const binding = (value: string) => ({
 
 const strong = (label: string) => `${label}-${"x".repeat(48)}`;
 
-describe("staged Secrets Store readiness", () => {
-	it("validates every staged V2 binding without exposing its value", async () => {
+describe("active Secrets Store readiness", () => {
+	it("validates every active V2 binding without exposing its value", async () => {
 		const clientSecret = `cina_cs_${strong("client")}`;
 		const env = {
 			CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2: binding(strong("delivery")),
@@ -17,9 +17,14 @@ describe("staged Secrets Store readiness", () => {
 			CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2: binding(strong("bridge")),
 		};
 
-		const readiness = await getStagedSecretsStoreReadiness(env);
+		const readiness = await getActiveSecretsStoreReadiness(env);
 
-		expect(readiness).toEqual({ staged: true, ok: true, issues: [] });
+		expect(readiness).toEqual({
+			active: true,
+			source: "secrets-store-v2",
+			ok: true,
+			issues: [],
+		});
 		expect(JSON.stringify(readiness)).not.toContain(clientSecret);
 		for (const secretBinding of Object.values(env)) {
 			expect(secretBinding.get).toHaveBeenCalledOnce();
@@ -32,7 +37,7 @@ describe("staged Secrets Store readiness", () => {
 				throw new Error("binding unavailable");
 			}),
 		};
-		const readiness = await getStagedSecretsStoreReadiness({
+		const readiness = await getActiveSecretsStoreReadiness({
 			CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2: unavailable,
 			CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2: binding("short"),
 			CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2: binding(
@@ -42,7 +47,8 @@ describe("staged Secrets Store readiness", () => {
 		});
 
 		expect(readiness).toEqual({
-			staged: true,
+			active: true,
+			source: "secrets-store-v2",
 			ok: false,
 			issues: [
 				"delivery_webhook_secret_store_v2_unavailable",

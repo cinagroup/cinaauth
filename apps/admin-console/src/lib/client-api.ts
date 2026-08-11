@@ -20,6 +20,15 @@ export class AdminApiError extends Error {
 	}
 }
 
+/** Return a server-sanitized Admin API message, or a stable UI fallback. */
+export function getAdminApiErrorMessage(
+	error: unknown,
+	fallback: string,
+): string {
+	if (!(error instanceof AdminApiError)) return fallback;
+	return error.message.trim() || fallback;
+}
+
 function errorCode(payload: unknown): string | undefined {
 	if (!payload || typeof payload !== "object") return undefined;
 	const body = payload as ApiErrorBody;
