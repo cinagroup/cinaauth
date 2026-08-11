@@ -261,7 +261,7 @@ const isSmsConfig = (value: unknown): value is SmsProviderConfig => {
 	);
 };
 
-export const isProviderConfig = (
+const isProviderConfig = (
 	provider: DeliveryProviderKind,
 	value: unknown,
 ): value is EmailProviderConfig | SmsProviderConfig =>

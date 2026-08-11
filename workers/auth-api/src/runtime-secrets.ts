@@ -9,7 +9,7 @@ const isStrongSecret = (value: string) => value.length >= 32;
  * Resolve one active secret. Once a Store binding exists it is authoritative:
  * lookup failures never fall back to a stale Worker secret.
  */
-export const resolveRuntimeSecret = async (
+const resolveRuntimeSecret = async (
 	binding: SecretStoreBinding,
 	legacyValue: string | undefined,
 	isValid: (value: string) => boolean,

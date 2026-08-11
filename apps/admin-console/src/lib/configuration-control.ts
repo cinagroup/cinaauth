@@ -2,8 +2,6 @@ import type {
 	AdminControlPermission,
 	ConfigurationOperationResult,
 	ConfigurationParseResult,
-	DeliveryConfigurationStatus,
-	ErasureConfigurationStatus,
 } from "@cinaauth/auth-web-contract";
 import {
 	parseConfigurationOperationResult,
@@ -188,7 +186,3 @@ export const mutateConfiguration = async <T>(
 	}
 	return jsonNoStore({ ok: true, data: result.value }, 200);
 };
-
-export type ConfigurationStatus =
-	| DeliveryConfigurationStatus
-	| ErasureConfigurationStatus;
