@@ -62,6 +62,7 @@
 		"workers/auth-api/src/d1-migration.ts": ["exports"],
 		"workers/auth-api/src/delivery.ts": ["exports"],
 		"workers/auth-api/src/entitlements.ts": ["exports"],
+		"workers/auth-api/src/impersonation-mutation-guard.ts": ["exports"],
 		"workers/auth-api/src/oauth-config.ts": ["exports"],
 		"workers/auth-api/src/plugins.ts": ["exports"],
 		"workers/auth-api/src/privacy-deletion.ts": ["exports"],

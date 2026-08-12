@@ -16,6 +16,28 @@ protected database migration endpoints, version metadata, structured logs, and
 scheduled session/audit retention. The existing `cinaauth-db` D1 database stays
 bound as `LEGACY_D1` for read-only rollback and the one-time PostgreSQL cutover.
 
+## Impersonated-session mutation boundary
+
+The Auth Worker treats an authoritative session with a non-empty
+`session.impersonatedBy` as read-only before dispatching any `/api/auth/*`
+plugin route. `POST`, `PUT`, `PATCH`, and `DELETE` are denied by default, as are
+the explicit GET/HEAD callbacks that consume verification state, create login
+sessions, issue credentials, or delete an account. The response is a no-store
+`403` with code `IMPERSONATION_NOT_ALLOWED`.
+
+Exact recovery routes remain available: `admin/stop-impersonating`, `sign-out`,
+OIDC `oauth2/end-session`, and SAML single logout. Session introspection and a
+small reviewed set of read-only POST queries also remain available. A new POST
+endpoint is therefore fail-closed for impersonated sessions until its read-only
+contract is added to the explicit exception set. Anonymous traffic and ordinary
+sessions continue to the existing CinaAuth endpoint contract unchanged.
+
+Every denial emits a secret-free structured Worker warning containing the
+original administrator ID, target user ID, method, and canonical path. When
+`CINAUTH_ADMIN_SERVICE_KEY` is configured, the Worker also attempts a durable
+`admin.impersonation_mutation_rejected` failure audit through the audit plugin.
+An audit-write failure is logged but never permits the rejected mutation.
+
 ## Prerequisites
 
 - Node.js 22+ and pnpm 11+
