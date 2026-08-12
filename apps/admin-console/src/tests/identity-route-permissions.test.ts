@@ -7,10 +7,16 @@ import { resolveAdminSession } from "@/lib/cinaauth/session";
 import type { AdminSession } from "@/lib/cinaauth/types";
 
 const mockRecentAuthentication = vi.hoisted(() => vi.fn());
+const mockFetchWithResponse = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/cinaauth/client", () => ({
-	cinaauthFetch: vi.fn(),
-}));
+vi.mock("@/lib/cinaauth/client", async (importOriginal) => {
+	const mod = await importOriginal<typeof import("@/lib/cinaauth/client")>();
+	return {
+		...mod,
+		cinaauthFetch: vi.fn(),
+		cinaauthFetchWithResponse: mockFetchWithResponse,
+	};
+});
 vi.mock("@/lib/cinaauth/session", async (importOriginal) => {
 	const mod = await importOriginal<typeof import("@/lib/cinaauth/session")>();
 	return { ...mod, resolveAdminSession: vi.fn() };
@@ -248,6 +254,7 @@ describe("security_admin identity route enforcement", () => {
 
 		expect(response.status).toBe(403);
 		expect(mockFetch).not.toHaveBeenCalled();
+		expect(mockFetchWithResponse).not.toHaveBeenCalled();
 	});
 
 	it("rejects a plain user from reading another user", async () => {

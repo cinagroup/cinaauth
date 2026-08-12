@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAdminPageAccess } from "@/lib/auth-guard";
+import { getAdminPageAccess, getAdminSignInRedirect } from "@/lib/auth-guard";
 import type { AdminSession } from "@/lib/cinaauth/types";
 
 const session = (
@@ -28,5 +28,17 @@ describe("getAdminPageAccess", () => {
 
 	it("keeps an impersonated session in the shell so it can be stopped", () => {
 		expect(getAdminPageAccess(session("user", "admin-1"))).toBe("allow");
+	});
+
+	it("preserves a safe protected destination when the session expired", () => {
+		expect(getAdminSignInRedirect("/me/security?tab=passkeys")).toBe(
+			"/login?callbackURL=%2Fme%2Fsecurity%3Ftab%3Dpasskeys",
+		);
+		expect(getAdminSignInRedirect("https://attacker.example/me")).toBe(
+			"/login?callbackURL=%2Fdashboard",
+		);
+		expect(getAdminSignInRedirect("/\t/attacker.example")).toBe(
+			"/login?callbackURL=%2Fdashboard",
+		);
 	});
 });

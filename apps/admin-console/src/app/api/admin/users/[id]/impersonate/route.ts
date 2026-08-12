@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAdmin, requireAdminControlPermission } from "@/lib/auth-guard";
-import { cinaauthFetch } from "@/lib/cinaauth/client";
+import {
+	cinaauthFetchWithResponse,
+	getCinaauthSetCookies,
+} from "@/lib/cinaauth/client";
+import { toHostOnlyCookie } from "@/lib/cinaauth/proxy-cookie";
 import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
 import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
@@ -27,10 +31,38 @@ export async function POST(
 		return e as Response;
 	}
 	const cookie = request.headers.get("cookie") ?? "";
-	const res = await cinaauthFetch("/admin/impersonate-user", {
-		method: "POST",
-		body: { userId: id },
-		cookie,
+	const { result, response: upstreamResponse } =
+		await cinaauthFetchWithResponse("/admin/impersonate-user", {
+			method: "POST",
+			body: { userId: id },
+			cookie,
+		});
+	const setCookies = getCinaauthSetCookies(upstreamResponse);
+	if (
+		result.ok &&
+		!setCookies.some((cookie) => cookie.includes("cinaauth.session_token="))
+	) {
+		return NextResponse.json(
+			{
+				ok: false,
+				error: {
+					code: "CINAUTH_SESSION_COOKIE_MISSING",
+					message:
+						"CinaSeek Identity did not establish the impersonated session",
+					status: 502,
+				},
+			},
+			{ status: 502, headers: { "Cache-Control": "no-store" } },
+		);
+	}
+	const response = NextResponse.json(result, {
+		status: adminUpstreamResponseStatus(result),
 	});
-	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
+	if (result.ok) {
+		for (const cookie of setCookies) {
+			response.headers.append("set-cookie", toHostOnlyCookie(cookie));
+		}
+	}
+	response.headers.set("Cache-Control", "no-store");
+	return response;
 }

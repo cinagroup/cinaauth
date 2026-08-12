@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AccountSwitcher from "@/components/account-switch";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { auth } from "@/lib/auth";
 import { getBillingUiState } from "@/lib/billing-console";
 import OrganizationCard from "./_components/organization-card";
@@ -33,17 +34,25 @@ export default async function Page() {
 
 	return (
 		<div className="w-full">
-			<div className="flex gap-4 flex-col">
+			<DashboardPageHeader
+				title="Account overview"
+				description="Manage your profile, active workspace, and subscription from one place."
+			/>
+			<div className="flex flex-col gap-4">
 				<AccountSwitcher
 					deviceSessions={deviceSessions}
 					initialSession={session}
 				/>
-				<UserCard session={session} />
-				<OrganizationCard session={session} />
-				<SubscriptionCard
-					billingEnabled={billing.billingEnabled}
-					entitlements={entitlements}
-				/>
+				<div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
+					<UserCard session={session} />
+					<div className="flex min-w-0 flex-col gap-4">
+						<OrganizationCard session={session} />
+						<SubscriptionCard
+							billingEnabled={billing.billingEnabled}
+							entitlements={entitlements}
+						/>
+					</div>
+				</div>
 			</div>
 		</div>
 	);

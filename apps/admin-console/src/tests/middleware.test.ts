@@ -46,6 +46,13 @@ describe("middleware access control", () => {
 		expect(res.status).toBe(200);
 	});
 
+	it("forwards the protected destination for an authoritative sign-in retry", async () => {
+		const res = await runMiddleware("/me/security?tab=passkeys", true);
+		expect(
+			res.headers.get("x-middleware-request-x-cinaadmin-callback-url"),
+		).toBe("/me/security?tab=passkeys");
+	});
+
 	it("allows through on audit page with session", async () => {
 		const res = await runMiddleware("/audit", true);
 		expect(res.status).toBe(200);

@@ -2,10 +2,8 @@ import "./globals.css";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
-import Footer from "@/components/footer";
-import Header from "@/components/header";
-import { LazyBackgroundRippleEffect } from "@/components/lazy-background-ripple";
 import Providers from "@/components/providers";
+import { SiteChrome } from "@/components/site-chrome";
 import { createMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = createMetadata({
@@ -27,6 +25,8 @@ export default function RootLayout({
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				<link rel="icon" href="/favicon/favicon.ico" sizes="any" />
+				<link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" />
+				<link rel="manifest" href="/favicon/site.webmanifest" />
 			</head>
 			<body className={`${GeistSans.variable} ${GeistMono.variable} font-sans`}>
 				{/* Spec: skip-to-content link (a11y). */}
@@ -37,31 +37,7 @@ export default function RootLayout({
 					Skip to content
 				</a>
 				<Providers>
-					<div className="min-h-screen flex flex-col">
-						{/* Site Header */}
-						<Header />
-
-						<div className="relative flex-1 mt-16">
-							{/* Background Ripple Effect (decorative) */}
-							<div
-								aria-hidden
-								className="absolute inset-0 z-0 pointer-events-none"
-							>
-								<LazyBackgroundRippleEffect />
-							</div>
-
-							{/* Content — spec gutter: 16px mobile, 24px desktop. */}
-							<main
-								id="main"
-								className="relative z-10 max-w-[1400px] w-full px-4 md:px-6 mx-auto"
-							>
-								{children}
-							</main>
-						</div>
-
-						{/* Spec: footer landmark. */}
-						<Footer />
-					</div>
+					<SiteChrome>{children}</SiteChrome>
 				</Providers>
 			</body>
 		</html>

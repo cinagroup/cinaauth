@@ -1,14 +1,22 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cinaauthFetch } from "@/lib/cinaauth/client";
+import {
+	cinaauthFetch,
+	cinaauthFetchWithResponse,
+} from "@/lib/cinaauth/client";
 import { resolveAdminSession } from "@/lib/cinaauth/session";
 import type { AdminSession } from "@/lib/cinaauth/types";
 
 const mockRecentAuthentication = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/cinaauth/client", () => ({
-	cinaauthFetch: vi.fn(),
-}));
+vi.mock("@/lib/cinaauth/client", async (importOriginal) => {
+	const mod = await importOriginal<typeof import("@/lib/cinaauth/client")>();
+	return {
+		...mod,
+		cinaauthFetch: vi.fn(),
+		cinaauthFetchWithResponse: vi.fn(),
+	};
+});
 vi.mock("@/lib/cinaauth/session", async (importOriginal) => {
 	const mod = await importOriginal<typeof import("@/lib/cinaauth/session")>();
 	return { ...mod, resolveAdminSession: vi.fn() };
@@ -18,6 +26,7 @@ vi.mock("@/lib/recent-auth-guard", () => ({
 }));
 
 const mockFetch = vi.mocked(cinaauthFetch);
+const mockFetchWithResponse = vi.mocked(cinaauthFetchWithResponse);
 const mockSession = vi.mocked(resolveAdminSession);
 
 const SUPER: AdminSession = {
@@ -55,6 +64,15 @@ function rawReq(path: string, method: string, raw: string): NextRequest {
 	});
 }
 
+const upstreamResponseWithCookies = (...cookies: string[]) => {
+	const headers = new Headers();
+	for (const cookie of cookies) headers.append("set-cookie", cookie);
+	return Response.json(
+		{ session: { id: "impersonated-session" } },
+		{ headers },
+	);
+};
+
 const params = <T extends Record<string, string>>(p: T) => ({
 	params: Promise.resolve(p),
 });
@@ -63,6 +81,13 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockSession.mockResolvedValue(SUPER);
 	mockFetch.mockResolvedValue({ ok: true, data: {} });
+	mockFetchWithResponse.mockResolvedValue({
+		result: { ok: true, data: {} },
+		response: upstreamResponseWithCookies(
+			"__Secure-cinaauth.admin_session=actor; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
+			"__Secure-cinaauth.session_token=target; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
+		),
+	});
 	mockRecentAuthentication.mockResolvedValue(undefined);
 });
 
@@ -87,15 +112,47 @@ describe("GET /api/admin/session (impersonation visibility)", () => {
 describe("POST /api/admin/users/impersonate/stop", () => {
 	it("works for the impersonated session (no admin-role gate)", async () => {
 		mockSession.mockResolvedValue(IMPERSONATING);
+		mockFetchWithResponse.mockResolvedValueOnce({
+			result: { ok: true, data: {} },
+			response: upstreamResponseWithCookies(
+				"__Secure-cinaauth.session_token=actor; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
+				"__Secure-cinaauth.admin_session=; Path=/; Domain=.cinaseek.ai; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+			),
+		});
 		const { POST } = await import(
 			"@/app/api/admin/users/impersonate/stop/route"
 		);
 		const res = await POST(postReq("/api/admin/users/impersonate/stop"));
 		expect(res.status).toBe(200);
-		expect(mockFetch).toHaveBeenCalledWith(
+		expect(mockFetchWithResponse).toHaveBeenCalledWith(
 			"/admin/stop-impersonating",
 			expect.objectContaining({ method: "POST" }),
 		);
+		expect(res.headers.get("set-cookie")).toContain(
+			"__Secure-cinaauth.session_token=actor",
+		);
+		expect(res.headers.get("set-cookie")).toContain(
+			"__Secure-cinaauth.admin_session=",
+		);
+		expect(res.headers.get("set-cookie")).not.toContain("Domain=");
+	});
+
+	it("fails closed when the restored session cookie is missing", async () => {
+		mockSession.mockResolvedValue(IMPERSONATING);
+		mockFetchWithResponse.mockResolvedValueOnce({
+			result: { ok: true, data: {} },
+			response: Response.json({}),
+		});
+		const { POST } = await import(
+			"@/app/api/admin/users/impersonate/stop/route"
+		);
+
+		const res = await POST(postReq("/api/admin/users/impersonate/stop"));
+
+		expect(res.status).toBe(502);
+		expect(await res.json()).toMatchObject({
+			error: { code: "CINAUTH_SESSION_COOKIE_MISSING" },
+		});
 	});
 
 	it("rejects when there is no session at all", async () => {
@@ -105,6 +162,54 @@ describe("POST /api/admin/users/impersonate/stop", () => {
 		);
 		const res = await POST(postReq("/api/admin/users/impersonate/stop"));
 		expect(res.status).toBe(401);
+	});
+});
+
+describe("POST /api/admin/users/[id]/impersonate", () => {
+	it("forwards the upstream session cookies to the Admin host", async () => {
+		const { POST } = await import(
+			"@/app/api/admin/users/[id]/impersonate/route"
+		);
+		const res = await POST(
+			postReq("/api/admin/users/u2/impersonate"),
+			params({ id: "u2" }),
+		);
+
+		expect(res.status).toBe(200);
+		expect(mockFetchWithResponse).toHaveBeenCalledWith(
+			"/admin/impersonate-user",
+			expect.objectContaining({
+				method: "POST",
+				body: { userId: "u2" },
+			}),
+		);
+		expect(res.headers.get("set-cookie")).toContain(
+			"__Secure-cinaauth.session_token=target",
+		);
+		expect(res.headers.get("set-cookie")).toContain(
+			"__Secure-cinaauth.admin_session=actor",
+		);
+		expect(res.headers.get("set-cookie")).not.toContain("Domain=");
+	});
+
+	it("fails closed when the impersonated session cookie is missing", async () => {
+		mockFetchWithResponse.mockResolvedValueOnce({
+			result: { ok: true, data: {} },
+			response: Response.json({}),
+		});
+		const { POST } = await import(
+			"@/app/api/admin/users/[id]/impersonate/route"
+		);
+
+		const res = await POST(
+			postReq("/api/admin/users/u2/impersonate"),
+			params({ id: "u2" }),
+		);
+
+		expect(res.status).toBe(502);
+		expect(await res.json()).toMatchObject({
+			error: { code: "CINAUTH_SESSION_COOKIE_MISSING" },
+		});
 	});
 });
 

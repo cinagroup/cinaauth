@@ -7,8 +7,6 @@ import type {
 } from "@cinaauth/auth-web-contract";
 import {
 	AlertTriangle,
-	ArrowLeft,
-	Building2,
 	CalendarDays,
 	Copy,
 	Loader2,
@@ -19,10 +17,10 @@ import {
 	Trash2,
 	Users,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { CreateOrganizationForm } from "@/components/forms/create-organization-form";
 import { InviteMemberForm } from "@/components/forms/invite-member-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -287,28 +285,11 @@ export function OrganizationConsole({
 	};
 
 	return (
-		<main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-			<div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-				<div>
-					<Button asChild variant="ghost" size="sm" className="mb-2 -ml-3">
-						<Link href="/dashboard">
-							<ArrowLeft className="mr-2 h-4 w-4" /> Dashboard
-						</Link>
-					</Button>
-					<div className="flex items-center gap-3">
-						<div className="rounded-lg bg-primary/10 p-2">
-							<Building2 className="h-6 w-6 text-primary" />
-						</div>
-						<div>
-							<h1 className="text-2xl font-semibold tracking-tight">
-								Organization Console
-							</h1>
-							<p className="text-sm text-muted-foreground">
-								Manage membership, roles, and pending invitations.
-							</p>
-						</div>
-					</div>
-				</div>
+		<div className="mx-auto w-full max-w-6xl">
+			<DashboardPageHeader
+				title="Organization Console"
+				description="Manage membership, roles, and pending invitations."
+			>
 				<div className="flex w-full gap-2 sm:w-auto">
 					<Select
 						value={initialOrganization?.id ?? "personal"}
@@ -358,7 +339,7 @@ export function OrganizationConsole({
 						</DialogContent>
 					</Dialog>
 				</div>
-			</div>
+			</DashboardPageHeader>
 
 			{(!recentAuthentication || !authoritativeOrganizationData) && (
 				<Alert className="mb-6">
@@ -842,6 +823,6 @@ export function OrganizationConsole({
 					</CardContent>
 				</Card>
 			)}
-		</main>
+		</div>
 	);
 }

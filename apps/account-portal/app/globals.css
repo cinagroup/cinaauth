@@ -512,3 +512,38 @@
 	);
 	background-size: 16px 16px;
 }
+
+/* Compact Admin-style application chrome for authenticated account routes. */
+.account-dashboard-shell {
+	--sidebar: var(--cina-neutral-50);
+	--focus-ring: var(--link);
+	--shadow-rgb: 0, 0, 0;
+}
+
+.dark .account-dashboard-shell {
+	--canvas: #0a0a0a;
+	--canvas-soft: #0a0a0a;
+	--canvas-soft-2: #1f1f1f;
+	--sidebar: #171717;
+	--ink: #fafafa;
+	--body: #a3a3a3;
+	--mute: #7a7a7a;
+	--hairline: #262626;
+	--hairline-strong: #404040;
+	--link: #52a8ff;
+	--card: var(--canvas);
+	--card-foreground: var(--ink);
+	--background: var(--canvas-soft);
+	--foreground: var(--ink);
+	--popover: var(--canvas);
+	--popover-foreground: var(--ink);
+	--secondary: var(--canvas-soft-2);
+	--secondary-foreground: var(--ink);
+	--muted: var(--canvas-soft-2);
+	--muted-foreground: var(--mute);
+	--accent: var(--canvas-soft-2);
+	--accent-foreground: var(--ink);
+	--border: var(--hairline);
+	--input: var(--hairline);
+	--ring: var(--link);
+}

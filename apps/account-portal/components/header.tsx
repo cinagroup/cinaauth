@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Logo } from "./logo";
+import { AccountBrand } from "./account-brand";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "./ui/button";
 
@@ -8,12 +8,9 @@ import { Button } from "./ui/button";
 const Header = () => {
 	return (
 		<header className="h-16 bg-canvas flex items-center justify-between fixed top-0 z-50 w-full px-4 md:px-6 shadow-l1">
-			{/* Logo + wordmark */}
+			{/* Product brand */}
 			<Link href="/" className="flex items-center gap-2 shrink-0">
-				<Logo size={28} sizes="28px" className="shrink-0" />
-				<p className="select-none text-[20px] font-semibold leading-[28px] tracking-[-0.6px] text-ink">
-					CinaSeek
-				</p>
+				<AccountBrand priority />
 			</Link>
 
 			{/* Spec: nav-link row — centre, body-sm, body text, rounded-full.

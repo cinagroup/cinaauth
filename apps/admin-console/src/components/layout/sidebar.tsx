@@ -14,6 +14,7 @@ import {
 	Shield,
 	ShieldCheck,
 	Smartphone,
+	User,
 	UserRoundX,
 	Users,
 } from "lucide-react";
@@ -37,7 +38,10 @@ export interface NavSection {
 export const NAV: NavSection[] = [
 	{
 		groupKey: null,
-		items: [{ href: "/dashboard", key: "nav.overview", icon: LayoutDashboard }],
+		items: [
+			{ href: "/dashboard", key: "nav.overview", icon: LayoutDashboard },
+			{ href: "/me", key: "nav.me", icon: User },
+		],
 	},
 	{
 		groupKey: "nav.accounts",
@@ -87,11 +91,11 @@ export const NAV: NavSection[] = [
 export function Sidebar({
 	collapsed = false,
 	className,
-	onNavigate,
+	onActiveNavigate,
 }: {
 	collapsed?: boolean;
 	className?: string;
-	onNavigate?: () => void;
+	onActiveNavigate?: () => void;
 }) {
 	const { t } = useI18n();
 	const pathname = usePathname();
@@ -122,6 +126,7 @@ export function Sidebar({
 							</div>
 						)}
 						{section.items.map((item) => {
+							const current = pathname === item.href;
 							const active =
 								pathname === item.href || pathname.startsWith(`${item.href}/`);
 							const Icon = item.icon;
@@ -129,9 +134,10 @@ export function Sidebar({
 								<Link
 									key={item.href}
 									href={item.href}
-									onClick={onNavigate}
+									onClick={current ? onActiveNavigate : undefined}
 									title={collapsed ? t(item.key) : undefined}
 									aria-label={collapsed ? t(item.key) : undefined}
+									aria-current={active ? "page" : undefined}
 									className={cn(
 										"relative flex h-9 items-center rounded-[var(--radius-sm)] text-[13px] leading-5 transition-colors before:absolute before:left-0 before:top-2 before:h-5 before:w-0.5 before:rounded-full before:bg-transparent",
 										collapsed ? "justify-center px-2" : "gap-2.5 px-3",
