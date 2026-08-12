@@ -60,8 +60,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - name: Validate restore rehearsal and operator attestation
         env:
@@ -132,8 +130,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - name: Validate Cloudflare credentials
         env:
@@ -185,8 +181,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - name: Validate Cloudflare credentials and core storage secret
         env:
@@ -252,8 +246,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - name: Validate required secrets
         env:

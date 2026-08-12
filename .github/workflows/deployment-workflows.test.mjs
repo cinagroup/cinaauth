@@ -5,9 +5,20 @@ import test from "node:test";
 const readWorkflow = (name) =>
 	readFileSync(new URL(name, import.meta.url), "utf8");
 
+const rootPackage = JSON.parse(
+	readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+);
 const central = readWorkflow("deploy-cloudflare.yml");
 const account = readWorkflow("deploy-account-portal.yml");
 const admin = readWorkflow("deploy-admin-console.yml");
+const oidcClient = readWorkflow("deploy-oidc-client-demo.yml");
+
+const productionWorkflows = [
+	["deploy-cloudflare.yml", central],
+	["deploy-account-portal.yml", account],
+	["deploy-admin-console.yml", admin],
+	["deploy-oidc-client-demo.yml", oidcClient],
+];
 
 const jobBlock = (source, job, nextJob) => {
 	const start = source.indexOf(`  ${job}:`);
@@ -15,6 +26,41 @@ const jobBlock = (source, job, nextJob) => {
 	const end = nextJob ? source.indexOf(`  ${nextJob}:`, start + 1) : -1;
 	return source.slice(start, end === -1 ? undefined : end);
 };
+
+const pnpmSetupBlocks = (source) => {
+	const lines = source.split("\n");
+	const blocks = [];
+	for (let index = 0; index < lines.length; index += 1) {
+		if (!lines[index].includes("uses: pnpm/action-setup@")) continue;
+		const indentation = lines[index].match(/^\s*/)?.[0].length ?? 0;
+		let end = index + 1;
+		while (end < lines.length) {
+			const line = lines[end];
+			if (line.trim().length > 0) {
+				const nextIndentation = line.match(/^\s*/)?.[0].length ?? 0;
+				if (nextIndentation < indentation) break;
+			}
+			end += 1;
+		}
+		blocks.push(lines.slice(index, end).join("\n"));
+	}
+	return blocks;
+};
+
+test("production workflows use the root packageManager pnpm version", () => {
+	assert.match(rootPackage.packageManager, /^pnpm@\d+\.\d+\.\d+(?:[-+].+)?$/);
+	for (const [name, source] of productionWorkflows) {
+		const setupBlocks = pnpmSetupBlocks(source);
+		assert.ok(setupBlocks.length > 0, `${name} must install pnpm`);
+		for (const block of setupBlocks) {
+			assert.doesNotMatch(
+				block,
+				/^\s+version:/m,
+				`${name} must let package.json packageManager select the pnpm version`,
+			);
+		}
+	}
+});
 
 test("central workflow is the only manually dispatched production entrypoint", () => {
 	const trigger = central.slice(
