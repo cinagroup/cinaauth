@@ -72,6 +72,8 @@ import {
 	loadEntitlementSnapshot,
 } from "./entitlements";
 import type { CloudflareBindings } from "./env";
+import type { ImpersonationMutationAuditBody } from "./impersonation-mutation-guard";
+import { createImpersonationMutationGuardMiddleware } from "./impersonation-mutation-guard";
 import { parseProductionGenericOAuthConfig } from "./oauth-config";
 import {
 	ensureOidcDemoClient,
@@ -98,14 +100,16 @@ import { handleSuperAdminGovernedRequest } from "./super-admin-governance";
 
 export { RateLimitDurableObject } from "./rate-limit";
 
-const app = new Hono<{
+type AppEnv = {
 	Bindings: CloudflareBindings;
 	Variables: {
 		auth: Auth;
 		runtimeEnv: CloudflareBindings;
 		activeSecretsUnavailable: boolean;
 	};
-}>();
+};
+
+const app = new Hono<AppEnv>();
 
 type RateLimitConfig = {
 	enabled?: boolean;
@@ -1203,6 +1207,55 @@ app.use("*", async (c, next) => {
 	});
 });
 
+// This guard must be registered before every concrete /api/auth route. Hono
+// composes matching handlers in registration order, so placing it beside the
+// catch-all would not protect an earlier custom Auth handler.
+app.use(
+	"/api/auth/*",
+	createImpersonationMutationGuardMiddleware<AppEnv>({
+		getSession: async (c) => {
+			const session = await c.var.auth.api.getSession({
+				headers: c.req.raw.headers,
+				query: { disableCookieCache: true },
+			});
+			if (!session) return null;
+			return {
+				user: { id: session.user.id },
+				session: {
+					impersonatedBy: (
+						session.session as typeof session.session & {
+							impersonatedBy?: string | null;
+						}
+					).impersonatedBy,
+				},
+			};
+		},
+		getAuditWriter: (c) => {
+			const serviceKey = c.var.runtimeEnv.CINAUTH_ADMIN_SERVICE_KEY;
+			const auditApi = c.var.auth.api as typeof c.var.auth.api & {
+				logAudit?: (input: {
+					headers: Headers;
+					body: ImpersonationMutationAuditBody;
+				}) => Promise<unknown>;
+			};
+			const logAudit = auditApi.logAudit;
+			if (!serviceKey || typeof logAudit !== "function") {
+				return undefined;
+			}
+			return {
+				serviceKey,
+				write: (input) => logAudit.call(auditApi, input),
+			};
+		},
+		getVersion: (c) => getVersionMetadata(c.env),
+		logEvent: (event) => {
+			const serialized = JSON.stringify(event);
+			if (event.level === "error") console.error(serialized);
+			else console.warn(serialized);
+		},
+	}),
+);
+
 // Public, secret-free capability discovery. Login surfaces use this to avoid
 // advertising providers that are not configured on the production Worker.
 app.get("/api/auth/capabilities", async (c) => {
@@ -1643,7 +1696,7 @@ app.post("/api/admin/configuration/:service/:action", async (c) => {
 });
 
 // Sensitive mutations require a fresh authoritative session. Commercial
-// management paths also evaluate the webhook-synchronized feature/limit policy
+// management paths evaluate the webhook-synchronized feature/limit policy
 // before delegating to the public plugin endpoint contract.
 app.use("/api/auth/*", async (c, next) => {
 	const pathname = new URL(c.req.url).pathname;
@@ -1677,10 +1730,14 @@ app.use("/api/auth/*", async (c, next) => {
 			),
 		);
 	}
-	if (!session) {
+	if (!session && entitlementPolicy) {
 		return withNoStore(
 			c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401),
 		);
+	}
+	if (!session) {
+		await next();
+		return;
 	}
 	if (!entitlementPolicy) {
 		await next();

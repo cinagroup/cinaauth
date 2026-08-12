@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/layout/admin-shell";
-import { getAdminPageAccess } from "@/lib/auth-guard";
+import { getAdminPageAccess, getAdminSignInRedirect } from "@/lib/auth-guard";
 import { resolveAdminSessionFromCookie } from "@/lib/cinaauth/session";
 
 /**
@@ -19,7 +19,9 @@ export default async function AdminLayout({
 	const access = getAdminPageAccess(session);
 
 	if (access === "sign-in") {
-		redirect("/login?callbackURL=%2Fdashboard");
+		redirect(
+			getAdminSignInRedirect(requestHeaders.get("x-cinaadmin-callback-url")),
+		);
 	}
 	if (access === "forbidden") {
 		redirect("/403");

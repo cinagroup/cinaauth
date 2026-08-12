@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ImpersonateBanner } from "@/components/layout/impersonate-banner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
@@ -14,8 +15,13 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
 	const { t } = useI18n();
+	const pathname = usePathname();
 	const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+	useEffect(() => {
+		setMobileNavigationOpen(false);
+	}, [pathname]);
 
 	return (
 		<div className="flex h-dvh w-full min-w-0 overflow-hidden bg-canvas-soft">
@@ -32,7 +38,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 					</DialogDescription>
 					<Sidebar
 						className="w-full border-r-0"
-						onNavigate={() => setMobileNavigationOpen(false)}
+						onActiveNavigate={() => setMobileNavigationOpen(false)}
 					/>
 				</DialogContent>
 			</Dialog>

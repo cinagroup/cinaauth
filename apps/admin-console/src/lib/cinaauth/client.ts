@@ -1,6 +1,28 @@
 import { cinaauthConfig } from "./config";
 import { fetchAuthRequest } from "./fetcher";
+import { splitSetCookieHeader } from "./proxy-cookie";
 import type { StandardResponse } from "./types";
+
+type CinaauthFetchOptions = {
+	method?: "GET" | "POST" | "PATCH" | "DELETE";
+	body?: unknown;
+	cookie?: string;
+	headers?: Record<string, string>;
+};
+
+export type CinaauthFetchWithResponseResult<T> = {
+	result: StandardResponse<T>;
+	response: Response | null;
+};
+
+/** Read every Set-Cookie value from a Worker or standard Fetch response. */
+export const getCinaauthSetCookies = (response: Response | null): string[] => {
+	if (!response) return [];
+	const values = response.headers.getSetCookie?.() ?? [];
+	if (values.length > 0) return values;
+	const raw = response.headers.get("set-cookie");
+	return raw ? splitSetCookieHeader(raw) : [];
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
@@ -27,26 +49,45 @@ const readUpstreamError = (
 	return { code: candidate.code, message: candidate.message };
 };
 
+const readCinaauthResponse = async <T>(
+	res: Response,
+): Promise<StandardResponse<T>> => {
+	if (res.ok && res.status === 204) {
+		return { ok: true };
+	}
+	const data: unknown = await res.json().catch(() => null);
+	if (!res.ok) {
+		const upstreamError = readUpstreamError(data);
+		return {
+			ok: false,
+			error: {
+				code: upstreamError?.code ?? `CINAUTH_${res.status}`,
+				message: upstreamError?.message ?? "CinaSeek Identity request failed",
+				status: res.status,
+			},
+		};
+	}
+	if (data === null) {
+		return {
+			ok: false,
+			error: {
+				code: "CINAUTH_INVALID_RESPONSE",
+				message: "CinaSeek Identity returned an invalid response",
+				status: 502,
+			},
+		};
+	}
+	return { ok: true, data: data as T };
+};
+
 /**
- * Server-side fetch wrapper for cinaauth admin endpoints. Attaches the service
- * key (identifies the console caller; does not bypass cinaauth's role checks)
- * and forwards the admin's session cookie so the acting user is recorded.
- *
- * Paths are relative to the cinaauth base (e.g. "/admin/list-users") and are
- * prefixed with "/api/auth" because Better Auth mounts its routes there — so
- * the resolved URL becomes `${baseUrl}/api/auth/admin/list-users`.
- *
- * Use from Server Components (reads) and Route Handlers (mutations).
+ * Call CinaAuth while retaining the upstream response for narrowly scoped
+ * proxies that must forward session-switching Set-Cookie headers.
  */
-export async function cinaauthFetch<T>(
+export async function cinaauthFetchWithResponse<T>(
 	path: string,
-	opts: {
-		method?: "GET" | "POST" | "PATCH" | "DELETE";
-		body?: unknown;
-		cookie?: string;
-		headers?: Record<string, string>;
-	} = {},
-): Promise<StandardResponse<T>> {
+	opts: CinaauthFetchOptions = {},
+): Promise<CinaauthFetchWithResponseResult<T>> {
 	const headers: Record<string, string> = {};
 	if (opts.cookie) headers.cookie = opts.cookie;
 	if (opts.body !== undefined) headers["content-type"] = "application/json";
@@ -69,39 +110,24 @@ export async function cinaauthFetch<T>(
 				cache: "no-store",
 			}),
 		);
-		if (res.ok && res.status === 204) {
-			return { ok: true };
-		}
-		const data: unknown = await res.json().catch(() => null);
-		if (!res.ok) {
-			const upstreamError = readUpstreamError(data);
-			return {
-				ok: false,
-				error: {
-					code: upstreamError?.code ?? `CINAUTH_${res.status}`,
-					message: upstreamError?.message ?? "CinaSeek Identity request failed",
-					status: res.status,
-				},
-			};
-		}
-		if (data === null) {
-			return {
-				ok: false,
-				error: {
-					code: "CINAUTH_INVALID_RESPONSE",
-					message: "CinaSeek Identity returned an invalid response",
-					status: 502,
-				},
-			};
-		}
-		return { ok: true, data: data as T };
+		return { result: await readCinaauthResponse<T>(res), response: res };
 	} catch {
 		return {
-			ok: false,
-			error: {
-				code: "CINAUTH_UNREACHABLE",
-				message: "CinaSeek Identity is unavailable",
+			result: {
+				ok: false,
+				error: {
+					code: "CINAUTH_UNREACHABLE",
+					message: "CinaSeek Identity is unavailable",
+				},
 			},
+			response: null,
 		};
 	}
+}
+
+export async function cinaauthFetch<T>(
+	path: string,
+	opts: CinaauthFetchOptions = {},
+): Promise<StandardResponse<T>> {
+	return (await cinaauthFetchWithResponse<T>(path, opts)).result;
 }

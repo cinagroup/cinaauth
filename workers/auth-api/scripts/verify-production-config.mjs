@@ -170,6 +170,11 @@ const wranglerFile = join(workerDir, "wrangler.json");
 const devVarsExampleFile = join(workerDir, ".dev.vars.example");
 const indexFile = join(workerDir, "src", "index.ts");
 const adminConfigurationFile = join(workerDir, "src", "admin-configuration.ts");
+const impersonationMutationGuardFile = join(
+	workerDir,
+	"src",
+	"impersonation-mutation-guard.ts",
+);
 const authFile = join(workerDir, "src", "auth.ts");
 const authRoutingFile = join(workerDir, "src", "auth-routing.ts");
 const captchaConfigFile = join(workerDir, "src", "captcha-config.ts");
@@ -786,6 +791,7 @@ const packageJson = readJson(packageFile);
 const wrangler = readJson(wranglerFile);
 const indexTs = read(indexFile);
 const adminConfigurationTs = read(adminConfigurationFile);
+const impersonationMutationGuardTs = read(impersonationMutationGuardFile);
 const authTs = read(authFile);
 const authRoutingTs = read(authRoutingFile);
 const captchaConfigTs = read(captchaConfigFile);
@@ -2571,6 +2577,48 @@ check(
 	(indexTs.match(/c\.var\.auth\.handler\(c\.req\.raw\)/g) ?? []).length === 1,
 	`${rel(indexFile)} must delegate the raw catch-all request to auth.handler only through the governed handler callback`,
 );
+const impersonationGuardRegistration = indexTs.indexOf(
+	"createImpersonationMutationGuardMiddleware<AppEnv>({",
+);
+const impersonationGuardUseRegistration = indexTs.lastIndexOf(
+	"app.use(",
+	impersonationGuardRegistration,
+);
+const directAuthRouteRegistrations = [
+	...indexTs.matchAll(
+		/app\.(?:use|get|post|put|patch|delete)\(\s*["']\/api\/auth/g,
+	),
+].map((match) => match.index);
+const onAuthRouteRegistrations = [
+	...indexTs.matchAll(/app\.on\([\s\S]{0,500}?["']\/api\/auth/g),
+].map((match) => match.index);
+const firstAuthRouteRegistration = Math.min(
+	...directAuthRouteRegistrations,
+	...onAuthRouteRegistrations,
+);
+check(
+	impersonationGuardRegistration >= 0 &&
+		impersonationGuardUseRegistration >= 0 &&
+		firstAuthRouteRegistration === impersonationGuardUseRegistration,
+	"the impersonation mutation middleware must be registered before every concrete /api/auth route",
+);
+checkIncludesAll(
+	impersonationMutationGuardTs,
+	[
+		"createImpersonationMutationGuardMiddleware",
+		"IMPERSONATION_MUTATING_GET_PATHS",
+		"Cache-Control",
+		"no-store",
+	],
+	impersonationMutationGuardFile,
+	"the impersonation mutation boundary must remain fail-closed and no-store",
+);
+check(
+	!impersonationMutationGuardTs.includes(
+		'"/api/auth/email-otp/check-verification-otp"',
+	),
+	"the state-changing email OTP verification check must not be classified as a read-only impersonation exception",
+);
 checkIncludesAll(
 	indexTs,
 	[
@@ -2633,8 +2681,25 @@ checkIncludesAll(
 	indexFile,
 	"the SCIM ownership migration route must reject configured account-provider collisions before mutation or audit",
 );
+const migrationAuthorizationStart = indexTs.indexOf(
+	"export const isAuthorizedMigrationRequest",
+);
+const migrationAuthorizationEnd = indexTs.indexOf(
+	"export const getMigrationFeatureSelection",
+	migrationAuthorizationStart,
+);
+const migrationAuthorizationSource = indexTs.slice(
+	migrationAuthorizationStart,
+	migrationAuthorizationEnd,
+);
+checkIncludesAll(
+	migrationAuthorizationSource,
+	["CINAAUTH_MIGRATION_TOKEN", "CINAAUTH_D1_MIGRATION_TOKEN"],
+	indexFile,
+	"migration and readiness authorization must use only dedicated migration credentials",
+);
 check(
-	!indexTs.includes("CINAUTH_ADMIN_SERVICE_KEY"),
+	!migrationAuthorizationSource.includes("CINAUTH_ADMIN_SERVICE_KEY"),
 	"Migration/readiness authorization must not fall back to CINAUTH_ADMIN_SERVICE_KEY",
 );
 

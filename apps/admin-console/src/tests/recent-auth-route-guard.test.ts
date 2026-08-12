@@ -10,13 +10,19 @@ import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 
 const mocks = vi.hoisted(() => ({
 	fetch: vi.fn(),
+	fetchWithResponse: vi.fn(),
 	session: vi.fn(),
 	transactionSecret: vi.fn(),
 }));
 
-vi.mock("@/lib/cinaauth/client", () => ({
-	cinaauthFetch: mocks.fetch,
-}));
+vi.mock("@/lib/cinaauth/client", async (importOriginal) => {
+	const mod = await importOriginal<typeof import("@/lib/cinaauth/client")>();
+	return {
+		...mod,
+		cinaauthFetch: mocks.fetch,
+		cinaauthFetchWithResponse: mocks.fetchWithResponse,
+	};
+});
 vi.mock("@/lib/cinaauth/session", async (importOriginal) => {
 	const mod = await importOriginal<typeof import("@/lib/cinaauth/session")>();
 	return { ...mod, resolveAdminSession: mocks.session };
@@ -27,6 +33,7 @@ vi.mock("@/lib/cinaauth/oidc-secrets", () => ({
 
 const SIGNING_SECRET = "recent-auth-test-secret-with-at-least-32-characters";
 const mockFetch = mocks.fetch;
+const mockFetchWithResponse = mocks.fetchWithResponse;
 const mockSession = mocks.session;
 const mockTransactionSecret = mocks.transactionSecret;
 
@@ -100,6 +107,18 @@ beforeEach(() => {
 	mockSession.mockResolvedValue(SUPER_ADMIN);
 	mockTransactionSecret.mockResolvedValue(SIGNING_SECRET);
 	mockFetch.mockResolvedValue({ ok: true, data: {} });
+	mockFetchWithResponse.mockResolvedValue({
+		result: { ok: true, data: {} },
+		response: Response.json(
+			{},
+			{
+				headers: {
+					"set-cookie":
+						"__Secure-cinaauth.session_token=target; Path=/; HttpOnly; Secure",
+				},
+			},
+		),
+	});
 });
 
 describe("recent Admin authentication proof", () => {
@@ -328,6 +347,7 @@ describe("high-risk Admin BFF routes", () => {
 
 		await expectSessionNotFresh(response);
 		expect(mockFetch).not.toHaveBeenCalled();
+		expect(mockFetchWithResponse).not.toHaveBeenCalled();
 	});
 
 	it.each(
@@ -336,7 +356,9 @@ describe("high-risk Admin BFF routes", () => {
 		const response = await invoke(await sealProof());
 
 		expect(response.status).toBe(200);
-		expect(mockFetch).toHaveBeenCalled();
+		expect(
+			mockFetch.mock.calls.length + mockFetchWithResponse.mock.calls.length,
+		).toBeGreaterThan(0);
 	});
 
 	it("checks permission before opening the proof", async () => {
@@ -359,6 +381,7 @@ describe("high-risk Admin BFF routes", () => {
 		});
 		expect(mockTransactionSecret).not.toHaveBeenCalled();
 		expect(mockFetch).not.toHaveBeenCalled();
+		expect(mockFetchWithResponse).not.toHaveBeenCalled();
 	});
 
 	it("checks the action-specific batch permission before opening the proof", async () => {
@@ -392,6 +415,7 @@ describe("high-risk Admin BFF routes", () => {
 		await expectSessionNotFresh(banResponse);
 		expect(mockTransactionSecret).toHaveBeenCalledTimes(1);
 		expect(mockFetch).not.toHaveBeenCalled();
+		expect(mockFetchWithResponse).not.toHaveBeenCalled();
 	});
 
 	it("does not require recent-auth proof to stop impersonation", async () => {
@@ -411,7 +435,7 @@ describe("high-risk Admin BFF routes", () => {
 
 		expect(response.status).toBe(200);
 		expect(mockTransactionSecret).not.toHaveBeenCalled();
-		expect(mockFetch).toHaveBeenCalledWith(
+		expect(mockFetchWithResponse).toHaveBeenCalledWith(
 			"/admin/stop-impersonating",
 			expect.objectContaining({ method: "POST" }),
 		);

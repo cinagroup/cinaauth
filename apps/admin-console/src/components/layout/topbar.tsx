@@ -11,6 +11,7 @@ import {
 	Sun,
 	User,
 } from "lucide-react";
+import Link from "next/link";
 import { useTheme } from "next-themes";
 import { AdminBrand } from "@/components/layout/admin-brand";
 import { CommandMenu } from "@/components/layout/command-menu";
@@ -158,6 +159,13 @@ export function Topbar({
 							<User size={14} />
 							{session?.email ?? ""}
 						</DropdownMenuLabel>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem asChild>
+							<Link href="/me">
+								<User size={14} />
+								{t("nav.me")}
+							</Link>
+						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							onClick={() => void signOutAndRedirect()}

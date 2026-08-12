@@ -2,7 +2,6 @@
 
 import {
 	AlertTriangle,
-	ArrowLeft,
 	Clock3,
 	Database,
 	Download,
@@ -16,6 +15,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -246,23 +246,11 @@ export function PrivacyCenter({
 	};
 
 	return (
-		<div className="mx-auto w-full max-w-5xl py-6">
-			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-				<div>
-					<p className="text-sm font-medium text-primary">CinaSeek account</p>
-					<h1 className="text-3xl font-semibold tracking-tight">
-						Privacy Center
-					</h1>
-					<p className="mt-2 text-sm text-muted-foreground">
-						Export your authentication data and review deletion controls.
-					</p>
-				</div>
-				<Button asChild variant="outline">
-					<Link href="/dashboard">
-						<ArrowLeft className="mr-2 h-4 w-4" /> Dashboard
-					</Link>
-				</Button>
-			</div>
+		<div className="mx-auto w-full max-w-6xl">
+			<DashboardPageHeader
+				title="Privacy Center"
+				description="Export your authentication data and review deletion controls."
+			/>
 
 			{recentAuthentication ? null : (
 				<Alert className="mb-6 border-amber-500/40">

@@ -2,7 +2,6 @@
 
 import {
 	AlertTriangle,
-	ArrowLeft,
 	Check,
 	Copy,
 	Fingerprint,
@@ -23,10 +22,10 @@ import {
 	Unlink,
 	WalletCards,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { ChangePasswordForm } from "@/components/forms/change-password-form";
 import { TwoFactorDisableForm } from "@/components/forms/two-factor-disable-form";
 import { TwoFactorEnableForm } from "@/components/forms/two-factor-enable-form";
@@ -711,30 +710,15 @@ export function SecurityCenter({
 		);
 
 	return (
-		<div className="mx-auto w-full max-w-5xl py-8 md:py-12">
-			<div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-				<div className="space-y-2">
-					<Button asChild variant="ghost" size="sm" className="-ml-3 gap-2">
-						<Link href="/dashboard">
-							<ArrowLeft className="h-4 w-4" />
-							Dashboard
-						</Link>
-					</Button>
-					<div className="flex items-center gap-2">
-						<ShieldCheck className="h-7 w-7 text-primary" />
-						<h1 className="text-3xl font-semibold tracking-tight">
-							Security Center
-						</h1>
-					</div>
-					<p className="max-w-2xl text-sm text-muted-foreground">
-						Manage authentication factors, active sessions, linked identities,
-						and account lifecycle controls for {user.email}.
-					</p>
-				</div>
+		<div className="mx-auto w-full max-w-6xl">
+			<DashboardPageHeader
+				title="Security Center"
+				description={`Manage authentication factors, active sessions, linked identities, and account lifecycle controls for ${user.email}.`}
+			>
 				<Badge variant={posture.level === "strong" ? "default" : "secondary"}>
 					{posture.level.toUpperCase()} · {posture.completed}/{posture.total}
 				</Badge>
-			</div>
+			</DashboardPageHeader>
 
 			{(!recentAuthentication || securityDataUnavailable) && (
 				<Alert className="mb-6">

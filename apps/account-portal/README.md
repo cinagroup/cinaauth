@@ -1,7 +1,7 @@
 ﻿# CinaSeek Accounts
 
 <p align="center">
-  <img src="./public/logo.png" alt="CinaSeek" width="96" height="96" />
+  <img src="./public/logo.png" alt="CinaSeek Accounts logo" width="96" height="96" />
 </p>
 
 This is the user-facing CinaSeek sign-in and account center deployed at

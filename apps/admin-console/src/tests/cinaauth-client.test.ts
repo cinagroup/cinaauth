@@ -6,13 +6,46 @@ vi.mock("@/lib/cinaauth/fetcher", () => ({
 	fetchAuthRequest: fetchMock,
 }));
 
-import { cinaauthFetch } from "@/lib/cinaauth/client";
+import {
+	cinaauthFetch,
+	cinaauthFetchWithResponse,
+} from "@/lib/cinaauth/client";
 
 beforeEach(() => {
 	fetchMock.mockReset();
 });
 
 describe("cinaauthFetch error contracts", () => {
+	it("retains upstream response headers for session-switching proxies", async () => {
+		fetchMock.mockResolvedValue(
+			Response.json(
+				{ session: { id: "target-session" } },
+				{
+					headers: {
+						"set-cookie":
+							"__Secure-cinaauth.session_token=target; Path=/; HttpOnly; Secure",
+					},
+				},
+			),
+		);
+
+		const { result, response } = await cinaauthFetchWithResponse(
+			"/admin/impersonate-user",
+			{
+				method: "POST",
+				body: { userId: "u2" },
+			},
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			data: { session: { id: "target-session" } },
+		});
+		expect(response?.headers.get("set-cookie")).toContain(
+			"__Secure-cinaauth.session_token=target",
+		);
+	});
+
 	it("treats a successful empty 204 response as success", async () => {
 		fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 

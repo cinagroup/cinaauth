@@ -19,6 +19,24 @@ export function getAdminPageAccess(
 		: "forbidden";
 }
 
+/** Build a local sign-in redirect without allowing an external callback. */
+export function getAdminSignInRedirect(rawCallbackURL: string | null): string {
+	// Browsers strip control characters before navigation, so reject them before
+	// deciding whether this is a local path.
+	// eslint-disable-next-line no-control-regex
+	const hasControlCharacters = /[\u0000-\u001f\u007f]/.test(
+		rawCallbackURL ?? "",
+	);
+	const callbackURL =
+		!hasControlCharacters &&
+		rawCallbackURL?.startsWith("/") &&
+		!rawCallbackURL.startsWith("//") &&
+		!rawCallbackURL.startsWith("/\\")
+			? rawCallbackURL
+			: "/dashboard";
+	return `/login?callbackURL=${encodeURIComponent(callbackURL)}`;
+}
+
 /** Resolve the admin session or return a 401 Response (for Route Handlers). */
 export async function requireAdmin(
 	request: NextRequest,

@@ -2,7 +2,6 @@
 
 import {
 	AlertTriangle,
-	ArrowLeft,
 	Boxes,
 	CalendarDays,
 	Check,
@@ -16,10 +15,10 @@ import {
 	Smartphone,
 	Trash2,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
 	AlertDialog,
@@ -460,23 +459,10 @@ export function DeveloperConsole({
 
 	return (
 		<div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex items-start gap-3">
-					<Button asChild size="icon" variant="outline">
-						<Link href="/dashboard" aria-label="Back to account dashboard">
-							<ArrowLeft className="h-4 w-4" />
-						</Link>
-					</Button>
-					<div>
-						<h1 className="text-2xl font-semibold tracking-tight">
-							Developer Console
-						</h1>
-						<p className="text-sm text-muted-foreground">
-							Register OAuth applications against the authoritative CinaSeek
-							Identity service.
-						</p>
-					</div>
-				</div>
+			<DashboardPageHeader
+				title="Developer Console"
+				description="Register OAuth applications against the authoritative CinaSeek Identity service."
+			>
 				<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 					<DialogTrigger asChild>
 						<Button disabled={!writesAllowed}>
@@ -509,7 +495,7 @@ export function DeveloperConsole({
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
-			</div>
+			</DashboardPageHeader>
 
 			{!emailVerified || !recentAuthentication || dataUnavailable.clients ? (
 				<Alert variant="destructive">

@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guard";
-import { cinaauthFetch } from "@/lib/cinaauth/client";
+import {
+	cinaauthFetchWithResponse,
+	getCinaauthSetCookies,
+} from "@/lib/cinaauth/client";
+import { toHostOnlyCookie } from "@/lib/cinaauth/proxy-cookie";
 import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
 
 /**
@@ -19,9 +23,37 @@ export async function POST(request: NextRequest) {
 	// No validation needed: this is an action-only route (no body expected).
 	await request.json().catch(() => ({}));
 	const cookie = request.headers.get("cookie") ?? "";
-	const res = await cinaauthFetch("/admin/stop-impersonating", {
-		method: "POST",
-		cookie,
+	const { result, response: upstreamResponse } =
+		await cinaauthFetchWithResponse("/admin/stop-impersonating", {
+			method: "POST",
+			cookie,
+		});
+	const setCookies = getCinaauthSetCookies(upstreamResponse);
+	if (
+		result.ok &&
+		!setCookies.some((cookie) => cookie.includes("cinaauth.session_token="))
+	) {
+		return NextResponse.json(
+			{
+				ok: false,
+				error: {
+					code: "CINAUTH_SESSION_COOKIE_MISSING",
+					message:
+						"CinaSeek Identity did not restore the administrator session",
+					status: 502,
+				},
+			},
+			{ status: 502, headers: { "Cache-Control": "no-store" } },
+		);
+	}
+	const response = NextResponse.json(result, {
+		status: adminUpstreamResponseStatus(result),
 	});
-	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
+	if (result.ok) {
+		for (const setCookie of setCookies) {
+			response.headers.append("set-cookie", toHostOnlyCookie(setCookie));
+		}
+	}
+	response.headers.set("Cache-Control", "no-store");
+	return response;
 }
