@@ -2,10 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NAV } from "@/components/layout/sidebar";
 import type { AdminSession } from "@/lib/cinaauth/types";
-import {
-	getMeSelfServiceAccess,
-	ME_SECTIONS,
-} from "@/lib/me";
+import { getMeSelfServiceAccess, ME_SECTIONS } from "@/lib/me";
 
 const adminSession = (impersonatedBy: string | null = null): AdminSession => ({
 	userId: "admin-1",
