@@ -8,14 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useSessionQuery } from "@/data/user/session-query";
 import { authClient } from "@/lib/auth-client";
+import {
+	buildDeviceFlowPath,
+	getDeviceFlowResponseError,
+	getDeviceFlowThrownError,
+} from "@/lib/device-authorization-flow";
 
 export default function Page() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const userCode = searchParams.get("user_code");
 	const { data: session } = useSessionQuery();
-	const [isApprovePending, startApproveTransition] = useTransition();
-	const [isDenyPending, startDenyTransition] = useTransition();
+	const [isPending, startTransition] = useTransition();
 	const [error, setError] = useState<string | null>(null);
 
 	const handleApprove = () => {
@@ -23,14 +27,24 @@ export default function Page() {
 
 		setError(null);
 
-		startApproveTransition(async () => {
+		startTransition(async () => {
 			try {
-				await authClient.device.approve({
+				const response = await authClient.device.approve({
 					userCode,
 				});
-				router.push("/device/success");
-			} catch (err: any) {
-				setError(err.error?.message || "Failed to approve device");
+				const responseError = getDeviceFlowResponseError(
+					response,
+					"Failed to approve device",
+				);
+				if (responseError) {
+					setError(responseError);
+					return;
+				}
+				router.push(buildDeviceFlowPath("/device/success", searchParams));
+			} catch (caughtError: unknown) {
+				setError(
+					getDeviceFlowThrownError(caughtError, "Failed to approve device"),
+				);
 			}
 		});
 	};
@@ -40,14 +54,24 @@ export default function Page() {
 
 		setError(null);
 
-		startDenyTransition(async () => {
+		startTransition(async () => {
 			try {
-				await authClient.device.deny({
+				const response = await authClient.device.deny({
 					userCode,
 				});
-				router.push("/device/denied");
-			} catch (err: any) {
-				setError(err.error?.message || "Failed to deny device");
+				const responseError = getDeviceFlowResponseError(
+					response,
+					"Failed to deny device",
+				);
+				if (responseError) {
+					setError(responseError);
+					return;
+				}
+				router.push(buildDeviceFlowPath("/device/denied", searchParams));
+			} catch (caughtError: unknown) {
+				setError(
+					getDeviceFlowThrownError(caughtError, "Failed to deny device"),
+				);
 			}
 		});
 	};
@@ -92,9 +116,9 @@ export default function Page() {
 								onClick={handleDeny}
 								variant="outline"
 								className="flex-1"
-								disabled={isDenyPending}
+								disabled={isPending}
 							>
-								{isDenyPending ? (
+								{isPending ? (
 									<Loader2 className="h-4 w-4 animate-spin" />
 								) : (
 									<>
@@ -106,9 +130,9 @@ export default function Page() {
 							<Button
 								onClick={handleApprove}
 								className="flex-1"
-								disabled={isApprovePending}
+								disabled={isPending}
 							>
-								{isApprovePending ? (
+								{isPending ? (
 									<Loader2 className="h-4 w-4 animate-spin" />
 								) : (
 									<>

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Download, Loader2, ShieldCheck } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import QRCode from "react-qr-code";
@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
+import { formatBackupCodesText } from "@/lib/two-factor-verification";
 
 const passwordSchema = z.object({
 	password: z.string().min(8, "Password must be at least 8 characters."),
@@ -29,14 +30,21 @@ const otpSchema = z.object({
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 type OtpFormValues = z.infer<typeof otpSchema>;
+type EnrollmentStep = "password" | "verify" | "backupCodes";
 
 interface TwoFactorEnableFormProps {
 	onSuccess?: () => void;
+	onBackupCodesPendingChange?: (pending: boolean) => void;
 }
 
-export function TwoFactorEnableForm({ onSuccess }: TwoFactorEnableFormProps) {
+export function TwoFactorEnableForm({
+	onSuccess,
+	onBackupCodesPendingChange,
+}: TwoFactorEnableFormProps) {
 	const [loading, startTransition] = useTransition();
 	const [totpURI, setTotpURI] = useState<string>("");
+	const [backupCodes, setBackupCodes] = useState<string[]>([]);
+	const [step, setStep] = useState<EnrollmentStep>("password");
 
 	const passwordForm = useForm<PasswordFormValues>({
 		resolver: zodResolver(passwordSchema),
@@ -59,6 +67,8 @@ export function TwoFactorEnableForm({ onSuccess }: TwoFactorEnableFormProps) {
 				fetchOptions: {
 					onSuccess(ctx) {
 						setTotpURI(ctx.data.totpURI);
+						setBackupCodes(ctx.data.backupCodes);
+						setStep("verify");
 					},
 					onError(context) {
 						toast.error(context.error.message);
@@ -74,8 +84,8 @@ export function TwoFactorEnableForm({ onSuccess }: TwoFactorEnableFormProps) {
 				code: data.otp,
 				fetchOptions: {
 					onSuccess() {
-						toast.success("2FA enabled successfully");
-						onSuccess?.();
+						onBackupCodesPendingChange?.(true);
+						setStep("backupCodes");
 					},
 					onError(context) {
 						toast.error(context.error.message);
@@ -86,7 +96,65 @@ export function TwoFactorEnableForm({ onSuccess }: TwoFactorEnableFormProps) {
 		});
 	};
 
-	if (totpURI) {
+	const finishEnrollment = () => {
+		onBackupCodesPendingChange?.(false);
+		setBackupCodes([]);
+		setTotpURI("");
+		toast.success("2FA enabled successfully");
+		onSuccess?.();
+	};
+
+	const downloadBackupCodes = () => {
+		const blob = new Blob([formatBackupCodesText(backupCodes)], {
+			type: "text/plain;charset=utf-8",
+		});
+		const objectURL = URL.createObjectURL(blob);
+		const anchor = document.createElement("a");
+		anchor.href = objectURL;
+		anchor.download = "cinaseek-backup-codes.txt";
+		anchor.click();
+		URL.revokeObjectURL(objectURL);
+	};
+
+	if (step === "backupCodes") {
+		const backupCodesText = formatBackupCodesText(backupCodes);
+		return (
+			<div className="flex flex-col gap-4">
+				<div className="space-y-2" role="status">
+					<div className="flex items-center gap-2 font-medium">
+						<ShieldCheck className="h-5 w-5 text-green-600" />
+						Two-factor authentication is enabled
+					</div>
+					<p className="text-sm text-muted-foreground">
+						Save these one-time backup codes now. They will not be shown again
+						in this flow.
+					</p>
+				</div>
+				<ul className="grid grid-cols-2 gap-2 rounded-md border bg-muted/40 p-4 font-mono text-sm">
+					{backupCodes.map((backupCode) => (
+						<li className="tracking-wide" key={backupCode}>
+							{backupCode}
+						</li>
+					))}
+				</ul>
+				<div className="flex flex-wrap gap-2">
+					<div className="flex items-center gap-1">
+						<span className="text-sm">Copy all codes</span>
+						<CopyButton textToCopy={backupCodesText} />
+					</div>
+					<Button type="button" variant="outline" onClick={downloadBackupCodes}>
+						<Download className="h-4 w-4" />
+						Download .txt
+					</Button>
+				</div>
+				<Button type="button" onClick={finishEnrollment}>
+					I saved these codes
+				</Button>
+			</div>
+		);
+	}
+
+	if (step === "verify" && totpURI) {
 		return (
 			<div className="flex flex-col gap-4">
 				<div className="flex items-center justify-center">

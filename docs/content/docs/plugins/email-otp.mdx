@@ -89,7 +89,7 @@ Use the `checkVerificationOtp()` method to check if an OTP is valid.
        */
       type: "email-verification" | "sign-in" | "forget-password" = "sign-in"
       /**
-       * OTP sent to the email. 
+       * OTP sent to the email.
        */
       otp: string = "123456"
   }
@@ -136,6 +136,12 @@ Once the user provides the OTP, you can sign in the user using the `signIn.email
        * User profile image URL. Only used when the user is registering for the first time.
        */
       image?: string = "https://example.com/image.png"
+      /**
+       * Require this OTP verification to create a new account. If the email
+       * already belongs to an account, the endpoint returns
+       * `USER_ALREADY_EXISTS` after consuming the OTP.
+       */
+      newUserOnly?: boolean = false
   }
   ```
 </APIMethod>
@@ -143,6 +149,11 @@ Once the user provides the OTP, you can sign in the user using the `signIn.email
 <Callout>
   If the user is not registered, they'll be automatically registered. Configured [additional fields](/docs/concepts/typescript#additional-fields) are also accepted for new users. To prevent automatic sign-up, pass `disableSignUp` as `true` in the [options](#options).
 </Callout>
+
+Use `newUserOnly: true` for a registration-only flow. This prevents a valid
+sign-in OTP for an existing account from being treated as proof that a new
+account was created. The OTP is still single-use when the endpoint rejects the
+existing account.
 
 <Callout>
   When a sign-in OTP confirms a pre-existing account whose email was never verified, any existing password on that account is removed and its sessions are revoked. The user is signed in through the OTP and can set a new password through password reset. This keeps email ownership, proven by the OTP, as the source of truth for the account.

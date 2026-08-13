@@ -1,4 +1,5 @@
 import type { GenericEndpointContext } from "@cinaauth/core";
+import type { AuthEndpointContext } from "@cinaauth/core/context";
 import { defineRequestState } from "@cinaauth/core/context";
 import { logger } from "@cinaauth/core/env";
 import { CinaAuthError } from "@cinaauth/core/error";
@@ -12,6 +13,7 @@ import {
 	sessionMiddleware,
 } from "cinaauth/api";
 import { parseSetCookieHeader } from "cinaauth/cookies";
+import type { Verification } from "cinaauth/db";
 import { mergeSchema } from "cinaauth/db";
 import type { CinaAuthPlugin } from "cinaauth/types";
 import * as z from "zod";
@@ -29,6 +31,13 @@ import {
 import * as oauthClientEndpoints from "./oauthClient";
 import * as oauthConsentEndpoints from "./oauthConsent";
 import { registerEndpoint } from "./register";
+import {
+	consumeRegistrationChallengeBridge,
+	issueRegistrationChallengeBridge,
+	issueRegistrationProof,
+	supportsAtomicRegistrationProofStorage,
+	supportsDatabaseBackedRegistrationBridge,
+} from "./registration-proof";
 import { revokeEndpoint } from "./revoke";
 import { schema } from "./schema";
 import { tokenEndpoint } from "./token";
@@ -37,11 +46,14 @@ import { SafeUrlSchema } from "./types/zod";
 import { userInfoEndpoint } from "./userinfo";
 import {
 	getJwtPlugin,
+	getSignedQueryExpiresAt,
 	getSignedQueryIssuedAt,
+	parsePrompt,
 	postLoginClearedParam,
 	removePromptFromQuery,
 	searchParamsToQuery,
 	signedQueryIssuedAtParam,
+	signupContinuationParam,
 	verifyOAuthQueryParams,
 } from "./utils";
 import { PACKAGE_VERSION } from "./version";
@@ -58,8 +70,138 @@ export const oAuthState = defineRequestState<{
 	query?: string;
 	signedQueryIssuedAt?: Date;
 	postLoginClearedForSession?: string;
+	signupContinuationForSession?: string;
+	querySignature?: string;
+	queryExpiresAt?: Date;
 } | null>(() => null);
 export const getOAuthProviderState = oAuthState.get;
+
+const createdUsersForRegistrationRequest = Symbol(
+	"oauth-provider-created-users-for-registration-request",
+);
+
+function getCreatedUsersForRegistrationRequest(context: object | null) {
+	if (!context) return undefined;
+	const createdUsers = Reflect.get(context, createdUsersForRegistrationRequest);
+	return createdUsers instanceof Set
+		? (createdUsers as Set<string>)
+		: undefined;
+}
+
+function setCreatedUsersForRegistrationRequest(
+	context: object,
+	createdUsers: Set<string>,
+) {
+	Reflect.defineProperty(context, createdUsersForRegistrationRequest, {
+		value: createdUsers,
+		enumerable: false,
+		configurable: true,
+	});
+}
+
+type RegistrationRequestProofContext = {
+	querySignature: string;
+	expiresAt: Date;
+	createdUserIds: Set<string>;
+};
+
+const registrationRequestProofContext = Symbol(
+	"oauth-provider-registration-request-proof-context",
+);
+
+const registrationProofQuerySignatureStateKey =
+	"oauthProviderRegistrationQuerySignature";
+const registrationProofExpiresAtStateKey = "oauthProviderRegistrationExpiresAt";
+
+function isSocialOAuthStartPath(path: string | undefined) {
+	return path === "/sign-in/social" || path === "/sign-in/oauth2";
+}
+
+function isSocialOAuthCallbackPath(path: string | undefined) {
+	if (!path) return false;
+	return (
+		/^\/callback\/[^/]+$/.test(path) || /^\/oauth2\/callback\/[^/]+$/.test(path)
+	);
+}
+
+function getRegistrationRequestProofContext(context: object | null) {
+	if (!context) return undefined;
+	return Reflect.get(context, registrationRequestProofContext) as
+		| RegistrationRequestProofContext
+		| undefined;
+}
+
+function installRegistrationRequestProofContext(
+	context: object,
+	input: { querySignature: string; expiresAt: Date },
+) {
+	const createdUserIds =
+		getCreatedUsersForRegistrationRequest(context) ?? new Set<string>();
+	setCreatedUsersForRegistrationRequest(context, createdUserIds);
+	Reflect.defineProperty(context, registrationRequestProofContext, {
+		value: {
+			querySignature: input.querySignature,
+			expiresAt: input.expiresAt,
+			createdUserIds,
+		} satisfies RegistrationRequestProofContext,
+		enumerable: false,
+		configurable: true,
+	});
+}
+
+async function restoreRegistrationRequestProofContextFromOAuthState(
+	authContext: object,
+	path: string | undefined,
+) {
+	if (
+		!isSocialOAuthCallbackPath(path) ||
+		getRegistrationRequestProofContext(authContext)
+	) {
+		return;
+	}
+
+	const state = await getOAuthState();
+	const querySignature = state?.[registrationProofQuerySignatureStateKey];
+	const expiresAt = state?.[registrationProofExpiresAtStateKey];
+	if (
+		typeof querySignature !== "string" ||
+		querySignature.length === 0 ||
+		typeof expiresAt !== "number" ||
+		!Number.isSafeInteger(expiresAt) ||
+		expiresAt <= Date.now()
+	) {
+		return;
+	}
+
+	installRegistrationRequestProofContext(authContext, {
+		querySignature,
+		expiresAt: new Date(expiresAt),
+	});
+}
+
+const registrationBridgeHookActive = Symbol(
+	"oauth-provider-registration-bridge-hook-active",
+);
+
+function isRegistrationBridgeHookActive(context: object) {
+	return Reflect.get(context, registrationBridgeHookActive) === true;
+}
+
+async function withRegistrationBridgeHook<T>(
+	context: object,
+	operation: () => Promise<T>,
+) {
+	Reflect.defineProperty(context, registrationBridgeHookActive, {
+		value: true,
+		enumerable: false,
+		configurable: true,
+	});
+	try {
+		return await operation();
+	} finally {
+		Reflect.deleteProperty(context, registrationBridgeHookActive);
+	}
+}
 
 /**
  * oAuth 2.1 provider plugin for CinaAuth.
@@ -422,6 +564,102 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 		version: PACKAGE_VERSION,
 		options: opts as NoInfer<O>,
 		init: (ctx) => {
+			const registrationProofHooks = {
+				databaseHooks: {
+					verification: {
+						create: {
+							async after(
+								verification: Verification,
+								context: AuthEndpointContext | null,
+							) {
+								const authContext = context?.context;
+								if (
+									!authContext ||
+									context?.path !== "/sign-in/magic-link" ||
+									isRegistrationBridgeHookActive(authContext)
+								) {
+									return;
+								}
+								const proofContext =
+									getRegistrationRequestProofContext(authContext);
+								if (!proofContext) return;
+								await withRegistrationBridgeHook(authContext, () =>
+									issueRegistrationChallengeBridge(
+										authContext,
+										verification.id,
+										proofContext,
+										verification.expiresAt,
+									),
+								);
+							},
+						},
+						delete: {
+							async after(
+								verification: Verification,
+								context: AuthEndpointContext | null,
+							) {
+								const authContext = context?.context;
+								if (
+									!authContext ||
+									context?.path !== "/magic-link/verify" ||
+									isRegistrationBridgeHookActive(authContext)
+								) {
+									return;
+								}
+								const intent = await withRegistrationBridgeHook(
+									authContext,
+									() =>
+										consumeRegistrationChallengeBridge(
+											authContext,
+											verification.id,
+										),
+								);
+								if (intent) {
+									installRegistrationRequestProofContext(authContext, intent);
+								}
+							},
+						},
+					},
+					user: {
+						create: {
+							async after(
+								user: { id: string },
+								context: AuthEndpointContext | null,
+							) {
+								const createdUsers = getCreatedUsersForRegistrationRequest(
+									context?.context ?? null,
+								);
+								if (createdUsers) {
+									createdUsers.add(user.id);
+								}
+							},
+						},
+					},
+					session: {
+						create: {
+							async after(
+								session: { id: string; userId: string },
+								context: AuthEndpointContext | null,
+							) {
+								const authContext = context?.context;
+								if (!authContext) return;
+								const proofContext =
+									getRegistrationRequestProofContext(authContext);
+								if (!proofContext?.createdUserIds.has(session.userId)) return;
+								await issueRegistrationProof(
+									authContext,
+									{
+										querySignature: proofContext.querySignature,
+										sessionId: session.id,
+										userId: session.userId,
+									},
+									proofContext.expiresAt,
+								);
+							},
+						},
+					},
+				},
+			};
 			// OAuth provider performs adapter-level session lookups by id, so it
 			// currently requires DB-backed sessions whenever secondary storage is enabled.
 			if (
@@ -451,7 +689,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 				} catch (error) {
 					// baseURL may not be available during init when using dynamic baseURL config
 					if (isDynamicBaseURLInit && issuer === "") {
-						return;
+						return { options: registrationProofHooks };
 					}
 					throw error;
 				}
@@ -475,10 +713,38 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 					);
 				}
 			}
+			return { options: registrationProofHooks };
 		},
 		onRequest: handleIssuerMetadataRequest,
 		hooks: {
 			before: [
+				{
+					// The callback's parsed, authenticated OAuth state is not available yet,
+					// but user creation hooks need a request-local set to record into.
+					matcher(ctx) {
+						return isSocialOAuthCallbackPath(ctx.path);
+					},
+					handler: createAuthMiddleware(async (ctx) => {
+						setCreatedUsersForRegistrationRequest(
+							ctx.context,
+							new Set<string>(),
+						);
+					}),
+				},
+				{
+					// These state fields are server-owned. Remove client values even when
+					// there is no signed OAuth query to replace them.
+					matcher(ctx) {
+						return isSocialOAuthStartPath(ctx.path);
+					},
+					handler: createAuthMiddleware(async (ctx) => {
+						if (!ctx.body.additionalData) return;
+						delete ctx.body.additionalData[
+							registrationProofQuerySignatureStateKey
+						];
+						delete ctx.body.additionalData[registrationProofExpiresAtStateKey];
+					}),
+				},
 				{
 					// Add oauth_query to request state
 					matcher(ctx) {
@@ -497,27 +763,93 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 							});
 						}
 						const signedQueryIssuedAt = getSignedQueryIssuedAt(query);
+						const queryExpiresAt = getSignedQueryExpiresAt(query);
 						const queryParams = new URLSearchParams(query);
+						const querySignature = queryParams.get("sig") ?? undefined;
 						const postLoginClearedForSession =
 							queryParams.get(postLoginClearedParam) ?? undefined;
+						const signupContinuationForSession =
+							queryParams.get(signupContinuationParam) ?? undefined;
+						if (
+							parsePrompt(queryParams.get("prompt") ?? "").has("create") &&
+							!signupContinuationForSession &&
+							!supportsAtomicRegistrationProofStorage(ctx)
+						) {
+							throw new APIError("INTERNAL_SERVER_ERROR", {
+								error: "server_error",
+								error_description:
+									"prompt=create requires database-backed verification storage or atomic secondaryStorage.getAndDelete",
+							});
+						}
+						if (
+							ctx.path === "/sign-in/magic-link" &&
+							parsePrompt(queryParams.get("prompt") ?? "").has("create") &&
+							!supportsDatabaseBackedRegistrationBridge(ctx)
+						) {
+							throw new APIError("INTERNAL_SERVER_ERROR", {
+								error: "server_error",
+								error_description:
+									"prompt=create magic-link registration requires database-backed verification storage",
+							});
+						}
+						const createdUsers = new Set<string>();
+						if (querySignature && queryExpiresAt) {
+							installRegistrationRequestProofContext(ctx.context, {
+								querySignature,
+								expiresAt: queryExpiresAt,
+							});
+						} else {
+							setCreatedUsersForRegistrationRequest(ctx.context, createdUsers);
+						}
+						const requireNewEmailOTPUser =
+							ctx.path === "/sign-in/email-otp" &&
+							parsePrompt(queryParams.get("prompt") ?? "").has("create");
+						if (requireNewEmailOTPUser) {
+							ctx.body.newUserOnly = true;
+						}
 						queryParams.delete("sig");
 						queryParams.delete("exp");
 						queryParams.delete(signedQueryIssuedAtParam);
 						queryParams.delete(postLoginClearedParam);
+						queryParams.delete(signupContinuationParam);
 						await oAuthState.set({
 							query: queryParams.toString(),
 							signedQueryIssuedAt: signedQueryIssuedAt ?? undefined,
 							postLoginClearedForSession,
+							signupContinuationForSession,
+							querySignature,
+							queryExpiresAt: queryExpiresAt ?? undefined,
 						});
 
 						// If path starts oauth2 authorize (ie /sign-in/social, /sign-in/oauth2), add to additional data body
-						if (
-							ctx.path === "/sign-in/social" ||
-							ctx.path === "/sign-in/oauth2"
-						) {
-							if (ctx.body.additionalData?.query) return;
-							if (!ctx.body.additionalData) ctx.body.additionalData = {};
-							ctx.body.additionalData.query = queryParams.toString();
+						if (isSocialOAuthStartPath(ctx.path)) {
+							const additionalData = {
+								...(ctx.body.additionalData ?? {}),
+							};
+							if (
+								parsePrompt(queryParams.get("prompt") ?? "").has("create") &&
+								querySignature &&
+								queryExpiresAt
+							) {
+								additionalData[registrationProofQuerySignatureStateKey] =
+									querySignature;
+								additionalData[registrationProofExpiresAtStateKey] =
+									queryExpiresAt.getTime();
+							}
+							if (!additionalData.query) {
+								additionalData.query = queryParams.toString();
+							}
+							ctx.body.additionalData = additionalData;
+						}
+						if (requireNewEmailOTPUser) {
+							return {
+								context: {
+									body: {
+										...ctx.body,
+										newUserOnly: true,
+									},
+								},
+							};
 						}
 					}),
 				},
@@ -540,8 +872,13 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 						if (!sessionToken) return;
 						// Continue with authorization request by using the initial prompt
 						// but clearing the login prompt cookie if forced login prompt
+						await restoreRegistrationRequestProofContextFromOAuthState(
+							ctx.context,
+							ctx.path,
+						);
+						const requestState = await oAuthState.get();
 						const _query =
-							(await oAuthState.get())?.query ??
+							requestState?.query ??
 							((await getOAuthState())?.query as string | undefined);
 						if (!_query) return;
 						const query = new URLSearchParams(_query);
@@ -550,6 +887,26 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 							await ctx.context.internalAdapter.findSession(sessionToken);
 						if (!session) return;
 						ctx.context.session = session;
+
+						if (parsePrompt(query.get("prompt") ?? "").has("create")) {
+							const proofContext = getRegistrationRequestProofContext(
+								ctx.context,
+							);
+							if (proofContext?.createdUserIds.has(session.user.id)) {
+								await issueRegistrationProof(
+									ctx.context,
+									{
+										querySignature: proofContext.querySignature,
+										sessionId: session.session.id,
+										userId: session.user.id,
+									},
+									proofContext.expiresAt,
+								);
+							}
+							// Preserve the account-creation response. The client must explicitly
+							// continue, where the proof above is consumed exactly once.
+							return;
+						}
 
 						const secFetchMode = ctx.request?.headers
 							?.get("sec-fetch-mode")

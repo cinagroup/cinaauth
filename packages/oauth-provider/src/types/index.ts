@@ -283,8 +283,20 @@ export interface OAuthOptions<
 		 * A URL to the Sign Up page where the user will be redirected
 		 * to continue a signup flow.
 		 *
-		 * Upon completion of signup, you need to call the `/oauth2/continue`
-		 * with `created: true` to continue the login flow.
+		 * After creating and signing in the new account, call `/oauth2/continue`
+		 * with `created: true`. The server accepts it only with the one-time proof
+		 * issued when that signed authorization request actually created the user
+		 * and session.
+		 *
+		 * Magic Link registration is supported through a database-backed,
+		 * single-use bridge between its send and verify requests. When
+		 * `secondaryStorage` is configured, set
+		 * `verification.storeInDatabase: true`; a secondary-only configuration
+		 * fails closed before sending a prompt=create Magic Link.
+		 *
+		 * If `shouldRedirect` adds registration steps for an existing session, the
+		 * redirect carries a signed, session-bound continuation marker. Calling
+		 * `/oauth2/continue` re-evaluates `shouldRedirect` before authorization.
 		 *
 		 * @default loginPage
 		 * @example `/sign-up`

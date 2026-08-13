@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { classifyTwoFactorVerificationData } from "@/lib/two-factor-verification";
 
 const totpSchema = z.object({
 	code: z
@@ -48,13 +49,15 @@ export function TwoFactorTotpForm({
 			const res = await authClient.twoFactor.verifyTotp({
 				code: data.code,
 			});
-			if (res.data?.token) {
+			const outcome = classifyTwoFactorVerificationData(res.data);
+			if (outcome === "session") {
 				setIsVerified(true);
 				onSuccess?.();
-			} else {
-				onError?.("Invalid TOTP code");
-				form.setError("code", { message: "Invalid TOTP code" });
+				return;
 			}
+			if (outcome === "redirect") return;
+			onError?.("Invalid TOTP code");
+			form.setError("code", { message: "Invalid TOTP code" });
 		});
 	};
 

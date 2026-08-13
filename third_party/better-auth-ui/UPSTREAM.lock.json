@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "Better Auth UI",
+  "usage": "behavioral-reference-only",
+  "repositoryUrl": "https://github.com/better-auth-ui/better-auth-ui",
+  "cinaGroupMirrorUrl": "https://github.com/cinagroup/cinaauth-ui",
+  "commit": "d52ec3dc178cd861d8f658d92e4a0fc15472ce71",
+  "version": "1.6.45",
+  "license": {
+    "spdx": "MIT",
+    "sourcePath": "LICENSE",
+    "vendoredPath": "third_party/better-auth-ui/LICENSE",
+    "upstreamSha256": "ec4d1820f3e6965d18e6034324adedca02069d1f529bc4b93be62deb7ae43ce3",
+    "vendoredSha256": "3bc5158c40d07fae8ce6b38dd2cf51c6af65b3d1d8d92e73fd3645a8589c97fc"
+  },
+  "reviewedAt": "2026-08-13",
+  "reviewNotes": [
+    "The reviewed checkout was shallow and had no tag pointing at the pinned commit.",
+    "The declared package version and release commit subject were used as source metadata, not as proof of a signed release.",
+    "No upstream package or example application is a CinaAuth runtime dependency."
+  ]
+}

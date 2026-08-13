@@ -19,11 +19,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ChangePasswordForm } from "@/components/forms/change-password-form";
+import { EmailVerificationOtpForm } from "@/components/forms/email-verification-otp-form";
 import { TwoFactorDisableForm } from "@/components/forms/two-factor-disable-form";
 import { TwoFactorEnableForm } from "@/components/forms/two-factor-enable-form";
 import { TwoFactorQrForm } from "@/components/forms/two-factor-qr-form";
 import { UpdateUserForm } from "@/components/forms/update-user-form";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,9 +64,8 @@ const UserCard = (props: { session: Session | null }) => {
 	const { data } = useSessionQuery();
 	const session = data || props.session;
 	const [twoFactorDialog, setTwoFactorDialog] = useState<boolean>(false);
+	const [backupCodesPending, setBackupCodesPending] = useState(false);
 	const [isSignOut, setIsSignOut] = useState<boolean>(false);
-	const [emailVerificationPending, setEmailVerificationPending] =
-		useState<boolean>(false);
 
 	return (
 		<Card>
@@ -98,45 +97,7 @@ const UserCard = (props: { session: Session | null }) => {
 					</div>
 				</div>{" "}
 				{session?.user.emailVerified ? null : (
-					<Alert>
-						<AlertTitle>Verify Your Email Address</AlertTitle>
-						<AlertDescription className="text-muted-foreground">
-							Please verify your email address. Check your inbox for the
-							verification email. If you haven't received the email, click the
-							button below to resend.
-							<Button
-								size="sm"
-								variant="secondary"
-								className="mt-2"
-								onClick={async () => {
-									await authClient.sendVerificationEmail(
-										{
-											email: session?.user.email || "",
-										},
-										{
-											onRequest(context) {
-												setEmailVerificationPending(true);
-											},
-											onError(context) {
-												toast.error(context.error.message);
-												setEmailVerificationPending(false);
-											},
-											onSuccess() {
-												toast.success("Verification email sent successfully");
-												setEmailVerificationPending(false);
-											},
-										},
-									);
-								}}
-							>
-								{emailVerificationPending ? (
-									<Loader2 size={15} className="animate-spin" />
-								) : (
-									"Resend Verification Email"
-								)}
-							</Button>
-						</AlertDescription>
-					</Alert>
+					<EmailVerificationOtpForm email={session?.user.email ?? ""} />
 				)}
 				<div className="border-y py-4 flex items-center flex-wrap justify-between gap-2">
 					<div className="flex flex-col gap-2">
@@ -168,7 +129,13 @@ const UserCard = (props: { session: Session | null }) => {
 									</DialogContent>
 								</Dialog>
 							)}
-							<Dialog open={twoFactorDialog} onOpenChange={setTwoFactorDialog}>
+							<Dialog
+								open={twoFactorDialog}
+								onOpenChange={(open) => {
+									if (!open && backupCodesPending) return;
+									setTwoFactorDialog(open);
+								}}
+							>
 								<DialogTrigger asChild>
 									<Button
 										variant={
@@ -188,7 +155,16 @@ const UserCard = (props: { session: Session | null }) => {
 										</span>
 									</Button>
 								</DialogTrigger>
-								<DialogContent className="sm:max-w-[425px] w-11/12">
+								<DialogContent
+									className="sm:max-w-[425px] w-11/12"
+									showCloseButton={!backupCodesPending}
+									onEscapeKeyDown={(event) => {
+										if (backupCodesPending) event.preventDefault();
+									}}
+									onPointerDownOutside={(event) => {
+										if (backupCodesPending) event.preventDefault();
+									}}
+								>
 									<DialogHeader>
 										<DialogTitle>
 											{session?.user.twoFactorEnabled
@@ -208,6 +184,7 @@ const UserCard = (props: { session: Session | null }) => {
 									) : (
 										<TwoFactorEnableForm
 											onSuccess={() => setTwoFactorDialog(false)}
+											onBackupCodesPendingChange={setBackupCodesPending}
 										/>
 									)}
 								</DialogContent>

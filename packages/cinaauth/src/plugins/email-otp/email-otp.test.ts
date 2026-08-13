@@ -82,6 +82,45 @@ describe("email-otp", async () => {
 		expect(verifiedUser.data?.token).toBeDefined();
 	});
 
+	it("should reject an existing account when a new account is required", async () => {
+		await client.emailOtp.sendVerificationOtp({
+			email: testUser.email,
+			type: "sign-in",
+		});
+
+		const result = await client.signIn.emailOtp({
+			email: testUser.email,
+			otp,
+			newUserOnly: true,
+		});
+
+		expect(result.error?.code).toBe("USER_ALREADY_EXISTS");
+
+		const replay = await client.signIn.emailOtp({
+			email: testUser.email,
+			otp,
+			newUserOnly: true,
+		});
+		expect(replay.error?.code).toBe("INVALID_OTP");
+	});
+
+	it("should create a new account when a new account is required", async () => {
+		const email = "new-user-only@email.com";
+		await client.emailOtp.sendVerificationOtp({
+			email,
+			type: "sign-in",
+		});
+
+		const result = await client.signIn.emailOtp({
+			email,
+			otp,
+			newUserOnly: true,
+		});
+
+		expect(result.error).toBeNull();
+		expect(result.data?.user.email).toBe(email);
+	});
+
 	it("should clear an unverified account's password when sign-in adopts it", async () => {
 		// An account created with a password but never email-verified must not keep
 		// that password once a sign-in OTP proves control of the mailbox.

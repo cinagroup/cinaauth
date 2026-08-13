@@ -2,17 +2,24 @@
 	ArrowLeftRight,
 	ArrowUpRight,
 	Building,
+	Clock3,
+	Fingerprint,
 	Mail,
+	ShieldCheck,
 	User,
 } from "lucide-react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import Image from "next/image";
-import { redirect } from "next/navigation";
-import { Logo } from "@/components/logo";
+import { notFound, redirect } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
+import type { OAuthConsentSearchParams } from "@/lib/oauth-consent-scopes";
+import {
+	buildOAuthConsentSignInPath,
+	getOAuthClientMonogram,
+	resolveOAuthConsentScopes,
+} from "@/lib/oauth-consent-scopes";
 import { ConsentBtns } from "./consent-buttons";
 
 export const metadata: Metadata = {
@@ -21,38 +28,62 @@ export const metadata: Metadata = {
 };
 
 interface AuthorizePageProps {
-	searchParams: Promise<{
-		redirect_uri: string;
-		scope: string;
-		cancel_uri: string;
-		client_id: string;
-	}>;
+	searchParams: Promise<OAuthConsentSearchParams>;
+}
+
+function ConsentScopeIcon({ scope }: { scope: string }) {
+	switch (scope) {
+		case "openid":
+			return <Fingerprint aria-hidden="true" className="h-5 w-5" />;
+		case "profile":
+			return <User aria-hidden="true" className="h-5 w-5" />;
+		case "email":
+			return <Mail aria-hidden="true" className="h-5 w-5" />;
+		case "offline_access":
+			return <Clock3 aria-hidden="true" className="h-5 w-5" />;
+		case "read:organization":
+			return <Building aria-hidden="true" className="h-5 w-5" />;
+		default:
+			return <ShieldCheck aria-hidden="true" className="h-5 w-5" />;
+	}
 }
 
 export default async function AuthorizePage({
 	searchParams,
 }: AuthorizePageProps) {
-	const { scope, client_id } = await searchParams;
+	const resolvedSearchParams = await searchParams;
+	const scope = Array.isArray(resolvedSearchParams.scope)
+		? resolvedSearchParams.scope[0]
+		: resolvedSearchParams.scope;
+	const clientId = Array.isArray(resolvedSearchParams.client_id)
+		? resolvedSearchParams.client_id[0]
+		: resolvedSearchParams.client_id;
 	const _headers = await headers();
-	const [session, clientDetails] = await Promise.all([
-		auth.api.getSession({
+	const session = await auth.api
+		.getSession({
 			headers: _headers,
-		}),
-		auth.api.getOAuthClientPublic({
+		})
+		.catch(() => null);
+	if (!session) {
+		redirect(buildOAuthConsentSignInPath(resolvedSearchParams));
+	}
+	if (!clientId) notFound();
+	const clientDetails = await auth.api
+		.getOAuthClientPublic({
 			query: {
-				client_id,
+				client_id: clientId,
 			},
 			headers: _headers,
-		}),
-	]).catch((e) => {
-		throw redirect("/sign-in");
-	});
+		})
+		.catch(() => null);
+	if (!clientDetails) notFound();
 
 	const organization = session?.session?.activeOrganizationId
 		? await auth.api.getFullOrganization({
 				headers: _headers,
 			})
 		: undefined;
+	const requestedScopes = resolveOAuthConsentScopes(scope);
 
 	return (
 		<div className="py-16 md:py-24 px-4 md:px-6">
@@ -65,17 +96,12 @@ export default async function AuthorizePage({
 				<div className="flex flex-col items-center justify-center max-w-2xl mx-auto px-4">
 					<div className="flex items-center gap-8 mb-8">
 						<div className="w-16 h-16 border border-on-primary/20 rounded-full flex items-center justify-center">
-							{clientDetails.logo_uri ? (
-								<Image
-									src={clientDetails.logo_uri}
-									alt="App Logo"
-									className="object-cover"
-									width={64}
-									height={64}
-								/>
-							) : (
-								<Logo />
-							)}
+							<span
+								aria-label={`${clientDetails.client_name} application`}
+								className="text-xl font-semibold"
+							>
+								{getOAuthClientMonogram(clientDetails.client_name)}
+							</span>
 						</div>
 						<ArrowLeftRight className="h-6 w-6" />
 						<div className="w-16 h-16 rounded-full overflow-hidden">
@@ -113,28 +139,30 @@ export default async function AuthorizePage({
 									Continuing will allow Sign in with {clientDetails.client_name}{" "}
 									to:
 								</div>
-								{scope.includes("profile") && (
-									<div className="flex items-center gap-3 text-body">
-										<User className="h-5 w-5" />
-										<span>Read your CinaSeek user data.</span>
-									</div>
-								)}
+								<ul className="flex flex-col gap-3">
+									{requestedScopes.map((requestedScope) => {
+										const description =
+											requestedScope.scope === "read:organization" &&
+											organization?.name
+												? `Read information about your organization ${organization.name}.`
+												: requestedScope.description;
 
-								{scope.includes("email") && (
-									<div className="flex items-center gap-3 text-body">
-										<Mail className="h-5 w-5" />
-										<span>Read your email address.</span>
-									</div>
-								)}
-
-								{scope.includes("read:organization") && (
-									<div className="flex items-center gap-3 text-body">
-										<Building className="h-5 w-5" />
-										<span>
-											Read your organization {organization?.name ?? ""}.
-										</span>
-									</div>
-								)}
+										return (
+											<li
+												key={requestedScope.scope}
+												className="flex items-start gap-3 text-body"
+											>
+												<ConsentScopeIcon scope={requestedScope.scope} />
+												<div>
+													<div className="font-medium text-ink">
+														{requestedScope.label}
+													</div>
+													{description ? <div>{description}</div> : null}
+												</div>
+											</li>
+										);
+									})}
+								</ul>
 							</div>
 						</CardContent>
 						<ConsentBtns />

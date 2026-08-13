@@ -851,11 +851,49 @@ To direct users from the client to a sign up page using `prompt: create`, use `s
 
 ```ts title="auth.ts"
 oauthProvider({
-  signUp: {
+	signup: {
     page: "/sign-up", // [!code highlight]
   }
 })
 ```
+
+After the page creates and signs in the new account, continue the original
+authorization request:
+
+```ts title="sign-up.ts"
+await authClient.oauth2.continue({
+	created: true,
+});
+```
+
+`created: true` only selects the continuation branch; it is not proof that an
+account was created. The server accepts it only after the request carrying the
+signed OAuth query actually creates both the user and its session. That event
+issues a one-time proof bound to the query signature, session, and user. Signing
+in to an existing account, swapping the query or session, and replaying a
+consumed proof cannot clear the create prompt.
+
+The account-creation request must carry the signed OAuth query. The OAuth
+Provider client plugin adds it to non-GET requests made from the sign-up page.
+
+Magic Link registration is also supported. Because sending and verifying a
+Magic Link happen in separate requests, the provider stores a database-backed,
+single-use bridge from the Magic Link challenge to the signed OAuth query. The
+final proof is issued only if consuming that exact challenge creates the user
+and session.
+
+<Callout type="warn">
+	When `secondaryStorage` is configured, `prompt: "create"` proof storage must
+	be database-backed with `verification.storeInDatabase: true`, or the
+	secondary storage must implement atomic `getAndDelete`. Without either
+	guarantee, the server fails closed with `server_error` instead of accepting a
+	non-atomic registration continuation.
+
+	Magic Link registration always requires the database-backed option because
+	the signed-query bridge spans its send and verify requests. A secondary-only
+	configuration fails closed before sending the Magic Link, even when that
+	storage implements atomic `getAndDelete`.
+</Callout>
 
 To stop sign in process to complete registration forms, use the `shouldRedirect` function.
 
@@ -863,7 +901,7 @@ To stop sign in process to complete registration forms, use the `shouldRedirect`
 import { userRegistered } from "@lib/registered";
 
 oauthProvider({
-  signUp: {
+	signup: {
     page: "/sign-up",
     shouldRedirect: async ({ headers }) => { // [!code highlight]
       const isUserRegistered = await userRegistered(headers);
@@ -872,6 +910,11 @@ oauthProvider({
   }
 })
 ```
+
+For `shouldRedirect`, the setup redirect carries a signed marker bound to the
+current session. Call `oauth2.continue({ created: true })` after the setup step;
+the server re-evaluates `shouldRedirect` against live state and redirects back
+to setup if registration is still incomplete.
 
 #### Select Account Screen
 

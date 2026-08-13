@@ -1,3 +1,5 @@
+import type { AuthCapabilities } from "@cinaauth/auth-web-contract";
+
 export const SECURITY_FRESH_AGE_SECONDS = 15 * 60;
 
 const securityDateFormatter = new Intl.DateTimeFormat("en", {
@@ -26,6 +28,8 @@ export type SecurityAccount = {
 	providerId: string;
 	createdAt: string;
 };
+
+export type SecurityOAuthProvider = AuthCapabilities["oauthProviders"][number];
 
 export type SecurityPasskey = {
 	id: string;
@@ -83,6 +87,25 @@ export const getSecurityPosture = (input: {
 };
 
 export const canUnlinkAccount = (accountCount: number) => accountCount > 1;
+
+export const getAvailableSecurityProviders = (
+	configuredProviders: SecurityOAuthProvider[],
+	accounts: SecurityAccount[],
+) => {
+	const linkedProviderIds = new Set(
+		accounts.map((account) => account.providerId),
+	);
+	return configuredProviders.filter(
+		(provider) => !linkedProviderIds.has(provider.id),
+	);
+};
+
+export const getSecurityProviderLinkFailure = (
+	value: string | string[] | undefined,
+) =>
+	Array.isArray(value)
+		? value.length === 1 && value[0] === "failed"
+		: value === "failed";
 
 export const requiresPasswordForDeletion = (accounts: SecurityAccount[]) =>
 	accounts.some((account) => account.providerId === "credential");

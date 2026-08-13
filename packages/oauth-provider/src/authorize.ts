@@ -11,6 +11,7 @@ import {
 	postLoginClearedParam,
 	setSignedOAuthQueryParameterNames,
 	signedQueryIssuedAtParam,
+	signupContinuationParam,
 } from "./signed-query";
 import type {
 	OAuthAuthorizationQuery,
@@ -461,6 +462,7 @@ export async function authorizeEndpoint(
 			}
 			return redirectWithPromptCode(ctx, opts, "create", {
 				page: typeof signupRedirect === "string" ? signupRedirect : undefined,
+				sessionId: session.session.id,
 			});
 		}
 	}
@@ -636,6 +638,8 @@ async function redirectWithPromptCode(
 	const queryParams = await signParams(ctx, opts, {
 		postLoginClearedForSession:
 			type === "consent" && opts.postLogin ? options?.sessionId : undefined,
+		signupContinuationForSession:
+			type === "create" ? options?.sessionId : undefined,
 	});
 	let path = opts.loginPage;
 	if (type === "select_account") {
@@ -657,7 +661,10 @@ async function redirectWithPromptCode(
 async function signParams(
 	ctx: GenericEndpointContext,
 	opts: OAuthOptions<Scope[]>,
-	flags?: { postLoginClearedForSession?: string },
+	flags?: {
+		postLoginClearedForSession?: string;
+		signupContinuationForSession?: string;
+	},
 ) {
 	// Add expiration to query parameters
 	const issuedAt = Date.now();
@@ -669,10 +676,15 @@ async function signParams(
 	params.set("exp", String(exp));
 	params.set(signedQueryIssuedAtParam, String(issuedAt));
 	params.delete("sig");
-	// Reserved marker: only server-issued consent redirects may sign this.
+	// Reserved markers: only the corresponding server-issued interaction
+	// redirects may sign these values.
 	params.delete(postLoginClearedParam);
+	params.delete(signupContinuationParam);
 	if (flags?.postLoginClearedForSession) {
 		params.set(postLoginClearedParam, flags.postLoginClearedForSession);
+	}
+	if (flags?.signupContinuationForSession) {
+		params.set(signupContinuationParam, flags.signupContinuationForSession);
 	}
 	setSignedOAuthQueryParameterNames(params);
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+	buildAccountSignInPath,
+	getAccountCallbackURL,
 	getSignInAlert,
 	getSignInContextMessage,
 	sanitizeAccountCallbackURL,
@@ -34,5 +36,30 @@ describe("sign-in experience copy", () => {
 		expect(sanitizeAccountCallbackURL("//attacker.example/collect")).toBe(
 			"/dashboard",
 		);
+	});
+
+	it("uses the canonical callbackURL parameter and accepts the legacy device-flow alias", () => {
+		const deviceSignInURL = new URL(
+			buildAccountSignInPath("/device"),
+			"https://accounts.cinaseek.ai",
+		);
+		expect(deviceSignInURL.pathname).toBe("/sign-in");
+		expect(deviceSignInURL.searchParams.get("callbackURL")).toBe("/device");
+		expect(deviceSignInURL.searchParams.has("callbackUrl")).toBe(false);
+		expect(
+			new URL(
+				buildAccountSignInPath("https://attacker.example/collect"),
+				"https://accounts.cinaseek.ai",
+			).searchParams.get("callbackURL"),
+		).toBe("/dashboard");
+
+		expect(
+			getAccountCallbackURL(
+				new URLSearchParams("callbackURL=%2Fdashboard%2Fsecurity"),
+			),
+		).toBe("/dashboard/security");
+		expect(
+			getAccountCallbackURL(new URLSearchParams("callbackUrl=%2Fdevice")),
+		).toBe("/device");
 	});
 });

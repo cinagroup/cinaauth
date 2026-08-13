@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
+import { completeLocalSignInSuccess } from "@/lib/auth-form-response";
 import { LastUsedIndicator } from "../last-used-indicator";
 
 const signInSchema = z.object({
@@ -75,9 +76,11 @@ export function SignInForm({
 					{
 						headers: captcha.headers,
 						query: params ? Object.fromEntries(params.entries()) : undefined,
-						onSuccess() {
-							toast.success("Successfully signed in");
-							onSuccess?.();
+						onSuccess(context) {
+							completeLocalSignInSuccess(context.data, {
+								notifySuccess: () => toast.success("Successfully signed in"),
+								onSuccess,
+							});
 						},
 						onError(context) {
 							toast.error(context.error.message);

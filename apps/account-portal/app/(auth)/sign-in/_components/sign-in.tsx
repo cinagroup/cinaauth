@@ -24,16 +24,14 @@ import {
 	hasSignedOidcAuthorizationQuery,
 } from "@/lib/oidc-navigation";
 import {
+	getAccountCallbackURL,
 	getSignInAlert,
 	getSignInContextMessage,
-	sanitizeAccountCallbackURL,
 } from "@/lib/sign-in-experience";
 
 export default function SignIn() {
 	const searchParams = useSearchParams();
-	const callbackURL = sanitizeAccountCallbackURL(
-		searchParams.get("callbackURL") ?? "/dashboard",
-	);
+	const callbackURL = getAccountCallbackURL(searchParams);
 	const hasOidcQuery = hasSignedOidcAuthorizationQuery(searchParams);
 	const capabilities = useAuthCapabilities();
 	const emailOtpReady = capabilities.data?.methods.emailOtp === true;

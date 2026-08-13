@@ -9,6 +9,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import {
+	buildDeviceFlowPath,
+	getDeviceFlowResponseError,
+	getDeviceFlowThrownError,
+} from "@/lib/device-authorization-flow";
 
 export default function Page() {
 	const router = useRouter();
@@ -25,19 +30,31 @@ export default function Page() {
 		startTransition(async () => {
 			try {
 				const finalCode = userCode.trim().replaceAll(/-/g, "").toUpperCase();
-				// Get the device authorization status
 				const response = await authClient.device({
 					query: {
 						user_code: finalCode,
 					},
 				});
+				const responseError = getDeviceFlowResponseError(
+					response,
+					"Invalid code. Please check and try again.",
+				);
+				if (responseError) {
+					setError(responseError);
+					return;
+				}
 
 				if (response.data) {
-					router.push(`/device/approve?user_code=${finalCode}`);
+					router.push(
+						buildDeviceFlowPath("/device/approve", params, finalCode),
+					);
 				}
-			} catch (err: any) {
+			} catch (caughtError: unknown) {
 				setError(
-					err.error?.message || "Invalid code. Please check and try again.",
+					getDeviceFlowThrownError(
+						caughtError,
+						"Invalid code. Please check and try again.",
+					),
 				);
 			}
 		});

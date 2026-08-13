@@ -511,17 +511,18 @@ describe("sensitive self-service session policy", () => {
 		).toBe(false);
 	});
 
-	it("guards self-service passkey deletion with the authoritative 15-minute window", () => {
+	it("guards self-service credential mutations with the authoritative 15-minute window", () => {
 		const now = Date.parse("2026-08-09T12:15:00.000Z");
-		expect(
-			requiresFreshSessionForMutation(
-				"/api/auth/passkey/delete-passkey",
-				"POST",
-			),
-		).toBe(true);
+		for (const pathname of [
+			"/api/auth/passkey/delete-passkey",
+			"/api/auth/link-social",
+			"/api/auth/oauth2/link",
+		]) {
+			expect(requiresFreshSessionForMutation(pathname, "POST")).toBe(true);
+		}
 		expect(
 			getFreshSessionMutationRejection(
-				"/api/auth/passkey/delete-passkey",
+				"/api/auth/link-social",
 				"POST",
 				"2026-08-09T12:00:00.000Z",
 				now,

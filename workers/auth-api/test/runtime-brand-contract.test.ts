@@ -9,7 +9,11 @@ describe("CinaSeek runtime brand contract", () => {
 			(candidate) => candidate.id === "passkey",
 		);
 
-		expect(plugin?.options).toMatchObject({ rpName: "CinaSeek" });
+		expect(plugin?.options).toMatchObject({
+			rpID: "cinaseek.ai",
+			rpName: "CinaSeek",
+			origin: ["https://accounts.cinaseek.ai"],
+		});
 	});
 
 	it("uses CinaSeek Identity in public OpenAPI metadata", () => {

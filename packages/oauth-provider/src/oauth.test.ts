@@ -2,14 +2,19 @@ import { APIError } from "better-call";
 import { createAuthMiddleware } from "cinaauth/api";
 import { createAuthClient } from "cinaauth/client";
 import {
+	emailOTPClient,
 	genericOAuthClient,
+	magicLinkClient,
 	multiSessionClient,
 	organizationClient,
 } from "cinaauth/client/plugins";
+import { makeSignature } from "cinaauth/crypto";
 import { toNodeHandler } from "cinaauth/node";
+import { emailOTP } from "cinaauth/plugins/email-otp";
 import type { GenericOAuthConfig } from "cinaauth/plugins/generic-oauth";
 import { genericOAuth } from "cinaauth/plugins/generic-oauth";
 import { jwt } from "cinaauth/plugins/jwt";
+import { magicLink } from "cinaauth/plugins/magic-link";
 import { multiSession } from "cinaauth/plugins/multi-session";
 import type { Organization } from "cinaauth/plugins/organization";
 import { organization } from "cinaauth/plugins/organization";
@@ -29,6 +34,11 @@ import {
 import { oauthProviderClient } from "./client";
 import { oauthProviderResourceClient } from "./client-resource";
 import { oauthProvider } from "./oauth";
+import {
+	canonicalizeOAuthQueryParams,
+	setSignedOAuthQueryParameterNames,
+	signedQueryIssuedAtParam,
+} from "./signed-query";
 import type { OAuthClient } from "./types/oauth";
 
 function isRedirectResult(
@@ -173,6 +183,149 @@ describe("oauth - init", () => {
 				],
 			}),
 		).resolves.not.toThrowError();
+	});
+
+	/**
+	 * @see https://openid.net/specs/openid-connect-prompt-create-1_0.html
+	 */
+	it("should fail closed for prompt=create without atomic verification storage", async () => {
+		const baseURL = "http://localhost:3000";
+		const secret = "test-secret-test-secret-test-secret-test-secret";
+		const { customFetchImpl } = await getTestInstance({
+			baseURL,
+			secret,
+			secondaryStorage: createSecondaryStorage(),
+			session: {
+				storeSessionInDatabase: true,
+			},
+			plugins: [
+				jwt(),
+				oauthProvider({
+					loginPage: "/login",
+					consentPage: "/consent",
+					signup: { page: "/signup" },
+					silenceWarnings: {
+						oauthAuthServerConfig: true,
+						openidConfig: true,
+					},
+				}),
+			],
+		});
+		const signedQuery = new URLSearchParams({
+			client_id: "client-a",
+			redirect_uri: "https://rp.example.com/callback",
+			response_type: "code",
+			prompt: "create",
+			exp: String(Math.floor(Date.now() / 1000) + 600),
+			[signedQueryIssuedAtParam]: String(Date.now()),
+		});
+		setSignedOAuthQueryParameterNames(signedQuery);
+		signedQuery.set(
+			"sig",
+			await makeSignature(
+				canonicalizeOAuthQueryParams(signedQuery).toString(),
+				secret,
+			),
+		);
+
+		const response = await customFetchImpl(
+			`${baseURL}/api/auth/oauth2/continue`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					created: true,
+					oauth_query: signedQuery.toString(),
+				}),
+			},
+		);
+		const error = (await response.json()) as {
+			error?: string;
+			error_description?: string;
+		};
+		expect(response.status).toBe(500);
+		expect(error).toEqual({
+			error: "server_error",
+			error_description:
+				"prompt=create requires database-backed verification storage or atomic secondaryStorage.getAndDelete",
+		});
+	});
+
+	/**
+	 * @see https://openid.net/specs/openid-connect-prompt-create-1_0.html
+	 */
+	it("should reject secondary-storage-only prompt=create magic links before sending", async () => {
+		const baseURL = "http://localhost:3000";
+		const secret = "test-secret-test-secret-test-secret-test-secret";
+		const sendMagicLink = vi.fn(async () => {});
+		const { customFetchImpl } = await getTestInstance({
+			baseURL,
+			secret,
+			secondaryStorage: {
+				...createSecondaryStorage(),
+				getAndDelete(key: string) {
+					return null;
+				},
+			},
+			session: {
+				storeSessionInDatabase: true,
+			},
+			plugins: [
+				magicLink({ sendMagicLink }),
+				jwt(),
+				oauthProvider({
+					loginPage: "/login",
+					consentPage: "/consent",
+					signup: { page: "/signup" },
+					silenceWarnings: {
+						oauthAuthServerConfig: true,
+						openidConfig: true,
+					},
+				}),
+			],
+		});
+		const signedQuery = new URLSearchParams({
+			client_id: "client-a",
+			redirect_uri: "https://rp.example.com/callback",
+			response_type: "code",
+			prompt: "create",
+			exp: String(Math.floor(Date.now() / 1000) + 600),
+			[signedQueryIssuedAtParam]: String(Date.now()),
+		});
+		setSignedOAuthQueryParameterNames(signedQuery);
+		signedQuery.set(
+			"sig",
+			await makeSignature(
+				canonicalizeOAuthQueryParams(signedQuery).toString(),
+				secret,
+			),
+		);
+
+		const response = await customFetchImpl(
+			`${baseURL}/api/auth/sign-in/magic-link`,
+			{
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: baseURL,
+				},
+				body: JSON.stringify({
+					email: "secondary-only-magic@example.com",
+					oauth_query: signedQuery.toString(),
+				}),
+			},
+		);
+		const error = (await response.json()) as {
+			error?: string;
+			error_description?: string;
+		};
+		expect(response.status).toBe(500);
+		expect(error).toEqual({
+			error: "server_error",
+			error_description:
+				"prompt=create magic-link registration requires database-backed verification storage",
+		});
+		expect(sendMagicLink).not.toHaveBeenCalled();
 	});
 
 	it("should pass with dynamic baseURL config when ctx.baseURL is unresolved during init", async () => {
@@ -1019,6 +1172,9 @@ describe("oauth - prompt", async () => {
 	let bypassReferenceIdCheck = false;
 	let isUserRegistered = true;
 	let authorizeBeforeHookCount = 0;
+	const promptCreateOTP = "654321";
+	let promptCreateMagicLinkURL = "";
+	let promptCreateMagicLinkOAuthQuery = "";
 	const {
 		auth: authorizationServer,
 		customFetchImpl,
@@ -1031,12 +1187,27 @@ describe("oauth - prompt", async () => {
 				if (ctx.path === "/oauth2/authorize") {
 					authorizeBeforeHookCount++;
 				}
+				if (
+					ctx.path === "/sign-in/magic-link" &&
+					typeof ctx.body?.oauth_query === "string"
+				) {
+					promptCreateMagicLinkOAuthQuery = ctx.body.oauth_query;
+				}
 			}),
 		},
 		plugins: [
 			jwt(),
 			multiSession(),
 			organization(),
+			emailOTP({
+				generateOTP: () => promptCreateOTP,
+				async sendVerificationOTP() {},
+			}),
+			magicLink({
+				async sendMagicLink({ url }) {
+					promptCreateMagicLinkURL = url;
+				},
+			}),
 			oauthProvider({
 				loginPage: "/login",
 				consentPage: "/consent",
@@ -1092,6 +1263,8 @@ describe("oauth - prompt", async () => {
 	const serverClient = createAuthClient({
 		plugins: [
 			oauthProviderClient(),
+			emailOTPClient(),
+			magicLinkClient(),
 			organizationClient(),
 			multiSessionClient(),
 		],
@@ -1230,6 +1403,40 @@ describe("oauth - prompt", async () => {
 		);
 	}
 
+	async function createPromptCreateRedirect() {
+		const { customFetchImpl: customFetchImplRP } = await createTestInstance({
+			prompt: "create",
+		});
+		const client = createAuthClient({
+			plugins: [genericOAuthClient()],
+			baseURL: rpBaseUrl,
+			fetchOptions: {
+				customFetchImpl: customFetchImplRP,
+			},
+		});
+		const data = await client.signIn.oauth2(
+			{
+				providerId,
+				callbackURL: "/success",
+			},
+			{ throw: true },
+		);
+		if (!data.url) {
+			throw new Error("missing authorization URL");
+		}
+
+		let signupRedirectUri = "";
+		await serverClient.$fetch(data.url, {
+			method: "GET",
+			headers,
+			onError(context) {
+				signupRedirectUri = context.response.headers.get("Location") || "";
+			},
+		});
+		expect(signupRedirectUri).toContain("/signup");
+		return signupRedirectUri;
+	}
+
 	it("login - should always redirect to login", async () => {
 		if (!oauthClient?.client_id || !oauthClient?.client_secret) {
 			throw Error("beforeAll not run properly");
@@ -1323,6 +1530,399 @@ describe("oauth - prompt", async () => {
 		expect(signupRedirectUri).toContain(
 			`redirect_uri=${encodeURIComponent(oauthClient?.redirect_uris?.at(0)!)}`,
 		);
+	});
+
+	/**
+	 * @see https://openid.net/specs/openid-connect-prompt-create-1_0.html
+	 */
+	it("create - should reject an existing account claiming registration", async ({
+		onTestFinished,
+	}) => {
+		if (!oauthClient?.client_id || !oauthClient.client_secret) {
+			throw Error("beforeAll not run properly");
+		}
+		onTestFinished(() => {
+			vi.unstubAllGlobals();
+		});
+
+		const { customFetchImpl: customFetchImplRP } = await createTestInstance({
+			prompt: "create",
+		});
+		const client = createAuthClient({
+			plugins: [genericOAuthClient()],
+			baseURL: rpBaseUrl,
+			fetchOptions: {
+				customFetchImpl: customFetchImplRP,
+			},
+		});
+		const data = await client.signIn.oauth2(
+			{
+				providerId,
+				callbackURL: "/success",
+			},
+			{ throw: true },
+		);
+
+		let signupRedirectUri = "";
+		await serverClient.$fetch(data.url, {
+			method: "GET",
+			headers,
+			onError(context) {
+				signupRedirectUri = context.response.headers.get("Location") || "";
+			},
+		});
+		expect(signupRedirectUri).toContain("/signup");
+		vi.stubGlobal("window", {
+			location: {
+				search: new URL(signupRedirectUri, authServerBaseUrl).search,
+			},
+		});
+
+		await serverClient.emailOtp.sendVerificationOtp(
+			{
+				email: testUser.email,
+				type: "sign-in",
+			},
+			{ throw: true },
+		);
+		const existingAccountSignIn = await serverClient.$fetch(
+			"/sign-in/email-otp",
+			{
+				method: "POST",
+				body: {
+					email: testUser.email,
+					otp: promptCreateOTP,
+					oauth_query: new URL(
+						signupRedirectUri,
+						authServerBaseUrl,
+					).searchParams.toString(),
+				},
+			},
+		);
+		expect(
+			(existingAccountSignIn.error as { code?: string } | null)?.code,
+		).toBe("USER_ALREADY_EXISTS");
+
+		const continueHeaders = new Headers(headers);
+		continueHeaders.set("content-type", "application/json");
+		const response = await fetch(
+			`${authServerBaseUrl}/api/auth/oauth2/continue`,
+			{
+				method: "POST",
+				headers: continueHeaders,
+				body: JSON.stringify({
+					created: true,
+					oauth_query: new URL(
+						signupRedirectUri,
+						authServerBaseUrl,
+					).searchParams.toString(),
+				}),
+			},
+		);
+		const error = (await response.json()) as {
+			error?: string;
+			error_description?: string;
+		};
+		expect(response.status).toBe(400);
+		expect(error).toMatchObject({
+			error: "invalid_request",
+			error_description:
+				"registration continuation was not issued for this session",
+		});
+	});
+
+	/**
+	 * @see https://openid.net/specs/openid-connect-prompt-create-1_0.html
+	 */
+	it("create - should reject an existing account verified by magic link", async ({
+		onTestFinished,
+	}) => {
+		onTestFinished(() => {
+			vi.unstubAllGlobals();
+		});
+
+		const existingEmail = "prompt-create-magic-existing@example.com";
+		await serverClient.emailOtp.sendVerificationOtp(
+			{ email: existingEmail, type: "sign-in" },
+			{ throw: true },
+		);
+		await serverClient.signIn.emailOtp(
+			{ email: existingEmail, otp: promptCreateOTP },
+			{ throw: true },
+		);
+
+		const signupRedirect = await createPromptCreateRedirect();
+		const signedQuery = new URL(
+			signupRedirect,
+			authServerBaseUrl,
+		).searchParams.toString();
+		vi.stubGlobal("window", {
+			location: {
+				search: new URL(signupRedirect, authServerBaseUrl).search,
+			},
+		});
+
+		promptCreateMagicLinkURL = "";
+		promptCreateMagicLinkOAuthQuery = "";
+		await serverClient.signIn.magicLink(
+			{
+				email: existingEmail,
+			},
+			{ throw: true },
+		);
+		expect(promptCreateMagicLinkOAuthQuery).toBe(signedQuery);
+
+		const token = new URL(promptCreateMagicLinkURL).searchParams.get("token");
+		expect(token).toBeTruthy();
+		if (!token) {
+			throw new Error("missing magic-link token");
+		}
+
+		const existingAccountHeaders = new Headers();
+		const verification = await serverClient.magicLink.verify({
+			query: { token },
+			fetchOptions: {
+				onSuccess: cookieSetter(existingAccountHeaders),
+			},
+		});
+		expect(verification.error).toBeNull();
+		expect(verification.data?.user.email).toBe(existingEmail);
+
+		const continueHeaders = new Headers(existingAccountHeaders);
+		continueHeaders.set("content-type", "application/json");
+		const response = await fetch(
+			`${authServerBaseUrl}/api/auth/oauth2/continue`,
+			{
+				method: "POST",
+				headers: continueHeaders,
+				body: JSON.stringify({
+					created: true,
+					oauth_query: signedQuery,
+				}),
+			},
+		);
+		const error = (await response.json()) as {
+			error?: string;
+			error_description?: string;
+		};
+		expect(response.status).toBe(400);
+		expect(error).toMatchObject({
+			error: "invalid_request",
+			error_description:
+				"registration continuation was not issued for this session",
+		});
+	});
+
+	/**
+	 * @see https://openid.net/specs/openid-connect-prompt-create-1_0.html
+	 */
+	it("create - should issue an exact single-use proof for the newly created account", async ({
+		onTestFinished,
+	}) => {
+		onTestFinished(() => {
+			vi.unstubAllGlobals();
+		});
+
+		const signupRedirectA = await createPromptCreateRedirect();
+		const signedQueryA = new URL(
+			signupRedirectA,
+			authServerBaseUrl,
+		).searchParams.toString();
+		vi.stubGlobal("window", {
+			location: {
+				search: new URL(signupRedirectA, authServerBaseUrl).search,
+			},
+		});
+
+		const registrationHeaders = new Headers();
+		await serverClient.emailOtp.sendVerificationOtp(
+			{
+				email: "prompt-create-proof@example.com",
+				type: "sign-in",
+			},
+			{ throw: true },
+		);
+		const registration = await serverClient.signIn.emailOtp(
+			{
+				email: "prompt-create-proof@example.com",
+				otp: promptCreateOTP,
+			},
+			{
+				throw: true,
+				onSuccess: cookieSetter(registrationHeaders),
+			},
+		);
+		expect(registration.user.email).toBe("prompt-create-proof@example.com");
+
+		const signupRedirectB = await createPromptCreateRedirect();
+		const signedQueryB = new URL(
+			signupRedirectB,
+			authServerBaseUrl,
+		).searchParams.toString();
+
+		const continueCreate = async (
+			oauthQuery: string,
+			requestHeaders: Headers,
+		) => {
+			const continueHeaders = new Headers(requestHeaders);
+			continueHeaders.set("content-type", "application/json");
+			return fetch(`${authServerBaseUrl}/api/auth/oauth2/continue`, {
+				method: "POST",
+				headers: continueHeaders,
+				body: JSON.stringify({
+					created: true,
+					oauth_query: oauthQuery,
+				}),
+			});
+		};
+
+		// A proof is bound to both the signed authorization request and the
+		// newly-created user's session. Neither dimension can be exchanged.
+		const swappedSession = await continueCreate(signedQueryA, headers);
+		expect(swappedSession.status).toBe(400);
+		const swappedQuery = await continueCreate(
+			signedQueryB,
+			registrationHeaders,
+		);
+		expect(swappedQuery.status).toBe(400);
+
+		const continued = await continueCreate(signedQueryA, registrationHeaders);
+		expect(continued.status).toBe(200);
+		const continuedBody = (await continued.json()) as {
+			redirect?: boolean;
+			url?: string;
+		};
+		expect(continuedBody.redirect).toBe(true);
+		expect(continuedBody.url).toContain("/consent");
+
+		const replay = await continueCreate(signedQueryA, registrationHeaders);
+		expect(replay.status).toBe(400);
+		const replayError = (await replay.json()) as {
+			error?: string;
+			error_description?: string;
+		};
+		expect(replayError).toMatchObject({
+			error: "invalid_request",
+			error_description:
+				"registration continuation was not issued for this session",
+		});
+	});
+
+	/**
+	 * @see https://openid.net/specs/openid-connect-prompt-create-1_0.html
+	 */
+	it("create - should bind magic-link proof to the challenge query and consume it once", async ({
+		onTestFinished,
+	}) => {
+		onTestFinished(() => {
+			vi.unstubAllGlobals();
+		});
+
+		const signupRedirectA = await createPromptCreateRedirect();
+		const signedQueryA = new URL(
+			signupRedirectA,
+			authServerBaseUrl,
+		).searchParams.toString();
+		vi.stubGlobal("window", {
+			location: {
+				search: new URL(signupRedirectA, authServerBaseUrl).search,
+			},
+		});
+
+		promptCreateMagicLinkURL = "";
+		promptCreateMagicLinkOAuthQuery = "";
+		const email = "prompt-create-magic-link@example.com";
+		await serverClient.signIn.magicLink(
+			{
+				email,
+				name: "Prompt Create Magic Link",
+			},
+			{ throw: true },
+		);
+		expect(promptCreateMagicLinkOAuthQuery).toBe(signedQueryA);
+
+		const token = new URL(promptCreateMagicLinkURL).searchParams.get("token");
+		expect(token).toBeTruthy();
+		if (!token) {
+			throw new Error("missing magic-link token");
+		}
+		const signupRedirectB = await createPromptCreateRedirect();
+		const signedQueryB = new URL(
+			signupRedirectB,
+			authServerBaseUrl,
+		).searchParams.toString();
+		expect(signedQueryB).not.toBe(signedQueryA);
+		vi.stubGlobal("window", {
+			location: {
+				search: new URL(signupRedirectB, authServerBaseUrl).search,
+			},
+		});
+
+		const registrationHeaders = new Headers();
+		const registration = await serverClient.magicLink.verify({
+			query: { token },
+			fetchOptions: {
+				onSuccess: cookieSetter(registrationHeaders),
+			},
+		});
+		expect(registration.error).toBeNull();
+		expect(registration.data?.user.email).toBe(email);
+		expect(registration.data?.session.userId).toBe(registration.data?.user.id);
+
+		const continueCreate = (oauthQuery: string) => {
+			const continueHeaders = new Headers(registrationHeaders);
+			continueHeaders.set("content-type", "application/json");
+			return fetch(`${authServerBaseUrl}/api/auth/oauth2/continue`, {
+				method: "POST",
+				headers: continueHeaders,
+				body: JSON.stringify({
+					created: true,
+					oauth_query: oauthQuery,
+				}),
+			});
+		};
+
+		// Verifying challenge A while the browser carries query B must still
+		// produce only an A-bound proof. It cannot be exchanged for query B.
+		const swappedQuery = await continueCreate(signedQueryB);
+		expect(swappedQuery.status).toBe(400);
+		const swappedQueryError = (await swappedQuery.json()) as {
+			error?: string;
+			error_description?: string;
+		};
+		expect(swappedQueryError).toMatchObject({
+			error: "invalid_request",
+			error_description:
+				"registration continuation was not issued for this session",
+		});
+
+		const continued = await continueCreate(signedQueryA);
+		const continuedBody = (await continued.json()) as {
+			error?: string;
+			error_description?: string;
+			redirect?: boolean;
+			url?: string;
+		};
+
+		expect({ status: continued.status, body: continuedBody }).toMatchObject({
+			status: 200,
+			body: {
+				redirect: true,
+				url: expect.stringContaining("/consent"),
+			},
+		});
+
+		const replay = await continueCreate(signedQueryA);
+		expect(replay.status).toBe(400);
+		const replayError = (await replay.json()) as {
+			error?: string;
+			error_description?: string;
+		};
+		expect(replayError).toMatchObject({
+			error: "invalid_request",
+			error_description:
+				"registration continuation was not issued for this session",
+		});
 	});
 
 	it("create - should redirect to setup page", async () => {

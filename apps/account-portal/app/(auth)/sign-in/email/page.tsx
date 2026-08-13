@@ -7,13 +7,11 @@ import {
 	buildPreservedAuthPath,
 	hasSignedOidcAuthorizationQuery,
 } from "@/lib/oidc-navigation";
-import { sanitizeAccountCallbackURL } from "@/lib/sign-in-experience";
+import { getAccountCallbackURL } from "@/lib/sign-in-experience";
 
 export default function EmailSignInPage() {
 	const params = useSearchParams();
-	const callbackURL = sanitizeAccountCallbackURL(
-		params.get("callbackURL") ?? "/dashboard",
-	);
+	const callbackURL = getAccountCallbackURL(params);
 	const hasOidcQuery = hasSignedOidcAuthorizationQuery(params);
 
 	return (

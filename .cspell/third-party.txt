@@ -39,6 +39,7 @@ authjs
 vite
 electronjs
 nextjs
+daveycodez
 wagmi
 tldts
 headimgurl
@@ -48,4 +49,3 @@ esac
 elif
 anthropics
 nextjs
-

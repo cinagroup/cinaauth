@@ -15,6 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
 import { authClient } from "@/lib/auth-client";
+import {
+	classifyTwoFactorVerificationData,
+	getTwoFactorErrorMessage,
+} from "@/lib/two-factor-verification";
 
 const otpSchema = z.object({
 	code: z
@@ -53,24 +57,46 @@ export function TwoFactorEmailOtpForm({
 	const handleSendOtp = () => {
 		if (!emailOtpReady) return;
 		startTransition(async () => {
-			await authClient.twoFactor.sendOtp();
-			setIsOtpSent(true);
-			setMessage(`OTP sent to ${userEmail}`);
+			try {
+				const response = await authClient.twoFactor.sendOtp({
+					fetchOptions: { throw: true },
+				});
+				if (response.status !== true) {
+					throw new Error("Unable to send the verification code.");
+				}
+				setIsOtpSent(true);
+				setMessage(`OTP sent to ${userEmail}`);
+			} catch (error) {
+				const errorMessage = getTwoFactorErrorMessage(
+					error,
+					"Unable to send the verification code.",
+				);
+				setMessage("");
+				onError?.(errorMessage);
+			}
 		});
 	};
 
 	const onSubmit = (data: OtpFormValues) => {
 		startTransition(async () => {
-			const res = await authClient.twoFactor.verifyOtp({
-				code: data.code,
-			});
-			if (res.data) {
-				setIsVerified(true);
-				setMessage("OTP validated successfully");
-				onSuccess?.();
-			} else {
-				onError?.("Invalid OTP");
-				form.setError("code", { message: "Invalid OTP" });
+			try {
+				const res = await authClient.twoFactor.verifyOtp({
+					code: data.code,
+					fetchOptions: { throw: true },
+				});
+				const outcome = classifyTwoFactorVerificationData(res);
+				if (outcome === "session") {
+					setIsVerified(true);
+					setMessage("OTP validated successfully");
+					onSuccess?.();
+					return;
+				}
+				if (outcome === "redirect") return;
+				throw new Error("Invalid OTP");
+			} catch (error) {
+				const errorMessage = getTwoFactorErrorMessage(error, "Invalid OTP");
+				onError?.(errorMessage);
+				form.setError("code", { message: errorMessage });
 			}
 		});
 	};
