@@ -347,7 +347,9 @@ export const createAuthPlugins = (
 		passkey({
 			rpID: "cinaseek.ai",
 			rpName: "CinaSeek",
-			origin: [baseURL],
+			// WebAuthn runs in the Accounts document. The Service Binding only
+			// changes the upstream request URL; clientDataJSON keeps this origin.
+			origin: [ACCOUNT_ORIGIN],
 		}),
 		emailOTP({
 			storeOTP: "hashed",
@@ -473,7 +475,7 @@ export const createAuthPlugins = (
 				page: `${ACCOUNT_ORIGIN}/sign-up`,
 			},
 			selectAccount: {
-				page: `${ACCOUNT_ORIGIN}/account/select`,
+				page: `${ACCOUNT_ORIGIN}/oauth/select-account`,
 				shouldRedirect: () => false,
 			},
 			scopes: ["openid", "profile", "email", "offline_access"],

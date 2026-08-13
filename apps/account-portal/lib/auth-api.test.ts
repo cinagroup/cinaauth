@@ -192,6 +192,7 @@ describe("server auth API", () => {
 					cookie: "cinaauth.session_token=signed",
 					"content-type": "application/json",
 					host: "accounts.cinaseek.ai",
+					origin: "https://accounts.cinaseek.ai",
 				},
 				body: JSON.stringify({ email: "user@cinaseek.ai" }),
 			},
@@ -205,6 +206,7 @@ describe("server auth API", () => {
 		expect(proxied.method).toBe("POST");
 		expect(proxied.headers.get("host")).toBeNull();
 		expect(proxied.headers.get("cookie")).toBe("cinaauth.session_token=signed");
+		expect(proxied.headers.get("origin")).toBe("https://accounts.cinaseek.ai");
 		expect(await proxied.json()).toEqual({ email: "user@cinaseek.ai" });
 	});
 

@@ -29,6 +29,10 @@ import { toast } from "sonner";
 import { adminAccessControl, adminRoles } from "./admin-access";
 import { resolveAuthClientBaseURL } from "./auth-api";
 import { dashClient } from "./infra";
+import {
+	buildTwoFactorAuthPath,
+	getPreferredTwoFactorPath,
+} from "./two-factor-navigation";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -47,8 +51,11 @@ export const authClient = createAuthClient({
 			teams: { enabled: true },
 		}),
 		twoFactorClient({
-			onTwoFactorRedirect() {
-				window.location.href = "/two-factor";
+			onTwoFactorRedirect({ twoFactorMethods }) {
+				window.location.href = buildTwoFactorAuthPath(
+					getPreferredTwoFactorPath(twoFactorMethods),
+					new URLSearchParams(window.location.search),
+				);
 			},
 		}),
 		passkeyClient(),

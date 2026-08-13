@@ -5,7 +5,9 @@ import {
 	formatSecurityDate,
 	formatWalletAddress,
 	formatWalletChain,
+	getAvailableSecurityProviders,
 	getSecurityPosture,
+	getSecurityProviderLinkFailure,
 	isApiKeyExpired,
 	isSessionRecent,
 	requiresPasswordForDeletion,
@@ -22,6 +24,32 @@ describe("security center policy helpers", () => {
 	it("requires multiple identities before allowing an unlink", () => {
 		expect(canUnlinkAccount(1)).toBe(false);
 		expect(canUnlinkAccount(2)).toBe(true);
+	});
+
+	it("preserves provider capability types while filtering linked identities", () => {
+		expect(
+			getAvailableSecurityProviders(
+				[
+					{ id: "google", type: "social" },
+					{ id: "github-enterprise", type: "generic-oauth" },
+				],
+				[
+					{
+						id: "account-1",
+						accountId: "google-subject",
+						providerId: "google",
+						createdAt: "2026-08-09T00:00:00.000Z",
+					},
+				],
+			),
+		).toEqual([{ id: "github-enterprise", type: "generic-oauth" }]);
+	});
+
+	it("recognizes only an explicit failed provider-link callback", () => {
+		expect(getSecurityProviderLinkFailure("failed")).toBe(true);
+		expect(getSecurityProviderLinkFailure(["failed"])).toBe(true);
+		expect(getSecurityProviderLinkFailure("success")).toBe(false);
+		expect(getSecurityProviderLinkFailure(undefined)).toBe(false);
 	});
 
 	it("requires a password when a credential identity exists", () => {

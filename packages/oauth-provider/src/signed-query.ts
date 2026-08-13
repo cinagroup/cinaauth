@@ -1,5 +1,6 @@
 export const signedQueryIssuedAtParam = "ba_iat";
 export const postLoginClearedParam = "ba_pl";
+export const signupContinuationParam = "ba_su";
 const signedQueryParameterNameParam = "ba_param";
 
 export function canonicalizeOAuthQueryParams(params: URLSearchParams) {
@@ -68,4 +69,12 @@ export function getSignedQueryIssuedAt(oauthQuery: string): Date | null {
 	const issuedAt = Number(raw);
 	if (!Number.isFinite(issuedAt) || issuedAt <= 0) return null;
 	return new Date(issuedAt);
+}
+
+export function getSignedQueryExpiresAt(oauthQuery: string): Date | null {
+	const raw = new URLSearchParams(oauthQuery).get("exp");
+	if (!raw) return null;
+	const expiresAt = Number(raw);
+	if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
+	return new Date(expiresAt * 1000);
 }

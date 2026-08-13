@@ -717,20 +717,25 @@ export const deviceApprove = createAuthEndpoint(
 			});
 		}
 
-		// Update device code with approved status and user ID
-		await ctx.context.adapter.update({
-			model: "deviceCode",
-			where: [
-				{
-					field: "id",
-					value: deviceCodeRecord.id,
-				},
-			],
-			update: {
-				status: "approved",
-				userId: session.user.id,
-			},
-		});
+		const approvedDeviceCode =
+			await ctx.context.adapter.incrementOne<DeviceCode>({
+				model: "deviceCode",
+				where: [
+					{ field: "id", value: deviceCodeRecord.id },
+					{ field: "status", value: "pending" },
+					{ field: "userId", value: session.user.id },
+				],
+				increment: {},
+				set: { status: "approved" },
+			});
+		if (!approvedDeviceCode) {
+			throw new APIError("BAD_REQUEST", {
+				error: "invalid_request",
+				error_description:
+					DEVICE_AUTHORIZATION_ERROR_CODES.DEVICE_CODE_ALREADY_PROCESSED
+						.message,
+			});
+		}
 
 		return ctx.json({
 			success: true,
@@ -850,19 +855,26 @@ export const deviceDeny = createAuthEndpoint(
 			});
 		}
 
-		await ctx.context.adapter.update({
-			model: "deviceCode",
-			where: [
-				{
-					field: "id",
-					value: deviceCodeRecord.id,
-				},
-			],
-			update: {
-				status: "denied",
-				userId: session.user.id,
+		const deniedDeviceCode = await ctx.context.adapter.incrementOne<DeviceCode>(
+			{
+				model: "deviceCode",
+				where: [
+					{ field: "id", value: deviceCodeRecord.id },
+					{ field: "status", value: "pending" },
+					{ field: "userId", value: session.user.id },
+				],
+				increment: {},
+				set: { status: "denied" },
 			},
-		});
+		);
+		if (!deniedDeviceCode) {
+			throw new APIError("BAD_REQUEST", {
+				error: "invalid_request",
+				error_description:
+					DEVICE_AUTHORIZATION_ERROR_CODES.DEVICE_CODE_ALREADY_PROCESSED
+						.message,
+			});
+		}
 
 		return ctx.json({
 			success: true,

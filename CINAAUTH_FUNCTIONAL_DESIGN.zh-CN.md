@@ -256,7 +256,7 @@ flowchart LR
 /two-factor              二次验证
 /device                  设备码输入与授权
 /oauth/consent           OAuth 授权确认
-/account/select          多账号选择
+/oauth/select-account    多账号选择
 /organization/select     组织选择
 /invitation/:id          邀请接受
 ```

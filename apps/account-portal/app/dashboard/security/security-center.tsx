@@ -82,6 +82,7 @@ import {
 import type {
 	SecurityAccount,
 	SecurityApiKey,
+	SecurityOAuthProvider,
 	SecurityPasskey,
 	SecuritySession,
 	SecurityWallet,
@@ -92,12 +93,14 @@ import {
 	formatSecurityDate,
 	formatWalletAddress,
 	formatWalletChain,
+	getAvailableSecurityProviders,
 	getSecurityPosture,
 	isApiKeyExpired,
 	isSessionRecent,
 	requiresPasswordForDeletion,
 	summarizeUserAgent,
 } from "@/lib/security-center";
+import { getSecurityProviderLinkURL } from "@/lib/security-provider-actions";
 
 type SecurityCenterProps = {
 	user: {
@@ -112,7 +115,8 @@ type SecurityCenterProps = {
 	initialPasskeys: SecurityPasskey[];
 	initialApiKeys: SecurityApiKey[];
 	initialWallets: SecurityWallet[];
-	configuredProviders: string[];
+	configuredProviders: SecurityOAuthProvider[];
+	providerLinkFailed: boolean;
 	dataUnavailable: {
 		sessions: boolean;
 		accounts: boolean;
@@ -161,6 +165,7 @@ export function SecurityCenter({
 	initialApiKeys,
 	initialWallets,
 	configuredProviders,
+	providerLinkFailed,
 	dataUnavailable,
 }: SecurityCenterProps) {
 	const router = useRouter();
@@ -199,6 +204,7 @@ export function SecurityCenter({
 		useState(false);
 	const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 	const [twoFactorDialogOpen, setTwoFactorDialogOpen] = useState(false);
+	const [backupCodesPending, setBackupCodesPending] = useState(false);
 
 	const recentAuthentication = isSessionRecent(currentSessionCreatedAt);
 	const securityDataUnavailable =
@@ -214,11 +220,9 @@ export function SecurityCenter({
 		activeSessionCount: sessions.length,
 	});
 	const credentialAccount = requiresPasswordForDeletion(accounts);
-	const linkedProviderIds = new Set(
-		accounts.map((account) => account.providerId),
-	);
-	const availableProviders = configuredProviders.filter(
-		(providerId) => !linkedProviderIds.has(providerId),
+	const availableProviders = getAvailableSecurityProviders(
+		configuredProviders,
+		accounts,
 	);
 	const destructiveActionReady =
 		deleteConfirmation === user.email &&
@@ -584,18 +588,19 @@ export function SecurityCenter({
 			"Unable to disconnect the identity",
 		);
 
-	const linkProvider = (providerId: string) =>
+	const linkProvider = (provider: SecurityOAuthProvider) =>
 		runAction(
-			`provider:${providerId}`,
+			`provider:${provider.id}`,
 			async () => {
-				const { data, error } = await authClient.oauth2.link({
-					providerId,
-					callbackURL: "/dashboard/security",
-					errorCallbackURL: "/dashboard/security?link=failed",
-				});
-				if (error) throw error;
-				if (!data?.url) throw new Error("Provider did not return a link URL");
-				window.location.assign(data.url);
+				window.location.assign(
+					await getSecurityProviderLinkURL(
+						{
+							linkSocial: authClient.linkSocial,
+							oauth2: { link: authClient.oauth2.link },
+						},
+						provider,
+					),
+				);
 			},
 			"Unable to connect the identity provider",
 		);
@@ -751,6 +756,17 @@ export function SecurityCenter({
 				</Alert>
 			)}
 
+			{providerLinkFailed && (
+				<Alert variant="destructive" className="mb-6">
+					<AlertTriangle className="h-4 w-4" />
+					<AlertTitle>Identity connection failed</AlertTitle>
+					<AlertDescription>
+						The provider did not link this identity. Try again, or contact
+						support if the provider continues to reject the request.
+					</AlertDescription>
+				</Alert>
+			)}
+
 			<div className="grid gap-6 lg:grid-cols-2">
 				<Card>
 					<CardHeader>
@@ -798,7 +814,10 @@ export function SecurityCenter({
 							</Dialog>
 							<Dialog
 								open={twoFactorDialogOpen}
-								onOpenChange={setTwoFactorDialogOpen}
+								onOpenChange={(open) => {
+									if (!open && backupCodesPending) return;
+									setTwoFactorDialogOpen(open);
+								}}
 							>
 								<DialogTrigger asChild>
 									<Button
@@ -814,7 +833,15 @@ export function SecurityCenter({
 										{user.twoFactorEnabled ? "Disable 2FA" : "Enable 2FA"}
 									</Button>
 								</DialogTrigger>
-								<DialogContent>
+								<DialogContent
+									showCloseButton={!backupCodesPending}
+									onEscapeKeyDown={(event) => {
+										if (backupCodesPending) event.preventDefault();
+									}}
+									onPointerDownOutside={(event) => {
+										if (backupCodesPending) event.preventDefault();
+									}}
+								>
 									<DialogHeader>
 										<DialogTitle>
 											{user.twoFactorEnabled ? "Disable 2FA" : "Enable 2FA"}
@@ -832,6 +859,7 @@ export function SecurityCenter({
 										/>
 									) : (
 										<TwoFactorEnableForm
+											onBackupCodesPendingChange={setBackupCodesPending}
 											onSuccess={() => {
 												setTwoFactorDialogOpen(false);
 												router.refresh();
@@ -1413,23 +1441,23 @@ export function SecurityCenter({
 					</div>
 					{availableProviders.length > 0 ? (
 						<div className="flex flex-wrap gap-2 border-t pt-4">
-							{availableProviders.map((providerId) => (
+							{availableProviders.map((provider) => (
 								<Button
-									key={providerId}
+									key={provider.id}
 									variant="outline"
 									size="sm"
-									onClick={() => linkProvider(providerId)}
+									onClick={() => linkProvider(provider)}
 									disabled={
 										!recentAuthentication ||
-										busyAction === `provider:${providerId}`
+										busyAction === `provider:${provider.id}`
 									}
 								>
-									{busyAction === `provider:${providerId}` ? (
+									{busyAction === `provider:${provider.id}` ? (
 										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 									) : (
 										<Link2 className="mr-2 h-4 w-4" />
 									)}
-									Connect {formatOAuthProviderName(providerId)}
+									Connect {formatOAuthProviderName(provider.id)}
 								</Button>
 							))}
 						</div>

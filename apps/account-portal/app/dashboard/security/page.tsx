@@ -10,6 +10,7 @@ import type {
 	SecuritySession,
 	SecurityWallet,
 } from "@/lib/security-center";
+import { getSecurityProviderLinkFailure } from "@/lib/security-center";
 import { SecurityCenter } from "./security-center";
 
 export const metadata: Metadata = {
@@ -20,7 +21,16 @@ export const metadata: Metadata = {
 
 const toIsoString = (value: Date | string) => new Date(value).toISOString();
 
-export default async function SecurityCenterPage() {
+type SecurityCenterPageProps = {
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function SecurityCenterPage({
+	searchParams,
+}: SecurityCenterPageProps) {
+	const providerLinkFailed = getSecurityProviderLinkFailure(
+		(await searchParams).link,
+	);
 	const requestHeaders = await headers();
 	const session = await auth.api.getSession({ headers: requestHeaders });
 	if (!session) redirect("/sign-in");
@@ -112,9 +122,8 @@ export default async function SecurityCenterPage() {
 			initialPasskeys={passkeys}
 			initialApiKeys={apiKeys}
 			initialWallets={wallets}
-			configuredProviders={capabilities.oauthProviders.map(
-				(provider) => provider.id,
-			)}
+			configuredProviders={capabilities.oauthProviders}
+			providerLinkFailed={providerLinkFailed}
 			dataUnavailable={{
 				sessions: sessionsResult.unavailable,
 				accounts: accountsResult.unavailable,

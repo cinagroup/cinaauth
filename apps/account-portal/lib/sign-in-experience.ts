@@ -3,6 +3,8 @@ export type SignInAlert = {
 	description: string;
 };
 
+export const ACCOUNT_RETURN_PATH_HEADER = "x-cinaauth-account-return-path";
+
 /** Returns safe, non-protocol-specific copy for a failed sign-in attempt. */
 export const getSignInAlert = (error: string | null): SignInAlert | null =>
 	error
@@ -28,4 +30,20 @@ export const sanitizeAccountCallbackURL = (value: string | null) => {
 	} catch {
 		return "/dashboard";
 	}
+};
+
+type CallbackSearchParams = Pick<URLSearchParams, "get">;
+
+/** Reads the canonical return target while preserving legacy device-flow links. */
+export const getAccountCallbackURL = (params: CallbackSearchParams) =>
+	sanitizeAccountCallbackURL(
+		params.get("callbackURL") ?? params.get("callbackUrl") ?? "/dashboard",
+	);
+
+/** Builds a canonical account-portal sign-in link for an internal return target. */
+export const buildAccountSignInPath = (callbackURL: string) => {
+	const params = new URLSearchParams({
+		callbackURL: sanitizeAccountCallbackURL(callbackURL),
+	});
+	return `/sign-in?${params.toString()}`;
 };

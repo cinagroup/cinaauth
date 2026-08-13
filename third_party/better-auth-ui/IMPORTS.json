@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "usage": "behavioral-reference-only",
+  "source": {
+    "repositoryUrl": "https://github.com/better-auth-ui/better-auth-ui",
+    "mirrorUrl": "https://github.com/cinagroup/cinaauth-ui",
+    "commit": "d52ec3dc178cd861d8f658d92e4a0fc15472ce71",
+    "version": "1.6.45"
+  },
+  "directCodeImports": [],
+  "copiedSemantics": "copied=false means no verbatim source import; the listed behavior may be reviewed, adapted, and independently reimplemented in CinaAuth-owned code.",
+  "behavioralReferences": [
+    {
+      "id": "auth-form-interaction-patterns",
+      "sourcePaths": [
+        "examples/next-shadcn-example/src/components/auth/sign-in.tsx",
+        "examples/next-shadcn-example/src/components/auth/sign-up.tsx",
+        "examples/next-shadcn-example/src/components/auth/forgot-password.tsx",
+        "examples/next-shadcn-example/src/components/auth/reset-password.tsx"
+      ],
+      "targetPaths": [
+        "apps/account-portal/components/forms/sign-in-form.tsx",
+        "apps/account-portal/components/forms/forgot-password-form.tsx",
+        "apps/account-portal/components/forms/reset-password-form.tsx",
+        "apps/account-portal/app/(auth)/sign-up/_components/sign-up.tsx"
+      ],
+      "copied": false,
+      "notes": "Reviewed form states, accessible field behavior, and interaction structure; the targets remain CinaAuth-owned implementations."
+    },
+    {
+      "id": "otp-and-two-factor-interaction-patterns",
+      "sourcePaths": [
+        "examples/next-shadcn-example/src/components/auth/otp-field.tsx",
+        "examples/next-shadcn-example/src/components/auth/email-otp/email-otp.tsx",
+        "examples/next-shadcn-example/src/components/auth/two-factor/two-factor-challenge.tsx",
+        "apps/docs/src/components/auth/two-factor/backup-codes.tsx",
+        "apps/docs/src/components/auth/two-factor/enable-two-factor-dialog.tsx",
+        "packages/core/src/lib/backup-codes.ts"
+      ],
+      "targetPaths": [
+        "apps/account-portal/components/forms/email-otp-form.tsx",
+        "apps/account-portal/components/forms/email-verification-otp-form.tsx",
+        "apps/account-portal/components/forms/two-factor-totp-form.tsx",
+        "apps/account-portal/components/forms/two-factor-backup-code-form.tsx",
+        "apps/account-portal/components/forms/two-factor-enable-form.tsx",
+        "apps/account-portal/lib/two-factor-verification.ts",
+        "apps/account-portal/lib/two-factor-navigation.ts"
+      ],
+      "copied": false,
+      "notes": "Reviewed user-visible OTP and challenge states plus backup-code text formatting behavior; the targets are non-verbatim adaptations and CinaAuth navigation and continuation contracts remain authoritative."
+    },
+    {
+      "id": "oauth-presentation-patterns",
+      "sourcePaths": [
+        "examples/next-shadcn-example/src/components/auth/oauth-provider/oauth-consent.tsx",
+        "examples/next-shadcn-example/src/components/auth/oauth-provider/oauth-select-account.tsx",
+        "packages/core/src/plugins/oauth-provider/oauth-scope-metadata.ts"
+      ],
+      "targetPaths": [
+        "apps/account-portal/app/(auth)/oauth/consent/page.tsx",
+        "apps/account-portal/app/(auth)/oauth/select-account/page.tsx",
+        "apps/account-portal/lib/oidc-navigation.ts"
+      ],
+      "copied": false,
+      "notes": "Reviewed presentation concepts and scope metadata behavior; the targets are non-verbatim adaptations, while signed query preservation and redirect decisions are not sourced from the upstream UI."
+    }
+  ],
+  "statement": "This review records behavioral references and non-verbatim adaptations only; it claims no direct runtime import or verbatim copy of upstream component source into CinaAuth."
+}

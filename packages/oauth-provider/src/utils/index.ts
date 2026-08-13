@@ -22,9 +22,11 @@ import type {
 } from "../types";
 
 export {
+	getSignedQueryExpiresAt,
 	getSignedQueryIssuedAt,
 	postLoginClearedParam,
 	signedQueryIssuedAtParam,
+	signupContinuationParam,
 } from "../signed-query";
 
 class TTLCache<K, V extends { expiresAt?: Date }> {

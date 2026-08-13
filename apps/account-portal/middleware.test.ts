@@ -32,4 +32,43 @@ describe("account portal middleware", () => {
 			"https://accounts.cinaseek.ai/sign-in?callbackURL=%2Fdashboard%2Fdeveloper%3Fsection%3Dclients",
 		);
 	});
+
+	it("preserves a complete device verification target through sign-in", () => {
+		const response = middleware(
+			new NextRequest(
+				"https://accounts.cinaseek.ai/device?user_code=ABCD-1234",
+			),
+		);
+
+		expect(response.status).toBe(307);
+		const location = new URL(response.headers.get("location") ?? "");
+		expect(location.origin).toBe("https://accounts.cinaseek.ai");
+		expect(location.pathname).toBe("/sign-in");
+		expect(location.searchParams.get("callbackURL")).toBe(
+			"/device?user_code=ABCD-1234",
+		);
+		expect(location.searchParams.has("callbackUrl")).toBe(false);
+	});
+
+	it("forwards the trusted device path for authoritative stale-session fallback", () => {
+		const response = middleware(
+			new NextRequest(
+				"https://accounts.cinaseek.ai/device/approve?user_code=ABCD-1234",
+				{
+					headers: {
+						cookie: "cinaauth.session_token=stale",
+						"x-cinaauth-account-return-path":
+							"https://attacker.example/collect",
+					},
+				},
+			),
+		);
+
+		expect(response.headers.get("x-middleware-next")).toBe("1");
+		expect(
+			response.headers.get(
+				"x-middleware-request-x-cinaauth-account-return-path",
+			),
+		).toBe("/device/approve?user_code=ABCD-1234");
+	});
 });

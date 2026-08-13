@@ -7,6 +7,12 @@ export const hasSignedOidcAuthorizationQuery = (params: SearchParamsSource) =>
 	params.has("ba_param") &&
 	params.has("sig");
 
+/** Detects the Worker-signed create prompt that requires explicit continuation. */
+export const hasSignedOidcCreatePrompt = (params: URLSearchParams) =>
+	hasSignedOidcAuthorizationQuery(params) &&
+	params.getAll("ba_param").includes("prompt") &&
+	(params.get("prompt") ?? "").split(/\s+/).includes("create");
+
 /** Preserves every signed (including repeated) parameter between auth screens. */
 export const buildPreservedAuthPath = (
 	pathname: string,

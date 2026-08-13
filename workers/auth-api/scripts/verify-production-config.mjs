@@ -390,6 +390,11 @@ const nextDemoDir = join(repoRoot, "apps", "account-portal");
 const accountPackageFile = join(nextDemoDir, "package.json");
 const accountWranglerFile = join(nextDemoDir, "wrangler.toml");
 const accountMiddlewareFile = join(nextDemoDir, "middleware.ts");
+const accountSignInExperienceFile = join(
+	nextDemoDir,
+	"lib",
+	"sign-in-experience.ts",
+);
 const legacyAdminPageFile = join(nextDemoDir, "app", "admin", "page.tsx");
 const adminConsoleDir = join(repoRoot, "apps", "admin-console");
 const adminPackageFile = join(adminConsoleDir, "package.json");
@@ -856,6 +861,7 @@ const workflowJobBlock = (source, job, nextJob) => {
 const accountPackage = readJson(accountPackageFile);
 const accountWrangler = read(accountWranglerFile);
 const accountMiddleware = read(accountMiddlewareFile);
+const accountSignInExperience = read(accountSignInExperienceFile);
 const legacyAdminPage = read(legacyAdminPageFile);
 const adminPackage = readJson(adminPackageFile);
 const adminWrangler = read(adminWranglerFile);
@@ -3273,12 +3279,24 @@ checkIncludesAll(
 		"demo-auth.cinagroup.com",
 		"accounts.cinaseek.ai",
 		"NextResponse.redirect(accountURL, 308)",
-		'"callbackURL"',
+		"buildAccountSignInPath",
+		"ACCOUNT_RETURN_PATH_HEADER",
 		"request.nextUrl.pathname",
 		"request.nextUrl.search",
 	],
 	accountMiddlewareFile,
 	"legacy traffic must permanently redirect and protected account routes must preserve a same-origin post-login callback",
+);
+checkIncludesAll(
+	accountSignInExperience,
+	[
+		"callbackURL: sanitizeAccountCallbackURL(callbackURL)",
+		'params.get("callbackURL") ?? params.get("callbackUrl")',
+		'value.startsWith("//")',
+		"https://accounts.cinaseek.ai",
+	],
+	accountSignInExperienceFile,
+	"account sign-in return targets must use the canonical callback key, retain the legacy device alias, and stay on the Accounts origin",
 );
 checkIncludesAll(
 	legacyAdminPage,

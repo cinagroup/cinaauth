@@ -1017,6 +1017,124 @@ describe("device authorization ownership gate", () => {
 		expect(deny).toMatchObject({ success: true });
 	});
 
+	it("allows only one concurrent approve or deny decision and never reverses it", async () => {
+		let adapter: DBAdapter<CinaAuthOptions> | null = null;
+		let concurrentStatus: "approved" | "denied" | null = null;
+
+		const database = ((options: CinaAuthOptions) => {
+			if (adapter) {
+				return adapter;
+			}
+			const tables = getAuthTables(options);
+			const memoryDB = Object.keys(tables).reduce<MemoryDB>((db, table) => {
+				db[table] = [];
+				return db;
+			}, {});
+			const baseAdapter = memoryAdapter(memoryDB)(options);
+			const preemptDecision = async (model: string, id: unknown) => {
+				if (
+					!concurrentStatus ||
+					model !== "deviceCode" ||
+					typeof id !== "string"
+				) {
+					return;
+				}
+				const status = concurrentStatus;
+				concurrentStatus = null;
+				await baseAdapter.incrementOne<DeviceCode>({
+					model,
+					where: [
+						{ field: "id", value: id },
+						{ field: "status", value: "pending" },
+					],
+					increment: {},
+					set: { status },
+				});
+			};
+			adapter = {
+				...baseAdapter,
+				update: async <T>(
+					data: Parameters<DBAdapter<CinaAuthOptions>["update"]>[0],
+				) => {
+					if ((data.update as { status?: string }).status) {
+						await preemptDecision(
+							data.model,
+							data.where.find((where) => where.field === "id")?.value,
+						);
+					}
+					return baseAdapter.update<T>(data);
+				},
+				incrementOne: async <T>(
+					data: Parameters<DBAdapter<CinaAuthOptions>["incrementOne"]>[0],
+				) => {
+					if ((data.set as { status?: string } | undefined)?.status) {
+						await preemptDecision(
+							data.model,
+							data.where.find((where) => where.field === "id")?.value,
+						);
+					}
+					return baseAdapter.incrementOne<T>(data);
+				},
+			};
+			return adapter;
+		}) satisfies CinaAuthOptions["database"];
+
+		const { auth, db, signInWithTestUser } = await getTestInstance({
+			database,
+			plugins: [deviceAuthorization({ expiresIn: "5min", interval: "2s" })],
+		});
+
+		const { headers } = await signInWithTestUser();
+		const { user_code } = await auth.api.deviceCode({
+			body: { client_id: "test-client" },
+		});
+
+		await auth.api.deviceVerify({
+			query: { user_code },
+			headers,
+		});
+
+		concurrentStatus = "denied";
+		await expect(
+			auth.api.deviceApprove({
+				body: { userCode: user_code },
+				headers,
+			}),
+		).rejects.toMatchObject({
+			body: { error: "invalid_request" },
+		});
+
+		const rowAfter = await db.findOne<DeviceCode>({
+			model: "deviceCode",
+			where: [{ field: "userCode", value: user_code }],
+		});
+		expect(rowAfter?.status).toBe("denied");
+
+		const { user_code: secondUserCode } = await auth.api.deviceCode({
+			body: { client_id: "test-client" },
+		});
+		await auth.api.deviceVerify({
+			query: { user_code: secondUserCode },
+			headers,
+		});
+
+		concurrentStatus = "approved";
+		await expect(
+			auth.api.deviceDeny({
+				body: { userCode: secondUserCode },
+				headers,
+			}),
+		).rejects.toMatchObject({
+			body: { error: "invalid_request" },
+		});
+
+		const secondRowAfter = await db.findOne<DeviceCode>({
+			model: "deviceCode",
+			where: [{ field: "userCode", value: secondUserCode }],
+		});
+		expect(secondRowAfter?.status).toBe("approved");
+	});
+
 	/**
 	 * @see https://datatracker.ietf.org/doc/html/rfc8628#section-3.1
 	 */

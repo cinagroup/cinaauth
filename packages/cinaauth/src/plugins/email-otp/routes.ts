@@ -591,6 +591,13 @@ const signInEmailOTPBodySchema = z
 					"User profile image URL. Only used if the user is registering for the first time.",
 			})
 			.optional(),
+		newUserOnly: z
+			.boolean()
+			.meta({
+				description:
+					"Require this verification to create a new account. Existing accounts are rejected after the OTP is consumed.",
+			})
+			.optional(),
 	})
 	.and(z.record(z.string(), z.any()));
 
@@ -646,13 +653,26 @@ export const signInEmailOTP = (opts: RequiredEmailOTPOptions) =>
 			},
 		},
 		async (ctx) => {
-			const { email: rawEmail, otp, name, image, ...rest } = ctx.body;
+			const {
+				email: rawEmail,
+				otp,
+				name,
+				image,
+				newUserOnly,
+				...rest
+			} = ctx.body;
 			const email = rawEmail.toLowerCase();
 
 			// Use atomic verification to prevent race conditions
 			await atomicVerifyOTP(ctx, opts, toOTPIdentifier("sign-in", email), otp);
 
 			const user = await ctx.context.internalAdapter.findUserByEmail(email);
+			if (user && newUserOnly) {
+				throw APIError.from(
+					"UNPROCESSABLE_ENTITY",
+					BASE_ERROR_CODES.USER_ALREADY_EXISTS,
+				);
+			}
 			if (!user) {
 				if (opts.disableSignUp) {
 					throw APIError.from("BAD_REQUEST", ERROR_CODES.INVALID_OTP);

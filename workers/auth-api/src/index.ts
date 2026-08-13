@@ -253,6 +253,10 @@ const MAINTENANCE_PATHS = new Set([
 ]);
 
 const FRESH_SESSION_MUTATION_PATHS = new Set([
+	// Initiating an external account-linking flow changes the current user's
+	// sign-in credentials after its provider callback completes.
+	"/api/auth/link-social",
+	"/api/auth/oauth2/link",
 	// Removing a sign-in credential is a high-risk self-service mutation.
 	"/api/auth/passkey/delete-passkey",
 	// High-risk global Admin mutations. Keep stop-impersonating outside this

@@ -19,6 +19,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
 import { authClient } from "@/lib/auth-client";
+import { completePasswordResetRequest } from "@/lib/auth-form-response";
+import { createPasswordResetRequestPayload } from "@/lib/password-reset-request";
 
 const forgotPasswordSchema = z.object({
 	email: z.email("Please enter a valid email address."),
@@ -29,13 +31,11 @@ type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 interface ForgotPasswordFormProps {
 	onSuccess?: () => void;
 	onError?: (error: string) => void;
-	redirectTo?: string;
 }
 
 export function ForgotPasswordForm({
 	onSuccess,
 	onError,
-	redirectTo = "/reset-password",
 }: ForgotPasswordFormProps) {
 	const [loading, startTransition] = useTransition();
 	const captcha = useTurnstileChallenge();
@@ -53,14 +53,19 @@ export function ForgotPasswordForm({
 		if (!emailDeliveryReady) return;
 		startTransition(async () => {
 			try {
-				await authClient.requestPasswordReset({
-					email: data.email,
-					redirectTo,
-					fetchOptions: { headers: captcha.headers },
-				});
-				onSuccess?.();
-			} catch {
-				onError?.("An error occurred. Please try again.");
+				await completePasswordResetRequest(
+					() =>
+						authClient.requestPasswordReset(
+							createPasswordResetRequestPayload(data.email, captcha.headers),
+						),
+					onSuccess,
+				);
+			} catch (error: unknown) {
+				onError?.(
+					error instanceof Error && error.message.trim()
+						? error.message
+						: "An error occurred. Please try again.",
+				);
 			} finally {
 				captcha.reset();
 			}
