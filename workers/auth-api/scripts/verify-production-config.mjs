@@ -2812,13 +2812,13 @@ check(
 	"Tracked production config must use live cutover state; first cutover deploy overrides it to maintenance",
 );
 check(
-	wrangler.vars?.CINAAUTH_SIWE_ENABLED === "false" &&
+	wrangler.vars?.CINAAUTH_SIWE_ENABLED === "true" &&
 		wrangler.vars?.CINAAUTH_SIWE_ALLOWED_CHAIN_IDS === "1" &&
 		wrangler.vars?.CINAAUTH_SIWE_RP_DOMAIN === "accounts.cinaseek.ai" &&
 		wrangler.vars?.CINAAUTH_SIWE_RP_URI === "https://accounts.cinaseek.ai" &&
 		wrangler.vars?.CINAAUTH_SIWE_ALLOW_LEGACY === "false" &&
 		wrangler.vars?.CINAAUTH_SIWE_AUTO_SIGNUP === "false",
-	"Tracked production SIWE config must stay disabled for rollout, bind Accounts as RP, allow only Ethereum mainnet, and forbid legacy or automatic signup",
+	"Tracked production SIWE config must enable the governed Stage Two rollout, bind Accounts as RP, allow only Ethereum mainnet, and forbid legacy or automatic signup",
 );
 const forbiddenVars = [
 	"CINAAUTH_SECRET",
@@ -4485,6 +4485,7 @@ checkIncludesAll(
 		"CINAAUTH_REQUIRE_ALL_PLUGIN_INPUTS=1",
 		"CLOUDFLARE_TURNSTILE_SITE_KEY",
 		"CLOUDFLARE_TURNSTILE_SECRET_KEY",
+		"`CINAAUTH_SIWE_ENABLED=true` is the planned Stage Two activation configuration.",
 		"CINAAUTH_SIWE_ENABLED=false",
 		"CINAAUTH_SIWE_ALLOWED_CHAIN_IDS",
 		"CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.ai",

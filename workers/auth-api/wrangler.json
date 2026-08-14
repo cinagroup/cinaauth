@@ -92,7 +92,7 @@
     "CINAAUTH_OIDC_DEMO_ORIGIN": "https://oidc-demo.cinaseek.ai",
     "CINAAUTH_OIDC_DEMO_CLIENT_ID": "cinaauth-oidc-demo",
     "CINAAUTH_CUTOVER_STATE": "live",
-    "CINAAUTH_SIWE_ENABLED": "false",
+    "CINAAUTH_SIWE_ENABLED": "true",
     "CINAAUTH_SIWE_ALLOWED_CHAIN_IDS": "1",
     "CINAAUTH_SIWE_RP_DOMAIN": "accounts.cinaseek.ai",
     "CINAAUTH_SIWE_RP_URI": "https://accounts.cinaseek.ai",
