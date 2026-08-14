@@ -4,10 +4,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseCloudflareDeploymentTarget } from "../../../scripts/cloudflare-deployment-target.mjs";
 
 const REQUIRED_SECRETS = [
-	"CINAAUTH_SECRET",
 	"CINAAUTH_MIGRATION_TOKEN",
 	"CINAAUTH_DELIVERY_WEBHOOK_URL",
-	"CINAAUTH_PRIVACY_EXPORT_KEY",
 ];
 
 export const CANONICAL_ERASURE_WEBHOOK_URL =
@@ -33,11 +31,7 @@ const OPTIONAL_SECRETS = [
 	"CINAUTH_ADMIN_SERVICE_KEY",
 ];
 
-const STRONG_SECRETS = new Set([
-	"CINAAUTH_SECRET",
-	"CINAAUTH_MIGRATION_TOKEN",
-	"CINAAUTH_PRIVACY_EXPORT_KEY",
-]);
+const STRONG_SECRETS = new Set(["CINAAUTH_MIGRATION_TOKEN"]);
 
 const hasValue = (env, name) => {
 	const value = env[name];
@@ -144,7 +138,9 @@ export const runProvisionSecrets = (options = {}) => {
 	if (dryRun) {
 		const log = options.log ?? console.log;
 		for (const name of names) log(`Would provision ${name}`);
-		log("Auth Worker secret provisioning dry run complete.");
+		log(
+			"Auth Worker mutable and configured optional secret provisioning dry run complete. Preserved stateful secrets are not selected.",
+		);
 		return;
 	}
 
@@ -172,7 +168,9 @@ export const runProvisionSecrets = (options = {}) => {
 		error.exitCode = result.status ?? 1;
 		throw error;
 	}
-	log(`Provisioned ${names.length} Auth Worker secrets in one bulk operation.`);
+	log(
+		`Provisioned ${names.length} mutable or configured optional Auth Worker secrets in one bulk operation. Preserved stateful secrets were not selected.`,
+	);
 };
 
 const isMain =

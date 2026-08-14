@@ -23,10 +23,12 @@ auth.cinaseek.ai (Custom Domain)
    主机、用户名和密码。不要把连接串放入 CLI 参数或仓库。
 2. 记录 32 位 Hyperdrive ID，配置 `CINAAUTH_HYPERDRIVE_ID`。
 3. 确认 `cinaauth-delivery` Queue 和 `cinaauth-delivery-dlq` 已存在。
-4. 准备 Cloudflare API Token、Account ID 及 Worker secrets。
+4. 准备 Cloudflare API Token、Account ID；确认三个有状态 Worker secret 已存在于
+   Cloudflare 远端。
 
 ```powershell
 $env:CINAAUTH_HYPERDRIVE_ID = "<32 位 Hyperdrive ID>"
+node scripts/check-cloudflare-preserved-secrets.mjs
 pnpm --dir workers/auth-api run configure:hyperdrive
 pnpm --dir workers/auth-api run check:production
 pnpm --dir workers/auth-api run provision:secrets --deployment-target=production
@@ -35,9 +37,16 @@ pnpm --dir workers/auth-api run build
 pnpm --dir workers/auth-api run deploy
 ```
 
-核心 secret 包括 `CINAAUTH_SECRET`、`CINAAUTH_MIGRATION_TOKEN`、
-`CINAAUTH_DELIVERY_WEBHOOK_URL` 和 `CINAAUTH_DELIVERY_WEBHOOK_SECRET`。
-脚本通过 Wrangler stdin 写入，不会把值放进命令参数。商用全插件上线可设置
+`CINAAUTH_SECRET`、`CINAAUTH_PRIVACY_EXPORT_KEY` 和 Privacy Worker 的
+`CINAAUTH_ERASURE_STORAGE_SECRET` 只保留在现有 Cloudflare Worker 中；中央流水线仅
+只读检查它们的名称，不从 GitHub 读取，也不在部署时重写。缺少任一名称时必须停止并
+进入恢复或协调轮换流程，不能临时生成替代值。Cloudflare 的正常 `wrangler deploy`
+会保留已挂载的 secret。
+
+在这四项核心 secret 中，只有 `CINAAUTH_MIGRATION_TOKEN` 由 GitHub `production`
+environment 提供，并由 Auth provisioner 明确更新。provisioner 还写入固定服务端点，
+并且只更新本次显式提供且非空的 optional plugin secrets；未提供的 optional secret 不会
+被选择。脚本通过 Wrangler stdin 写入，不会把值放进命令参数。商用全插件上线可设置
 `CINAAUTH_REQUIRE_ALL_PLUGIN_INPUTS=1`，强制检查 Turnstile、Google、Generic OAuth、
 Stripe 等输入。
 
@@ -97,7 +106,10 @@ Durable Object 使用 `exports.RateLimitDurableObject` 声明 SQLite 存储，�
 Cloudflare 自动管理 DNS 记录和证书；如果已有同名 CNAME，需要先处理冲突。
 
 GitHub Actions 还需要 `CINAAUTH_HYPERDRIVE_ID`、`CLOUDFLARE_API_TOKEN`、
-`CLOUDFLARE_ACCOUNT_ID`、迁移 token、认证 secret、投递 secret 和投递提供商凭据。
+`CLOUDFLARE_ACCOUNT_ID`、`CINAAUTH_MIGRATION_TOKEN` 及启用功能对应的 optional
+凭据。不要在 GitHub 中创建 `CINAAUTH_SECRET`、`CINAAUTH_PRIVACY_EXPORT_KEY` 或
+`CINAAUTH_ERASURE_STORAGE_SECRET`；投递共享密钥与提供商凭据按各自的 Secrets Store
+或部署后控制面流程管理。
 流水线只有在迁移与 `/api/ready` 都成功后，才继续检查
 `accounts.cinaseek.ai/api/auth/get-session`。
 

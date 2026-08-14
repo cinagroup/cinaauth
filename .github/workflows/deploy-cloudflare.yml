@@ -45,6 +45,7 @@ jobs:
         run: >
           node --test
           scripts/cloudflare-deployment-target.test.mjs
+          scripts/check-cloudflare-preserved-secrets.test.mjs
           .github/workflows/deployment-workflows.test.mjs
           workers/auth-api/scripts/provision-secrets.test.mjs
           workers/delivery/scripts/provision-secrets.test.mjs
@@ -117,6 +118,12 @@ jobs:
               reportDigest: report.reportDigest,
             }));
           ' "$report_file"
+
+      - name: Verify preserved Cloudflare Worker secret inventory
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/check-cloudflare-preserved-secrets.mjs
 
   preflight-account-portal:
     name: Preflight Account Portal for planned Auth capabilities
@@ -270,26 +277,19 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
-      - name: Validate Cloudflare credentials and core storage secret
+      - name: Validate Cloudflare credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
-          test "${#CINAAUTH_ERASURE_STORAGE_SECRET}" -ge 32 || (echo "CINAAUTH_ERASURE_STORAGE_SECRET must be at least 32 characters" && exit 1)
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Check Privacy Erasure Worker
         run: pnpm run check
-
-      - name: Validate Privacy Erasure core secret input
-        env:
-          CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-        run: pnpm run provision:secrets --deployment-target=production --dry-run
 
       - name: Build Privacy Erasure Worker dry run
         run: pnpm run build
@@ -301,13 +301,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/privacy-erasure
           command: deploy
-
-      - name: Provision Privacy Erasure core storage secret
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-        run: pnpm run provision:secrets --deployment-target=production
 
       - name: Verify Privacy Erasure structural bootstrap
         env:
@@ -335,23 +328,17 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
-      - name: Validate required secrets
+      - name: Validate credentials and mutable deployment inputs
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_SECRET: ${{ secrets.CINAAUTH_SECRET }}
           CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
-          CINAAUTH_PRIVACY_EXPORT_KEY: ${{ secrets.CINAAUTH_PRIVACY_EXPORT_KEY }}
           CINAAUTH_HYPERDRIVE_ID: ${{ secrets.CINAAUTH_HYPERDRIVE_ID }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
-          test -n "$CINAAUTH_SECRET" || (echo "Missing CINAAUTH_SECRET" && exit 1)
-          test "${#CINAAUTH_SECRET}" -ge 32 || (echo "CINAAUTH_SECRET must be at least 32 characters" && exit 1)
           test -n "$CINAAUTH_MIGRATION_TOKEN" || (echo "Missing CINAAUTH_MIGRATION_TOKEN" && exit 1)
           test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32 || (echo "CINAAUTH_MIGRATION_TOKEN must be at least 32 characters" && exit 1)
-          test -n "$CINAAUTH_PRIVACY_EXPORT_KEY" || (echo "Missing CINAAUTH_PRIVACY_EXPORT_KEY" && exit 1)
-          test "${#CINAAUTH_PRIVACY_EXPORT_KEY}" -ge 32 || (echo "CINAAUTH_PRIVACY_EXPORT_KEY must be at least 32 characters" && exit 1)
           test "$CINAAUTH_HYPERDRIVE_ID" != "00000000000000000000000000000000" || (echo "CINAAUTH_HYPERDRIVE_ID must not be the placeholder" && exit 1)
           test "${#CINAAUTH_HYPERDRIVE_ID}" -eq 32 || (echo "CINAAUTH_HYPERDRIVE_ID must be 32 characters" && exit 1)
 
@@ -378,14 +365,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm run configure:privacy-export
 
-      - name: Provision Auth Worker core and optional secrets
+      - name: Provision Auth Worker mutable and configured optional secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_SECRET: ${{ secrets.CINAAUTH_SECRET }}
           CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
           CINAAUTH_DELIVERY_WEBHOOK_URL: https://cinaauth-delivery.cinagroup.com/cinaauth/delivery
-          CINAAUTH_PRIVACY_EXPORT_KEY: ${{ secrets.CINAAUTH_PRIVACY_EXPORT_KEY }}
           OAUTH_PAIRWISE_SECRET: ${{ secrets.OAUTH_PAIRWISE_SECRET }}
           GENERIC_OAUTH_CONFIG: ${{ secrets.GENERIC_OAUTH_CONFIG }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
