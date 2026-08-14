@@ -147,6 +147,19 @@ test("Account Portal deployment jobs build workspace packages before typecheck",
 	}
 });
 
+test("Account Portal smoke retries legacy redirect propagation", () => {
+	const deploy = jobBlock(account, "deploy");
+	const smokeStart = deploy.indexOf("- name: Smoke test account portal");
+	assert.ok(smokeStart >= 0, "missing Account Portal smoke step");
+	const smoke = deploy.slice(smokeStart);
+
+	assert.match(smoke, /for attempt in \$\(seq 1 10\)/);
+	assert.match(smoke, /legacy_status=.*--write-out '%\{http_code\}'/);
+	assert.match(smoke, /\[ "\$legacy_status" = "308" \] && break/);
+	assert.match(smoke, /sleep 6/);
+	assert.match(smoke, /received \$legacy_status/);
+});
+
 test("production attestation and live backup audit gate every Cloudflare write", () => {
 	for (const input of [
 		"restore_rehearsal_completed",
