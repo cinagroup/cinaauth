@@ -2,6 +2,11 @@ name: Deploy Account Portal
 
 on:
   workflow_call:
+    inputs:
+      deployment_mode:
+        description: Internal caller mode; the central production workflow must pass central
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       operator_attestation:
@@ -28,8 +33,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate reusable Account deployment mode
+        if: inputs.deployment_mode != ''
+        env:
+          DEPLOYMENT_MODE: ${{ inputs.deployment_mode }}
+        run: |
+          test "$DEPLOYMENT_MODE" = "central" || (echo "Reusable Account deployment mode must be central" && exit 1)
+
       - name: Validate manual Phase One authorization
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.deployment_mode == ''
         env:
           CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json
           OPERATOR_ATTESTATION: ${{ inputs.operator_attestation }}
@@ -82,7 +94,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
 
       - name: Validate central readiness credential
-        if: github.event_name != 'workflow_dispatch'
+        if: inputs.deployment_mode == 'central'
         env:
           CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
         run: |
@@ -128,7 +140,7 @@ jobs:
           NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
 
       - name: Wait for governed Auth readiness
-        if: github.event_name != 'workflow_dispatch'
+        if: inputs.deployment_mode == 'central'
         env:
           CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
         run: |
@@ -162,7 +174,7 @@ jobs:
           exit 1
 
       - name: Verify public Auth availability for Phase One
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.deployment_mode == ''
         run: |
           headers_file="$RUNNER_TEMP/auth-capabilities.headers"
           capabilities_file="$RUNNER_TEMP/auth-capabilities.json"
@@ -193,33 +205,49 @@ jobs:
           workingDirectory: apps/account-portal
           command: deploy
 
-      - name: Verify manual Phase One readiness marker
-        if: github.event_name == 'workflow_dispatch'
+      - name: Verify deployed Account wallet readiness parity
         env:
           REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
         run: |
           headers_file="$RUNNER_TEMP/account-build-readiness.headers"
           readiness_file="$RUNNER_TEMP/account-build-readiness.json"
-          curl --fail-with-body --show-error --silent \
+          readiness_status="$(curl --show-error --silent \
             --retry 10 --retry-all-errors --retry-delay 6 \
             --dump-header "$headers_file" \
             --output "$readiness_file" \
-            https://accounts.cinaseek.ai/api/build-readiness
+            --write-out '%{http_code}' \
+            https://accounts.cinaseek.ai/api/build-readiness)"
           grep -Eiq '^cache-control:.*no-store' "$headers_file" || (echo "Account build readiness must be no-store" && exit 1)
           node -e '
             const fs = require("node:fs");
             const readiness = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-            if (
-              readiness.ready !== true ||
-              readiness.siweProtocol !== "cinaauth-siwe-v2" ||
-              readiness.walletUi !== "reown-appkit-v1" ||
-              readiness.walletUiEnabled !== false ||
-              readiness.reownProjectId !== process.env.REOWN_PROJECT_ID
-            ) {
-              console.error("Deployed Account Portal does not match the approved Phase One bundle");
+            const rawProjectId = process.env.REOWN_PROJECT_ID ?? "";
+            if (rawProjectId !== "" && !/^[a-f0-9]{32}$/i.test(rawProjectId)) {
+              console.error("Configured REOWN_PROJECT_ID has an invalid format");
               process.exit(1);
             }
-          ' "$readiness_file"
+            const expectedProjectId = rawProjectId === "" ? null : rawProjectId;
+            const expectedReady = expectedProjectId !== null;
+            const walletUiFlag = process.env.NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED;
+            if (walletUiFlag !== "true" && walletUiFlag !== "false") {
+              console.error("Tracked wallet UI flag is invalid");
+              process.exit(1);
+            }
+            const expectedWalletUiEnabled = walletUiFlag === "true";
+            const expectedStatus = expectedReady ? 200 : 503;
+            if (
+              Number(process.argv[2]) !== expectedStatus ||
+              readiness.schemaVersion !== 1 ||
+              readiness.ready !== expectedReady ||
+              readiness.siweProtocol !== "cinaauth-siwe-v2" ||
+              readiness.walletUi !== "reown-appkit-v1" ||
+              readiness.walletUiEnabled !== expectedWalletUiEnabled ||
+              readiness.reownProjectId !== expectedProjectId
+            ) {
+              console.error("Deployed Account Portal wallet readiness does not match the tracked release");
+              process.exit(1);
+            }
+          ' "$readiness_file" "$readiness_status"
 
       - name: Smoke test account portal
         env:

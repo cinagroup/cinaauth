@@ -2894,8 +2894,12 @@ checkIncludesAll(
 checkIncludesAll(
 	siweRequestBodyLimitTs,
 	[
-		"SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES = 2 * 1024",
+		"SIWE_LEGACY_NONCE_REQUEST_BODY_LIMIT_BYTES = 2 * 1024",
+		"SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES = 18 * 1024",
 		"SIWE_PROOF_REQUEST_BODY_LIMIT_BYTES = 20 * 1024",
+		"SIWE_LEGACY_NONCE_PATHS.has(canonicalPathname)",
+		"return SIWE_LEGACY_NONCE_REQUEST_BODY_LIMIT_BYTES",
+		"canonicalPathname === SIWE_CHALLENGE_PATH",
 		'"/api/auth/siwe/challenge"',
 		'"/api/auth/siwe/nonce"',
 		'"/api/auth/siwe/get-nonce"',
@@ -2924,9 +2928,12 @@ checkIncludesAll(
 checkIncludesAll(
 	deploymentDoc,
 	[
-		"challenge`, `nonce`, and `get-nonce` accept at most 2 KiB",
-		"`verify` and",
-		"`link-wallet` accept at most 20 KiB",
+		"`challenge` accepts at most 18 KiB",
+		"maximum 16 KiB signed",
+		"`nonce` and `get-nonce` requests remain capped at",
+		"2 KiB",
+		"`verify` and `link-wallet` remain capped at 20 KiB",
+		"UTF-8 bytes",
 		"missing, chunked, or forged",
 		"REQUEST_BODY_TOO_LARGE",
 	],
@@ -3311,6 +3318,7 @@ checkIncludesAll(
 		"uses: ./.github/workflows/deploy-account-portal.yml",
 		"uses: ./.github/workflows/deploy-admin-console.yml",
 		"needs: deploy-worker",
+		"deployment_mode: central",
 		"secrets: inherit",
 		"CLOUDFLARE_API_TOKEN",
 		"CLOUDFLARE_ACCOUNT_ID",
@@ -3525,18 +3533,46 @@ checkIncludesAll(
 	[
 		"workflow_call:",
 		"workflow_dispatch:",
+		"deployment_mode:",
+		"Validate reusable Account deployment mode",
+		"if: inputs.deployment_mode != ''",
+		"if: inputs.deployment_mode == ''",
+		"if: inputs.deployment_mode == 'central'",
 		"DEPLOY CINAAUTH ACCOUNT PORTAL PHASE ONE",
-		"if: github.event_name == 'workflow_dispatch'",
 		"GITHUB_REF",
 		"refs/heads/main",
 		"CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json",
 		"CINAAUTH_SIWE_ENABLED",
-		"Verify manual Phase One readiness marker",
+		"Verify deployed Account wallet readiness parity",
+		"readiness.schemaVersion !== 1",
+		"readiness.ready !== expectedReady",
 		"cinaauth-siwe-v2",
 		"reown-appkit-v1",
+		"readiness.walletUiEnabled !== expectedWalletUiEnabled",
+		"readiness.reownProjectId !== expectedProjectId",
 	],
 	accountWorkflowFile,
-	"the manual Account Portal entrypoint must be an attested, main-only, SIWE-disabled first-phase deployment",
+	"the Account Portal must preserve its attested Phase One entrypoint and verify every deployed wallet marker against the tracked release",
+);
+const accountTrigger = accountWorkflow.slice(
+	accountWorkflow.indexOf("on:"),
+	accountWorkflow.indexOf("permissions:"),
+);
+const accountWorkflowCallStart = accountTrigger.indexOf("  workflow_call:");
+const accountWorkflowDispatchStart = accountTrigger.indexOf(
+	"  workflow_dispatch:",
+);
+check(
+	accountWorkflowCallStart !== -1 &&
+		accountWorkflowDispatchStart > accountWorkflowCallStart &&
+		accountTrigger
+			.slice(accountWorkflowCallStart, accountWorkflowDispatchStart)
+			.includes("deployment_mode:") &&
+		!accountTrigger
+			.slice(accountWorkflowDispatchStart)
+			.includes("deployment_mode:") &&
+		!accountWorkflow.includes("if: github.event_name"),
+	`${rel(accountWorkflowFile)} must expose central mode only to workflow_call and keep direct dispatch on the Phase One path`,
 );
 check(
 	(accountWorkflow.match(/command: deploy/g) ?? []).length === 1,

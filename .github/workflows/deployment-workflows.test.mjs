@@ -93,10 +93,41 @@ test("production writes have only the governed central and Account Phase One ent
 	}
 });
 
+test("the central caller explicitly selects reusable Account mode without exposing a manual bypass", () => {
+	const trigger = account.slice(
+		account.indexOf("on:"),
+		account.indexOf("permissions:"),
+	);
+	const workflowCallStart = trigger.indexOf("  workflow_call:");
+	const workflowDispatchStart = trigger.indexOf("  workflow_dispatch:");
+	assert.notEqual(workflowCallStart, -1);
+	assert.notEqual(workflowDispatchStart, -1);
+	const workflowCall = trigger.slice(workflowCallStart, workflowDispatchStart);
+	const workflowDispatch = trigger.slice(workflowDispatchStart);
+	assert.match(workflowCall, /deployment_mode:/);
+	assert.match(workflowCall, /required: true/);
+	assert.match(workflowCall, /type: string/);
+	assert.doesNotMatch(workflowDispatch, /deployment_mode:/);
+
+	const caller = jobBlock(
+		central,
+		"deploy-account-portal",
+		"deploy-admin-console",
+	);
+	assert.match(caller, /with:\s+deployment_mode: central/);
+	assert.match(caller, /secrets: inherit/);
+
+	const deploy = jobBlock(account, "deploy");
+	assert.match(deploy, /Validate reusable Account deployment mode/);
+	assert.match(deploy, /if: inputs\.deployment_mode == ''/);
+	assert.match(deploy, /if: inputs\.deployment_mode == 'central'/);
+	assert.doesNotMatch(deploy, /if: github\.event_name/);
+});
+
 test("manual Account Phase One deploy is main-only, attested, and keeps SIWE disabled", () => {
 	const deploy = jobBlock(account, "deploy");
 	assert.match(account, /DEPLOY CINAAUTH ACCOUNT PORTAL PHASE ONE/);
-	assert.match(deploy, /github\.event_name == 'workflow_dispatch'/);
+	assert.match(deploy, /if: inputs\.deployment_mode == ''/);
 	assert.match(deploy, /GITHUB_REF.*refs\/heads\/main/);
 	assert.match(
 		deploy,
@@ -107,17 +138,46 @@ test("manual Account Phase One deploy is main-only, attested, and keeps SIWE dis
 	assert.match(deploy, /REOWN_PROJECT_ID/);
 	assert.match(deploy, /Configure wallet UI rollout from tracked Auth config/);
 	assert.match(deploy, /NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED/);
-	assert.match(deploy, /Verify manual Phase One readiness marker/);
+	assert.match(deploy, /Verify deployed Account wallet readiness parity/);
 	assert.match(deploy, /cinaauth-siwe-v2/);
 	assert.match(deploy, /reown-appkit-v1/);
+	assert.match(deploy, /readiness\.reownProjectId !== expectedProjectId/);
 	assert.match(
 		deploy,
-		/readiness\.reownProjectId !== process\.env\.REOWN_PROJECT_ID/,
+		/readiness\.walletUiEnabled !== expectedWalletUiEnabled/,
 	);
-	assert.match(deploy, /readiness\.walletUiEnabled !== false/);
 	assert.match(deploy, /Verify public Auth availability for Phase One/);
-	assert.match(deploy, /if: github\.event_name != 'workflow_dispatch'/);
+	assert.match(deploy, /if: inputs\.deployment_mode == 'central'/);
+	assert.doesNotMatch(deploy, /if: github\.event_name/);
 	assert.match(deploy, /environment: production/);
+});
+
+test("every Account deployment verifies the deployed wallet marker against the tracked release", () => {
+	const start = account.indexOf(
+		"      - name: Verify deployed Account wallet readiness parity",
+	);
+	assert.notEqual(start, -1, "missing deployed Account wallet readiness check");
+	const end = account.indexOf("      - name: Smoke test account portal", start);
+	assert.notEqual(end, -1, "wallet readiness check must precede Account smoke");
+	const parity = account.slice(start, end);
+
+	assert.doesNotMatch(parity, /^\s+if:/m);
+	assert.match(
+		parity,
+		/REOWN_PROJECT_ID: \$\{\{ secrets\.REOWN_PROJECT_ID \}\}/,
+	);
+	assert.match(parity, /NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED/);
+	assert.match(parity, /cache-control:.*no-store/i);
+	assert.match(parity, /readiness\.schemaVersion !== 1/);
+	assert.match(parity, /readiness\.ready !== expectedReady/);
+	assert.match(parity, /readiness\.siweProtocol !== "cinaauth-siwe-v2"/);
+	assert.match(parity, /readiness\.walletUi !== "reown-appkit-v1"/);
+	assert.match(
+		parity,
+		/readiness\.walletUiEnabled !== expectedWalletUiEnabled/,
+	);
+	assert.match(parity, /readiness\.reownProjectId !== expectedProjectId/);
+	assert.doesNotMatch(parity, /console\.log\([^)]*REOWN_PROJECT_ID/);
 });
 
 test("Account Portal deployment jobs build workspace packages before typecheck", () => {

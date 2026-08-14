@@ -80,11 +80,14 @@ local production gate, the remote capability parity check, and browser tests
 against the Accounts origin.
 
 The Worker also enforces a raw request-body boundary before dispatching SIWE
-routes. `challenge`, `nonce`, and `get-nonce` accept at most 2 KiB; `verify` and
-`link-wallet` accept at most 20 KiB. The middleware counts bytes from the actual
-request stream even when `Content-Length` is missing, chunked, or forged. An
-oversized body receives a no-store `413` with code `REQUEST_BODY_TOO_LARGE`;
-accepted bodies remain available to CinaAuth's endpoint parser unchanged.
+routes. `challenge` accepts at most 18 KiB so a maximum 16 KiB signed
+`oauth_query` plus its JSON, wallet address, chain, and purpose envelope reaches
+the endpoint parser. Legacy `nonce` and `get-nonce` requests remain capped at
+2 KiB; `verify` and `link-wallet` remain capped at 20 KiB. The middleware counts
+UTF-8 bytes from the actual request stream even when `Content-Length` is
+missing, chunked, or forged. An oversized body receives a no-store `413` with
+code `REQUEST_BODY_TOO_LARGE`; accepted bodies remain available to CinaAuth's
+endpoint parser unchanged.
 
 The central production workflow runs an Account Portal preflight after the
 restore/backup authorization and before any Cloudflare deployment. The
@@ -93,8 +96,11 @@ tracked Auth Worker `wrangler.json`; an enabled rollout requires an exact
 32-hex-character `REOWN_PROJECT_ID`, then must pass the Accounts typecheck,
 contract tests, and full Cloudflare bundle build before the Auth Worker can be
 published. A disabled rollout does not require a Project ID. The later reusable
-Accounts job repeats the live capability parity check and performs the single
-Accounts deployment after Auth readiness.
+Accounts job repeats the live capability parity check, performs the single
+Accounts deployment after Auth readiness, and then verifies the deployed
+no-store marker. That post-deploy check requires the marker schema, readiness,
+protocol, wallet UI implementation, tracked wallet UI flag, and exact Project
+ID to agree without printing the Project ID.
 
 Enabling SIWE requires two separate production runs. First, keep the Worker
 switch false, configure the production `REOWN_PROJECT_ID`, and deploy the
@@ -113,6 +119,15 @@ with the current repository Actions secret. A missing marker, an unready
 marker, an ID mismatch, or a first same-run enable attempt fails closed. This
 prevents a new Worker from disabling legacy nonce behavior while an old Portal
 is still online, even if the later Portal deployment would fail.
+
+If Auth reaches the enabled version but the Accounts deployment or its marker
+parity check fails, immediately roll Auth back to the recorded pre-enable
+version and confirm that the public capability returns `methods.siwe=false`.
+The phase-one Portal then remains fail-closed because its compiled wallet UI
+flag is false. A Cloudflare Worker rollback does not restore PostgreSQL or
+change connected resources, so do not substitute it for the attested database
+restore procedure. The Stage Two change must remain switch-only; if unrelated
+migrations are present, stop and review their recovery plan separately.
 
 The Project ID is a public client identifier, not an authentication secret.
 Configure `https://accounts.cinaseek.ai` as an allowed Reown origin. The
@@ -802,9 +817,13 @@ either frontend deploys. Operational child readiness is a separate
 post-activation acceptance gate.
 
 The Admin deployment workflow remains reusable-only. The Account workflow is
-reusable by the central rollout and has only the constrained SIWE first-phase
-manual entrypoint described above. Each polls the authenticated readiness
-endpoint before any frontend Worker write. They require both
+reusable by the central rollout only when its `workflow_call` caller explicitly
+passes `deployment_mode: central`; direct manual dispatch does not expose that
+input and can enter only the constrained SIWE first-phase path described above.
+This explicit mode is required because a called reusable workflow inherits the
+central dispatch event name. Each central frontend deployment polls the
+authenticated readiness endpoint before any frontend Worker write. They require
+both
 `super-admin-governance-v1` and `provider-namespace-registry-v1` to be installed
 and the cutover state to be `live`. The central backend workflow invokes them
 only after the Auth job succeeds, preventing either frontend from overtaking an

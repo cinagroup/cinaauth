@@ -1,3 +1,5 @@
+import { verifyMessage } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it, vi } from "vitest";
 import {
 	completeWalletProof,
@@ -67,6 +69,48 @@ describe("CinaAuth SIWE protocol client", () => {
 			"/siwe/verify",
 			expect.objectContaining({ challengeId: challenge.challengeId }),
 		);
+	});
+
+	it("preserves a real EIP-191 signature for the exact server message", async () => {
+		const account = privateKeyToAccount(
+			"0x0000000000000000000000000000000000000000000000000000000000000001",
+		);
+		const signedChallenge = {
+			...challenge,
+			message: "accounts.cinaseek.ai asks you to sign: 登录验证 🔐",
+			walletAddress: account.address,
+		};
+		let submittedSignature: `0x${string}` | undefined;
+		const client = createCinaAuthSiweProtocolClient({
+			async post(path, body) {
+				if (path === "/siwe/challenge") return signedChallenge;
+				if (
+					typeof body.signature !== "string" ||
+					!body.signature.startsWith("0x")
+				) {
+					throw new Error("Expected a hex wallet signature");
+				}
+				submittedSignature = body.signature as `0x${string}`;
+				return { ok: true };
+			},
+		});
+
+		await completeWalletProof({
+			client,
+			signMessage: (message) => account.signMessage({ message }),
+			purpose: "link-wallet",
+			walletAddress: account.address,
+			chainId: 1,
+		});
+
+		if (!submittedSignature) throw new Error("Expected a submitted signature");
+		await expect(
+			verifyMessage({
+				address: account.address,
+				message: signedChallenge.message,
+				signature: submittedSignature,
+			}),
+		).resolves.toBe(true);
 	});
 
 	it("normalizes Date expirations decoded by the auth transport", async () => {
