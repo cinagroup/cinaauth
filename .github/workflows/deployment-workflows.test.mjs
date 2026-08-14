@@ -457,6 +457,34 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 	);
 });
 
+test("Auth Worker builds workspace dependencies before configuration and checks", () => {
+	const auth = jobBlock(central, "deploy-worker", "deploy-account-portal");
+	const install = auth.indexOf("- name: Install dependencies");
+	const build = auth.indexOf("- name: Build Auth workspace dependencies");
+	const configureHyperdrive = auth.indexOf(
+		"- name: Configure Hyperdrive binding",
+	);
+	const checkWorker = auth.indexOf("- name: Check Worker types and bindings");
+
+	assert.ok(install >= 0, "Auth Worker must install dependencies");
+	assert.ok(
+		build > install,
+		"Auth Worker must build dependencies after install",
+	);
+	assert.ok(
+		configureHyperdrive > build,
+		"Auth Worker must configure Hyperdrive after building dependencies",
+	);
+	assert.ok(
+		checkWorker > configureHyperdrive,
+		"Auth Worker must check types and bindings after Hyperdrive configuration",
+	);
+	assert.match(
+		auth.slice(build, configureHyperdrive),
+		/^\s+run: pnpm run build:dependencies\s*$/m,
+	);
+});
+
 test("application workflows remain reusable production-environment units", () => {
 	for (const source of [account, admin]) {
 		const trigger = source.slice(

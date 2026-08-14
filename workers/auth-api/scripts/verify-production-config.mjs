@@ -3712,11 +3712,50 @@ for (const [job, nextJob] of [
 		`${job} must wait for recovery authorization and the Account Portal preflight`,
 	);
 }
+const authWorkerDeploymentJob = workflowJobBlock(
+	workflow,
+	"deploy-worker",
+	"deploy-account-portal",
+);
 checkIncludes(
-	workflowJobBlock(workflow, "deploy-worker", "deploy-account-portal"),
+	authWorkerDeploymentJob,
 	"needs: [deploy-delivery, deploy-privacy-erasure, preflight-account-portal]",
 	workflowFile,
 	"Auth Worker deployment must wait for the Account Portal preflight",
+);
+checkIncludesAll(
+	authWorkerDeploymentJob,
+	[
+		"- name: Install dependencies",
+		"- name: Build Auth workspace dependencies",
+		"- name: Configure Hyperdrive binding",
+		"- name: Check Worker types and bindings",
+	],
+	workflowFile,
+	"Auth Worker deployment must build workspace dependencies before configuration and type checks",
+);
+check(
+	/^\s+run: pnpm run build:dependencies\s*$/m.test(authWorkerDeploymentJob),
+	`${rel(workflowFile)} Auth Worker dependency build step must run exactly pnpm run build:dependencies`,
+);
+const authInstallIndex = authWorkerDeploymentJob.indexOf(
+	"- name: Install dependencies",
+);
+const authWorkspaceBuildIndex = authWorkerDeploymentJob.indexOf(
+	"- name: Build Auth workspace dependencies",
+);
+const authHyperdriveConfigIndex = authWorkerDeploymentJob.indexOf(
+	"- name: Configure Hyperdrive binding",
+);
+const authWorkerCheckIndex = authWorkerDeploymentJob.indexOf(
+	"- name: Check Worker types and bindings",
+);
+check(
+	authInstallIndex >= 0 &&
+		authWorkspaceBuildIndex > authInstallIndex &&
+		authHyperdriveConfigIndex > authWorkspaceBuildIndex &&
+		authWorkerCheckIndex > authHyperdriveConfigIndex,
+	`${rel(workflowFile)} Auth Worker must install dependencies, build its workspace dependency closure, configure Hyperdrive, then check Worker types and bindings`,
 );
 checkIncludesAll(
 	deploymentDoc,
