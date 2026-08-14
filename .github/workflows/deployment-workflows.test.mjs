@@ -141,10 +141,7 @@ test("manual Account Phase One deploy is main-only, attested, and keeps SIWE dis
 	assert.match(deploy, /Verify deployed Account wallet readiness parity/);
 	assert.match(deploy, /cinaauth-siwe-v2/);
 	assert.match(deploy, /reown-appkit-v1/);
-	assert.match(
-		deploy,
-		/readiness\.reownProjectId !== expectedProjectId/,
-	);
+	assert.match(deploy, /readiness\.reownProjectId !== expectedProjectId/);
 	assert.match(
 		deploy,
 		/readiness\.walletUiEnabled !== expectedWalletUiEnabled/,
@@ -175,7 +172,10 @@ test("every Account deployment verifies the deployed wallet marker against the t
 	assert.match(parity, /readiness\.ready !== expectedReady/);
 	assert.match(parity, /readiness\.siweProtocol !== "cinaauth-siwe-v2"/);
 	assert.match(parity, /readiness\.walletUi !== "reown-appkit-v1"/);
-	assert.match(parity, /readiness\.walletUiEnabled !== expectedWalletUiEnabled/);
+	assert.match(
+		parity,
+		/readiness\.walletUiEnabled !== expectedWalletUiEnabled/,
+	);
 	assert.match(parity, /readiness\.reownProjectId !== expectedProjectId/);
 	assert.doesNotMatch(parity, /console\.log\([^)]*REOWN_PROJECT_ID/);
 });
