@@ -46,6 +46,7 @@ jobs:
           node --test
           scripts/cloudflare-deployment-target.test.mjs
           scripts/check-cloudflare-preserved-secrets.test.mjs
+          scripts/cloudflare-edge-mitigation.test.mjs
           .github/workflows/deployment-workflows.test.mjs
           workers/auth-api/scripts/provision-secrets.test.mjs
           workers/delivery/scripts/provision-secrets.test.mjs

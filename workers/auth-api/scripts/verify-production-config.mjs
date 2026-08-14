@@ -167,6 +167,16 @@ const checkExactSecretsStoreBindings = (config, file, expectedBindings) => {
 
 const packageFile = join(workerDir, "package.json");
 const repoPackageFile = join(repoRoot, "package.json");
+const cloudflareEdgeMitigationFile = join(
+	repoRoot,
+	"scripts",
+	"cloudflare-edge-mitigation.mjs",
+);
+const cloudflareEdgeMitigationTestFile = join(
+	repoRoot,
+	"scripts",
+	"cloudflare-edge-mitigation.test.mjs",
+);
 const deploymentTargetParserFile = join(
 	repoRoot,
 	"scripts",
@@ -870,6 +880,8 @@ const gitignoreFile = join(repoRoot, ".gitignore");
 const packageJson = readJson(packageFile);
 const wrangler = readJson(wranglerFile);
 const repoPackage = readJson(repoPackageFile);
+const cloudflareEdgeMitigation = read(cloudflareEdgeMitigationFile);
+const cloudflareEdgeMitigationTest = read(cloudflareEdgeMitigationTestFile);
 const deploymentTargetParser = read(deploymentTargetParserFile);
 const indexTs = read(indexFile);
 const adminConfigurationTs = read(adminConfigurationFile);
@@ -4170,6 +4182,79 @@ checkIncludesAll(
 	deliveryRemotePreflightFile,
 	"Delivery remote acceptance must validate both providers and the replay store when authorized",
 );
+checkIncludesAll(
+	cloudflareEdgeMitigation,
+	[
+		"status !== 403",
+		'contentType !== "text/html"',
+		'headers.get("cf-mitigated")',
+		'=== "challenge"',
+		'headers.get("cf-ray")',
+		"bodyRayId === headerRayId",
+		"attention required",
+		"you have been blocked",
+		"cloudflare\\s+ray\\s+id",
+	],
+	cloudflareEdgeMitigationFile,
+	"the shared Cloudflare mitigation classifier must require strict 403 HTML edge evidence",
+);
+checkIncludesAll(
+	cloudflareEdgeMitigationTest,
+	[
+		"ordinary JSON 403 responses",
+		"without a Cloudflare Ray",
+		"generic HTML and non-403 branded pages",
+		'"content-type": "application/json"',
+	],
+	cloudflareEdgeMitigationTestFile,
+	"the Cloudflare mitigation contract must reject application and ambiguous responses",
+);
+for (const [remotePreflight, file] of [
+	[deliveryRemotePreflight, deliveryRemotePreflightFile],
+	[privacyErasureRemote, privacyErasureRemoteFile],
+]) {
+	checkIncludesAll(
+		remotePreflight,
+		[
+			"classifyCloudflareEdgeMitigation",
+			"!allowEdgeMitigation || response.status !== 403",
+			"allowEdgeMitigation",
+			"edge-mitigated/unverified",
+			"readiness was not verified",
+			"edgeMitigatedEndpoints.length > 0",
+		],
+		file,
+		"stateful Worker probes may continue past only identifiable edge mitigation after successful control-plane checks",
+	);
+}
+checkIncludesAll(
+	deliveryRemotePreflight,
+	[
+		"Remote Delivery Worker has no active 100% deployment",
+		"DeliveryProviderConfig",
+		'handler.handlers?.includes("class")',
+		'migration_tag !== "v1"',
+		"Custom Domain ${hostname} is missing",
+		"remoteDomain.environment !== undefined",
+		'remoteDomain.environment !== "production"',
+		"const domainVerified = await checkZoneAndRoute()",
+		"checkPublicEndpoints(failures.length === 0 && domainVerified)",
+	],
+	deliveryRemotePreflightFile,
+	"Delivery edge mitigation requires an active version, SQLite Durable Object contract, and exact live domain",
+);
+checkIncludes(
+	privacyErasureRemote,
+	"checkPublicEndpoints(failures.length === 0)",
+	privacyErasureRemoteFile,
+	"Privacy Erasure edge mitigation requires failure-free Worker, binding, and domain checks",
+);
+checkIncludesAll(
+	privacyErasureRemote,
+	["remote.environment !== undefined", 'remote.environment !== "production"'],
+	privacyErasureRemoteFile,
+	"Privacy Erasure edge mitigation requires the exact production Custom Domain environment",
+);
 check(
 	deliveryPackage.scripts?.["acceptance:providers"] ===
 		"node ./scripts/run-provider-acceptance.mjs",
@@ -4349,7 +4434,7 @@ check(
 );
 
 const expectedDeploymentContractTest =
-	"node --test ./scripts/cloudflare-deployment-target.test.mjs ./scripts/check-cloudflare-preserved-secrets.test.mjs ./.github/workflows/deployment-workflows.test.mjs ./workers/auth-api/scripts/provision-secrets.test.mjs ./workers/delivery/scripts/provision-secrets.test.mjs ./workers/privacy-erasure/scripts/provision-secrets.test.mjs ./apps/account-portal/deploy-cf.test.mjs";
+	"node --test ./scripts/cloudflare-deployment-target.test.mjs ./scripts/check-cloudflare-preserved-secrets.test.mjs ./scripts/cloudflare-edge-mitigation.test.mjs ./.github/workflows/deployment-workflows.test.mjs ./workers/auth-api/scripts/provision-secrets.test.mjs ./workers/delivery/scripts/provision-secrets.test.mjs ./workers/privacy-erasure/scripts/provision-secrets.test.mjs ./apps/account-portal/deploy-cf.test.mjs";
 check(
 	repoPackage.scripts?.["test:cloudflare-deployment-contracts"] ===
 		expectedDeploymentContractTest,
@@ -4391,6 +4476,7 @@ checkIncludesAll(
 	[
 		"scripts/cloudflare-deployment-target.test.mjs",
 		"scripts/check-cloudflare-preserved-secrets.test.mjs",
+		"scripts/cloudflare-edge-mitigation.test.mjs",
 		".github/workflows/deployment-workflows.test.mjs",
 		"workers/auth-api/scripts/provision-secrets.test.mjs",
 		"workers/delivery/scripts/provision-secrets.test.mjs",
