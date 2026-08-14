@@ -147,17 +147,35 @@ test("Account Portal deployment jobs build workspace packages before typecheck",
 	}
 });
 
-test("Account Portal smoke retries legacy redirect propagation", () => {
+test("Account Portal smoke verifies the legacy custom domain across Cloudflare boundaries", () => {
 	const deploy = jobBlock(account, "deploy");
 	const smokeStart = deploy.indexOf("- name: Smoke test account portal");
 	assert.ok(smokeStart >= 0, "missing Account Portal smoke step");
 	const smoke = deploy.slice(smokeStart);
 
-	assert.match(smoke, /for attempt in \$\(seq 1 10\)/);
-	assert.match(smoke, /legacy_status=.*--write-out '%\{http_code\}'/);
-	assert.match(smoke, /\[ "\$legacy_status" = "308" \] && break/);
-	assert.match(smoke, /sleep 6/);
-	assert.match(smoke, /received \$legacy_status/);
+	assert.match(smoke, /workers\/domains\?hostname=demo-auth\.cinagroup\.com/);
+	assert.match(smoke, /domains\.length !== 1/);
+	assert.match(smoke, /domain\.service !== "cinaauth-demo"/);
+	assert.match(smoke, /domain\.zone_name !== "cinagroup\.com"/);
+	assert.match(smoke, /domain\.cert_id/);
+	assert.match(
+		smoke,
+		/domain\.environment !== undefined && domain\.environment !== "production"/,
+	);
+	assert.match(
+		smoke,
+		/legacy_status="\$\(curl[\s\S]*--write-out '%\{http_code\}'/,
+	);
+	assert.match(smoke, /legacy_status" = "308"/);
+	assert.match(
+		smoke,
+		/legacy_location" = "https:\/\/accounts\.cinaseek\.ai\/sign-in\?callbackURL=%2Fdashboard"/,
+	);
+	assert.match(smoke, /cf-mitigated:\[\[:space:\]\]\*challenge/);
+	assert.match(smoke, /\^cf-ray:/);
+	assert.match(smoke, /Cloudflare mitigation response/);
+	assert.match(smoke, /Unexpected legacy Account domain response/);
+	assert.match(deploy, /middleware\.test\.ts/);
 });
 
 test("production attestation and live backup audit gate every Cloudflare write", () => {
