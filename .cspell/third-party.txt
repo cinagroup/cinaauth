@@ -39,6 +39,7 @@ authjs
 vite
 electronjs
 nextjs
+Reown
 daveycodez
 wagmi
 tldts
