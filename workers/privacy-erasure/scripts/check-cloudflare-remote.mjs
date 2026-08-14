@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { classifyCloudflareEdgeMitigation } from "../../../scripts/cloudflare-edge-mitigation.mjs";
+
 const API_BASE = "https://api.cloudflare.com/client/v4";
 const ORIGIN = "https://cinaauth-erasure.cinagroup.com";
 const MAX_ATTEMPTS = 3;
@@ -30,6 +32,7 @@ const token = process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN;
 let accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 const failures = [];
 const warnings = [];
+const edgeMitigatedEndpoints = [];
 
 const fail = (message) => failures.push(message);
 const warn = (message) => warnings.push(message);
@@ -151,6 +154,38 @@ const publicFetch = async (url, init = {}) => {
 		}
 	}
 	throw new Error(`Public endpoint failed: ${describeFetchError(lastError)}`);
+};
+
+const markEdgeMitigatedEndpoint = async (
+	response,
+	endpoint,
+	allowEdgeMitigation,
+) => {
+	if (!allowEdgeMitigation || response.status !== 403) return false;
+
+	let mitigation = classifyCloudflareEdgeMitigation({
+		status: response.status,
+		headers: response.headers,
+		body: "",
+	});
+	if (!mitigation && response.headers.get("cf-ray")?.trim()) {
+		const body = await response
+			.clone()
+			.text()
+			.catch(() => "");
+		mitigation = classifyCloudflareEdgeMitigation({
+			status: response.status,
+			headers: response.headers,
+			body,
+		});
+	}
+	if (!mitigation) return false;
+
+	edgeMitigatedEndpoints.push(endpoint);
+	warn(
+		`${endpoint} is edge-mitigated/unverified (${mitigation.evidence}); Cloudflare API Worker, binding, and domain checks completed without failures, but this public endpoint was not verified`,
+	);
+	return true;
 };
 
 const resolveAccountId = async () => {
@@ -278,17 +313,31 @@ const checkCustomDomain = async () => {
 		fail(
 			`Privacy Erasure Worker Custom Domain is bound to ${remote.service}, expected ${config.name}`,
 		);
+	} else if (
+		remote.environment !== undefined &&
+		remote.environment !== "production"
+	) {
+		fail(
+			"Privacy Erasure Worker Custom Domain must target the production environment",
+		);
 	}
 };
 
-const checkPublicEndpoints = async () => {
+const checkPublicEndpoints = async (allowEdgeMitigation) => {
 	const root = await publicFetch(`${ORIGIN}/`, {
 		headers: { Accept: "application/json" },
 	});
-	if (!root.ok)
-		fail(`Privacy Erasure Worker root returned HTTP ${root.status}`);
-	if (!root.headers.get("cache-control")?.includes("no-store")) {
-		fail("Privacy Erasure Worker root must return Cache-Control: no-store");
+	const rootIsEdgeMitigated = await markEdgeMitigatedEndpoint(
+		root,
+		"Privacy Erasure Worker root endpoint",
+		allowEdgeMitigation,
+	);
+	if (!rootIsEdgeMitigated) {
+		if (!root.ok)
+			fail(`Privacy Erasure Worker root returned HTTP ${root.status}`);
+		if (!root.headers.get("cache-control")?.includes("no-store")) {
+			fail("Privacy Erasure Worker root must return Cache-Control: no-store");
+		}
 	}
 
 	const readinessSecret =
@@ -302,6 +351,15 @@ const checkPublicEndpoints = async () => {
 				: {}),
 		},
 	});
+	if (
+		await markEdgeMitigatedEndpoint(
+			ready,
+			"Privacy Erasure Worker readiness endpoint",
+			allowEdgeMitigation,
+		)
+	) {
+		return;
+	}
 	const body = await ready.json().catch(() => undefined);
 	if (allowNotReady && ready.status === 503) {
 		if (
@@ -365,7 +423,7 @@ const main = async () => {
 				await checkWorkerSettings();
 				await checkSecrets();
 				await checkCustomDomain();
-				await checkPublicEndpoints();
+				await checkPublicEndpoints(failures.length === 0);
 			}
 		} catch (error) {
 			fail(error instanceof Error ? error.message : String(error));
@@ -376,6 +434,12 @@ const main = async () => {
 		console.error("Privacy Erasure Worker Cloudflare preflight failed:");
 		for (const failure of failures) console.error(`- ${failure}`);
 		process.exit(1);
+	}
+	if (edgeMitigatedEndpoints.length > 0) {
+		console.log(
+			`Privacy Erasure Worker Cloudflare preflight completed with ${edgeMitigatedEndpoints.length} edge-mitigated/unverified public endpoint(s); readiness was not verified.`,
+		);
+		return;
 	}
 	console.log("Privacy Erasure Worker Cloudflare preflight passed.");
 };

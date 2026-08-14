@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { classifyCloudflareEdgeMitigation } from "../../../scripts/cloudflare-edge-mitigation.mjs";
+
 const API_BASE = "https://api.cloudflare.com/client/v4";
 const MAX_ATTEMPTS = 3;
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
@@ -27,6 +29,7 @@ const token = process.env.CLOUDFLARE_API_TOKEN || process.env.CF_API_TOKEN;
 let accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 const failures = [];
 const warnings = [];
+const edgeMitigatedEndpoints = [];
 
 const fail = (message) => failures.push(message);
 const warn = (message) => warnings.push(message);
@@ -145,6 +148,38 @@ const publicFetch = async (url) => {
 	return undefined;
 };
 
+const markEdgeMitigatedEndpoint = async (
+	response,
+	endpoint,
+	allowEdgeMitigation,
+) => {
+	if (!allowEdgeMitigation || response.status !== 403) return false;
+
+	let mitigation = classifyCloudflareEdgeMitigation({
+		status: response.status,
+		headers: response.headers,
+		body: "",
+	});
+	if (!mitigation && response.headers.get("cf-ray")?.trim()) {
+		const body = await response
+			.clone()
+			.text()
+			.catch(() => "");
+		mitigation = classifyCloudflareEdgeMitigation({
+			status: response.status,
+			headers: response.headers,
+			body,
+		});
+	}
+	if (!mitigation) return false;
+
+	edgeMitigatedEndpoints.push(endpoint);
+	warn(
+		`${endpoint} is edge-mitigated/unverified (${mitigation.evidence}); Cloudflare API Worker, binding, and domain checks completed without failures, but this public endpoint was not verified`,
+	);
+	return true;
+};
+
 const checkKVNamespaces = async () => {
 	for (const binding of config.kv_namespaces ?? []) {
 		try {
@@ -178,8 +213,49 @@ const checkWorkerSettings = async () => {
 	const durableObject = settings.bindings?.find(
 		(item) => item.name === "DELIVERY_CONFIG",
 	);
-	if (durableObject?.type !== "durable_object_namespace") {
+	if (
+		durableObject?.type !== "durable_object_namespace" ||
+		typeof durableObject.namespace_id !== "string"
+	) {
 		fail("Remote DELIVERY_CONFIG Durable Object binding is missing");
+	} else {
+		const durableNamespace = await cloudflareFetch(
+			`/accounts/${accountId}/workers/durable_objects/namespaces/${durableObject.namespace_id}`,
+		);
+		if (
+			durableNamespace.script !== config.name ||
+			durableNamespace.class !== "DeliveryProviderConfig" ||
+			durableNamespace.use_sqlite !== true
+		) {
+			fail(
+				"Remote DeliveryProviderConfig namespace must use SQLite Durable Object storage",
+			);
+		}
+	}
+
+	const deployments = await cloudflareFetch(
+		`/accounts/${accountId}/workers/scripts/${config.name}/deployments`,
+	);
+	const currentVersion = deployments.deployments?.[0]?.versions?.find(
+		(version) => version.percentage === 100,
+	)?.version_id;
+	if (typeof currentVersion !== "string") {
+		fail("Remote Delivery Worker has no active 100% deployment");
+		return;
+	}
+	const version = await cloudflareFetch(
+		`/accounts/${accountId}/workers/scripts/${config.name}/versions/${currentVersion}`,
+	);
+	const durableHandler = version.resources?.script?.named_handlers?.find(
+		(handler) =>
+			handler.name === "DeliveryProviderConfig" &&
+			handler.handlers?.includes("class"),
+	);
+	if (!durableHandler) {
+		fail("Remote Worker version does not export DeliveryProviderConfig");
+	}
+	if (version.resources?.script_runtime?.migration_tag !== "v1") {
+		fail("Remote Delivery Worker must have Durable Object migration v1");
 	}
 };
 
@@ -190,7 +266,7 @@ const checkZoneAndRoute = async () => {
 	);
 	if (!route) {
 		fail(`wrangler.json must define a route for ${hostname}`);
-		return;
+		return false;
 	}
 	if (route.custom_domain === true) {
 		const domains = await cloudflareFetch(
@@ -198,21 +274,27 @@ const checkZoneAndRoute = async () => {
 		);
 		const remoteDomain = domains.find((domain) => domain.hostname === hostname);
 		if (!remoteDomain) {
-			warn(
-				`Custom Domain ${hostname} is not live yet; wrangler deploy should create it`,
-			);
-			return;
+			fail(`Custom Domain ${hostname} is missing`);
+			return false;
 		}
 		if (remoteDomain.service !== config.name) {
 			fail(
 				`Custom Domain ${hostname} is bound to ${remoteDomain.service}, expected ${config.name}`,
 			);
+			return false;
 		}
-		return;
+		if (
+			remoteDomain.environment !== undefined &&
+			remoteDomain.environment !== "production"
+		) {
+			fail(`Custom Domain ${hostname} must target the production environment`);
+			return false;
+		}
+		return true;
 	}
 	if (!route.zone_name && !route.zone_id) {
 		fail(`Worker route ${route.pattern} must include zone_name or zone_id`);
-		return;
+		return false;
 	}
 	const zones = await cloudflareFetch(
 		`/zones?name=${encodeURIComponent(route.zone_name)}`,
@@ -220,7 +302,7 @@ const checkZoneAndRoute = async () => {
 	const zone = zones.find((item) => item.name === route.zone_name);
 	if (!zone) {
 		fail(`Cloudflare zone ${route.zone_name} does not exist`);
-		return;
+		return false;
 	}
 	if (zone.status && zone.status !== "active") {
 		warn(`Cloudflare zone ${zone.name} status is ${zone.status}`);
@@ -231,32 +313,50 @@ const checkZoneAndRoute = async () => {
 		warn(
 			`Worker route ${route.pattern} is not live yet; wrangler deploy should create it`,
 		);
-		return;
+		return false;
 	}
 	if (remoteRoute.script && remoteRoute.script !== config.name) {
 		fail(
 			`Worker route ${route.pattern} is bound to ${remoteRoute.script}, expected ${config.name}`,
 		);
+		return false;
 	}
+	return true;
 };
 
-const checkPublicEndpoints = async () => {
+const checkPublicEndpoints = async (allowEdgeMitigation) => {
 	const root = await publicFetch("https://cinaauth-delivery.cinagroup.com/");
 	if (root) {
-		const rootBody = await root.json().catch(() => undefined);
-		if (
-			!root.ok ||
-			!rootBody ||
-			typeof rootBody !== "object" ||
-			rootBody.structuralReady !== true
-		) {
-			fail("Delivery Worker structural health response is incomplete");
+		const isEdgeMitigated = await markEdgeMitigatedEndpoint(
+			root,
+			"Delivery Worker structural health endpoint",
+			allowEdgeMitigation,
+		);
+		if (!isEdgeMitigated) {
+			const rootBody = await root.json().catch(() => undefined);
+			if (
+				!root.ok ||
+				!rootBody ||
+				typeof rootBody !== "object" ||
+				rootBody.structuralReady !== true
+			) {
+				fail("Delivery Worker structural health response is incomplete");
+			}
 		}
 	}
 	const ready = await publicFetch(
 		"https://cinaauth-delivery.cinagroup.com/ready",
 	);
 	if (!ready) return;
+	if (
+		await markEdgeMitigatedEndpoint(
+			ready,
+			"Delivery Worker readiness endpoint",
+			allowEdgeMitigation,
+		)
+	) {
+		return;
+	}
 	if (!ready.ok && ready.status !== 503) {
 		fail(`Delivery Worker readiness returned unexpected HTTP ${ready.status}`);
 		return;
@@ -298,8 +398,8 @@ const main = async () => {
 			if (failures.length === 0) {
 				await checkWorkerSettings();
 				await checkKVNamespaces();
-				await checkZoneAndRoute();
-				await checkPublicEndpoints();
+				const domainVerified = await checkZoneAndRoute();
+				await checkPublicEndpoints(failures.length === 0 && domainVerified);
 			}
 		} catch (error) {
 			fail(error instanceof Error ? error.message : String(error));
@@ -315,6 +415,12 @@ const main = async () => {
 			console.error(`- ${failure}`);
 		}
 		process.exit(1);
+	}
+	if (edgeMitigatedEndpoints.length > 0) {
+		console.log(
+			`Delivery Worker Cloudflare remote preflight completed with ${edgeMitigatedEndpoints.length} edge-mitigated/unverified public endpoint(s); readiness was not verified.`,
+		);
+		return;
 	}
 	console.log("Delivery Worker Cloudflare remote preflight passed.");
 };

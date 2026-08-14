@@ -18,6 +18,24 @@ const localDeploy = readFileSync(
 	new URL("../../deploy-cloudflare.sh", import.meta.url),
 	"utf8",
 );
+const edgeMitigationClassifier = readFileSync(
+	new URL("../../scripts/cloudflare-edge-mitigation.mjs", import.meta.url),
+	"utf8",
+);
+const deliveryRemotePreflight = readFileSync(
+	new URL(
+		"../../workers/delivery/scripts/check-cloudflare-remote.mjs",
+		import.meta.url,
+	),
+	"utf8",
+);
+const privacyRemotePreflight = readFileSync(
+	new URL(
+		"../../workers/privacy-erasure/scripts/check-cloudflare-remote.mjs",
+		import.meta.url,
+	),
+	"utf8",
+);
 
 const productionWorkflows = [
 	["deploy-cloudflare.yml", central],
@@ -239,9 +257,69 @@ test("Account Portal smoke verifies the legacy custom domain across Cloudflare b
 	);
 	assert.match(smoke, /cf-mitigated:\[\[:space:\]\]\*challenge/);
 	assert.match(smoke, /\^cf-ray:/);
+	assert.match(smoke, /attention required/);
+	assert.match(smoke, /sorry, you have been blocked/);
+	assert.match(smoke, /cloudflare/);
+	assert.match(smoke, /ray id/);
 	assert.match(smoke, /Cloudflare mitigation response/);
 	assert.match(smoke, /Unexpected legacy Account domain response/);
 	assert.match(deploy, /middleware\.test\.ts/);
+});
+
+test("stateful Worker probes reuse the strict Account edge-mitigation contract", () => {
+	assert.match(edgeMitigationClassifier, /status !== 403/);
+	assert.match(edgeMitigationClassifier, /contentType !== "text\/html"/);
+	assert.match(edgeMitigationClassifier, /headers\.get\("cf-mitigated"\)/);
+	assert.match(edgeMitigationClassifier, /=== "challenge"/);
+	assert.match(edgeMitigationClassifier, /headers\.get\("cf-ray"\)/);
+	assert.match(edgeMitigationClassifier, /bodyRayId === headerRayId/);
+	assert.match(edgeMitigationClassifier, /attention required/);
+	assert.match(edgeMitigationClassifier, /you have been blocked/);
+	assert.match(edgeMitigationClassifier, /cloudflare\\s\+ray\\s\+id/);
+
+	for (const [name, remotePreflight] of [
+		["Delivery", deliveryRemotePreflight],
+		["Privacy Erasure", privacyRemotePreflight],
+	]) {
+		assert.match(
+			remotePreflight,
+			/import \{ classifyCloudflareEdgeMitigation \} from "\.\.\/\.\.\/\.\.\/scripts\/cloudflare-edge-mitigation\.mjs"/,
+			`${name} must use the shared classifier`,
+		);
+		assert.match(
+			remotePreflight,
+			/!allowEdgeMitigation \|\| response\.status !== 403/,
+			`${name} must keep non-403 responses on the normal validation path`,
+		);
+		assert.match(
+			remotePreflight,
+			/checkPublicEndpoints\(failures\.length === 0(?: && domainVerified)?\)/,
+			`${name} must require successful Cloudflare API checks before mitigation handling`,
+		);
+		assert.match(remotePreflight, /edge-mitigated\/unverified/);
+		assert.match(remotePreflight, /readiness was not verified/);
+		assert.match(remotePreflight, /edgeMitigatedEndpoints\.length > 0/);
+	}
+	assert.match(deliveryRemotePreflight, /domainVerified/);
+	assert.match(
+		deliveryRemotePreflight,
+		/checkPublicEndpoints\(failures\.length === 0 && domainVerified\)/,
+	);
+	assert.match(
+		deliveryRemotePreflight,
+		/Remote Delivery Worker has no active 100% deployment/,
+	);
+	assert.match(deliveryRemotePreflight, /DeliveryProviderConfig/);
+	assert.match(deliveryRemotePreflight, /migration_tag !== "v1"/);
+	assert.match(deliveryRemotePreflight, /Custom Domain .* is missing/);
+	assert.match(
+		deliveryRemotePreflight,
+		/remoteDomain\.environment !== undefined &&[\s\S]*remoteDomain\.environment !== "production"/,
+	);
+	assert.match(
+		privacyRemotePreflight,
+		/remote\.environment !== undefined &&[\s\S]*remote\.environment !== "production"/,
+	);
 });
 
 test("production attestation and live backup audit gate every Cloudflare write", () => {
@@ -527,6 +605,7 @@ test("deployment target contracts run in CI and before production authorization"
 	const testFiles = [
 		"scripts/cloudflare-deployment-target.test.mjs",
 		"scripts/check-cloudflare-preserved-secrets.test.mjs",
+		"scripts/cloudflare-edge-mitigation.test.mjs",
 		".github/workflows/deployment-workflows.test.mjs",
 		"workers/auth-api/scripts/provision-secrets.test.mjs",
 		"workers/delivery/scripts/provision-secrets.test.mjs",
