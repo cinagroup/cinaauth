@@ -18,6 +18,24 @@ const localDeploy = readFileSync(
 	new URL("../../deploy-cloudflare.sh", import.meta.url),
 	"utf8",
 );
+const edgeMitigationClassifier = readFileSync(
+	new URL("../../scripts/cloudflare-edge-mitigation.mjs", import.meta.url),
+	"utf8",
+);
+const deliveryRemotePreflight = readFileSync(
+	new URL(
+		"../../workers/delivery/scripts/check-cloudflare-remote.mjs",
+		import.meta.url,
+	),
+	"utf8",
+);
+const privacyRemotePreflight = readFileSync(
+	new URL(
+		"../../workers/privacy-erasure/scripts/check-cloudflare-remote.mjs",
+		import.meta.url,
+	),
+	"utf8",
+);
 
 const productionWorkflows = [
 	["deploy-cloudflare.yml", central],
@@ -239,9 +257,69 @@ test("Account Portal smoke verifies the legacy custom domain across Cloudflare b
 	);
 	assert.match(smoke, /cf-mitigated:\[\[:space:\]\]\*challenge/);
 	assert.match(smoke, /\^cf-ray:/);
+	assert.match(smoke, /attention required/);
+	assert.match(smoke, /sorry, you have been blocked/);
+	assert.match(smoke, /cloudflare/);
+	assert.match(smoke, /ray id/);
 	assert.match(smoke, /Cloudflare mitigation response/);
 	assert.match(smoke, /Unexpected legacy Account domain response/);
 	assert.match(deploy, /middleware\.test\.ts/);
+});
+
+test("stateful Worker probes reuse the strict Account edge-mitigation contract", () => {
+	assert.match(edgeMitigationClassifier, /status !== 403/);
+	assert.match(edgeMitigationClassifier, /contentType !== "text\/html"/);
+	assert.match(edgeMitigationClassifier, /headers\.get\("cf-mitigated"\)/);
+	assert.match(edgeMitigationClassifier, /=== "challenge"/);
+	assert.match(edgeMitigationClassifier, /headers\.get\("cf-ray"\)/);
+	assert.match(edgeMitigationClassifier, /bodyRayId === headerRayId/);
+	assert.match(edgeMitigationClassifier, /attention required/);
+	assert.match(edgeMitigationClassifier, /you have been blocked/);
+	assert.match(edgeMitigationClassifier, /cloudflare\\s\+ray\\s\+id/);
+
+	for (const [name, remotePreflight] of [
+		["Delivery", deliveryRemotePreflight],
+		["Privacy Erasure", privacyRemotePreflight],
+	]) {
+		assert.match(
+			remotePreflight,
+			/import \{ classifyCloudflareEdgeMitigation \} from "\.\.\/\.\.\/\.\.\/scripts\/cloudflare-edge-mitigation\.mjs"/,
+			`${name} must use the shared classifier`,
+		);
+		assert.match(
+			remotePreflight,
+			/!allowEdgeMitigation \|\| response\.status !== 403/,
+			`${name} must keep non-403 responses on the normal validation path`,
+		);
+		assert.match(
+			remotePreflight,
+			/checkPublicEndpoints\(failures\.length === 0(?: && domainVerified)?\)/,
+			`${name} must require successful Cloudflare API checks before mitigation handling`,
+		);
+		assert.match(remotePreflight, /edge-mitigated\/unverified/);
+		assert.match(remotePreflight, /readiness was not verified/);
+		assert.match(remotePreflight, /edgeMitigatedEndpoints\.length > 0/);
+	}
+	assert.match(deliveryRemotePreflight, /domainVerified/);
+	assert.match(
+		deliveryRemotePreflight,
+		/checkPublicEndpoints\(failures\.length === 0 && domainVerified\)/,
+	);
+	assert.match(
+		deliveryRemotePreflight,
+		/Remote Delivery Worker has no active 100% deployment/,
+	);
+	assert.match(deliveryRemotePreflight, /DeliveryProviderConfig/);
+	assert.match(deliveryRemotePreflight, /migration_tag !== "v1"/);
+	assert.match(deliveryRemotePreflight, /Custom Domain .* is missing/);
+	assert.match(
+		deliveryRemotePreflight,
+		/remoteDomain\.environment !== undefined &&[\s\S]*remoteDomain\.environment !== "production"/,
+	);
+	assert.match(
+		privacyRemotePreflight,
+		/remote\.environment !== undefined &&[\s\S]*remote\.environment !== "production"/,
+	);
 });
 
 test("production attestation and live backup audit gate every Cloudflare write", () => {
@@ -267,6 +345,10 @@ test("production attestation and live backup audit gate every Cloudflare write",
 	assert.match(gate, /GITHUB_REF.*refs\/heads\/main/);
 	assert.match(gate, /tr -d '\[:space:\]'/);
 	assert.match(
+		gate,
+		/node workers\/auth-api\/scripts\/check-planetscale-backups\.mjs > "\$report_file"/,
+	);
+	assert.doesNotMatch(
 		gate,
 		/pnpm .*--dir workers\/auth-api run check:planetscale-backups/,
 	);
@@ -372,6 +454,34 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 	assert.match(
 		jobBlock(central, "deploy-worker", "deploy-account-portal"),
 		/needs: \[deploy-delivery, deploy-privacy-erasure, preflight-account-portal\]/,
+	);
+});
+
+test("Auth Worker builds workspace dependencies before configuration and checks", () => {
+	const auth = jobBlock(central, "deploy-worker", "deploy-account-portal");
+	const install = auth.indexOf("- name: Install dependencies");
+	const build = auth.indexOf("- name: Build Auth workspace dependencies");
+	const configureHyperdrive = auth.indexOf(
+		"- name: Configure Hyperdrive binding",
+	);
+	const checkWorker = auth.indexOf("- name: Check Worker types and bindings");
+
+	assert.ok(install >= 0, "Auth Worker must install dependencies");
+	assert.ok(
+		build > install,
+		"Auth Worker must build dependencies after install",
+	);
+	assert.ok(
+		configureHyperdrive > build,
+		"Auth Worker must configure Hyperdrive after building dependencies",
+	);
+	assert.ok(
+		checkWorker > configureHyperdrive,
+		"Auth Worker must check types and bindings after Hyperdrive configuration",
+	);
+	assert.match(
+		auth.slice(build, configureHyperdrive),
+		/^\s+run: pnpm run build:dependencies\s*$/m,
 	);
 });
 
@@ -523,6 +633,7 @@ test("deployment target contracts run in CI and before production authorization"
 	const testFiles = [
 		"scripts/cloudflare-deployment-target.test.mjs",
 		"scripts/check-cloudflare-preserved-secrets.test.mjs",
+		"scripts/cloudflare-edge-mitigation.test.mjs",
 		".github/workflows/deployment-workflows.test.mjs",
 		"workers/auth-api/scripts/provision-secrets.test.mjs",
 		"workers/delivery/scripts/provision-secrets.test.mjs",
