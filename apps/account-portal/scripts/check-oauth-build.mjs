@@ -4,8 +4,61 @@ import { fileURLToPath } from "node:url";
 
 const DEFAULT_CAPABILITIES_URL =
 	"https://auth.cinaseek.ai/api/auth/capabilities";
-const DEFAULT_BUILD_READINESS_URL =
-	"https://accounts.cinaseek.ai/api/build-readiness";
+
+const parseCanonicalHttpsOrigin = (name, value) => {
+	if (typeof value !== "string" || !value || value.trim() !== value) {
+		throw new Error(`${name} must be an exact canonical HTTPS origin`);
+	}
+	let url;
+	try {
+		url = new URL(value);
+	} catch {
+		throw new Error(`${name} must be an exact canonical HTTPS origin`);
+	}
+	if (
+		url.protocol !== "https:" ||
+		url.username ||
+		url.password ||
+		url.port ||
+		url.pathname !== "/" ||
+		url.search ||
+		url.hash ||
+		url.origin !== value
+	) {
+		throw new Error(`${name} must be an exact canonical HTTPS origin`);
+	}
+	return url.origin;
+};
+
+export const resolveAccountBuildReadinessTarget = ({
+	targetOrigin,
+	readinessUrl,
+}) => {
+	let resolvedTargetOrigin = targetOrigin;
+	if (resolvedTargetOrigin === undefined && typeof readinessUrl === "string") {
+		let parsedReadiness;
+		try {
+			parsedReadiness = new URL(readinessUrl);
+		} catch {
+			throw new Error(
+				"CINAAUTH_ACCOUNT_BUILD_READINESS_URL must identify a valid deployment target",
+			);
+		}
+		resolvedTargetOrigin = parsedReadiness.origin;
+	}
+
+	const origin = parseCanonicalHttpsOrigin(
+		"CINAAUTH_ACCOUNT_TARGET_ORIGIN",
+		resolvedTargetOrigin,
+	);
+	const expectedReadinessUrl = `${origin}/api/build-readiness`;
+	if (readinessUrl !== undefined && readinessUrl !== expectedReadinessUrl) {
+		throw new Error(
+			"CINAAUTH_ACCOUNT_BUILD_READINESS_URL does not belong to the validated deployment target",
+		);
+	}
+	return expectedReadinessUrl;
+};
 
 export const evaluateOneTapBuild = ({ oneTapEnabled, googleClientId }) => {
 	if (!oneTapEnabled) {
@@ -217,12 +270,10 @@ const main = async () => {
 
 		let deployed = {};
 		if (siweEnabled === "true") {
-			const readinessURL = process.env.CINAAUTH_ACCOUNT_BUILD_READINESS_URL;
-			if (readinessURL !== DEFAULT_BUILD_READINESS_URL) {
-				throw new Error(
-					`CINAAUTH_ACCOUNT_BUILD_READINESS_URL must be exactly ${DEFAULT_BUILD_READINESS_URL}`,
-				);
-			}
+			const readinessURL = resolveAccountBuildReadinessTarget({
+				targetOrigin: process.env.CINAAUTH_ACCOUNT_TARGET_ORIGIN,
+				readinessUrl: process.env.CINAAUTH_ACCOUNT_BUILD_READINESS_URL,
+			});
 			deployed = await fetchBuildReadiness(readinessURL);
 		}
 		const plannedResult = evaluatePlannedSiweRelease({

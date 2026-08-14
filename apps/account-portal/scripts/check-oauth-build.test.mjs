@@ -6,6 +6,7 @@ import {
 	evaluatePlannedReownBuild,
 	evaluatePlannedSiweRelease,
 	evaluateReownBuild,
+	resolveAccountBuildReadinessTarget,
 } from "./check-oauth-build.mjs";
 
 describe("account OAuth build parity", () => {
@@ -192,5 +193,41 @@ describe("account Reown build parity", () => {
 			}).ok,
 			true,
 		);
+	});
+});
+
+describe("account build readiness target", () => {
+	it("derives the readiness URL from an explicit canonical target origin", () => {
+		assert.equal(
+			resolveAccountBuildReadinessTarget({
+				targetOrigin: "https://accounts-staging.example.com",
+			}),
+			"https://accounts-staging.example.com/api/build-readiness",
+		);
+	});
+
+	it("rejects a readiness URL from a different deployment", () => {
+		assert.throws(
+			() =>
+				resolveAccountBuildReadinessTarget({
+					targetOrigin: "https://accounts-staging.example.com",
+					readinessUrl: "https://accounts.cinaseek.ai/api/build-readiness",
+				}),
+			/deployment target/,
+		);
+	});
+
+	it("fails closed on missing or non-canonical target origins", () => {
+		for (const targetOrigin of [
+			undefined,
+			"http://accounts-staging.example.com",
+			"https://accounts-staging.example.com/",
+			"https://accounts-staging.example.com/path",
+		]) {
+			assert.throws(
+				() => resolveAccountBuildReadinessTarget({ targetOrigin }),
+				/CINAAUTH_ACCOUNT_TARGET_ORIGIN/,
+			);
+		}
 	});
 });

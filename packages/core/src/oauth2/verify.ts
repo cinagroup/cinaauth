@@ -294,16 +294,25 @@ export async function verifyAccessToken(
 		scopes?: string[];
 		/** Required to verify access token locally */
 		jwksUrl?: string;
+		/**
+		 * Loads JWKS through a caller-owned transport, such as a Cloudflare
+		 * Service Binding. Takes precedence over `jwksUrl`.
+		 */
+		jwksFetch?: () => Promise<JSONWebKeySet | undefined>;
+		/** Stable cache identity for a caller-owned `jwksFetch` function. */
+		jwksCacheKey?: object;
 		/** If provided, can verify a token remotely */
 		remoteVerify?: VerifyAccessTokenRemote;
 	},
 ) {
 	let payload: JWTPayload | undefined;
+	const jwksFetch = opts.jwksFetch ?? opts.jwksUrl;
 	// Locally verify
-	if (opts.jwksUrl && !opts?.remoteVerify?.force) {
+	if (jwksFetch && !opts?.remoteVerify?.force) {
 		try {
 			payload = await verifyJwsAccessToken(token, {
-				jwksFetch: opts.jwksUrl,
+				jwksFetch,
+				...(opts.jwksCacheKey ? { jwksCacheKey: opts.jwksCacheKey } : {}),
 				verifyOptions: opts.verifyOptions,
 			});
 		} catch (error) {

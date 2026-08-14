@@ -9,7 +9,7 @@
     "deploy": "pnpm run build && wrangler deploy",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && node --test scripts/check-production.test.mjs",
     "check:production": "node scripts/check-production.mjs"
   },
   "dependencies": {

@@ -4,6 +4,13 @@
   "main": "src/worker.ts",
   "compatibility_date": "2026-08-10",
   "workers_dev": false,
+  "vars": {
+    "CINAAUTH_OIDC_DEMO_ENVIRONMENT": "production",
+    "CINAAUTH_OIDC_DEMO_ORIGIN": "https://oidc-demo.cinaseek.ai",
+    "CINAAUTH_URL": "https://auth.cinaseek.ai",
+    "CINAAUTH_ACCOUNT_ORIGIN": "https://accounts.cinaseek.ai",
+    "CINAAUTH_OIDC_DEMO_CLIENT_ID": "cinaauth-oidc-demo"
+  },
   "routes": [
     {
       "pattern": "oidc-demo.cinaseek.ai",

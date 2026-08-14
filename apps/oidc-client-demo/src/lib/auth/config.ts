@@ -1,10 +1,4 @@
-import {
-	OIDC_DEMO_CLIENT_ID,
-	OIDC_DEMO_ISSUER,
-	OIDC_DEMO_ORIGIN,
-	OIDC_DEMO_POST_LOGOUT_URI,
-	OIDC_DEMO_REDIRECT_URI,
-} from "@cinaauth/auth-web-contract";
+import { resolveOidcDemoProfile } from "@cinaauth/auth-web-contract";
 
 export type OidcClientConfig = {
 	issuer: string;
@@ -14,51 +8,63 @@ export type OidcClientConfig = {
 	scope: string;
 };
 
-const productionConfig: OidcClientConfig = {
-	issuer: OIDC_DEMO_ISSUER,
-	clientId: OIDC_DEMO_CLIENT_ID,
-	redirectUri: OIDC_DEMO_REDIRECT_URI,
-	postLogoutRedirectUri: OIDC_DEMO_POST_LOGOUT_URI,
-	scope: "openid profile email",
-};
-
-const isAbsoluteHttpUrl = (value: string) => {
+const parseBrowserOrigin = (value: string) => {
 	try {
 		const url = new URL(value);
-		return url.protocol === "https:" || url.hostname === "localhost";
+		if (
+			url.protocol !== "https:" ||
+			url.username !== "" ||
+			url.password !== "" ||
+			url.port !== "" ||
+			url.pathname !== "/" ||
+			url.search !== "" ||
+			url.hash !== "" ||
+			url.origin !== value
+		) {
+			throw new Error("browser origin is not canonical HTTPS");
+		}
+		return url.origin;
 	} catch {
-		return false;
+		throw new Error("browser origin must be an exact canonical HTTPS origin");
 	}
 };
 
-export const getOidcClientConfig = (): OidcClientConfig => {
-	const issuer = import.meta.env.VITE_OIDC_ISSUER || productionConfig.issuer;
-	const clientId =
-		import.meta.env.VITE_OIDC_CLIENT_ID || productionConfig.clientId;
-	const redirectUri =
-		import.meta.env.VITE_OIDC_REDIRECT_URI ||
-		(window.location.origin === OIDC_DEMO_ORIGIN
-			? productionConfig.redirectUri
-			: `${window.location.origin}/callback`);
-	const postLogoutRedirectUri =
-		window.location.origin === OIDC_DEMO_ORIGIN
-			? productionConfig.postLogoutRedirectUri
-			: window.location.origin;
-
-	if (!clientId.trim()) throw new Error("OIDC client ID is missing");
-	if (!isAbsoluteHttpUrl(issuer)) throw new Error("OIDC issuer URL is invalid");
-	if (!isAbsoluteHttpUrl(redirectUri)) {
-		throw new Error("OIDC redirect URI is invalid");
-	}
-	if (new URL(redirectUri).origin !== window.location.origin) {
-		throw new Error("OIDC redirect URI must belong to this application");
+export const resolveBrowserOidcClientConfig = (
+	profileInput: unknown,
+	browserOrigin: string,
+): OidcClientConfig => {
+	const profile = resolveOidcDemoProfile(profileInput);
+	if (parseBrowserOrigin(browserOrigin) !== profile.applicationOrigin) {
+		throw new Error("OIDC profile does not match the current browser origin");
 	}
 
 	return {
-		issuer: new URL(issuer).origin,
-		clientId,
-		redirectUri,
-		postLogoutRedirectUri,
-		scope: productionConfig.scope,
+		issuer: profile.issuer,
+		clientId: profile.clientId,
+		redirectUri: profile.redirectUri,
+		postLogoutRedirectUri: profile.postLogoutRedirectUri,
+		scope: profile.scope,
 	};
+};
+
+type RuntimeConfigFetch = (
+	input: RequestInfo | URL,
+	init?: RequestInit,
+) => Promise<Response>;
+
+export const loadOidcClientConfig = async (
+	fetchConfig: RuntimeConfigFetch = fetch,
+	browserOrigin = window.location.origin,
+): Promise<OidcClientConfig> => {
+	const response = await fetchConfig("/config.json", {
+		cache: "no-store",
+		credentials: "same-origin",
+		headers: { Accept: "application/json" },
+	});
+	if (!response.ok) {
+		throw new Error(
+			`OIDC runtime configuration returned HTTP ${response.status}`,
+		);
+	}
+	return resolveBrowserOidcClientConfig(await response.json(), browserOrigin);
 };

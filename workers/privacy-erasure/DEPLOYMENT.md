@@ -44,7 +44,7 @@ Provision `CINAAUTH_ERASURE_STORAGE_SECRET` as a Worker secret through
 environment-variable-to-stdin:
 
 ```powershell
-pnpm --dir workers/privacy-erasure run provision:secrets
+pnpm --dir workers/privacy-erasure run provision:secrets -- --deployment-target production
 ```
 
 It must be a stable, independent value of at least 32 characters. It keys the
@@ -218,7 +218,7 @@ persisted there. Completed targets are not replayed.
 pnpm --dir workers/privacy-erasure run check
 pnpm --dir workers/privacy-erasure run build
 pnpm --dir workers/privacy-erasure run deploy
-pnpm --dir workers/privacy-erasure run provision:secrets
+pnpm --dir workers/privacy-erasure run provision:secrets -- --deployment-target production
 pnpm --dir workers/privacy-erasure run check:cloudflare -- --allow-not-ready
 ```
 

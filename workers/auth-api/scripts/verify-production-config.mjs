@@ -166,6 +166,12 @@ const checkExactSecretsStoreBindings = (config, file, expectedBindings) => {
 };
 
 const packageFile = join(workerDir, "package.json");
+const repoPackageFile = join(repoRoot, "package.json");
+const deploymentTargetParserFile = join(
+	repoRoot,
+	"scripts",
+	"cloudflare-deployment-target.mjs",
+);
 const wranglerFile = join(workerDir, "wrangler.json");
 const devVarsExampleFile = join(workerDir, ".dev.vars.example");
 const indexFile = join(workerDir, "src", "index.ts");
@@ -224,6 +230,7 @@ const adminSuperAdminGuardFile = join(
 const auditRetentionFile = join(workerDir, "src", "audit-retention.ts");
 const oauthConfigFile = join(workerDir, "src", "oauth-config.ts");
 const pluginsFile = join(workerDir, "src", "plugins.ts");
+const originConfigFile = join(workerDir, "src", "origin-config.ts");
 const coreRedirectUriFile = join(
 	repoRoot,
 	"packages",
@@ -332,6 +339,13 @@ const deliveryPackageFile = join(
 	"delivery",
 	"package.json",
 );
+const deliveryProvisionFile = join(
+	repoRoot,
+	"workers",
+	"delivery",
+	"scripts",
+	"provision-secrets.mjs",
+);
 const deliveryWranglerFile = join(
 	repoRoot,
 	"workers",
@@ -380,6 +394,7 @@ const workflowFile = join(
 	"workflows",
 	"deploy-cloudflare.yml",
 );
+const ciWorkflowFile = join(repoRoot, ".github", "workflows", "ci.yml");
 const accountWorkflowFile = join(
 	repoRoot,
 	".github",
@@ -394,6 +409,8 @@ const adminWorkflowFile = join(
 );
 const nextDemoDir = join(repoRoot, "apps", "account-portal");
 const accountPackageFile = join(nextDemoDir, "package.json");
+const accountDeployFile = join(nextDemoDir, "deploy-cf.mjs");
+const localDeploymentScriptFile = join(repoRoot, "deploy-cloudflare.sh");
 const accountWranglerFile = join(nextDemoDir, "wrangler.toml");
 const accountMiddlewareFile = join(nextDemoDir, "middleware.ts");
 const accountSignInExperienceFile = join(
@@ -474,6 +491,12 @@ const stripeSchemaFile = join(
 );
 const authCapabilitiesFile = join(nextDemoDir, "lib", "auth-capabilities.ts");
 const authApiFile = join(nextDemoDir, "lib", "auth-api.ts");
+const accountAuthTransportFile = join(nextDemoDir, "lib", "auth.ts");
+const accountAuthRuntimeConfigFile = join(
+	nextDemoDir,
+	"lib",
+	"auth-runtime-config.ts",
+);
 const billingConsolePolicyFile = join(nextDemoDir, "lib", "billing-console.ts");
 const accountDashboardPageFile = join(
 	nextDemoDir,
@@ -529,6 +552,14 @@ const authProxyRouteFile = join(
 	"[...all]",
 	"route.ts",
 );
+const accountDiagnoseRouteFile = join(
+	nextDemoDir,
+	"app",
+	"api",
+	"diagnose",
+	"route.ts",
+);
+const accountMcpRouteFile = join(nextDemoDir, "app", "api", "mcp", "route.ts");
 const turnstileComponentFile = join(
 	nextDemoDir,
 	"components",
@@ -781,6 +812,27 @@ const protectedFormFiles = [
 	join(nextDemoDir, "components", "forms", "forgot-password-form.tsx"),
 ];
 const deploymentDocFile = join(workerDir, "DEPLOYMENT.md");
+const siweStagingDocFile = join(repoRoot, "docs", "SIWE_STAGING.md");
+const siweStagingInventoryFile = join(
+	workerDir,
+	"scripts",
+	"siwe-staging-inventory.mjs",
+);
+const siweStagingInventoryTestFile = join(
+	workerDir,
+	"scripts",
+	"siwe-staging-inventory.test.mjs",
+);
+const verifySiweStagingFile = join(
+	workerDir,
+	"scripts",
+	"verify-siwe-staging.mjs",
+);
+const verifySiweStagingTestFile = join(
+	workerDir,
+	"scripts",
+	"verify-siwe-staging.test.mjs",
+);
 const chineseDeploymentDocFile = join(
 	repoRoot,
 	"docs",
@@ -812,6 +864,8 @@ const gitignoreFile = join(repoRoot, ".gitignore");
 
 const packageJson = readJson(packageFile);
 const wrangler = readJson(wranglerFile);
+const repoPackage = readJson(repoPackageFile);
+const deploymentTargetParser = read(deploymentTargetParserFile);
 const indexTs = read(indexFile);
 const adminConfigurationTs = read(adminConfigurationFile);
 const impersonationMutationGuardTs = read(impersonationMutationGuardFile);
@@ -832,6 +886,7 @@ const adminSuperAdminGuardTs = read(adminSuperAdminGuardFile);
 const auditRetentionTs = read(auditRetentionFile);
 const oauthConfigTs = read(oauthConfigFile);
 const pluginsTs = read(pluginsFile);
+const originConfigTs = read(originConfigFile);
 const coreRedirectUriTs = read(coreRedirectUriFile);
 const oauthRegisterTs = read(oauthRegisterFile);
 const databaseTs = read(databaseFile);
@@ -854,6 +909,7 @@ const configureDeliveryQueues = read(configureDeliveryQueuesFile);
 const configurePrivacyExport = read(configurePrivacyExportFile);
 const checkPlanetScaleBackups = read(checkPlanetScaleBackupsFile);
 const provisionSecrets = read(provisionSecretsFile);
+const deliveryProvision = read(deliveryProvisionFile);
 const deliveryRemotePreflight = read(deliveryRemotePreflightFile);
 const deliveryAcceptance = read(deliveryAcceptanceFile);
 const productionLifecycleAcceptance = read(productionLifecycleAcceptanceFile);
@@ -870,6 +926,7 @@ const privacyErasureProvision = read(privacyErasureProvisionFile);
 const privacyErasureRemote = read(privacyErasureRemoteFile);
 const privacyErasureDeployment = read(privacyErasureDeploymentFile);
 const workflow = read(workflowFile);
+const ciWorkflow = read(ciWorkflowFile);
 const accountWorkflow = read(accountWorkflowFile);
 const adminWorkflow = read(adminWorkflowFile);
 const workflowJobBlock = (source, job, nextJob) => {
@@ -879,6 +936,8 @@ const workflowJobBlock = (source, job, nextJob) => {
 	return source.slice(start, end === -1 ? undefined : end);
 };
 const accountPackage = readJson(accountPackageFile);
+const accountDeploy = read(accountDeployFile);
+const localDeploymentScript = read(localDeploymentScriptFile);
 const accountWrangler = read(accountWranglerFile);
 const accountMiddleware = read(accountMiddlewareFile);
 const accountSignInExperience = read(accountSignInExperienceFile);
@@ -897,6 +956,10 @@ const authEntitlementContractTs = read(authEntitlementContractFile);
 const stripeSchemaTs = read(stripeSchemaFile);
 const authCapabilitiesTs = read(authCapabilitiesFile);
 const authApiTs = read(authApiFile);
+const accountAuthTransportTs = read(accountAuthTransportFile);
+const accountAuthRuntimeConfigTs = read(accountAuthRuntimeConfigFile);
+const accountDiagnoseRouteTs = read(accountDiagnoseRouteFile);
+const accountMcpRouteTs = read(accountMcpRouteFile);
 const billingConsolePolicyTs = read(billingConsolePolicyFile);
 const accountDashboardPageTs = read(accountDashboardPageFile);
 const subscriptionCardTs = read(subscriptionCardFile);
@@ -954,6 +1017,11 @@ const protectedForms = protectedFormFiles.map((file) => ({
 	content: read(file),
 }));
 const deploymentDoc = read(deploymentDocFile);
+const siweStagingDoc = read(siweStagingDocFile);
+const siweStagingInventory = read(siweStagingInventoryFile);
+const siweStagingInventoryTest = read(siweStagingInventoryTestFile);
+const verifySiweStaging = read(verifySiweStagingFile);
+const verifySiweStagingTest = read(verifySiweStagingTestFile);
 const chineseDeploymentDoc = read(chineseDeploymentDocFile);
 const functionalDesign = read(functionalDesignFile);
 const privacyCenterDoc = read(privacyCenterDocFile);
@@ -996,6 +1064,48 @@ checkIncludesAll(
 	],
 	capabilitiesFile,
 	"public capability discovery must expose only the client-safe Turnstile configuration",
+);
+checkIncludesAll(
+	originConfigTs,
+	[
+		"CINAAUTH_ACCOUNT_ORIGIN",
+		"CINAAUTH_ADMIN_ORIGIN",
+		"CINAAUTH_PASSKEY_RP_ID",
+		"CINAAUTH_LEGACY_ACCOUNT_ORIGIN",
+		"CINAAUTH_OIDC_DEMO_ENVIRONMENT",
+		"CINAAUTH_OIDC_DEMO_ORIGIN",
+		"CINAAUTH_OIDC_DEMO_CLIENT_ID",
+		"resolveOidcDemoProfile",
+		'"invalid_cinaauth_oidc_demo_profile"',
+		"parseCanonicalHttpsOrigin",
+		'url.protocol !== "https:"',
+		'url.port !== ""',
+		"value !== url.origin",
+		'"duplicate_cinaauth_origins"',
+		'"invalid_cinaauth_siwe_rp_origin"',
+		"config.trustedOrigins.includes(origin)",
+	],
+	originConfigFile,
+	"browser-facing Auth origins must be canonical, role-distinct, SIWE-aligned, and compared as exact origins",
+);
+checkIncludesAll(
+	pluginsTs,
+	[
+		"cachedTrustedClients",
+		"origins.oidcDemoProfile.clientId",
+		"client.clientId === origins.oidcDemoProfile?.clientId",
+	],
+	pluginsFile,
+	"OIDC demo trust must use only the client ID from the validated environment profile",
+);
+checkIncludesAll(
+	indexTs,
+	[
+		"origins.oidcDemoProfile",
+		"ensureOidcDemoClient(database, origins.oidcDemoProfile)",
+	],
+	indexFile,
+	"OIDC demo request recognition and client reconciliation must share the validated environment profile",
 );
 checkIncludesAll(
 	authEntitlementContractTs,
@@ -1350,7 +1460,8 @@ checkIncludesAll(
 		"listPasskeys",
 		"listApiKeys",
 		"listWallets",
-		"fetchAuthCapabilities",
+		"auth.api",
+		"getCapabilities",
 		"dataUnavailable",
 	],
 	securityCenterPageFile,
@@ -1965,11 +2076,72 @@ checkIncludesAll(
 	"the account portal must expose its same-origin Auth Worker facade and keep Generic OAuth state on that origin",
 );
 checkIncludesAll(
+	accountAuthRuntimeConfigTs,
+	[
+		'bindingPolicy === "false"',
+		"UNAVAILABLE_CINAAUTH_API_URL",
+		"AUTH_SERVICE_UNAVAILABLE",
+		'"Cache-Control": "no-store"',
+		"resolveAuthRuntimeConfiguration",
+		"resolveAuthClientRuntimeBaseURL",
+	],
+	accountAuthRuntimeConfigFile,
+	"the Account Portal must permit public Auth fallback only by exact local opt-in and otherwise fail closed",
+);
+checkIncludesAll(
+	accountAuthTransportTs,
+	[
+		"getCloudflareContext",
+		"fetchAuthServiceRequest",
+		"unavailableAuthFetcher",
+		"runtimeConfiguration.publicFallbackAllowed",
+		"createAuthServiceUnavailableResponse",
+		"AUTH_WORKER",
+	],
+	accountAuthTransportFile,
+	"server-side Account Auth traffic must require the Service Binding without falling back after binding or context failures",
+);
+checkIncludesAll(
+	accountDiagnoseRouteTs,
+	[
+		"fetchAuthServiceRequest",
+		'probeAuthService("/"',
+		'probeAuthService("/api/auth/get-session"',
+		"createAuthServiceUnavailableResponse",
+		'cache: "no-store"',
+	],
+	accountDiagnoseRouteFile,
+	"Account diagnostics must probe Auth through the binding-aware server transport and fail closed",
+);
+check(
+	!accountDiagnoseRouteTs.includes("httpbin.org") &&
+		!accountDiagnoseRouteTs.includes("process.env.NODE_ENV") &&
+		!accountDiagnoseRouteTs.includes("CINAAUTH_URL:"),
+	`${rel(accountDiagnoseRouteFile)} must not expose environment details or use an unrelated public diagnostic probe`,
+);
+checkIncludesAll(
+	accountMcpRouteTs,
+	[
+		"fetchAuthServiceRequest",
+		"jwksFetch: loadAuthJwks",
+		"jwksCacheKey: AUTH_JWKS_CACHE_KEY",
+		"AUTH_TRANSPORT_UNAVAILABLE_CODE",
+		"withAuthAvailability",
+		"createAuthServiceUnavailableResponse",
+	],
+	accountMcpRouteFile,
+	"MCP token verification must load JWKS through the binding-aware server transport",
+);
+check(
+	!accountMcpRouteTs.includes("jwksUrl:"),
+	`${rel(accountMcpRouteFile)} must not bypass the Auth Service Binding with a public JWKS URL`,
+);
+checkIncludesAll(
 	oauthConfigTs,
 	[
 		"parseProductionGenericOAuthConfig",
 		"genericOAuthRedirectURI",
-		"https://accounts.cinaseek.ai",
+		"accountOrigin",
 		"/api/auth/oauth2/callback/",
 		'url.protocol === "https:"',
 		"PROVIDER_ID_PATTERN",
@@ -2015,7 +2187,9 @@ checkIncludesAll(
 		"evaluateDeployedWalletReadiness",
 		"CINAAUTH_PLANNED_WORKER_CONFIG",
 		"CINAAUTH_ACCOUNT_BUILD_READINESS_URL",
-		"https://accounts.cinaseek.ai/api/build-readiness",
+		"CINAAUTH_ACCOUNT_TARGET_ORIGIN",
+		"resolveAccountBuildReadinessTarget",
+		"const expectedReadinessUrl = `${origin}/api/build-readiness`",
 		'cache: "no-store"',
 		"deployed = await fetchBuildReadiness(readinessURL)",
 		"const plannedResult = evaluatePlannedSiweRelease({",
@@ -2027,6 +2201,10 @@ checkIncludesAll(
 	],
 	accountOAuthBuildCheckFile,
 	"the account deployment gates must fail when planned or live server capabilities lack matching client build inputs",
+);
+check(
+	!accountOAuthBuildCheck.includes("DEFAULT_BUILD_READINESS_URL"),
+	`${rel(accountOAuthBuildCheckFile)} must derive readiness from the validated deployment target instead of a production fallback`,
 );
 checkIncludesAll(
 	accountBuildReadiness,
@@ -2259,6 +2437,16 @@ check(
 	`${rel(packageFile)} must expose check:production`,
 );
 check(
+	packageJson.scripts?.["check:siwe-staging-foundation"] ===
+		"node ./scripts/verify-siwe-staging.mjs --foundation",
+	`${rel(packageFile)} must expose the non-deployable SIWE staging foundation gate`,
+);
+check(
+	packageJson.scripts?.["test:siwe-staging-inventory"] ===
+		"node --test ./scripts/siwe-staging-inventory.test.mjs ./scripts/verify-siwe-staging.test.mjs",
+	`${rel(packageFile)} must expose the SIWE staging inventory contract tests`,
+);
+check(
 	packageJson.scripts?.["build:dependencies"] ===
 		'pnpm --filter "@cinaauth/auth-api-worker^..." run build',
 	`${rel(packageFile)} must rebuild every runtime workspace dependency before Worker bundling`,
@@ -2277,6 +2465,60 @@ check(
 check(
 	packageJson.scripts?.check?.includes("pnpm run check:production"),
 	`${rel(packageFile)} check script must run check:production before deploy gates`,
+);
+check(
+	packageJson.scripts?.check?.includes(
+		"pnpm run check:siwe-staging-foundation && pnpm run test:siwe-staging-inventory",
+	),
+	`${rel(packageFile)} check script must reject partial staging config and run its inventory contract tests`,
+);
+checkIncludesAll(
+	siweStagingInventory,
+	[
+		"parseStagingInventory",
+		"verifyStagingInventory",
+		"assertNoDeployableStagingConfig",
+		"SIWE_STAGING_REOWN_PROJECT_ID",
+		"siweAllowedChainIds",
+		"siweAutoSignup",
+		"production-collision",
+	],
+	siweStagingInventoryFile,
+	"the staging inventory validator must keep resource isolation, dedicated secret names, and fixed SIWE safety values fail closed",
+);
+checkIncludesAll(
+	siweStagingInventoryTest,
+	[
+		"accepts a complete isolated inventory",
+		"rejects production identifier reuse",
+		"binds the inventory to the protected staging Reown identity digest",
+		"requires staging-specific GitHub secret names",
+		"foundation mode rejects partial Wrangler environments",
+	],
+	siweStagingInventoryTestFile,
+	"the staging inventory tests must cover completeness, production collisions, secret-name isolation, and partial config rejection",
+);
+checkIncludesAll(
+	verifySiweStaging,
+	[
+		"--foundation",
+		"--inventory",
+		"SIWE_PRODUCTION_REOWN_PROJECT_ID_SHA256",
+		"SIWE_STAGING_REOWN_PROJECT_ID_SHA256",
+		"no deployable staging environment or workflow is present",
+		"Deployment remains disabled",
+	],
+	verifySiweStagingFile,
+	"the staging CLI must distinguish its non-deployable foundation and inventory-only modes",
+);
+checkIncludesAll(
+	verifySiweStagingTest,
+	[
+		"defaults to the non-deployable foundation gate",
+		"rejects ambiguous, missing, and future deployment arguments",
+	],
+	verifySiweStagingTestFile,
+	"the staging CLI parser must fail closed on ambiguous or unsupported deployment arguments",
 );
 check(
 	packageJson.scripts?.test === "vitest run",
@@ -2554,6 +2796,18 @@ check(
 	"CINAAUTH_URL must point at https://auth.cinaseek.ai",
 );
 check(
+	wrangler.vars?.CINAAUTH_ACCOUNT_ORIGIN === "https://accounts.cinaseek.ai" &&
+		wrangler.vars?.CINAAUTH_ADMIN_ORIGIN === "https://admin.cinaseek.ai" &&
+		wrangler.vars?.CINAAUTH_PASSKEY_RP_ID === "cinaseek.ai" &&
+		wrangler.vars?.CINAAUTH_LEGACY_ACCOUNT_ORIGIN ===
+			"https://demo-auth.cinagroup.com" &&
+		wrangler.vars?.CINAAUTH_OIDC_DEMO_ENVIRONMENT === "production" &&
+		wrangler.vars?.CINAAUTH_OIDC_DEMO_ORIGIN ===
+			"https://oidc-demo.cinaseek.ai" &&
+		wrangler.vars?.CINAAUTH_OIDC_DEMO_CLIENT_ID === "cinaauth-oidc-demo",
+	"Tracked production browser origins, Passkey RP ID, and OIDC demo profile must remain explicit and exact",
+);
+check(
 	wrangler.vars?.CINAAUTH_CUTOVER_STATE === "live",
 	"Tracked production config must use live cutover state; first cutover deploy overrides it to maintenance",
 );
@@ -2670,7 +2924,8 @@ checkIncludesAll(
 		"missing_delivery_webhook_secret",
 		"weak_delivery_webhook_secret",
 		"invalid_cinaauth_cutover_state",
-		"invalid_cinaauth_url",
+		"parseAuthOriginConfig",
+		"originConfig.issues",
 	],
 	indexFile,
 	"runtime readiness must cover required production inputs",
@@ -2864,7 +3119,7 @@ checkIncludesAll(
 		"waitUntil(",
 		"runWithExecutionCtx",
 		"cf-connecting-ip",
-		"getConfiguredSocialProviders(env)",
+		"getProductionSocialProviders(env, origins.accountOrigin)",
 	],
 	authFile,
 	"auth runtime must keep rate limits shared and background work safe",
@@ -3153,7 +3408,7 @@ checkIncludesAll(
 		"--include-legacy-targets",
 		'fileURLToPath(import.meta.resolve("wrangler"))',
 		"process.execPath",
-		"input: `${process.env[name]}\\n`",
+		"input: `${env[name]}\\n`",
 		'stdio: ["pipe", "inherit", "inherit"]',
 	],
 	privacyErasureProvisionFile,
@@ -3402,6 +3657,9 @@ checkIncludesAll(
 		"pnpm run check:oauth-build",
 		"pnpm run typecheck",
 		"pnpm run build:cf",
+		"lib/auth-runtime-config.test.ts",
+		"lib/auth-runtime-routes.test.ts",
+		"lib/auth.test.ts",
 		"lib/reown-wallet-gate.test.ts",
 		"lib/reown-wallet-cookie.test.ts",
 		"lib/siwe-wallet-protocol.test.ts",
@@ -3499,6 +3757,9 @@ checkIncludesAll(
 		"NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED",
 		"pnpm run test:oauth-build",
 		"pnpm run check:oauth-build",
+		"lib/auth-runtime-config.test.ts",
+		"lib/auth-runtime-routes.test.ts",
+		"lib/auth.test.ts",
 		"lib/reown-wallet-gate.test.ts",
 		"lib/reown-wallet-cookie.test.ts",
 		"lib/siwe-wallet-protocol.test.ts",
@@ -3512,7 +3773,8 @@ checkIncludesAll(
 		"ready.database?.invariants?.ok",
 		"pnpm run typecheck",
 		"pnpm run build:cf",
-		"cloudflare/wrangler-action@v3",
+		"pnpm run test:deploy-cf",
+		"pnpm run deploy:cf -- --deployment-target production",
 		"demo-auth.cinagroup.com",
 	],
 	accountWorkflowFile,
@@ -3575,7 +3837,13 @@ check(
 	`${rel(accountWorkflowFile)} must expose central mode only to workflow_call and keep direct dispatch on the Phase One path`,
 );
 check(
-	(accountWorkflow.match(/command: deploy/g) ?? []).length === 1,
+	(
+		accountWorkflow.match(
+			/run: pnpm run deploy:cf -- --deployment-target production/g,
+		) ?? []
+	).length === 1 &&
+		!accountWorkflow.includes("cloudflare/wrangler-action@v3") &&
+		!accountWorkflow.includes("command: deploy"),
 	`${rel(accountWorkflowFile)} must deploy the Account Portal exactly once`,
 );
 check(
@@ -3590,6 +3858,7 @@ checkIncludesAll(
 		'pattern = "demo-auth.cinagroup.com"',
 		'binding = "AUTH_WORKER"',
 		'service = "cinaauth-api"',
+		'CINAAUTH_REQUIRE_AUTH_WORKER_BINDING = "true"',
 		'NEXT_PUBLIC_CINAAUTH_API_URL = "https://accounts.cinaseek.ai"',
 	],
 	accountWranglerFile,
@@ -3997,6 +4266,139 @@ check(
 );
 
 checkIncludesAll(
+	deploymentTargetParser,
+	[
+		'const VALID_DEPLOYMENT_TARGETS = new Set(["production", "siwe-staging"])',
+		'"--env"',
+		'"--config"',
+		'"--cwd"',
+		'"--name"',
+		'"--env-file"',
+		"getTargetOccurrenceCount(args) !== 1",
+		'env.CLOUDFLARE_ENV !== undefined && env.CLOUDFLARE_ENV !== ""',
+		'deploymentTarget === "siwe-staging" ? ["--env", "staging"] : []',
+		"childEnv: omitCloudflareEnvironment(env)",
+	],
+	deploymentTargetParserFile,
+	"Cloudflare writes must select exactly one logical target, reject ambient and raw Wrangler target overrides, and keep production on the top-level configuration",
+);
+
+for (const [consumer, file, stagingMessage] of [
+	[
+		provisionSecrets,
+		provisionSecretsFile,
+		"SIWE staging secret provisioning is disabled",
+	],
+	[
+		deliveryProvision,
+		deliveryProvisionFile,
+		"siwe-staging Delivery secret provisioning is not available",
+	],
+	[
+		privacyErasureProvision,
+		privacyErasureProvisionFile,
+		"siwe-staging Privacy Erasure secret provisioning is not available",
+	],
+]) {
+	checkIncludesAll(
+		consumer,
+		[
+			"cloudflare-deployment-target.mjs",
+			"parseCloudflareDeploymentTarget",
+			"target.passthroughArgs",
+			stagingMessage,
+			"...target.wranglerArgs",
+			"env: target.childEnv",
+		],
+		file,
+		"secret provisioning must use the shared explicit deployment-target guard and fail closed before staging side effects",
+	);
+}
+
+checkIncludesAll(
+	accountDeploy,
+	[
+		"cloudflare-deployment-target.mjs",
+		"parseCloudflareDeploymentTarget",
+		"target.passthroughArgs.length !== 0",
+		'target.deploymentTarget === "siwe-staging"',
+		"target.childEnv.npm_execpath",
+		"const childEnv = { ...target.childEnv }",
+	],
+	accountDeployFile,
+	"Account Portal deployment must use the shared target guard before resolving pnpm or executing OpenNext/Wrangler",
+);
+check(
+	!accountDeploy.includes("CLOUDFLARE_ENV") &&
+		!accountDeploy.includes('"--env"') &&
+		!accountDeploy.includes("'--env'"),
+	`${rel(accountDeployFile)} must not duplicate or bypass shared Wrangler environment selection`,
+);
+
+const expectedDeploymentContractTest =
+	"node --test ./scripts/cloudflare-deployment-target.test.mjs ./.github/workflows/deployment-workflows.test.mjs ./workers/auth-api/scripts/provision-secrets.test.mjs ./workers/delivery/scripts/provision-secrets.test.mjs ./workers/privacy-erasure/scripts/provision-secrets.test.mjs ./apps/account-portal/deploy-cf.test.mjs";
+check(
+	repoPackage.scripts?.["test:cloudflare-deployment-contracts"] ===
+		expectedDeploymentContractTest,
+	`${rel(repoPackageFile)} must expose the complete Cloudflare deployment-target contract suite`,
+);
+for (const [workerPackage, file] of [
+	[deliveryPackage, deliveryPackageFile],
+	[privacyErasurePackage, privacyErasurePackageFile],
+]) {
+	check(
+		workerPackage.scripts?.["test:provision-secrets"] ===
+			"node --test ./scripts/provision-secrets.test.mjs" &&
+			workerPackage.scripts?.check?.includes("pnpm run test:provision-secrets"),
+		`${rel(file)} must expose and run its deployment-target secret provisioner tests`,
+	);
+}
+check(
+	accountPackage.scripts?.["deploy:cf"] === "node deploy-cf.mjs" &&
+		accountPackage.scripts?.["test:deploy-cf"] ===
+			"node --test ./deploy-cf.test.mjs",
+	`${rel(accountPackageFile)} must expose the guarded Account deploy command and its tests`,
+);
+
+const productionProvisionCommands = [
+	...workflow.matchAll(/^\s*run:\s+(pnpm run provision:secrets[^\r\n]*)/gm),
+].map((match) => match[1]);
+check(
+	productionProvisionCommands.length === 3 &&
+		productionProvisionCommands.every(
+			(command) =>
+				/-- --deployment-target production(?:\s|$)/.test(command) &&
+				!/(?:--env(?:\s|=)|CLOUDFLARE_ENV)/.test(command),
+		),
+	`${rel(workflowFile)} must select the top-level production target for all three secret provisioners`,
+);
+checkIncludesAll(
+	workflow,
+	[
+		"scripts/cloudflare-deployment-target.test.mjs",
+		".github/workflows/deployment-workflows.test.mjs",
+		"workers/auth-api/scripts/provision-secrets.test.mjs",
+		"workers/delivery/scripts/provision-secrets.test.mjs",
+		"workers/privacy-erasure/scripts/provision-secrets.test.mjs",
+		"apps/account-portal/deploy-cf.test.mjs",
+	],
+	workflowFile,
+	"production authorization must be preceded by the complete local deployment-target contract suite",
+);
+checkIncludes(
+	ciWorkflow,
+	"run: pnpm run test:cloudflare-deployment-contracts",
+	ciWorkflowFile,
+	"pull requests must exercise all Cloudflare deployment-target contracts",
+);
+checkIncludes(
+	localDeploymentScript,
+	"pnpm --dir apps/account-portal run deploy:cf -- --deployment-target production",
+	localDeploymentScriptFile,
+	"the local production orchestrator must select the guarded top-level Account target",
+);
+
+checkIncludesAll(
 	provisionSecrets,
 	[
 		"CINAAUTH_SECRET",
@@ -4169,9 +4571,42 @@ checkIncludesAll(
 
 checkIncludesAll(
 	gitignore,
-	[".dev.vars", ".dev.vars.*", "!.dev.vars.example", "cinaauth-db-*.sql"],
+	[
+		".dev.vars",
+		".dev.vars.*",
+		"!.dev.vars.example",
+		".env.*",
+		"!.env.example",
+		"cinaauth-db-*.sql",
+	],
 	gitignoreFile,
-	"local Wrangler secrets must be ignored while the example stays tracked",
+	"local Wrangler and environment secrets must be ignored while examples stay tracked",
+);
+checkIncludesAll(
+	siweStagingDoc,
+	[
+		"CINAAUTH_REQUIRE_AUTH_WORKER_BINDING",
+		"CINAAUTH_ACCOUNT_ORIGIN",
+		"CINAAUTH_ADMIN_ORIGIN",
+		"CINAAUTH_PASSKEY_RP_ID",
+		"--env staging",
+		"AUTH_WORKER -> cinaauth-api-staging",
+		"NEXT_PUBLIC_REOWN_PROJECT_ID",
+		"CINAAUTH_SIWE_AUTO_SIGNUP=false",
+		"synthetic data",
+		"check:siwe-staging-foundation",
+		"test:siwe-staging-inventory",
+		"SIWE_STAGING_REOWN_PROJECT_ID",
+		"There is no checked-in staging inventory instance",
+	],
+	siweStagingDocFile,
+	"the SIWE staging runbook must preserve resource isolation, fail-closed transport, and real-wallet acceptance prerequisites",
+);
+checkIncludesAll(
+	deploymentDoc,
+	["../../docs/SIWE_STAGING.md", "CINAAUTH_ACCOUNT_ORIGIN"],
+	deploymentDocFile,
+	"the production runbook must link the isolated staging contract and document its explicit origin profile",
 );
 check(existsSync(devVarsExampleFile), ".dev.vars.example must exist");
 checkIncludesAll(

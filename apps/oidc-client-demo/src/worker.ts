@@ -1,57 +1,100 @@
-import {
-	OIDC_DEMO_CLIENT_ID,
-	OIDC_DEMO_ISSUER,
-	OIDC_DEMO_POST_LOGOUT_URI,
-	OIDC_DEMO_REDIRECT_URI,
+import type {
+	OidcDemoProfile,
+	OidcDemoProfileInput,
 } from "@cinaauth/auth-web-contract";
+import { resolveOidcDemoProfile } from "@cinaauth/auth-web-contract";
 
 type CloudflareEnv = {
 	ASSETS: Fetcher;
+	CINAAUTH_OIDC_DEMO_ENVIRONMENT?: string;
+	CINAAUTH_OIDC_DEMO_ORIGIN?: string;
+	CINAAUTH_URL?: string;
+	CINAAUTH_ACCOUNT_ORIGIN?: string;
+	CINAAUTH_OIDC_DEMO_CLIENT_ID?: string;
 };
 
-const securityHeaders = {
+const failClosedSecurityHeaders = {
+	"Content-Security-Policy":
+		"default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+	"Cross-Origin-Opener-Policy": "same-origin",
+	"Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+	"Referrer-Policy": "no-referrer",
+	"X-Content-Type-Options": "nosniff",
+};
+
+const createSecurityHeaders = (profile: OidcDemoProfile) => ({
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"connect-src 'self' https://auth.cinaseek.ai",
+		`connect-src 'self' ${profile.issuer}`,
 		"img-src 'self' data: https:",
 		"style-src 'self' 'unsafe-inline'",
 		"script-src 'self'",
 		"font-src 'self' data:",
 		"base-uri 'none'",
 		"frame-ancestors 'none'",
-		"form-action 'self' https://auth.cinaseek.ai https://accounts.cinaseek.ai",
+		`form-action 'self' ${profile.issuer} ${profile.accountOrigin}`,
 	].join("; "),
 	"Cross-Origin-Opener-Policy": "same-origin",
 	"Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 	"Referrer-Policy": "strict-origin-when-cross-origin",
 	"X-Content-Type-Options": "nosniff",
-};
+});
 
-const json = (body: unknown) =>
+const json = (body: unknown, headers: Record<string, string>, status = 200) =>
 	new Response(JSON.stringify(body), {
+		status,
 		headers: {
 			"Cache-Control": "no-store",
 			"Content-Type": "application/json; charset=utf-8",
-			...securityHeaders,
+			...headers,
 		},
 	});
+
+const profileFromEnv = (env: CloudflareEnv): OidcDemoProfileInput => ({
+	environment: env.CINAAUTH_OIDC_DEMO_ENVIRONMENT,
+	applicationOrigin: env.CINAAUTH_OIDC_DEMO_ORIGIN,
+	issuer: env.CINAAUTH_URL,
+	accountOrigin: env.CINAAUTH_ACCOUNT_ORIGIN,
+	clientId: env.CINAAUTH_OIDC_DEMO_CLIENT_ID,
+});
 
 export const handleRequest = async (
 	request: Request,
 	fetchAsset: (request: Request) => Promise<Response>,
+	profileInput: OidcDemoProfileInput | undefined,
 ) => {
+	let profile: OidcDemoProfile;
+	try {
+		profile = resolveOidcDemoProfile(profileInput);
+	} catch {
+		return json(
+			{ error: "OIDC acceptance profile is invalid" },
+			failClosedSecurityHeaders,
+			503,
+		);
+	}
+
 	const url = new URL(request.url);
+	const securityHeaders = createSecurityHeaders(profile);
+	if (url.origin !== profile.applicationOrigin) {
+		return json(
+			{ error: "OIDC acceptance origin does not match its profile" },
+			securityHeaders,
+			421,
+		);
+	}
 	if (url.pathname === "/health") {
-		return json({ status: "ok", service: "cinaauth-oidc-demo" });
+		return json(
+			{
+				status: "ok",
+				service: "cinaauth-oidc-demo",
+				environment: profile.environment,
+			},
+			securityHeaders,
+		);
 	}
 	if (url.pathname === "/config.json") {
-		return json({
-			issuer: OIDC_DEMO_ISSUER,
-			clientId: OIDC_DEMO_CLIENT_ID,
-			redirectUri: OIDC_DEMO_REDIRECT_URI,
-			postLogoutRedirectUri: OIDC_DEMO_POST_LOGOUT_URI,
-			scope: "openid profile email",
-		});
+		return json(profile, securityHeaders);
 	}
 
 	const asset = await fetchAsset(request);
@@ -70,5 +113,9 @@ export const handleRequest = async (
 
 export default {
 	fetch: (request: Request, env: CloudflareEnv) =>
-		handleRequest(request, (assetRequest) => env.ASSETS.fetch(assetRequest)),
-};
+		handleRequest(
+			request,
+			(assetRequest) => env.ASSETS.fetch(assetRequest),
+			profileFromEnv(env),
+		),
+} satisfies ExportedHandler<CloudflareEnv>;

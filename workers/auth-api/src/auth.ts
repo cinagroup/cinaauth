@@ -3,7 +3,8 @@ import { CinaAuth } from "cinaauth";
 import { createDatabase } from "./database";
 import { enqueueDelivery } from "./delivery";
 import type { CloudflareBindings } from "./env";
-import { createAuthPlugins, TRUSTED_ORIGINS } from "./plugins";
+import { requireAuthOriginConfig } from "./origin-config";
+import { createAuthPlugins } from "./plugins";
 import {
 	AUTH_RATE_LIMIT_RULES,
 	createDurableObjectRateLimitStorage,
@@ -43,17 +44,19 @@ type SocialProviderEnv = Pick<
 
 const hasCredential = (value: string | undefined) =>
 	typeof value === "string" && value.trim().length > 0;
-const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
 
 /** Builds only fully configured social providers; partial credentials fail closed. */
-export const getConfiguredSocialProviders = (env: SocialProviderEnv) => ({
+export const getConfiguredSocialProviders = (
+	env: SocialProviderEnv,
+	accountOrigin: string,
+) => ({
 	...(hasCredential(env.GOOGLE_CLIENT_ID) &&
 	hasCredential(env.GOOGLE_CLIENT_SECRET)
 		? {
 				google: {
 					clientId: env.GOOGLE_CLIENT_ID!,
 					clientSecret: env.GOOGLE_CLIENT_SECRET!,
-					redirectURI: `${ACCOUNT_ORIGIN}/api/auth/callback/google`,
+					redirectURI: `${accountOrigin}/api/auth/callback/google`,
 				},
 			}
 		: {}),
@@ -63,7 +66,7 @@ export const getConfiguredSocialProviders = (env: SocialProviderEnv) => ({
 				github: {
 					clientId: env.GITHUB_CLIENT_ID!,
 					clientSecret: env.GITHUB_CLIENT_SECRET!,
-					redirectURI: `${ACCOUNT_ORIGIN}/api/auth/callback/github`,
+					redirectURI: `${accountOrigin}/api/auth/callback/github`,
 				},
 			}
 		: {}),
@@ -80,8 +83,11 @@ const RESERVED_SOCIAL_PROVIDER_CONFIG = {
  * Disabled placeholders are not usable providers, but their raw option keys
  * keep SSO and SCIM from claiming the well-known Google/GitHub identifiers.
  */
-export const getProductionSocialProviders = (env: SocialProviderEnv) => {
-	const configured = getConfiguredSocialProviders(env);
+export const getProductionSocialProviders = (
+	env: SocialProviderEnv,
+	accountOrigin: string,
+) => {
+	const configured = getConfiguredSocialProviders(env, accountOrigin);
 	return {
 		google: configured.google ?? RESERVED_SOCIAL_PROVIDER_CONFIG,
 		github: configured.github ?? RESERVED_SOCIAL_PROVIDER_CONFIG,
@@ -98,12 +104,13 @@ export const runWithExecutionCtx = <T>(
  * reached exclusively through Hyperdrive, while rate-limit mutations are
  * serialized by sharded Durable Objects.
  */
-const buildAuth = (env: CloudflareBindings) =>
-	CinaAuth({
-		baseURL: env.CINAAUTH_URL || "https://auth.cinaseek.ai",
+const buildAuth = (env: CloudflareBindings) => {
+	const origins = requireAuthOriginConfig(env);
+	return CinaAuth({
+		baseURL: origins.authOrigin,
 		secret: env.CINAAUTH_SECRET,
 		database: createDatabase(env),
-		socialProviders: getProductionSocialProviders(env),
+		socialProviders: getProductionSocialProviders(env, origins.accountOrigin),
 		emailAndPassword: {
 			enabled: true,
 			revokeSessionsOnPasswordReset: true,
@@ -152,7 +159,7 @@ const buildAuth = (env: CloudflareBindings) =>
 			max: 300,
 		},
 		plugins: createAuthPlugins(env, { advancedOrganization: true }),
-		trustedOrigins: TRUSTED_ORIGINS,
+		trustedOrigins: origins.trustedOrigins,
 		advanced: {
 			backgroundTasks: {
 				handler: (p) => {
@@ -167,6 +174,7 @@ const buildAuth = (env: CloudflareBindings) =>
 			},
 		},
 	});
+};
 
 export type Auth = ReturnType<typeof buildAuth>;
 

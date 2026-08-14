@@ -2,7 +2,6 @@ import {
 	ADMIN_CONSOLE_ROLES,
 	ADMIN_OIDC_AUTH_TIME_HEADER,
 	ADMIN_OIDC_CLIENT_ID,
-	ADMIN_OIDC_ORIGIN,
 } from "@cinaauth/auth-web-contract";
 import type { CinaAuthPlugin } from "cinaauth";
 import { createAuthEndpoint } from "cinaauth/api";
@@ -34,7 +33,7 @@ const audienceContains = (audience: unknown, expected: string) =>
 /** Enforces that an access token was minted for and to the fixed Admin client. */
 export const isAdminAccessToken = (
 	claims: { aud?: unknown; azp?: unknown },
-	adminOrigin = ADMIN_OIDC_ORIGIN,
+	adminOrigin: string,
 ) =>
 	audienceContains(claims.aud, adminOrigin) &&
 	claims.azp === ADMIN_OIDC_CLIENT_ID;
@@ -86,7 +85,11 @@ export const resolveAdminAuthenticationTime = (
 };
 
 /** Creates the private OAuth-to-CinaAuth session bridge for CinaAdmin. */
-export const adminOidcBridge = (env: CloudflareBindings): CinaAuthPlugin => ({
+export const adminOidcBridge = (
+	env: CloudflareBindings,
+	issuer: string,
+	adminOrigin: string,
+): CinaAuthPlugin => ({
 	id: "cinaadmin-oidc-bridge",
 	endpoints: {
 		createAdminOidcSession: createAuthEndpoint(
@@ -110,10 +113,9 @@ export const adminOidcBridge = (env: CloudflareBindings): CinaAuthPlugin => ({
 					throw ctx.error("UNAUTHORIZED", { message: "Bearer token required" });
 				}
 
-				const issuer = env.CINAAUTH_URL || "https://auth.cinaseek.ai";
 				const claims = await verifyJWT(accessToken, {
 					jwks: { keyPairConfig: { alg: "ES256" } },
-					jwt: { issuer, audience: ADMIN_OIDC_ORIGIN },
+					jwt: { issuer, audience: adminOrigin },
 				});
 				if (!claims) {
 					throw ctx.error("UNAUTHORIZED", { message: "Invalid access token" });
@@ -121,7 +123,7 @@ export const adminOidcBridge = (env: CloudflareBindings): CinaAuthPlugin => ({
 				const scopes = new Set(
 					typeof claims.scope === "string" ? claims.scope.split(" ") : [],
 				);
-				if (!isAdminAccessToken(claims) || !scopes.has("openid")) {
+				if (!isAdminAccessToken(claims, adminOrigin) || !scopes.has("openid")) {
 					throw ctx.error("FORBIDDEN", { message: "Admin token required" });
 				}
 				const consumeRateLimit =

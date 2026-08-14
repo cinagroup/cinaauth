@@ -21,6 +21,8 @@
     "lint:spell": "git ls-files | cspell --file-list stdin --color",
     "lint:types": "turbo lint:types --filter=./packages/*",
     "lint:packages": "turbo lint:package --filter=./packages/*",
+    "test:cloudflare-deployment-target": "node --test ./scripts/cloudflare-deployment-target.test.mjs",
+    "test:cloudflare-deployment-contracts": "node --test ./scripts/cloudflare-deployment-target.test.mjs ./.github/workflows/deployment-workflows.test.mjs ./workers/auth-api/scripts/provision-secrets.test.mjs ./workers/delivery/scripts/provision-secrets.test.mjs ./workers/privacy-erasure/scripts/provision-secrets.test.mjs ./apps/account-portal/deploy-cf.test.mjs",
     "changeset": "changeset",
     "ci:version": "changeset version && pnpm install --no-frozen-lockfile",
     "ci:release": "turbo clean --filter=./packages/* && turbo build --filter=./packages/* && changeset publish",

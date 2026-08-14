@@ -1,6 +1,5 @@
 import type { GenericOAuthConfig } from "cinaauth/plugins/generic-oauth";
 
-const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
 const PROVIDER_ID_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/;
 const MAX_PROVIDERS = 20;
 
@@ -27,16 +26,21 @@ const isHttpsUrl = (value: unknown) => {
 	}
 };
 
-export const genericOAuthRedirectURI = (providerId: string) =>
-	`${ACCOUNT_ORIGIN}/api/auth/oauth2/callback/${providerId}`;
+export const genericOAuthRedirectURI = (
+	providerId: string,
+	accountOrigin: string,
+) => `${accountOrigin}/api/auth/oauth2/callback/${providerId}`;
 
-const isValidProvider = (provider: Record<string, unknown>) => {
+const isValidProvider = (
+	provider: Record<string, unknown>,
+	accountOrigin: string,
+) => {
 	const providerId = provider.providerId;
 	if (
 		!isNonEmptyString(providerId) ||
 		!PROVIDER_ID_PATTERN.test(providerId) ||
 		!isNonEmptyString(provider.clientId) ||
-		provider.redirectURI !== genericOAuthRedirectURI(providerId)
+		provider.redirectURI !== genericOAuthRedirectURI(providerId, accountOrigin)
 	) {
 		return false;
 	}
@@ -138,6 +142,7 @@ const isValidProvider = (provider: Record<string, unknown>) => {
  */
 export const parseProductionGenericOAuthConfig = (
 	raw: string | undefined,
+	accountOrigin: string,
 ): GenericOAuthConfig[] => {
 	if (!raw) return [];
 	try {
@@ -151,7 +156,7 @@ export const parseProductionGenericOAuthConfig = (
 		}
 		const ids = new Set<string>();
 		for (const value of parsed) {
-			if (!isRecord(value) || !isValidProvider(value)) return [];
+			if (!isRecord(value) || !isValidProvider(value, accountOrigin)) return [];
 			const providerId = value.providerId as string;
 			if (ids.has(providerId)) return [];
 			ids.add(providerId);
@@ -162,8 +167,13 @@ export const parseProductionGenericOAuthConfig = (
 	}
 };
 
-export const getPublicGenericOAuthProviders = (raw: string | undefined) =>
-	parseProductionGenericOAuthConfig(raw).map(({ providerId }) => ({
-		id: providerId,
-		type: "generic-oauth" as const,
-	}));
+export const getPublicGenericOAuthProviders = (
+	raw: string | undefined,
+	accountOrigin: string,
+) =>
+	parseProductionGenericOAuthConfig(raw, accountOrigin).map(
+		({ providerId }) => ({
+			id: providerId,
+			type: "generic-oauth" as const,
+		}),
+	);

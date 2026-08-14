@@ -122,6 +122,7 @@ const call = (
 		action: input.action ?? "status",
 		origin:
 			input.origin === undefined ? "https://admin.cinaseek.ai" : input.origin,
+		allowedOrigin: "https://admin.cinaseek.ai",
 		readBody: async () => ({ ok: true, value: input.body ?? {} }),
 	});
 
@@ -152,6 +153,7 @@ describe("authoritative Admin configuration control plane", () => {
 			service: "delivery",
 			action: "status",
 			origin: "https://admin.cinaseek.ai",
+			allowedOrigin: "https://admin.cinaseek.ai",
 			readBody,
 		});
 		expect(missingResult).toMatchObject({
@@ -200,6 +202,7 @@ describe("authoritative Admin configuration control plane", () => {
 			service: "delivery",
 			action: "stage",
 			origin: "https://admin.cinaseek.ai",
+			allowedOrigin: "https://admin.cinaseek.ai",
 			readBody,
 		});
 

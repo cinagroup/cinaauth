@@ -13,6 +13,7 @@ import {
 const CLIENT_SECRET_PAYLOAD =
 	"cinaadmin-client-secret-with-at-least-32-characters";
 const CLIENT_SECRET = `${ADMIN_OIDC_CLIENT_SECRET_PREFIX}${CLIENT_SECRET_PAYLOAD}`;
+const ADMIN_ORIGIN = "https://admin.cinaseek.ai";
 
 describe("Admin OIDC client bootstrap", () => {
 	it("recognizes only authorize requests for the fixed Admin client", () => {
@@ -40,7 +41,7 @@ describe("Admin OIDC client bootstrap", () => {
 			rows: [],
 		}));
 
-		await ensureAdminOidcClient({ query }, CLIENT_SECRET);
+		await ensureAdminOidcClient({ query }, CLIENT_SECRET, ADMIN_ORIGIN);
 
 		const [sql, values] = query.mock.calls[0] ?? [];
 		expect(sql).toContain('INSERT INTO "oauthClient"');
@@ -57,14 +58,29 @@ describe("Admin OIDC client bootstrap", () => {
 		const query = vi.fn(async () => ({ rows: [] }));
 
 		await expect(
-			ensureAdminOidcClient({ query }, CLIENT_SECRET_PAYLOAD),
+			ensureAdminOidcClient({ query }, CLIENT_SECRET_PAYLOAD, ADMIN_ORIGIN),
 		).rejects.toThrow(new RegExp(ADMIN_OIDC_CLIENT_SECRET_PREFIX, "i"));
 		await expect(
 			ensureAdminOidcClient(
 				{ query },
 				`${ADMIN_OIDC_CLIENT_SECRET_PREFIX}short`,
+				ADMIN_ORIGIN,
 			),
 		).rejects.toThrow(/at least 32/i);
 		expect(query).not.toHaveBeenCalled();
+	});
+
+	it("derives the registered redirect URIs from the configured Admin origin", async () => {
+		const query = vi.fn(async () => ({ rows: [] }));
+		const stagingOrigin = "https://admin-siwe-staging.cinaseek.ai";
+
+		await ensureAdminOidcClient({ query }, CLIENT_SECRET, stagingOrigin);
+
+		const values = query.mock.calls[0]?.[1] ?? [];
+		expect(values).toContain(
+			JSON.stringify([`${stagingOrigin}/api/auth/oidc/callback`]),
+		);
+		expect(values).toContain(JSON.stringify([`${stagingOrigin}/login`]));
+		expect(values).not.toContain(JSON.stringify([ADMIN_OIDC_REDIRECT_URI]));
 	});
 });

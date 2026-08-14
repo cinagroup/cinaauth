@@ -18,6 +18,9 @@ service = "cinaauth-api"
 [vars]
 # Server route handlers call the real auth Worker API, not this demo domain.
 CINAAUTH_URL = "https://auth.cinaseek.ai"
+# Deployed Account Workers must never fall back to the public Auth URL when
+# their AUTH_WORKER binding is missing or unavailable.
+CINAAUTH_REQUIRE_AUTH_WORKER_BINDING = "true"
 # Client-side auth API URL — points back at this demo domain, which proxies
 # to the auth worker via the AUTH_WORKER service binding.
 NEXT_PUBLIC_CINAAUTH_API_URL = "https://accounts.cinaseek.ai"

@@ -5,20 +5,17 @@ import type {
 	EntitlementSnapshot,
 } from "@cinaauth/auth-web-contract";
 import { AUTH_WEB_ENDPOINTS } from "@cinaauth/auth-web-contract";
+import { resolveAuthClientRuntimeBaseURL } from "./auth-runtime-config";
 
 export type { AuthFetcher } from "@cinaauth/auth-proxy";
 export { createAuthProxyResponse } from "@cinaauth/auth-proxy";
-
-export const DEFAULT_CINAAUTH_API_URL = "https://auth.cinaseek.ai";
+export { DEFAULT_CINAAUTH_API_URL } from "./auth-runtime-config";
 
 export const shouldSkipOAuthProxy = (pathname: string) =>
 	pathname === "/api/auth/sign-in/oauth2" ||
 	pathname.startsWith("/api/auth/oauth2/callback/");
 
-export const createAuthProxyRequest = (
-	request: Request,
-	baseURL = DEFAULT_CINAAUTH_API_URL,
-) => {
+export const createAuthProxyRequest = (request: Request, baseURL: string) => {
 	const proxied = createSharedAuthProxyRequest(request, baseURL);
 	if (shouldSkipOAuthProxy(new URL(request.url).pathname)) {
 		proxied.headers.set("x-skip-oauth-proxy", "1");
@@ -33,9 +30,14 @@ export const createAuthProxyRequest = (
  */
 export const resolveAuthClientBaseURL = (
 	browserOrigin?: string,
-	configuredBaseURL = process.env.NEXT_PUBLIC_CINAAUTH_API_URL ||
-		DEFAULT_CINAAUTH_API_URL,
-) => browserOrigin || configuredBaseURL;
+	configuredBaseURL: string | undefined = process.env
+		.NEXT_PUBLIC_CINAAUTH_API_URL,
+) =>
+	resolveAuthClientRuntimeBaseURL(
+		browserOrigin,
+		configuredBaseURL,
+		process.env.CINAAUTH_REQUIRE_AUTH_WORKER_BINDING,
+	);
 
 export type AuthUser = {
 	id: string;
@@ -340,10 +342,7 @@ const appendQuery = (url: URL, query?: Record<string, QueryValue>) => {
 	}
 };
 
-export const createServerAuthApi = (
-	fetcher: AuthFetcher,
-	baseURL = DEFAULT_CINAAUTH_API_URL,
-) => {
+export const createServerAuthApi = (fetcher: AuthFetcher, baseURL: string) => {
 	const request = async <T>(
 		path: string,
 		options: AuthRequestOptions = {},

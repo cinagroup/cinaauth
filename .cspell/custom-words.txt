@@ -23,6 +23,7 @@ CIBA
 Suliman
 Abdulrazzaq
 rethrowing
+changeme
 CINAUTH
 CINAAUTH
 cinacoin

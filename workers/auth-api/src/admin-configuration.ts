@@ -27,7 +27,6 @@ export const ADMIN_CONFIGURATION_RATE_LIMIT_RULE = {
 	max: 10,
 } as const;
 
-const ALLOWED_ADMIN_ORIGINS = new Set(["https://admin.cinaseek.ai"]);
 const MAX_UPSTREAM_RESPONSE_BYTES = 64 * 1024;
 const SAFE_ERROR_CODE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
@@ -555,6 +554,7 @@ export const handleAdminConfiguration = async (input: {
 	service: AdminConfigurationService;
 	action: AdminConfigurationAction;
 	origin: string | null;
+	allowedOrigin: string;
 	readBody: () => Promise<AdminConfigurationBodyResult>;
 }): Promise<AdminConfigurationResult> => {
 	const { dependencies, service, action } = input;
@@ -601,7 +601,7 @@ export const handleAdminConfiguration = async (input: {
 		});
 		return failure(403, "FORBIDDEN", "Permission denied");
 	}
-	if (input.origin && !ALLOWED_ADMIN_ORIGINS.has(input.origin)) {
+	if (input.origin && input.origin !== input.allowedOrigin) {
 		dependencies.logEvent({
 			level: "warn",
 			message: "cinaauth.admin_configuration.rejected",

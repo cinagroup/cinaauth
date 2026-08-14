@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { CloudflareBindings } from "../src/env";
 import { createAuthPlugins } from "../src/plugins";
+import { makeOriginEnv } from "./origin-test-env";
 
 describe("OIDC discovery contract", () => {
 	it("redirects account selection to the Accounts route", () => {
-		const plugin = createAuthPlugins({} as CloudflareBindings).find(
+		const plugin = createAuthPlugins(makeOriginEnv()).find(
 			(candidate) => candidate.id === "oauth-provider",
 		);
 
@@ -14,7 +14,7 @@ describe("OIDC discovery contract", () => {
 	});
 
 	it("advertises the authentication claims emitted by Admin ID tokens", () => {
-		const plugin = createAuthPlugins({} as CloudflareBindings).find(
+		const plugin = createAuthPlugins(makeOriginEnv()).find(
 			(candidate) => candidate.id === "oauth-provider",
 		);
 

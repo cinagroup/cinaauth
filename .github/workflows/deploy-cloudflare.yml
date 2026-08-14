@@ -41,8 +41,15 @@ jobs:
         with:
           node-version: 22
 
-      - name: Test bootstrap and deployment ordering
-        run: node --test .github/workflows/deployment-workflows.test.mjs
+      - name: Test Cloudflare deployment contracts
+        run: >
+          node --test
+          scripts/cloudflare-deployment-target.test.mjs
+          .github/workflows/deployment-workflows.test.mjs
+          workers/auth-api/scripts/provision-secrets.test.mjs
+          workers/delivery/scripts/provision-secrets.test.mjs
+          workers/privacy-erasure/scripts/provision-secrets.test.mjs
+          apps/account-portal/deploy-cf.test.mjs
 
   authorize-production:
     name: Authorize production deployment
@@ -160,6 +167,9 @@ jobs:
           pnpm exec vitest run
           middleware.test.ts
           lib/auth-api.test.ts
+          lib/auth-runtime-config.test.ts
+          lib/auth-runtime-routes.test.ts
+          lib/auth.test.ts
           lib/auth-capabilities.test.ts
           lib/admin-access.test.ts
           lib/oidc-navigation.test.ts
@@ -168,6 +178,9 @@ jobs:
           lib/siwe-wallet-protocol.test.ts
           lib/reown-wallet-source-contract.test.ts
           lib/account-build-readiness.test.ts
+
+      - name: Test Account Portal deployment target guard
+        run: pnpm run test:deploy-cf
 
       - name: Validate planned SIWE and Reown build parity
         env:
@@ -276,7 +289,7 @@ jobs:
       - name: Validate Privacy Erasure core secret input
         env:
           CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-        run: pnpm run provision:secrets -- --dry-run
+        run: pnpm run provision:secrets -- --deployment-target production --dry-run
 
       - name: Build Privacy Erasure Worker dry run
         run: pnpm run build
@@ -294,7 +307,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-        run: pnpm run provision:secrets
+        run: pnpm run provision:secrets -- --deployment-target production
 
       - name: Verify Privacy Erasure structural bootstrap
         env:
@@ -387,7 +400,7 @@ jobs:
           STRIPE_DEFAULT_PLAN_NAME: ${{ secrets.STRIPE_DEFAULT_PLAN_NAME }}
           CINAAUTH_ENTITLEMENT_CONFIG: ${{ secrets.CINAAUTH_ENTITLEMENT_CONFIG }}
           CINAUTH_ADMIN_SERVICE_KEY: ${{ secrets.CINAUTH_ADMIN_SERVICE_KEY }}
-        run: pnpm run provision:secrets
+        run: pnpm run provision:secrets -- --deployment-target production
 
       - name: Build Worker dry run
         run: pnpm run build

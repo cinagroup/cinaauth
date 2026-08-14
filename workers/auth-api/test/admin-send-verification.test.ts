@@ -8,7 +8,7 @@ import {
 } from "../src/admin-send-verification";
 import { createAuth } from "../src/auth";
 import { TURNSTILE_PROTECTED_ENDPOINTS } from "../src/captcha-config";
-import type { CloudflareBindings } from "../src/env";
+import { makeOriginEnv } from "./origin-test-env";
 
 const handleAdminSendVerification = (
 	dependencies: AdminVerificationDependencies,
@@ -130,11 +130,13 @@ describe("Admin verification delivery boundary", () => {
 	});
 
 	it("exposes all three server APIs from the configured Worker auth instance", () => {
-		const auth = createAuth({
-			HYPERDRIVE: {
-				connectionString: "postgres://localhost/cinaauth-test",
-			} as Hyperdrive,
-		} as CloudflareBindings);
+		const auth = createAuth(
+			makeOriginEnv({
+				HYPERDRIVE: {
+					connectionString: "postgres://localhost/cinaauth-test",
+				} as Hyperdrive,
+			}),
+		);
 
 		expect(getAdminVerificationServerApi(auth.api)).not.toBeNull();
 	});

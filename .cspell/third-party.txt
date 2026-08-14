@@ -43,6 +43,7 @@ Reown
 daveycodez
 wagmi
 tldts
+smol
 headimgurl
 encoredev
 korthout

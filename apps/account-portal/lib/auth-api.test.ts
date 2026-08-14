@@ -3,6 +3,7 @@ import {
 	createAuthProxyRequest,
 	createAuthProxyResponse,
 	createServerAuthApi,
+	DEFAULT_CINAAUTH_API_URL,
 	resolveAuthClientBaseURL,
 	shouldSkipOAuthProxy,
 } from "./auth-api";
@@ -23,6 +24,7 @@ describe("server auth API", () => {
 
 		const signIn = createAuthProxyRequest(
 			new Request("https://accounts.cinaseek.ai/api/auth/sign-in/oauth2"),
+			DEFAULT_CINAAUTH_API_URL,
 		);
 		expect(signIn.url).toBe("https://auth.cinaseek.ai/api/auth/sign-in/oauth2");
 		expect(signIn.headers.get("x-skip-oauth-proxy")).toBe("1");
@@ -31,6 +33,7 @@ describe("server auth API", () => {
 			new Request(
 				"https://accounts.cinaseek.ai/api/auth/oauth2/callback/enterprise-idp?code=code&state=state",
 			),
+			DEFAULT_CINAAUTH_API_URL,
 		);
 		expect(callback.headers.get("x-skip-oauth-proxy")).toBe("1");
 		expect(callback.url).toContain(
@@ -57,7 +60,7 @@ describe("server auth API", () => {
 				session: { id: "session-1", userId: "user-1" },
 			}),
 		);
-		const api = createServerAuthApi({ fetch });
+		const api = createServerAuthApi({ fetch }, DEFAULT_CINAAUTH_API_URL);
 
 		const session = await api.getSession({
 			headers: new Headers({ cookie: "cinaauth.session_token=signed" }),
@@ -91,7 +94,7 @@ describe("server auth API", () => {
 			if (path.endsWith("/organization/list")) return jsonResponse([]);
 			return jsonResponse(null);
 		});
-		const api = createServerAuthApi({ fetch });
+		const api = createServerAuthApi({ fetch }, DEFAULT_CINAAUTH_API_URL);
 
 		await api.getCapabilities();
 		await api.getEntitlements();
@@ -124,7 +127,10 @@ describe("server auth API", () => {
 		const okFetch = vi.fn(async (_request: Request) =>
 			jsonResponse({ client_id: "client-1", client_name: "Cina App" }),
 		);
-		const api = createServerAuthApi({ fetch: okFetch });
+		const api = createServerAuthApi(
+			{ fetch: okFetch },
+			DEFAULT_CINAAUTH_API_URL,
+		);
 
 		await api.getOAuthClientPublic({
 			query: { client_id: "client-1" },
@@ -134,9 +140,12 @@ describe("server auth API", () => {
 			"https://auth.cinaseek.ai/api/auth/oauth2/public-client?client_id=client-1",
 		);
 
-		const failedApi = createServerAuthApi({
-			fetch: async () => jsonResponse({ error: "Forbidden" }, 403),
-		});
+		const failedApi = createServerAuthApi(
+			{
+				fetch: async () => jsonResponse({ error: "Forbidden" }, 403),
+			},
+			DEFAULT_CINAAUTH_API_URL,
+		);
 		await expect(failedApi.listSessions()).rejects.toThrow(
 			"CinaSeek request failed with HTTP 403",
 		);
@@ -146,7 +155,7 @@ describe("server auth API", () => {
 		const fetch = vi.fn(async (_request: Request) =>
 			jsonResponse({ rows: [], total: 0, limit: 20, offset: 0 }),
 		);
-		const api = createServerAuthApi({ fetch });
+		const api = createServerAuthApi({ fetch }, DEFAULT_CINAAUTH_API_URL);
 
 		await api.listOrganizationAudit("organization-1", {
 			headers: new Headers({ cookie: "cinaauth.session_token=signed" }),
@@ -170,7 +179,7 @@ describe("server auth API", () => {
 			}
 			return jsonResponse({ providers: [] });
 		});
-		const api = createServerAuthApi({ fetch });
+		const api = createServerAuthApi({ fetch }, DEFAULT_CINAAUTH_API_URL);
 
 		await api.listSSOProviders();
 		await api.listSCIMProviderConnections();
@@ -198,7 +207,7 @@ describe("server auth API", () => {
 			},
 		);
 
-		const proxied = createAuthProxyRequest(incoming);
+		const proxied = createAuthProxyRequest(incoming, DEFAULT_CINAAUTH_API_URL);
 
 		expect(proxied.url).toBe(
 			"https://auth.cinaseek.ai/api/auth/sign-in/email?callbackURL=%2Fdashboard",

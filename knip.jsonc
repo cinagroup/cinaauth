@@ -31,6 +31,7 @@
 			"types"
 		],
 		"apps/account-portal/lib/auth-api.ts": ["exports", "types"],
+		"apps/account-portal/lib/auth-runtime-config.ts": ["exports"],
 		"apps/account-portal/lib/admin-access.ts": ["exports"],
 		"apps/account-portal/lib/auth-capabilities.ts": ["exports"],
 		"apps/account-portal/lib/account-build-readiness.ts": ["exports"],
@@ -55,6 +56,7 @@
 		"apps/admin-console/src/lib/integration-tenant-scope.ts": ["exports"],
 		"apps/admin-console/src/tests/setup.ts": ["files"],
 		"apps/oidc-client-demo/src/components/ui/**": ["exports", "types"],
+		"apps/oidc-client-demo/src/lib/auth/config.ts": ["exports"],
 		// Production builds omit tests that directly exercise these Worker seams.
 		"workers/auth-api/src/admin-oidc-bridge.ts": ["exports"],
 		"workers/auth-api/src/admin-oidc-client.ts": ["exports"],
@@ -97,7 +99,10 @@
 	},
 	"workspaces": {
 		".": {
-			"entry": [".github/workflows/deployment-workflows.test.mjs!"]
+			"entry": [
+				".github/workflows/deployment-workflows.test.mjs!",
+				"scripts/cloudflare-deployment-target.mjs!"
+			]
 		},
 		"packages/*": {
 			"entry": ["src/index.ts!"],

@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { CloudflareBindings } from "../src/env";
 import { createAuthPlugins } from "../src/plugins";
+import { makeOriginEnv } from "./origin-test-env";
 
 describe("CinaSeek runtime brand contract", () => {
 	it("uses the CinaSeek name in WebAuthn prompts", () => {
-		const plugin = createAuthPlugins({} as CloudflareBindings).find(
+		const plugin = createAuthPlugins(makeOriginEnv()).find(
 			(candidate) => candidate.id === "passkey",
 		);
 
@@ -17,7 +17,7 @@ describe("CinaSeek runtime brand contract", () => {
 	});
 
 	it("uses CinaSeek Identity in public OpenAPI metadata", () => {
-		const plugin = createAuthPlugins({} as CloudflareBindings).find(
+		const plugin = createAuthPlugins(makeOriginEnv()).find(
 			(candidate) => candidate.id === "open-api",
 		);
 

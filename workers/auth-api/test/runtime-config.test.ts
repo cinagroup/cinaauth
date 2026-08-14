@@ -18,6 +18,7 @@ import worker, {
 } from "../src/index";
 import { roles } from "../src/plugins";
 import type { PrivacyExportMessage } from "../src/privacy-export";
+import { PRODUCTION_ORIGIN_ENV } from "./origin-test-env";
 
 const strong = (prefix: string) => `${prefix}-${"x".repeat(40)}`;
 
@@ -25,6 +26,7 @@ const makeEnv = (
 	overrides: Partial<CloudflareBindings> = {},
 ): CloudflareBindings =>
 	({
+		...PRODUCTION_ORIGIN_ENV,
 		CINAAUTH_SECRET: strong("auth"),
 		CINAADMIN_OIDC_CLIENT_SECRET: `${ADMIN_OIDC_CLIENT_SECRET_PREFIX}${strong("admin-client")}`,
 		CINAADMIN_OIDC_BRIDGE_SECRET: strong("admin-bridge"),
@@ -146,6 +148,11 @@ describe("runtime config guardrails", () => {
 				CINAAUTH_DELIVERY_WEBHOOK_SECRET: "",
 				CINAAUTH_CUTOVER_STATE: undefined,
 				CINAAUTH_URL: "http://auth.cinaseek.ai",
+				CINAAUTH_ACCOUNT_ORIGIN: "",
+				CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.ai/login",
+				CINAAUTH_PASSKEY_RP_ID: "example.com",
+				CINAAUTH_LEGACY_ACCOUNT_ORIGIN: "",
+				CINAAUTH_OIDC_DEMO_ORIGIN: "http://oidc-demo.cinaseek.ai",
 			}),
 		);
 
@@ -169,6 +176,11 @@ describe("runtime config guardrails", () => {
 			"missing_erasure_webhook_secret",
 			"invalid_cinaauth_cutover_state",
 			"invalid_cinaauth_url",
+			"invalid_cinaauth_account_origin",
+			"invalid_cinaauth_admin_origin",
+			"invalid_cinaauth_passkey_rp_id",
+			"invalid_cinaauth_legacy_account_origin",
+			"invalid_cinaauth_oidc_demo_profile",
 		]);
 		expect(JSON.stringify(issues)).not.toContain("delivery.example.com");
 	});

@@ -5,8 +5,6 @@ import {
 	ADMIN_OIDC_CLIENT_SECRET_PREFIX,
 	ADMIN_PERMISSION_STATEMENT,
 	ADMIN_ROLE_PERMISSIONS,
-	OIDC_DEMO_CLIENT_ID,
-	OIDC_DEMO_ORIGIN,
 } from "@cinaauth/auth-web-contract";
 import { electron } from "@cinaauth/electron";
 import { oauthProvider } from "@cinaauth/oauth-provider";
@@ -67,6 +65,7 @@ import {
 import { getBillingRuntimeConfiguration } from "./entitlements";
 import type { CloudflareBindings } from "./env";
 import { parseProductionGenericOAuthConfig } from "./oauth-config";
+import { requireAuthOriginConfig } from "./origin-config";
 import { createRequiredPrivacyDeletionProcessor } from "./privacy-deletion";
 import {
 	createR2PrivacyExportProvider,
@@ -74,30 +73,8 @@ import {
 } from "./privacy-export";
 import { getSiweRuntimeConfig } from "./siwe-runtime-config";
 
-const AUTH_ORIGIN = "https://auth.cinaseek.ai";
-const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
-const LEGACY_ACCOUNT_ORIGIN = "https://demo-auth.cinagroup.com";
-const ADMIN_ORIGIN = "https://admin.cinaseek.ai";
 export const JWT_ROTATION_INTERVAL_SECONDS = 60 * 60 * 24 * 30;
 export const JWT_GRACE_PERIOD_SECONDS = 60 * 60 * 24 * 30;
-
-// Exact origins allowed to hold a session and make credentialed cross-origin
-// calls. Deliberately NOT a wildcard: a wildcard
-// trusts every current and future subdomain — Pages preview deployments, vendor
-// CNAMEs, and takeover-prone dangling subdomains — with full session access.
-// Add real app subdomains here explicitly as they come online.
-export const TRUSTED_ORIGINS = [
-	AUTH_ORIGIN,
-	ACCOUNT_ORIGIN,
-	LEGACY_ACCOUNT_ORIGIN,
-	ADMIN_ORIGIN,
-	OIDC_DEMO_ORIGIN,
-];
-
-// Hostnames derived from TRUSTED_ORIGINS, for the CORS origin check in index.ts.
-export const TRUSTED_ORIGIN_HOSTS = new Set(
-	TRUSTED_ORIGINS.map((origin) => new URL(origin).hostname),
-);
 
 /**
  * Access-control statements for the admin plugin.
@@ -136,9 +113,9 @@ export const roles = {
 	}),
 };
 
-const tempEmailForPhone = (phoneNumber: string) => {
+const tempEmailForPhone = (phoneNumber: string, emailDomainName: string) => {
 	const normalized = phoneNumber.replace(/[^a-zA-Z0-9]/g, "").slice(-24);
-	return `phone-${normalized || "unknown"}@auth.cinaseek.ai`;
+	return `phone-${normalized || "unknown"}@${emailDomainName}`;
 };
 
 const ethereumPersonalMessageHash = (message: string) => {
@@ -241,10 +218,13 @@ export const createAuthPlugins = (
 		advancedOrganization?: boolean;
 	} = {},
 ): CinaAuthPlugin[] => {
-	const baseURL = env.CINAAUTH_URL || AUTH_ORIGIN;
+	const origins = requireAuthOriginConfig(env);
+	const baseURL = origins.authOrigin;
+	const authHostname = new URL(origins.authOrigin).hostname;
 	const pairwiseSecret = configuredPairwiseSecret(env);
 	const genericOAuthConfig = parseProductionGenericOAuthConfig(
 		env.GENERIC_OAUTH_CONFIG,
+		origins.accountOrigin,
 	);
 	const plans = stripePlans(env);
 	const turnstile = getTurnstileConfig(env);
@@ -262,9 +242,9 @@ export const createAuthPlugins = (
 			},
 		}),
 		bearer(),
-		adminOidcBridge(env),
+		adminOidcBridge(env, origins.authOrigin, origins.adminOrigin),
 		anonymous({
-			emailDomainName: "auth.cinaseek.ai",
+			emailDomainName: authHostname,
 		}),
 		username(),
 		lastLoginMethod({
@@ -347,11 +327,11 @@ export const createAuthPlugins = (
 				),
 		}),
 		passkey({
-			rpID: "cinaseek.ai",
+			rpID: origins.passkeyRpId,
 			rpName: "CinaSeek",
 			// WebAuthn runs in the Accounts document. The Service Binding only
 			// changes the upstream request URL; clientDataJSON keeps this origin.
-			origin: [ACCOUNT_ORIGIN],
+			origin: [origins.accountOrigin],
 		}),
 		emailOTP({
 			storeOTP: "hashed",
@@ -392,7 +372,8 @@ export const createAuthPlugins = (
 				});
 			},
 			signUpOnVerification: {
-				getTempEmail: tempEmailForPhone,
+				getTempEmail: (phoneNumber) =>
+					tempEmailForPhone(phoneNumber, authHostname),
 				getTempName: (phoneNumber) => phoneNumber,
 			},
 		}),
@@ -439,7 +420,7 @@ export const createAuthPlugins = (
 			},
 		}),
 		deviceAuthorization({
-			verificationUri: `${ACCOUNT_ORIGIN}/device`,
+			verificationUri: `${origins.accountOrigin}/device`,
 			validateClient: async (clientId, ctx) => {
 				const client = await ctx.context.adapter.findOne<{
 					clientId: string;
@@ -471,13 +452,13 @@ export const createAuthPlugins = (
 				oauthAuthServerConfig: true,
 				openidConfig: true,
 			},
-			loginPage: `${ACCOUNT_ORIGIN}/sign-in`,
-			consentPage: `${ACCOUNT_ORIGIN}/oauth/consent`,
+			loginPage: `${origins.accountOrigin}/sign-in`,
+			consentPage: `${origins.accountOrigin}/oauth/consent`,
 			signup: {
-				page: `${ACCOUNT_ORIGIN}/sign-up`,
+				page: `${origins.accountOrigin}/sign-up`,
 			},
 			selectAccount: {
-				page: `${ACCOUNT_ORIGIN}/oauth/select-account`,
+				page: `${origins.accountOrigin}/oauth/select-account`,
 				shouldRedirect: () => false,
 			},
 			scopes: ["openid", "profile", "email", "offline_access"],
@@ -501,12 +482,16 @@ export const createAuthPlugins = (
 					"acr",
 				],
 			},
-			validAudiences: [baseURL, ADMIN_ORIGIN, `${ACCOUNT_ORIGIN}/api/mcp`],
+			validAudiences: [
+				baseURL,
+				origins.adminOrigin,
+				`${origins.accountOrigin}/api/mcp`,
+			],
 			allowDynamicClientRegistration: true,
 			allowUnauthenticatedClientRegistration: false,
 			cachedTrustedClients: new Set([
-				OIDC_DEMO_CLIENT_ID,
 				ADMIN_OIDC_CLIENT_ID,
+				...(origins.oidcDemoProfile ? [origins.oidcDemoProfile.clientId] : []),
 			]),
 			clientRegistrationDefaultScopes: [
 				"openid",
@@ -525,7 +510,7 @@ export const createAuthPlugins = (
 						client.requirePKCE === true
 					);
 				}
-				if (client.clientId === OIDC_DEMO_CLIENT_ID) {
+				if (client.clientId === origins.oidcDemoProfile?.clientId) {
 					return (
 						client.public === true &&
 						client.disabled !== true &&
@@ -645,7 +630,7 @@ export const createAuthPlugins = (
 				challengeExpiresIn: 5 * 60,
 				maxMessageAge: 5 * 60,
 				clockSkew: 60,
-				emailDomainName: "auth.cinaseek.ai",
+				emailDomainName: authHostname,
 				verifyMessage: async ({ message, signature, address }) => {
 					try {
 						const recoveredAddress = recoverPersonalSignAddress(
@@ -668,12 +653,7 @@ export const createAuthPlugins = (
 				secretKey: turnstile.secretKey,
 				endpoints: [...TURNSTILE_PROTECTED_ENDPOINTS],
 				expectedAction: TURNSTILE_ACTION,
-				allowedHostnames: [
-					"auth.cinaseek.ai",
-					"accounts.cinaseek.ai",
-					"demo-auth.cinagroup.com",
-					"admin.cinaseek.ai",
-				],
+				allowedHostnames: origins.trustedHostnames,
 			}),
 		);
 	}
