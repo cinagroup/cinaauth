@@ -1,9 +1,4 @@
-import {
-	OIDC_DEMO_CLIENT_ID,
-	OIDC_DEMO_ORIGIN,
-	OIDC_DEMO_POST_LOGOUT_URI,
-	OIDC_DEMO_REDIRECT_URI,
-} from "@cinaauth/auth-web-contract";
+import type { OidcDemoProfile } from "@cinaauth/auth-web-contract";
 
 type OidcDemoClientDatabase = {
 	query: (queryText: string, values: unknown[]) => Promise<unknown>;
@@ -12,19 +7,24 @@ type OidcDemoClientDatabase = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** Returns true only for an authorization request using the fixed demo client. */
-export const isOidcDemoAuthorizationRequest = (request: Request) => {
+/** Returns true only when the optional demo is enabled and requests its configured client. */
+export const isOidcDemoAuthorizationRequest = (
+	request: Request,
+	profile: OidcDemoProfile | null,
+) => {
+	if (!profile) return false;
 	if (request.method !== "GET") return false;
 	const url = new URL(request.url);
 	return (
 		url.pathname === "/api/auth/oauth2/authorize" &&
-		url.searchParams.get("client_id") === OIDC_DEMO_CLIENT_ID
+		url.searchParams.get("client_id") === profile.clientId
 	);
 };
 
 /** Converts the provider's internal redirect envelope into browser OIDC 302. */
 export const normalizeOidcDemoAuthorizationResponse = async (
 	response: Response,
+	accountOrigin: string,
 ) => {
 	if (
 		response.status !== 200 ||
@@ -51,7 +51,7 @@ export const normalizeOidcDemoAuthorizationResponse = async (
 	} catch {
 		return response;
 	}
-	if (target.origin !== "https://accounts.cinaseek.ai") return response;
+	if (target.origin !== accountOrigin) return response;
 
 	return new Response(null, {
 		status: 302,
@@ -64,31 +64,32 @@ export const normalizeOidcDemoAuthorizationResponse = async (
 
 /**
  * Reconciles the first-party OIDC acceptance client before it is resolved by
- * the provider. The fixed identifier and exact URI allow-list make this safe
+ * the provider. The validated profile and exact URI allow-list make this safe
  * to trigger from the public authorize endpoint without accepting user input.
  */
 export const ensureOidcDemoClient = async (
 	database: OidcDemoClientDatabase,
+	profile: OidcDemoProfile,
 ) => {
 	const now = new Date();
 	const values: unknown[] = [
-		`${OIDC_DEMO_CLIENT_ID}:first-party`,
-		OIDC_DEMO_CLIENT_ID,
+		`${profile.clientId}:first-party`,
+		profile.clientId,
 		null,
 		false,
 		false,
 		true,
 		"public",
-		JSON.stringify(["openid", "profile", "email"]),
+		JSON.stringify(profile.scope.split(" ")),
 		null,
 		null,
 		now,
 		now,
 		"CinaSeek OIDC 标准客户端",
-		OIDC_DEMO_ORIGIN,
-		`${OIDC_DEMO_ORIGIN}/favicon.ico`,
-		JSON.stringify([OIDC_DEMO_REDIRECT_URI]),
-		JSON.stringify([OIDC_DEMO_POST_LOGOUT_URI]),
+		profile.applicationOrigin,
+		`${profile.applicationOrigin}/favicon.ico`,
+		JSON.stringify([profile.redirectUri]),
+		JSON.stringify([profile.postLogoutRedirectUri]),
 		"none",
 		JSON.stringify(["authorization_code"]),
 		JSON.stringify(["code"]),

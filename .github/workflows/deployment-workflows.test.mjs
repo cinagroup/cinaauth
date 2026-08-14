@@ -9,9 +9,14 @@ const rootPackage = JSON.parse(
 	readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 );
 const central = readWorkflow("deploy-cloudflare.yml");
+const ci = readWorkflow("ci.yml");
 const account = readWorkflow("deploy-account-portal.yml");
 const admin = readWorkflow("deploy-admin-console.yml");
 const oidcClient = readWorkflow("deploy-oidc-client-demo.yml");
+const localDeploy = readFileSync(
+	new URL("../../deploy-cloudflare.sh", import.meta.url),
+	"utf8",
+);
 
 const productionWorkflows = [
 	["deploy-cloudflare.yml", central],
@@ -327,6 +332,9 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 		/CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https:\/\/accounts\.cinaseek\.ai\/api\/build-readiness/,
 	);
 	for (const contract of [
+		"lib/auth-runtime-config.test.ts",
+		"lib/auth-runtime-routes.test.ts",
+		"lib/auth.test.ts",
 		"lib/reown-wallet-gate.test.ts",
 		"lib/reown-wallet-cookie.test.ts",
 		"lib/siwe-wallet-protocol.test.ts",
@@ -341,10 +349,15 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 		/cloudflare\/wrangler-action|command: deploy|pnpm run deploy/,
 	);
 	assert.equal(
-		(account.match(/command: deploy/g) ?? []).length,
+		(
+			account.match(
+				/run: pnpm run deploy:cf -- --deployment-target production/g,
+			) ?? []
+		).length,
 		1,
 		"the reusable Account Portal workflow must deploy exactly once",
 	);
+	assert.doesNotMatch(account, /cloudflare\/wrangler-action|command: deploy/);
 
 	for (const [job, nextJob] of [
 		["deploy-delivery", "deploy-privacy-erasure"],
@@ -449,6 +462,46 @@ test("backend bootstrap never requires or writes deferred and V1 shared secrets"
 	}
 });
 
+test("production script consumers select the explicit top-level deployment target", () => {
+	const provisionCommands = [
+		...central.matchAll(/^\s*run:\s+(pnpm run provision:secrets[^\r\n]*)/gm),
+	].map((match) => match[1]);
+	assert.equal(provisionCommands.length, 3);
+	for (const command of provisionCommands) {
+		assert.match(command, /-- --deployment-target production(?:\s|$)/);
+		assert.doesNotMatch(command, /--env(?:\s|=)|CLOUDFLARE_ENV/);
+	}
+	assert.match(
+		localDeploy,
+		/pnpm --dir apps\/account-portal run deploy:cf -- --deployment-target production/,
+	);
+	assert.match(
+		account,
+		/run: pnpm run deploy:cf -- --deployment-target production/,
+	);
+	for (const workflow of [account, central]) {
+		assert.match(workflow, /run: pnpm run test:deploy-cf/);
+	}
+});
+
+test("deployment target contracts run in CI and before production authorization", () => {
+	const script = rootPackage.scripts?.["test:cloudflare-deployment-contracts"];
+	assert.equal(typeof script, "string");
+	const testFiles = [
+		"scripts/cloudflare-deployment-target.test.mjs",
+		".github/workflows/deployment-workflows.test.mjs",
+		"workers/auth-api/scripts/provision-secrets.test.mjs",
+		"workers/delivery/scripts/provision-secrets.test.mjs",
+		"workers/privacy-erasure/scripts/provision-secrets.test.mjs",
+		"apps/account-portal/deploy-cf.test.mjs",
+	];
+	for (const file of testFiles) {
+		assert.match(script, new RegExp(file.replaceAll(".", "\\.")));
+		assert.match(central, new RegExp(file.replaceAll(".", "\\.")));
+	}
+	assert.match(ci, /run: pnpm run test:cloudflare-deployment-contracts/);
+});
+
 test("frontends rely on Auth readiness and configured bindings", () => {
 	assert.doesNotMatch(account, /CINAAUTH_DEMO_SECRET|wrangler secret put/);
 	assert.match(account, /Wait for governed Auth readiness/);
@@ -459,4 +512,13 @@ test("frontends rely on Auth readiness and configured bindings", () => {
 	);
 	assert.match(admin, /Validate production binding contract/);
 	assert.match(admin, /Wait for governed Auth readiness/);
+});
+
+test("OIDC acceptance validates its explicit production target", () => {
+	assert.match(
+		oidcClient,
+		/CINAAUTH_OIDC_DEMO_TARGET_ORIGIN: https:\/\/oidc-demo\.cinaseek\.ai/,
+	);
+	assert.match(oidcClient, /pnpm run check:production/);
+	assert.doesNotMatch(oidcClient, /env\.staging|deploy-siwe-staging/);
 });

@@ -52,6 +52,26 @@ Never put a PostgreSQL URI, password, API token, or Worker secret in
 
 ## SIWE rollout controls
 
+Production and staging are separate identity environments. Before creating any
+named staging environment or enabling SIWE, follow the complete isolation and
+real-wallet acceptance contract in
+[`docs/SIWE_STAGING.md`](../../docs/SIWE_STAGING.md). A partial `env.staging`,
+placeholder binding, or fallback to a production origin/resource is invalid.
+
+The Worker derives browser trust from the tracked, canonical origin profile:
+`CINAAUTH_URL`, `CINAAUTH_ACCOUNT_ORIGIN`, `CINAAUTH_ADMIN_ORIGIN`, and
+`CINAAUTH_PASSKEY_RP_ID`, plus optional `CINAAUTH_LEGACY_ACCOUNT_ORIGIN`. The
+optional OIDC acceptance profile consists of all three values
+`CINAAUTH_OIDC_DEMO_ENVIRONMENT`, `CINAAUTH_OIDC_DEMO_ORIGIN`, and
+`CINAAUTH_OIDC_DEMO_CLIENT_ID`; provide all three or omit all three to disable
+that client. Its issuer and Accounts origin come from the same validated Auth
+profile, and production/staging mixtures fail closed. Every configured origin
+is an exact HTTPS origin without credentials, port, path, query, fragment,
+wildcard, or trailing slash. Missing required values and malformed optional
+values fail closed. Omitting an optional origin disables that trust
+relationship. The production Passkey RP ID remains `cinaseek.ai`; changing it
+would invalidate existing credentials.
+
 SIWE is a non-secret, fail-closed rollout in `wrangler.json`. The tracked
 production configuration intentionally keeps `CINAAUTH_SIWE_ENABLED=false`
 until the Accounts Reown flow and real-wallet staging suite pass. While it is
@@ -467,7 +487,7 @@ Use `-- --dry-run` first to inspect whether the script will create, update, or
 reuse the widget without mutating Cloudflare.
 
 ```powershell
-pnpm --dir workers/auth-api run provision:secrets
+pnpm --dir workers/auth-api run provision:secrets -- --deployment-target production
 ```
 
 The script requires an HTTPS Delivery URL and always provisions the

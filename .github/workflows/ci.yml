@@ -57,6 +57,9 @@ jobs:
           TURBO_TEAM: ${{ vars.TURBO_TEAM || github.repository_owner }}
         run: pnpm build
 
+      - name: Test Cloudflare deployment contracts
+        run: pnpm run test:cloudflare-deployment-contracts
+
       - name: Lint
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}

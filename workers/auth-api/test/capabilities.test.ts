@@ -5,6 +5,8 @@ import {
 import { describe, expect, it } from "vitest";
 import { getAuthCapabilities } from "../src/capabilities";
 
+const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
+
 const entitlementConfig = () =>
 	JSON.stringify({
 		version: 1,
@@ -47,6 +49,7 @@ describe("public auth capabilities", () => {
 	it("advertises SIWE only for a complete strict EOA configuration", () => {
 		expect(
 			getAuthCapabilities({
+				CINAAUTH_ACCOUNT_ORIGIN: ACCOUNT_ORIGIN,
 				CINAAUTH_SIWE_ENABLED: "true",
 				CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1",
 				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
@@ -57,6 +60,7 @@ describe("public auth capabilities", () => {
 		).toBe(true);
 		expect(
 			getAuthCapabilities({
+				CINAAUTH_ACCOUNT_ORIGIN: ACCOUNT_ORIGIN,
 				CINAAUTH_SIWE_ENABLED: "true",
 				CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1",
 				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
@@ -105,6 +109,7 @@ describe("public auth capabilities", () => {
 	it("exposes only provider identifiers and safe optional flags", () => {
 		const capabilities = getAuthCapabilities(
 			{
+				CINAAUTH_ACCOUNT_ORIGIN: ACCOUNT_ORIGIN,
 				GENERIC_OAUTH_CONFIG: JSON.stringify([
 					{
 						providerId: "github-enterprise",
@@ -181,6 +186,7 @@ describe("public auth capabilities", () => {
 		).toEqual([]);
 		expect(
 			getAuthCapabilities({
+				CINAAUTH_ACCOUNT_ORIGIN: ACCOUNT_ORIGIN,
 				GENERIC_OAUTH_CONFIG: JSON.stringify([
 					{
 						providerId: "github",

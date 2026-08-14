@@ -1,10 +1,11 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { AuthFetcher, Session } from "./auth-api";
+import { createAuthProxyRequest, createServerAuthApi } from "./auth-api";
 import {
-	createAuthProxyRequest,
-	createServerAuthApi,
-	DEFAULT_CINAAUTH_API_URL,
-} from "./auth-api";
+	createAuthServiceUnavailableResponse,
+	resolveAuthRuntimeConfiguration,
+	UNAVAILABLE_CINAAUTH_API_URL,
+} from "./auth-runtime-config";
 
 export type {
 	ActiveOrganization,
@@ -33,26 +34,48 @@ export type {
 } from "./auth-api";
 export { createAuthProxyResponse } from "./auth-api";
 
-type AuthWorkerEnv = {
-	AUTH_WORKER?: AuthFetcher;
-};
-
 const publicAuthFetcher: AuthFetcher = {
 	fetch: (request) => fetch(request),
 };
 
+const unavailableAuthFetcher: AuthFetcher = {
+	fetch: async () => createAuthServiceUnavailableResponse(),
+};
+
+const runtimeConfiguration = resolveAuthRuntimeConfiguration();
+
+const reportUnavailableTransport = (
+	reason: "context-unavailable" | "missing-binding" | "runtime-configuration",
+) => {
+	console.error(
+		JSON.stringify({
+			event: "cinaauth.auth_transport_unavailable",
+			reason,
+			configurationFailure: runtimeConfiguration.failure,
+		}),
+	);
+};
+
 const resolveAuthFetcher = async (): Promise<AuthFetcher> => {
+	if (!runtimeConfiguration.baseURL) {
+		reportUnavailableTransport("runtime-configuration");
+		return unavailableAuthFetcher;
+	}
 	try {
 		const { env } = await getCloudflareContext({ async: true });
-		const binding = (env as AuthWorkerEnv).AUTH_WORKER;
+		const binding = env.AUTH_WORKER;
 		if (binding && typeof binding.fetch === "function") {
 			return binding;
 		}
 	} catch {
-		// Local Next.js development can run without Wrangler. In that case the
-		// same typed API client calls the public production URL below.
+		if (!runtimeConfiguration.publicFallbackAllowed) {
+			reportUnavailableTransport("context-unavailable");
+			return unavailableAuthFetcher;
+		}
 	}
-	return publicAuthFetcher;
+	if (runtimeConfiguration.publicFallbackAllowed) return publicAuthFetcher;
+	reportUnavailableTransport("missing-binding");
+	return unavailableAuthFetcher;
 };
 
 const lazyAuthFetcher: AuthFetcher = {
@@ -61,21 +84,39 @@ const lazyAuthFetcher: AuthFetcher = {
 
 const api = createServerAuthApi(
 	lazyAuthFetcher,
-	process.env.CINAAUTH_URL || DEFAULT_CINAAUTH_API_URL,
+	runtimeConfiguration.baseURL ?? UNAVAILABLE_CINAAUTH_API_URL,
 );
 
+/** Sends an internal server request through the configured Auth transport. */
+export const fetchAuthServiceRequest = async (
+	pathname: string,
+	init?: RequestInit,
+) => {
+	if (!runtimeConfiguration.baseURL || !pathname.startsWith("/")) {
+		reportUnavailableTransport("runtime-configuration");
+		return createAuthServiceUnavailableResponse();
+	}
+	const target = new URL(pathname, runtimeConfiguration.baseURL);
+	if (target.origin !== runtimeConfiguration.baseURL) {
+		reportUnavailableTransport("runtime-configuration");
+		return createAuthServiceUnavailableResponse();
+	}
+	return (await resolveAuthFetcher()).fetch(new Request(target, init));
+};
+
 export const forwardAuthRequest = async (request: Request) => {
-	const proxied = createAuthProxyRequest(
-		request,
-		process.env.CINAAUTH_URL || DEFAULT_CINAAUTH_API_URL,
-	);
+	if (!runtimeConfiguration.baseURL) {
+		reportUnavailableTransport("runtime-configuration");
+		return createAuthServiceUnavailableResponse();
+	}
+	const proxied = createAuthProxyRequest(request, runtimeConfiguration.baseURL);
 	return (await resolveAuthFetcher()).fetch(proxied);
 };
 
 /**
  * Server-side CinaAuth facade used by React Server Components. Requests use
- * the Cloudflare Service Binding in production and preserve the caller's
- * Cookie header; local development falls back to the public Auth Worker URL.
+ * the Cloudflare Service Binding when configured and preserve the caller's
+ * Cookie header. Only an explicit local `false` policy permits public HTTP.
  */
 export const auth = {
 	api,

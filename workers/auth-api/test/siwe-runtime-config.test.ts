@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getSiweRuntimeConfig } from "../src/siwe-runtime-config";
 
 const enabledConfiguration = {
+	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.ai",
 	CINAAUTH_SIWE_ENABLED: "true",
 	CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1,11155111",
 	CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
@@ -65,6 +66,10 @@ describe("SIWE runtime configuration", () => {
 		[
 			"URI with a path",
 			{ CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai/dashboard" },
+		],
+		[
+			"Accounts origin mismatch",
+			{ CINAAUTH_ACCOUNT_ORIGIN: "https://other.cinaseek.ai" },
 		],
 		["legacy mode", { CINAAUTH_SIWE_ALLOW_LEGACY: "true" }],
 		["automatic signup", { CINAAUTH_SIWE_AUTO_SIGNUP: "true" }],

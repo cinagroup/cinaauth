@@ -39,7 +39,7 @@ export function Home() {
 				<p className="mt-6 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">
 					This first-party public client proves Discovery, Authorization Code +
 					PKCE, ES256 ID token validation, UserInfo and RP-initiated logout
-					against the production issuer.
+					against the configured issuer.
 				</p>
 
 				{error ? (

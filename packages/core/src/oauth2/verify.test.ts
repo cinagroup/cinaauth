@@ -86,6 +86,22 @@ describe("verifyAccessToken", () => {
 		});
 	}
 
+	it("should verify with a caller-provided JWKS loader without public fetch", async () => {
+		const { publicJWK, privateKey, kid } = await createTestJWKS();
+		const token = await createSignedToken(privateKey, kid);
+		const jwksFetch = vi.fn(async () => ({ keys: [publicJWK] }));
+
+		const payload = await verifyAccessToken(token, {
+			jwksFetch,
+			jwksCacheKey: {},
+			verifyOptions: { issuer, audience },
+		});
+
+		expect(payload.sub).toBe("user-123");
+		expect(jwksFetch).toHaveBeenCalledOnce();
+		expect(mockedFetch).not.toHaveBeenCalled();
+	});
+
 	function requestUrl(input: unknown): string {
 		if (typeof input === "string") return input;
 		if (input instanceof Request) return input.url;

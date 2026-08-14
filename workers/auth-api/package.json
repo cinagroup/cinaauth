@@ -10,6 +10,7 @@
     "build": "pnpm run build:dependencies && wrangler deploy --dry-run --outdir=dist",
     "test": "vitest run",
     "check:production": "node ./scripts/verify-production-config.mjs",
+    "check:siwe-staging-foundation": "node ./scripts/verify-siwe-staging.mjs --foundation",
     "check:cloudflare": "node ./scripts/check-cloudflare-remote.mjs",
     "check:oidc": "node ./scripts/check-oidc-production.mjs",
     "check:planetscale-backups": "node ./scripts/check-planetscale-backups.mjs",
@@ -25,11 +26,12 @@
     "test:production-lifecycle-acceptance": "node --test ./scripts/run-production-lifecycle-acceptance.test.mjs",
     "test:backup-audit": "node --test ./scripts/check-planetscale-backups.test.mjs",
     "test:provision-secrets": "node --test ./scripts/provision-secrets.test.mjs",
+    "test:siwe-staging-inventory": "node --test ./scripts/siwe-staging-inventory.test.mjs ./scripts/verify-siwe-staging.test.mjs",
     "acceptance:production-lifecycle": "node ./scripts/run-production-lifecycle-acceptance.mjs",
     "provision:secrets": "node ./scripts/provision-secrets.mjs",
     "cf-typegen": "wrangler types ./src/worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime false",
     "cf-typegen:check": "wrangler types ./src/worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime false --check",
-    "check": "pnpm run check:production && pnpm run test:provision-secrets && pnpm run test:remote-readiness && pnpm run test:backup-audit && pnpm run test:delivery-queues && pnpm run test:runtime-capabilities && pnpm run test:oidc && pnpm run test:production-lifecycle-acceptance && pnpm run test && wrangler types ./src/worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime false --check && tsc --noEmit"
+    "check": "pnpm run check:production && pnpm run check:siwe-staging-foundation && pnpm run test:siwe-staging-inventory && pnpm run test:provision-secrets && pnpm run test:remote-readiness && pnpm run test:backup-audit && pnpm run test:delivery-queues && pnpm run test:runtime-capabilities && pnpm run test:oidc && pnpm run test:production-lifecycle-acceptance && pnpm run test && wrangler types ./src/worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime false --check && tsc --noEmit"
   },
   "dependencies": {
     "@cinaauth/auth-web-contract": "workspace:*",
@@ -50,6 +52,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260804.1",
     "@types/pg": "^8.16.0",
+    "smol-toml": "1.6.1",
     "wrangler": "4.120.0",
     "typescript": "^5.9.3",
     "vitest": "catalog:vitest"

@@ -63,6 +63,8 @@ jobs:
           command: deploy
 
       - name: Run production protocol acceptance
+        env:
+          CINAAUTH_OIDC_DEMO_TARGET_ORIGIN: https://oidc-demo.cinaseek.ai
         run: |
           for attempt in $(seq 1 40); do
             pnpm run check:production && exit 0

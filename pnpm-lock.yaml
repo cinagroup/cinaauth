@@ -2353,6 +2353,9 @@ importers:
       '@types/pg':
         specifier: ^8.16.0
         version: 8.16.0
+      smol-toml:
+        specifier: 1.6.1
+        version: 1.6.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

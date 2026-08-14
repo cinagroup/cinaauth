@@ -1,4 +1,5 @@
 export type SiweRuntimeEnv = {
+	CINAAUTH_ACCOUNT_ORIGIN?: string;
 	CINAAUTH_SIWE_ENABLED?: string;
 	CINAAUTH_SIWE_ALLOWED_CHAIN_IDS?: string;
 	CINAAUTH_SIWE_RP_DOMAIN?: string;
@@ -86,6 +87,7 @@ export const getSiweRuntimeConfig = (
 		!isCanonicalDomain(rpDomain) ||
 		!rpUri ||
 		!isCanonicalRpUri(rpUri, rpDomain) ||
+		env.CINAAUTH_ACCOUNT_ORIGIN !== rpUri ||
 		!allowedChainIds ||
 		env.CINAAUTH_SIWE_ALLOW_LEGACY !== "false" ||
 		env.CINAAUTH_SIWE_AUTO_SIGNUP !== "false"

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { parseCloudflareDeploymentTarget } from "../../../scripts/cloudflare-deployment-target.mjs";
 
 const REQUIRED_SECRETS = [
 	"CINAAUTH_SECRET",
@@ -112,33 +113,59 @@ const getSelectedSecretNames = (env) => {
 	];
 };
 
-export const runProvisionSecrets = ({
-	args = process.argv.slice(2),
-	env = process.env,
-	log = console.log,
-	spawnSyncImpl = spawnSync,
-	wranglerCli = fileURLToPath(import.meta.resolve("wrangler")),
-} = {}) => {
+const getDryRun = (args) => {
+	let dryRun = false;
+	for (const arg of args) {
+		if (arg !== "--dry-run") {
+			throw new Error("Only --dry-run is allowed after --deployment-target");
+		}
+		if (dryRun) {
+			throw new Error("--dry-run may be provided at most once");
+		}
+		dryRun = true;
+	}
+	return dryRun;
+};
+
+export const runProvisionSecrets = (options = {}) => {
+	const target = parseCloudflareDeploymentTarget({
+		args: options.args ?? process.argv.slice(2),
+		env: options.env ?? process.env,
+	});
+	const dryRun = getDryRun(target.passthroughArgs);
+	if (target.deploymentTarget === "siwe-staging") {
+		throw new Error(
+			"SIWE staging secret provisioning is disabled until the isolated staging inventory and Wrangler environment are complete",
+		);
+	}
+
+	const env = options.env ?? process.env;
 	const names = getSelectedSecretNames(env);
-	if (args.includes("--dry-run")) {
+	if (dryRun) {
+		const log = options.log ?? console.log;
 		for (const name of names) log(`Would provision ${name}`);
 		log("Auth Worker secret provisioning dry run complete.");
 		return;
 	}
 
+	const log = options.log ?? console.log;
+	const spawnSyncImpl = options.spawnSyncImpl ?? spawnSync;
+	const wranglerCli =
+		options.wranglerCli ?? fileURLToPath(import.meta.resolve("wrangler"));
 	const values = Object.fromEntries(
 		names.map((name) => [name, FIXED_SECRETS[name] ?? env[name]]),
 	);
 	const result = spawnSyncImpl(
 		process.execPath,
-		[wranglerCli, "secret", "bulk"],
+		[wranglerCli, "secret", "bulk", ...target.wranglerArgs],
 		{
 			input: `${JSON.stringify(values)}\n`,
 			stdio: ["pipe", "inherit", "inherit"],
+			env: target.childEnv,
 		},
 	);
 	if (result.error) {
-		throw new Error(`Failed to start Wrangler: ${result.error.message}`);
+		throw new Error("Failed to start Wrangler");
 	}
 	if (result.status !== 0) {
 		const error = new Error("Wrangler secret bulk failed");

@@ -2,9 +2,6 @@ import {
 	ADMIN_OIDC_CLIENT_ID,
 	ADMIN_OIDC_CLIENT_SECRET_MIN_PAYLOAD_LENGTH,
 	ADMIN_OIDC_CLIENT_SECRET_PREFIX,
-	ADMIN_OIDC_ORIGIN,
-	ADMIN_OIDC_POST_LOGOUT_URI,
-	ADMIN_OIDC_REDIRECT_URI,
 	ADMIN_OIDC_SCOPES,
 } from "@cinaauth/auth-web-contract";
 
@@ -44,6 +41,7 @@ export const isAdminOidcAuthorizationRequest = (request: Request) => {
 export const ensureAdminOidcClient = async (
 	database: AdminOidcClientDatabase,
 	clientSecret: string | undefined,
+	adminOrigin: string,
 ) => {
 	if (!clientSecret?.startsWith(ADMIN_OIDC_CLIENT_SECRET_PREFIX)) {
 		throw new Error(
@@ -61,6 +59,8 @@ export const ensureAdminOidcClient = async (
 
 	const now = new Date();
 	const storedSecret = await hashOidcClientSecret(providerSecret);
+	const redirectUri = `${adminOrigin}/api/auth/oidc/callback`;
+	const postLogoutRedirectUri = `${adminOrigin}/login`;
 	const values: unknown[] = [
 		`${ADMIN_OIDC_CLIENT_ID}:first-party`,
 		ADMIN_OIDC_CLIENT_ID,
@@ -75,10 +75,10 @@ export const ensureAdminOidcClient = async (
 		now,
 		now,
 		"CinaSeek Admin Console",
-		ADMIN_OIDC_ORIGIN,
-		`${ADMIN_OIDC_ORIGIN}/favicon.ico`,
-		JSON.stringify([ADMIN_OIDC_REDIRECT_URI]),
-		JSON.stringify([ADMIN_OIDC_POST_LOGOUT_URI]),
+		adminOrigin,
+		`${adminOrigin}/favicon.ico`,
+		JSON.stringify([redirectUri]),
+		JSON.stringify([postLogoutRedirectUri]),
 		"client_secret_basic",
 		JSON.stringify(["authorization_code"]),
 		JSON.stringify(["code"]),

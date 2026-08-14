@@ -80,7 +80,13 @@ import {
 	isOidcDemoAuthorizationRequest,
 	normalizeOidcDemoAuthorizationResponse,
 } from "./oidc-demo-client";
-import { createAuthPlugins, TRUSTED_ORIGIN_HOSTS } from "./plugins";
+import type { AuthOriginConfigIssue } from "./origin-config";
+import {
+	isExactTrustedOrigin,
+	parseAuthOriginConfig,
+	requireAuthOriginConfig,
+} from "./origin-config";
+import { createAuthPlugins } from "./plugins";
 import type { PrivacyExportMessage } from "./privacy-export";
 import {
 	handlePrivacyExportBatch,
@@ -183,6 +189,7 @@ type VersionMetadataSnapshot = {
 };
 
 type RuntimeConfigIssue =
+	| AuthOriginConfigIssue
 	| "active_secrets_store_unavailable"
 	| "missing_cinaauth_secret"
 	| "weak_cinaauth_secret"
@@ -210,8 +217,7 @@ type RuntimeConfigIssue =
 	| "invalid_erasure_webhook_url"
 	| "missing_erasure_webhook_secret"
 	| "weak_erasure_webhook_secret"
-	| "invalid_cinaauth_cutover_state"
-	| "invalid_cinaauth_url";
+	| "invalid_cinaauth_cutover_state";
 
 const REQUIRED_DATABASE_TABLES = [
 	"user",
@@ -708,18 +714,6 @@ const getEntitlementUsage = async (
 	return Number.isSafeInteger(count) && count >= 0 ? count : undefined;
 };
 
-const isTrustedOrigin = (origin: string) => {
-	try {
-		const url = new URL(origin);
-		// Explicit allowlist (see TRUSTED_ORIGIN_HOSTS in plugins.ts) rather than a
-		// *.cinagroup.com suffix match, so a forgotten/takeover-prone subdomain
-		// cannot make credentialed cross-origin calls against the auth API.
-		return url.protocol === "https:" && TRUSTED_ORIGIN_HOSTS.has(url.hostname);
-	} catch {
-		return false;
-	}
-};
-
 const isHttpsUrl = (value: string | undefined) => {
 	if (!value) return false;
 	try {
@@ -758,14 +752,18 @@ const isD1Database = (value: unknown): value is D1Database =>
 export const getCutoverState = (env: CloudflareBindings) =>
 	env.CINAAUTH_CUTOVER_STATE === "live" ? "live" : "maintenance";
 
-export const getConfiguredAccountProviderIds = (env: CloudflareBindings) => [
-	...new Set([
-		...Object.keys(getProductionSocialProviders(env)),
-		...parseProductionGenericOAuthConfig(env.GENERIC_OAUTH_CONFIG).map(
-			(provider) => provider.providerId,
-		),
-	]),
-];
+export const getConfiguredAccountProviderIds = (env: CloudflareBindings) => {
+	const origins = requireAuthOriginConfig(env);
+	return [
+		...new Set([
+			...Object.keys(getProductionSocialProviders(env, origins.accountOrigin)),
+			...parseProductionGenericOAuthConfig(
+				env.GENERIC_OAUTH_CONFIG,
+				origins.accountOrigin,
+			).map((provider) => provider.providerId),
+		]),
+	];
+};
 
 const parseBearerToken = (authorization: string | undefined) => {
 	if (!authorization) return undefined;
@@ -912,9 +910,8 @@ export const getRuntimeConfigIssues = (
 		issues.push("invalid_cinaauth_cutover_state");
 	}
 
-	if (!isHttpsUrl(env.CINAAUTH_URL || "https://auth.cinaseek.ai")) {
-		issues.push("invalid_cinaauth_url");
-	}
+	const originConfig = parseAuthOriginConfig(env);
+	if (!originConfig.ok) issues.push(...originConfig.issues);
 
 	return issues;
 };
@@ -1096,11 +1093,15 @@ const isDatabaseCutoverReady = async (env: CloudflareBindings) => {
 };
 
 // Middleware
-app.use(
-	"*",
-	cors({
+app.use("*", async (c, next) => {
+	const originConfig = parseAuthOriginConfig(c.env);
+	return cors({
 		origin: (origin) =>
-			origin && isTrustedOrigin(origin) ? origin : undefined,
+			originConfig.ok &&
+			origin &&
+			isExactTrustedOrigin(origin, originConfig.value)
+				? origin
+				: undefined,
 		allowHeaders: [
 			"Content-Type",
 			"Authorization",
@@ -1111,8 +1112,8 @@ app.use(
 		allowMethods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 		exposeHeaders: ["set-auth-token", "set-auth-jwt", "WWW-Authenticate"],
 		credentials: true,
-	}),
-);
+	})(c, next);
+});
 
 // Create auth instance per request with current env bindings.
 app.use("*", async (c, next) => {
@@ -1588,6 +1589,7 @@ app.post("/api/admin/configuration/:service/:action", async (c) => {
 		service,
 		action,
 		origin: headers.get("origin"),
+		allowedOrigin: requireAuthOriginConfig(c.var.runtimeEnv).adminOrigin,
 		dependencies: {
 			getSession: async () => {
 				const session = await auth.api.getSession({
@@ -1923,8 +1925,12 @@ app.on(
 
 // Auth catch-all route handler
 app.use("/api/auth/oauth2/authorize", async (c, next) => {
+	const origins = requireAuthOriginConfig(c.var.runtimeEnv);
 	const isAdminRequest = isAdminOidcAuthorizationRequest(c.req.raw);
-	const isDemoRequest = isOidcDemoAuthorizationRequest(c.req.raw);
+	const isDemoRequest = isOidcDemoAuthorizationRequest(
+		c.req.raw,
+		origins.oidcDemoProfile,
+	);
 	if (!isAdminRequest && !isDemoRequest) {
 		await next();
 		return;
@@ -1936,9 +1942,10 @@ app.use("/api/auth/oauth2/authorize", async (c, next) => {
 			await ensureAdminOidcClient(
 				database,
 				c.var.runtimeEnv.CINAADMIN_OIDC_CLIENT_SECRET,
+				origins.adminOrigin,
 			);
-		} else {
-			await ensureOidcDemoClient(database);
+		} else if (origins.oidcDemoProfile) {
+			await ensureOidcDemoClient(database, origins.oidcDemoProfile);
 		}
 	} catch (error) {
 		console.error(
@@ -1966,7 +1973,12 @@ app.use("/api/auth/oauth2/authorize", async (c, next) => {
 	}
 
 	await next();
-	c.res = await normalizeOidcDemoAuthorizationResponse(c.res);
+	if (isDemoRequest) {
+		c.res = await normalizeOidcDemoAuthorizationResponse(
+			c.res,
+			origins.accountOrigin,
+		);
+	}
 });
 
 app.on(
@@ -2310,7 +2322,9 @@ app.post("/api/migrate/scim-provider-ownership", async (c) => {
 								actorIp:
 									c.req.header("cf-connecting-ip")?.slice(0, 128) ?? undefined,
 								actorUa: c.req.header("user-agent")?.slice(0, 512) ?? undefined,
-								actorSite: "auth.cinaseek.ai",
+								actorSite: new URL(
+									requireAuthOriginConfig(c.var.runtimeEnv).authOrigin,
+								).hostname,
 								versionId: getVersionMetadata(c.env).id ?? undefined,
 							},
 						},

@@ -7,6 +7,7 @@ import type { SiweRuntimeEnv } from "./siwe-runtime-config";
 import { getSiweRuntimeConfig } from "./siwe-runtime-config";
 
 type CapabilitiesEnv = SiweRuntimeEnv & {
+	CINAAUTH_ACCOUNT_ORIGIN?: string;
 	GENERIC_OAUTH_CONFIG?: string;
 	GOOGLE_CLIENT_ID?: string;
 	GOOGLE_CLIENT_SECRET?: string;
@@ -44,9 +45,10 @@ const getPublicOAuthProviders = (
 	}
 	const configuredIds = new Set(providers.map((provider) => provider.id));
 	providers.push(
-		...getPublicGenericOAuthProviders(env.GENERIC_OAUTH_CONFIG).filter(
-			(provider) => !configuredIds.has(provider.id),
-		),
+		...getPublicGenericOAuthProviders(
+			env.GENERIC_OAUTH_CONFIG,
+			env.CINAAUTH_ACCOUNT_ORIGIN ?? "",
+		).filter((provider) => !configuredIds.has(provider.id)),
 	);
 	return providers;
 };

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { fetchAuthCapabilities } from "@/lib/auth-capabilities";
+import { CORE_AUTH_CAPABILITIES } from "@/lib/auth-capabilities";
 import { getReownInitialCookie } from "@/lib/reown-wallet-cookie";
 import type {
 	SecurityAccount,
@@ -64,7 +64,9 @@ export default async function SecurityCenterPage({
 			.listWallets({ headers: requestHeaders })
 			.then((data) => ({ data: data.wallets, unavailable: false }))
 			.catch(() => ({ data: [], unavailable: true })),
-		fetchAuthCapabilities(),
+		auth.api
+			.getCapabilities({ headers: requestHeaders })
+			.catch(() => CORE_AUTH_CAPABILITIES),
 	]);
 
 	const sessions: SecuritySession[] = sessionsResult.data.map((item) => ({

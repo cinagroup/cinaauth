@@ -1,6 +1,7 @@
 import {
 	ENTITLEMENT_FEATURES,
 	ENTITLEMENT_LIMITS,
+	OIDC_DEMO_CLIENT_ID,
 } from "@cinaauth/auth-web-contract";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
@@ -10,7 +11,6 @@ import {
 	getConfiguredSocialProviders,
 	getProductionSocialProviders,
 } from "../src/auth";
-import type { CloudflareBindings } from "../src/env";
 import {
 	canManageOrganizationBilling,
 	createAuthPlugins,
@@ -18,9 +18,10 @@ import {
 	JWT_ROTATION_INTERVAL_SECONDS,
 	roles,
 } from "../src/plugins";
+import { makeOriginEnv, PRODUCTION_ORIGIN_ENV } from "./origin-test-env";
 
 const getOrganizationSchema = (advancedOrganization: boolean) => {
-	const plugin = createAuthPlugins({} as CloudflareBindings, {
+	const plugin = createAuthPlugins(makeOriginEnv(), {
 		advancedOrganization,
 	}).find((candidate) => candidate.id === "organization");
 
@@ -55,7 +56,7 @@ describe("organization schema mode", () => {
 	});
 
 	it("includes teams and dynamic roles only in advanced mode", () => {
-		const plugin = createAuthPlugins({} as CloudflareBindings, {
+		const plugin = createAuthPlugins(makeOriginEnv(), {
 			advancedOrganization: true,
 		}).find((candidate) => candidate.id === "organization");
 		const schema = getOrganizationSchema(true);
@@ -106,8 +107,91 @@ describe("authoritative Admin role permissions", () => {
 });
 
 describe("OIDC signing and social provider configuration", () => {
+	it("rejects a persisted demo client when the optional demo origin is disabled", async () => {
+		const plugin = createAuthPlugins(
+			makeOriginEnv({
+				CINAAUTH_OIDC_DEMO_ENVIRONMENT: undefined,
+				CINAAUTH_OIDC_DEMO_ORIGIN: undefined,
+				CINAAUTH_OIDC_DEMO_CLIENT_ID: undefined,
+			}),
+		).find((candidate) => candidate.id === "oauth-provider");
+		const authorizeClient = (
+			plugin?.options as {
+				authorizeClient?: (input: {
+					client: {
+						clientId: string;
+						disabled: boolean;
+						public: boolean;
+						requirePKCE: boolean;
+						tokenEndpointAuthMethod: string;
+					};
+				}) => boolean | Promise<boolean>;
+			}
+		).authorizeClient;
+
+		expect(authorizeClient).toBeTypeOf("function");
+		expect(
+			await authorizeClient?.({
+				client: {
+					clientId: "cinaauth-oidc-demo",
+					disabled: false,
+					public: true,
+					requirePKCE: true,
+					tokenEndpointAuthMethod: "none",
+				},
+			}),
+		).toBe(false);
+	});
+
+	it("trusts only the configured staging demo client", async () => {
+		const plugin = createAuthPlugins(
+			makeOriginEnv({
+				CINAAUTH_URL: "https://auth-siwe-staging.cinaseek.ai",
+				CINAAUTH_ACCOUNT_ORIGIN: "https://accounts-siwe-staging.cinaseek.ai",
+				CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.ai",
+				CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.ai",
+				CINAAUTH_LEGACY_ACCOUNT_ORIGIN: undefined,
+				CINAAUTH_OIDC_DEMO_ENVIRONMENT: "staging",
+				CINAAUTH_OIDC_DEMO_ORIGIN: "https://oidc-demo-siwe-staging.cinaseek.ai",
+				CINAAUTH_OIDC_DEMO_CLIENT_ID: "cinaauth-oidc-demo-siwe-staging",
+			}),
+		).find((candidate) => candidate.id === "oauth-provider");
+		const options = plugin?.options as {
+			cachedTrustedClients?: Set<string>;
+			authorizeClient?: (input: {
+				client: {
+					clientId: string;
+					disabled: boolean;
+					public: boolean;
+					requirePKCE: boolean;
+					tokenEndpointAuthMethod: string;
+				};
+			}) => boolean | Promise<boolean>;
+		};
+
+		expect(
+			options.cachedTrustedClients?.has("cinaauth-oidc-demo-siwe-staging"),
+		).toBe(true);
+		expect(options.cachedTrustedClients?.has(OIDC_DEMO_CLIENT_ID)).toBe(false);
+		const configuredClient = {
+			clientId: "cinaauth-oidc-demo-siwe-staging",
+			disabled: false,
+			public: true,
+			requirePKCE: true,
+			tokenEndpointAuthMethod: "none",
+		};
+		expect(await options.authorizeClient?.({ client: configuredClient })).toBe(
+			true,
+		);
+		expect(
+			await options.authorizeClient?.({
+				client: { ...configuredClient, clientId: OIDC_DEMO_CLIENT_ID },
+			}),
+		).toBe(false);
+	});
+
 	it("uses ES256 with bounded rotation and grace periods", () => {
-		const plugin = createAuthPlugins({} as CloudflareBindings).find(
+		const plugin = createAuthPlugins(makeOriginEnv()).find(
 			(candidate) => candidate.id === "jwt",
 		);
 
@@ -123,17 +207,23 @@ describe("OIDC signing and social provider configuration", () => {
 
 	it("enables Google and GitHub only from complete secret pairs", () => {
 		expect(
-			getConfiguredSocialProviders({
-				GOOGLE_CLIENT_ID: "google-client-id",
-			}),
+			getConfiguredSocialProviders(
+				{
+					GOOGLE_CLIENT_ID: "google-client-id",
+				},
+				PRODUCTION_ORIGIN_ENV.CINAAUTH_ACCOUNT_ORIGIN,
+			),
 		).toEqual({});
 		expect(
-			getConfiguredSocialProviders({
-				GOOGLE_CLIENT_ID: "google-client-id",
-				GOOGLE_CLIENT_SECRET: "google-secret",
-				GITHUB_CLIENT_ID: "github-client-id",
-				GITHUB_CLIENT_SECRET: "github-secret",
-			}),
+			getConfiguredSocialProviders(
+				{
+					GOOGLE_CLIENT_ID: "google-client-id",
+					GOOGLE_CLIENT_SECRET: "google-secret",
+					GITHUB_CLIENT_ID: "github-client-id",
+					GITHUB_CLIENT_SECRET: "github-secret",
+				},
+				PRODUCTION_ORIGIN_ENV.CINAAUTH_ACCOUNT_ORIGIN,
+			),
 		).toEqual({
 			google: {
 				clientId: "google-client-id",
@@ -149,7 +239,12 @@ describe("OIDC signing and social provider configuration", () => {
 	});
 
 	it("keeps Google and GitHub ids reserved when credentials are temporarily absent", () => {
-		expect(getProductionSocialProviders({})).toEqual({
+		expect(
+			getProductionSocialProviders(
+				{},
+				PRODUCTION_ORIGIN_ENV.CINAAUTH_ACCOUNT_ORIGIN,
+			),
+		).toEqual({
 			google: {
 				clientId: "provider-id-reservation-only",
 				clientSecret: "provider-id-reservation-only",
@@ -162,10 +257,13 @@ describe("OIDC signing and social provider configuration", () => {
 			},
 		});
 		expect(
-			getProductionSocialProviders({
-				GOOGLE_CLIENT_ID: "google-client-id",
-				GOOGLE_CLIENT_SECRET: "google-secret",
-			}),
+			getProductionSocialProviders(
+				{
+					GOOGLE_CLIENT_ID: "google-client-id",
+					GOOGLE_CLIENT_SECRET: "google-secret",
+				},
+				PRODUCTION_ORIGIN_ENV.CINAAUTH_ACCOUNT_ORIGIN,
+			),
 		).toMatchObject({
 			google: { clientId: "google-client-id", clientSecret: "google-secret" },
 			github: { enabled: false },
@@ -175,7 +273,7 @@ describe("OIDC signing and social provider configuration", () => {
 
 describe("organization member entitlement chokepoints", () => {
 	it("wraps both SSO and SCIM automatic membership provisioning", () => {
-		const plugins = createAuthPlugins({} as CloudflareBindings);
+		const plugins = createAuthPlugins(makeOriginEnv());
 		const ssoPlugin = plugins.find((candidate) => candidate.id === "sso");
 		const scimPlugin = plugins.find((candidate) => candidate.id === "scim");
 
@@ -191,18 +289,18 @@ describe("organization member entitlement chokepoints", () => {
 });
 
 describe("SIWE production gate", () => {
-	const enabledSiweEnv = {
+	const enabledSiweEnv = makeOriginEnv({
 		CINAAUTH_SIWE_ENABLED: "true",
 		CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1,11155111",
 		CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
 		CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
 		CINAAUTH_SIWE_ALLOW_LEGACY: "false",
 		CINAAUTH_SIWE_AUTO_SIGNUP: "false",
-	} as CloudflareBindings;
+	});
 
 	it("does not register SIWE without a complete enabled configuration", () => {
 		expect(
-			createAuthPlugins({} as CloudflareBindings).find(
+			createAuthPlugins(makeOriginEnv()).find(
 				(candidate) => candidate.id === "siwe",
 			),
 		).toBeUndefined();
@@ -267,12 +365,14 @@ describe("Stripe organization billing policy", () => {
 	});
 
 	it("registers an authoritative organization reference callback", () => {
-		const stripePlugin = createAuthPlugins({
-			STRIPE_SECRET_KEY: "stripe-secret",
-			STRIPE_WEBHOOK_SECRET: "stripe-webhook-secret",
-			STRIPE_DEFAULT_PRICE_ID: "price_production",
-			CINAAUTH_ENTITLEMENT_CONFIG: entitlementConfig(),
-		} as CloudflareBindings).find((candidate) => candidate.id === "stripe");
+		const stripePlugin = createAuthPlugins(
+			makeOriginEnv({
+				STRIPE_SECRET_KEY: "stripe-secret",
+				STRIPE_WEBHOOK_SECRET: "stripe-webhook-secret",
+				STRIPE_DEFAULT_PRICE_ID: "price_production",
+				CINAAUTH_ENTITLEMENT_CONFIG: entitlementConfig(),
+			}),
+		).find((candidate) => candidate.id === "stripe");
 
 		expect(stripePlugin).toBeDefined();
 		expect(stripePlugin?.options).toMatchObject({

@@ -6,6 +6,13 @@ Next.js 客户端变量在构建时内联，缺失时可能把浏览器请求编
 导致会话 Cookie 写入错误域。代理返回响应时还必须逐条保留所有 `Set-Cookie`，
 因为登录会同时设置 session token、cookie cache 和多会话 Cookie。
 
+部署环境必须设置 `CINAAUTH_REQUIRE_AUTH_WORKER_BINDING="true"`。只有本地
+Next.js 开发可以显式设置为精确的 `false` 并使用公网 Auth URL；缺失、大小写
+错误或其他值都会按 required 模式处理。required 模式下，`CINAAUTH_URL` 必须是
+不含显式端口、路径、查询或凭据的 canonical HTTPS origin，且 `AUTH_WORKER`
+必须存在。任何配置或 Binding 缺失都会在公网请求前返回带
+`Cache-Control: no-store` 的 HTTP 503。
+
 已登录用户通过 `/dashboard/security` 管理需要近期认证的会话、Passkey、MFA、关联身份和账户删除。页面在服务端通过 `AUTH_WORKER` Service Binding 并行读取权威安全数据；任一安全分区加载失败时，对应敏感操作会失效关闭。
 
 ## 问题诊断
@@ -29,6 +36,7 @@ Next.js 客户端变量在构建时内联，缺失时可能把浏览器请求编
 ```toml
 [vars]
 CINAAUTH_URL = "https://auth.cinaseek.ai"  # 指向实际的认证 API
+CINAAUTH_REQUIRE_AUTH_WORKER_BINDING = "true"  # 部署环境禁止公网回退
 ```
 
 ### 2. 创建后构建补丁脚本
@@ -68,7 +76,14 @@ execSync("node post-build-patch.js", {
 [[services]]
 binding = "AUTH_WORKER"
 service = "cinaauth-api"
+
+[vars]
+CINAAUTH_REQUIRE_AUTH_WORKER_BINDING = "true"
 ```
+
+Wrangler 的 named environment 不继承 `services` 和 `vars`。未来增加 SIWE
+staging 时，必须在对应 environment 中重新声明 staging `AUTH_WORKER`、
+`CINAAUTH_URL` 和本开关，不能复用或回退到 production 配置。
 
 #### 拦截 /api/auth/* 请求
 在 `post-build-patch.js` 中添加 worker.js 补丁，拦截所有 `/api/auth/*` 请求并转发到 AUTH_WORKER：
@@ -105,7 +120,7 @@ if (url.pathname.startsWith("/api/auth/") && env.AUTH_WORKER) {
 - ✅ 零网络延迟（内部通信）
 - ✅ 无需公网域名配置
 - ✅ 自动处理 CORS
-- ✅ 错误处理：如果 auth worker 不可用，返回 503 错误
+- ✅ 错误处理：如果 Binding 或 Auth URL 配置不可用，返回 503，且不重试公网
 
 ## 部署结果
 

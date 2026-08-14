@@ -5,22 +5,30 @@ import {
 	parseProductionGenericOAuthConfig,
 } from "../src/oauth-config";
 
+const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
+
 const provider = {
 	providerId: "github",
 	clientId: "client-id",
 	clientSecret: "client-secret",
 	discoveryUrl: "https://github.example/.well-known/openid-configuration",
-	redirectURI: genericOAuthRedirectURI("github"),
+	redirectURI: genericOAuthRedirectURI("github", ACCOUNT_ORIGIN),
 };
 
 describe("production Generic OAuth configuration", () => {
 	it("accepts a provider pinned to the account-portal callback", () => {
 		expect(
-			parseProductionGenericOAuthConfig(JSON.stringify([provider])),
+			parseProductionGenericOAuthConfig(
+				JSON.stringify([provider]),
+				ACCOUNT_ORIGIN,
+			),
 		).toEqual([provider]);
-		expect(getPublicGenericOAuthProviders(JSON.stringify([provider]))).toEqual([
-			{ id: "github", type: "generic-oauth" },
-		]);
+		expect(
+			getPublicGenericOAuthProviders(
+				JSON.stringify([provider]),
+				ACCOUNT_ORIGIN,
+			),
+		).toEqual([{ id: "github", type: "generic-oauth" }]);
 	});
 
 	it("accepts explicit HTTPS endpoints when discovery is unavailable", () => {
@@ -31,10 +39,13 @@ describe("production Generic OAuth configuration", () => {
 			authorizationUrl: "https://idp.example.com/oauth/authorize",
 			tokenUrl: "https://idp.example.com/oauth/token",
 			userInfoUrl: "https://idp.example.com/oauth/userinfo",
-			redirectURI: genericOAuthRedirectURI("enterprise-idp"),
+			redirectURI: genericOAuthRedirectURI("enterprise-idp", ACCOUNT_ORIGIN),
 		};
 		expect(
-			parseProductionGenericOAuthConfig(JSON.stringify([explicit])),
+			parseProductionGenericOAuthConfig(
+				JSON.stringify([explicit]),
+				ACCOUNT_ORIGIN,
+			),
 		).toEqual([explicit]);
 	});
 
@@ -59,7 +70,10 @@ describe("production Generic OAuth configuration", () => {
 		["invalid headers", { ...provider, discoveryHeaders: { key: "" } }],
 	])("rejects %s", (_name, invalid) => {
 		expect(
-			parseProductionGenericOAuthConfig(JSON.stringify([invalid])),
+			parseProductionGenericOAuthConfig(
+				JSON.stringify([invalid]),
+				ACCOUNT_ORIGIN,
+			),
 		).toEqual([]);
 	});
 
@@ -67,6 +81,28 @@ describe("production Generic OAuth configuration", () => {
 		expect(
 			parseProductionGenericOAuthConfig(
 				JSON.stringify([provider, { ...provider, clientId: "second" }]),
+				ACCOUNT_ORIGIN,
+			),
+		).toEqual([]);
+	});
+
+	it("pins provider callbacks to the configured Accounts origin", () => {
+		const stagingOrigin = "https://accounts-siwe-staging.cinaseek.ai";
+		const stagingProvider = {
+			...provider,
+			redirectURI: genericOAuthRedirectURI("github", stagingOrigin),
+		};
+
+		expect(
+			parseProductionGenericOAuthConfig(
+				JSON.stringify([stagingProvider]),
+				stagingOrigin,
+			),
+		).toEqual([stagingProvider]);
+		expect(
+			parseProductionGenericOAuthConfig(
+				JSON.stringify([provider]),
+				stagingOrigin,
 			),
 		).toEqual([]);
 	});

@@ -104,7 +104,7 @@ HTTPS authorization、token 和 user-info endpoint。
 在当前 PowerShell 进程设置 `GENERIC_OAUTH_CONFIG`，然后运行：
 
 ```powershell
-pnpm --dir workers/auth-api run provision:secrets
+pnpm --dir workers/auth-api run provision:secrets -- --deployment-target production
 pnpm --dir workers/auth-api run check:production
 pnpm --dir workers/auth-api run check:cloudflare
 ```

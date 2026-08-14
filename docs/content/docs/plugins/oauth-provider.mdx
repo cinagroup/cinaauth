@@ -673,6 +673,15 @@ This section shows how your API should verify tokens received from your clients.
 
 Verification can be performed using `verifyAccessToken` available through the `oauthProviderResourceClient` plugin or `cinaauth/oauth2` package.
 
+When calling the direct `cinaauth/oauth2` API (or `mcpHandler`), provide
+`jwksUrl` when the authorization server is reached over public HTTPS. Runtimes
+with a private transport can instead pass `jwksFetch`, an async function that
+returns the JWKS through that transport, plus a stable `jwksCacheKey` object to
+retain key rotation and cache behavior. For example, a Cloudflare Worker can
+load JWKS through a Service Binding rather than silently falling back to the
+public authorization-server hostname. `oauthProviderResourceClient`
+configuration continues to use `jwksUrl` or `remoteVerify`.
+
 With `cinaauth` package:
 
 ```ts title="api/[endpoint].ts"
@@ -1664,6 +1673,10 @@ You can easily make your APIs [MCP-compatible](https://modelcontextprotocol.io/s
 
     export { handler as GET, handler as POST, handler as DELETE };
     ```
+
+    `mcpHandler` accepts the same `jwksFetch` and `jwksCacheKey` alternatives
+    as `verifyAccessToken` when the resource server must use a private
+    transport such as a Cloudflare Service Binding.
   </Step>
 </Steps>
 

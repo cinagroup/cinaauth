@@ -5,14 +5,16 @@ import { Logo } from "@/components/logo";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
-import { getOidcClientConfig } from "@/lib/auth/config";
+import type { OidcClientConfig } from "@/lib/auth/config";
 import { Callback } from "@/pages/Callback";
 import { Dashboard } from "@/pages/Dashboard";
 import { Home } from "@/pages/Home";
 
-const config = getOidcClientConfig();
+type AppProps = {
+	config: OidcClientConfig;
+};
 
-function App() {
+function App({ config }: AppProps) {
 	return (
 		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 			<AuthProvider config={config}>

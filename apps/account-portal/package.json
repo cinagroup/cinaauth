@@ -11,6 +11,7 @@
     "build:cf": "node build-cf.mjs",
     "preview:cf": "pnpm --config.verify-deps-before-run=false exec opennextjs-cloudflare preview",
     "deploy:cf": "node deploy-cf.mjs",
+    "test:deploy-cf": "node --test ./deploy-cf.test.mjs",
     "start": "next start",
     "test": "vitest run",
     "check:oauth-build": "node ./scripts/check-oauth-build.mjs",
