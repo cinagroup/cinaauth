@@ -120,6 +120,33 @@ test("manual Account Phase One deploy is main-only, attested, and keeps SIWE dis
 	assert.match(deploy, /environment: production/);
 });
 
+test("Account Portal deployment jobs build workspace packages before typecheck", () => {
+	const deploymentJobs = [
+		["manual and reusable Account deployment", jobBlock(account, "deploy")],
+		[
+			"central Account preflight",
+			jobBlock(central, "preflight-account-portal", "deploy-delivery"),
+		],
+	];
+
+	for (const [name, source] of deploymentJobs) {
+		const install = source.indexOf("- name: Install dependencies");
+		const build = source.indexOf("- name: Build workspace packages");
+		const typecheck = source.indexOf("- name: Typecheck account portal");
+
+		assert.ok(install >= 0, `${name} must install dependencies`);
+		assert.ok(build > install, `${name} must build after install`);
+		assert.ok(
+			typecheck > build,
+			`${name} must typecheck after the workspace build`,
+		);
+		assert.match(
+			source.slice(build, typecheck),
+			/run: pnpm --dir \.\.\/\.\. build/,
+		);
+	}
+});
+
 test("production attestation and live backup audit gate every Cloudflare write", () => {
 	for (const input of [
 		"restore_rehearsal_completed",
