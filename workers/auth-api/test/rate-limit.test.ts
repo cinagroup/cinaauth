@@ -2,9 +2,11 @@ import type { RateLimit } from "cinaauth";
 import { describe, expect, it, vi } from "vitest";
 import { decideRateLimit } from "../src/rate-limit-policy";
 import {
+	AUTH_RATE_LIMIT_RULES,
 	createDurableObjectRateLimitStorage,
 	getRateLimitShardName,
 	LOGIN_RATE_LIMIT_RULES,
+	SIWE_RATE_LIMIT_RULES,
 } from "../src/rate-limit-storage";
 
 describe("Durable Object rate-limit policy", () => {
@@ -43,6 +45,18 @@ describe("Durable Object rate-limit policy", () => {
 		expect(() => decideRateLimit(null, { window: 0, max: 5 }, 0)).toThrow(
 			RangeError,
 		);
+	});
+
+	it("applies narrow write limits to every SIWE proof endpoint", () => {
+		expect(SIWE_RATE_LIMIT_RULES).toEqual({
+			"/siwe/challenge": { window: 60, max: 10 },
+			"/siwe/verify": { window: 60, max: 10 },
+			"/siwe/link-wallet": { window: 60, max: 10 },
+		});
+		expect(AUTH_RATE_LIMIT_RULES).toEqual({
+			...LOGIN_RATE_LIMIT_RULES,
+			...SIWE_RATE_LIMIT_RULES,
+		});
 	});
 });
 

@@ -44,7 +44,8 @@ const siweMessage = () =>
 	`Version: 1\n` +
 	`Chain ID: ${SIWE_CHAIN_ID}\n` +
 	`Nonce: ${SIWE_NONCE}\n` +
-	`Issued At: 2024-01-01T00:00:00.000Z`;
+	// Strict SIWE verification rejects stale Issued At values by default.
+	`Issued At: ${new Date().toISOString()}`;
 
 beforeAll(async () => {
 	const data: GoogleProfile = {

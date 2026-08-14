@@ -96,6 +96,7 @@ import {
 	parseSCIMOwnershipMigrationInput,
 } from "./scim-ownership-migration";
 import { getActiveSecretsStoreReadiness } from "./secrets-store-readiness";
+import { createSiweRequestBodyLimitMiddleware } from "./siwe-request-body-limit";
 import { handleSuperAdminGovernedRequest } from "./super-admin-governance";
 
 export { RateLimitDurableObject } from "./rate-limit";
@@ -1259,6 +1260,10 @@ app.use(
 		},
 	}),
 );
+
+// Inspect the actual SIWE stream before every concrete Auth route. A cloned
+// request keeps accepted bodies available to the downstream auth.handler.
+app.use("/api/auth/*", createSiweRequestBodyLimitMiddleware<AppEnv>());
 
 // Public, secret-free capability discovery. Login surfaces use this to avoid
 // advertising providers that are not configured on the production Worker.

@@ -17,6 +17,20 @@ export const DASHBOARD_NAVIGATION = [
 export type DashboardNavigationHref =
 	(typeof DASHBOARD_NAVIGATION)[number]["href"];
 
+const AUTHENTICATION_PATH_PREFIXES = [
+	"/forgot-password",
+	"/reset-password",
+	"/sign-in",
+	"/sign-up",
+] as const;
+
+/** Keeps focused authentication flows outside the public marketing chrome. */
+export function isAuthenticationPath(pathname: string) {
+	return AUTHENTICATION_PATH_PREFIXES.some(
+		(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+	);
+}
+
 export function isDashboardPath(pathname: string) {
 	return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
 }

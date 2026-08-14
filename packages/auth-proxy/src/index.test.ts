@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	createAuthProxyRequest,
+	createAuthProxyResponse,
 	isAllowedProxyOrigin,
 	splitSetCookieHeader,
 	toHostOnlyCookie,
@@ -61,5 +62,31 @@ describe("auth proxy contracts", () => {
 				"https://admin.cinaseek.ai",
 			),
 		).toBe(false);
+	});
+
+	it("drops stale entity encoding headers when rebuilding a decoded response", async () => {
+		const headers = new Headers({
+			"Content-Encoding": "br",
+			"Content-Length": "5",
+			"Content-Type": "application/json; charset=utf-8",
+		});
+		headers.append(
+			"Set-Cookie",
+			"cinaauth.session_token=signed; Path=/; HttpOnly; Secure; SameSite=Lax",
+		);
+		const upstream = new Response('{"ok":true}', { headers });
+
+		const proxied = createAuthProxyResponse(upstream);
+
+		expect(proxied.headers.get("content-encoding")).toBeNull();
+		expect(proxied.headers.get("content-length")).toBeNull();
+		expect(proxied.headers.get("content-type")).toBe(
+			"application/json; charset=utf-8",
+		);
+		expect(proxied.headers.get("cache-control")).toBe("no-store");
+		expect(proxied.headers.getSetCookie()).toEqual([
+			"cinaauth.session_token=signed; Path=/; HttpOnly; Secure; SameSite=Lax",
+		]);
+		expect(await proxied.json()).toEqual({ ok: true });
 	});
 });

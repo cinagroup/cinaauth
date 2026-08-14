@@ -187,6 +187,36 @@ describe("organization member entitlement chokepoints", () => {
 	});
 });
 
+describe("SIWE production gate", () => {
+	it("does not register SIWE without a complete enabled configuration", () => {
+		expect(
+			createAuthPlugins({} as CloudflareBindings).find(
+				(candidate) => candidate.id === "siwe",
+			),
+		).toBeUndefined();
+	});
+
+	it("passes the strict RP, chain, and account-creation policy to SIWE v2", () => {
+		const plugin = createAuthPlugins({
+			CINAAUTH_SIWE_ENABLED: "true",
+			CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1,11155111",
+			CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
+			CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
+			CINAAUTH_SIWE_ALLOW_LEGACY: "false",
+			CINAAUTH_SIWE_AUTO_SIGNUP: "false",
+		} as CloudflareBindings).find((candidate) => candidate.id === "siwe");
+
+		expect(plugin?.options).toMatchObject({
+			domain: "accounts.cinaseek.ai",
+			uri: "https://accounts.cinaseek.ai",
+			enabled: true,
+			allowedChainIds: [1, 11155111],
+			legacyNonce: false,
+			allowUserCreation: false,
+		});
+	});
+});
+
 describe("Stripe organization billing policy", () => {
 	it("allows only organization owners and administrators", () => {
 		expect(canManageOrganizationBilling("owner")).toBe(true);

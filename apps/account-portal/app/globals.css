@@ -118,6 +118,16 @@
 	--radius-pill-sm: 64px;
 	--radius-pill: var(--cina-radius-pill);
 	--radius: var(--radius-md);
+
+	/* Authentication surface: one layout, semantic light/dark values. */
+	--cina-auth-shell-width: 31rem;
+	--cina-auth-logo-size: 2.75rem;
+	--cina-auth-card-padding: 1.5rem;
+	--cina-auth-card-radius: 1.5rem;
+	--cina-auth-card-border: color-mix(in srgb, var(--ink) 16%, transparent);
+	--cina-auth-control-border: hsl(0 0% 46%);
+	--cina-auth-card-shadow: 0 24px 64px -40px rgb(0 0 0 / 0.42);
+	color-scheme: light;
 }
 
 .dark {
@@ -130,6 +140,9 @@
 	--mute: hsl(0 0% 55%);
 	--hairline: hsl(0 0% 15%);
 	--hairline-strong: hsl(0 0% 45%);
+	--link: hsl(210 100% 66%);
+	--link-deep: hsl(210 100% 77%);
+	--link-bg-soft: hsl(211 48% 22%);
 
 	--background: var(--canvas-soft);
 	--foreground: var(--ink);
@@ -163,6 +176,11 @@
 	--sidebar-accent-foreground: var(--ink);
 	--sidebar-border: var(--hairline);
 	--sidebar-ring: hsl(0 0% 83%);
+
+	--cina-auth-card-border: color-mix(in srgb, var(--ink) 22%, transparent);
+	--cina-auth-control-border: hsl(0 0% 48%);
+	--cina-auth-card-shadow: none;
+	color-scheme: dark;
 }
 
 @theme inline {
@@ -546,4 +564,39 @@
 	--border: var(--hairline);
 	--input: var(--hairline);
 	--ring: var(--link);
+}
+
+/* Compact, card-first authentication canvas based on the selected reference. */
+.cina-auth-backdrop {
+	background-color: var(--background);
+	background-image: none;
+}
+
+.dark .cina-auth-backdrop {
+	background-image: none;
+}
+
+.cina-auth-card {
+	--input: var(--cina-auth-control-border);
+	border: 1px solid var(--cina-auth-card-border);
+	border-radius: var(--cina-auth-card-radius);
+	background: var(--card);
+	box-shadow: var(--cina-auth-card-shadow);
+}
+
+.cina-auth-card .border-hairline {
+	border-color: var(--cina-auth-control-border);
+}
+
+.cina-auth-logo-frame {
+	display: inline-flex;
+	height: var(--cina-auth-logo-size);
+	width: var(--cina-auth-logo-size);
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	border: 1px solid var(--cina-auth-card-border);
+	border-radius: var(--radius-lg);
+	background: var(--card);
+	box-shadow: none;
 }

@@ -84,7 +84,13 @@
   },
   "vars": {
     "CINAAUTH_URL": "https://auth.cinaseek.ai",
-    "CINAAUTH_CUTOVER_STATE": "live"
+    "CINAAUTH_CUTOVER_STATE": "live",
+    "CINAAUTH_SIWE_ENABLED": "false",
+    "CINAAUTH_SIWE_ALLOWED_CHAIN_IDS": "1",
+    "CINAAUTH_SIWE_RP_DOMAIN": "accounts.cinaseek.ai",
+    "CINAAUTH_SIWE_RP_URI": "https://accounts.cinaseek.ai",
+    "CINAAUTH_SIWE_ALLOW_LEGACY": "false",
+    "CINAAUTH_SIWE_AUTO_SIGNUP": "false"
   },
   "queues": {
     "producers": [

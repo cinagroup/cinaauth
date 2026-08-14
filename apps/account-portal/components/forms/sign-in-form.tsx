@@ -109,9 +109,10 @@ export function SignInForm({
 								{...field}
 								id="sign-in-email"
 								type="email"
-								placeholder="m@example.com"
+								placeholder="Enter your email"
 								aria-invalid={fieldState.invalid}
 								autoComplete="email"
+								size="lg"
 							/>
 							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
 						</Field>
@@ -126,7 +127,7 @@ export function SignInForm({
 								<FieldLabel htmlFor="sign-in-password">Password</FieldLabel>
 								<Link
 									href="/forgot-password"
-									className="ml-auto inline-block text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
+									className="ml-auto inline-block text-xs text-body underline-offset-4 transition-colors hover:text-ink hover:underline"
 								>
 									Forgot password?
 								</Link>
@@ -138,6 +139,7 @@ export function SignInForm({
 									placeholder="Enter your password"
 									aria-invalid={fieldState.invalid}
 									autoComplete="current-password"
+									size="lg"
 								/>
 							) : (
 								<Input
@@ -147,6 +149,7 @@ export function SignInForm({
 									placeholder="Enter your password"
 									aria-invalid={fieldState.invalid}
 									autoComplete="current-password"
+									size="lg"
 								/>
 							)}
 							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -173,7 +176,8 @@ export function SignInForm({
 			<TurnstileChallenge challenge={captcha} />
 			<Button
 				type="submit"
-				className="w-full relative mt-2"
+				size="lg"
+				className="relative mt-2 w-full"
 				disabled={loading || !captcha.canSubmit}
 			>
 				{loading ? <Loader2 size={16} className="animate-spin" /> : "Sign in"}

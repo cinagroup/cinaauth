@@ -72,6 +72,7 @@ import {
 	createR2PrivacyExportProvider,
 	hasPrivacyExportRuntime,
 } from "./privacy-export";
+import { getSiweRuntimeConfig } from "./siwe-runtime-config";
 
 const AUTH_ORIGIN = "https://auth.cinaseek.ai";
 const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
@@ -247,6 +248,7 @@ export const createAuthPlugins = (
 	);
 	const plans = stripePlans(env);
 	const turnstile = getTurnstileConfig(env);
+	const siweRuntime = getSiweRuntimeConfig(env);
 
 	const plugins: CinaAuthPlugin[] = [
 		jwt({
@@ -613,22 +615,6 @@ export const createAuthPlugins = (
 			description: "CinaSeek identity and access management API",
 		}),
 		haveIBeenPwned(),
-		siwe({
-			domain: "auth.cinaseek.ai",
-			emailDomainName: "auth.cinaseek.ai",
-			getNonce: async () => crypto.randomUUID().replace(/-/g, ""),
-			verifyMessage: async ({ message, signature, address }) => {
-				try {
-					const recoveredAddress = recoverPersonalSignAddress(
-						message,
-						signature,
-					);
-					return recoveredAddress?.toLowerCase() === address.toLowerCase();
-				} catch {
-					return false;
-				}
-			},
-		}),
 		admin({
 			// Roles recognized by the admin console's whitelist
 			// (CINAADMIN_ALLOWED_ROLES = super_admin,security_admin).
@@ -646,6 +632,34 @@ export const createAuthPlugins = (
 				: [],
 		}),
 	];
+
+	if (siweRuntime.enabled) {
+		plugins.push(
+			siwe({
+				domain: siweRuntime.rpDomain,
+				uri: siweRuntime.rpUri,
+				enabled: true,
+				allowedChainIds: siweRuntime.allowedChainIds,
+				legacyNonce: siweRuntime.allowLegacy,
+				allowUserCreation: siweRuntime.autoSignup,
+				challengeExpiresIn: 5 * 60,
+				maxMessageAge: 5 * 60,
+				clockSkew: 60,
+				emailDomainName: "auth.cinaseek.ai",
+				verifyMessage: async ({ message, signature, address }) => {
+					try {
+						const recoveredAddress = recoverPersonalSignAddress(
+							message,
+							signature,
+						);
+						return recoveredAddress?.toLowerCase() === address.toLowerCase();
+					} catch {
+						return false;
+					}
+				},
+			}),
+		);
+	}
 
 	if (turnstile.enabled && turnstile.secretKey) {
 		plugins.push(

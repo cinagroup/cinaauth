@@ -151,12 +151,18 @@ describe("Accounts authentication UI phase two contract", () => {
 		const signUpSource = readSource(
 			"../app/(auth)/sign-up/_components/sign-up.tsx",
 		);
+		const signUpStateSource = readSource(
+			"../app/(auth)/sign-up/_components/sign-up-state.ts",
+		);
 		const emailPageSource = readSource("../app/(auth)/sign-up/email/page.tsx");
 
 		expect(signUpSource).toContain("useSearchParams");
 		expect(signUpSource).toContain("buildPreservedAuthPath");
 		expect(signUpSource).toContain("hasSignedOidcCreatePrompt");
-		expect(signUpSource).toContain("hasCreatePrompt ? null");
+		expect(signUpSource).toContain("getSignUpAvailability");
+		expect(signUpStateSource).toContain(
+			"const showOAuth = !hasCreatePrompt && oauthReady",
+		);
 		expect(signUpSource).not.toContain('href="/sign-up/email"');
 		expect(signUpSource).not.toContain('callbackURL="/dashboard"');
 		expect(emailPageSource).toContain("completeEmailOtpSignUp");

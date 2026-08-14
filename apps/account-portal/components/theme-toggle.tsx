@@ -1,4 +1,6 @@
 "use client";
+
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
@@ -10,47 +12,14 @@ export function ThemeToggle() {
 		<Button
 			variant="outline"
 			size="icon"
-			onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
+			type="button"
+			aria-label="Toggle color theme"
+			title="Toggle color theme"
+			onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
 			suppressHydrationWarning
 		>
-			{/* Sun icon — visible in light mode. AnimateTransform disabled for reduced motion. */}
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="1em"
-				height="1em"
-				viewBox="0 0 24 24"
-				className="dark:hidden motion-safe:animate-[spin_30s_linear_infinite]"
-				suppressHydrationWarning
-			>
-				<g
-					fill="none"
-					stroke="currentColor"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth="2"
-				>
-					<path strokeDasharray="2" d="M12 21v1M21 12h1M12 3v-1M3 12h-1" />
-					<path
-						strokeDasharray="2"
-						d="M18.5 18.5l0.5 0.5M18.5 5.5l0.5 -0.5M5.5 5.5l-0.5 -0.5M5.5 18.5l-0.5 0.5"
-					/>
-				</g>
-				<circle cx="12" cy="12" r="6" fill="currentColor" />
-			</svg>
-			{/* Moon icon — visible in dark mode */}
-			<svg
-				className="hidden dark:block h-6 w-5"
-				viewBox="0 0 32 32"
-				fill="none"
-				xmlns="http://www.w3.org/2000/svg"
-				suppressHydrationWarning
-			>
-				<path
-					d="M16 2.66667V29.3333C19.5362 29.3333 22.9276 27.9286 25.4281 25.4281C27.9286 22.9276 29.3333 19.5362 29.3333 16C29.3333 12.4638 27.9286 9.07239 25.4281 6.57191C22.9276 4.07142 19.5362 2.66667 16 2.66667Z"
-					fill="currentColor"
-				/>
-			</svg>
-			<span className="sr-only">Toggle theme</span>
+			<Sun aria-hidden className="dark:hidden" />
+			<Moon aria-hidden className="hidden dark:block" />
 		</Button>
 	);
 }

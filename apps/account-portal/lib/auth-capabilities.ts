@@ -1,6 +1,8 @@
 import type { AuthCapabilities } from "@cinaauth/auth-web-contract";
 import { resolveAuthClientBaseURL } from "./auth-api";
 
+export const AUTH_CAPABILITIES_QUERY_KEY = ["auth-capabilities"] as const;
+
 export const CORE_AUTH_CAPABILITIES: AuthCapabilities = {
 	version: 4,
 	methods: {
@@ -12,7 +14,7 @@ export const CORE_AUTH_CAPABILITIES: AuthCapabilities = {
 		passkey: true,
 		anonymous: true,
 		twoFactor: true,
-		siwe: true,
+		siwe: false,
 		sso: true,
 	},
 	oauthProviders: [],
@@ -44,6 +46,71 @@ const isPublicProvider = (
 		provider.type === "generic-oauth" &&
 		typeof provider.id === "string" &&
 		/^[a-zA-Z0-9._-]{1,64}$/.test(provider.id)
+	);
+};
+
+const AUTH_METHOD_KEYS = [
+	"emailPassword",
+	"emailOtp",
+	"magicLink",
+	"phoneOtp",
+	"username",
+	"passkey",
+	"anonymous",
+	"twoFactor",
+	"siwe",
+	"sso",
+] as const;
+
+/** Rejects incomplete transport payloads before they can relax client controls. */
+export const isAuthCapabilitiesSnapshot = (
+	value: unknown,
+): value is AuthCapabilities => {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Record<string, unknown>;
+	if (candidate.version !== 4 || typeof candidate.billing !== "boolean") {
+		return false;
+	}
+	if (typeof candidate.oneTap !== "boolean") return false;
+	if (
+		!Array.isArray(candidate.oauthProviders) ||
+		!candidate.oauthProviders.every(isPublicProvider)
+	) {
+		return false;
+	}
+
+	if (!candidate.methods || typeof candidate.methods !== "object") return false;
+	const methods = candidate.methods as Record<string, unknown>;
+	if (!AUTH_METHOD_KEYS.every((key) => typeof methods[key] === "boolean")) {
+		return false;
+	}
+
+	if (!candidate.captcha || typeof candidate.captcha !== "object") return false;
+	const captcha = candidate.captcha as Record<string, unknown>;
+	if (
+		typeof captcha.enabled !== "boolean" ||
+		!(
+			captcha.provider === null || captcha.provider === "cloudflare-turnstile"
+		) ||
+		!(captcha.siteKey === null || typeof captcha.siteKey === "string") ||
+		!(captcha.action === null || typeof captcha.action === "string") ||
+		!Array.isArray(captcha.protectedEndpoints) ||
+		!captcha.protectedEndpoints.every(
+			(path) =>
+				typeof path === "string" && path.startsWith("/") && path.length <= 128,
+		)
+	) {
+		return false;
+	}
+	return (
+		captcha.enabled === false ||
+		(captcha.provider === "cloudflare-turnstile" &&
+			typeof captcha.siteKey === "string" &&
+			captcha.siteKey.trim().length > 0 &&
+			captcha.siteKey.length <= 256 &&
+			typeof captcha.action === "string" &&
+			/^[a-zA-Z0-9_-]{1,32}$/.test(captcha.action) &&
+			captcha.protectedEndpoints.length > 0)
 	);
 };
 
@@ -104,6 +171,7 @@ const normalizeCapabilities = (value: unknown): AuthCapabilities => {
 			emailOtp: methods.emailOtp === true,
 			magicLink: methods.magicLink === true,
 			phoneOtp: methods.phoneOtp === true,
+			siwe: methods.siwe === true,
 		},
 		oauthProviders: providers,
 		oneTap: candidate.oneTap === true,

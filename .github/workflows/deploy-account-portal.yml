@@ -2,6 +2,12 @@ name: Deploy Account Portal
 
 on:
   workflow_call:
+  workflow_dispatch:
+    inputs:
+      operator_attestation:
+        description: Type DEPLOY CINAAUTH ACCOUNT PORTAL PHASE ONE
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -22,6 +28,43 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate manual Phase One authorization
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json
+          OPERATOR_ATTESTATION: ${{ inputs.operator_attestation }}
+          REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main" || (echo "Account Portal Phase One must run from main" && exit 1)
+          test "$OPERATOR_ATTESTATION" = "DEPLOY CINAAUTH ACCOUNT PORTAL PHASE ONE" || (echo "Operator attestation does not authorize Account Portal Phase One" && exit 1)
+          node -e '
+            const fs = require("node:fs");
+            const config = JSON.parse(fs.readFileSync(process.env.CINAAUTH_PLANNED_WORKER_CONFIG, "utf8"));
+            if (config.vars?.CINAAUTH_SIWE_ENABLED !== "false") {
+              console.error("Account Portal Phase One requires the tracked SIWE switch to remain false");
+              process.exit(1);
+            }
+            if (!/^[a-f0-9]{32}$/i.test(process.env.REOWN_PROJECT_ID ?? "")) {
+              console.error("REOWN_PROJECT_ID must be exactly 32 hexadecimal characters");
+              process.exit(1);
+            }
+          '
+
+      - name: Configure wallet UI rollout from tracked Auth config
+        env:
+          CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const config = JSON.parse(fs.readFileSync(process.env.CINAAUTH_PLANNED_WORKER_CONFIG, "utf8"));
+            const enabled = config.vars?.CINAAUTH_SIWE_ENABLED;
+            if (enabled !== "true" && enabled !== "false") {
+              console.error("Tracked CINAAUTH_SIWE_ENABLED must be exactly true or false");
+              process.exit(1);
+            }
+            fs.appendFileSync(process.env.GITHUB_ENV, `NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED=${enabled}\n`);
+          '
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -30,14 +73,19 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
-      - name: Validate required secrets
+      - name: Validate required Cloudflare secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
+
+      - name: Validate central readiness credential
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
+        run: |
           test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32 || (echo "CINAAUTH_MIGRATION_TOKEN must be at least 32 characters" && exit 1)
 
       - name: Install dependencies
@@ -47,11 +95,23 @@ jobs:
         run: pnpm run typecheck
 
       - name: Test account portal contracts
-        run: pnpm exec vitest run middleware.test.ts lib/auth-api.test.ts lib/auth-capabilities.test.ts lib/admin-access.test.ts lib/oidc-navigation.test.ts
+        run: >
+          pnpm exec vitest run
+          middleware.test.ts
+          lib/auth-api.test.ts
+          lib/auth-capabilities.test.ts
+          lib/admin-access.test.ts
+          lib/oidc-navigation.test.ts
+          lib/reown-wallet-gate.test.ts
+          lib/reown-wallet-cookie.test.ts
+          lib/siwe-wallet-protocol.test.ts
+          lib/reown-wallet-source-contract.test.ts
+          lib/account-build-readiness.test.ts
 
       - name: Test and check OAuth build parity
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
         run: |
           pnpm run test:oauth-build
           pnpm run check:oauth-build
@@ -62,8 +122,10 @@ jobs:
           CINAAUTH_URL: https://auth.cinaseek.ai
           NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
 
       - name: Wait for governed Auth readiness
+        if: github.event_name != 'workflow_dispatch'
         env:
           CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
         run: |
@@ -96,6 +158,30 @@ jobs:
           echo "Auth Worker did not reach governed readiness" >&2
           exit 1
 
+      - name: Verify public Auth availability for Phase One
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          headers_file="$RUNNER_TEMP/auth-capabilities.headers"
+          capabilities_file="$RUNNER_TEMP/auth-capabilities.json"
+          curl --fail-with-body --show-error --silent \
+            --retry 5 --retry-all-errors --retry-delay 5 \
+            --dump-header "$headers_file" \
+            --output "$capabilities_file" \
+            https://accounts.cinaseek.ai/api/auth/capabilities
+          grep -Eiq '^cache-control:.*no-store' "$headers_file" || (echo "Auth capabilities must be no-store" && exit 1)
+          node -e '
+            const fs = require("node:fs");
+            const capabilities = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (
+              capabilities.version !== 4 ||
+              typeof capabilities.methods !== "object" ||
+              capabilities.methods === null
+            ) {
+              console.error("Production Auth capabilities are unavailable or malformed");
+              process.exit(1);
+            }
+          ' "$capabilities_file"
+
       - name: Deploy account portal
         uses: cloudflare/wrangler-action@v3
         with:
@@ -103,6 +189,34 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/account-portal
           command: deploy
+
+      - name: Verify manual Phase One readiness marker
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
+        run: |
+          headers_file="$RUNNER_TEMP/account-build-readiness.headers"
+          readiness_file="$RUNNER_TEMP/account-build-readiness.json"
+          curl --fail-with-body --show-error --silent \
+            --retry 10 --retry-all-errors --retry-delay 6 \
+            --dump-header "$headers_file" \
+            --output "$readiness_file" \
+            https://accounts.cinaseek.ai/api/build-readiness
+          grep -Eiq '^cache-control:.*no-store' "$headers_file" || (echo "Account build readiness must be no-store" && exit 1)
+          node -e '
+            const fs = require("node:fs");
+            const readiness = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (
+              readiness.ready !== true ||
+              readiness.siweProtocol !== "cinaauth-siwe-v2" ||
+              readiness.walletUi !== "reown-appkit-v1" ||
+              readiness.walletUiEnabled !== false ||
+              readiness.reownProjectId !== process.env.REOWN_PROJECT_ID
+            ) {
+              console.error("Deployed Account Portal does not match the approved Phase One bundle");
+              process.exit(1);
+            }
+          ' "$readiness_file"
 
       - name: Smoke test account portal
         run: |

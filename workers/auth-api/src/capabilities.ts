@@ -3,8 +3,10 @@ import { getTurnstileConfig } from "./captcha-config";
 import type { DeliveryProviderCapabilities } from "./delivery";
 import { isBillingRuntimeReady } from "./entitlements";
 import { getPublicGenericOAuthProviders } from "./oauth-config";
+import type { SiweRuntimeEnv } from "./siwe-runtime-config";
+import { getSiweRuntimeConfig } from "./siwe-runtime-config";
 
-type CapabilitiesEnv = {
+type CapabilitiesEnv = SiweRuntimeEnv & {
 	GENERIC_OAUTH_CONFIG?: string;
 	GOOGLE_CLIENT_ID?: string;
 	GOOGLE_CLIENT_SECRET?: string;
@@ -55,6 +57,7 @@ export const getAuthCapabilities = (
 	delivery: DeliveryProviderCapabilities = { email: false, sms: false },
 ): AuthCapabilities => {
 	const turnstile = getTurnstileConfig(env);
+	const siwe = getSiweRuntimeConfig(env);
 
 	return {
 		version: 4,
@@ -67,7 +70,7 @@ export const getAuthCapabilities = (
 			passkey: true,
 			anonymous: true,
 			twoFactor: true,
-			siwe: true,
+			siwe: siwe.enabled,
 			sso: true,
 		},
 		oauthProviders: getPublicOAuthProviders(env),
