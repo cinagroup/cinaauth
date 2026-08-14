@@ -268,6 +268,10 @@ test("production attestation and live backup audit gate every Cloudflare write",
 	assert.match(gate, /tr -d '\[:space:\]'/);
 	assert.match(
 		gate,
+		/node workers\/auth-api\/scripts\/check-planetscale-backups\.mjs > "\$report_file"/,
+	);
+	assert.doesNotMatch(
+		gate,
 		/pnpm .*--dir workers\/auth-api run check:planetscale-backups/,
 	);
 	assert.match(gate, /report\.activeBackups/);
