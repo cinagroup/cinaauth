@@ -289,7 +289,7 @@ jobs:
       - name: Validate Privacy Erasure core secret input
         env:
           CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-        run: pnpm run provision:secrets -- --deployment-target production --dry-run
+        run: pnpm run provision:secrets --deployment-target=production --dry-run
 
       - name: Build Privacy Erasure Worker dry run
         run: pnpm run build
@@ -307,7 +307,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CINAAUTH_ERASURE_STORAGE_SECRET: ${{ secrets.CINAAUTH_ERASURE_STORAGE_SECRET }}
-        run: pnpm run provision:secrets -- --deployment-target production
+        run: pnpm run provision:secrets --deployment-target=production
 
       - name: Verify Privacy Erasure structural bootstrap
         env:
@@ -400,7 +400,7 @@ jobs:
           STRIPE_DEFAULT_PLAN_NAME: ${{ secrets.STRIPE_DEFAULT_PLAN_NAME }}
           CINAAUTH_ENTITLEMENT_CONFIG: ${{ secrets.CINAAUTH_ENTITLEMENT_CONFIG }}
           CINAUTH_ADMIN_SERVICE_KEY: ${{ secrets.CINAUTH_ADMIN_SERVICE_KEY }}
-        run: pnpm run provision:secrets -- --deployment-target production
+        run: pnpm run provision:secrets --deployment-target=production
 
       - name: Build Worker dry run
         run: pnpm run build

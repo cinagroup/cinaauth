@@ -487,7 +487,7 @@ Use `-- --dry-run` first to inspect whether the script will create, update, or
 reuse the widget without mutating Cloudflare.
 
 ```powershell
-pnpm --dir workers/auth-api run provision:secrets -- --deployment-target production
+pnpm --dir workers/auth-api run provision:secrets --deployment-target=production
 ```
 
 The script requires an HTTPS Delivery URL and always provisions the

@@ -24,7 +24,7 @@ pnpm --dir workers/auth-api run deploy
 
 pnpm --dir apps/account-portal run typecheck
 pnpm --dir apps/account-portal run build:cf
-pnpm --dir apps/account-portal run deploy:cf -- --deployment-target production
+pnpm --dir apps/account-portal run deploy:cf --deployment-target=production
 
 pnpm --dir apps/admin-console run typecheck
 pnpm --dir apps/admin-console run test

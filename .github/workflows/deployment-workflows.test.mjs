@@ -351,7 +351,7 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 	assert.equal(
 		(
 			account.match(
-				/run: pnpm run deploy:cf -- --deployment-target production/g,
+				/run: pnpm run deploy:cf --deployment-target=production/g,
 			) ?? []
 		).length,
 		1,
@@ -468,16 +468,21 @@ test("production script consumers select the explicit top-level deployment targe
 	].map((match) => match[1]);
 	assert.equal(provisionCommands.length, 3);
 	for (const command of provisionCommands) {
-		assert.match(command, /-- --deployment-target production(?:\s|$)/);
+		assert.match(command, /--deployment-target=production(?:\s|$)/);
+		assert.doesNotMatch(command, /-- --deployment-target/);
 		assert.doesNotMatch(command, /--env(?:\s|=)|CLOUDFLARE_ENV/);
 	}
 	assert.match(
 		localDeploy,
-		/pnpm --dir apps\/account-portal run deploy:cf -- --deployment-target production/,
+		/pnpm --dir apps\/account-portal run deploy:cf --deployment-target=production/,
 	);
 	assert.match(
 		account,
-		/run: pnpm run deploy:cf -- --deployment-target production/,
+		/run: pnpm run deploy:cf --deployment-target=production/,
+	);
+	assert.doesNotMatch(
+		account,
+		/run: pnpm run deploy:cf -- --deployment-target/,
 	);
 	for (const workflow of [account, central]) {
 		assert.match(workflow, /run: pnpm run test:deploy-cf/);
