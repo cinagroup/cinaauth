@@ -40,7 +40,8 @@ fragments, and hosts outside the exact allow-list are rejected.
 
 ## Secrets and encrypted target state
 
-Provision `CINAAUTH_ERASURE_STORAGE_SECRET` as a Worker secret through
+For an initial bootstrap or an explicitly approved coordinated rotation only,
+provision `CINAAUTH_ERASURE_STORAGE_SECRET` as a Worker secret through
 environment-variable-to-stdin:
 
 ```powershell
@@ -49,6 +50,14 @@ pnpm --dir workers/privacy-erasure run provision:secrets --deployment-target=pro
 
 It must be a stable, independent value of at least 32 characters. It keys the
 subject/evidence digests persisted by operation coordinators.
+
+The regular central production workflow never reads this value from GitHub and
+never calls the Privacy Erasure provisioner. It first verifies only the existing
+Cloudflare secret name with
+`node scripts/check-cloudflare-preserved-secrets.mjs`, then relies on normal
+`wrangler deploy` secret preservation. A missing inventory entry is a recovery
+blocker, not permission to generate a replacement. Keep the value only in the
+Cloudflare Worker unless a separate approved secret escrow is introduced.
 
 Create the two Secrets Store values with independent cryptographically random
 material (at least 32 bytes of entropy):
@@ -215,12 +224,17 @@ persisted there. Completed targets are not replayed.
 ## Build, bootstrap, and verification
 
 ```powershell
+node scripts/check-cloudflare-preserved-secrets.mjs
 pnpm --dir workers/privacy-erasure run check
 pnpm --dir workers/privacy-erasure run build
 pnpm --dir workers/privacy-erasure run deploy
-pnpm --dir workers/privacy-erasure run provision:secrets --deployment-target=production
 pnpm --dir workers/privacy-erasure run check:cloudflare -- --allow-not-ready
 ```
+
+Do not add `CINAAUTH_ERASURE_STORAGE_SECRET` to GitHub Actions for this normal
+deployment path. The standalone `provision:secrets` command above remains a
+break-glass bootstrap/rotation tool and is intentionally absent from the central
+workflow.
 
 After the Admin control plane stages, validates, and activates targets, require
 full operational readiness:
