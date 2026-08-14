@@ -58,7 +58,7 @@ export const fetchAuthCapabilitiesForQuery = async (
 	return capabilities;
 };
 
-export const getAuthCapabilitiesQueryOptions = (): UseQueryOptions<
+const getAuthCapabilitiesQueryOptions = (): UseQueryOptions<
 	AuthCapabilities,
 	Error,
 	AuthCapabilities,
