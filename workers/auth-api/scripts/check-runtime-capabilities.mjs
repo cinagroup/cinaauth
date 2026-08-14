@@ -3,6 +3,7 @@ const hasAll = (configuredInputs, names) =>
 
 export const evaluateRuntimeCapabilities = ({
 	configuredInputs,
+	configuredValues = {},
 	capabilities,
 }) => {
 	const failures = [];
@@ -69,6 +70,14 @@ export const evaluateRuntimeCapabilities = ({
 		failures.push(
 			"Stripe billing inputs are configured but the live billing capability is disabled",
 		);
+	}
+	if (Object.hasOwn(configuredValues, "CINAAUTH_SIWE_ENABLED")) {
+		const expectedSiwe = configuredValues.CINAAUTH_SIWE_ENABLED === "true";
+		if (capabilities.methods?.siwe !== expectedSiwe) {
+			failures.push(
+				"Live SIWE capability does not match the tracked SIWE kill switch",
+			);
+		}
 	}
 	return failures;
 };

@@ -9,14 +9,17 @@ describe("siwe", async () => {
 	const chainId = 1; // Ethereum mainnet
 	const NONCE = "A1b2C3d4E5f6G7h8J";
 
-	// Builds a valid ERC-4361 message bound to the server-issued nonce. The
+	// Builds a valid EIP-4361 message bound to the server-issued nonce. The
 	// plugin now parses and validates this message, so tests must sign a real
 	// SIWE message rather than an arbitrary string.
 	const siweMessage = (opts?: {
 		domain?: string;
+		uri?: string;
 		address?: string;
 		chainId?: number;
 		nonce?: string;
+		version?: string;
+		issuedAt?: string;
 		expirationTime?: string;
 		notBefore?: string;
 	}) => {
@@ -24,15 +27,18 @@ describe("siwe", async () => {
 		const a = opts?.address ?? walletAddress;
 		const c = opts?.chainId ?? chainId;
 		const n = opts?.nonce ?? NONCE;
+		const uri = opts?.uri ?? `https://${d}`;
+		const version = opts?.version ?? "1";
+		const issuedAt = opts?.issuedAt ?? new Date().toISOString();
 		let msg =
 			`${d} wants you to sign in with your Ethereum account:\n` +
 			`${a}\n\n` +
 			`Sign in.\n\n` +
-			`URI: https://${d}\n` +
-			`Version: 1\n` +
+			`URI: ${uri}\n` +
+			`Version: ${version}\n` +
 			`Chain ID: ${c}\n` +
 			`Nonce: ${n}\n` +
-			`Issued At: 2024-01-01T00:00:00.000Z`;
+			`Issued At: ${issuedAt}`;
 		if (opts?.expirationTime)
 			msg += `\nExpiration Time: ${opts.expirationTime}`;
 		if (opts?.notBefore) msg += `\nNot Before: ${opts.notBefore}`;
@@ -359,6 +365,45 @@ describe("siwe", async () => {
 		});
 		expect(error).toBeNull();
 		expect(data?.success).toBe(true);
+	});
+
+	it("preserves legacy nonce callback issuer and audience semantics", async () => {
+		let audience: string | undefined;
+		let issuer: string | undefined;
+		const { client } = await getTestInstance(
+			{
+				plugins: [
+					siwe({
+						domain,
+						async getNonce() {
+							return NONCE;
+						},
+						async verifyMessage({ cacao, signature }) {
+							audience = cacao?.p.aud;
+							issuer = cacao?.p.iss;
+							return signature === "valid_signature";
+						},
+					}),
+				],
+			},
+			{
+				clientOptions: {
+					plugins: [siweClient()],
+				},
+			},
+		);
+
+		await client.siwe.nonce({ walletAddress, chainId });
+		const { error } = await client.siwe.verify({
+			message: siweMessage(),
+			signature: "valid_signature",
+			walletAddress,
+			chainId,
+		});
+
+		expect(error).toBeNull();
+		expect(audience).toBe(domain);
+		expect(issuer).toBe(domain);
 	});
 
 	it("should not bind a caller-supplied email that already belongs to another account", async () => {

@@ -20,6 +20,17 @@ export const LOGIN_RATE_LIMIT_RULES = {
 	"/sign-in/*": { window: 60, max: 5 },
 } as const;
 
+export const SIWE_RATE_LIMIT_RULES = {
+	"/siwe/challenge": { window: 60, max: 10 },
+	"/siwe/verify": { window: 60, max: 10 },
+	"/siwe/link-wallet": { window: 60, max: 10 },
+} as const;
+
+export const AUTH_RATE_LIMIT_RULES = {
+	...LOGIN_RATE_LIMIT_RULES,
+	...SIWE_RATE_LIMIT_RULES,
+} as const;
+
 /**
  * Hashes a CinaAuth bucket into one of 256 stable Durable Object shards.
  */

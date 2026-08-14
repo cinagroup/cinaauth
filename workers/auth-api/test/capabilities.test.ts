@@ -31,6 +31,7 @@ describe("public auth capabilities", () => {
 		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(false);
 		expect(capabilities.methods.passkey).toBe(true);
+		expect(capabilities.methods.siwe).toBe(false);
 		expect(capabilities.oauthProviders).toEqual([]);
 		expect(capabilities.oneTap).toBe(false);
 		expect(capabilities.captcha).toEqual({
@@ -41,6 +42,29 @@ describe("public auth capabilities", () => {
 			protectedEndpoints: [],
 		});
 		expect(capabilities.billing).toBe(false);
+	});
+
+	it("advertises SIWE only for a complete strict EOA configuration", () => {
+		expect(
+			getAuthCapabilities({
+				CINAAUTH_SIWE_ENABLED: "true",
+				CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1",
+				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
+				CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
+				CINAAUTH_SIWE_ALLOW_LEGACY: "false",
+				CINAAUTH_SIWE_AUTO_SIGNUP: "false",
+			}).methods.siwe,
+		).toBe(true);
+		expect(
+			getAuthCapabilities({
+				CINAAUTH_SIWE_ENABLED: "true",
+				CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1",
+				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
+				CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
+				CINAAUTH_SIWE_ALLOW_LEGACY: "true",
+				CINAAUTH_SIWE_AUTO_SIGNUP: "false",
+			}).methods.siwe,
+		).toBe(false);
 	});
 
 	it("advertises social providers only with complete credential pairs", () => {

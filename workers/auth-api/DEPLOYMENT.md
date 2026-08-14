@@ -50,6 +50,75 @@ An audit-write failure is logged but never permits the rejected mutation.
 Never put a PostgreSQL URI, password, API token, or Worker secret in
 `wrangler.json`, a tracked file, or a CLI argument.
 
+## SIWE rollout controls
+
+SIWE is a non-secret, fail-closed rollout in `wrangler.json`. The tracked
+production configuration intentionally keeps `CINAAUTH_SIWE_ENABLED=false`
+until the Accounts Reown flow and real-wallet staging suite pass. While it is
+off, the Worker does not register the SIWE plugin and the public capability is
+`methods.siwe=false`; this is a server-side kill switch, not merely a UI flag.
+
+An enabled configuration requires all of the following exact inputs:
+
+- a valid 32-character Reown Project ID stored as the repository GitHub
+  Actions Secret `REOWN_PROJECT_ID` (the reusable Accounts workflow
+  passes it to the public build as `NEXT_PUBLIC_REOWN_PROJECT_ID`);
+- `CINAAUTH_SIWE_ENABLED=true`;
+- a canonical comma-separated `CINAAUTH_SIWE_ALLOWED_CHAIN_IDS` allowlist;
+- `CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.ai`;
+- `CINAAUTH_SIWE_RP_URI=https://accounts.cinaseek.ai`;
+- `CINAAUTH_SIWE_ALLOW_LEGACY=false`;
+- `CINAAUTH_SIWE_AUTO_SIGNUP=false`.
+
+Missing, malformed, duplicated, non-HTTPS, cross-host, legacy, or auto-signup
+values keep SIWE disabled. Phase one is EOA-only, accepts only a 65-byte
+EIP-191 personal-sign signature, and uses the Worker-side chain allowlist.
+Unknown wallets cannot create users. The v2 challenge path binds the RP,
+wallet, chain, purpose, and expiry; legacy nonce issuance remains disabled.
+Change the enable switch only through a reviewed deployment after running the
+local production gate, the remote capability parity check, and browser tests
+against the Accounts origin.
+
+The Worker also enforces a raw request-body boundary before dispatching SIWE
+routes. `challenge`, `nonce`, and `get-nonce` accept at most 2 KiB; `verify` and
+`link-wallet` accept at most 20 KiB. The middleware counts bytes from the actual
+request stream even when `Content-Length` is missing, chunked, or forged. An
+oversized body receives a no-store `413` with code `REQUEST_BODY_TOO_LARGE`;
+accepted bodies remain available to CinaAuth's endpoint parser unchanged.
+
+The central production workflow runs an Account Portal preflight after the
+restore/backup authorization and before any Cloudflare deployment. The
+preflight reads the planned `CINAAUTH_SIWE_ENABLED` value directly from the
+tracked Auth Worker `wrangler.json`; an enabled rollout requires an exact
+32-hex-character `REOWN_PROJECT_ID`, then must pass the Accounts typecheck,
+contract tests, and full Cloudflare bundle build before the Auth Worker can be
+published. A disabled rollout does not require a Project ID. The later reusable
+Accounts job repeats the live capability parity check and performs the single
+Accounts deployment after Auth readiness.
+
+Enabling SIWE requires two separate production runs. First, keep the Worker
+switch false, configure the production `REOWN_PROJECT_ID`, and deploy the
+Account Portal. The build derives `NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED` from the
+tracked Worker switch, so this first-phase bundle contains the v2 integration
+but keeps every wallet sign-in and linking entry point hidden even if an older
+live Worker still advertises SIWE. Its public `GET /api/build-readiness`
+response is no-store and identifies `cinaauth-siwe-v2`, `reown-appkit-v1`, the
+disabled wallet UI state, and the exact Project ID compiled into the online
+bundle. A false rollout may omit the Project ID, but that deployment is not
+ready for the enable phase. In a later reviewed run, change only the tracked
+Worker switch to true; the same derivation enables the rebuilt wallet UI.
+Before any Cloudflare write, the
+preflight requires the online marker, its no-store contract, and an exact match
+with the current repository Actions secret. A missing marker, an unready
+marker, an ID mismatch, or a first same-run enable attempt fails closed. This
+prevents a new Worker from disabling legacy nonce behavior while an old Portal
+is still online, even if the later Portal deployment would fail.
+
+The Project ID is a public client identifier, not an authentication secret.
+Configure `https://accounts.cinaseek.ai` as an allowed Reown origin. The
+Accounts deployment gate refuses to build a production UI when the live Auth
+Worker advertises SIWE without a valid Project ID.
+
 ## 1. Create or select Hyperdrive
 
 Create the Hyperdrive resource in the Cloudflare dashboard under
@@ -706,6 +775,19 @@ both PlanetScale credentials exist, the live read-only backup audit passes, and
 restore reference is operator-attested evidence; the workflow does not create,
 modify, or delete a PlanetScale branch.
 
+The deliberate exception is the Account Portal-only first phase of the SIWE
+rollout. It does not deploy a backend Worker or perform a database write, so it
+can be started through `Deploy Account Portal` without claiming a restore
+rehearsal. The manual job still requires the `production` environment, must run
+from `main`, requires the exact attestation
+`DEPLOY CINAAUTH ACCOUNT PORTAL PHASE ONE`, rejects the run unless the tracked
+Auth Worker switch is exactly `CINAAUTH_SIWE_ENABLED=false`, and requires an
+exact 32-hex-character repository `REOWN_PROJECT_ID`. After deployment it
+verifies the no-store public readiness marker, disabled wallet UI state, and
+exact compiled Project ID.
+Every backend or migration write remains exclusive to the central recovery
+gate.
+
 The seven active Store values in the table above are created separately through
 the Secrets Store control plane and are attached by the checked-in bindings;
 they are not duplicated as V1 GitHub/Worker secrets. Resend, Twilio, and
@@ -719,9 +801,10 @@ and applies migrations, then requires authenticated Auth `/api/ready` before
 either frontend deploys. Operational child readiness is a separate
 post-activation acceptance gate.
 
-The Account and Admin deployment workflows are reusable-only and cannot be
-manually dispatched outside the central recovery gate. Each polls the
-authenticated readiness endpoint before any frontend Worker write. They require both
+The Admin deployment workflow remains reusable-only. The Account workflow is
+reusable by the central rollout and has only the constrained SIWE first-phase
+manual entrypoint described above. Each polls the authenticated readiness
+endpoint before any frontend Worker write. They require both
 `super-admin-governance-v1` and `provider-namespace-registry-v1` to be installed
 and the cutover state to be `live`. The central backend workflow invokes them
 only after the Auth job succeeds, preventing either frontend from overtaking an

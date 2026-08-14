@@ -1,9 +1,10 @@
 "use client";
 
 import { Github, KeyRound } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { FieldSeparator } from "@/components/ui/field";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
 import {
 	formatOAuthProviderName,
@@ -20,7 +21,9 @@ export function OAuthProviderButtons({
 	callbackURL: string;
 	context?: "signin" | "signup";
 }) {
+	const googleButtonMeasureRef = useRef<HTMLDivElement>(null);
 	const googleButtonRef = useRef<HTMLDivElement>(null);
+	const [googleButtonWidth, setGoogleButtonWidth] = useState<number>();
 	const { data } = useAuthCapabilities();
 	const providers = data?.oauthProviders ?? [];
 	const oneTapReady = isOneTapClientReady(data, googleClientId);
@@ -30,8 +33,26 @@ export function OAuthProviderButtons({
 	);
 
 	useEffect(() => {
-		const container = googleButtonRef.current;
+		const container = googleButtonMeasureRef.current;
 		if (!oneTapReady || !container) return;
+
+		const updateWidth = () => {
+			const nextWidth = Math.min(Math.round(container.clientWidth), 400);
+			if (nextWidth > 0) {
+				setGoogleButtonWidth((currentWidth) =>
+					currentWidth === nextWidth ? currentWidth : nextWidth,
+				);
+			}
+		};
+		updateWidth();
+		const observer = new ResizeObserver(updateWidth);
+		observer.observe(container);
+		return () => observer.disconnect();
+	}, [oneTapReady]);
+
+	useEffect(() => {
+		const container = googleButtonRef.current;
+		if (!oneTapReady || !container || !googleButtonWidth) return;
 		container.replaceChildren();
 		void authClient.oneTap({
 			callbackURL,
@@ -44,7 +65,7 @@ export function OAuthProviderButtons({
 					size: "large",
 					shape: "rectangular",
 					text: context === "signup" ? "signup_with" : "continue_with",
-					width: Math.min(container.clientWidth || 320, 400),
+					width: googleButtonWidth,
 				},
 			},
 			fetchOptions: {
@@ -54,36 +75,37 @@ export function OAuthProviderButtons({
 			},
 		});
 		return () => container.replaceChildren();
-	}, [callbackURL, context, oneTapReady]);
+	}, [callbackURL, context, googleButtonWidth, oneTapReady]);
 
 	if (visibleProviders.length === 0 && !oneTapReady) return null;
 
 	return (
 		<>
-			<div className="relative my-1 flex items-center" role="separator">
-				<div className="flex-grow border-t border-border" />
-				<span className="mx-4 flex-shrink text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-					Or use a connected account
-				</span>
-				<div className="flex-grow border-t border-border" />
-			</div>
+			<FieldSeparator>Or</FieldSeparator>
 			{oneTapReady ? (
 				<div
-					ref={googleButtonRef}
-					className="flex min-h-10 w-full items-center justify-center overflow-hidden"
+					ref={googleButtonMeasureRef}
+					className="flex min-h-12 w-full items-center justify-center overflow-hidden"
 					aria-label={
 						context === "signup"
 							? "Sign up with Google"
 							: "Continue with Google"
 					}
-				/>
+				>
+					<div
+						key={googleButtonWidth ?? "pending"}
+						ref={googleButtonRef}
+						className="flex w-full items-center justify-center"
+					/>
+				</div>
 			) : null}
 			{visibleProviders.map((provider) => (
 				<Button
 					key={provider.id}
 					type="button"
 					variant="outline"
-					className="relative flex w-full justify-center gap-2"
+					size="lg"
+					className="relative flex h-auto min-h-12 w-full justify-center whitespace-normal px-3 py-3 text-center"
 					onClick={() => {
 						if (provider.type === "social") {
 							void authClient.signIn.social({
@@ -99,9 +121,9 @@ export function OAuthProviderButtons({
 					}}
 				>
 					{provider.id === "github" ? (
-						<Github size={17} aria-hidden />
+						<Github data-icon="inline-start" aria-hidden />
 					) : (
-						<KeyRound size={17} aria-hidden />
+						<KeyRound data-icon="inline-start" aria-hidden />
 					)}
 					<span>Continue with {formatOAuthProviderName(provider.id)}</span>
 				</Button>

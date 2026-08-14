@@ -34,6 +34,18 @@ export interface CloudflareBindings extends Cloudflare.Env {
 	CINAAUTH_D1_MIGRATION_TOKEN?: string;
 	/** Fail-closed database cutover state. */
 	CINAAUTH_CUTOVER_STATE?: "maintenance" | "live";
+	/** Explicit SIWE kill switch. Only the exact string "true" enables it. */
+	CINAAUTH_SIWE_ENABLED?: string;
+	/** Comma-separated EIP-155 chain IDs accepted by the SIWE verifier. */
+	CINAAUTH_SIWE_ALLOWED_CHAIN_IDS?: string;
+	/** EIP-4361 relying-party domain shown by the signing wallet. */
+	CINAAUTH_SIWE_RP_DOMAIN?: string;
+	/** Canonical HTTPS relying-party URI bound into every SIWE message. */
+	CINAAUTH_SIWE_RP_URI?: string;
+	/** Phase-one safety gate; production accepts only the exact value "false". */
+	CINAAUTH_SIWE_ALLOW_LEGACY?: string;
+	/** Phase-one safety gate; unknown wallets must not create users. */
+	CINAAUTH_SIWE_AUTO_SIGNUP?: string;
 	/** Optional HMAC secret for OAuth pairwise subject identifiers. */
 	OAUTH_PAIRWISE_SECRET?: string;
 	/** JSON array of cinaauth generic OAuth provider configs. */

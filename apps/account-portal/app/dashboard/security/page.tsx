@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { fetchAuthCapabilities } from "@/lib/auth-capabilities";
+import { getReownInitialCookie } from "@/lib/reown-wallet-cookie";
 import type {
 	SecurityAccount,
 	SecurityApiKey,
@@ -123,6 +124,8 @@ export default async function SecurityCenterPage({
 			initialApiKeys={apiKeys}
 			initialWallets={wallets}
 			configuredProviders={capabilities.oauthProviders}
+			walletCapabilities={capabilities}
+			walletCookie={getReownInitialCookie(requestHeaders.get("cookie"))}
 			providerLinkFailed={providerLinkFailed}
 			dataUnavailable={{
 				sessions: sessionsResult.unavailable,

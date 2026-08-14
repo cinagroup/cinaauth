@@ -256,6 +256,12 @@ const privacyDeletionRuntimeFile = join(
 	"privacy-deletion.ts",
 );
 const envFile = join(workerDir, "src", "env.d.ts");
+const siweRuntimeConfigFile = join(workerDir, "src", "siwe-runtime-config.ts");
+const siweRequestBodyLimitFile = join(
+	workerDir,
+	"src",
+	"siwe-request-body-limit.ts",
+);
 const remotePreflightFile = join(
 	workerDir,
 	"scripts",
@@ -501,6 +507,18 @@ const accountOAuthBuildCheckFile = join(
 	nextDemoDir,
 	"scripts",
 	"check-oauth-build.mjs",
+);
+const accountBuildReadinessFile = join(
+	nextDemoDir,
+	"lib",
+	"account-build-readiness.ts",
+);
+const accountBuildReadinessRouteFile = join(
+	nextDemoDir,
+	"app",
+	"api",
+	"build-readiness",
+	"route.ts",
 );
 const globalCssFile = join(nextDemoDir, "app", "globals.css");
 const authProxyRouteFile = join(
@@ -825,6 +843,8 @@ const deliveryTs = read(deliveryFile);
 const privacyExportTs = read(privacyExportFile);
 const privacyDeletionRuntimeTs = read(privacyDeletionRuntimeFile);
 const envTs = read(envFile);
+const siweRuntimeConfigTs = read(siweRuntimeConfigFile);
+const siweRequestBodyLimitTs = read(siweRequestBodyLimitFile);
 const remotePreflight = read(remotePreflightFile);
 const authReadinessCheck = read(authReadinessCheckFile);
 const runtimeCapabilitiesCheck = read(runtimeCapabilitiesCheckFile);
@@ -886,6 +906,8 @@ const authProxyPackageTs = read(authProxyPackageFile);
 const authClientTs = read(authClientFile);
 const oauthProviderButtonsTs = read(oauthProviderButtonsFile);
 const accountOAuthBuildCheck = read(accountOAuthBuildCheckFile);
+const accountBuildReadiness = read(accountBuildReadinessFile);
+const accountBuildReadinessRoute = read(accountBuildReadinessRouteFile);
 const globalCss = read(globalCssFile);
 const authProxyRouteTs = read(authProxyRouteFile);
 const turnstileComponentTs = read(turnstileComponentFile);
@@ -1114,6 +1136,27 @@ checkIncludesAll(
 	"the server captcha plugin must validate action and hostname on every protected path",
 );
 checkIncludesAll(
+	pluginsTs,
+	[
+		"getSiweRuntimeConfig",
+		"if (siweRuntime.enabled)",
+		"domain: siweRuntime.rpDomain",
+		"uri: siweRuntime.rpUri",
+		"allowedChainIds: siweRuntime.allowedChainIds",
+		"legacyNonce: siweRuntime.allowLegacy",
+		"allowUserCreation: siweRuntime.autoSignup",
+		"recoverPersonalSignAddress",
+	],
+	pluginsFile,
+	"SIWE must be omitted while disabled and use only the strict EOA production contract when enabled",
+);
+checkIncludesAll(
+	capabilitiesTs,
+	["getSiweRuntimeConfig", "siwe: siwe.enabled"],
+	capabilitiesFile,
+	"public SIWE capability must derive from the same fail-closed runtime configuration as the plugin",
+);
+checkIncludesAll(
 	authTs,
 	[
 		"revokeSessionsOnPasswordReset: true",
@@ -1328,10 +1371,14 @@ checkIncludesAll(
 		"authClient.unlinkAccount",
 		"authClient.oauth2.link",
 		'authClient.$fetch("/siwe/list-wallets"',
-		'authClient.$fetch("/siwe/link-wallet"',
+		"cinaAuthSiweProtocolClient",
+		"completeWalletProof",
+		'purpose: "link-wallet"',
+		"walletCapabilities.methods.siwe === true",
+		"identity.chainId !== 1",
 		'"/siwe/set-primary-wallet"',
 		'authClient.$fetch("/siwe/unlink-wallet"',
-		"buildSiweMessage",
+		"signSiweMessage",
 		"Connect wallet",
 		"Make primary",
 		"Disconnect wallet",
@@ -1962,10 +2009,60 @@ checkIncludesAll(
 	[
 		"https://auth.cinaseek.ai/api/auth/capabilities",
 		"evaluateOneTapBuild",
+		"evaluateReownBuild",
+		"evaluatePlannedReownBuild",
+		"evaluatePlannedSiweRelease",
+		"evaluateDeployedWalletReadiness",
+		"CINAAUTH_PLANNED_WORKER_CONFIG",
+		"CINAAUTH_ACCOUNT_BUILD_READINESS_URL",
+		"https://accounts.cinaseek.ai/api/build-readiness",
+		'cache: "no-store"',
+		"deployed = await fetchBuildReadiness(readinessURL)",
+		"const plannedResult = evaluatePlannedSiweRelease({",
+		"the deployed Account Portal Reown Project ID does not match production",
+		"the planned Auth Worker CINAAUTH_SIWE_ENABLED value must be exactly true or false",
+		"the planned Auth Worker enables SIWE but production has no exact 32-hex REOWN_PROJECT_ID",
 		"the production Auth Worker advertises One Tap but the account build has no GOOGLE_CLIENT_ID",
+		"the production Auth Worker advertises SIWE but the account build has no valid REOWN_PROJECT_ID",
 	],
 	accountOAuthBuildCheckFile,
-	"the account deployment must fail when the live server enables One Tap without a matching client build input",
+	"the account deployment gates must fail when planned or live server capabilities lack matching client build inputs",
+);
+checkIncludesAll(
+	accountBuildReadiness,
+	[
+		'siweProtocol: "cinaauth-siwe-v2"',
+		'walletUi: "reown-appkit-v1"',
+		'walletUiEnabled: walletUiEnabled === "true"',
+		"reownProjectId: ready ? reownProjectId : null",
+		'"Cache-Control": "no-store, max-age=0"',
+		'"CDN-Cache-Control": "no-store"',
+		"status: readiness.ready ? 200 : 503",
+	],
+	accountBuildReadinessFile,
+	"the public Account Portal marker must fail closed, stay uncached, and identify the exact deployed SIWE v2 Reown bundle",
+);
+checkIncludesAll(
+	accountBuildReadinessRoute,
+	[
+		'export const dynamic = "force-dynamic"',
+		"process.env.NEXT_PUBLIC_REOWN_PROJECT_ID",
+		"process.env.NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED",
+		"createAccountBuildReadinessResponse",
+		"export function GET()",
+	],
+	accountBuildReadinessRouteFile,
+	"the App Router endpoint must use the default OpenNext server bundle and expose only the dynamic handler around the tested readiness helper",
+);
+check(
+	!accountBuildReadinessRoute.includes(
+		"export const buildAccountBuildReadiness",
+	) &&
+		!accountBuildReadinessRoute.includes(
+			"export const createAccountBuildReadinessResponse",
+		) &&
+		!accountBuildReadinessRoute.includes('export const runtime = "edge"'),
+	`${rel(accountBuildReadinessRouteFile)} must not export non-route helpers or opt into an unsupported edge bundle`,
 );
 checkIncludesAll(
 	authProxyPackageTs,
@@ -2460,6 +2557,15 @@ check(
 	wrangler.vars?.CINAAUTH_CUTOVER_STATE === "live",
 	"Tracked production config must use live cutover state; first cutover deploy overrides it to maintenance",
 );
+check(
+	wrangler.vars?.CINAAUTH_SIWE_ENABLED === "false" &&
+		wrangler.vars?.CINAAUTH_SIWE_ALLOWED_CHAIN_IDS === "1" &&
+		wrangler.vars?.CINAAUTH_SIWE_RP_DOMAIN === "accounts.cinaseek.ai" &&
+		wrangler.vars?.CINAAUTH_SIWE_RP_URI === "https://accounts.cinaseek.ai" &&
+		wrangler.vars?.CINAAUTH_SIWE_ALLOW_LEGACY === "false" &&
+		wrangler.vars?.CINAAUTH_SIWE_AUTO_SIGNUP === "false",
+	"Tracked production SIWE config must stay disabled for rollout, bind Accounts as RP, allow only Ethereum mainnet, and forbid legacy or automatic signup",
+);
 const forbiddenVars = [
 	"CINAAUTH_SECRET",
 	"CINAAUTH_MIGRATION_TOKEN",
@@ -2608,6 +2714,28 @@ check(
 		firstAuthRouteRegistration === impersonationGuardUseRegistration,
 	"the impersonation mutation middleware must be registered before every concrete /api/auth route",
 );
+const siweBodyLimitRegistration = indexTs.indexOf(
+	"createSiweRequestBodyLimitMiddleware<AppEnv>()",
+);
+const siweBodyLimitUseRegistration = indexTs.lastIndexOf(
+	"app.use(",
+	siweBodyLimitRegistration,
+);
+const concreteAuthRouteRegistrations = [
+	...indexTs.matchAll(
+		/app\.(?:get|post|put|patch|delete)\(\s*["']\/api\/auth/g,
+	),
+].map((match) => match.index);
+const firstConcreteAuthRouteRegistration = Math.min(
+	...concreteAuthRouteRegistrations,
+	...onAuthRouteRegistrations,
+);
+check(
+	siweBodyLimitRegistration >= 0 &&
+		siweBodyLimitUseRegistration > impersonationGuardUseRegistration &&
+		siweBodyLimitUseRegistration < firstConcreteAuthRouteRegistration,
+	"the SIWE request body limit must follow impersonation protection and precede every concrete /api/auth route",
+);
 checkIncludesAll(
 	impersonationMutationGuardTs,
 	[
@@ -2730,7 +2858,7 @@ checkIncludesAll(
 	authTs,
 	[
 		"createDurableObjectRateLimitStorage",
-		"LOGIN_RATE_LIMIT_RULES",
+		"AUTH_RATE_LIMIT_RULES",
 		"createDatabase(env)",
 		"createAuthPlugins(env, { advancedOrganization: true })",
 		"waitUntil(",
@@ -2762,6 +2890,48 @@ checkIncludesAll(
 	],
 	indexFile,
 	"the Worker must expose OIDC discovery outside the /api/auth catch-all",
+);
+checkIncludesAll(
+	siweRequestBodyLimitTs,
+	[
+		"SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES = 2 * 1024",
+		"SIWE_PROOF_REQUEST_BODY_LIMIT_BYTES = 20 * 1024",
+		'"/api/auth/siwe/challenge"',
+		'"/api/auth/siwe/nonce"',
+		'"/api/auth/siwe/get-nonce"',
+		'"/api/auth/siwe/verify"',
+		'"/api/auth/siwe/link-wallet"',
+		"request.clone().body",
+		"bytesRead > limitBytes",
+		"cancelBody(request.body",
+		'code: "REQUEST_BODY_TOO_LARGE"',
+		"413",
+		'response.headers.set("Cache-Control", "no-store")',
+	],
+	siweRequestBodyLimitFile,
+	"SIWE challenge and proof endpoints must enforce raw streamed byte limits without trusting Content-Length or consuming accepted bodies",
+);
+checkIncludesAll(
+	indexTs,
+	[
+		'from "./siwe-request-body-limit"',
+		'app.use("/api/auth/*", createSiweRequestBodyLimitMiddleware<AppEnv>())',
+		"handle: () => c.var.auth.handler(c.req.raw)",
+	],
+	indexFile,
+	"the SIWE raw-body boundary must run before the Auth catch-all consumes the preserved request",
+);
+checkIncludesAll(
+	deploymentDoc,
+	[
+		"challenge`, `nonce`, and `get-nonce` accept at most 2 KiB",
+		"`verify` and",
+		"`link-wallet` accept at most 20 KiB",
+		"missing, chunked, or forged",
+		"REQUEST_BODY_TOO_LARGE",
+	],
+	deploymentDocFile,
+	"the SIWE runbook must document raw-body limits, header-independent counting, and the no-store 413 contract",
 );
 
 checkIncludesAll(
@@ -2807,12 +2977,16 @@ checkIncludesAll(
 	rateLimitStorageTs,
 	[
 		'"/sign-in/*": { window: 60, max: 5 }',
+		'"/siwe/challenge": { window: 60, max: 10 }',
+		'"/siwe/verify": { window: 60, max: 10 }',
+		'"/siwe/link-wallet": { window: 60, max: 10 }',
+		"...SIWE_RATE_LIMIT_RULES",
 		"crypto.subtle.digest",
 		"getByName",
 		"consume:",
 	],
 	rateLimitStorageFile,
-	"CinaAuth login endpoints must use deterministically sharded DO storage",
+	"CinaAuth login and SIWE proof endpoints must use deterministically sharded DO storage",
 );
 
 checkIncludesAll(
@@ -3067,6 +3241,12 @@ checkIncludesAll(
 		"CINAAUTH_MIGRATION_TOKEN?: string",
 		"CINAAUTH_D1_MIGRATION_TOKEN?: string",
 		"CINAAUTH_CUTOVER_STATE?",
+		"CINAAUTH_SIWE_ENABLED?: string",
+		"CINAAUTH_SIWE_ALLOWED_CHAIN_IDS?: string",
+		"CINAAUTH_SIWE_RP_DOMAIN?: string",
+		"CINAAUTH_SIWE_RP_URI?: string",
+		"CINAAUTH_SIWE_ALLOW_LEGACY?: string",
+		"CINAAUTH_SIWE_AUTO_SIGNUP?: string",
 		"LEGACY_D1: D1Database",
 		"CINAAUTH_DELIVERY_WEBHOOK_URL?: string",
 		"CINAAUTH_DELIVERY_WEBHOOK_SECRET?: string",
@@ -3079,6 +3259,20 @@ checkIncludesAll(
 	],
 	envFile,
 	"binding types must stay aligned with Worker runtime inputs",
+);
+
+checkIncludesAll(
+	siweRuntimeConfigTs,
+	[
+		'env.CINAAUTH_SIWE_ENABLED !== "true"',
+		"Number.isSafeInteger(chainId)",
+		'url.protocol === "https:"',
+		'env.CINAAUTH_SIWE_ALLOW_LEGACY !== "false"',
+		'env.CINAAUTH_SIWE_AUTO_SIGNUP !== "false"',
+		'walletType: "eoa-only"',
+	],
+	siweRuntimeConfigFile,
+	"SIWE production configuration must parse explicit non-secret controls and fail closed",
 );
 
 checkIncludesAll(
@@ -3110,7 +3304,8 @@ checkIncludesAll(
 		"Verify Privacy Erasure structural bootstrap",
 		"--allow-not-ready",
 		"needs: authorize-production",
-		"needs: [deploy-delivery, deploy-privacy-erasure]",
+		"needs: [authorize-production, preflight-account-portal]",
+		"needs: [deploy-delivery, deploy-privacy-erasure, preflight-account-portal]",
 		"deploy-account-portal",
 		"deploy-admin-console",
 		"uses: ./.github/workflows/deploy-account-portal.yml",
@@ -3153,7 +3348,7 @@ check(
 const authorizationJob = workflowJobBlock(
 	workflow,
 	"authorize-production",
-	"deploy-delivery",
+	"preflight-account-portal",
 );
 checkIncludesAll(
 	authorizationJob,
@@ -3177,6 +3372,63 @@ check(
 		!authorizationJob.includes("command: deploy") &&
 		!authorizationJob.includes("-X POST"),
 	`${rel(workflowFile)} production authorization must remain read-only`,
+);
+const accountPreflightJob = workflowJobBlock(
+	workflow,
+	"preflight-account-portal",
+	"deploy-delivery",
+);
+checkIncludesAll(
+	accountPreflightJob,
+	[
+		"needs: authorize-production",
+		"environment: production",
+		"working-directory: apps/account-portal",
+		"CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json",
+		"CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.ai/api/build-readiness",
+		"REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
+		"NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
+		"Configure wallet UI rollout from tracked Auth config",
+		"NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED",
+		"pnpm run test:oauth-build",
+		"pnpm run check:oauth-build",
+		"pnpm run typecheck",
+		"pnpm run build:cf",
+		"lib/reown-wallet-gate.test.ts",
+		"lib/reown-wallet-cookie.test.ts",
+		"lib/siwe-wallet-protocol.test.ts",
+		"lib/reown-wallet-source-contract.test.ts",
+		"lib/account-build-readiness.test.ts",
+	],
+	workflowFile,
+	"the planned SIWE client configuration and Account Portal bundle must pass before any Cloudflare deployment",
+);
+check(
+	!accountPreflightJob.includes("vars.REOWN_PROJECT_ID"),
+	`${rel(workflowFile)} Account Portal preflight must consume the configured repository secret, not a GitHub variable`,
+);
+check(
+	!accountPreflightJob.includes("cloudflare/wrangler-action") &&
+		!accountPreflightJob.includes("command: deploy") &&
+		!accountPreflightJob.includes("pnpm run deploy"),
+	`${rel(workflowFile)} Account Portal preflight must remain read-only`,
+);
+for (const [job, nextJob] of [
+	["deploy-delivery", "deploy-privacy-erasure"],
+	["deploy-privacy-erasure", "deploy-worker"],
+]) {
+	checkIncludes(
+		workflowJobBlock(workflow, job, nextJob),
+		"needs: [authorize-production, preflight-account-portal]",
+		workflowFile,
+		`${job} must wait for recovery authorization and the Account Portal preflight`,
+	);
+}
+checkIncludes(
+	workflowJobBlock(workflow, "deploy-worker", "deploy-account-portal"),
+	"needs: [deploy-delivery, deploy-privacy-erasure, preflight-account-portal]",
+	workflowFile,
+	"Auth Worker deployment must wait for the Account Portal preflight",
 );
 checkIncludesAll(
 	deploymentDoc,
@@ -3233,8 +3485,17 @@ checkIncludesAll(
 		"accounts.cinaseek.ai",
 		"NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai",
 		"NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}",
+		"REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
+		"NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
+		"Configure wallet UI rollout from tracked Auth config",
+		"NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED",
 		"pnpm run test:oauth-build",
 		"pnpm run check:oauth-build",
+		"lib/reown-wallet-gate.test.ts",
+		"lib/reown-wallet-cookie.test.ts",
+		"lib/siwe-wallet-protocol.test.ts",
+		"lib/reown-wallet-source-contract.test.ts",
+		"lib/account-build-readiness.test.ts",
 		"CINAAUTH_MIGRATION_TOKEN",
 		'test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32',
 		"Wait for governed Auth readiness",
@@ -3250,11 +3511,36 @@ checkIncludesAll(
 	"account portal CI must remain a reusable production-environment unit with governed readiness and redirect smoke coverage",
 );
 check(
+	!accountWorkflow.includes("vars.REOWN_PROJECT_ID"),
+	`${rel(accountWorkflowFile)} must consume the configured repository secret, not a GitHub variable`,
+);
+check(
 	!accountWorkflow.includes("CINAAUTH_DEMO_SECRET") &&
 		!accountWorkflow.includes("wrangler secret put") &&
-		!accountWorkflow.includes("workflow_dispatch:") &&
 		!accountWorkflow.includes("push:"),
-	`${rel(accountWorkflowFile)} must not provision a duplicate Auth secret or bypass the central production gate`,
+	`${rel(accountWorkflowFile)} must not provision a duplicate Auth secret or expose an automatic production trigger`,
+);
+checkIncludesAll(
+	accountWorkflow,
+	[
+		"workflow_call:",
+		"workflow_dispatch:",
+		"DEPLOY CINAAUTH ACCOUNT PORTAL PHASE ONE",
+		"if: github.event_name == 'workflow_dispatch'",
+		"GITHUB_REF",
+		"refs/heads/main",
+		"CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json",
+		"CINAAUTH_SIWE_ENABLED",
+		"Verify manual Phase One readiness marker",
+		"cinaauth-siwe-v2",
+		"reown-appkit-v1",
+	],
+	accountWorkflowFile,
+	"the manual Account Portal entrypoint must be an attested, main-only, SIWE-disabled first-phase deployment",
+);
+check(
+	(accountWorkflow.match(/command: deploy/g) ?? []).length === 1,
+	`${rel(accountWorkflowFile)} must deploy the Account Portal exactly once`,
 );
 check(
 	accountPackage.name === "@cinaauth/account-portal" &&
@@ -3476,6 +3762,9 @@ checkIncludesAll(
 		"message_retention_period",
 		"/workers/scripts/",
 		"checkWorkerBindings",
+		"SIWE_RUNTIME_VARIABLE_NAMES",
+		'item.type === "plain_text"',
+		"must match the tracked non-secret SIWE config",
 		"CINAAUTH_DELIVERY_SERVICE",
 		"CINAAUTH_ERASURE_SERVICE",
 		"cinaauth-privacy-erasure",
@@ -3493,6 +3782,7 @@ checkIncludesAll(
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
 		"checkAuthReadiness",
 		"evaluateRuntimeCapabilities",
+		"configuredValues: config.vars ?? {}",
 		"evaluateDeliveryCapabilityParity",
 		"DELIVERY_READY_URL",
 		'new URL("/api/auth/capabilities", origin)',
@@ -3539,6 +3829,7 @@ checkIncludesAll(
 		"GENERIC_OAUTH_CONFIG is configured but the live capabilities endpoint exposes no valid providers",
 		"Turnstile secrets are configured but the live captcha capability is disabled",
 		"Stripe billing inputs are configured but the live billing capability is disabled",
+		"Live SIWE capability does not match the tracked SIWE kill switch",
 		"Live Email OTP capability does not match Delivery Worker readiness",
 		"Live magic-link capability does not match Delivery Worker readiness",
 		"Live phone OTP capability does not match Delivery Worker readiness",
@@ -3755,6 +4046,21 @@ checkIncludesAll(
 		"CINAAUTH_REQUIRE_ALL_PLUGIN_INPUTS=1",
 		"CLOUDFLARE_TURNSTILE_SITE_KEY",
 		"CLOUDFLARE_TURNSTILE_SECRET_KEY",
+		"CINAAUTH_SIWE_ENABLED=false",
+		"CINAAUTH_SIWE_ALLOWED_CHAIN_IDS",
+		"CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.ai",
+		"CINAAUTH_SIWE_RP_URI=https://accounts.cinaseek.ai",
+		"CINAAUTH_SIWE_ALLOW_LEGACY=false",
+		"CINAAUTH_SIWE_AUTO_SIGNUP=false",
+		"Unknown wallets cannot create users",
+		"Account Portal preflight",
+		"planned `CINAAUTH_SIWE_ENABLED`",
+		"32-hex-character `REOWN_PROJECT_ID`",
+		"A disabled rollout does not require a Project ID.",
+		"repeats the live capability parity check",
+		"two separate production runs",
+		"same-run enable attempt fails closed",
+		"exact Project ID",
 		"/api/migrate",
 		"/api/migrate/d1",
 		"/api/migrate/scim-provider-ownership",

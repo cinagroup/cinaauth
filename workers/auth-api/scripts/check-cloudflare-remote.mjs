@@ -51,6 +51,14 @@ const SERVICE_BINDINGS = [
 	{ name: "CINAAUTH_DELIVERY_SERVICE", service: "cinaauth-delivery" },
 	{ name: "CINAAUTH_ERASURE_SERVICE", service: "cinaauth-privacy-erasure" },
 ];
+const SIWE_RUNTIME_VARIABLE_NAMES = [
+	"CINAAUTH_SIWE_ENABLED",
+	"CINAAUTH_SIWE_ALLOWED_CHAIN_IDS",
+	"CINAAUTH_SIWE_RP_DOMAIN",
+	"CINAAUTH_SIWE_RP_URI",
+	"CINAAUTH_SIWE_ALLOW_LEGACY",
+	"CINAAUTH_SIWE_AUTO_SIGNUP",
+];
 const OPTIONAL_PLUGIN_INPUT_GROUPS = [
 	{
 		name: "Cloudflare Turnstile captcha plugin",
@@ -386,6 +394,14 @@ const checkWorkerBindings = async () => {
 	const settings = await cloudflareFetch(
 		`/accounts/${accountId}/workers/scripts/${config.name}/settings`,
 	);
+	for (const name of SIWE_RUNTIME_VARIABLE_NAMES) {
+		const binding = (settings.bindings ?? []).find(
+			(item) => item.type === "plain_text" && item.name === name,
+		);
+		if (binding?.text !== config.vars?.[name]) {
+			fail(`Remote ${name} must match the tracked non-secret SIWE config`);
+		}
+	}
 	const remoteServices = (settings.bindings ?? []).filter(
 		(item) => item.type === "service",
 	);
@@ -645,6 +661,7 @@ const checkPublicEndpoints = async () => {
 		} else {
 			for (const message of evaluateRuntimeCapabilities({
 				configuredInputs: configuredRuntimeInputs,
+				configuredValues: config.vars ?? {},
 				capabilities,
 			})) {
 				fail(message);

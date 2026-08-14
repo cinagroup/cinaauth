@@ -100,6 +100,41 @@ describe("live optional capability checks", () => {
 			[],
 		);
 	});
+
+	it("enforces SIWE kill-switch parity with the live capability", () => {
+		assert.deepEqual(
+			evaluateRuntimeCapabilities({
+				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
+				configuredValues: { CINAAUTH_SIWE_ENABLED: "false" },
+				capabilities: { methods: { siwe: false } },
+			}),
+			[],
+		);
+		assert.deepEqual(
+			evaluateRuntimeCapabilities({
+				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
+				configuredValues: { CINAAUTH_SIWE_ENABLED: "true" },
+				capabilities: { methods: { siwe: true } },
+			}),
+			[],
+		);
+		assert.match(
+			evaluateRuntimeCapabilities({
+				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
+				configuredValues: { CINAAUTH_SIWE_ENABLED: "false" },
+				capabilities: { methods: { siwe: true } },
+			})[0],
+			/SIWE kill switch/,
+		);
+		assert.match(
+			evaluateRuntimeCapabilities({
+				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
+				configuredValues: { CINAAUTH_SIWE_ENABLED: "true" },
+				capabilities: { methods: { siwe: false } },
+			})[0],
+			/SIWE kill switch/,
+		);
+	});
 });
 
 describe("live delivery capability checks", () => {

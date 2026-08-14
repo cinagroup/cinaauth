@@ -1,5 +1,6 @@
 "use client";
 
+import type { AuthCapabilities } from "@cinaauth/auth-web-contract";
 import {
 	AlertTriangle,
 	Check,
@@ -58,12 +59,12 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { DEFAULT_CINAAUTH_API_URL } from "@/lib/auth-api";
+import { ReownWalletEntry } from "@/components/wallet/reown-wallet-entry";
 import { formatOAuthProviderName } from "@/lib/auth-capabilities";
 import { authClient } from "@/lib/auth-client";
+import { cinaAuthSiweProtocolClient } from "@/lib/cinaauth-siwe-client";
 import { deleteAccountPasskey } from "@/lib/client-api";
 import {
-	buildSiweMessage,
 	getInjectedEthereumProvider,
 	requestEthereumWalletIdentity,
 	signSiweMessage,
@@ -79,6 +80,7 @@ import {
 	PRIVACY_DELETION_READINESS_PATH,
 	parsePrivacyDeletionReadiness,
 } from "@/lib/privacy-center";
+import { isSiweWalletUiEnabled } from "@/lib/reown-wallet-gate";
 import type {
 	SecurityAccount,
 	SecurityApiKey,
@@ -101,6 +103,7 @@ import {
 	summarizeUserAgent,
 } from "@/lib/security-center";
 import { getSecurityProviderLinkURL } from "@/lib/security-provider-actions";
+import { completeWalletProof } from "@/lib/siwe-wallet-protocol";
 
 type SecurityCenterProps = {
 	user: {
@@ -116,6 +119,8 @@ type SecurityCenterProps = {
 	initialApiKeys: SecurityApiKey[];
 	initialWallets: SecurityWallet[];
 	configuredProviders: SecurityOAuthProvider[];
+	walletCapabilities: AuthCapabilities;
+	walletCookie: string | null;
 	providerLinkFailed: boolean;
 	dataUnavailable: {
 		sessions: boolean;
@@ -165,6 +170,8 @@ export function SecurityCenter({
 	initialApiKeys,
 	initialWallets,
 	configuredProviders,
+	walletCapabilities,
+	walletCookie,
 	providerLinkFailed,
 	dataUnavailable,
 }: SecurityCenterProps) {
@@ -207,6 +214,9 @@ export function SecurityCenter({
 	const [backupCodesPending, setBackupCodesPending] = useState(false);
 
 	const recentAuthentication = isSessionRecent(currentSessionCreatedAt);
+	const walletUiEnabled = isSiweWalletUiEnabled(
+		process.env.NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED,
+	);
 	const securityDataUnavailable =
 		dataUnavailable.sessions ||
 		dataUnavailable.accounts ||
@@ -492,36 +502,19 @@ export function SecurityCenter({
 					);
 				}
 				const identity = await requestEthereumWalletIdentity(provider);
-				const nonceResult = await authClient.siwe.nonce({
+				if (identity.chainId !== 1) {
+					throw new Error(
+						"Switch your wallet to Ethereum Mainnet and try again.",
+					);
+				}
+				await completeWalletProof({
+					client: cinaAuthSiweProtocolClient,
+					purpose: "link-wallet",
 					walletAddress: identity.address,
 					chainId: identity.chainId,
+					signMessage: (message) =>
+						signSiweMessage(provider, message, identity.address),
 				});
-				if (nonceResult.error) throw nonceResult.error;
-				if (!nonceResult.data?.nonce) {
-					throw new Error("CinaSeek did not return a wallet nonce");
-				}
-				const identityURL = new URL(DEFAULT_CINAAUTH_API_URL);
-				const message = buildSiweMessage({
-					domain: identityURL.host,
-					uri: identityURL.origin,
-					...identity,
-					nonce: nonceResult.data.nonce,
-				});
-				const signature = await signSiweMessage(
-					provider,
-					message,
-					identity.address,
-				);
-				const { error } = await authClient.$fetch("/siwe/link-wallet", {
-					method: "POST",
-					body: {
-						message,
-						signature,
-						walletAddress: identity.address,
-						chainId: identity.chainId,
-					},
-				});
-				if (error) throw error;
 				await refreshWallets();
 				toast.success("Wallet connected");
 			},
@@ -1278,25 +1271,43 @@ export function SecurityCenter({
 							<WalletCards className="h-5 w-5" /> Ethereum wallets
 						</CardTitle>
 						<CardDescription className="mt-1.5">
-							Prove wallet control with ERC-4361, choose a primary wallet, and
+							Prove wallet control with EIP-4361, choose a primary wallet, and
 							manage wallet sign-in access.
 						</CardDescription>
 					</div>
-					<Button
-						onClick={connectWallet}
-						disabled={
-							!recentAuthentication ||
-							dataUnavailable.wallets ||
-							busyAction === "wallet:connect"
-						}
-					>
-						{busyAction === "wallet:connect" ? (
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-						) : (
-							<Plus className="mr-2 h-4 w-4" />
-						)}
-						Connect wallet
-					</Button>
+					<div className="flex flex-wrap gap-2">
+						<ReownWalletEntry
+							capabilities={walletCapabilities}
+							walletCookie={walletCookie}
+							purpose="link-wallet"
+							label="Connect wallet"
+							variant="default"
+							disabled={!recentAuthentication || dataUnavailable.wallets}
+							onSuccess={() =>
+								refreshWallets().catch(() => {
+									router.refresh();
+								})
+							}
+						/>
+						{walletUiEnabled && walletCapabilities.methods.siwe === true ? (
+							<Button
+								variant="outline"
+								onClick={connectWallet}
+								disabled={
+									!recentAuthentication ||
+									dataUnavailable.wallets ||
+									busyAction === "wallet:connect"
+								}
+							>
+								{busyAction === "wallet:connect" ? (
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								) : (
+									<Plus className="mr-2 h-4 w-4" />
+								)}
+								Use browser wallet
+							</Button>
+						) : null}
+					</div>
 				</CardHeader>
 				<CardContent className="space-y-3">
 					{dataUnavailable.wallets ? (

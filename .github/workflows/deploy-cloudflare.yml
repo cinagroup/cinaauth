@@ -111,10 +111,82 @@ jobs:
             }));
           ' "$report_file"
 
+  preflight-account-portal:
+    name: Preflight Account Portal for planned Auth capabilities
+    runs-on: ubuntu-latest
+    needs: authorize-production
+    environment: production
+    defaults:
+      run:
+        working-directory: apps/account-portal
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure wallet UI rollout from tracked Auth config
+        env:
+          CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const config = JSON.parse(fs.readFileSync(process.env.CINAAUTH_PLANNED_WORKER_CONFIG, "utf8"));
+            const enabled = config.vars?.CINAAUTH_SIWE_ENABLED;
+            if (enabled !== "true" && enabled !== "false") {
+              console.error("Tracked CINAAUTH_SIWE_ENABLED must be exactly true or false");
+              process.exit(1);
+            }
+            fs.appendFileSync(process.env.GITHUB_ENV, `NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED=${enabled}\n`);
+          '
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck account portal
+        run: pnpm run typecheck
+
+      - name: Test account portal contracts
+        run: >
+          pnpm exec vitest run
+          middleware.test.ts
+          lib/auth-api.test.ts
+          lib/auth-capabilities.test.ts
+          lib/admin-access.test.ts
+          lib/oidc-navigation.test.ts
+          lib/reown-wallet-gate.test.ts
+          lib/reown-wallet-cookie.test.ts
+          lib/siwe-wallet-protocol.test.ts
+          lib/reown-wallet-source-contract.test.ts
+          lib/account-build-readiness.test.ts
+
+      - name: Validate planned SIWE and Reown build parity
+        env:
+          CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.ai/api/build-readiness
+          CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json
+          REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
+        run: |
+          pnpm run test:oauth-build
+          pnpm run check:oauth-build
+
+      - name: Build planned Account Portal bundle
+        run: pnpm run build:cf
+        env:
+          CINAAUTH_URL: https://auth.cinaseek.ai
+          NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
+
   deploy-delivery:
     name: Deploy Delivery Worker
     runs-on: ubuntu-latest
-    needs: authorize-production
+    needs: [authorize-production, preflight-account-portal]
     environment: production
     defaults:
       run:
@@ -165,7 +237,7 @@ jobs:
   deploy-privacy-erasure:
     name: Deploy Privacy Erasure Worker
     runs-on: ubuntu-latest
-    needs: authorize-production
+    needs: [authorize-production, preflight-account-portal]
     environment: production
     defaults:
       run:
@@ -230,7 +302,7 @@ jobs:
   deploy-worker:
     name: Deploy Worker API
     runs-on: ubuntu-latest
-    needs: [deploy-delivery, deploy-privacy-erasure]
+    needs: [deploy-delivery, deploy-privacy-erasure, preflight-account-portal]
     environment: production
     defaults:
       run:

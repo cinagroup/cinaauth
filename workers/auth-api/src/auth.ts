@@ -5,8 +5,8 @@ import { enqueueDelivery } from "./delivery";
 import type { CloudflareBindings } from "./env";
 import { createAuthPlugins, TRUSTED_ORIGINS } from "./plugins";
 import {
+	AUTH_RATE_LIMIT_RULES,
 	createDurableObjectRateLimitStorage,
-	LOGIN_RATE_LIMIT_RULES,
 } from "./rate-limit-storage";
 
 /** Maximum age of a session used for sensitive self-service mutations. */
@@ -147,7 +147,7 @@ const buildAuth = (env: CloudflareBindings) =>
 		rateLimit: {
 			enabled: true,
 			customStorage: createDurableObjectRateLimitStorage(env),
-			customRules: LOGIN_RATE_LIMIT_RULES,
+			customRules: AUTH_RATE_LIMIT_RULES,
 			window: 60,
 			max: 300,
 		},

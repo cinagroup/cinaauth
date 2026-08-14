@@ -4,6 +4,7 @@ import {
 	fetchAuthCapabilities,
 	formatOAuthProviderName,
 	getCaptchaRequestHeaders,
+	isAuthCapabilitiesSnapshot,
 	isOneTapClientReady,
 } from "./auth-capabilities";
 
@@ -74,26 +75,62 @@ describe("auth capability discovery", () => {
 		expect(capabilities.methods.emailOtp).toBe(false);
 		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(false);
+		expect(capabilities.methods.siwe).toBe(false);
 		expect(capabilities.oauthProviders).toEqual([]);
 		expect(capabilities.oneTap).toBe(false);
 		expect(capabilities.captcha.enabled).toBe(false);
 	});
 
-	it("rejects incomplete captcha capability payloads", async () => {
-		const capabilities = await fetchAuthCapabilities(async () =>
+	it("enables wallet authentication only from an authoritative capability snapshot", async () => {
+		const disabled = await fetchAuthCapabilities(async () =>
 			Response.json({
 				...CORE_AUTH_CAPABILITIES,
-				captcha: {
-					enabled: true,
-					provider: "cloudflare-turnstile",
-					siteKey: "turnstile-site-key",
-					action: "cinaauth",
-					protectedEndpoints: [],
-				},
+				methods: { ...CORE_AUTH_CAPABILITIES.methods, siwe: false },
+			}),
+		);
+		const enabled = await fetchAuthCapabilities(async () =>
+			Response.json({
+				...CORE_AUTH_CAPABILITIES,
+				methods: { ...CORE_AUTH_CAPABILITIES.methods, siwe: true },
 			}),
 		);
 
+		expect(disabled.methods.siwe).toBe(false);
+		expect(enabled.methods.siwe).toBe(true);
+	});
+
+	it("keeps wallet authentication closed for malformed and failed responses", async () => {
+		const malformed = await fetchAuthCapabilities(async () =>
+			Response.json({
+				...CORE_AUTH_CAPABILITIES,
+				methods: { ...CORE_AUTH_CAPABILITIES.methods, siwe: "true" },
+			}),
+		);
+		const failed = await fetchAuthCapabilities(async () => {
+			throw new Error("offline");
+		});
+
+		expect(malformed.methods.siwe).toBe(false);
+		expect(failed.methods.siwe).toBe(false);
+	});
+
+	it("rejects incomplete captcha capability payloads", async () => {
+		const incomplete = {
+			...CORE_AUTH_CAPABILITIES,
+			captcha: {
+				enabled: true,
+				provider: "cloudflare-turnstile" as const,
+				siteKey: "turnstile-site-key",
+				action: "cinaauth",
+				protectedEndpoints: [],
+			},
+		};
+		const capabilities = await fetchAuthCapabilities(async () =>
+			Response.json(incomplete),
+		);
+
 		expect(capabilities.captcha).toEqual(CORE_AUTH_CAPABILITIES.captcha);
+		expect(isAuthCapabilitiesSnapshot(incomplete)).toBe(false);
 	});
 
 	it("creates the captcha header only for a completed challenge", () => {

@@ -4,6 +4,11 @@ export type AuthFetcher = {
 
 const COOKIE_BOUNDARY = /,(?=\s*[!#$%&'*+\-.^_`|~0-9A-Za-z]+=)/g;
 
+const STALE_REBUILT_BODY_HEADERS = new Set([
+	"content-encoding",
+	"content-length",
+]);
+
 /** Split a merged Set-Cookie header without splitting an Expires date. */
 export const splitSetCookieHeader = (header: string) =>
 	header
@@ -41,7 +46,13 @@ export const createAuthProxyRequest = (request: Request, baseURL: string) => {
 export const createAuthProxyResponse = (response: Response) => {
 	const headers = new Headers();
 	for (const [name, value] of response.headers) {
-		if (name.toLowerCase() !== "set-cookie") headers.append(name, value);
+		const normalizedName = name.toLowerCase();
+		if (
+			normalizedName !== "set-cookie" &&
+			!STALE_REBUILT_BODY_HEADERS.has(normalizedName)
+		) {
+			headers.append(name, value);
+		}
 	}
 
 	const setCookies =

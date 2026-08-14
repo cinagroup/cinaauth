@@ -40,6 +40,7 @@
 	--chart-4: #e43f8f;
 
 	--error: #dc2626; /* red-600 */
+	--error-deep: #b91c1c; /* red-700, accessible on error-soft */
 	--error-soft: #fef2f2; /* red-50 */
 	--warning: #d97706; /* amber-600 */
 	--warning-soft: #fffbeb; /* amber-50 */
@@ -82,6 +83,7 @@
 	--chart-4: #ff72b6;
 
 	--error: #f87171; /* red-400 */
+	--error-deep: #fca5a5; /* red-300 */
 	--error-soft: #450a0a; /* red-950 */
 	--warning: #fbbf24; /* amber-400 */
 	--warning-soft: #451a03; /* amber-950 */
@@ -117,6 +119,7 @@
 	--color-accent-soft: var(--accent-soft);
 
 	--color-error: var(--error);
+	--color-error-deep: var(--error-deep);
 	--color-error-soft: var(--error-soft);
 	--color-warning: var(--warning);
 	--color-warning-soft: var(--warning-soft);
@@ -163,6 +166,28 @@ html {
 
 html.dark {
 	color-scheme: dark;
+}
+
+/* Card-first Admin sign-in surface. The same composition maps directly to the
+   light and dark semantic tokens without changing the OIDC interaction. */
+.admin-login-backdrop {
+	background-color: var(--canvas-soft);
+	background-image: none;
+}
+
+.dark .admin-login-backdrop {
+	background-image: none;
+}
+
+.admin-login-card {
+	border-radius: 1.5rem;
+	box-shadow: 0 24px 64px -40px rgb(0 0 0 / 0.42);
+}
+
+.dark .admin-login-card {
+	background: var(--sidebar);
+	border-color: var(--hairline-strong);
+	box-shadow: none;
 }
 
 /* Focus ring — adapts to theme (--focus-ring). */

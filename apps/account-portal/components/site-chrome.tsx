@@ -4,12 +4,22 @@ import { usePathname } from "next/navigation";
 import Footer from "@/components/footer";
 import Header from "@/components/header";
 import { LazyBackgroundRippleEffect } from "@/components/lazy-background-ripple";
-import { isDashboardPath } from "@/lib/dashboard-navigation";
+import {
+	isAuthenticationPath,
+	isDashboardPath,
+} from "@/lib/dashboard-navigation";
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
 
 	if (isDashboardPath(pathname)) return children;
+	if (isAuthenticationPath(pathname)) {
+		return (
+			<main id="main" className="min-h-screen">
+				{children}
+			</main>
+		);
+	}
 
 	return (
 		<div className="flex min-h-screen flex-col">

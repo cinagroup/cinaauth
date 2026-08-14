@@ -1,18 +1,23 @@
 import { Suspense } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { Skeleton } from "@/components/ui/skeleton";
 import SignUp from "./_components/sign-up";
 
 export default function Page() {
 	return (
 		<AuthShell
 			title="Create your CinaSeek account"
-			description="Choose a secure sign-up method. Email codes create a verified account without a password."
+			description="Choose a secure sign-up method available for this account service."
 		>
 			<Suspense
 				fallback={
-					<p className="py-8 text-center text-sm text-body" role="status">
-						Loading secure sign-up options...
-					</p>
+					<div className="grid gap-3" role="status" aria-live="polite">
+						<p className="text-center text-sm text-body">
+							Checking available sign-up methods...
+						</p>
+						<Skeleton className="h-12 w-full" aria-hidden />
+						<Skeleton className="h-12 w-full" aria-hidden />
+					</div>
 				}
 			>
 				<SignUp />

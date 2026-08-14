@@ -4,6 +4,8 @@ import { createAuthorizationURL } from "cinaauth/oauth2";
 import { jwt } from "cinaauth/plugins/jwt";
 import { getTestInstance } from "cinaauth/test";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { siwe } from "../../cinaauth/src/plugins/siwe";
+import { siweClient } from "../../cinaauth/src/plugins/siwe/client";
 import { validateIssuerUrl } from "./authorize";
 import { oauthProviderClient } from "./client";
 import { oauthProvider } from "./oauth";
@@ -197,6 +199,178 @@ describe("oauth signed query signatures", () => {
 		expect(forwardedParams.get("utm_email")).toBeNull();
 		expect(forwardedParams.getAll(signedQueryParameterNameParam)).toContain(
 			"custom_authorization_context",
+		);
+	});
+
+	it("should preserve a signed OAuth continuation through strict SIWE v2 bodies", async () => {
+		const signedParams = await createSignedParams("test-secret");
+		vi.stubGlobal("window", {
+			location: {
+				search: `?${signedParams.toString()}`,
+			},
+		});
+
+		const oauthClientPlugin = oauthProviderClient();
+		const onRequest = oauthClientPlugin.fetchPlugins[0]?.hooks?.onRequest;
+		const siwePlugin = siwe({
+			domain: "accounts.example.com",
+			uri: "https://accounts.example.com",
+			async verifyMessage() {
+				return true;
+			},
+		});
+		const walletAddress = "0x000000000000000000000000000000000000dEaD";
+		const cases = [
+			{
+				name: "challenge",
+				schema: siwePlugin.endpoints.createSiweChallenge.options.body,
+				body: {
+					walletAddress,
+					chainId: 1,
+					purpose: "sign-in",
+				},
+			},
+			{
+				name: "verify",
+				schema: siwePlugin.endpoints.verifySiweMessage.options.body,
+				body: {
+					walletAddress,
+					chainId: 1,
+					challengeId: "A".repeat(32),
+					message:
+						"accounts.example.com wants you to sign in with your Ethereum account:",
+					signature: "valid_signature",
+				},
+			},
+		] as const;
+
+		for (const testCase of cases) {
+			const ctx = {
+				method: "POST",
+				headers: new Headers({
+					"content-type": "application/json",
+				}),
+				body: JSON.stringify(testCase.body),
+			};
+			await onRequest?.(ctx as Parameters<NonNullable<typeof onRequest>>[0]);
+
+			const injectedBody: unknown = JSON.parse(String(ctx.body));
+			const parsed = testCase.schema.safeParse(injectedBody);
+			expect(parsed.success, `${testCase.name} accepts oauth_query`).toBe(true);
+			expect(parsed.data).toMatchObject({
+				oauth_query: signedParams.toString(),
+			});
+			expect(
+				await verifyOAuthQueryParams(
+					String(
+						(parsed.data as Record<string, unknown> | undefined)?.oauth_query,
+					),
+					"test-secret",
+				),
+			).toBe(true);
+			expect(
+				testCase.schema.safeParse({
+					...(injectedBody as Record<string, unknown>),
+					attacker_extension: true,
+				}).success,
+				`${testCase.name} still rejects unrelated fields`,
+			).toBe(false);
+		}
+	});
+
+	it("should continue OAuth authorization after SIWE v2 verification", async () => {
+		const authServerBaseUrl = "http://localhost:3017";
+		const redirectUri = "http://localhost:5017/api/auth/callback";
+		const { auth, client, signInWithTestUser } = await getTestInstance(
+			{
+				baseURL: authServerBaseUrl,
+				plugins: [
+					oauthProvider({
+						loginPage: "/login",
+						consentPage: "/consent",
+						silenceWarnings: {
+							oauthAuthServerConfig: true,
+							openidConfig: true,
+						},
+					}),
+					siwe({
+						domain: "localhost:3017",
+						uri: authServerBaseUrl,
+						allowedChainIds: [1],
+						async verifyMessage({ signature }) {
+							return signature === "valid_signature";
+						},
+					}),
+					jwt(),
+				],
+			},
+			{
+				clientOptions: {
+					plugins: [oauthProviderClient(), siweClient()],
+				},
+			},
+		);
+		const { headers } = await signInWithTestUser();
+		const oauthClient = await auth.api.adminCreateOAuthClient({
+			headers,
+			body: {
+				redirect_uris: [redirectUri],
+				skip_consent: true,
+			},
+		});
+		expect(oauthClient?.client_id).toBeDefined();
+		expect(oauthClient?.client_secret).toBeDefined();
+
+		const authorizationUrl = await createAuthorizationURL({
+			id: "siwe-oidc",
+			options: {
+				clientId: oauthClient!.client_id,
+				clientSecret: oauthClient!.client_secret!,
+			},
+			redirectURI: redirectUri,
+			state: "siwe-state",
+			scopes: ["openid"],
+			responseType: "code",
+			codeVerifier: generateRandomString(64),
+			authorizationEndpoint: `${authServerBaseUrl}/api/auth/oauth2/authorize`,
+		});
+		let loginRedirectUrl = "";
+		await client.$fetch(authorizationUrl.toString(), {
+			method: "GET",
+			onError(context) {
+				loginRedirectUrl = context.response.headers.get("Location") || "";
+			},
+		});
+		expect(loginRedirectUrl).toContain("/login");
+
+		const location = {
+			search: new URL(loginRedirectUrl, authServerBaseUrl).search,
+			href: "",
+		};
+		vi.stubGlobal("window", { location });
+		const walletAddress = "0x000000000000000000000000000000000000dEaD";
+		const challenge = await client.siwe.challenge({
+			walletAddress,
+			chainId: 1,
+			purpose: "sign-in",
+		});
+		expect(challenge.error).toBeNull();
+		expect(challenge.data).not.toBeNull();
+
+		const verification = await client.siwe.verify({
+			walletAddress,
+			chainId: 1,
+			challengeId: challenge.data!.challengeId,
+			message: challenge.data!.message,
+			signature: "valid_signature",
+		});
+		expect(verification.error).toBeNull();
+		const continuation = new URL(location.href);
+		expect(continuation.origin + continuation.pathname).toBe(redirectUri);
+		expect(continuation.searchParams.get("code")).toBeTruthy();
+		expect(continuation.searchParams.get("state")).toBe("siwe-state");
+		expect(continuation.searchParams.get("iss")).toBe(
+			`${authServerBaseUrl}/api/auth`,
 		);
 	});
 });

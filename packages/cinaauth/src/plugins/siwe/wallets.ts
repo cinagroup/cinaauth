@@ -7,7 +7,13 @@ import {
 	sensitiveSessionMiddleware,
 } from "../../api";
 import type { Account } from "../../types";
-import type { SIWEVerifyMessageArgs, WalletAddress } from "./types";
+import type { WalletAddress } from "./types";
+import {
+	isSiweMessageWithinLimit,
+	SIWE_MESSAGE_MAX_LENGTH,
+	SIWE_SIGNATURE_MAX_LENGTH,
+} from "./types";
+import type { SIWEProofOptions } from "./verify-proof";
 import { verifySiweProof } from "./verify-proof";
 
 const walletAddressSchema = z
@@ -15,20 +21,38 @@ const walletAddressSchema = z
 	.regex(/^0[xX][a-fA-F0-9]{40}$/i)
 	.length(42);
 
-const walletSelectorSchema = z.object({
-	walletAddress: walletAddressSchema,
-	chainId: z.number().int().positive().optional().default(1),
-});
+const walletSelectorSchema = z
+	.object({
+		walletAddress: walletAddressSchema,
+		chainId: z
+			.number()
+			.int()
+			.positive()
+			.max(Number.MAX_SAFE_INTEGER)
+			.optional()
+			.default(1),
+	})
+	.strict();
 
-const linkWalletSchema = walletSelectorSchema.extend({
-	message: z.string().min(1),
-	signature: z.string().min(1),
-});
+const linkWalletSchema = walletSelectorSchema
+	.extend({
+		message: z
+			.string()
+			.min(1)
+			.max(SIWE_MESSAGE_MAX_LENGTH)
+			.refine(isSiweMessageWithinLimit, {
+				message: "SIWE message must not exceed 16 KiB",
+			}),
+		signature: z.string().min(1).max(SIWE_SIGNATURE_MAX_LENGTH),
+		challengeId: z
+			.string()
+			.regex(/^[A-Za-z0-9]{32}$/)
+			.length(32)
+			.optional(),
+	})
+	.strict();
 
-interface SIWEWalletOptions {
-	domain: string;
-	verifyMessage: (args: SIWEVerifyMessageArgs) => Promise<boolean>;
-}
+type SIWEWalletOptions = SIWEProofOptions;
 
 const eq = (field: string, value: string | number | boolean) => ({
 	field,
@@ -96,7 +120,11 @@ export const createSiweWalletEndpoints = (options: SIWEWalletOptions) => ({
 		},
 		async (ctx) => {
 			const userId = ctx.context.session.user.id;
-			const walletAddress = await verifySiweProof(ctx, ctx.body, options);
+			const walletAddress = await verifySiweProof(ctx, ctx.body, options, {
+				purpose: "link-wallet",
+				userId,
+				sessionId: ctx.context.session.session.id,
+			});
 			const { chainId } = ctx.body;
 			const result = await ctx.context.adapter.transaction(async (trx) => {
 				const addressOwner = await trx.findOne<WalletAddress>({

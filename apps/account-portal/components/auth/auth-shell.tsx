@@ -2,6 +2,14 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
+import {
+	Card,
+	CardContent,
+	CardFooter,
+	CardHeader,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export function AuthShell({
 	title,
@@ -21,28 +29,37 @@ export function AuthShell({
 	return (
 		<section
 			aria-labelledby="auth-title"
-			className="cina-auth-backdrop -mx-4 flex min-h-[calc(100svh-4rem)] items-center justify-center px-4 py-10 md:-mx-6 md:px-6 md:py-14"
+			className="cina-auth-backdrop flex min-h-svh items-center justify-center px-4 py-6 md:px-6 md:py-12"
 		>
-			<div className="w-full max-w-[var(--cina-auth-shell-width)]">
-				<div className="mb-6 flex flex-col items-center text-center">
-					<div className="cina-auth-logo-frame mb-4">
-						<Logo size={64} className="h-full w-full" />
+			<Card className="cina-auth-card w-full max-w-[var(--cina-auth-shell-width)]">
+				<CardHeader className="p-[var(--cina-auth-card-padding)] pb-0 sm:p-8 sm:pb-0">
+					<div className="flex w-full items-center justify-between gap-4">
+						<div className="flex min-w-0 items-center gap-3">
+							<div className="cina-auth-logo-frame shrink-0">
+								<Logo
+									size={44}
+									sizes="44px"
+									className="size-full object-cover"
+								/>
+							</div>
+							<p className="truncate font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-body">
+								CinaSeek account
+							</p>
+						</div>
+						<ThemeToggle />
 					</div>
-					<p className="mb-2 font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-mute">
-						CinaSeek account
-					</p>
 					<h1
 						id="auth-title"
-						className="text-balance text-[28px] font-semibold leading-9 tracking-[-0.8px] text-ink sm:text-[32px] sm:leading-10 sm:tracking-[-1.1px]"
+						className="mt-7 w-full text-balance text-left text-[28px] font-semibold leading-9 tracking-[-0.8px] text-ink sm:text-[32px] sm:leading-10 sm:tracking-[-1.1px]"
 					>
 						{title}
 					</h1>
-					<p className="mt-2 max-w-[36ch] text-pretty text-sm leading-6 text-body">
+					<p className="mt-2 w-full max-w-[42ch] text-pretty text-left text-sm leading-6 text-body">
 						{description}
 					</p>
-				</div>
+				</CardHeader>
 
-				<div className="cina-auth-card p-[var(--cina-auth-card-padding)] sm:p-7">
+				<CardContent className="p-[var(--cina-auth-card-padding)] pt-6 sm:p-8 sm:pt-7">
 					{backHref ? (
 						<Link
 							href={backHref}
@@ -53,18 +70,19 @@ export function AuthShell({
 						</Link>
 					) : null}
 					{children}
-				</div>
+				</CardContent>
 
-				{footer ? (
-					<div className="mt-5 text-center text-sm leading-6 text-body">
-						{footer}
+				<CardFooter className="flex flex-col items-stretch gap-4 p-[var(--cina-auth-card-padding)] pt-0 text-center sm:px-8 sm:pb-8">
+					<Separator />
+					{footer ? (
+						<div className="text-sm leading-6 text-body">{footer}</div>
+					) : null}
+					<div className="flex items-center justify-center gap-2 text-xs text-body">
+						<ShieldCheck size={14} aria-hidden className="shrink-0" />
+						<span>Protected by CinaSeek authentication</span>
 					</div>
-				) : null}
-				<div className="mt-4 flex items-center justify-center gap-2 text-xs text-mute">
-					<ShieldCheck size={14} aria-hidden />
-					<span>Protected by CinaSeek authentication</span>
-				</div>
-			</div>
+				</CardFooter>
+			</Card>
 		</section>
 	);
 }

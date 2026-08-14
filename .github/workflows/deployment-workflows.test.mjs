@@ -62,7 +62,7 @@ test("production workflows use the root packageManager pnpm version", () => {
 	}
 });
 
-test("central workflow is the only manually dispatched production entrypoint", () => {
+test("production writes have only the governed central and Account Phase One entrypoints", () => {
 	const trigger = central.slice(
 		central.indexOf("on:"),
 		central.indexOf("permissions:"),
@@ -70,6 +70,14 @@ test("central workflow is the only manually dispatched production entrypoint", (
 	assert.match(trigger, /workflow_dispatch:/);
 	assert.doesNotMatch(trigger, /\n  push:/);
 	assert.doesNotMatch(trigger, /\n  workflow_call:/);
+
+	const accountTrigger = account.slice(
+		account.indexOf("on:"),
+		account.indexOf("permissions:"),
+	);
+	assert.match(accountTrigger, /workflow_call:/);
+	assert.match(accountTrigger, /workflow_dispatch:/);
+	assert.doesNotMatch(accountTrigger, /\n  push:/);
 
 	for (const [job, workflow] of [
 		["deploy-account-portal", "deploy-account-portal.yml"],
@@ -85,6 +93,33 @@ test("central workflow is the only manually dispatched production entrypoint", (
 	}
 });
 
+test("manual Account Phase One deploy is main-only, attested, and keeps SIWE disabled", () => {
+	const deploy = jobBlock(account, "deploy");
+	assert.match(account, /DEPLOY CINAAUTH ACCOUNT PORTAL PHASE ONE/);
+	assert.match(deploy, /github\.event_name == 'workflow_dispatch'/);
+	assert.match(deploy, /GITHUB_REF.*refs\/heads\/main/);
+	assert.match(
+		deploy,
+		/CINAAUTH_PLANNED_WORKER_CONFIG: \.\.\/\.\.\/workers\/auth-api\/wrangler\.json/,
+	);
+	assert.match(deploy, /CINAAUTH_SIWE_ENABLED/);
+	assert.match(deploy, /!== "false"/);
+	assert.match(deploy, /REOWN_PROJECT_ID/);
+	assert.match(deploy, /Configure wallet UI rollout from tracked Auth config/);
+	assert.match(deploy, /NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED/);
+	assert.match(deploy, /Verify manual Phase One readiness marker/);
+	assert.match(deploy, /cinaauth-siwe-v2/);
+	assert.match(deploy, /reown-appkit-v1/);
+	assert.match(
+		deploy,
+		/readiness\.reownProjectId !== process\.env\.REOWN_PROJECT_ID/,
+	);
+	assert.match(deploy, /readiness\.walletUiEnabled !== false/);
+	assert.match(deploy, /Verify public Auth availability for Phase One/);
+	assert.match(deploy, /if: github\.event_name != 'workflow_dispatch'/);
+	assert.match(deploy, /environment: production/);
+});
+
 test("production attestation and live backup audit gate every Cloudflare write", () => {
 	for (const input of [
 		"restore_rehearsal_completed",
@@ -97,7 +132,11 @@ test("production attestation and live backup audit gate every Cloudflare write",
 	assert.match(central, /type: boolean/);
 	assert.match(central, /DEPLOY CINAAUTH PRODUCTION/);
 
-	const gate = jobBlock(central, "authorize-production", "deploy-delivery");
+	const gate = jobBlock(
+		central,
+		"authorize-production",
+		"preflight-account-portal",
+	);
 	assert.match(gate, /environment: production/);
 	assert.match(gate, /PLANETSCALE_SERVICE_TOKEN_ID/);
 	assert.match(gate, /PLANETSCALE_SERVICE_TOKEN/);
@@ -116,7 +155,10 @@ test("production attestation and live backup audit gate every Cloudflare write",
 		["deploy-privacy-erasure", "deploy-worker"],
 	]) {
 		const block = jobBlock(central, job, nextJob);
-		assert.match(block, /needs: authorize-production/);
+		assert.match(
+			block,
+			/needs: \[authorize-production, preflight-account-portal\]/,
+		);
 		assert.match(block, /environment: production/);
 	}
 	assert.match(
@@ -125,17 +167,97 @@ test("production attestation and live backup audit gate every Cloudflare write",
 	);
 });
 
-test("application workflows are reusable production-environment units only", () => {
+test("planned SIWE and the Accounts bundle are verified before Worker deployment", () => {
+	const preflight = jobBlock(
+		central,
+		"preflight-account-portal",
+		"deploy-delivery",
+	);
+	assert.match(preflight, /needs: authorize-production/);
+	assert.match(preflight, /environment: production/);
+	assert.match(
+		preflight,
+		/CINAAUTH_PLANNED_WORKER_CONFIG: \.\.\/\.\.\/workers\/auth-api\/wrangler\.json/,
+	);
+	assert.match(
+		preflight,
+		/REOWN_PROJECT_ID: \$\{\{ secrets\.REOWN_PROJECT_ID \}\}/,
+	);
+	assert.match(
+		preflight,
+		/NEXT_PUBLIC_REOWN_PROJECT_ID: \$\{\{ secrets\.REOWN_PROJECT_ID \}\}/,
+	);
+	assert.doesNotMatch(preflight, /vars\.REOWN_PROJECT_ID/);
+	assert.match(
+		account,
+		/REOWN_PROJECT_ID: \$\{\{ secrets\.REOWN_PROJECT_ID \}\}/,
+	);
+	assert.match(
+		account,
+		/NEXT_PUBLIC_REOWN_PROJECT_ID: \$\{\{ secrets\.REOWN_PROJECT_ID \}\}/,
+	);
+	assert.doesNotMatch(account, /vars\.REOWN_PROJECT_ID/);
+	assert.match(preflight, /pnpm run check:oauth-build/);
+	assert.match(preflight, /pnpm run build:cf/);
+	assert.match(
+		preflight,
+		/Configure wallet UI rollout from tracked Auth config/,
+	);
+	assert.match(preflight, /NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED/);
+	assert.match(
+		preflight,
+		/CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https:\/\/accounts\.cinaseek\.ai\/api\/build-readiness/,
+	);
+	for (const contract of [
+		"lib/reown-wallet-gate.test.ts",
+		"lib/reown-wallet-cookie.test.ts",
+		"lib/siwe-wallet-protocol.test.ts",
+		"lib/reown-wallet-source-contract.test.ts",
+		"lib/account-build-readiness.test.ts",
+	]) {
+		assert.match(preflight, new RegExp(contract.replaceAll(".", "\\.")));
+		assert.match(account, new RegExp(contract.replaceAll(".", "\\.")));
+	}
+	assert.doesNotMatch(
+		preflight,
+		/cloudflare\/wrangler-action|command: deploy|pnpm run deploy/,
+	);
+	assert.equal(
+		(account.match(/command: deploy/g) ?? []).length,
+		1,
+		"the reusable Account Portal workflow must deploy exactly once",
+	);
+
+	for (const [job, nextJob] of [
+		["deploy-delivery", "deploy-privacy-erasure"],
+		["deploy-privacy-erasure", "deploy-worker"],
+	]) {
+		assert.match(
+			jobBlock(central, job, nextJob),
+			/needs: \[authorize-production, preflight-account-portal\]/,
+		);
+	}
+	assert.match(
+		jobBlock(central, "deploy-worker", "deploy-account-portal"),
+		/needs: \[deploy-delivery, deploy-privacy-erasure, preflight-account-portal\]/,
+	);
+});
+
+test("application workflows remain reusable production-environment units", () => {
 	for (const source of [account, admin]) {
 		const trigger = source.slice(
 			source.indexOf("on:"),
 			source.indexOf("permissions:"),
 		);
 		assert.match(trigger, /workflow_call:/);
-		assert.doesNotMatch(trigger, /workflow_dispatch:/);
 		assert.doesNotMatch(trigger, /\n  push:/);
 		assert.match(jobBlock(source, "deploy"), /environment: production/);
 	}
+	const adminTrigger = admin.slice(
+		admin.indexOf("on:"),
+		admin.indexOf("permissions:"),
+	);
+	assert.doesNotMatch(adminTrigger, /workflow_dispatch:/);
 });
 
 test("backend bootstrap never requires or writes deferred and V1 shared secrets", () => {
