@@ -346,6 +346,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build Auth workspace dependencies
+        run: pnpm run build:dependencies
+
       - name: Configure Hyperdrive binding
         env:
           CINAAUTH_HYPERDRIVE_ID: ${{ secrets.CINAAUTH_HYPERDRIVE_ID }}
