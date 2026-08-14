@@ -3774,7 +3774,7 @@ checkIncludesAll(
 		"pnpm run typecheck",
 		"pnpm run build:cf",
 		"pnpm run test:deploy-cf",
-		"pnpm run deploy:cf -- --deployment-target production",
+		"pnpm run deploy:cf --deployment-target=production",
 		"demo-auth.cinagroup.com",
 	],
 	accountWorkflowFile,
@@ -3839,7 +3839,7 @@ check(
 check(
 	(
 		accountWorkflow.match(
-			/run: pnpm run deploy:cf -- --deployment-target production/g,
+			/run: pnpm run deploy:cf --deployment-target=production/g,
 		) ?? []
 	).length === 1 &&
 		!accountWorkflow.includes("cloudflare/wrangler-action@v3") &&
@@ -4367,7 +4367,8 @@ check(
 	productionProvisionCommands.length === 3 &&
 		productionProvisionCommands.every(
 			(command) =>
-				/-- --deployment-target production(?:\s|$)/.test(command) &&
+				/--deployment-target=production(?:\s|$)/.test(command) &&
+				!command.includes("-- --deployment-target") &&
 				!/(?:--env(?:\s|=)|CLOUDFLARE_ENV)/.test(command),
 		),
 	`${rel(workflowFile)} must select the top-level production target for all three secret provisioners`,
@@ -4393,7 +4394,7 @@ checkIncludes(
 );
 checkIncludes(
 	localDeploymentScript,
-	"pnpm --dir apps/account-portal run deploy:cf -- --deployment-target production",
+	"pnpm --dir apps/account-portal run deploy:cf --deployment-target=production",
 	localDeploymentScriptFile,
 	"the local production orchestrator must select the guarded top-level Account target",
 );

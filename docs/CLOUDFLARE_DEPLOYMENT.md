@@ -29,7 +29,7 @@ auth.cinaseek.ai (Custom Domain)
 $env:CINAAUTH_HYPERDRIVE_ID = "<32 位 Hyperdrive ID>"
 pnpm --dir workers/auth-api run configure:hyperdrive
 pnpm --dir workers/auth-api run check:production
-pnpm --dir workers/auth-api run provision:secrets -- --deployment-target production
+pnpm --dir workers/auth-api run provision:secrets --deployment-target=production
 pnpm --dir workers/auth-api run check:cloudflare
 pnpm --dir workers/auth-api run build
 pnpm --dir workers/auth-api run deploy

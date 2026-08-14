@@ -120,7 +120,7 @@ each provider group to be complete. A normal bootstrap does not require
 Resend/Twilio values in CI:
 
 ```sh
-pnpm --dir workers/delivery run provision:secrets -- --deployment-target production --dry-run
+pnpm --dir workers/delivery run provision:secrets --deployment-target=production --dry-run
 ```
 
 ## Readiness and verification
