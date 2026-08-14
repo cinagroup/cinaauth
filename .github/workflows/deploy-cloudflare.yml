@@ -440,6 +440,8 @@ jobs:
     name: Deploy Account Portal
     needs: deploy-worker
     uses: ./.github/workflows/deploy-account-portal.yml
+    with:
+      deployment_mode: central
     secrets: inherit
 
   deploy-admin-console:

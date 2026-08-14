@@ -2,6 +2,9 @@ import {
 	ENTITLEMENT_FEATURES,
 	ENTITLEMENT_LIMITS,
 } from "@cinaauth/auth-web-contract";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { keccak_256 } from "@noble/hashes/sha3.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { describe, expect, it } from "vitest";
 import {
 	getConfiguredSocialProviders,
@@ -188,6 +191,15 @@ describe("organization member entitlement chokepoints", () => {
 });
 
 describe("SIWE production gate", () => {
+	const enabledSiweEnv = {
+		CINAAUTH_SIWE_ENABLED: "true",
+		CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1,11155111",
+		CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
+		CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
+		CINAAUTH_SIWE_ALLOW_LEGACY: "false",
+		CINAAUTH_SIWE_AUTO_SIGNUP: "false",
+	} as CloudflareBindings;
+
 	it("does not register SIWE without a complete enabled configuration", () => {
 		expect(
 			createAuthPlugins({} as CloudflareBindings).find(
@@ -197,14 +209,9 @@ describe("SIWE production gate", () => {
 	});
 
 	it("passes the strict RP, chain, and account-creation policy to SIWE v2", () => {
-		const plugin = createAuthPlugins({
-			CINAAUTH_SIWE_ENABLED: "true",
-			CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1,11155111",
-			CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
-			CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
-			CINAAUTH_SIWE_ALLOW_LEGACY: "false",
-			CINAAUTH_SIWE_AUTO_SIGNUP: "false",
-		} as CloudflareBindings).find((candidate) => candidate.id === "siwe");
+		const plugin = createAuthPlugins(enabledSiweEnv).find(
+			(candidate) => candidate.id === "siwe",
+		);
 
 		expect(plugin?.options).toMatchObject({
 			domain: "accounts.cinaseek.ai",
@@ -214,6 +221,40 @@ describe("SIWE production gate", () => {
 			legacyNonce: false,
 			allowUserCreation: false,
 		});
+	});
+
+	it("verifies a real EIP-191 personal signature for the recovered EOA", async () => {
+		const plugin = createAuthPlugins(enabledSiweEnv).find(
+			(candidate) => candidate.id === "siwe",
+		);
+		if (!plugin || !("verifyMessage" in plugin.options)) {
+			throw new Error("Expected the enabled SIWE verifier");
+		}
+		const message = "CinaSeek SIWE production verifier: 登录验证 🔐";
+		const messageBytes = utf8ToBytes(message);
+		const prefix = utf8ToBytes(
+			`\x19Ethereum Signed Message:\n${messageBytes.length}`,
+		);
+		const payload = new Uint8Array(prefix.length + messageBytes.length);
+		payload.set(prefix);
+		payload.set(messageBytes, prefix.length);
+		const privateKey = new Uint8Array(32);
+		privateKey[31] = 1;
+		const signature = secp256k1.sign(keccak_256(payload), privateKey);
+		const signatureBytes = new Uint8Array(65);
+		signatureBytes.set(signature.toCompactRawBytes());
+		signatureBytes[64] = signature.recovery + 27;
+		const publicKey = secp256k1.getPublicKey(privateKey, false);
+		const address = `0x${bytesToHex(keccak_256(publicKey.slice(1)).slice(-20))}`;
+
+		await expect(
+			plugin.options.verifyMessage({
+				message,
+				signature: `0x${bytesToHex(signatureBytes)}`,
+				address,
+				chainId: 1,
+			}),
+		).resolves.toBe(true);
 	});
 });
 

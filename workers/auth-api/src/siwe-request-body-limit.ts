@@ -1,13 +1,15 @@
 import type { Env, MiddlewareHandler } from "hono";
 
-export const SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES = 2 * 1024;
+export const SIWE_LEGACY_NONCE_REQUEST_BODY_LIMIT_BYTES = 2 * 1024;
+export const SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES = 18 * 1024;
 export const SIWE_PROOF_REQUEST_BODY_LIMIT_BYTES = 20 * 1024;
 
-const SIWE_CHALLENGE_PATHS = new Set([
-	"/api/auth/siwe/challenge",
+const SIWE_LEGACY_NONCE_PATHS = new Set([
 	"/api/auth/siwe/nonce",
 	"/api/auth/siwe/get-nonce",
 ]);
+
+const SIWE_CHALLENGE_PATH = "/api/auth/siwe/challenge";
 
 const SIWE_PROOF_PATHS = new Set([
 	"/api/auth/siwe/verify",
@@ -26,7 +28,10 @@ export const getSiweRequestBodyLimit = (
 ): number | undefined => {
 	if (method.toUpperCase() !== "POST") return undefined;
 	const canonicalPathname = canonicalizePathname(pathname);
-	if (SIWE_CHALLENGE_PATHS.has(canonicalPathname)) {
+	if (SIWE_LEGACY_NONCE_PATHS.has(canonicalPathname)) {
+		return SIWE_LEGACY_NONCE_REQUEST_BODY_LIMIT_BYTES;
+	}
+	if (canonicalPathname === SIWE_CHALLENGE_PATH) {
 		return SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES;
 	}
 	if (SIWE_PROOF_PATHS.has(canonicalPathname)) {
