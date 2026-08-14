@@ -480,7 +480,10 @@ test("production script consumers select the explicit top-level deployment targe
 		account,
 		/run: pnpm run deploy:cf --deployment-target=production/,
 	);
-	assert.doesNotMatch(account, /run: pnpm run deploy:cf -- --deployment-target/);
+	assert.doesNotMatch(
+		account,
+		/run: pnpm run deploy:cf -- --deployment-target/,
+	);
 	for (const workflow of [account, central]) {
 		assert.match(workflow, /run: pnpm run test:deploy-cf/);
 	}
