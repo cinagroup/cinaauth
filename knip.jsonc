@@ -101,6 +101,7 @@
 		".": {
 			"entry": [
 				".github/workflows/deployment-workflows.test.mjs!",
+				"scripts/check-cloudflare-preserved-secrets.mjs!",
 				"scripts/cloudflare-deployment-target.mjs!"
 			]
 		},

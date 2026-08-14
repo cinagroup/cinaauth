@@ -8,6 +8,7 @@ const readWorkflow = (name) =>
 const rootPackage = JSON.parse(
 	readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 );
+const knip = readFileSync(new URL("../../knip.jsonc", import.meta.url), "utf8");
 const central = readWorkflow("deploy-cloudflare.yml");
 const ci = readWorkflow("ci.yml");
 const account = readWorkflow("deploy-account-portal.yml");
@@ -391,7 +392,19 @@ test("application workflows remain reusable production-environment units", () =>
 	assert.doesNotMatch(adminTrigger, /workflow_dispatch:/);
 });
 
-test("backend bootstrap never requires or writes deferred and V1 shared secrets", () => {
+test("backend bootstrap preserves stateful secrets and never writes deferred V1 shared secrets", () => {
+	for (const preserved of [
+		"CINAAUTH_SECRET",
+		"CINAAUTH_PRIVACY_EXPORT_KEY",
+		"CINAAUTH_ERASURE_STORAGE_SECRET",
+	]) {
+		assert.doesNotMatch(
+			central,
+			new RegExp(`secrets\\.${preserved}|^\\s+${preserved}:`, "m"),
+			`${preserved} must stay in Cloudflare and must not be sourced from GitHub or rewritten by the central deployment`,
+		);
+	}
+
 	for (const forbidden of [
 		"RESEND_API_KEY",
 		"RESEND_EMAIL_FROM",
@@ -418,27 +431,29 @@ test("backend bootstrap never requires or writes deferred and V1 shared secrets"
 	assert.doesNotMatch(delivery, /provision:secrets/);
 
 	const privacy = jobBlock(central, "deploy-privacy-erasure", "deploy-worker");
-	assert.match(privacy, /CINAAUTH_ERASURE_STORAGE_SECRET/);
-	assert.match(privacy, /pnpm run provision:secrets/);
+	assert.doesNotMatch(privacy, /CINAAUTH_ERASURE_STORAGE_SECRET/);
+	assert.doesNotMatch(privacy, /pnpm run provision:secrets/);
 	assert.match(privacy, /check:cloudflare -- --allow-not-ready/);
 
 	const auth = jobBlock(central, "deploy-worker", "deploy-account-portal");
-	assert.match(auth, /Provision Auth Worker core and optional secrets/);
+	assert.match(
+		auth,
+		/Provision Auth Worker mutable and configured optional secrets/,
+	);
 	assert.match(auth, /run: pnpm run provision:secrets/);
 	assert.doesNotMatch(
 		auth,
 		/node - <<|wrangler secret bulk|Object\.fromEntries/,
 	);
 	for (const name of [
-		"CINAAUTH_SECRET",
 		"CINAAUTH_MIGRATION_TOKEN",
 		"CINAAUTH_DELIVERY_WEBHOOK_URL",
-		"CINAAUTH_PRIVACY_EXPORT_KEY",
 		"OAUTH_PAIRWISE_SECRET",
 		"CINAAUTH_ENTITLEMENT_CONFIG",
 	]) {
 		assert.match(auth, new RegExp(name));
 	}
+	assert.doesNotMatch(auth, /CINAAUTH_SECRET|CINAAUTH_PRIVACY_EXPORT_KEY/);
 	assert.doesNotMatch(
 		auth,
 		/^\s+CINAAUTH_ERASURE_WEBHOOK_URL:/m,
@@ -462,11 +477,24 @@ test("backend bootstrap never requires or writes deferred and V1 shared secrets"
 	}
 });
 
+test("production authorization verifies preserved Cloudflare secret names read-only", () => {
+	const gate = jobBlock(
+		central,
+		"authorize-production",
+		"preflight-account-portal",
+	);
+	assert.match(gate, /Verify preserved Cloudflare Worker secret inventory/);
+	assert.match(gate, /scripts\/check-cloudflare-preserved-secrets\.mjs/);
+	assert.match(gate, /CLOUDFLARE_API_TOKEN/);
+	assert.match(gate, /CLOUDFLARE_ACCOUNT_ID/);
+	assert.doesNotMatch(gate, /secret put|secret bulk|command: deploy/);
+});
+
 test("production script consumers select the explicit top-level deployment target", () => {
 	const provisionCommands = [
 		...central.matchAll(/^\s*run:\s+(pnpm run provision:secrets[^\r\n]*)/gm),
 	].map((match) => match[1]);
-	assert.equal(provisionCommands.length, 3);
+	assert.equal(provisionCommands.length, 1);
 	for (const command of provisionCommands) {
 		assert.match(command, /--deployment-target=production(?:\s|$)/);
 		assert.doesNotMatch(command, /-- --deployment-target/);
@@ -494,6 +522,7 @@ test("deployment target contracts run in CI and before production authorization"
 	assert.equal(typeof script, "string");
 	const testFiles = [
 		"scripts/cloudflare-deployment-target.test.mjs",
+		"scripts/check-cloudflare-preserved-secrets.test.mjs",
 		".github/workflows/deployment-workflows.test.mjs",
 		"workers/auth-api/scripts/provision-secrets.test.mjs",
 		"workers/delivery/scripts/provision-secrets.test.mjs",
@@ -505,6 +534,10 @@ test("deployment target contracts run in CI and before production authorization"
 		assert.match(central, new RegExp(file.replaceAll(".", "\\.")));
 	}
 	assert.match(ci, /run: pnpm run test:cloudflare-deployment-contracts/);
+});
+
+test("the preserved-secret checker is a declared production tooling entry", () => {
+	assert.match(knip, /"scripts\/check-cloudflare-preserved-secrets\.mjs!"/);
 });
 
 test("frontends rely on Auth readiness and configured bindings", () => {

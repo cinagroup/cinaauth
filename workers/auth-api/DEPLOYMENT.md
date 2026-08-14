@@ -289,15 +289,27 @@ not the raw ID or email. R2's platform encryption remains enabled and the
 Worker additionally supplies a unique customer encryption key for every
 manifest and data object.
 
-## 4. Provision Auth-owned Worker secrets
+## 4. Preserve stateful secrets and provision mutable inputs
 
-Required deployment-owned values are supplied through environment variables and written by
-`provision-secrets.mjs` through Wrangler stdin:
+Normal production deployments preserve these existing Cloudflare Worker
+secrets and never source them from GitHub Actions:
 
-- `CINAAUTH_SECRET`
-- `CINAAUTH_MIGRATION_TOKEN`
+- Auth Worker `CINAAUTH_SECRET`
+- Auth Worker `CINAAUTH_PRIVACY_EXPORT_KEY`
+- Privacy Erasure Worker `CINAAUTH_ERASURE_STORAGE_SECRET`
+
+Before any Cloudflare write, `authorize-production` runs the metadata-only
+`node scripts/check-cloudflare-preserved-secrets.mjs` gate. It uses Cloudflare's
+secret inventory API to verify these names on their current Workers; it cannot
+read, print, or rewrite their values. A missing name stops the rollout. Normal
+`wrangler deploy` preserves secrets already attached to a Worker, as documented
+in Cloudflare's [Workers secrets guide](https://developers.cloudflare.com/workers/configuration/secrets/).
+
+Only mutable deployment-owned values are supplied to
+`provision-secrets.mjs` through Wrangler bulk stdin:
+
+- `CINAAUTH_MIGRATION_TOKEN` (at least 32 characters)
 - `CINAAUTH_DELIVERY_WEBHOOK_URL`
-- `CINAAUTH_PRIVACY_EXPORT_KEY` (dedicated, at least 32 random characters)
 
 The provisioner also writes `CINAAUTH_ERASURE_WEBHOOK_URL`, but never accepts
 that endpoint from the operator environment. It is pinned in repository code to
@@ -305,10 +317,14 @@ that endpoint from the operator environment. It is pinned in repository code to
 deployment-time override from redirecting signed deletion requests to another
 HTTPS origin. Changing this endpoint requires a reviewed repository change.
 
-The script validates only these deployment-owned inputs and never probes the
+The script validates only these mutable deployment-owned inputs and never probes the
 Delivery or Privacy Erasure operational `/ready` endpoints. This is deliberate:
 a structurally valid bootstrap deployment must not be blocked merely because
 email/SMS providers or erasure targets have not yet been configured.
+Configured optional plugin secrets are still updated only when their non-empty
+environment values are explicitly supplied; omitted optional secrets are not
+selected. The three preserved stateful secrets above are never selected, even
+if they happen to exist in the invoking process environment.
 
 ### Active Secrets Store V2 bindings
 
@@ -499,6 +515,10 @@ Admin OIDC values. Delivery requests remain signed with
 `X-CinaAuth-Delivery-Signature`. A child `/ready` HTTP 503 is valid during phase
 1; user-facing delivery and account erasure remain fail closed until phase 2
 has tested and activated the required configuration.
+
+This command explicitly updates `CINAAUTH_MIGRATION_TOKEN`, the two canonical
+service endpoint values, and any configured optional plugin inputs. It never
+updates `CINAAUTH_SECRET` or `CINAAUTH_PRIVACY_EXPORT_KEY`.
 
 ## 5. Validate and deploy
 
@@ -770,9 +790,9 @@ sixth request in a 60-second window must return HTTP 429 and `X-Retry-After`.
 - `PLANETSCALE_SERVICE_TOKEN_ID` and `PLANETSCALE_SERVICE_TOKEN`, scoped to
   `cinagroup/cinaauth` with only `read_backups`
 - `CINAAUTH_HYPERDRIVE_ID`
-- `CINAAUTH_SECRET` and `CINAAUTH_MIGRATION_TOKEN`
-- `CINAAUTH_PRIVACY_EXPORT_KEY` and the Privacy Worker-owned
-  `CINAAUTH_ERASURE_STORAGE_SECRET`
+- `CINAAUTH_MIGRATION_TOKEN`; among the four core Worker secrets discussed in
+  this section, this is the only value supplied by the GitHub `production`
+  environment and the only one the central workflow explicitly updates
 - when Billing is enabled, the complete Stripe group:
   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_DEFAULT_PRICE_ID`, and
   `CINAAUTH_ENTITLEMENT_CONFIG`; optionally `STRIPE_DEFAULT_PLAN_NAME`
@@ -809,6 +829,15 @@ both PlanetScale credentials exist, the live read-only backup audit passes, and
 `backup_reference` is present in the audit's active successful backups. The
 restore reference is operator-attested evidence; the workflow does not create,
 modify, or delete a PlanetScale branch.
+
+The same read-only authorization job requires `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` and verifies the three preserved secret names against
+the live Worker inventories. Do not create duplicate GitHub secrets named
+`CINAAUTH_SECRET`, `CINAAUTH_PRIVACY_EXPORT_KEY`, or
+`CINAAUTH_ERASURE_STORAGE_SECRET`; their unavailable values are intentionally
+retained only in Cloudflare. If any inventory entry is missing, stop and follow
+an approved recovery or coordinated rotation procedure instead of generating a
+replacement during deployment.
 
 The deliberate exception is the Account Portal-only first phase of the SIWE
 rollout. It does not deploy a backend Worker or perform a database write, so it

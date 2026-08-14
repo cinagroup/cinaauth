@@ -29,11 +29,9 @@ const createCoreEnv = () => {
 	const env = Object.fromEntries(
 		Object.entries({
 			...process.env,
-			CINAAUTH_SECRET: "a".repeat(32),
 			CINAAUTH_MIGRATION_TOKEN: "b".repeat(32),
 			CINAAUTH_DELIVERY_WEBHOOK_URL:
 				"https://cinaauth-delivery.cinagroup.com/cinaauth/delivery",
-			CINAAUTH_PRIVACY_EXPORT_KEY: "c".repeat(32),
 		}).filter(([name]) => name !== "CLOUDFLARE_ENV"),
 	);
 	for (const legacyName of [
@@ -48,7 +46,7 @@ const createCoreEnv = () => {
 	return env;
 };
 
-test("dry-run provisions only Auth-owned Worker secrets when V2 bindings are active", () => {
+test("dry-run provisions only mutable Auth-owned Worker secrets when V2 bindings are active", () => {
 	const result = spawnSync(
 		process.execPath,
 		[scriptFile, "--deployment-target", "production", "--dry-run"],
@@ -61,16 +59,17 @@ test("dry-run provisions only Auth-owned Worker secrets when V2 bindings are act
 
 	assert.equal(result.status, 0, result.stderr);
 	for (const name of [
-		"CINAAUTH_SECRET",
 		"CINAAUTH_MIGRATION_TOKEN",
 		"CINAAUTH_DELIVERY_WEBHOOK_URL",
-		"CINAAUTH_PRIVACY_EXPORT_KEY",
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
 	]) {
 		assert.match(
 			result.stdout,
 			new RegExp(`Would provision ${name}(?:\\r?\\n|$)`),
 		);
+	}
+	for (const preserved of ["CINAAUTH_SECRET", "CINAAUTH_PRIVACY_EXPORT_KEY"]) {
+		assert.doesNotMatch(result.stdout, new RegExp(preserved));
 	}
 	for (const legacyName of [
 		"CINAAUTH_DELIVERY_WEBHOOK_SECRET",
@@ -220,10 +219,12 @@ test("production dry-run requires an explicit target and never resolves or spawn
 	assert.match(messages.at(-1), /dry run complete/);
 });
 
-test("writes required and configured optional values in one stdin bulk call", () => {
+test("writes mutable required and configured optional values in one stdin bulk call", () => {
 	const env = {
 		...createCoreEnv(),
 		CLOUDFLARE_ENV: "",
+		CINAAUTH_SECRET: "preserved-auth-secret-value-000001",
+		CINAAUTH_PRIVACY_EXPORT_KEY: "preserved-export-key-value-00001",
 		OAUTH_PAIRWISE_SECRET: "optional-pairwise-value",
 	};
 	const calls = [];
@@ -246,16 +247,24 @@ test("writes required and configured optional values in one stdin bulk call", ()
 	assert.deepEqual(calls[0].args, [wranglerCli, "secret", "bulk"]);
 	assert.deepEqual(calls[0].options.stdio, ["pipe", "inherit", "inherit"]);
 	assert.equal(Object.hasOwn(calls[0].options.env, "CLOUDFLARE_ENV"), false);
-	assert.equal(calls[0].options.env.CINAAUTH_SECRET, env.CINAAUTH_SECRET);
 	assert.deepEqual(JSON.parse(calls[0].options.input), {
-		CINAAUTH_SECRET: env.CINAAUTH_SECRET,
 		CINAAUTH_MIGRATION_TOKEN: env.CINAAUTH_MIGRATION_TOKEN,
 		CINAAUTH_DELIVERY_WEBHOOK_URL: env.CINAAUTH_DELIVERY_WEBHOOK_URL,
-		CINAAUTH_PRIVACY_EXPORT_KEY: env.CINAAUTH_PRIVACY_EXPORT_KEY,
 		CINAAUTH_ERASURE_WEBHOOK_URL:
 			"https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase",
 		OAUTH_PAIRWISE_SECRET: env.OAUTH_PAIRWISE_SECRET,
 	});
+	assert.equal(
+		Object.hasOwn(JSON.parse(calls[0].options.input), "CINAAUTH_SECRET"),
+		false,
+	);
+	assert.equal(
+		Object.hasOwn(
+			JSON.parse(calls[0].options.input),
+			"CINAAUTH_PRIVACY_EXPORT_KEY",
+		),
+		false,
+	);
 	assert.doesNotMatch(calls[0].args.join(" "), /optional-pairwise-value/);
 	assert.doesNotMatch(messages.join("\n"), /optional-pairwise-value/);
 });

@@ -314,6 +314,11 @@ const provisionSecretsFile = join(
 	"scripts",
 	"provision-secrets.mjs",
 );
+const preservedSecretCheckFile = join(
+	repoRoot,
+	"scripts",
+	"check-cloudflare-preserved-secrets.mjs",
+);
 const deliveryRemotePreflightFile = join(
 	repoRoot,
 	"workers",
@@ -909,6 +914,7 @@ const configureDeliveryQueues = read(configureDeliveryQueuesFile);
 const configurePrivacyExport = read(configurePrivacyExportFile);
 const checkPlanetScaleBackups = read(checkPlanetScaleBackupsFile);
 const provisionSecrets = read(provisionSecretsFile);
+const preservedSecretCheck = read(preservedSecretCheckFile);
 const deliveryProvision = read(deliveryProvisionFile);
 const deliveryRemotePreflight = read(deliveryRemotePreflightFile);
 const deliveryAcceptance = read(deliveryAcceptanceFile);
@@ -3577,20 +3583,17 @@ checkIncludesAll(
 		"secrets: inherit",
 		"CLOUDFLARE_API_TOKEN",
 		"CLOUDFLARE_ACCOUNT_ID",
+		"Verify preserved Cloudflare Worker secret inventory",
+		"node scripts/check-cloudflare-preserved-secrets.mjs",
 		"CINAAUTH_HYPERDRIVE_ID",
 		"pnpm run configure:hyperdrive",
 		"pnpm run configure:delivery-queues",
 		"pnpm run configure:privacy-export",
-		"CINAAUTH_SECRET",
-		'test "${#CINAAUTH_SECRET}" -ge 32',
 		"CINAAUTH_MIGRATION_TOKEN",
 		'test "${#CINAAUTH_MIGRATION_TOKEN}" -ge 32',
-		"CINAAUTH_PRIVACY_EXPORT_KEY",
-		'test "${#CINAAUTH_PRIVACY_EXPORT_KEY}" -ge 32',
-		"CINAAUTH_ERASURE_STORAGE_SECRET",
 		"CINAAUTH_ENTITLEMENT_CONFIG",
 		"https://cinaauth-delivery.cinagroup.com/cinaauth/delivery",
-		"Provision Auth Worker core and optional secrets",
+		"Provision Auth Worker mutable and configured optional secrets",
 		"run: pnpm run provision:secrets",
 		"https://auth.cinaseek.ai/api/migrate",
 		"-X POST https://auth.cinaseek.ai/api/migrate",
@@ -3626,6 +3629,10 @@ checkIncludesAll(
 		"PLANETSCALE_SERVICE_TOKEN_ID",
 		"PLANETSCALE_SERVICE_TOKEN",
 		"report.activeBackups",
+		"Verify preserved Cloudflare Worker secret inventory",
+		"CLOUDFLARE_API_TOKEN",
+		"CLOUDFLARE_ACCOUNT_ID",
+		"node scripts/check-cloudflare-preserved-secrets.mjs",
 	],
 	workflowFile,
 	"the pre-write production job must fail closed on environment approval, recovery evidence, the attested active backup, and read-only PlanetScale credentials",
@@ -3633,7 +3640,9 @@ checkIncludesAll(
 check(
 	!authorizationJob.includes("cloudflare/wrangler-action") &&
 		!authorizationJob.includes("command: deploy") &&
-		!authorizationJob.includes("-X POST"),
+		!authorizationJob.includes("-X POST") &&
+		!authorizationJob.includes("secret put") &&
+		!authorizationJob.includes("secret bulk"),
 	`${rel(workflowFile)} production authorization must remain read-only`,
 );
 const accountPreflightJob = workflowJobBlock(
@@ -3734,6 +3743,9 @@ check(
 		"CINAADMIN_OIDC_CLIENT_SECRET",
 		"CINAADMIN_OIDC_BRIDGE_SECRET",
 		"CINAAUTH_ERASURE_TARGETS",
+		"CINAAUTH_SECRET",
+		"CINAAUTH_PRIVACY_EXPORT_KEY",
+		"CINAAUTH_ERASURE_STORAGE_SECRET",
 		"RESEND_API_KEY",
 		"RESEND_EMAIL_FROM",
 		"TWILIO_ACCOUNT_SID",
@@ -4336,7 +4348,7 @@ check(
 );
 
 const expectedDeploymentContractTest =
-	"node --test ./scripts/cloudflare-deployment-target.test.mjs ./.github/workflows/deployment-workflows.test.mjs ./workers/auth-api/scripts/provision-secrets.test.mjs ./workers/delivery/scripts/provision-secrets.test.mjs ./workers/privacy-erasure/scripts/provision-secrets.test.mjs ./apps/account-portal/deploy-cf.test.mjs";
+	"node --test ./scripts/cloudflare-deployment-target.test.mjs ./scripts/check-cloudflare-preserved-secrets.test.mjs ./.github/workflows/deployment-workflows.test.mjs ./workers/auth-api/scripts/provision-secrets.test.mjs ./workers/delivery/scripts/provision-secrets.test.mjs ./workers/privacy-erasure/scripts/provision-secrets.test.mjs ./apps/account-portal/deploy-cf.test.mjs";
 check(
 	repoPackage.scripts?.["test:cloudflare-deployment-contracts"] ===
 		expectedDeploymentContractTest,
@@ -4364,19 +4376,20 @@ const productionProvisionCommands = [
 	...workflow.matchAll(/^\s*run:\s+(pnpm run provision:secrets[^\r\n]*)/gm),
 ].map((match) => match[1]);
 check(
-	productionProvisionCommands.length === 3 &&
+	productionProvisionCommands.length === 1 &&
 		productionProvisionCommands.every(
 			(command) =>
 				/--deployment-target=production(?:\s|$)/.test(command) &&
 				!command.includes("-- --deployment-target") &&
 				!/(?:--env(?:\s|=)|CLOUDFLARE_ENV)/.test(command),
 		),
-	`${rel(workflowFile)} must select the top-level production target for all three secret provisioners`,
+	`${rel(workflowFile)} must select the top-level production target for the Auth secret provisioner`,
 );
 checkIncludesAll(
 	workflow,
 	[
 		"scripts/cloudflare-deployment-target.test.mjs",
+		"scripts/check-cloudflare-preserved-secrets.test.mjs",
 		".github/workflows/deployment-workflows.test.mjs",
 		"workers/auth-api/scripts/provision-secrets.test.mjs",
 		"workers/delivery/scripts/provision-secrets.test.mjs",
@@ -4400,12 +4413,37 @@ checkIncludes(
 );
 
 checkIncludesAll(
+	preservedSecretCheck,
+	[
+		"PRESERVED_SECRET_INVENTORIES",
+		'workerName: "cinaauth-api"',
+		'workerName: "cinaauth-privacy-erasure"',
+		"CINAAUTH_SECRET",
+		"CINAAUTH_PRIVACY_EXPORT_KEY",
+		"CINAAUTH_ERASURE_STORAGE_SECRET",
+		"/workers/scripts/",
+		' method: "GET"'.trim(),
+		"CLOUDFLARE_API_TOKEN",
+		"CLOUDFLARE_ACCOUNT_ID",
+	],
+	preservedSecretCheckFile,
+	"the pre-write gate must verify only preserved Worker secret names through Cloudflare's read-only inventory API",
+);
+check(
+	!preservedSecretCheck.includes('method: "POST"') &&
+		!preservedSecretCheck.includes('method: "PUT"') &&
+		!preservedSecretCheck.includes('method: "DELETE"') &&
+		!preservedSecretCheck.includes("secret put") &&
+		!preservedSecretCheck.includes("secret bulk") &&
+		!preservedSecretCheck.includes("response.text"),
+	`${rel(preservedSecretCheckFile)} must remain a metadata-only read without a secret-value or write path`,
+);
+
+checkIncludesAll(
 	provisionSecrets,
 	[
-		"CINAAUTH_SECRET",
 		"CINAAUTH_MIGRATION_TOKEN",
 		"CINAAUTH_DELIVERY_WEBHOOK_URL",
-		"CINAAUTH_PRIVACY_EXPORT_KEY",
 		"CINAAUTH_ERASURE_WEBHOOK_URL",
 		"CANONICAL_ERASURE_WEBHOOK_URL",
 		"https://cinaauth-erasure.cinagroup.com/cinaauth/privacy/erase",
@@ -4426,10 +4464,12 @@ checkIncludesAll(
 		"pipe",
 	],
 	provisionSecretsFile,
-	"Auth secret provisioning must write required and configured optional values through one Wrangler bulk stdin call",
+	"Auth secret provisioning must write mutable required and configured optional values through one Wrangler bulk stdin call",
 );
 check(
-	!provisionSecrets.includes("process.argv.push") &&
+	!provisionSecrets.includes("CINAAUTH_SECRET") &&
+		!provisionSecrets.includes("CINAAUTH_PRIVACY_EXPORT_KEY") &&
+		!provisionSecrets.includes("process.argv.push") &&
 		!provisionSecrets.includes("echo ") &&
 		!provisionSecrets.includes("fetch(") &&
 		!provisionSecrets.includes('"put"') &&
@@ -4439,7 +4479,7 @@ check(
 		!provisionSecrets.includes("CINAAUTH_ERASURE_WEBHOOK_SECRET") &&
 		!provisionSecrets.includes("CINAADMIN_OIDC_CLIENT_SECRET") &&
 		!provisionSecrets.includes("CINAADMIN_OIDC_BRIDGE_SECRET"),
-	`${rel(provisionSecretsFile)} must not pass values in arguments, write temporary files, probe child readiness, or provision active V2 shared secrets as V1 Worker secrets`,
+	`${rel(provisionSecretsFile)} must not select preserved stateful values, pass values in arguments, write temporary files, probe child readiness, or provision active V2 shared secrets as V1 Worker secrets`,
 );
 check(
 	!provisionSecrets.includes(
