@@ -72,11 +72,13 @@ values fail closed. Omitting an optional origin disables that trust
 relationship. The production Passkey RP ID remains `cinaseek.ai`; changing it
 would invalidate existing credentials.
 
-SIWE is a non-secret, fail-closed rollout in `wrangler.json`. The tracked
-production configuration intentionally keeps `CINAAUTH_SIWE_ENABLED=false`
-until the Accounts Reown flow and real-wallet staging suite pass. While it is
-off, the Worker does not register the SIWE plugin and the public capability is
-`methods.siwe=false`; this is a server-side kill switch, not merely a UI flag.
+SIWE is a non-secret, fail-closed rollout in `wrangler.json`.
+`CINAAUTH_SIWE_ENABLED=true` is the planned Stage Two activation configuration.
+This tracked state is a planned release artifact, not evidence that production
+is already enabled; do not merge or deploy it until the Accounts Reown flow and
+real-wallet staging suite pass. When the switch is false, the Worker does not
+register the SIWE plugin and the public capability is `methods.siwe=false`;
+this is a server-side kill switch, not merely a UI flag.
 
 An enabled configuration requires all of the following exact inputs:
 
@@ -91,8 +93,9 @@ An enabled configuration requires all of the following exact inputs:
 - `CINAAUTH_SIWE_AUTO_SIGNUP=false`.
 
 Missing, malformed, duplicated, non-HTTPS, cross-host, legacy, or auto-signup
-values keep SIWE disabled. Phase one is EOA-only, accepts only a 65-byte
-EIP-191 personal-sign signature, and uses the Worker-side chain allowlist.
+values keep SIWE disabled. The enabled production rollout is EOA-only, accepts
+only a 65-byte EIP-191 personal-sign signature, and uses the Worker-side chain
+allowlist.
 Unknown wallets cannot create users. The v2 challenge path binds the RP,
 wallet, chain, purpose, and expiry; legacy nonce issuance remains disabled.
 Change the enable switch only through a reviewed deployment after running the
