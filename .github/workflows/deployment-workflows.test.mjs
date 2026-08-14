@@ -8,6 +8,7 @@ const readWorkflow = (name) =>
 const rootPackage = JSON.parse(
 	readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 );
+const knip = readFileSync(new URL("../../knip.jsonc", import.meta.url), "utf8");
 const central = readWorkflow("deploy-cloudflare.yml");
 const ci = readWorkflow("ci.yml");
 const account = readWorkflow("deploy-account-portal.yml");
@@ -533,6 +534,10 @@ test("deployment target contracts run in CI and before production authorization"
 		assert.match(central, new RegExp(file.replaceAll(".", "\\.")));
 	}
 	assert.match(ci, /run: pnpm run test:cloudflare-deployment-contracts/);
+});
+
+test("the preserved-secret checker is a declared production tooling entry", () => {
+	assert.match(knip, /"scripts\/check-cloudflare-preserved-secrets\.mjs!"/);
 });
 
 test("frontends rely on Auth readiness and configured bindings", () => {
