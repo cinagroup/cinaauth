@@ -271,6 +271,15 @@ export const oneTapClient = (options: GoogleOneTapOptions) => {
 								return;
 							}
 
+							// The client's redirect plugin already navigated to the server-provided
+							// URL (e.g. an OAuth authorization continuation); never override it.
+							const data = res.data as
+								| { redirect?: boolean; url?: string }
+								| undefined;
+							if (data?.redirect === true && typeof data.url === "string") {
+								return;
+							}
+
 							if ((!opts?.fetchOptions && !fetchOptions) || opts?.callbackURL) {
 								const target = opts?.callbackURL ?? "/";
 								if (isSafeUrlScheme(target)) {
@@ -323,6 +332,15 @@ export const oneTapClient = (options: GoogleOneTapOptions) => {
 						// The server validates callbackURL against trustedOrigins; do
 						// not navigate if it rejected the request.
 						if (res?.error) {
+							return;
+						}
+
+						// The client's redirect plugin already navigated to the server-provided
+						// URL (e.g. an OAuth authorization continuation); never override it.
+						const data = res.data as
+							| { redirect?: boolean; url?: string }
+							| undefined;
+						if (data?.redirect === true && typeof data.url === "string") {
 							return;
 						}
 

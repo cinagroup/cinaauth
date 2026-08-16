@@ -18,7 +18,12 @@ export function OAuthProviderButtons({
 	callbackURL,
 	context = "signin",
 }: {
-	callbackURL: string;
+	/**
+	 * Post-login destination. Leave undefined during a signed OIDC
+	 * authorization so the server-provided continuation URL (back to the
+	 * relying party) wins over a local default such as /dashboard.
+	 */
+	callbackURL?: string;
 	context?: "signin" | "signup";
 }) {
 	const googleButtonMeasureRef = useRef<HTMLDivElement>(null);
