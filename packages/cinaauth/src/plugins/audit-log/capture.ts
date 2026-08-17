@@ -237,6 +237,7 @@ const CAPTURE_PATH_MAP: Record<string, CaptureMapping> = {
 	"/two-factor/enable": { category: "auth", action: "user.2fa_enable" },
 	"/two-factor/disable": { category: "auth", action: "user.2fa_disable" },
 	// email-otp plugin
+	"/sign-in/email-otp": { category: "auth", action: "user.login" },
 	"/email-otp/send-verification-otp": {
 		category: "auth",
 		action: "user.otp_send",

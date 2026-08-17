@@ -8,6 +8,7 @@ import { convertSetCookieToCookie } from "../../test-utils/headers";
 import { getTestInstance } from "../../test-utils/test-instance";
 import { DEFAULT_SECRET } from "../../utils/constants";
 import { anonymous } from "../anonymous";
+import { emailOTP } from "../email-otp";
 import { magicLink } from "../magic-link";
 import { TWO_FACTOR_ERROR_CODES, twoFactor, twoFactorClient } from ".";
 import type { TwoFactorTable, UserWithTwoFactor } from "./types";
@@ -1997,6 +1998,174 @@ describe("two factor password still required for credential accounts", async () 
 	});
 });
 
+describe("two factor passwordless fresh session policy", () => {
+	it("preserves stale-session passwordless management by default", async () => {
+		const { auth, db } = await getTestInstance(
+			{
+				secret: DEFAULT_SECRET,
+				session: {
+					freshAge: 60,
+					cookieCache: { enabled: true, maxAge: 600 },
+				},
+				plugins: [anonymous(), twoFactor({ allowPasswordless: true })],
+			},
+			{ disableTestUser: true },
+		);
+		const signInRes = await auth.api.signInAnonymous({ asResponse: true });
+		const headers = new Headers();
+		applySetCookies(headers, signInRes.headers.getSetCookie());
+		const session = await auth.api.getSession({ headers });
+		expect(session?.session.id).toBeDefined();
+		await db.update({
+			model: "session",
+			where: [{ field: "id", value: session!.session.id }],
+			update: { createdAt: new Date(Date.now() - 5 * 60 * 1000) },
+		});
+
+		const res = await auth.api.enableTwoFactor({
+			body: {},
+			headers,
+			asResponse: true,
+		});
+
+		expect(res.status).toBe(200);
+	});
+
+	it("requires a fresh session for every passwordless 2FA management endpoint when opted in", async () => {
+		const { auth, db } = await getTestInstance(
+			{
+				secret: DEFAULT_SECRET,
+				session: {
+					freshAge: 60,
+					cookieCache: { enabled: true, maxAge: 600 },
+				},
+				plugins: [
+					anonymous(),
+					twoFactor({
+						allowPasswordless: true,
+						requireFreshSessionForPasswordless: true,
+						skipVerificationOnEnable: true,
+					}),
+				],
+			},
+			{ disableTestUser: true },
+		);
+		const signInRes = await auth.api.signInAnonymous({ asResponse: true });
+		let headers = new Headers();
+		applySetCookies(headers, signInRes.headers.getSetCookie());
+
+		const makeCurrentSessionStale = async () => {
+			const session = await auth.api.getSession({ headers });
+			expect(session?.session.id).toBeDefined();
+			await db.update({
+				model: "session",
+				where: [{ field: "id", value: session!.session.id }],
+				update: { createdAt: new Date(Date.now() - 5 * 60 * 1000) },
+			});
+		};
+		const makeCurrentSessionFresh = async () => {
+			const session = await auth.api.getSession({ headers });
+			expect(session?.session.id).toBeDefined();
+			await db.update({
+				model: "session",
+				where: [{ field: "id", value: session!.session.id }],
+				update: { createdAt: new Date() },
+			});
+		};
+		const expectSessionNotFresh = async (response: Response) => {
+			expect(response.status).toBe(403);
+			expect(await response.json()).toMatchObject({
+				code: "SESSION_NOT_FRESH",
+			});
+		};
+
+		await makeCurrentSessionStale();
+		await expectSessionNotFresh(
+			await auth.api.enableTwoFactor({
+				body: {},
+				headers,
+				asResponse: true,
+			}),
+		);
+		expect(
+			await db.findOne({
+				model: "twoFactor",
+				where: [
+					{
+						field: "userId",
+						value: (await auth.api.getSession({ headers }))!.user.id,
+					},
+				],
+			}),
+		).toBeNull();
+
+		await makeCurrentSessionFresh();
+		const enableRes = await auth.api.enableTwoFactor({
+			body: {},
+			headers,
+			asResponse: true,
+		});
+		expect(enableRes.status).toBe(200);
+		headers = new Headers(headers);
+		applySetCookies(headers, enableRes.headers.getSetCookie());
+		await makeCurrentSessionStale();
+
+		await expectSessionNotFresh(
+			await auth.api.getTOTPURI({
+				body: {},
+				headers,
+				asResponse: true,
+			}),
+		);
+		await expectSessionNotFresh(
+			await auth.api.generateBackupCodes({
+				body: {},
+				headers,
+				asResponse: true,
+			}),
+		);
+		await expectSessionNotFresh(
+			await auth.api.disableTwoFactor({
+				body: {},
+				headers,
+				asResponse: true,
+			}),
+		);
+	});
+
+	it("accepts a valid password for credential accounts even when the session is stale", async () => {
+		const { auth, db, signInWithTestUser, testUser } = await getTestInstance({
+			secret: DEFAULT_SECRET,
+			session: {
+				freshAge: 60,
+				cookieCache: { enabled: true, maxAge: 600 },
+			},
+			plugins: [
+				twoFactor({
+					allowPasswordless: true,
+					requireFreshSessionForPasswordless: true,
+				}),
+			],
+		});
+		const { headers } = await signInWithTestUser();
+		const session = await auth.api.getSession({ headers });
+		expect(session?.session.id).toBeDefined();
+		await db.update({
+			model: "session",
+			where: [{ field: "id", value: session!.session.id }],
+			update: { createdAt: new Date(Date.now() - 5 * 60 * 1000) },
+		});
+
+		const res = await auth.api.enableTwoFactor({
+			body: { password: testUser.password },
+			headers,
+			asResponse: true,
+		});
+
+		expect(res.status).toBe(200);
+	});
+});
+
 /**
  * @see https://github.com/cinagroup/cinaauth/issues/8900
  */
@@ -2389,6 +2558,94 @@ describe("2FA enforcement scope", async () => {
 		expect(updateRes.ok).toBe(true);
 		const json = await updateRes.json();
 		expect(json.twoFactorRedirect).toBeUndefined();
+	});
+});
+
+describe("2FA additional sign-in endpoints", () => {
+	it("does not challenge email OTP sign-in by default", async () => {
+		let signInOtp = "";
+		const { auth, signInWithTestUser, testUser } = await getTestInstance({
+			secret: DEFAULT_SECRET,
+			plugins: [
+				emailOTP({
+					async sendVerificationOTP({ otp }) {
+						signInOtp = otp;
+					},
+				}),
+				twoFactor({ skipVerificationOnEnable: true }),
+			],
+		});
+		const { headers } = await signInWithTestUser();
+		await auth.api.enableTwoFactor({
+			body: { password: testUser.password },
+			headers,
+		});
+		await auth.api.sendVerificationOTP({
+			body: { email: testUser.email, type: "sign-in" },
+		});
+
+		const response = await auth.api.signInEmailOTP({
+			body: { email: testUser.email, otp: signInOtp },
+			asResponse: true,
+		});
+		const body = (await response.json()) as {
+			twoFactorRedirect?: boolean;
+			user?: { email: string };
+		};
+
+		expect(body.twoFactorRedirect).toBeUndefined();
+		expect(body.user?.email).toBe(testUser.email);
+	});
+
+	it("challenges email OTP sign-in when explicitly configured", async () => {
+		let signInOtp = "";
+		const { auth, signInWithTestUser, testUser } = await getTestInstance({
+			secret: DEFAULT_SECRET,
+			plugins: [
+				emailOTP({
+					async sendVerificationOTP({ otp }) {
+						signInOtp = otp;
+					},
+				}),
+				twoFactor({
+					additionalSignInEndpoints: ["/sign-in/email-otp"],
+					skipVerificationOnEnable: true,
+				}),
+			],
+		});
+		const { headers } = await signInWithTestUser();
+		await auth.api.enableTwoFactor({
+			body: { password: testUser.password },
+			headers,
+		});
+		await auth.api.sendVerificationOTP({
+			body: { email: testUser.email, type: "sign-in" },
+		});
+
+		const response = await auth.api.signInEmailOTP({
+			body: { email: testUser.email, otp: signInOtp },
+			asResponse: true,
+		});
+		const body = (await response.json()) as {
+			twoFactorMethods?: string[];
+			twoFactorRedirect?: boolean;
+		};
+
+		expect(body.twoFactorRedirect).toBe(true);
+		expect(body.twoFactorMethods).toEqual(["totp"]);
+		const challengeHeaders = convertSetCookieToCookie(response.headers);
+		expect(await auth.api.getSession({ headers: challengeHeaders })).toBeNull();
+	});
+
+	it.each([
+		"/delete-user",
+		"/sign-in/email-otp?mode=test",
+		"/sign-in/../delete-user",
+		"/sign-in/email-otp/",
+	])("rejects unsafe endpoint configuration: %s", (endpoint) => {
+		expect(() => twoFactor({ additionalSignInEndpoints: [endpoint] })).toThrow(
+			"additionalSignInEndpoints",
+		);
 	});
 });
 

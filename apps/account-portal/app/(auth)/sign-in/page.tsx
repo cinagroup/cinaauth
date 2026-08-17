@@ -34,7 +34,6 @@ export default function Page() {
 	return (
 		<AuthShell
 			title="Sign in to CinaSeek"
-			description="One secure account for CinaSeek products and connected applications."
 			footer={
 				<Suspense fallback="New to CinaSeek? Create an account">
 					<SignUpLink />

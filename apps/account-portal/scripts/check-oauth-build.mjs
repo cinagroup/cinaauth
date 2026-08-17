@@ -5,6 +5,87 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_CAPABILITIES_URL =
 	"https://auth.cinaseek.ai/api/auth/capabilities";
 
+const hasNoStore = (cacheControl) =>
+	/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cacheControl ?? "");
+
+const readCapabilityMethods = (capabilities) => {
+	if (
+		typeof capabilities !== "object" ||
+		capabilities === null ||
+		capabilities.version !== 4 ||
+		typeof capabilities.methods !== "object" ||
+		capabilities.methods === null
+	) {
+		return undefined;
+	}
+	return capabilities.methods;
+};
+
+export const evaluateEmailProviderReady = ({ capabilities, cacheControl }) => {
+	if (!hasNoStore(cacheControl)) {
+		return {
+			ok: false,
+			reason: "the live Auth capability response is not no-store",
+		};
+	}
+	const methods = readCapabilityMethods(capabilities);
+	if (methods?.emailOtp !== true) {
+		return {
+			ok: false,
+			reason:
+				"the live Auth capability cannot prove that the Email OTP provider is active",
+		};
+	}
+	return {
+		ok: true,
+		reason: "the production email OTP provider is active",
+	};
+};
+
+export const evaluatePasswordlessEmailRelease = ({
+	capabilities,
+	cacheControl,
+}) => {
+	if (!hasNoStore(cacheControl)) {
+		return {
+			ok: false,
+			reason: "the live Auth capability response is not no-store",
+		};
+	}
+	const methods = readCapabilityMethods(capabilities);
+	if (
+		methods?.emailOtp !== true ||
+		methods.emailPassword !== false ||
+		methods.username !== false ||
+		methods.magicLink !== false
+	) {
+		return {
+			ok: false,
+			reason:
+				"the live Auth capabilities do not match the passwordless email policy (emailOtp=true, emailPassword=false, username=false, magicLink=false)",
+		};
+	}
+	return {
+		ok: true,
+		reason: "the live Auth capabilities match the passwordless email policy",
+	};
+};
+
+const evaluateEmailAuthGate = ({ gate, capabilities, cacheControl }) => {
+	if (gate === undefined || gate === "") return undefined;
+	if (gate === "provider-ready") {
+		return evaluateEmailProviderReady({ capabilities, cacheControl });
+	}
+	if (gate === "passwordless") {
+		return evaluatePasswordlessEmailRelease({ capabilities, cacheControl });
+	}
+	return {
+		ok: false,
+		reason:
+			"CINAAUTH_EMAIL_AUTH_GATE must be exactly provider-ready or passwordless",
+	};
+};
+
 const parseCanonicalHttpsOrigin = (name, value) => {
 	if (typeof value !== "string" || !value || value.trim() !== value) {
 		throw new Error(`${name} must be an exact canonical HTTPS origin`);
@@ -214,7 +295,10 @@ const fetchCapabilities = async (url) => {
 			if (!response.ok) {
 				throw new Error(`capability endpoint returned HTTP ${response.status}`);
 			}
-			return await response.json();
+			return {
+				capabilities: await response.json(),
+				cacheControl: response.headers.get("cache-control"),
+			};
 		} catch (error) {
 			lastError = error;
 			if (attempt < 3) {
@@ -259,6 +343,7 @@ const fetchBuildReadiness = async (url) => {
 
 const main = async () => {
 	const plannedWorkerConfig = process.env.CINAAUTH_PLANNED_WORKER_CONFIG;
+	const emailAuthGate = process.env.CINAAUTH_EMAIL_AUTH_GATE;
 	if (plannedWorkerConfig) {
 		const siweEnabled = readPlannedSiweEnabled(plannedWorkerConfig);
 		const reownProjectId = process.env.REOWN_PROJECT_ID;
@@ -282,14 +367,26 @@ const main = async () => {
 			...deployed,
 		});
 		if (!plannedResult.ok) throw new Error(plannedResult.reason);
+
+		let emailAuthResult;
+		if (emailAuthGate) {
+			const url =
+				process.env.CINAAUTH_CAPABILITIES_URL || DEFAULT_CAPABILITIES_URL;
+			const capabilityResponse = await fetchCapabilities(url);
+			emailAuthResult = evaluateEmailAuthGate({
+				gate: emailAuthGate,
+				...capabilityResponse,
+			});
+			if (!emailAuthResult?.ok) throw new Error(emailAuthResult?.reason);
+		}
 		console.log(
-			`Planned Account identity build parity passed: ${plannedResult.reason}.`,
+			`Planned Account identity build parity passed: ${plannedResult.reason}${emailAuthResult ? `; ${emailAuthResult.reason}` : ""}.`,
 		);
 		return;
 	}
 
 	const url = process.env.CINAAUTH_CAPABILITIES_URL || DEFAULT_CAPABILITIES_URL;
-	const capabilities = await fetchCapabilities(url);
+	const { capabilities, cacheControl } = await fetchCapabilities(url);
 	const oneTapResult = evaluateOneTapBuild({
 		oneTapEnabled:
 			typeof capabilities === "object" &&
@@ -308,8 +405,16 @@ const main = async () => {
 		reownProjectId: process.env.REOWN_PROJECT_ID,
 	});
 	if (!reownResult.ok) throw new Error(reownResult.reason);
+	const emailAuthResult = evaluateEmailAuthGate({
+		gate: emailAuthGate,
+		capabilities,
+		cacheControl,
+	});
+	if (emailAuthResult && !emailAuthResult.ok) {
+		throw new Error(emailAuthResult.reason);
+	}
 	console.log(
-		`Account identity build parity passed: ${oneTapResult.reason}; ${reownResult.reason}.`,
+		`Account identity build parity passed: ${oneTapResult.reason}; ${reownResult.reason}${emailAuthResult ? `; ${emailAuthResult.reason}` : ""}.`,
 	);
 };
 

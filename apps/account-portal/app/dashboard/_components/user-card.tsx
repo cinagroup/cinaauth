@@ -18,7 +18,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ChangePasswordForm } from "@/components/forms/change-password-form";
 import { EmailVerificationOtpForm } from "@/components/forms/email-verification-otp-form";
 import { TwoFactorDisableForm } from "@/components/forms/two-factor-disable-form";
 import { TwoFactorEnableForm } from "@/components/forms/two-factor-enable-form";
@@ -58,11 +57,17 @@ import type { Session } from "@/lib/auth";
 import { authClient } from "@/lib/auth-client";
 import { deleteAccountPasskey } from "@/lib/client-api";
 
-const UserCard = (props: { session: Session | null }) => {
+const UserCard = ({
+	session: initialSession,
+	requiresPasswordForTwoFactor,
+}: {
+	session: Session | null;
+	requiresPasswordForTwoFactor: boolean;
+}) => {
 	const router = useRouter();
 	const signOutMutation = useSignOutMutation();
 	const { data } = useSessionQuery();
-	const session = data || props.session;
+	const session = data || initialSession;
 	const [twoFactorDialog, setTwoFactorDialog] = useState<boolean>(false);
 	const [backupCodesPending, setBackupCodesPending] = useState(false);
 	const [isSignOut, setIsSignOut] = useState<boolean>(false);
@@ -125,7 +130,9 @@ const UserCard = (props: { session: Session | null }) => {
 												Scan the QR code with your TOTP app
 											</DialogDescription>
 										</DialogHeader>
-										<TwoFactorQrForm />
+										<TwoFactorQrForm
+											requiresPassword={requiresPasswordForTwoFactor}
+										/>
 									</DialogContent>
 								</Dialog>
 							)}
@@ -172,17 +179,19 @@ const UserCard = (props: { session: Session | null }) => {
 												: "Enable 2FA"}
 										</DialogTitle>
 										<DialogDescription>
-											{session?.user.twoFactorEnabled
-												? "Disable the second factor authentication from your account"
-												: "Enable 2FA to secure your account"}
+											{requiresPasswordForTwoFactor
+												? "A retained legacy credential confirms this sensitive change. It cannot be used to sign in."
+												: "Your recent passwordless sign-in confirms this sensitive change."}
 										</DialogDescription>
 									</DialogHeader>
 									{session?.user.twoFactorEnabled ? (
 										<TwoFactorDisableForm
+											requiresPassword={requiresPasswordForTwoFactor}
 											onSuccess={() => setTwoFactorDialog(false)}
 										/>
 									) : (
 										<TwoFactorEnableForm
+											requiresPassword={requiresPasswordForTwoFactor}
 											onSuccess={() => setTwoFactorDialog(false)}
 											onBackupCodesPendingChange={setBackupCodesPending}
 										/>
@@ -214,7 +223,6 @@ const UserCard = (props: { session: Session | null }) => {
 						</Link>
 					</Button>
 				</div>
-				<ChangePassword />
 				{session?.session.impersonatedBy ? (
 					<Button
 						className="gap-2 z-10"
@@ -269,38 +277,6 @@ const UserCard = (props: { session: Session | null }) => {
 	);
 };
 export default UserCard;
-
-function ChangePassword() {
-	const [open, setOpen] = useState<boolean>(false);
-
-	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
-				<Button className="gap-2 z-10" variant="outline" size="sm">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="1em"
-						height="1em"
-						viewBox="0 0 24 24"
-					>
-						<path
-							fill="currentColor"
-							d="M2.5 18.5v-1h19v1zm.535-5.973l-.762-.442l.965-1.693h-1.93v-.884h1.93l-.965-1.642l.762-.443L4 9.066l.966-1.643l.761.443l-.965 1.642h1.93v.884h-1.93l.965 1.693l-.762.442L4 10.835zm8 0l-.762-.442l.966-1.693H9.308v-.884h1.93l-.965-1.642l.762-.443L12 9.066l.966-1.643l.761.443l-.965 1.642h1.93v.884h-1.93l.965 1.693l-.762.442L12 10.835zm8 0l-.762-.442l.966-1.693h-1.931v-.884h1.93l-.965-1.642l.762-.443L20 9.066l.966-1.643l.761.443l-.965 1.642h1.93v.884h-1.93l.965 1.693l-.762.442L20 10.835z"
-						></path>
-					</svg>
-					<span className="text-sm text-muted-foreground">Change Password</span>
-				</Button>
-			</DialogTrigger>
-			<DialogContent className="sm:max-w-[425px] w-11/12">
-				<DialogHeader>
-					<DialogTitle>Change Password</DialogTitle>
-					<DialogDescription>Change your password</DialogDescription>
-				</DialogHeader>
-				<ChangePasswordForm onSuccess={() => setOpen(false)} />
-			</DialogContent>
-		</Dialog>
-	);
-}
 
 function EditUserDialog() {
 	const { data } = useSessionQuery();

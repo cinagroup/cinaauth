@@ -225,6 +225,42 @@ describe("delivery configuration BFF", () => {
 			},
 		});
 	});
+
+	it("forwards a Cloudflare Email stage payload to the control client", async () => {
+		mocks.fetch.mockResolvedValueOnce({
+			ok: true,
+			data: {
+				operation: "stage",
+				revision: 1,
+				version: 1,
+				validated: false,
+				updatedAt: "2026-08-17T00:00:00.000Z",
+			},
+		});
+		const { POST } = await import(
+			"@/app/api/admin/configuration/delivery/stage/route"
+		);
+		const body = {
+			expectedVersion: 0,
+			idempotencyKey: "stage-cloudflare-20260817",
+			channel: "email",
+			config: {
+				provider: "cloudflare-email",
+				apiToken: "cf-email-token-abcdefghij1234",
+				accountId: "f1234567890abcdef01234567890abcd",
+				from: "identity@example.com",
+			},
+		};
+		const response = await POST(
+			request("/api/admin/configuration/delivery/stage", "POST", body),
+		);
+
+		expect(response.status).toBe(200);
+		expect(mocks.fetch).toHaveBeenCalledWith(
+			"/api/admin/configuration/delivery/stage",
+			expect.objectContaining({ cookie: "session=valid", body }),
+		);
+	});
 });
 
 describe("configuration mutation perimeter", () => {

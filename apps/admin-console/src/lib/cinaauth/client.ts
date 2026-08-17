@@ -4,7 +4,7 @@ import { splitSetCookieHeader } from "./proxy-cookie";
 import type { StandardResponse } from "./types";
 
 type CinaauthFetchOptions = {
-	method?: "GET" | "POST" | "PATCH" | "DELETE";
+	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 	body?: unknown;
 	cookie?: string;
 	headers?: Record<string, string>;

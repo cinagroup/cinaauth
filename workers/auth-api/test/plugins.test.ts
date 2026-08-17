@@ -86,6 +86,42 @@ describe("organization schema mode", () => {
 	});
 });
 
+describe("passwordless email authentication policy", () => {
+	it("registers encrypted email OTP without password-backed sign-in plugins", () => {
+		const plugins = createAuthPlugins(makeOriginEnv());
+		const pluginIds = new Set(plugins.map((plugin) => plugin.id));
+		const emailOtpPlugin = plugins.find((plugin) => plugin.id === "email-otp");
+		const emailOtpTargetRateLimitPlugin = plugins.find(
+			(plugin) => plugin.id === "email-otp-target-rate-limit",
+		);
+		const twoFactorPlugin = plugins.find(
+			(plugin) => plugin.id === "two-factor",
+		);
+
+		expect(pluginIds.has("username")).toBe(false);
+		expect(pluginIds.has("magic-link")).toBe(false);
+		expect(emailOtpTargetRateLimitPlugin?.hooks?.before).toEqual([
+			expect.objectContaining({ priority: 200 }),
+		]);
+		expect(
+			plugins.findIndex(
+				(plugin) => plugin.id === "email-otp-target-rate-limit",
+			),
+		).toBeLessThan(plugins.findIndex((plugin) => plugin.id === "email-otp"));
+		expect(emailOtpPlugin?.options).toMatchObject({
+			disableImplicitSignUp: true,
+			disablePasswordReset: true,
+			storeOTP: "encrypted",
+		});
+		expect(twoFactorPlugin?.options).toMatchObject({
+			allowPasswordless: true,
+			additionalSignInEndpoints: ["/sign-in/email-otp"],
+			requireFreshSessionForPasswordless: true,
+		});
+		expect(twoFactorPlugin?.options).not.toHaveProperty("otpOptions");
+	});
+});
+
 describe("authoritative Admin role permissions", () => {
 	it("keeps security_admin scoped to reversible security operations", () => {
 		expect(roles.security_admin.authorize({ user: ["ban"] }).success).toBe(

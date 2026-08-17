@@ -2,19 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("CinaSeek account brand copy", () => {
-	it("brands the password-reset email as CinaSeek", () => {
-		const resetEmailSource = readFileSync(
-			new URL("./email/reset-password.tsx", import.meta.url),
-			"utf8",
-		);
-
-		expect(resetEmailSource).toContain("Reset your CinaSeek password");
-		expect(resetEmailSource).toContain("for your CinaSeek");
-		expect(resetEmailSource).not.toContain("Reset your CinaAuth password");
-		expect(resetEmailSource).not.toContain("<strong>CinaAuth</strong>");
-		expect(resetEmailSource).not.toContain("your CinaAuth");
-	});
-
 	it("presents the homepage as the CinaSeek Identity account center", () => {
 		const homepageSource = readFileSync(
 			new URL("../app/page.tsx", import.meta.url),
@@ -22,8 +9,11 @@ describe("CinaSeek account brand copy", () => {
 		);
 
 		expect(homepageSource).toContain("CinaSeek Identity account center");
+		expect(homepageSource).toContain("Email code sign-in");
 		expect(homepageSource).not.toContain("Official demo");
 		expect(homepageSource).not.toContain("cinaauth");
+		expect(homepageSource).not.toContain("Email & Password");
+		expect(homepageSource).not.toContain("Password Reset");
 	});
 
 	it("keeps account, consent, security, privacy, and organization copy on the CinaSeek brand", () => {
@@ -77,7 +67,10 @@ describe("CinaSeek account brand copy", () => {
 		expect(readme).toContain("# CinaSeek Accounts");
 		expect(readme).toContain('src="./public/logo.png"');
 		expect(readme).toContain("Cloudflare Hyperdrive");
+		expect(readme).toContain("Email code sign-in");
 		expect(readme).not.toContain("# CinaAuth Demo App");
+		expect(readme).not.toContain("Email & Password");
+		expect(readme).not.toContain("Password Reset");
 		expect(readme).not.toContain("TURSO_DATABASE_URL");
 	});
 

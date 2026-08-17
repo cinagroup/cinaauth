@@ -6,6 +6,11 @@ import {
 	PROVIDER_NAMESPACE_INVARIANT_ID,
 } from "./provider-namespace-invariant";
 import {
+	getSocialSignInInvariantReadiness,
+	installSocialSignInInvariant,
+	SOCIAL_SIGN_IN_INVARIANT_ID,
+} from "./social-sign-in-invariant";
+import {
 	getSuperAdminDatabaseInvariantReadiness,
 	installSuperAdminDatabaseInvariant,
 	SUPER_ADMIN_DATABASE_INVARIANT_ID,
@@ -34,6 +39,7 @@ export type DatabaseInvariantReadiness = {
 export const DATABASE_INVARIANT_IDS = [
 	SUPER_ADMIN_DATABASE_INVARIANT_ID,
 	PROVIDER_NAMESPACE_INVARIANT_ID,
+	SOCIAL_SIGN_IN_INVARIANT_ID,
 ] as const;
 
 const getDatabaseInvariantDefinitions = (
@@ -50,6 +56,11 @@ const getDatabaseInvariantDefinitions = (
 			installProviderNamespaceInvariant(client, configuredProviderIds),
 		getReadiness: (database) =>
 			getProviderNamespaceInvariantReadiness(database, configuredProviderIds),
+	},
+	{
+		id: SOCIAL_SIGN_IN_INVARIANT_ID,
+		install: installSocialSignInInvariant,
+		getReadiness: getSocialSignInInvariantReadiness,
 	},
 ];
 

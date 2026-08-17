@@ -1,3 +1,4 @@
+import type { SocialProviderCatalogId } from "@cinaauth/auth-web-contract";
 import type { SecurityOAuthProvider } from "./security-center";
 
 const SECURITY_PROVIDER_LINK_CALLBACK_URL = "/dashboard/security";
@@ -11,7 +12,7 @@ type ProviderLinkResult = {
 
 type SecurityProviderLinkClient = {
 	linkSocial: (input: {
-		provider: "google" | "github";
+		provider: SocialProviderCatalogId;
 		callbackURL: string;
 		errorCallbackURL: string;
 		disableRedirect: boolean;

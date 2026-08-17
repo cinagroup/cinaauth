@@ -45,11 +45,6 @@ function BackupCodeVerificationContent() {
 							Use authenticator code
 						</Link>
 					</Button>
-					<Button asChild variant="link" size="sm">
-						<Link href={buildTwoFactorAuthPath("/two-factor/otp", params)}>
-							Use email code
-						</Link>
-					</Button>
 				</CardFooter>
 			</Card>
 		</main>

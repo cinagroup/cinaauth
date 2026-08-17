@@ -40,11 +40,6 @@ function TotpVerificationContent() {
 				</CardContent>
 				<CardFooter className="flex-wrap gap-2 text-sm text-muted-foreground">
 					<Button asChild variant="link" size="sm">
-						<Link href={buildTwoFactorAuthPath("/two-factor/otp", params)}>
-							Switch to Email Verification
-						</Link>
-					</Button>
-					<Button asChild variant="link" size="sm">
 						<Link href={buildTwoFactorAuthPath("/two-factor/backup", params)}>
 							Use a backup code
 						</Link>

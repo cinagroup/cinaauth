@@ -1,9 +1,10 @@
 # CinaAuth Delivery Worker Deployment
 
 This Worker receives signed delivery jobs from `cinaauth-api`, deduplicates
-successful IDs with KV, and sends email through Resend or SMS through Twilio.
-Provider credentials can be configured after the Worker is deployed; they are
-not build inputs and are never returned by the management API.
+successful IDs with KV, and sends email through Resend or Cloudflare Email
+while SMS goes through Twilio. Provider credentials can be configured after
+the Worker is deployed; they are not build inputs and are never returned by
+the management API.
 
 ## Bootstrap resources
 
@@ -111,6 +112,31 @@ At runtime, each channel resolves configuration in this order:
 
 If a dynamic `ACTIVE` exists but cannot be decrypted or read, delivery fails
 closed and does not silently fall back to legacy values.
+
+## Email provider selection
+
+The email channel accepts two providers, selected by the staged `provider`
+value; both live only in the encrypted Delivery configuration store:
+
+- `resend` — API key (`re_` prefix) plus verified sender, delivered through
+  `https://api.resend.com/emails`.
+- `cloudflare-email` — a Cloudflare API token with only the Email Sending
+  permission, the 32-hex Cloudflare account ID, and a verified sender on a
+  Cloudflare-verified sending domain, delivered through
+  `https://api.cloudflare.com/client/v4/accounts/{account_id}/email/sending/send`.
+  Cloudflare Email Service Sending is a Beta capability that requires the
+  Workers Paid plan, an account with Email Sending entitled, and the sending
+  domain verified (SPF/DKIM) in Cloudflare. Unlike the Workers `send_email`
+  binding, the REST API can deliver to arbitrary recipient addresses, which
+  verification codes require.
+
+Cloudflare Email responses are validated beyond HTTP status: the management
+`test` and the delivery dispatch both fail unless the response envelope reports
+`success: true` and the recipient is not in `permanent_bounces`. Versions
+staged before the provider discriminator existed decrypt as `resend`, so a
+rollback to an earlier Resend version keeps working without re-staging. There
+are no legacy environment variables for `cloudflare-email`; it is configured
+exclusively through the audited control plane.
 
 ## Legacy migration only
 

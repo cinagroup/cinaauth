@@ -1,7 +1,9 @@
 import {
 	hasAdminControlPermission,
 	isValidAdminOidcClientSecret,
+	SOCIAL_PROVIDER_CATALOG_IDS,
 } from "@cinaauth/auth-web-contract";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type {
@@ -17,6 +19,16 @@ import {
 	getAdminVerificationServerApi,
 	handleAdminSendVerification,
 } from "./admin-send-verification";
+import type {
+	AdminSocialAuditEvent,
+	AdminSocialResult,
+} from "./admin-social-providers";
+import {
+	handleAdminDeleteSocialProvider,
+	handleAdminGetSocialProviders,
+	handleAdminUpdateSignInSettings,
+	handleAdminUpsertSocialProvider,
+} from "./admin-social-providers";
 import {
 	DEFAULT_AUDIT_RETENTION_DAYS,
 	getAuditRetentionPolicy,
@@ -103,6 +115,7 @@ import {
 } from "./scim-ownership-migration";
 import { getActiveSecretsStoreReadiness } from "./secrets-store-readiness";
 import { createSiweRequestBodyLimitMiddleware } from "./siwe-request-body-limit";
+import { resolveSocialSignInConfig } from "./social-provider-store";
 import { handleSuperAdminGovernedRequest } from "./super-admin-governance";
 
 export { RateLimitDurableObject } from "./rate-limit";
@@ -756,6 +769,7 @@ export const getConfiguredAccountProviderIds = (env: CloudflareBindings) => {
 	const origins = requireAuthOriginConfig(env);
 	return [
 		...new Set([
+			...SOCIAL_PROVIDER_CATALOG_IDS,
 			...Object.keys(getProductionSocialProviders(env, origins.accountOrigin)),
 			...parseProductionGenericOAuthConfig(
 				env.GENERIC_OAUTH_CONFIG,
@@ -1202,13 +1216,36 @@ app.use("*", async (c, next) => {
 				),
 			);
 		}
+		// Email OTP login is the only email authentication path. When an operator
+		// disables it at runtime, public code delivery endpoints fail closed even
+		// though the delivery provider itself may still be healthy.
+		if (requiredDeliveryProvider === "email") {
+			const accountOriginForOtp =
+				requireAuthOriginConfig(runtimeEnv).accountOrigin;
+			const socialForOtp = await resolveSocialSignInConfig(
+				runtimeEnv,
+				accountOriginForOtp,
+			);
+			if (!socialForOtp.emailOtpLoginEnabled) {
+				return withNoStore(
+					c.json(
+						{
+							success: false,
+							code: "EMAIL_OTP_LOGIN_DISABLED",
+							message: "Email code sign-in is currently disabled",
+						},
+						503,
+					),
+				);
+			}
+		}
 	}
 
 	// Run inside the ExecutionContext store so the request-scoped auth instance's
 	// background-task handler can reach ctx.waitUntil — including any task the
 	// first-time instance construction (plugin init) might schedule.
 	await runWithExecutionCtx(c.executionCtx, async () => {
-		c.set("auth", createAuth(runtimeEnv));
+		c.set("auth", await createAuth(runtimeEnv));
 		await next();
 	});
 });
@@ -1267,10 +1304,25 @@ app.use(
 app.use("/api/auth/*", createSiweRequestBodyLimitMiddleware<AppEnv>());
 
 // Public, secret-free capability discovery. Login surfaces use this to avoid
-// advertising providers that are not configured on the production Worker.
+// advertising providers that are not configured on the production Worker. The
+// advertised federated list comes from the runtime social-provider store and is
+// truncated to the admin-configured sign-in limit.
 app.get("/api/auth/capabilities", async (c) => {
 	const delivery = await getDeliveryProviderCapabilities(c.var.runtimeEnv);
-	return withNoStore(c.json(getAuthCapabilities(c.env, delivery)));
+	const accountOrigin = requireAuthOriginConfig(c.env).accountOrigin;
+	const social = await resolveSocialSignInConfig(c.env, accountOrigin);
+	return withNoStore(
+		c.json(
+			getAuthCapabilities(
+				c.env,
+				{
+					email: delivery.email && social.emailOtpLoginEnabled,
+					sms: delivery.sms,
+				},
+				social.capabilitiesProviders,
+			),
+		),
+	);
 });
 
 // Cloudflare Access supports ES256 but can be strict about mixed-algorithm
@@ -1476,12 +1528,6 @@ app.post("/api/auth/admin/send-verification", async (c) => {
 				}
 				await verificationApi.sendVerificationOTP({ body: input, headers });
 			},
-			sendMagicLink: async (input) => {
-				if (!verificationApi) {
-					throw new Error("Verification delivery API is unavailable");
-				}
-				await verificationApi.signInMagicLink({ body: input, headers });
-			},
 			sendPhoneOtp: async (input) => {
 				if (!verificationApi) {
 					throw new Error("Verification delivery API is unavailable");
@@ -1539,6 +1585,164 @@ app.post("/api/auth/admin/send-verification", async (c) => {
 	}
 	return withNoStore(response);
 });
+
+// Runtime social sign-in provider management for the Admin console. Reads need
+// the read permission; every mutation requires the manage permission, a fresh
+// session, the exact Admin origin, the mutation rate limiter, and audit intent
+// plus outcome events. Client secrets are written to the configuration store
+// and are never echoed back or logged.
+const getAdminSocialDependencies = (c: Context<AppEnv>) => {
+	const auth = c.var.auth;
+	const headers = c.req.raw.headers;
+	const rateLimitStorage = c.env.RATE_LIMITER
+		? createDurableObjectRateLimitStorage(c.env)
+		: null;
+	return {
+		env: c.var.runtimeEnv,
+		database: createDatabase(c.var.runtimeEnv),
+		getSession: async () => {
+			const session = await auth.api.getSession({
+				headers,
+				query: { disableCookieCache: true },
+			});
+			if (!session) return null;
+			return {
+				user: {
+					id: session.user.id,
+					role: (session.user as { role?: string | null }).role,
+				},
+				session: {
+					createdAt: session.session.createdAt,
+					impersonatedBy: (
+						session.session as typeof session.session & {
+							impersonatedBy?: string | null;
+						}
+					).impersonatedBy,
+				},
+			};
+		},
+		consumeRateLimit: rateLimitStorage?.consume,
+		writeAuditEvent: async (event: AdminSocialAuditEvent) => {
+			const auditApi = auth.api as typeof auth.api & {
+				logAudit?: (input: {
+					headers: Headers;
+					body: {
+						category: string;
+						action: string;
+						result: "success" | "failure";
+						actorSite: string;
+						targetType: string;
+						targetId: string;
+						metadata: Record<string, unknown>;
+					};
+				}) => Promise<unknown>;
+			};
+			if (typeof auditApi.logAudit !== "function") {
+				throw new Error("Social provider audit API is unavailable");
+			}
+			await auditApi.logAudit({
+				headers,
+				body: {
+					category: "integration",
+					action: `${event.action}.${event.phase}`,
+					result: event.result,
+					actorSite: "admin-console",
+					targetType: "configuration",
+					targetId: "social-provider",
+					metadata: {
+						actorId: event.actorId,
+						...event.metadata,
+					},
+				},
+			});
+		},
+		logEvent: (event: {
+			level: "warn" | "error";
+			message: string;
+			code?: string;
+			actorId?: string;
+		}) => {
+			const payload = JSON.stringify(event);
+			if (event.level === "error") console.error(payload);
+			else console.warn(payload);
+		},
+	};
+};
+
+const runAdminSocialHandler = async (
+	c: Context<AppEnv>,
+	handler: (
+		dependencies: ReturnType<typeof getAdminSocialDependencies>,
+	) => Promise<AdminSocialResult>,
+) => {
+	const dependencies = getAdminSocialDependencies(c);
+	try {
+		const result = await handler(dependencies);
+		const response = c.json(result.body, result.status);
+		if (result.status === 429 && result.retryAfter != null) {
+			response.headers.set("Retry-After", String(result.retryAfter));
+			response.headers.set("X-Retry-After", String(result.retryAfter));
+		}
+		return withNoStore(response);
+	} finally {
+		await dependencies.database.end().catch(() => undefined);
+	}
+};
+
+const readAdminSocialBody = async (c: Context<AppEnv>) => {
+	try {
+		return { ok: true, body: await c.req.json() } as const;
+	} catch {
+		return { ok: false } as const;
+	}
+};
+
+app.get("/api/auth/admin/social-providers", async (c) =>
+	runAdminSocialHandler(c, (dependencies) =>
+		handleAdminGetSocialProviders(dependencies),
+	),
+);
+
+const adminSocialOrigin = (c: Context<AppEnv>) => ({
+	origin: c.req.raw.headers.get("origin"),
+	allowedOrigin: requireAuthOriginConfig(c.var.runtimeEnv).adminOrigin,
+});
+
+app.put("/api/auth/admin/social-providers", async (c) =>
+	runAdminSocialHandler(c, (dependencies) => {
+		const { origin, allowedOrigin } = adminSocialOrigin(c);
+		return handleAdminUpsertSocialProvider(
+			dependencies,
+			origin,
+			allowedOrigin,
+			() => readAdminSocialBody(c),
+		);
+	}),
+);
+
+app.delete("/api/auth/admin/social-providers", async (c) =>
+	runAdminSocialHandler(c, (dependencies) => {
+		const { origin, allowedOrigin } = adminSocialOrigin(c);
+		return handleAdminDeleteSocialProvider(
+			dependencies,
+			origin,
+			allowedOrigin,
+			() => readAdminSocialBody(c),
+		);
+	}),
+);
+
+app.put("/api/auth/admin/sign-in-settings", async (c) =>
+	runAdminSocialHandler(c, (dependencies) => {
+		const { origin, allowedOrigin } = adminSocialOrigin(c);
+		return handleAdminUpdateSignInSettings(
+			dependencies,
+			origin,
+			allowedOrigin,
+			() => readAdminSocialBody(c),
+		);
+	}),
+);
 
 const ADMIN_CONFIGURATION_SERVICES = new Set<AdminConfigurationService>([
 	"delivery",
@@ -2515,7 +2719,7 @@ const runRetention = async (env: CloudflareBindings) => {
 	if (!(await isDatabaseCutoverReady(env))) {
 		return;
 	}
-	const context = await createAuth(env).$context;
+	const context = await (await createAuth(env)).$context;
 	const now = Date.now();
 	const expiredSessions = await context.adapter.deleteMany({
 		model: "session",
@@ -2590,7 +2794,7 @@ const handleQueueBatch = async (
 		await handlePrivacyExportBatch(
 			batch as MessageBatch<PrivacyExportMessage>,
 			runtimeEnv,
-			async () => createAuth(runtimeEnv).$context,
+			async () => (await createAuth(runtimeEnv)).$context,
 		);
 		return;
 	}

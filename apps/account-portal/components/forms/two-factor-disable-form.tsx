@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
+import { getTwoFactorPasswordBody } from "@/lib/security-center";
 
 const disableSchema = z.object({
 	password: z.string().min(8, "Password must be at least 8 characters."),
@@ -24,9 +25,13 @@ type DisableFormValues = z.infer<typeof disableSchema>;
 
 interface TwoFactorDisableFormProps {
 	onSuccess?: () => void;
+	requiresPassword?: boolean;
 }
 
-export function TwoFactorDisableForm({ onSuccess }: TwoFactorDisableFormProps) {
+export function TwoFactorDisableForm({
+	onSuccess,
+	requiresPassword = true,
+}: TwoFactorDisableFormProps) {
 	const [loading, startTransition] = useTransition();
 
 	const form = useForm<DisableFormValues>({
@@ -36,10 +41,10 @@ export function TwoFactorDisableForm({ onSuccess }: TwoFactorDisableFormProps) {
 		},
 	});
 
-	const onSubmit = (data: DisableFormValues) => {
+	const disableTwoFactor = (password: string) => {
 		startTransition(async () => {
 			await authClient.twoFactor.disable({
-				password: data.password,
+				...getTwoFactorPasswordBody(requiresPassword, password),
 				fetchOptions: {
 					onSuccess() {
 						toast.success("2FA disabled successfully");
@@ -52,6 +57,32 @@ export function TwoFactorDisableForm({ onSuccess }: TwoFactorDisableFormProps) {
 			});
 		});
 	};
+
+	const onSubmit = (data: DisableFormValues) => {
+		disableTwoFactor(data.password);
+	};
+
+	if (!requiresPassword) {
+		return (
+			<div className="flex flex-col gap-4">
+				<p className="text-sm text-muted-foreground">
+					Your recent passwordless sign-in confirms this security change.
+				</p>
+				<Button
+					type="button"
+					variant="destructive"
+					disabled={loading}
+					onClick={() => disableTwoFactor("")}
+				>
+					{loading ? (
+						<Loader2 size={16} className="animate-spin" />
+					) : (
+						"Disable 2FA"
+					)}
+				</Button>
+			</div>
+		);
+	}
 
 	return (
 		<form

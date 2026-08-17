@@ -13,7 +13,7 @@ const readSource = (relativePath: string) =>
 describe("two-factor recovery responses", () => {
 	it("opens the first server-advertised factor while preserving recovery access", () => {
 		expect(getPreferredTwoFactorPath(["totp", "otp"])).toBe("/two-factor");
-		expect(getPreferredTwoFactorPath(["otp"])).toBe("/two-factor/otp");
+		expect(getPreferredTwoFactorPath(["otp"])).toBe("/two-factor/backup");
 		expect(getPreferredTwoFactorPath([])).toBe("/two-factor/backup");
 		expect(getPreferredTwoFactorPath(undefined)).toBe("/two-factor");
 	});
@@ -66,7 +66,7 @@ describe("two-factor recovery UI contract", () => {
 		expect(source).not.toContain("@better-auth-ui");
 	});
 
-	it("exposes a backup-code challenge while preserving navigation state", () => {
+	it("exposes only TOTP and backup-code challenges", () => {
 		const client = readSource("./auth-client.ts");
 		const navigation = readSource("./two-factor-navigation.ts");
 		const totpPage = readSource("../app/(auth)/two-factor/page.tsx");
@@ -76,17 +76,11 @@ describe("two-factor recovery UI contract", () => {
 		expect(navigation).toContain('"/two-factor/backup"');
 		expect(client).toContain("getPreferredTwoFactorPath(twoFactorMethods)");
 		expect(totpPage).toContain('buildTwoFactorAuthPath("/two-factor/backup"');
-		expect(otpPage).toContain('buildTwoFactorAuthPath("/two-factor/backup"');
+		expect(totpPage).not.toContain('"/two-factor/otp"');
+		expect(otpPage).toContain("buildRetiredEmailTwoFactorRedirect");
+		expect(otpPage).not.toContain("TwoFactorEmailOtpForm");
 		expect(backupPage).toContain("TwoFactorBackupCodeForm");
 		expect(backupPage).toContain("getTwoFactorSuccessPath(params)");
-	});
-
-	it("does not treat email OTP transport errors as sent or verified", () => {
-		const source = readSource(
-			"../components/forms/two-factor-email-otp-form.tsx",
-		);
-		expect(source).toContain("throw: true");
-		expect(source).toContain("classifyTwoFactorVerificationData");
-		expect(source).not.toContain("if (res.data)");
+		expect(backupPage).not.toContain('"/two-factor/otp"');
 	});
 });

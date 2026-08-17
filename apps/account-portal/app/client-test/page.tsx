@@ -1,8 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { EmailOtpForm } from "@/components/forms/email-otp-form";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -12,40 +11,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useSessionQuery } from "@/data/user/session-query";
 import { useSignOutMutation } from "@/data/user/sign-out-mutation";
-import { authClient } from "@/lib/auth-client";
 
 export default function Page() {
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [loading, startTransition] = useTransition();
 	const { data: session, isPending, error } = useSessionQuery();
 	const signOutMutation = useSignOutMutation();
-
-	const handleLogin = async () => {
-		startTransition(async () => {
-			await authClient.signIn.email(
-				{
-					email,
-					password,
-					callbackURL: "/client-test",
-				},
-				{
-					onError: (ctx) => {
-						toast.error(ctx.error.message);
-					},
-					onSuccess: () => {
-						toast.success("Successfully logged in!");
-						setEmail("");
-						setPassword("");
-					},
-				},
-			);
-		});
-	};
 
 	return (
 		<div className="py-16 md:py-24 px-4 md:px-6 space-y-8">
@@ -58,47 +29,18 @@ export default function Page() {
 				{/* Login Form */}
 				<Card>
 					<CardHeader>
-						<CardTitle>Sign In</CardTitle>
+						<CardTitle>Sign in</CardTitle>
 						<CardDescription>
-							Enter your email and password to sign in
+							Use the one-time code sent to your email address.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div className="grid gap-4">
-							<div className="grid gap-2">
-								<Label htmlFor="email">Email</Label>
-								<Input
-									id="email"
-									type="email"
-									placeholder="m@example.com"
-									value={email}
-									onChange={(e) => setEmail(e.target.value)}
-								/>
-							</div>
-							<div className="grid gap-2">
-								<Label htmlFor="password">Password</Label>
-								<Input
-									id="password"
-									type="password"
-									placeholder="••••••••"
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-								/>
-							</div>
-						</div>
+						<EmailOtpForm
+							onSuccess={() => {
+								window.location.href = "/client-test";
+							}}
+						/>
 					</CardContent>
-					<CardFooter>
-						<Button className="w-full" onClick={handleLogin} disabled={loading}>
-							{loading ? (
-								<>
-									<Loader2 size={16} className="mr-2 animate-spin" />
-									Signing in...
-								</>
-							) : (
-								"Sign In"
-							)}
-						</Button>
-					</CardFooter>
 				</Card>
 
 				{/* Session Display */}

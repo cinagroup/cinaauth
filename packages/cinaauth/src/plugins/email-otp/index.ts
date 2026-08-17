@@ -44,6 +44,23 @@ export const emailOTP = (options: EmailOTPOptions) => {
 	} satisfies EmailOTPOptions;
 
 	const sendVerificationOTPAction = sendVerificationOTP(opts);
+	type PasswordResetEndpoints = {
+		requestPasswordResetEmailOTP: ReturnType<
+			typeof requestPasswordResetEmailOTP
+		>;
+		forgetPasswordEmailOTP: ReturnType<typeof forgetPasswordEmailOTP>;
+		resetPasswordEmailOTP: ReturnType<typeof resetPasswordEmailOTP>;
+	};
+	const passwordResetEndpoints: PasswordResetEndpoints =
+		opts.disablePasswordReset
+			? // The public endpoint type remains stable for existing integrations while
+				// the disabled runtime registry receives no password-reset routes.
+				({} as PasswordResetEndpoints)
+			: {
+					requestPasswordResetEmailOTP: requestPasswordResetEmailOTP(opts),
+					forgetPasswordEmailOTP: forgetPasswordEmailOTP(opts),
+					resetPasswordEmailOTP: resetPasswordEmailOTP(opts),
+				};
 
 	return {
 		id: "email-otp",
@@ -80,9 +97,7 @@ export const emailOTP = (options: EmailOTPOptions) => {
 			checkVerificationOTP: checkVerificationOTP(opts),
 			verifyEmailOTP: verifyEmailOTP(opts),
 			signInEmailOTP: signInEmailOTP(opts),
-			requestPasswordResetEmailOTP: requestPasswordResetEmailOTP(opts),
-			forgetPasswordEmailOTP: forgetPasswordEmailOTP(opts),
-			resetPasswordEmailOTP: resetPasswordEmailOTP(opts),
+			...passwordResetEndpoints,
 			requestEmailChangeEmailOTP: requestEmailChangeEmailOTP(opts),
 			changeEmailEmailOTP: changeEmailEmailOTP(opts),
 		},
@@ -156,27 +171,31 @@ export const emailOTP = (options: EmailOTPOptions) => {
 				window: opts.rateLimit?.window || 60,
 				max: opts.rateLimit?.max || 3,
 			},
-			{
-				pathMatcher(path) {
-					return path === "/email-otp/request-password-reset";
-				},
-				window: opts.rateLimit?.window || 60,
-				max: opts.rateLimit?.max || 3,
-			},
-			{
-				pathMatcher(path) {
-					return path === "/email-otp/reset-password";
-				},
-				window: opts.rateLimit?.window || 60,
-				max: opts.rateLimit?.max || 3,
-			},
-			{
-				pathMatcher(path) {
-					return path === "/forget-password/email-otp";
-				},
-				window: opts.rateLimit?.window || 60,
-				max: opts.rateLimit?.max || 3,
-			},
+			...(opts.disablePasswordReset
+				? []
+				: [
+						{
+							pathMatcher(path: string) {
+								return path === "/email-otp/request-password-reset";
+							},
+							window: opts.rateLimit?.window || 60,
+							max: opts.rateLimit?.max || 3,
+						},
+						{
+							pathMatcher(path: string) {
+								return path === "/email-otp/reset-password";
+							},
+							window: opts.rateLimit?.window || 60,
+							max: opts.rateLimit?.max || 3,
+						},
+						{
+							pathMatcher(path: string) {
+								return path === "/forget-password/email-otp";
+							},
+							window: opts.rateLimit?.window || 60,
+							max: opts.rateLimit?.max || 3,
+						},
+					]),
 			{
 				pathMatcher(path) {
 					return path === "/email-otp/request-email-change";

@@ -40,6 +40,11 @@ export function requiresNewEmailOtpUser(intent: EmailOtpIntent) {
 	return intent === "signup";
 }
 
+/** Prevents the sign-in path from silently registering an unknown address. */
+export function requiresExistingEmailOtpUser(intent: EmailOtpIntent) {
+	return intent === "signin";
+}
+
 export function suppressEmailOtpAutomaticRedirect(data: unknown) {
 	if (
 		typeof data !== "object" ||

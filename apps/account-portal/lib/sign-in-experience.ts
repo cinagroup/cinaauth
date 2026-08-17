@@ -14,12 +14,6 @@ export const getSignInAlert = (error: string | null): SignInAlert | null =>
 			}
 		: null;
 
-/** Explains the return step without exposing an untrusted client name. */
-export const getSignInContextMessage = (hasOidcQuery: boolean) =>
-	hasOidcQuery
-		? "After signing in, you’ll return to the requesting application."
-		: null;
-
 /** Prevents a direct browser redirect from leaving the account portal. */
 export const sanitizeAccountCallbackURL = (value: string | null) => {
 	if (!value?.startsWith("/") || value.startsWith("//")) return "/dashboard";

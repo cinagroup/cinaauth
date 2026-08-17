@@ -3,10 +3,20 @@ import type { DeliveryWorkerEnv } from "./env";
 
 export type DeliveryProviderKind = "email" | "sms";
 
-export type EmailProviderConfig = {
-	apiKey: string;
-	from: string;
-};
+export type DeliveryEmailProvider = "resend" | "cloudflare-email";
+
+export type EmailProviderConfig =
+	| {
+			provider: "resend";
+			apiKey: string;
+			from: string;
+	  }
+	| {
+			provider: "cloudflare-email";
+			apiToken: string;
+			accountId: string;
+			from: string;
+	  };
 
 export type SmsProviderConfig = {
 	accountSid: string;
@@ -234,18 +244,64 @@ const encryptConfig = async (
 	};
 };
 
+type EmailConfigCandidate = {
+	provider?: unknown;
+	apiKey?: unknown;
+	apiToken?: unknown;
+	accountId?: unknown;
+	from?: unknown;
+};
+
+const asEmailConfigCandidate = (value: unknown): EmailConfigCandidate | null =>
+	typeof value === "object" && value !== null
+		? (value as EmailConfigCandidate)
+		: null;
+
+const isEmailFromValue = (from: unknown): from is string =>
+	typeof from === "string" &&
+	from.length > 0 &&
+	from.length <= 384 &&
+	!/\r|\n/.test(from);
+
+const isResendCredentials = (
+	apiKey: unknown,
+	from: unknown,
+): apiKey is string =>
+	typeof apiKey === "string" &&
+	apiKey.startsWith("re_") &&
+	apiKey.length >= 16 &&
+	apiKey.length <= 512 &&
+	isEmailFromValue(from);
+
+const isCloudflareEmailCredentials = (
+	apiToken: unknown,
+	accountId: unknown,
+	from: unknown,
+): apiToken is string =>
+	typeof apiToken === "string" &&
+	/^[A-Za-z0-9_-]{20,512}$/.test(apiToken) &&
+	typeof accountId === "string" &&
+	/^[a-fA-F0-9]{32}$/.test(accountId) &&
+	isEmailFromValue(from);
+
 const isEmailConfig = (value: unknown): value is EmailProviderConfig => {
-	const candidate = value as Partial<EmailProviderConfig> | null;
-	return (
-		typeof candidate?.apiKey === "string" &&
-		candidate.apiKey.startsWith("re_") &&
-		candidate.apiKey.length >= 16 &&
-		candidate.apiKey.length <= 512 &&
-		typeof candidate.from === "string" &&
-		candidate.from.length > 0 &&
-		candidate.from.length <= 384 &&
-		!/\r|\n/.test(candidate.from)
-	);
+	const candidate = asEmailConfigCandidate(value);
+	if (!candidate) return false;
+	// Rows staged before the provider discriminator exist only for Resend.
+	if (candidate.provider === undefined) {
+		return isResendCredentials(candidate.apiKey, candidate.from);
+	}
+	if (candidate.provider === "resend") {
+		return isResendCredentials(candidate.apiKey, candidate.from);
+	}
+	if (candidate.provider === "cloudflare-email") {
+		return isCloudflareEmailCredentials(
+			candidate.apiToken,
+			candidate.accountId,
+			candidate.from,
+		);
+	}
+	return false;
 };
 
 const isSmsConfig = (value: unknown): value is SmsProviderConfig => {
@@ -287,6 +343,16 @@ const decryptConfig = async (
 	const value: unknown = JSON.parse(textDecoder.decode(plaintext));
 	if (!isProviderConfig(row.provider, value)) {
 		throw new Error("Stored provider configuration is invalid");
+	}
+	if (row.provider === "email") {
+		const candidate = asEmailConfigCandidate(value);
+		if (candidate && candidate.provider === undefined) {
+			return {
+				provider: "resend",
+				apiKey: candidate.apiKey as string,
+				from: candidate.from as string,
+			};
+		}
 	}
 	return value;
 };

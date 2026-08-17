@@ -271,11 +271,112 @@ The Auth Worker reaches `cinaauth-delivery` through the
 `CINAAUTH_DELIVERY_SERVICE` Service Binding. The public delivery custom domain
 is retained for provider acceptance and local/legacy fallback, but production
 Worker-to-Worker requests do not traverse public DNS. Auth resolves authorized
-per-channel readiness before advertising Email OTP, Magic Link, or Phone OTP.
+per-channel readiness before advertising Email OTP or Phone OTP.
 If the required provider is unavailable, the corresponding Auth endpoint
 returns `503 DELIVERY_PROVIDER_UNAVAILABLE` before generating a credential or
 enqueueing a message. The account portal consumes the same versioned capability
 contract and does not render unavailable flows.
+
+### Passwordless email cutover
+
+Production email sign-in uses a six-digit Email OTP. Email-password,
+username-password, and Magic Link sign-in remain disabled. Email OTP password
+reset endpoints are also disabled and must not reactivate retained rollback
+credentials. Do not delete or bulk-migrate existing credential rows during the
+cutover; verified accounts keep them only for a reviewed rollback, and the
+passwordless Auth policy does not accept them. The intentional core safety
+exception applies when the first successful ownership-proving OTP reaches an
+unverified account: CinaAuth removes that account's unproven credential and
+revokes its old sessions. Email OTP is the first factor. A user who has 2FA
+enabled must then complete an independent TOTP or backup-code challenge; email
+OTP is not available as the second factor.
+
+Before the Email OTP handler can enqueue a message, the Auth Worker normalizes
+the recipient with `trim().toLowerCase()` and derives a target bucket with a
+`CINAAUTH_SECRET`-keyed HMAC. The raw email address is never used in a
+rate-limit key or event. The shared `RATE_LIMITER` Durable Object atomically
+enforces a target burst limit of 3 requests per 60 seconds followed by a target
+daily limit of 10 requests per 24 hours. A burst rejection does not consume the
+daily quota. Missing key material, a missing binding, malformed limiter output,
+or a limiter exception fails closed before delivery; known and unknown email
+targets retain the same anonymous endpoint response.
+
+Activate email delivery before starting the central production workflow. In the
+protected Admin configuration control plane, `stage` the email provider
+credentials and a verified sender, send a real message with `test`, and then
+`activate` that exact validated version. The email channel supports Resend
+(`provider: "resend"`, API key plus sender) and Cloudflare Email
+(`provider: "cloudflare-email"`, an Email Sending API token, the Cloudflare
+account ID, and a sender on a Cloudflare-verified sending domain). Provider
+credentials and the sender configuration belong in the encrypted Delivery
+configuration store, not GitHub Secrets, tracked files, CLI arguments, or
+logs. The Delivery Worker's overall `/ready` can remain HTTP
+503 when SMS is intentionally inactive; the email release gate uses the public
+no-store capability `methods.emailOtp=true` instead of requiring both channels.
+
+The rollout is deliberately two-gated:
+
+1. Before any Cloudflare write, the central Account Portal preflight sets
+   `CINAAUTH_EMAIL_AUTH_GATE=provider-ready`. It requires live
+   `methods.emailOtp=true` but permits the currently deployed Worker to continue
+   advertising password methods until Auth is replaced.
+2. After the Auth Worker reaches governed readiness and before the Account
+   Portal write, the reusable Account workflow sets
+   `CINAAUTH_EMAIL_AUTH_GATE=passwordless`. It requires the exact live policy
+   `emailOtp=true`, `emailPassword=false`, `username=false`, and
+   `magicLink=false`.
+
+If provider activation or the first gate fails, make no deployment write and
+repair or roll back the staged Delivery configuration. If Auth deploys but the
+exact second gate or Account deployment fails, roll Auth back to the recorded
+pre-cutover version, confirm its public no-store capabilities, and retry only
+after the provider and frontend bundle are ready. A code rollback does not
+delete credential rows or roll back the database.
+
+## Runtime social sign-in provider configuration
+
+Social sign-in credentials for the well-known catalog (Google, GitHub, Apple,
+Discord, Microsoft Entra ID, Facebook, X/Twitter) plus Generic OAuth providers
+are managed at runtime from the Admin console (`/settings/social-providers`)
+through `/api/auth/admin/social-providers` and
+`/api/auth/admin/sign-in-settings`. Writes require the
+`integration.social-provider.manage` permission, a session younger than 15
+minutes, the exact Admin origin, the mutation rate limiter, and intent plus
+outcome audit events. Client secrets are stored in PostgreSQL and are never
+returned by any read API or written to the audit log.
+
+Storage is owned by the `social-sign-in-config-v1` database invariant: it
+creates `cinaauth_social_provider` (one row per provider; `kind` is `social`
+or `generic`) and the singleton `cinaauth_sign_in_settings`
+(`social_provider_limit` 0-20, default 20). `/api/migrate` installs it
+idempotently inside the governed migration transaction.
+
+At request time the Worker resolves providers in this order: enabled database
+rows, then the deploy-time environment (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`,
+`GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`, `GENERIC_OAUTH_CONFIG`), then the
+disabled Google/GitHub namespace placeholders. Resolution is cached for five
+seconds per isolate and invalidated immediately after an admin write. If the
+configuration tables are unreadable, the environment keeps serving sign-in
+exactly as before. Generic provider rows are validated against the same
+production contract as `GENERIC_OAUTH_CONFIG` (callbacks pinned to the Account
+portal, HTTPS discovery or fully explicit endpoints, secret or PKCE); invalid
+rows are skipped with a structured warning. Every catalog id and every staged
+generic id is reserved in the provider-namespace registry, so SSO and SCIM
+cannot claim them.
+
+The advertised login list `/api/auth/capabilities` → `oauthProviders` is
+truncated server-side to `social_provider_limit`, so the sign-in page shows at
+most that many federated options (0 hides all of them) without any portal
+change. Google One Tap remains tied to the deploy-time `GOOGLE_CLIENT_ID`
+build-parity check and is not switched by database rows.
+
+The same settings row owns `email_otp_login_enabled` (default `true`). Email
+code sign-in is the only email authentication path — password login is
+permanently retired and is not a configurable option. When an operator
+disables the toggle, public email code delivery endpoints fail closed with
+`EMAIL_OTP_LOGIN_DISABLED` even while the delivery provider stays healthy, and
+`/api/auth/capabilities` stops advertising `methods.emailOtp`, which hides the
+portal's email form without any frontend change.
 
 ## 3. Create privacy export storage and queues
 

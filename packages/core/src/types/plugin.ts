@@ -89,10 +89,14 @@ export type CinaAuthPlugin = CinaAuthPluginErrorCodePart & {
 	hooks?:
 		| {
 				before?: {
+					/** Higher-priority plugin hooks run first. Equal priorities are stable. */
+					priority?: number | undefined;
 					matcher: (context: HookEndpointContext) => boolean;
 					handler: AuthMiddleware;
 				}[];
 				after?: {
+					/** Higher-priority plugin hooks run first. Equal priorities are stable. */
+					priority?: number | undefined;
 					matcher: (context: HookEndpointContext) => boolean;
 					handler: AuthMiddleware;
 				}[];

@@ -186,6 +186,11 @@ const wranglerFile = join(workerDir, "wrangler.json");
 const devVarsExampleFile = join(workerDir, ".dev.vars.example");
 const indexFile = join(workerDir, "src", "index.ts");
 const adminConfigurationFile = join(workerDir, "src", "admin-configuration.ts");
+const adminSendVerificationFile = join(
+	workerDir,
+	"src",
+	"admin-send-verification.ts",
+);
 const impersonationMutationGuardFile = join(
 	workerDir,
 	"src",
@@ -240,6 +245,11 @@ const adminSuperAdminGuardFile = join(
 const auditRetentionFile = join(workerDir, "src", "audit-retention.ts");
 const oauthConfigFile = join(workerDir, "src", "oauth-config.ts");
 const pluginsFile = join(workerDir, "src", "plugins.ts");
+const emailOtpTargetRateLimitFile = join(
+	workerDir,
+	"src",
+	"email-otp-target-rate-limit.ts",
+);
 const originConfigFile = join(workerDir, "src", "origin-config.ts");
 const coreRedirectUriFile = join(
 	repoRoot,
@@ -822,9 +832,7 @@ const customSessionCookieHeadersFile = join(
 	"cookie-headers.ts",
 );
 const protectedFormFiles = [
-	join(nextDemoDir, "components", "forms", "sign-in-form.tsx"),
 	join(nextDemoDir, "components", "forms", "email-otp-form.tsx"),
-	join(nextDemoDir, "components", "forms", "forgot-password-form.tsx"),
 ];
 const deploymentDocFile = join(workerDir, "DEPLOYMENT.md");
 const siweStagingDocFile = join(repoRoot, "docs", "SIWE_STAGING.md");
@@ -885,6 +893,7 @@ const cloudflareEdgeMitigationTest = read(cloudflareEdgeMitigationTestFile);
 const deploymentTargetParser = read(deploymentTargetParserFile);
 const indexTs = read(indexFile);
 const adminConfigurationTs = read(adminConfigurationFile);
+const adminSendVerificationTs = read(adminSendVerificationFile);
 const impersonationMutationGuardTs = read(impersonationMutationGuardFile);
 const authTs = read(authFile);
 const authRoutingTs = read(authRoutingFile);
@@ -903,6 +912,7 @@ const adminSuperAdminGuardTs = read(adminSuperAdminGuardFile);
 const auditRetentionTs = read(auditRetentionFile);
 const oauthConfigTs = read(oauthConfigFile);
 const pluginsTs = read(pluginsFile);
+const emailOtpTargetRateLimitTs = read(emailOtpTargetRateLimitFile);
 const originConfigTs = read(originConfigFile);
 const coreRedirectUriTs = read(coreRedirectUriFile);
 const oauthRegisterTs = read(oauthRegisterFile);
@@ -1054,17 +1064,39 @@ checkIncludesAll(
 	captchaConfigTs,
 	[
 		'TURNSTILE_ACTION = "cinaauth"',
-		'"/sign-up/email"',
-		'"/sign-in/email"',
-		'"/request-password-reset"',
 		'"/email-otp/send-verification-otp"',
 		'"/phone-number/send-otp"',
-		'"/sign-in/magic-link"',
+		'"/phone-number/request-password-reset"',
 		"CLOUDFLARE_TURNSTILE_SITE_KEY",
 		"CLOUDFLARE_TURNSTILE_SECRET_KEY",
 	],
 	captchaConfigFile,
 	"Turnstile must fail closed unless the paired keys and protected auth paths are configured",
+);
+check(
+	[
+		'"/sign-up/email"',
+		'"/sign-in/email"',
+		'"/request-password-reset"',
+		'"/sign-in/magic-link"',
+		'"/email-otp/request-password-reset"',
+		'"/forget-password/email-otp"',
+	].every((path) => !captchaConfigTs.includes(path)),
+	`${rel(captchaConfigFile)} must not advertise retired password or Magic Link endpoints as protected production flows`,
+);
+checkIncludesAll(
+	adminSendVerificationTs,
+	[
+		'const VERIFICATION_TYPES = ["email-otp", "phone-number"] as const',
+		"sendVerificationOTP",
+		"sendPhoneNumberOTP",
+	],
+	adminSendVerificationFile,
+	"Admin verification delivery must expose only enabled OTP channels",
+);
+check(
+	!adminSendVerificationTs.includes('"magic-link"'),
+	`${rel(adminSendVerificationFile)} must not accept the retired Magic Link channel`,
 );
 checkIncludesAll(
 	capabilitiesTs,
@@ -1074,8 +1106,11 @@ checkIncludesAll(
 		"protectedEndpoints",
 		"DeliveryProviderCapabilities",
 		"version: 4",
+		"emailPassword: false",
 		"emailOtp: delivery.email",
+		"magicLink: false",
 		"phoneOtp: delivery.sms",
+		"username: false",
 		"isBillingRuntimeReady(env)",
 		'providers.push({ id: "google", type: "social" })',
 		'providers.push({ id: "github", type: "social" })',
@@ -1287,7 +1322,8 @@ checkIncludesAll(
 checkIncludesAll(
 	authTs,
 	[
-		"revokeSessionsOnPasswordReset: true",
+		"emailAndPassword:",
+		"enabled: false",
 		"SECURITY_FRESH_AGE_SECONDS = 15 * 60",
 		"freshAge: SECURITY_FRESH_AGE_SECONDS",
 		"deleteUser:",
@@ -1299,6 +1335,67 @@ checkIncludesAll(
 	],
 	authFile,
 	"production account lifecycle actions must require recent authentication and explicit identity linking",
+);
+checkIncludesAll(
+	pluginsTs,
+	[
+		"emailOTP({",
+		"disableImplicitSignUp: true",
+		"disablePasswordReset: true",
+		'storeOTP: "encrypted"',
+		"createEmailOtpTargetRateLimitPlugin(env)",
+		"allowPasswordless: true",
+		"requireFreshSessionForPasswordless: true",
+		'additionalSignInEndpoints: ["/sign-in/email-otp"]',
+	],
+	pluginsFile,
+	"production email authentication must use encrypted OTP storage and opt into two-factor step-up",
+);
+const emailOtpTargetLimitPluginIndex = pluginsTs.indexOf(
+	"\n\t\tcreateEmailOtpTargetRateLimitPlugin(env),",
+);
+const emailOtpPluginIndex = pluginsTs.indexOf("\n\t\temailOTP({");
+check(
+	emailOtpTargetLimitPluginIndex >= 0 &&
+		emailOtpPluginIndex > emailOtpTargetLimitPluginIndex,
+	`${rel(pluginsFile)} must register target limiting before the Email OTP sender`,
+);
+checkIncludesAll(
+	emailOtpTargetRateLimitTs,
+	[
+		"window: 60,",
+		"max: 3,",
+		"window: 24 * 60 * 60,",
+		"max: 10,",
+		"email.trim().toLowerCase()",
+		"crypto.subtle.importKey(",
+		'{ name: "HMAC", hash: "SHA-256" }',
+		"createDurableObjectRateLimitStorage",
+		'await enforceQuota("burst", burstRule)',
+		'await enforceQuota("daily", dailyRule)',
+		"EMAIL_OTP_TARGET_RATE_LIMIT_UNAVAILABLE",
+		"EMAIL_OTP_TARGET_RATE_LIMITED",
+	],
+	emailOtpTargetRateLimitFile,
+	"Email OTP targets must use HMAC-derived fail-closed burst and daily Durable Object quotas",
+);
+const twoFactorConfiguration =
+	pluginsTs.match(/twoFactor\(\{([\s\S]*?)\n\t\t\}\),/)?.[1] ?? "";
+check(
+	twoFactorConfiguration.length > 0 &&
+		!twoFactorConfiguration.includes("otpOptions") &&
+		!twoFactorConfiguration.includes("sendOTP"),
+	`${rel(pluginsFile)} must keep Email OTP as the first factor and use only independent TOTP or backup-code step-up`,
+);
+const twoFactorPluginIndex = pluginsTs.indexOf("\n\t\ttwoFactor({");
+const oauthProviderPluginIndex = pluginsTs.indexOf("\n\t\toauthProvider({");
+check(
+	twoFactorPluginIndex >= 0 && oauthProviderPluginIndex > twoFactorPluginIndex,
+	`${rel(pluginsFile)} must keep the two-factor authentication gate before OAuth continuation as defense in depth`,
+);
+check(
+	!pluginsTs.includes("username()") && !pluginsTs.includes("magicLink("),
+	`${rel(pluginsFile)} must not register username-password or Magic Link sign-in plugins`,
 );
 checkIncludesAll(
 	pluginsTs,
@@ -2203,6 +2300,13 @@ checkIncludesAll(
 		"evaluatePlannedReownBuild",
 		"evaluatePlannedSiweRelease",
 		"evaluateDeployedWalletReadiness",
+		"evaluateEmailProviderReady",
+		"evaluatePasswordlessEmailRelease",
+		"CINAAUTH_EMAIL_AUTH_GATE",
+		'gate === "provider-ready"',
+		'gate === "passwordless"',
+		'response.headers.get("cache-control")',
+		"the live Auth capability response is not no-store",
 		"CINAAUTH_PLANNED_WORKER_CONFIG",
 		"CINAAUTH_ACCOUNT_BUILD_READINESS_URL",
 		"CINAAUTH_ACCOUNT_TARGET_ORIGIN",
@@ -2219,6 +2323,23 @@ checkIncludesAll(
 	],
 	accountOAuthBuildCheckFile,
 	"the account deployment gates must fail when planned or live server capabilities lack matching client build inputs",
+);
+const plannedAccountCheckStart = accountOAuthBuildCheck.indexOf(
+	"if (plannedWorkerConfig)",
+);
+const plannedEmailGateIndex = accountOAuthBuildCheck.indexOf(
+	"if (emailAuthGate)",
+	plannedAccountCheckStart,
+);
+const plannedAccountReturnIndex = accountOAuthBuildCheck.indexOf(
+	"\n\t\treturn;",
+	plannedAccountCheckStart,
+);
+check(
+	plannedAccountCheckStart >= 0 &&
+		plannedEmailGateIndex > plannedAccountCheckStart &&
+		plannedAccountReturnIndex > plannedEmailGateIndex,
+	`${rel(accountOAuthBuildCheckFile)} planned-release branch must execute the configured email-auth gate before returning`,
 );
 check(
 	!accountOAuthBuildCheck.includes("DEFAULT_BUILD_READINESS_URL"),
@@ -3133,11 +3254,14 @@ checkIncludesAll(
 		"createDurableObjectRateLimitStorage",
 		"AUTH_RATE_LIMIT_RULES",
 		"createDatabase(env)",
-		"createAuthPlugins(env, { advancedOrganization: true })",
+		"createAuthPlugins(",
+		"{ advancedOrganization: true }",
+		"social.genericProviders",
 		"waitUntil(",
 		"runWithExecutionCtx",
 		"cf-connecting-ip",
-		"getProductionSocialProviders(env, origins.accountOrigin)",
+		"resolveSocialSignInConfig(env, accountOrigin)",
+		"social.socialProviders",
 	],
 	authFile,
 	"auth runtime must keep rate limits shared and background work safe",
@@ -3671,6 +3795,8 @@ checkIncludesAll(
 		"working-directory: apps/account-portal",
 		"CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json",
 		"CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.ai/api/build-readiness",
+		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities",
+		"CINAAUTH_EMAIL_AUTH_GATE: provider-ready",
 		"REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"Configure wallet UI rollout from tracked Auth config",
@@ -3682,6 +3808,12 @@ checkIncludesAll(
 		"lib/auth-runtime-config.test.ts",
 		"lib/auth-runtime-routes.test.ts",
 		"lib/auth.test.ts",
+		"lib/auth-card-sign-in-contract.test.ts",
+		"lib/auth-ui-phase1-contract.test.ts",
+		"lib/auth-ui-phase2-contract.test.ts",
+		"lib/sign-in-step-up-contract.test.ts",
+		"lib/two-factor-navigation.test.ts",
+		"lib/two-factor-recovery.test.ts",
 		"lib/reown-wallet-gate.test.ts",
 		"lib/reown-wallet-cookie.test.ts",
 		"lib/siwe-wallet-protocol.test.ts",
@@ -3800,6 +3932,8 @@ check(
 		"CINAAUTH_ERASURE_STORAGE_SECRET",
 		"RESEND_API_KEY",
 		"RESEND_EMAIL_FROM",
+		"CLOUDFLARE_EMAIL_API_TOKEN",
+		"CLOUDFLARE_EMAIL_FROM",
 		"TWILIO_ACCOUNT_SID",
 		"TWILIO_AUTH_TOKEN",
 		"TWILIO_FROM_NUMBER",
@@ -3821,9 +3955,18 @@ checkIncludesAll(
 		"NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED",
 		"pnpm run test:oauth-build",
 		"pnpm run check:oauth-build",
+		"Verify live passwordless email policy",
+		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities",
+		"CINAAUTH_EMAIL_AUTH_GATE: passwordless",
 		"lib/auth-runtime-config.test.ts",
 		"lib/auth-runtime-routes.test.ts",
 		"lib/auth.test.ts",
+		"lib/auth-card-sign-in-contract.test.ts",
+		"lib/auth-ui-phase1-contract.test.ts",
+		"lib/auth-ui-phase2-contract.test.ts",
+		"lib/sign-in-step-up-contract.test.ts",
+		"lib/two-factor-navigation.test.ts",
+		"lib/two-factor-recovery.test.ts",
 		"lib/reown-wallet-gate.test.ts",
 		"lib/reown-wallet-cookie.test.ts",
 		"lib/siwe-wallet-protocol.test.ts",
@@ -3843,6 +3986,14 @@ checkIncludesAll(
 	],
 	accountWorkflowFile,
 	"account portal CI must remain a reusable production-environment unit with governed readiness and redirect smoke coverage",
+);
+check(
+	accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") >= 0 &&
+		accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") <
+			accountWorkflow.indexOf(
+				"pnpm run deploy:cf --deployment-target=production",
+			),
+	`${rel(accountWorkflowFile)} must verify the exact live passwordless email policy before the Account Portal write`,
 );
 check(
 	!accountWorkflow.includes("vars.REOWN_PROJECT_ID"),
@@ -4199,9 +4350,11 @@ checkIncludesAll(
 		"Turnstile secrets are configured but the live captcha capability is disabled",
 		"Stripe billing inputs are configured but the live billing capability is disabled",
 		"Live SIWE capability does not match the tracked SIWE kill switch",
-		"Live Email OTP capability does not match Delivery Worker readiness",
-		"Live magic-link capability does not match Delivery Worker readiness",
+		"Production Email OTP requires an active Delivery Worker email provider and methods.emailOtp=true",
+		"Live email-password capability must remain disabled for passwordless email authentication",
+		"Live magic-link capability must remain disabled for OTP-only email authentication",
 		"Live phone OTP capability does not match Delivery Worker readiness",
+		"Live username-password capability must remain disabled for passwordless email authentication",
 	],
 	runtimeCapabilitiesCheckFile,
 	"remote preflight must fail when configured optional secrets are rejected by the live runtime",
@@ -4664,6 +4817,28 @@ checkIncludesAll(
 		"32-hex-character `REOWN_PROJECT_ID`",
 		"A disabled rollout does not require a Project ID.",
 		"repeats the live capability parity check",
+		"Passwordless email cutover",
+		"reset endpoints are also disabled",
+		"3 requests per 60 seconds",
+		"10 requests per 24 hours",
+		"`CINAAUTH_SECRET`-keyed HMAC",
+		"raw email address",
+		"fails closed",
+		"verified sender",
+		"not GitHub Secrets",
+		"methods.emailOtp=true",
+		"CINAAUTH_EMAIL_AUTH_GATE=provider-ready",
+		"CINAAUTH_EMAIL_AUTH_GATE=passwordless",
+		"emailPassword=false",
+		"username=false",
+		"magicLink=false",
+		"only for a reviewed rollback",
+		"ownership-proving OTP",
+		"unproven credential",
+		"revokes its old sessions",
+		"independent TOTP",
+		"backup-code challenge",
+		"pre-cutover version",
 		"two separate production runs",
 		"same-run enable attempt fails closed",
 		"exact Project ID",

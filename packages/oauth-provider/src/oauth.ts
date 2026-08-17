@@ -10,6 +10,7 @@ import {
 	createAuthMiddleware,
 	dispatchAuthEndpoint,
 	getOAuthState,
+	hasPendingAuthenticationGate,
 	sessionMiddleware,
 } from "cinaauth/api";
 import { parseSetCookieHeader } from "cinaauth/cookies";
@@ -856,19 +857,30 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 			],
 			after: [
 				{
-					// Should only capture when session cookie is set (ie after login)
+					// Continuations run after authentication gates regardless of plugin
+					// declaration order.
+					priority: -100,
+					// Continue only when this response carries a live session cookie.
+					// The handler also checks request-scoped gate state before issuing any
+					// downstream credential.
 					matcher(ctx) {
-						return parseSetCookieHeader(
+						const sessionCookie = parseSetCookieHeader(
 							ctx.context.responseHeaders?.get("set-cookie") || "",
-						).has(ctx.context.authCookies.sessionToken.name);
+						).get(ctx.context.authCookies.sessionToken.name);
+						return ctx.path !== "/oauth2/authorize" && !!sessionCookie?.value;
 					},
 					handler: createAuthMiddleware(async (ctx) => {
-						// Check if session cookie is being set and obtain its session (needed in context)
-						const sessionToken = parseSetCookieHeader(
-							ctx.context.responseHeaders?.get("set-cookie") || "",
-						)
-							.get(ctx.context.authCookies.sessionToken.name)
-							?.value.split(".")[0];
+						// A higher-priority authentication plugin may have converted this
+						// apparent sign-in into a pending challenge. Fail closed before
+						// reading session state or re-entering the authorize pipeline.
+						if (await hasPendingAuthenticationGate()) return;
+						const sessionToken =
+							ctx.context.newSession?.session.token ??
+							parseSetCookieHeader(
+								ctx.context.responseHeaders?.get("set-cookie") || "",
+							)
+								.get(ctx.context.authCookies.sessionToken.name)
+								?.value.split(".")[0];
 						if (!sessionToken) return;
 						// Continue with authorization request by using the initial prompt
 						// but clearing the login prompt cookie if forced login prompt

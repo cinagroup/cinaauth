@@ -25,7 +25,6 @@ describe("Accounts authentication shell theme contract", () => {
 		for (const fragment of [
 			"<ThemeToggle />",
 			"<Logo",
-			"CinaSeek account",
 			'id="auth-title"',
 			"{children}",
 			"{footer ? (",

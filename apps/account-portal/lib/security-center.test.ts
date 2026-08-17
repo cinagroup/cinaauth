@@ -8,9 +8,10 @@ import {
 	getAvailableSecurityProviders,
 	getSecurityPosture,
 	getSecurityProviderLinkFailure,
+	getTwoFactorPasswordBody,
 	isApiKeyExpired,
 	isSessionRecent,
-	requiresPasswordForDeletion,
+	requiresPasswordForTwoFactor,
 	summarizeUserAgent,
 } from "./security-center";
 
@@ -52,27 +53,24 @@ describe("security center policy helpers", () => {
 		expect(getSecurityProviderLinkFailure(undefined)).toBe(false);
 	});
 
-	it("requires a password when a credential identity exists", () => {
-		expect(
-			requiresPasswordForDeletion([
-				{
-					id: "account-1",
-					accountId: "user@example.com",
-					providerId: "credential",
-					createdAt: "2026-08-09T00:00:00.000Z",
-				},
-			]),
-		).toBe(true);
-		expect(
-			requiresPasswordForDeletion([
-				{
-					id: "account-2",
-					accountId: "oauth-subject",
-					providerId: "google",
-					createdAt: "2026-08-09T00:00:00.000Z",
-				},
-			]),
-		).toBe(false);
+	it("requires a retained credential only when one exists or account data failed", () => {
+		const credentialAccount = {
+			id: "account-1",
+			accountId: "user@example.com",
+			providerId: "credential",
+			createdAt: "2026-08-09T00:00:00.000Z",
+		};
+
+		expect(requiresPasswordForTwoFactor([credentialAccount])).toBe(true);
+		expect(requiresPasswordForTwoFactor([])).toBe(false);
+		expect(requiresPasswordForTwoFactor([], true)).toBe(true);
+	});
+
+	it("omits the password field for passwordless 2FA management", () => {
+		expect(getTwoFactorPasswordBody(false, "not-sent")).toEqual({});
+		expect(getTwoFactorPasswordBody(true, "legacy-secret")).toEqual({
+			password: "legacy-secret",
+		});
 	});
 
 	it("classifies the security posture from independent controls", () => {

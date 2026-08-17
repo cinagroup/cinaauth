@@ -4,6 +4,7 @@ import type {
 	DeliveryChannel,
 	DeliveryChannelStatus,
 	DeliveryConfigurationStatus,
+	DeliveryEmailProvider,
 } from "@cinaauth/auth-web-contract";
 import { hasAdminControlPermission } from "@cinaauth/auth-web-contract";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +31,13 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { fetchAdminJson, getAdminApiErrorMessage } from "@/lib/client-api";
@@ -48,7 +56,13 @@ export default function DeliveryConfigurationPage() {
 		session?.role,
 		"integration.delivery.manage",
 	);
-	const [email, setEmail] = useState({ apiKey: "", from: "" });
+	const [email, setEmail] = useState({
+		provider: "resend" as DeliveryEmailProvider,
+		apiKey: "",
+		apiToken: "",
+		accountId: "",
+		from: "",
+	});
 	const [sms, setSms] = useState({
 		accountSid: "",
 		authToken: "",
@@ -191,45 +205,129 @@ export default function DeliveryConfigurationPage() {
 						className="space-y-3"
 						onSubmit={async (event) => {
 							event.preventDefault();
-							if (
-								await run("stage", {
-									channel: "email",
-									config: {
-										provider: "resend",
-										apiKey: email.apiKey,
-										from: email.from.trim(),
-									},
-								})
-							) {
-								setEmail({ apiKey: "", from: "" });
+							const staged = await run("stage", {
+								channel: "email",
+								config:
+									email.provider === "cloudflare-email"
+										? {
+												provider: "cloudflare-email",
+												apiToken: email.apiToken,
+												accountId: email.accountId.trim(),
+												from: email.from.trim(),
+											}
+										: {
+												provider: "resend",
+												apiKey: email.apiKey,
+												from: email.from.trim(),
+											},
+							});
+							if (staged) {
+								setEmail((current) => ({
+									...current,
+									apiKey: "",
+									apiToken: "",
+									accountId: "",
+									from: "",
+								}));
 							}
 						}}
 					>
 						<SecretNotice />
 						<div className="space-y-1.5">
-							<Label htmlFor="resend-api-key">
-								{t("delivery.resendApiKey")}
-							</Label>
-							<Input
-								id="resend-api-key"
-								type="password"
-								autoComplete="new-password"
-								required
-								minLength={16}
-								maxLength={512}
-								value={email.apiKey}
-								onChange={(event) =>
+							<Label htmlFor="email-provider">{t("delivery.provider")}</Label>
+							<Select
+								value={email.provider}
+								onValueChange={(value) =>
 									setEmail((current) => ({
 										...current,
-										apiKey: event.target.value,
+										provider: value as DeliveryEmailProvider,
 									}))
 								}
-							/>
+							>
+								<SelectTrigger
+									id="email-provider"
+									disabled={mutation.isPending}
+								>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="resend">
+										{t("delivery.provider.resend")}
+									</SelectItem>
+									<SelectItem value="cloudflare-email">
+										{t("delivery.provider.cloudflare-email")}
+									</SelectItem>
+								</SelectContent>
+							</Select>
 						</div>
+						{email.provider === "cloudflare-email" ? (
+							<>
+								<div className="space-y-1.5">
+									<Label htmlFor="cloudflare-email-api-token">
+										{t("delivery.cloudflareApiToken")}
+									</Label>
+									<Input
+										id="cloudflare-email-api-token"
+										type="password"
+										autoComplete="new-password"
+										required
+										minLength={20}
+										maxLength={512}
+										value={email.apiToken}
+										onChange={(event) =>
+											setEmail((current) => ({
+												...current,
+												apiToken: event.target.value,
+											}))
+										}
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<Label htmlFor="cloudflare-email-account-id">
+										{t("delivery.cloudflareAccountId")}
+									</Label>
+									<Input
+										id="cloudflare-email-account-id"
+										autoComplete="off"
+										required
+										pattern="[a-fA-F0-9]{32}"
+										maxLength={32}
+										value={email.accountId}
+										onChange={(event) =>
+											setEmail((current) => ({
+												...current,
+												accountId: event.target.value,
+											}))
+										}
+									/>
+								</div>
+							</>
+						) : (
+							<div className="space-y-1.5">
+								<Label htmlFor="resend-api-key">
+									{t("delivery.resendApiKey")}
+								</Label>
+								<Input
+									id="resend-api-key"
+									type="password"
+									autoComplete="new-password"
+									required
+									minLength={16}
+									maxLength={512}
+									value={email.apiKey}
+									onChange={(event) =>
+										setEmail((current) => ({
+											...current,
+											apiKey: event.target.value,
+										}))
+									}
+								/>
+							</div>
+						)}
 						<div className="space-y-1.5">
-							<Label htmlFor="resend-from">{t("delivery.fromAddress")}</Label>
+							<Label htmlFor="email-from">{t("delivery.fromAddress")}</Label>
 							<Input
-								id="resend-from"
+								id="email-from"
 								autoComplete="off"
 								required
 								maxLength={384}
@@ -452,7 +550,9 @@ function ProviderCard({
 						</span>
 						<div>
 							<CardTitle>{t(`delivery.${channel}.title`)}</CardTitle>
-							<CardDescription>{status.provider}</CardDescription>
+							<CardDescription>
+								{t(`delivery.provider.${status.provider}`)}
+							</CardDescription>
 						</div>
 					</div>
 					<Badge variant={status.configured ? "success" : "muted"}>

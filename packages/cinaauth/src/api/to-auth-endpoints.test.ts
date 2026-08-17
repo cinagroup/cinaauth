@@ -1338,6 +1338,37 @@ describe("response headers on APIError", async () => {
  * session through the `getSession` endpoint, must not re-run them.
  */
 describe("hook dispatch boundary", async () => {
+	it("runs higher-priority plugin after hooks first while preserving stable ties", async () => {
+		const calls: string[] = [];
+		const plugin = (id: string, priority: number) => ({
+			id,
+			hooks: {
+				after: [
+					{
+						priority,
+						matcher: () => true,
+						handler: createAuthMiddleware(async () => {
+							calls.push(id);
+						}),
+					},
+				],
+			},
+		});
+		const { auth } = await getTestInstance({
+			plugins: [
+				plugin("low", -10),
+				plugin("equal-a", 0),
+				plugin("high", 100),
+				plugin("equal-b", 0),
+			],
+		});
+
+		calls.length = 0;
+		await auth.api.getSession({ headers: new Headers() });
+
+		expect(calls).toEqual(["high", "equal-a", "equal-b", "low"]);
+	});
+
 	it("does not re-run configured hooks for internal getSession calls", async () => {
 		const beforePaths: string[] = [];
 		const afterPaths: string[] = [];

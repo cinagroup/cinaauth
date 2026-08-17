@@ -61,11 +61,10 @@ Any changes you make will update automatically in the browser.
 The account center exposes the user-owned identity workflows enabled by the
 deployed Auth Worker:
 
-* **[Email & Password][]**: Simple and secure authentication.
+* **[Email code sign-in][]**: Passwordless authentication with a one-time code.
 * **[Organization / Teams][]**: Manage users within organizations or teams.
 * **[Passkeys][]**: Passwordless login using modern authentication standards.
 * **[Multi-Factor Authentication (MFA)][]**: Add an extra layer of security.
-* **[Password Reset][]**: Let users reset their passwords if they forget them.
 * **[Email Verification][]**: Ensure users verify their email addresses.
 * **[Roles & Permissions][]**: Define and manage who can do what.
 * **[Rate Limiting][]**: Protect your app from abuse with smart limits.
@@ -88,7 +87,7 @@ Here are some helpful links if you want to dive deeper:
 If you run into issues or have suggestions, feel free to open an issue or submit
 a pull request on the [GitHub repo](https://github.com/cinagroup/cinaauth).
 
-[email & password]: https://www.cinagroup.com/docs/basic-usage#email-password
+[email code sign-in]: https://www.cinagroup.com/docs/plugins/email-otp
 
 [email verification]: https://www.cinagroup.com/docs/concepts/email#email-verification
 
@@ -97,8 +96,6 @@ a pull request on the [GitHub repo](https://github.com/cinagroup/cinaauth).
 [organization / teams]: https://www.cinagroup.com/docs/plugins/organization
 
 [passkeys]: https://www.cinagroup.com/docs/plugins/passkey
-
-[password reset]: https://www.cinagroup.com/docs/concepts/email#password-reset-email
 
 [rate limiting]: https://www.cinagroup.com/docs/concepts/rate-limit
 

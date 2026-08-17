@@ -1,5 +1,6 @@
 import type { DeliveryWorkerEnv } from "./env";
 import type {
+	DeliveryEmailProvider,
 	DeliveryProviderKind,
 	EmailProviderConfig,
 	ProviderConfigResult,
@@ -61,6 +62,8 @@ type ProviderRequest = {
 	headers: HeadersInit;
 	method: "POST";
 	url: string;
+	/** Optional provider-specific success-envelope check beyond HTTP status. */
+	validateResponse?: (response: Response) => Promise<void>;
 };
 
 type RuntimeConfigIssue =
@@ -98,7 +101,7 @@ type DeliveryConfigurationStatus = {
 	capabilities: { email: boolean; sms: boolean };
 	channels: {
 		email: {
-			provider: "resend";
+			provider: DeliveryEmailProvider;
 			configured: boolean;
 			validated: boolean;
 			activeVersion: number | null;
@@ -502,6 +505,7 @@ const requireEmailProvider = (env: DeliveryWorkerEnv): EmailProviderConfig => {
 		);
 	}
 	return {
+		provider: "resend",
 		apiKey: env.RESEND_API_KEY,
 		from: env.RESEND_EMAIL_FROM,
 	};
@@ -521,97 +525,138 @@ const requireSmsProvider = (env: DeliveryWorkerEnv): SmsProviderConfig => {
 	};
 };
 
+const cloudflareEmailSendUrl = (accountId: string) =>
+	`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(
+		accountId,
+	)}/email/sending/send`;
+
+const cloudflareEmailResponseValidator = async (response: Response) => {
+	const envelope = (await response.json().catch(() => null)) as {
+		success?: unknown;
+		result?: { permanent_bounces?: unknown } | null;
+	} | null;
+	if (
+		!envelope ||
+		envelope.success !== true ||
+		(Array.isArray(envelope.result?.permanent_bounces) &&
+			envelope.result.permanent_bounces.length > 0)
+	) {
+		raise(
+			502,
+			"provider_failed",
+			"Cloudflare email delivery rejected the message",
+		);
+	}
+};
+
+const emailProviderRequest = (
+	config: EmailProviderConfig,
+	recipient: string,
+	subject: string,
+	text: string,
+	html: string,
+): ProviderRequest =>
+	config.provider === "cloudflare-email"
+		? {
+				method: "POST",
+				url: cloudflareEmailSendUrl(config.accountId),
+				headers: {
+					Authorization: `Bearer ${config.apiToken}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					from: config.from,
+					to: [recipient],
+					subject,
+					text,
+					html,
+				}),
+				validateResponse: cloudflareEmailResponseValidator,
+			}
+		: {
+				method: "POST",
+				url: "https://api.resend.com/emails",
+				headers: {
+					Authorization: `Bearer ${config.apiKey}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					from: config.from,
+					to: [recipient],
+					subject,
+					text,
+					html,
+				}),
+			};
+
+const isSmsProviderConfig = (
+	config: EmailProviderConfig | SmsProviderConfig,
+): config is SmsProviderConfig => "accountSid" in config;
+
 export const createProviderRequestForConfig = (
 	message: DeliveryMessage,
 	config: EmailProviderConfig | SmsProviderConfig,
 ): ProviderRequest => {
 	if (isEmailOtpMessage(message)) {
-		if (!("apiKey" in config)) {
+		if (isSmsProviderConfig(config)) {
 			return raise(
 				503,
 				"email_provider_missing",
 				"Email provider is unavailable",
 			);
 		}
-		const provider = config;
 		const subject =
 			message.payload.type === "email-verification"
 				? "Verify your CinaSeek email"
 				: "Your CinaSeek verification code";
 		const text = `Your CinaSeek verification code is ${message.payload.otp}.`;
-		return {
-			method: "POST",
-			url: "https://api.resend.com/emails",
-			headers: {
-				Authorization: `Bearer ${provider.apiKey}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				from: provider.from,
-				to: [message.payload.email],
-				subject,
-				text,
-				html: `<p>${escapeHtml(text)}</p>`,
-			}),
-		};
+		return emailProviderRequest(
+			config,
+			message.payload.email,
+			subject,
+			text,
+			`<p>${escapeHtml(text)}</p>`,
+		);
 	}
 
 	if (isMagicLinkMessage(message)) {
-		if (!("apiKey" in config)) {
+		if (isSmsProviderConfig(config)) {
 			return raise(
 				503,
 				"email_provider_missing",
 				"Email provider is unavailable",
 			);
 		}
-		const provider = config;
 		const text = `Sign in to CinaSeek: ${message.payload.url}`;
-		return {
-			method: "POST",
-			url: "https://api.resend.com/emails",
-			headers: {
-				Authorization: `Bearer ${provider.apiKey}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				from: provider.from,
-				to: [message.payload.email],
-				subject: "Your CinaSeek sign-in link",
-				text,
-				html: `<p><a href="${escapeHtml(message.payload.url)}">Sign in to CinaSeek</a></p>`,
-			}),
-		};
+		return emailProviderRequest(
+			config,
+			message.payload.email,
+			"Your CinaSeek sign-in link",
+			text,
+			`<p><a href="${escapeHtml(message.payload.url)}">Sign in to CinaSeek</a></p>`,
+		);
 	}
 
 	if (isPasswordResetMessage(message)) {
-		if (!("apiKey" in config)) {
+		if (isSmsProviderConfig(config)) {
 			return raise(
 				503,
 				"email_provider_missing",
 				"Email provider is unavailable",
 			);
 		}
-		const provider = config;
 		const text = `Reset your CinaSeek password: ${message.payload.url}`;
-		return {
-			method: "POST",
-			url: "https://api.resend.com/emails",
-			headers: {
-				Authorization: `Bearer ${provider.apiKey}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				from: provider.from,
-				to: [message.payload.email],
-				subject: "Reset your CinaSeek password",
-				text,
-				html: `<p><a href="${escapeHtml(message.payload.url)}">Reset your CinaSeek password</a></p>`,
-			}),
-		};
+		return emailProviderRequest(
+			config,
+			message.payload.email,
+			"Reset your CinaSeek password",
+			text,
+			`<p><a href="${escapeHtml(message.payload.url)}">Reset your CinaSeek password</a></p>`,
+		);
 	}
 
 	if (isPhoneMessage(message)) {
-		if (!("accountSid" in config)) {
+		if (!isSmsProviderConfig(config)) {
 			return raise(503, "sms_provider_missing", "SMS provider is unavailable");
 		}
 		const provider = config;
@@ -668,6 +713,7 @@ const getLegacyProvider = (
 					state: "configured",
 					source: "legacy",
 					config: {
+						provider: "resend",
 						apiKey: env.RESEND_API_KEY,
 						from: env.RESEND_EMAIL_FROM,
 					},
@@ -700,7 +746,7 @@ export const resolveDeliveryProvider = async (
 		const active = await getDeliveryConfigStub(env).getActive(provider);
 		if (!active.configured) return getLegacyProvider(env, provider);
 		if (
-			(provider === "email" && !("apiKey" in active.config)) ||
+			(provider === "email" && !("provider" in active.config)) ||
 			(provider === "sms" && !("accountSid" in active.config))
 		) {
 			return { state: "unavailable" };
@@ -759,6 +805,7 @@ export const dispatchDelivery = async (
 			`Delivery provider returned HTTP ${response.status}${snippet ? `: ${snippet}` : ""}`,
 		);
 	}
+	await providerRequest.validateResponse?.(response);
 };
 
 const replayKey = (deliveryId: string) => `cinaauth-delivery:${deliveryId}`;
@@ -864,7 +911,14 @@ type DeliveryStageInput =
 			expectedVersion: number;
 			idempotencyKey: string;
 			channel: "email";
-			config: { provider: "resend"; apiKey: string; from: string };
+			config:
+				| { provider: "resend"; apiKey: string; from: string }
+				| {
+						provider: "cloudflare-email";
+						apiToken: string;
+						accountId: string;
+						from: string;
+				  };
 	  }
 	| {
 			expectedVersion: number;
@@ -930,6 +984,28 @@ const parseStageInput = (value: unknown): DeliveryStageInput => {
 			config: {
 				provider: "resend",
 				apiKey: value.config.apiKey,
+				from: value.config.from,
+			},
+		};
+	}
+	if (
+		value.channel === "email" &&
+		hasExactKeys(value.config, ["provider", "apiToken", "accountId", "from"]) &&
+		value.config.provider === "cloudflare-email" &&
+		typeof value.config.apiToken === "string" &&
+		/^[A-Za-z0-9_-]{20,512}$/.test(value.config.apiToken) &&
+		typeof value.config.accountId === "string" &&
+		/^[a-fA-F0-9]{32}$/.test(value.config.accountId) &&
+		isEmailFrom(value.config.from)
+	) {
+		return {
+			expectedVersion: value.expectedVersion as number,
+			idempotencyKey: value.idempotencyKey as string,
+			channel: "email",
+			config: {
+				provider: "cloudflare-email",
+				apiToken: value.config.apiToken,
+				accountId: value.config.accountId,
 				from: value.config.from,
 			},
 		};
@@ -1077,6 +1153,12 @@ export const getDeliveryConfigurationStatus = async (
 	]);
 	const emailConfigured = email.state === "configured";
 	const smsConfigured = sms.state === "configured";
+	const emailProvider: DeliveryEmailProvider =
+		email.state === "configured" &&
+		"provider" in email.config &&
+		email.config.provider === "cloudflare-email"
+			? "cloudflare-email"
+			: "resend";
 	const emailValidated =
 		emailConfigured &&
 		(repository.channels.email.activeVersion !== null
@@ -1107,7 +1189,7 @@ export const getDeliveryConfigurationStatus = async (
 		capabilities: { email: emailConfigured, sms: smsConfigured },
 		channels: {
 			email: {
-				provider: "resend",
+				provider: emailProvider,
 				configured: emailConfigured,
 				...repository.channels.email,
 				validated: emailValidated,
@@ -1169,6 +1251,14 @@ export const sendProviderConfigurationTest = async (
 	if (!response.ok) {
 		return raise(502, "provider_test_failed", "Delivery provider test failed");
 	}
+	try {
+		await request.validateResponse?.(response);
+	} catch (error) {
+		if (isDeliveryHttpError(error)) {
+			return raise(502, "provider_test_failed", error.message);
+		}
+		throw error;
+	}
 };
 
 const handleConfigurationManagement = async (
@@ -1217,10 +1307,7 @@ const handleConfigurationManagement = async (
 			input.channel === "email"
 				? await repository.stage({
 						provider: "email",
-						config: {
-							apiKey: input.config.apiKey,
-							from: input.config.from,
-						},
+						config: input.config,
 						expectedVersion: input.expectedVersion,
 						idempotencyKey: input.idempotencyKey,
 					})

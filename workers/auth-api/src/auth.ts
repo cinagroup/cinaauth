@@ -1,7 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { CinaAuth } from "cinaauth";
 import { createDatabase } from "./database";
-import { enqueueDelivery } from "./delivery";
 import type { CloudflareBindings } from "./env";
 import { requireAuthOriginConfig } from "./origin-config";
 import { createAuthPlugins } from "./plugins";
@@ -9,6 +8,12 @@ import {
 	AUTH_RATE_LIMIT_RULES,
 	createDurableObjectRateLimitStorage,
 } from "./rate-limit-storage";
+import { resolveSocialSignInConfig } from "./social-provider-store";
+
+export {
+	getConfiguredSocialProviders,
+	getProductionSocialProviders,
+} from "./social-provider-catalog";
 
 /** Maximum age of a session used for sensitive self-service mutations. */
 export const SECURITY_FRESH_AGE_SECONDS = 15 * 60;
@@ -34,66 +39,6 @@ type BackgroundTaskContext = {
 
 const executionCtxStore = new AsyncLocalStorage<BackgroundTaskContext>();
 
-type SocialProviderEnv = Pick<
-	CloudflareBindings,
-	| "GOOGLE_CLIENT_ID"
-	| "GOOGLE_CLIENT_SECRET"
-	| "GITHUB_CLIENT_ID"
-	| "GITHUB_CLIENT_SECRET"
->;
-
-const hasCredential = (value: string | undefined) =>
-	typeof value === "string" && value.trim().length > 0;
-
-/** Builds only fully configured social providers; partial credentials fail closed. */
-export const getConfiguredSocialProviders = (
-	env: SocialProviderEnv,
-	accountOrigin: string,
-) => ({
-	...(hasCredential(env.GOOGLE_CLIENT_ID) &&
-	hasCredential(env.GOOGLE_CLIENT_SECRET)
-		? {
-				google: {
-					clientId: env.GOOGLE_CLIENT_ID!,
-					clientSecret: env.GOOGLE_CLIENT_SECRET!,
-					redirectURI: `${accountOrigin}/api/auth/callback/google`,
-				},
-			}
-		: {}),
-	...(hasCredential(env.GITHUB_CLIENT_ID) &&
-	hasCredential(env.GITHUB_CLIENT_SECRET)
-		? {
-				github: {
-					clientId: env.GITHUB_CLIENT_ID!,
-					clientSecret: env.GITHUB_CLIENT_SECRET!,
-					redirectURI: `${accountOrigin}/api/auth/callback/github`,
-				},
-			}
-		: {}),
-});
-
-const RESERVED_SOCIAL_PROVIDER_CONFIG = {
-	clientId: "provider-id-reservation-only",
-	clientSecret: "provider-id-reservation-only",
-	enabled: false,
-} as const;
-
-/**
- * Preserves the production provider-id namespace across credential outages.
- * Disabled placeholders are not usable providers, but their raw option keys
- * keep SSO and SCIM from claiming the well-known Google/GitHub identifiers.
- */
-export const getProductionSocialProviders = (
-	env: SocialProviderEnv,
-	accountOrigin: string,
-) => {
-	const configured = getConfiguredSocialProviders(env, accountOrigin);
-	return {
-		google: configured.google ?? RESERVED_SOCIAL_PROVIDER_CONFIG,
-		github: configured.github ?? RESERVED_SOCIAL_PROVIDER_CONFIG,
-	};
-};
-
 export const runWithExecutionCtx = <T>(
 	ctx: BackgroundTaskContext,
 	fn: () => T,
@@ -104,24 +49,21 @@ export const runWithExecutionCtx = <T>(
  * reached exclusively through Hyperdrive, while rate-limit mutations are
  * serialized by sharded Durable Objects.
  */
-const buildAuth = (env: CloudflareBindings) => {
+const buildAuth = (
+	env: CloudflareBindings,
+	social: Awaited<ReturnType<typeof resolveSocialSignInConfig>>,
+) => {
 	const origins = requireAuthOriginConfig(env);
 	return CinaAuth({
 		baseURL: origins.authOrigin,
 		secret: env.CINAAUTH_SECRET,
 		database: createDatabase(env),
-		socialProviders: getProductionSocialProviders(env, origins.accountOrigin),
+		socialProviders: social.socialProviders,
 		emailAndPassword: {
-			enabled: true,
-			revokeSessionsOnPasswordReset: true,
-			// Wire the classic reset-link flow to the delivery queue; without this
-			// /request-password-reset returns 400 RESET_PASSWORD_DISABLED.
-			sendResetPassword: async ({ user, url }) => {
-				await enqueueDelivery(env, {
-					kind: "password-reset",
-					payload: { email: user.email, url },
-				});
-			},
+			// Production email authentication is deliberately passwordless. Existing
+			// credential rows remain untouched as a rollback aid, but no public email
+			// password sign-in, sign-up, or reset route is registered.
+			enabled: false,
 		},
 		session: {
 			// Sensitive account operations require a recent authentication. Keep
@@ -158,7 +100,11 @@ const buildAuth = (env: CloudflareBindings) => {
 			window: 60,
 			max: 300,
 		},
-		plugins: createAuthPlugins(env, { advancedOrganization: true }),
+		plugins: createAuthPlugins(
+			env,
+			{ advancedOrganization: true },
+			social.genericProviders,
+		),
 		trustedOrigins: origins.trustedOrigins,
 		advanced: {
 			backgroundTasks: {
@@ -181,6 +127,12 @@ export type Auth = ReturnType<typeof buildAuth>;
 /**
  * Creates a request-scoped auth instance. The PostgreSQL driver must not retain
  * request I/O across Worker invocations; Hyperdrive owns the durable upstream
- * pool, while the local pg pool releases idle clients promptly.
+ * pool, while the local pg pool releases idle clients promptly. Social sign-in
+ * providers come from the cached runtime resolver (database rows overriding
+ * deploy-time environment credentials).
  */
-export const createAuth = (env: CloudflareBindings): Auth => buildAuth(env);
+export const createAuth = async (env: CloudflareBindings): Promise<Auth> => {
+	const accountOrigin = requireAuthOriginConfig(env).accountOrigin;
+	const social = await resolveSocialSignInConfig(env, accountOrigin);
+	return buildAuth(env, social);
+};

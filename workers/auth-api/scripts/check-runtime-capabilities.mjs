@@ -87,19 +87,29 @@ export const evaluateDeliveryCapabilityParity = ({
 	providers,
 }) => {
 	const failures = [];
-	if (capabilities.methods?.emailOtp !== providers.email) {
+	if (providers.email !== true || capabilities.methods?.emailOtp !== true) {
 		failures.push(
-			"Live Email OTP capability does not match Delivery Worker readiness",
+			"Production Email OTP requires an active Delivery Worker email provider and methods.emailOtp=true",
 		);
 	}
-	if (capabilities.methods?.magicLink !== providers.email) {
+	if (capabilities.methods?.emailPassword !== false) {
 		failures.push(
-			"Live magic-link capability does not match Delivery Worker readiness",
+			"Live email-password capability must remain disabled for passwordless email authentication",
+		);
+	}
+	if (capabilities.methods?.magicLink !== false) {
+		failures.push(
+			"Live magic-link capability must remain disabled for OTP-only email authentication",
 		);
 	}
 	if (capabilities.methods?.phoneOtp !== providers.sms) {
 		failures.push(
 			"Live phone OTP capability does not match Delivery Worker readiness",
+		);
+	}
+	if (capabilities.methods?.username !== false) {
+		failures.push(
+			"Live username-password capability must remain disabled for passwordless email authentication",
 		);
 	}
 	return failures;

@@ -1,15 +1,9 @@
 export const TURNSTILE_ACTION = "cinaauth";
 
 export const TURNSTILE_PROTECTED_ENDPOINTS = [
-	"/sign-up/email",
-	"/sign-in/email",
-	"/request-password-reset",
 	"/email-otp/send-verification-otp",
-	"/email-otp/request-password-reset",
-	"/forget-password/email-otp",
 	"/phone-number/send-otp",
 	"/phone-number/request-password-reset",
-	"/sign-in/magic-link",
 ] as const;
 
 type TurnstileEnv = {

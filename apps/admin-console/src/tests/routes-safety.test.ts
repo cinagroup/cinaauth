@@ -365,7 +365,6 @@ describe("user lookup response semantics", () => {
 describe("POST /api/admin/users/[id]/send-verification", () => {
 	it.each([
 		"email-otp",
-		"magic-link",
 		"phone-number",
 	] as const)("delegates %s to the authoritative Admin endpoint with the path user id", async (type) => {
 		mockFetch.mockResolvedValueOnce({
@@ -393,6 +392,22 @@ describe("POST /api/admin/users/[id]/send-verification", () => {
 				body: { userId: "u2", type },
 			}),
 		);
+	});
+
+	it("rejects the disabled magic-link channel before upstream delivery", async () => {
+		const { POST } = await import(
+			"@/app/api/admin/users/[id]/send-verification/route"
+		);
+		const res = await POST(
+			postReq("/api/admin/users/u2/send-verification", {
+				type: "magic-link",
+			}),
+			params({ id: "u2" }),
+		);
+
+		expect(res.status).toBe(400);
+		expect(mockRecentAuthentication).not.toHaveBeenCalled();
+		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
 	it("requires recent authentication after validating the request and before upstream delivery", async () => {

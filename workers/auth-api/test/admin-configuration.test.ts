@@ -419,6 +419,51 @@ describe("authoritative Admin configuration control plane", () => {
 		});
 	});
 
+	it("forwards a strictly parsed Cloudflare Email stage and never audits its token", async () => {
+		const { dependencies, fetchService, writeAudit } = makeDependencies();
+		let forwarded: unknown;
+		fetchService.mockImplementationOnce(async (_service, request) => {
+			forwarded = JSON.parse(await request.clone().text()) as unknown;
+			return new Response(
+				JSON.stringify({
+					operation: "stage",
+					revision: 1,
+					version: 1,
+					validated: false,
+					updatedAt: "2026-08-17T12:00:00.000Z",
+				}),
+				{ status: 200, headers: { "Content-Type": "application/json" } },
+			);
+		});
+		const cloudflareConfig = {
+			provider: "cloudflare-email",
+			apiToken: `cf-email-token-${"e".repeat(24)}`,
+			accountId: `f${"0".repeat(31)}`,
+			from: "CinaSeek <identity@example.com>",
+		};
+
+		const result = await call(dependencies, {
+			action: "stage",
+			body: {
+				expectedVersion: 0,
+				idempotencyKey: "config-change-0012",
+				channel: "email",
+				config: cloudflareConfig,
+			},
+		});
+
+		expect(result.status).toBe(200);
+		expect(forwarded).toEqual({
+			expectedVersion: 0,
+			idempotencyKey: "config-change-0012",
+			channel: "email",
+			config: cloudflareConfig,
+		});
+		const serializedAudit = JSON.stringify(writeAudit.mock.calls);
+		expect(serializedAudit).not.toContain(cloudflareConfig.apiToken);
+		expect(serializedAudit).not.toContain(cloudflareConfig.accountId);
+	});
+
 	it("projects write-only erasure targets and read-safe internal slot status", async () => {
 		const stage = makeDependencies();
 		let forwarded: unknown;

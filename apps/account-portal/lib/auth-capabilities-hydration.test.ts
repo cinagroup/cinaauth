@@ -109,12 +109,12 @@ describe("sign-in capability hydration", () => {
 		expect(getTurnstileTheme("system")).toBe("auto");
 	});
 
-	it("wires the server snapshot through the direct password form", () => {
+	it("wires the server snapshot through the email OTP form", () => {
 		const pageSource = readSource("../app/(auth)/sign-in/page.tsx");
 		const signInSource = readSource(
 			"../app/(auth)/sign-in/_components/sign-in.tsx",
 		);
-		const formSource = readSource("../components/forms/sign-in-form.tsx");
+		const formSource = readSource("../components/forms/email-otp-form.tsx");
 		const turnstileSource = readSource("../components/turnstile-challenge.tsx");
 
 		expect(pageSource).toContain("auth.api.getCapabilities");

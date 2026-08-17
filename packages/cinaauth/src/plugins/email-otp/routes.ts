@@ -598,6 +598,13 @@ const signInEmailOTPBodySchema = z
 					"Require this verification to create a new account. Existing accounts are rejected after the OTP is consumed.",
 			})
 			.optional(),
+		existingUserOnly: z
+			.boolean()
+			.meta({
+				description:
+					"Require this verification to sign in an existing account. Unknown accounts are rejected with INVALID_OTP after the OTP is consumed.",
+			})
+			.optional(),
 	})
 	.and(z.record(z.string(), z.any()));
 
@@ -659,9 +666,16 @@ export const signInEmailOTP = (opts: RequiredEmailOTPOptions) =>
 				name,
 				image,
 				newUserOnly,
+				existingUserOnly,
 				...rest
 			} = ctx.body;
 			const email = rawEmail.toLowerCase();
+
+			if (newUserOnly && existingUserOnly) {
+				throw APIError.fromStatus("BAD_REQUEST", {
+					message: "newUserOnly and existingUserOnly cannot both be enabled",
+				});
+			}
 
 			// Use atomic verification to prevent race conditions
 			await atomicVerifyOTP(ctx, opts, toOTPIdentifier("sign-in", email), otp);
@@ -674,7 +688,11 @@ export const signInEmailOTP = (opts: RequiredEmailOTPOptions) =>
 				);
 			}
 			if (!user) {
-				if (opts.disableSignUp) {
+				if (
+					opts.disableSignUp ||
+					existingUserOnly ||
+					(opts.disableImplicitSignUp && !newUserOnly)
+				) {
 					throw APIError.from("BAD_REQUEST", ERROR_CODES.INVALID_OTP);
 				}
 				const additionalFields = parseUserInput(

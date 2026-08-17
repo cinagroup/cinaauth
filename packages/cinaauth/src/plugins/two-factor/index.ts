@@ -4,7 +4,11 @@ import type { CinaAuthPlugin } from "@cinaauth/core";
 import { createAuthEndpoint, createAuthMiddleware } from "@cinaauth/core/api";
 import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
-import { sensitiveSessionMiddleware, sessionMiddleware } from "../../api";
+import {
+	markAuthenticationGatePending,
+	sensitiveSessionMiddleware,
+	sessionMiddleware,
+} from "../../api";
 import {
 	deleteSessionCookie,
 	expireCookie,
@@ -24,6 +28,7 @@ import {
 } from "./constant";
 import { TWO_FACTOR_ERROR_CODES } from "./error-code";
 import { otp2fa } from "./otp";
+import { enforceFreshPasswordlessSession } from "./passwordless-session";
 import { schema } from "./schema";
 import { totp2fa } from "./totp";
 import type {
@@ -41,13 +46,48 @@ declare module "@cinaauth/core" {
 		};
 	}
 }
+
+const DEFAULT_TWO_FACTOR_SIGN_IN_ENDPOINTS = [
+	"/sign-in/email",
+	"/sign-in/username",
+	"/sign-in/phone-number",
+] as const;
+
+const STATIC_SIGN_IN_ENDPOINT_PATTERN =
+	/^\/sign-in\/[a-z0-9._~-]+(?:\/[a-z0-9._~-]+)*$/iu;
+
+function getTwoFactorSignInEndpoints(
+	additionalSignInEndpoints: readonly string[] | undefined,
+): ReadonlySet<string> {
+	const endpoints = new Set<string>(DEFAULT_TWO_FACTOR_SIGN_IN_ENDPOINTS);
+	for (const endpoint of additionalSignInEndpoints ?? []) {
+		const segments = endpoint.split("/").slice(2);
+		if (
+			endpoint.length > 256 ||
+			!STATIC_SIGN_IN_ENDPOINT_PATTERN.test(endpoint) ||
+			segments.some((segment) => segment === "." || segment === "..")
+		) {
+			throw new TypeError(
+				"twoFactor.additionalSignInEndpoints must contain canonical static /sign-in/... paths",
+			);
+		}
+		endpoints.add(endpoint);
+	}
+	return endpoints;
+}
+
 export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 	const opts = {
 		twoFactorTable: "twoFactor",
 	};
+	const signInEndpoints = getTwoFactorSignInEndpoints(
+		options?.additionalSignInEndpoints,
+	);
 	const trustDeviceMaxAge =
 		options?.trustDeviceMaxAge ?? TRUST_DEVICE_COOKIE_MAX_AGE;
 	const allowPasswordless = options?.allowPasswordless;
+	const requireFreshSessionForPasswordless =
+		options?.requireFreshSessionForPasswordless;
 	const backupCodeOptions = {
 		storeBackupCodes: "encrypted",
 		...options?.backupCodeOptions,
@@ -56,11 +96,17 @@ export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 		...options?.totpOptions,
 		allowPasswordless:
 			options?.totpOptions?.allowPasswordless ?? allowPasswordless,
+		requireFreshSessionForPasswordless:
+			options?.totpOptions?.requireFreshSessionForPasswordless ??
+			requireFreshSessionForPasswordless,
 	});
 	const backupCode = backupCode2fa({
 		...backupCodeOptions,
 		allowPasswordless:
 			options?.backupCodeOptions?.allowPasswordless ?? allowPasswordless,
+		requireFreshSessionForPasswordless:
+			options?.backupCodeOptions?.requireFreshSessionForPasswordless ??
+			requireFreshSessionForPasswordless,
 	});
 	const otp = otp2fa(options?.otpOptions);
 	const passwordSchema = z.string().meta({
@@ -155,13 +201,19 @@ export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 					},
 				},
 				async (ctx) => {
-					const user = ctx.context.session.user as UserWithTwoFactor;
+					let user = ctx.context.session.user as UserWithTwoFactor;
 					const { password, issuer } = ctx.body;
 					const requirePassword = await shouldRequirePassword(
 						ctx,
 						user.id,
 						allowPasswordless,
 					);
+					await enforceFreshPasswordlessSession(
+						ctx,
+						requirePassword,
+						requireFreshSessionForPasswordless,
+					);
+					user = ctx.context.session.user as UserWithTwoFactor;
 					if (requirePassword) {
 						if (!password) {
 							throw APIError.from(
@@ -294,13 +346,19 @@ export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 					},
 				},
 				async (ctx) => {
-					const user = ctx.context.session.user as UserWithTwoFactor;
+					let user = ctx.context.session.user as UserWithTwoFactor;
 					const { password } = ctx.body;
 					const requirePassword = await shouldRequirePassword(
 						ctx,
 						user.id,
 						allowPasswordless,
 					);
+					await enforceFreshPasswordlessSession(
+						ctx,
+						requirePassword,
+						requireFreshSessionForPasswordless,
+					);
+					user = ctx.context.session.user as UserWithTwoFactor;
 					if (requirePassword) {
 						if (!password) {
 							throw APIError.from(
@@ -377,12 +435,11 @@ export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 		hooks: {
 			after: [
 				{
+					// Authentication gates must run before continuation hooks such as
+					// OAuth Provider, independent of plugin declaration order.
+					priority: 100,
 					matcher(context) {
-						return (
-							context.path === "/sign-in/email" ||
-							context.path === "/sign-in/username" ||
-							context.path === "/sign-in/phone-number"
-						);
+						return !!context.path && signInEndpoints.has(context.path);
 					},
 					handler: createAuthMiddleware(async (ctx) => {
 						const data = ctx.context.newSession;
@@ -476,6 +533,7 @@ export const twoFactor = <O extends TwoFactorOptions>(options?: O) => {
 						 * sign-in must therefore null-check it: it is `null` while a
 						 * 2FA challenge is in flight (no authenticated session yet).
 						 */
+						await markAuthenticationGatePending("two-factor");
 						deleteSessionCookie(ctx, true);
 						await ctx.context.internalAdapter.deleteSession(data.session.token);
 						ctx.context.setNewSession(null);

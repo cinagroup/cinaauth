@@ -14,9 +14,11 @@ describe("auth capability discovery", () => {
 			...CORE_AUTH_CAPABILITIES,
 			methods: {
 				...CORE_AUTH_CAPABILITIES.methods,
+				emailPassword: true,
 				emailOtp: true,
 				magicLink: true,
 				phoneOtp: false,
+				username: true,
 			},
 			oauthProviders: [
 				{ id: "google", type: "social" },
@@ -40,9 +42,11 @@ describe("auth capability discovery", () => {
 
 		expect(capabilities.oauthProviders).toEqual(response.oauthProviders);
 		expect(capabilities.captcha).toEqual(response.captcha);
+		expect(capabilities.methods.emailPassword).toBe(false);
 		expect(capabilities.methods.emailOtp).toBe(true);
-		expect(capabilities.methods.magicLink).toBe(true);
+		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(false);
+		expect(capabilities.methods.username).toBe(false);
 		expect(fetcher).toHaveBeenCalledWith(
 			"https://accounts.cinaseek.ai/api/auth/capabilities",
 			expect.objectContaining({ credentials: "include" }),
@@ -65,20 +69,62 @@ describe("auth capability discovery", () => {
 		]);
 	});
 
+	it("accepts the runtime social provider catalog from the Auth Worker", async () => {
+		const capabilities = await fetchAuthCapabilities(async () =>
+			Response.json({
+				...CORE_AUTH_CAPABILITIES,
+				oauthProviders: [
+					{ id: "google", type: "social" },
+					{ id: "apple", type: "social" },
+					{ id: "discord", type: "social" },
+					{ id: "microsoft-entra-id", type: "social" },
+					{ id: "facebook", type: "social" },
+					{ id: "twitter", type: "social" },
+					{ id: "github", type: "social" },
+				],
+			}),
+		);
+
+		expect(capabilities.oauthProviders).toHaveLength(7);
+	});
+
 	it("falls back to core methods while hiding optional providers", async () => {
 		const capabilities = await fetchAuthCapabilities(async () =>
 			Response.json({ error: "unavailable" }, { status: 503 }),
 		);
 
-		expect(capabilities.methods.emailPassword).toBe(true);
+		expect(capabilities.methods.emailPassword).toBe(false);
 		expect(capabilities.methods.passkey).toBe(true);
 		expect(capabilities.methods.emailOtp).toBe(false);
 		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(false);
+		expect(capabilities.methods.username).toBe(false);
 		expect(capabilities.methods.siwe).toBe(false);
 		expect(capabilities.oauthProviders).toEqual([]);
 		expect(capabilities.oneTap).toBe(false);
 		expect(capabilities.captcha.enabled).toBe(false);
+	});
+
+	it("keeps retired password and magic-link methods closed despite remote values", async () => {
+		const capabilities = await fetchAuthCapabilities(async () =>
+			Response.json({
+				...CORE_AUTH_CAPABILITIES,
+				methods: {
+					...CORE_AUTH_CAPABILITIES.methods,
+					emailPassword: true,
+					emailOtp: true,
+					magicLink: true,
+					username: true,
+				},
+			}),
+		);
+
+		expect(capabilities.methods).toMatchObject({
+			emailPassword: false,
+			emailOtp: true,
+			magicLink: false,
+			username: false,
+		});
 	});
 
 	it("enables wallet authentication only from an authoritative capability snapshot", async () => {

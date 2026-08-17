@@ -1,16 +1,9 @@
 "use client";
 
-import {
-	AlertCircle,
-	KeyRound,
-	LoaderCircle,
-	Mail,
-	ShieldCheck,
-} from "lucide-react";
-import Link from "next/link";
+import { AlertCircle, KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { SignInForm } from "@/components/forms/sign-in-form";
+import { EmailOtpForm } from "@/components/forms/email-otp-form";
 import { OAuthProviderButtons } from "@/components/oauth-provider-buttons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,14 +14,10 @@ import {
 	getAccountSignInPolicy,
 	getAccountStepUpNotice,
 } from "@/lib/client-api";
-import {
-	buildPreservedAuthPath,
-	hasSignedOidcAuthorizationQuery,
-} from "@/lib/oidc-navigation";
+import { hasSignedOidcAuthorizationQuery } from "@/lib/oidc-navigation";
 import {
 	getAccountCallbackURL,
 	getSignInAlert,
-	getSignInContextMessage,
 } from "@/lib/sign-in-experience";
 
 export default function SignIn({
@@ -42,7 +31,6 @@ export default function SignIn({
 	const capabilities = useAuthCapabilities();
 	const emailOtpReady = capabilities.data?.methods.emailOtp === true;
 	const alert = getSignInAlert(searchParams.get("error"));
-	const contextMessage = getSignInContextMessage(hasOidcQuery);
 	const mode = searchParams.get("mode");
 	const signInPolicy = getAccountSignInPolicy(mode);
 	const stepUpNotice = getAccountStepUpNotice(mode);
@@ -71,20 +59,7 @@ export default function SignIn({
 				</Alert>
 			) : null}
 
-			{contextMessage ? (
-				<Alert
-					role="status"
-					aria-live="polite"
-					className="border-transparent bg-canvas-soft-2 text-body"
-				>
-					<ShieldCheck className="text-link" aria-hidden />
-					<AlertDescription>{contextMessage}</AlertDescription>
-				</Alert>
-			) : null}
-
-			<SignInForm
-				callbackURL={callbackURL}
-				showPasswordToggle
+			<EmailOtpForm
 				onSuccess={() => {
 					if (!hasOidcQuery) window.location.href = callbackURL;
 				}}
@@ -128,26 +103,6 @@ export default function SignIn({
 						}}
 					/>
 				) : null}
-
-				{emailOtpReady ? (
-					<Button
-						asChild
-						variant="outline"
-						size="lg"
-						className="relative h-auto min-h-12 w-full whitespace-normal px-3 py-3 text-center"
-					>
-						<Link
-							href={buildPreservedAuthPath(
-								"/sign-in/email",
-								searchParams,
-								callbackURL,
-							)}
-						>
-							<Mail data-icon="inline-start" aria-hidden />
-							<span>Email me a sign-in code</span>
-						</Link>
-					</Button>
-				) : null}
 			</div>
 
 			{capabilities.isPending ? (
@@ -171,8 +126,8 @@ export default function SignIn({
 						Secure sign-in configuration could not be loaded
 					</AlertTitle>
 					<AlertDescription className="text-error-deep">
-						Password sign-in stays unavailable until the security configuration
-						can be verified.
+						Email code sign-in stays unavailable until the security
+						configuration can be verified.
 					</AlertDescription>
 					<Button
 						type="button"
@@ -198,15 +153,10 @@ export default function SignIn({
 			) : (
 				<p className="rounded-md bg-canvas-soft-2 px-3 py-2 text-center text-xs leading-5 text-body">
 					Automatic and social sign-in are unavailable for this identity check.
-					Use your password or passkey
-					{emailOtpReady ? ", or request an email code." : "."}
+					Use your passkey
+					{emailOtpReady ? " or request an email code." : "."}
 				</p>
 			)}
-
-			<p className="text-center text-[11px] leading-5 text-body">
-				Use only a device you trust. CinaSeek never asks for your password
-				outside accounts.cinaseek.ai.
-			</p>
 		</div>
 	);
 }

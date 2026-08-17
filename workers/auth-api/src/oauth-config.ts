@@ -31,7 +31,13 @@ export const genericOAuthRedirectURI = (
 	accountOrigin: string,
 ) => `${accountOrigin}/api/auth/oauth2/callback/${providerId}`;
 
-const isValidProvider = (
+/**
+ * Validate a single generic OAuth provider entry against the production
+ * contract: callbacks pinned to the account portal, HTTPS discovery or fully
+ * explicit endpoints, and a client secret or PKCE. Shared by the environment
+ * parser and the runtime social-provider configuration store.
+ */
+export const isValidGenericOAuthProvider = (
 	provider: Record<string, unknown>,
 	accountOrigin: string,
 ) => {
@@ -156,7 +162,11 @@ export const parseProductionGenericOAuthConfig = (
 		}
 		const ids = new Set<string>();
 		for (const value of parsed) {
-			if (!isRecord(value) || !isValidProvider(value, accountOrigin)) return [];
+			if (
+				!isRecord(value) ||
+				!isValidGenericOAuthProvider(value, accountOrigin)
+			)
+				return [];
 			const providerId = value.providerId as string;
 			if (ids.has(providerId)) return [];
 			ids.add(providerId);

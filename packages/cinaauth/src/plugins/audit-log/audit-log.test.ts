@@ -14,6 +14,7 @@ describe("audit-log plugin skeleton", () => {
 	it("maps self-service security mutations to stable audit actions", () => {
 		expect(
 			[
+				"/sign-in/email-otp",
 				"/delete-user",
 				"/link-social",
 				"/oauth2/link",
@@ -33,6 +34,7 @@ describe("audit-log plugin skeleton", () => {
 				"/privacy/export",
 			].map((path) => [path, matchCapturePath(path)]),
 		).toEqual([
+			["/sign-in/email-otp", { category: "auth", action: "user.login" }],
 			["/delete-user", { category: "identity", action: "user.account_delete" }],
 			["/link-social", { category: "identity", action: "identity.link" }],
 			["/oauth2/link", { category: "identity", action: "identity.link" }],

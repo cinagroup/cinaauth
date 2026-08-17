@@ -107,8 +107,19 @@ export const getSecurityProviderLinkFailure = (
 		? value.length === 1 && value[0] === "failed"
 		: value === "failed";
 
-export const requiresPasswordForDeletion = (accounts: SecurityAccount[]) =>
+/** Fails closed when linked-account state cannot establish passwordless status. */
+export const requiresPasswordForTwoFactor = (
+	accounts: readonly Pick<SecurityAccount, "providerId">[],
+	accountsUnavailable = false,
+) =>
+	accountsUnavailable ||
 	accounts.some((account) => account.providerId === "credential");
+
+/** Omits retained credentials entirely for accounts created passwordlessly. */
+export const getTwoFactorPasswordBody = (
+	requiresPassword: boolean,
+	password: string,
+): { password?: string } => (requiresPassword ? { password } : {});
 
 export const isSessionRecent = (
 	createdAt: string,

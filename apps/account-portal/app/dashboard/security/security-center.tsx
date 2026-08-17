@@ -27,7 +27,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { ChangePasswordForm } from "@/components/forms/change-password-form";
 import { TwoFactorDisableForm } from "@/components/forms/two-factor-disable-form";
 import { TwoFactorEnableForm } from "@/components/forms/two-factor-enable-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -96,10 +95,10 @@ import {
 	formatWalletAddress,
 	formatWalletChain,
 	getAvailableSecurityProviders,
+	requiresPasswordForTwoFactor as getRequiresPasswordForTwoFactor,
 	getSecurityPosture,
 	isApiKeyExpired,
 	isSessionRecent,
-	requiresPasswordForDeletion,
 	summarizeUserAgent,
 } from "@/lib/security-center";
 import { getSecurityProviderLinkURL } from "@/lib/security-provider-actions";
@@ -199,7 +198,6 @@ export function SecurityCenter({
 	const [walletToUnlink, setWalletToUnlink] = useState<SecurityWallet | null>(
 		null,
 	);
-	const [password, setPassword] = useState("");
 	const [deleteConfirmation, setDeleteConfirmation] = useState("");
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [deletionReadiness, setDeletionReadiness] =
@@ -209,7 +207,6 @@ export function SecurityCenter({
 	>(null);
 	const [deletionReadinessLoading, setDeletionReadinessLoading] =
 		useState(false);
-	const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 	const [twoFactorDialogOpen, setTwoFactorDialogOpen] = useState(false);
 	const [backupCodesPending, setBackupCodesPending] = useState(false);
 
@@ -229,14 +226,16 @@ export function SecurityCenter({
 		passkeyCount: passkeys.length,
 		activeSessionCount: sessions.length,
 	});
-	const credentialAccount = requiresPasswordForDeletion(accounts);
+	const requiresPasswordForTwoFactor = getRequiresPasswordForTwoFactor(
+		accounts,
+		dataUnavailable.accounts,
+	);
 	const availableProviders = getAvailableSecurityProviders(
 		configuredProviders,
 		accounts,
 	);
 	const destructiveActionReady =
 		deleteConfirmation === user.email &&
-		(!credentialAccount || password.length > 0) &&
 		recentAuthentication &&
 		!dataUnavailable.accounts &&
 		deletionReadiness?.canDelete === true;
@@ -662,7 +661,7 @@ export function SecurityCenter({
 						Accept: "application/json",
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify(credentialAccount ? { password } : {}),
+					body: JSON.stringify({}),
 				});
 				const data = (await response.json().catch(() => null)) as unknown;
 				if (!response.ok) {
@@ -767,7 +766,7 @@ export function SecurityCenter({
 							<LockKeyhole className="h-5 w-5" /> Authentication
 						</CardTitle>
 						<CardDescription>
-							Password and multi-factor protection for this account.
+							Passwordless sign-in and multi-factor protection for this account.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
@@ -783,28 +782,6 @@ export function SecurityCenter({
 						/>
 						<Separator />
 						<div className="flex flex-wrap gap-2">
-							<Dialog
-								open={passwordDialogOpen}
-								onOpenChange={setPasswordDialogOpen}
-							>
-								<DialogTrigger asChild>
-									<Button variant="outline" size="sm">
-										<KeyRound className="mr-2 h-4 w-4" /> Change password
-									</Button>
-								</DialogTrigger>
-								<DialogContent>
-									<DialogHeader>
-										<DialogTitle>Change password</DialogTitle>
-										<DialogDescription>
-											Use a unique password and revoke other sessions if you
-											suspect compromise.
-										</DialogDescription>
-									</DialogHeader>
-									<ChangePasswordForm
-										onSuccess={() => setPasswordDialogOpen(false)}
-									/>
-								</DialogContent>
-							</Dialog>
 							<Dialog
 								open={twoFactorDialogOpen}
 								onOpenChange={(open) => {
@@ -840,11 +817,14 @@ export function SecurityCenter({
 											{user.twoFactorEnabled ? "Disable 2FA" : "Enable 2FA"}
 										</DialogTitle>
 										<DialogDescription>
-											Confirm this security-sensitive change with your password.
+											{requiresPasswordForTwoFactor
+												? "A retained legacy credential confirms this sensitive change. It cannot be used to sign in."
+												: "Your recent passwordless sign-in confirms this sensitive change."}
 										</DialogDescription>
 									</DialogHeader>
 									{user.twoFactorEnabled ? (
 										<TwoFactorDisableForm
+											requiresPassword={requiresPasswordForTwoFactor}
 											onSuccess={() => {
 												setTwoFactorDialogOpen(false);
 												router.refresh();
@@ -852,6 +832,7 @@ export function SecurityCenter({
 										/>
 									) : (
 										<TwoFactorEnableForm
+											requiresPassword={requiresPasswordForTwoFactor}
 											onBackupCodesPendingChange={setBackupCodesPending}
 											onSuccess={() => {
 												setTwoFactorDialogOpen(false);
@@ -1603,18 +1584,6 @@ export function SecurityCenter({
 										autoComplete="off"
 									/>
 								</div>
-								{credentialAccount ? (
-									<div className="space-y-2">
-										<Label htmlFor="delete-password">Current password</Label>
-										<Input
-											id="delete-password"
-											type="password"
-											value={password}
-											onChange={(event) => setPassword(event.target.value)}
-											autoComplete="current-password"
-										/>
-									</div>
-								) : null}
 							</div>
 							<DialogFooter>
 								<Button

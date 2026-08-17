@@ -13,7 +13,6 @@ import {
 	genericOAuthClient,
 	jwtClient,
 	lastLoginMethodClient,
-	magicLinkClient,
 	multiSessionClient,
 	oauthPopupClient,
 	oneTapClient,
@@ -22,7 +21,6 @@ import {
 	phoneNumberClient,
 	siweClient,
 	twoFactorClient,
-	usernameClient,
 } from "cinaauth/client/plugins";
 import { createAuthClient } from "cinaauth/react";
 import { toast } from "sonner";
@@ -45,7 +43,6 @@ export const authClient = createAuthClient({
 		apiKeyClient(),
 		jwtClient(),
 		anonymousClient(),
-		usernameClient(),
 		organizationClient({
 			dynamicAccessControl: { enabled: true },
 			teams: { enabled: true },
@@ -75,7 +72,6 @@ export const authClient = createAuthClient({
 		deviceAuthorizationClient(),
 		lastLoginMethodClient(),
 		emailOTPClient(),
-		magicLinkClient(),
 		phoneNumberClient(),
 		genericOAuthClient(),
 		oneTimeTokenClient(),

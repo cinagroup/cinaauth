@@ -10,6 +10,7 @@ import { PACKAGE_VERSION } from "../../../version";
 import type { BackupCodeOptions } from "../backup-codes";
 import { DEFAULT_TWO_FACTOR_ALLOWED_ATTEMPTS } from "../constant";
 import { TWO_FACTOR_ERROR_CODES } from "../error-code";
+import { enforceFreshPasswordlessSession } from "../passwordless-session";
 import type {
 	TwoFactorProvider,
 	TwoFactorTable,
@@ -49,6 +50,11 @@ export type TOTPOptions = {
 	 * @default false
 	 */
 	allowPasswordless?: boolean | undefined;
+	/**
+	 * Require a fresh session when passwordless TOTP URI retrieval is allowed.
+	 * @default false
+	 */
+	requireFreshSessionForPasswordless?: boolean | undefined;
 	/**
 	 * Disable totp
 	 */
@@ -184,7 +190,24 @@ export const totp2fa = (options?: TOTPOptions | undefined) => {
 					code: "TOTP_NOT_CONFIGURED",
 				});
 			}
-			const user = ctx.context.session.user as UserWithTwoFactor;
+			let user = ctx.context.session.user as UserWithTwoFactor;
+			const requirePassword = await shouldRequirePassword(
+				ctx,
+				user.id,
+				options?.allowPasswordless,
+			);
+			await enforceFreshPasswordlessSession(
+				ctx,
+				requirePassword,
+				options?.requireFreshSessionForPasswordless,
+			);
+			user = ctx.context.session.user as UserWithTwoFactor;
+			if (requirePassword) {
+				if (!ctx.body.password) {
+					throw APIError.from("BAD_REQUEST", BASE_ERROR_CODES.INVALID_PASSWORD);
+				}
+				await ctx.context.password.checkPassword(user.id, ctx);
+			}
 			const twoFactor = await ctx.context.adapter.findOne<TwoFactorTable>({
 				model: twoFactorTable,
 				where: [
@@ -204,17 +227,6 @@ export const totp2fa = (options?: TOTPOptions | undefined) => {
 				key: ctx.context.secretConfig,
 				data: twoFactor.secret,
 			});
-			const requirePassword = await shouldRequirePassword(
-				ctx,
-				user.id,
-				options?.allowPasswordless,
-			);
-			if (requirePassword) {
-				if (!ctx.body.password) {
-					throw APIError.from("BAD_REQUEST", BASE_ERROR_CODES.INVALID_PASSWORD);
-				}
-				await ctx.context.password.checkPassword(user.id, ctx);
-			}
 			const totpURI = createOTP(secret, {
 				digits: opts.digits,
 				period: opts.period,

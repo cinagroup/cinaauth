@@ -3,9 +3,11 @@ import type { DeliveryWorkerEnv } from "../src/env";
 import type { DeliveryMessage } from "../src/index";
 import {
 	createProviderRequest,
+	createProviderRequestForConfig,
 	getRuntimeConfigIssues,
 	parseDeliveryMessage,
 	secureEqual,
+	sendProviderConfigurationTest,
 	verifyCinaAuthRequest,
 } from "../src/index";
 
@@ -121,6 +123,13 @@ const message: DeliveryMessage = {
 		otp: "123456",
 		type: "sign-in",
 	},
+};
+
+const cloudflareEmailConfig = {
+	provider: "cloudflare-email" as const,
+	apiToken: `cf-email-token-${"e".repeat(24)}`,
+	accountId: `f${"0".repeat(31)}`,
+	from: "CinaSeek <no-reply@cinaseek.ai>",
 };
 
 const fetchWorker = async (request: Request, env: DeliveryWorkerEnv) => {
@@ -312,6 +321,97 @@ describe("provider requests", () => {
 			expect(body).toBe("Your CinaSeek verification code is 654321.");
 			expect(body).not.toContain("CinaAuth");
 		}
+	});
+
+	it("creates Cloudflare Email requests scoped to the staged account", () => {
+		const request = createProviderRequestForConfig(
+			message,
+			cloudflareEmailConfig,
+		);
+		expect(request.url).toBe(
+			`https://api.cloudflare.com/client/v4/accounts/${cloudflareEmailConfig.accountId}/email/sending/send`,
+		);
+		expect(request.method).toBe("POST");
+		const headers = new Headers(request.headers);
+		expect(headers.get("Authorization")).toBe(
+			`Bearer ${cloudflareEmailConfig.apiToken}`,
+		);
+		expect(JSON.parse(request.body as string)).toEqual({
+			from: cloudflareEmailConfig.from,
+			to: ["user@example.com"],
+			subject: "Your CinaSeek verification code",
+			text: "Your CinaSeek verification code is 123456.",
+			html: "<p>Your CinaSeek verification code is 123456.</p>",
+		});
+		expect(typeof request.validateResponse).toBe("function");
+	});
+
+	it("keeps Resend requests free of an envelope validator", () => {
+		const request = createProviderRequest(makeEnv(), message);
+		expect(request.url).toBe("https://api.resend.com/emails");
+		expect(request.validateResponse).toBeUndefined();
+	});
+
+	it("validates the Cloudflare delivery envelope beyond HTTP status", async () => {
+		const fetcher = vi.fn(
+			async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				new Response(
+					JSON.stringify({
+						success: true,
+						result: {
+							delivered: ["operator@example.test"],
+							permanent_bounces: [],
+							queued: [],
+						},
+					}),
+					{ status: 200 },
+				),
+		);
+		await expect(
+			sendProviderConfigurationTest(
+				"email",
+				cloudflareEmailConfig,
+				"operator@example.test",
+				fetcher as unknown as typeof fetch,
+			),
+		).resolves.toBeUndefined();
+		expect(fetcher).toHaveBeenCalledOnce();
+		expect(String(fetcher.mock.calls[0]?.[0])).toBe(
+			`https://api.cloudflare.com/client/v4/accounts/${cloudflareEmailConfig.accountId}/email/sending/send`,
+		);
+
+		await expect(
+			sendProviderConfigurationTest(
+				"email",
+				cloudflareEmailConfig,
+				"operator@example.test",
+				(async () =>
+					new Response(
+						JSON.stringify({ success: false, errors: [{ code: 10203 }] }),
+						{ status: 200 },
+					)) as unknown as typeof fetch,
+			),
+		).rejects.toMatchObject({ code: "provider_test_failed", status: 502 });
+
+		await expect(
+			sendProviderConfigurationTest(
+				"email",
+				cloudflareEmailConfig,
+				"operator@example.test",
+				(async () =>
+					new Response(
+						JSON.stringify({
+							success: true,
+							result: {
+								delivered: [],
+								permanent_bounces: ["operator@example.test"],
+								queued: [],
+							},
+						}),
+						{ status: 200 },
+					)) as unknown as typeof fetch,
+			),
+		).rejects.toMatchObject({ code: "provider_test_failed", status: 502 });
 	});
 
 	it("creates Twilio requests for phone delivery", () => {
@@ -595,7 +695,7 @@ describe("post-deploy delivery configuration API", () => {
 		expect(await response.json()).toEqual(mutation);
 		expect(stage).toHaveBeenCalledWith({
 			provider: "email",
-			config: { apiKey, from },
+			config: { provider: "resend", apiKey, from },
 			expectedVersion: 0,
 			idempotencyKey: "delivery-stage-email-0001",
 		});
@@ -603,8 +703,162 @@ describe("post-deploy delivery configuration API", () => {
 		expect(JSON.stringify(mutation)).not.toContain(from);
 	});
 
+	it("stages a write-only Cloudflare Email NEXT with exact-key validation", async () => {
+		const mutation = {
+			operation: "stage" as const,
+			revision: 1,
+			version: 1,
+			validated: false,
+			updatedAt: "2026-08-17T14:00:00.000Z",
+		};
+		const stage = vi.fn(async () => ({ ok: true as const, value: mutation }));
+		const env = makeEnv({
+			DELIVERY_CONFIG: {
+				getByName: vi.fn(() => ({ stage })),
+			} as unknown as DeliveryWorkerEnv["DELIVERY_CONFIG"],
+		});
+		const body = JSON.stringify({
+			expectedVersion: 0,
+			idempotencyKey: "delivery-stage-email-cf01",
+			channel: "email",
+			config: cloudflareEmailConfig,
+		});
+
+		const response = await fetchWorker(
+			await signedConfigRequest(
+				"stage",
+				body,
+				env,
+				"delivery-stage-email-cf01",
+			),
+			env,
+		);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual(mutation);
+		expect(stage).toHaveBeenCalledWith({
+			provider: "email",
+			config: cloudflareEmailConfig,
+			expectedVersion: 0,
+			idempotencyKey: "delivery-stage-email-cf01",
+		});
+		expect(JSON.stringify(mutation)).not.toContain(
+			cloudflareEmailConfig.apiToken,
+		);
+
+		const rejected = await fetchWorker(
+			await signedConfigRequest(
+				"stage",
+				JSON.stringify({
+					expectedVersion: 0,
+					idempotencyKey: "delivery-stage-email-cf02",
+					channel: "email",
+					config: {
+						...cloudflareEmailConfig,
+						apiToken: "short-token",
+					},
+				}),
+				env,
+				"delivery-stage-email-cf02",
+			),
+			env,
+		);
+		expect(rejected.status).toBe(400);
+		expect(stage).toHaveBeenCalledOnce();
+	});
+
+	it("labels the active email provider in configuration status", async () => {
+		const providerStatus = {
+			revision: 5,
+			updatedAt: "2026-08-17T14:00:00.000Z",
+			channels: {
+				email: {
+					activeVersion: 4,
+					nextVersion: null,
+					previousVersion: 2,
+					validated: true,
+					updatedAt: "2026-08-17T14:00:00.000Z",
+					lastTestedAt: "2026-08-17T13:58:00.000Z",
+				},
+				sms: {
+					activeVersion: null,
+					nextVersion: null,
+					previousVersion: null,
+					validated: false,
+					updatedAt: null,
+					lastTestedAt: null,
+				},
+			},
+		};
+		const env = makeEnv({
+			DELIVERY_CONFIG: {
+				getByName: vi.fn(() => ({
+					status: vi.fn(async () => providerStatus),
+					getActive: vi.fn(async (provider: string) =>
+						provider === "email"
+							? {
+									configured: true as const,
+									provider: "email" as const,
+									version: 4,
+									config: cloudflareEmailConfig,
+								}
+							: { configured: false as const },
+					),
+					checkEncryptionKey: vi.fn(async () => undefined),
+				})),
+			} as unknown as DeliveryWorkerEnv["DELIVERY_CONFIG"],
+		});
+
+		const response = await fetchWorker(
+			await signedConfigRequest("status", "{}", env, "delivery-status-cf01"),
+			env,
+		);
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as {
+			channels: { email: { provider: string } };
+		};
+		expect(body.channels.email.provider).toBe("cloudflare-email");
+	});
+
+	it("fails an accepted Cloudflare delivery when the recipient hard-bounces", async () => {
+		const env = makeEnv({
+			DELIVERY_CONFIG: {
+				getByName: vi.fn(() => ({
+					getActive: vi.fn(async () => ({
+						configured: true as const,
+						provider: "email" as const,
+						version: 4,
+						config: cloudflareEmailConfig,
+					})),
+				})),
+			} as unknown as DeliveryWorkerEnv["DELIVERY_CONFIG"],
+		});
+		const providerFetch = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						success: true,
+						result: {
+							delivered: [],
+							permanent_bounces: ["user@example.com"],
+							queued: [],
+						},
+					}),
+					{ status: 200 },
+				),
+		);
+		vi.stubGlobal("fetch", providerFetch);
+
+		const response = await fetchWorker(
+			await signedRequest(JSON.stringify(message), env),
+			env,
+		);
+		expect(response.status).toBe(502);
+		expect(await response.json()).toMatchObject({ code: "provider_failed" });
+	});
+
 	it("sends a real mockable provider test before marking NEXT validated", async () => {
 		const providerConfig = {
+			provider: "resend" as const,
 			apiKey: `re_${"b".repeat(36)}`,
 			from: "CinaSeek <no-reply@cinaseek.ai>",
 		};
@@ -735,6 +989,7 @@ describe("post-deploy delivery configuration API", () => {
 
 	it("prefers a dynamic ACTIVE provider over complete legacy environment values", async () => {
 		const dynamicConfig = {
+			provider: "resend" as const,
 			apiKey: `re_${"d".repeat(36)}`,
 			from: "CinaSeek <dynamic@cinaseek.ai>",
 		};

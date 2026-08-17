@@ -36,7 +36,7 @@ migration.
 | `accounts.cinaseek.ai`            | normal users                             | login, recovery, account and organization self-service             | `AUTH_WORKER -> cinaauth-api`                                                         |
 | `admin.cinaseek.ai`               | `super_admin`, `security_admin`          | privileged operational workflows                                   | `AUTH_WORKER -> cinaauth-api`                                                         |
 | `auth.cinaseek.ai`                | applications and internal frontends      | session issuance, policy enforcement, OAuth/OIDC and identity data | Hyperdrive, Durable Objects, Queues, `CINAAUTH_DELIVERY_SERVICE -> cinaauth-delivery` |
-| `cinaauth-delivery.cinagroup.com` | Auth Worker and provider acceptance only | signed email/SMS dispatch and per-channel readiness                | Resend, Twilio, replay-prevention KV                                                  |
+| `cinaauth-delivery.cinagroup.com` | Auth Worker and provider acceptance only | signed email/SMS dispatch and per-channel readiness                | Resend or Cloudflare Email, Twilio, replay-prevention KV                              |
 | `cinaauth-erasure.cinagroup.com`  | Auth Worker only                         | idempotent downstream privacy erasure coordination                 | SQLite Durable Objects, signed HTTPS targets                                          |
 
 Browser authentication stays same-origin on each frontend. Server route
