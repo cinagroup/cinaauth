@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
+import { getTwoFactorPasswordBody } from "@/lib/security-center";
 
 const passwordSchema = z.object({
 	password: z.string().min(8, "Password must be at least 8 characters."),
@@ -26,9 +27,13 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 interface TwoFactorQrFormProps {
 	onSuccess?: (totpURI: string) => void;
+	requiresPassword?: boolean;
 }
 
-export function TwoFactorQrForm({ onSuccess }: TwoFactorQrFormProps) {
+export function TwoFactorQrForm({
+	onSuccess,
+	requiresPassword = true,
+}: TwoFactorQrFormProps) {
 	const [loading, startTransition] = useTransition();
 	const [totpURI, setTotpURI] = useState<string>("");
 
@@ -39,10 +44,10 @@ export function TwoFactorQrForm({ onSuccess }: TwoFactorQrFormProps) {
 		},
 	});
 
-	const onSubmit = (data: PasswordFormValues) => {
+	const loadTotpURI = (password: string) => {
 		startTransition(async () => {
 			await authClient.twoFactor.getTotpUri(
-				{ password: data.password },
+				getTwoFactorPasswordBody(requiresPassword, password),
 				{
 					onSuccess(context) {
 						setTotpURI(context.data.totpURI);
@@ -56,6 +61,10 @@ export function TwoFactorQrForm({ onSuccess }: TwoFactorQrFormProps) {
 		});
 	};
 
+	const onSubmit = (data: PasswordFormValues) => {
+		loadTotpURI(data.password);
+	};
+
 	if (totpURI) {
 		return (
 			<div className="flex flex-col gap-4">
@@ -66,6 +75,27 @@ export function TwoFactorQrForm({ onSuccess }: TwoFactorQrFormProps) {
 					<p className="text-sm text-muted-foreground">Copy URI to clipboard</p>
 					<CopyButton textToCopy={totpURI} />
 				</div>
+			</div>
+		);
+	}
+
+	if (!requiresPassword) {
+		return (
+			<div className="flex flex-col gap-4">
+				<p className="text-sm text-muted-foreground">
+					Your recent passwordless sign-in confirms this security change.
+				</p>
+				<Button
+					type="button"
+					disabled={loading}
+					onClick={() => loadTotpURI("")}
+				>
+					{loading ? (
+						<Loader2 size={16} className="animate-spin" />
+					) : (
+						"Show QR Code"
+					)}
+				</Button>
 			</div>
 		);
 	}

@@ -6,22 +6,25 @@ const readSource = (path: string) =>
 	readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("Accounts card-first sign-in contract", () => {
-	it("renders password sign-in as the primary task without inventing methods", () => {
+	it("renders email OTP as the primary task without exposing retired methods", () => {
 		const source = readSource("../app/(auth)/sign-in/_components/sign-in.tsx");
-		const formSource = readSource("../components/forms/sign-in-form.tsx");
+		const formSource = readSource("../components/forms/email-otp-form.tsx");
+		const clientSource = readSource("./auth-client.ts");
 		const providerSource = readSource(
 			"../components/oauth-provider-buttons.tsx",
 		);
 
-		expect(source).toContain("<SignInForm");
-		expect(source).toContain("callbackURL={callbackURL}");
-		expect(source).toContain("showPasswordToggle");
+		expect(source).toContain("<EmailOtpForm");
+		expect(source).toContain("window.location.href = callbackURL");
+		expect(source).not.toContain("<SignInForm");
 		expect(source).toContain("<OAuthProviderButtons");
 		expect(source).toContain("signInPolicy.allowFederatedProviders");
-		expect(source).not.toContain("Continue with password");
-		expect(source).not.toContain("Continue with Magic Link");
-		expect(formSource).toContain('placeholder="Enter your email"');
-		expect(formSource.match(/size="lg"/g) ?? []).toHaveLength(4);
+		expect(source).not.toContain("password");
+		expect(source).not.toContain("Magic Link");
+		expect(formSource).toContain('autoComplete="one-time-code"');
+		expect(formSource).toContain("existingUserOnly");
+		expect(clientSource).not.toContain("usernameClient");
+		expect(clientSource).not.toContain("magicLinkClient");
 		expect(providerSource).toContain("<FieldSeparator>Or</FieldSeparator>");
 		expect(providerSource).toContain('data-icon="inline-start"');
 		expect(providerSource).toContain("new ResizeObserver");

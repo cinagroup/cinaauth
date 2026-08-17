@@ -42,6 +42,27 @@ export interface TwoFactorOptions {
 	 */
 	allowPasswordless?: boolean | undefined;
 	/**
+	 * Require an authoritative session within the configured `session.freshAge`
+	 * window when a user without a credential account manages 2FA without a
+	 * password. Applies to enable, disable, TOTP URI retrieval, and backup-code
+	 * regeneration. Credential accounts continue to use password verification.
+	 *
+	 * @default false
+	 */
+	requireFreshSessionForPasswordless?: boolean | undefined;
+	/**
+	 * Additional static sign-in endpoint paths that should require a second
+	 * factor when a signed-in user has 2FA enabled. Core credential sign-in
+	 * endpoints remain enabled by default; passwordless endpoints must be
+	 * opted in explicitly.
+	 *
+	 * Paths must be canonical `/sign-in/...` paths without query strings,
+	 * fragments, parameters, or traversal segments.
+	 *
+	 * @example ["/sign-in/email-otp"]
+	 */
+	additionalSignInEndpoints?: readonly string[] | undefined;
+	/**
 	 * Custom schema for the two factor plugin
 	 */
 	schema?: InferOptionSchema<typeof schema> | undefined;

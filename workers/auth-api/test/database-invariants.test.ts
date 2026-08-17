@@ -7,6 +7,7 @@ import {
 	installDatabaseInvariants,
 } from "../src/database-invariants";
 import { PROVIDER_NAMESPACE_INVARIANT_ID } from "../src/provider-namespace-invariant";
+import { SOCIAL_SIGN_IN_INVARIANT_ID } from "../src/social-sign-in-invariant";
 import { SUPER_ADMIN_DATABASE_INVARIANT_ID } from "../src/super-admin-database-invariant";
 
 const firstInvariant = {
@@ -36,6 +37,7 @@ describe("production database invariants", () => {
 		expect(DATABASE_INVARIANT_IDS).toEqual([
 			SUPER_ADMIN_DATABASE_INVARIANT_ID,
 			PROVIDER_NAMESPACE_INVARIANT_ID,
+			SOCIAL_SIGN_IN_INVARIANT_ID,
 		]);
 	});
 

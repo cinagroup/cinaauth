@@ -57,6 +57,9 @@ const getPublicOAuthProviders = (
 export const getAuthCapabilities = (
 	env: CapabilitiesEnv,
 	delivery: DeliveryProviderCapabilities = { email: false, sms: false },
+	oauthProviders: AuthCapabilities["oauthProviders"] = getPublicOAuthProviders(
+		env,
+	),
 ): AuthCapabilities => {
 	const turnstile = getTurnstileConfig(env);
 	const siwe = getSiweRuntimeConfig(env);
@@ -64,18 +67,18 @@ export const getAuthCapabilities = (
 	return {
 		version: 4,
 		methods: {
-			emailPassword: true,
+			emailPassword: false,
 			emailOtp: delivery.email,
-			magicLink: delivery.email,
+			magicLink: false,
 			phoneOtp: delivery.sms,
-			username: true,
+			username: false,
 			passkey: true,
 			anonymous: true,
 			twoFactor: true,
 			siwe: siwe.enabled,
 			sso: true,
 		},
-		oauthProviders: getPublicOAuthProviders(env),
+		oauthProviders,
 		oneTap: hasCredential(env.GOOGLE_CLIENT_ID),
 		captcha: {
 			enabled: turnstile.enabled,

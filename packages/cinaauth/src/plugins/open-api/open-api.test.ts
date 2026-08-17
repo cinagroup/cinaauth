@@ -869,6 +869,10 @@ describe("open-api", async () => {
 		expect(signInEmailOTPSchema.properties.otp.type).toBe("string");
 		expect(signInEmailOTPSchema.properties.name.type).toBe("string");
 		expect(signInEmailOTPSchema.properties.image.type).toBe("string");
+		expect(signInEmailOTPSchema.properties.newUserOnly.type).toBe("boolean");
+		expect(signInEmailOTPSchema.properties.existingUserOnly.type).toBe(
+			"boolean",
+		);
 		expect(signInEmailOTPSchema.additionalProperties).toEqual({});
 	});
 

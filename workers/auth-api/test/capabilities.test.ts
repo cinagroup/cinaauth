@@ -28,10 +28,11 @@ describe("public auth capabilities", () => {
 		const capabilities = getAuthCapabilities({});
 
 		expect(capabilities.version).toBe(4);
-		expect(capabilities.methods.emailPassword).toBe(true);
+		expect(capabilities.methods.emailPassword).toBe(false);
 		expect(capabilities.methods.emailOtp).toBe(false);
 		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(false);
+		expect(capabilities.methods.username).toBe(false);
 		expect(capabilities.methods.passkey).toBe(true);
 		expect(capabilities.methods.siwe).toBe(false);
 		expect(capabilities.oauthProviders).toEqual([]);
@@ -142,24 +143,31 @@ describe("public auth capabilities", () => {
 		]);
 		expect(capabilities.oneTap).toBe(true);
 		expect(capabilities.methods.emailOtp).toBe(true);
-		expect(capabilities.methods.magicLink).toBe(true);
+		expect(capabilities.methods.emailPassword).toBe(false);
+		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(true);
+		expect(capabilities.methods.username).toBe(false);
 		expect(capabilities.captcha).toMatchObject({
 			enabled: true,
 			provider: "cloudflare-turnstile",
 			siteKey: "turnstile-site-key",
 			action: "cinaauth",
 		});
-		expect(capabilities.captcha.protectedEndpoints).toEqual(
-			expect.arrayContaining([
-				"/sign-up/email",
-				"/sign-in/email",
-				"/request-password-reset",
-				"/email-otp/send-verification-otp",
-				"/phone-number/send-otp",
-				"/sign-in/magic-link",
-			]),
+		expect(capabilities.captcha.protectedEndpoints).toContain(
+			"/email-otp/send-verification-otp",
 		);
+		for (const retiredEndpoint of [
+			"/sign-up/email",
+			"/sign-in/email",
+			"/request-password-reset",
+			"/sign-in/magic-link",
+			"/email-otp/request-password-reset",
+			"/forget-password/email-otp",
+		]) {
+			expect(capabilities.captcha.protectedEndpoints).not.toContain(
+				retiredEndpoint,
+			);
+		}
 		expect(capabilities.billing).toBe(true);
 		expect(JSON.stringify(capabilities)).not.toContain("must-not-leak");
 	});

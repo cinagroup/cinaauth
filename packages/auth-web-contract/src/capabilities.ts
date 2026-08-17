@@ -1,3 +1,21 @@
+/**
+ * Native social providers the Auth Worker can configure at runtime through the
+ * Admin social-provider control plane. Login surfaces mirror this catalog to
+ * decide which well-known social identifiers they accept.
+ */
+export const SOCIAL_PROVIDER_CATALOG_IDS = [
+	"google",
+	"github",
+	"apple",
+	"discord",
+	"microsoft-entra-id",
+	"facebook",
+	"twitter",
+] as const;
+
+export type SocialProviderCatalogId =
+	(typeof SOCIAL_PROVIDER_CATALOG_IDS)[number];
+
 /** Public, secret-free runtime capabilities advertised by the Auth Worker. */
 export type AuthCapabilities = {
 	version: 4;
@@ -19,7 +37,7 @@ export type AuthCapabilities = {
 				type: "generic-oauth";
 		  }
 		| {
-				id: "google" | "github";
+				id: SocialProviderCatalogId;
 				type: "social";
 		  }
 	>;

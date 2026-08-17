@@ -97,7 +97,16 @@ describe("runtime config guardrails", () => {
 			getConfiguredAccountProviderIds(
 				makeEnv({ GENERIC_OAUTH_CONFIG: JSON.stringify([generic]) }),
 			),
-		).toEqual(["google", "github", "enterprise-idp"]);
+		).toEqual([
+			"google",
+			"github",
+			"apple",
+			"discord",
+			"microsoft-entra-id",
+			"facebook",
+			"twitter",
+			"enterprise-idp",
+		]);
 	});
 
 	it("maps target-user passkey permissions to production Admin roles", () => {

@@ -142,7 +142,13 @@ describe("live delivery capability checks", () => {
 		assert.deepEqual(
 			evaluateDeliveryCapabilityParity({
 				capabilities: {
-					methods: { emailOtp: true, magicLink: true, phoneOtp: false },
+					methods: {
+						emailOtp: true,
+						emailPassword: false,
+						magicLink: false,
+						phoneOtp: false,
+						username: false,
+					},
 				},
 				providers: { email: true, sms: false },
 			}),
@@ -153,12 +159,38 @@ describe("live delivery capability checks", () => {
 	it("rejects every half-enabled delivery capability", () => {
 		const failures = evaluateDeliveryCapabilityParity({
 			capabilities: {
-				methods: { emailOtp: true, magicLink: false, phoneOtp: true },
+				methods: {
+					emailOtp: true,
+					emailPassword: true,
+					magicLink: true,
+					phoneOtp: true,
+					username: true,
+				},
 			},
 			providers: { email: false, sms: false },
 		});
-		assert.equal(failures.length, 2);
+		assert.equal(failures.length, 5);
 		assert.match(failures.join("\n"), /Email OTP/);
+		assert.match(failures.join("\n"), /email-password/);
+		assert.match(failures.join("\n"), /magic-link/);
 		assert.match(failures.join("\n"), /phone OTP/);
+		assert.match(failures.join("\n"), /username-password/);
+	});
+
+	it("requires an active email provider and enabled Email OTP after Auth deploy", () => {
+		const failures = evaluateDeliveryCapabilityParity({
+			capabilities: {
+				methods: {
+					emailOtp: false,
+					emailPassword: false,
+					magicLink: false,
+					phoneOtp: false,
+					username: false,
+				},
+			},
+			providers: { email: false, sms: false },
+		});
+		assert.equal(failures.length, 1);
+		assert.match(failures[0], /active Delivery Worker email provider/);
 	});
 });

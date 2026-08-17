@@ -66,6 +66,27 @@ export interface EmailOTPOptions {
 	 */
 	disableSignUp?: boolean | undefined;
 	/**
+	 * Prevent the sign-in endpoint from creating an account unless the caller
+	 * explicitly passes `newUserOnly: true`. Existing users can continue to sign
+	 * in without either account-mode flag.
+	 *
+	 * Unlike `disableSignUp`, this option keeps explicit Email OTP registration
+	 * available.
+	 *
+	 * @default false
+	 */
+	disableImplicitSignUp?: boolean | undefined;
+	/**
+	 * Do not register the Email OTP password-reset endpoints.
+	 *
+	 * This disables `/email-otp/request-password-reset`, the deprecated
+	 * `/forget-password/email-otp`, and `/email-otp/reset-password` routes. It
+	 * does not affect sign-in, sign-up, or email-verification OTPs.
+	 *
+	 * @default false
+	 */
+	disablePasswordReset?: boolean | undefined;
+	/**
 	 * Allowed attempts for the OTP code
 	 * @default 3
 	 */

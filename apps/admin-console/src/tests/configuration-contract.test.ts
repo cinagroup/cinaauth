@@ -25,6 +25,69 @@ describe("post-deploy configuration contract", () => {
 		expect(result.ok).toBe(true);
 	});
 
+	it("accepts a write-only Cloudflare Email stage request", () => {
+		const result = parseDeliveryConfigurationStageInput({
+			expectedVersion: 0,
+			idempotencyKey: "stage-cloudflare-20260817",
+			channel: "email",
+			config: {
+				provider: "cloudflare-email",
+				apiToken: "cf-email-token-abcdefghij1234",
+				accountId: "f1234567890abcdef01234567890abcd",
+				from: "CinaSeek <identity@example.com>",
+			},
+		});
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.value.channel).toBe("email");
+			expect(result.value.config.provider).toBe("cloudflare-email");
+		}
+	});
+
+	it("rejects a Cloudflare Email stage with malformed credentials", () => {
+		expect(
+			parseDeliveryConfigurationStageInput({
+				expectedVersion: 0,
+				idempotencyKey: "stage-cloudflare-20260817",
+				channel: "email",
+				config: {
+					provider: "cloudflare-email",
+					apiToken: "short-token",
+					accountId: "f1234567890abcdef01234567890abcd",
+					from: "CinaSeek <identity@example.com>",
+				},
+			}),
+		).toMatchObject({ ok: false });
+		expect(
+			parseDeliveryConfigurationStageInput({
+				expectedVersion: 0,
+				idempotencyKey: "stage-cloudflare-20260817",
+				channel: "email",
+				config: {
+					provider: "cloudflare-email",
+					apiToken: "cf-email-token-abcdefghij1234",
+					accountId: "not-an-account-id",
+					from: "CinaSeek <identity@example.com>",
+				},
+			}),
+		).toMatchObject({ ok: false });
+		expect(
+			parseDeliveryConfigurationStageInput({
+				expectedVersion: 0,
+				idempotencyKey: "stage-cloudflare-20260817",
+				channel: "email",
+				config: {
+					provider: "cloudflare-email",
+					apiToken: "cf-email-token-abcdefghij1234",
+					accountId: "f1234567890abcdef01234567890abcd",
+					from: "CinaSeek <identity@example.com>",
+					apiKey: "re_mixing-providers",
+				},
+			}),
+		).toMatchObject({ ok: false });
+	});
+
 	it("rejects unknown fields and malformed provider credentials", () => {
 		expect(
 			parseDeliveryConfigurationStageInput({

@@ -75,7 +75,15 @@ const makeRepository = () => {
 };
 
 const emailConfig: EmailProviderConfig = {
+	provider: "resend",
 	apiKey: `re_${"a".repeat(36)}`,
+	from: "CinaSeek <no-reply@cinaseek.ai>",
+};
+
+const cloudflareEmailConfig: EmailProviderConfig = {
+	provider: "cloudflare-email",
+	apiToken: `cf-email-token-${"e".repeat(24)}`,
+	accountId: `f${"0".repeat(31)}`,
 	from: "CinaSeek <no-reply@cinaseek.ai>",
 };
 
@@ -90,6 +98,110 @@ afterEach(() => {
 });
 
 describe("DeliveryProviderConfig SQLite repository", () => {
+	it("stages, activates, and resolves a Cloudflare Email provider without leaking its token", async () => {
+		const harness = makeRepository();
+		await harness.waitForInitialization();
+
+		const staged = await harness.repository.stage({
+			provider: "email",
+			config: cloudflareEmailConfig,
+			expectedVersion: 0,
+			idempotencyKey: "stage-email-cf01",
+		});
+		expect(staged).toMatchObject({
+			ok: true,
+			value: { operation: "stage", revision: 1, version: 1 },
+		});
+
+		const persisted = harness.database
+			.prepare("SELECT * FROM delivery_provider_versions")
+			.all();
+		expect(JSON.stringify(persisted)).not.toContain(
+			cloudflareEmailConfig.apiToken,
+		);
+		expect(JSON.stringify(persisted)).not.toContain(
+			cloudflareEmailConfig.accountId,
+		);
+
+		const prepared = await harness.repository.prepareTest({
+			provider: "email",
+			target: "owner@example.test",
+			expectedVersion: 1,
+			idempotencyKey: "test-email-cf01",
+		});
+		expect(prepared).toMatchObject({
+			ok: true,
+			value: { kind: "ready", config: cloudflareEmailConfig },
+		});
+		if (!prepared.ok || prepared.value.kind !== "ready") {
+			throw new Error("test preparation failed");
+		}
+		await harness.repository.completeTest({
+			provider: "email",
+			version: staged.ok ? (staged.value.version ?? 1) : 1,
+			idempotencyKey: "test-email-cf01",
+			operationToken: prepared.value.operationToken,
+		});
+		await harness.repository.activate({
+			provider: "email",
+			expectedVersion: 2,
+			idempotencyKey: "activate-email-cf01",
+		});
+		expect(await harness.repository.getActive("email")).toMatchObject({
+			configured: true,
+			config: cloudflareEmailConfig,
+		});
+	});
+
+	it("normalizes legacy Resend rows staged without the provider discriminator", async () => {
+		const harness = makeRepository();
+		await harness.waitForInitialization();
+		const legacyEmail = {
+			apiKey: `re_${"g".repeat(36)}`,
+			from: "CinaSeek <no-reply@cinaseek.ai>",
+		};
+		const legacyShape = legacyEmail as unknown as EmailProviderConfig;
+
+		const staged = await harness.repository.stage({
+			provider: "email",
+			config: legacyShape,
+			expectedVersion: 0,
+			idempotencyKey: "stage-email-lg01",
+		});
+		expect(staged).toMatchObject({ ok: true });
+		const prepared = await harness.repository.prepareTest({
+			provider: "email",
+			target: "owner@example.test",
+			expectedVersion: 1,
+			idempotencyKey: "test-email-lg01",
+		});
+		expect(prepared).toMatchObject({
+			ok: true,
+			value: {
+				kind: "ready",
+				config: { provider: "resend", ...legacyEmail },
+			},
+		});
+		if (!prepared.ok || prepared.value.kind !== "ready") {
+			throw new Error("test preparation failed");
+		}
+		await harness.repository.completeTest({
+			provider: "email",
+			version: staged.ok ? (staged.value.version ?? 1) : 1,
+			idempotencyKey: "test-email-lg01",
+			operationToken: prepared.value.operationToken,
+		});
+		await harness.repository.activate({
+			provider: "email",
+			expectedVersion: 2,
+			idempotencyKey: "activate-email-lg01",
+		});
+		expect(await harness.repository.getActive("email")).toMatchObject({
+			configured: true,
+			config: { provider: "resend", ...legacyEmail },
+		});
+	});
+
 	it("encrypts write-only NEXT values and refuses activation before a successful test", async () => {
 		const harness = makeRepository();
 		await harness.waitForInitialization();

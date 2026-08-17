@@ -51,9 +51,6 @@ const makeDependencies = (role: string | null = "security_admin") => {
 			type: "email-verification";
 		}): Promise<void> => undefined,
 	);
-	const sendMagicLink = vi.fn(
-		async (_input: { email: string }): Promise<void> => undefined,
-	);
 	const sendPhoneOtp = vi.fn(
 		async (_input: { phoneNumber: string }): Promise<void> => undefined,
 	);
@@ -67,7 +64,7 @@ const makeDependencies = (role: string | null = "security_admin") => {
 		async (_event: {
 			actorId: string;
 			targetId: string;
-			channel: "email-otp" | "magic-link" | "phone-number";
+			channel: "email-otp" | "phone-number";
 		}): Promise<void> => undefined,
 	);
 	const logEvent = vi.fn();
@@ -77,7 +74,6 @@ const makeDependencies = (role: string | null = "security_admin") => {
 		getSession,
 		findUserById,
 		sendEmailOtp,
-		sendMagicLink,
 		sendPhoneOtp,
 		consumeRateLimit,
 		writeAuditEvent,
@@ -88,7 +84,6 @@ const makeDependencies = (role: string | null = "security_admin") => {
 		getSession,
 		findUserById,
 		sendEmailOtp,
-		sendMagicLink,
 		sendPhoneOtp,
 		consumeRateLimit,
 		writeAuditEvent,
@@ -97,13 +92,19 @@ const makeDependencies = (role: string | null = "security_admin") => {
 };
 
 describe("Admin verification delivery boundary", () => {
-	it("keeps the three public delivery endpoints Turnstile-protected", () => {
+	it("keeps only enabled public delivery endpoints Turnstile-protected", () => {
 		expect(TURNSTILE_PROTECTED_ENDPOINTS).toEqual(
 			expect.arrayContaining([
 				"/email-otp/send-verification-otp",
-				"/sign-in/magic-link",
 				"/phone-number/send-otp",
 			]),
+		);
+		expect(TURNSTILE_PROTECTED_ENDPOINTS).not.toContain("/sign-in/magic-link");
+		expect(TURNSTILE_PROTECTED_ENDPOINTS).not.toContain(
+			"/email-otp/request-password-reset",
+		);
+		expect(TURNSTILE_PROTECTED_ENDPOINTS).not.toContain(
+			"/forget-password/email-otp",
 		);
 		expect(TURNSTILE_PROTECTED_ENDPOINTS).not.toContain(
 			"/admin/send-verification",
@@ -115,7 +116,6 @@ describe("Admin verification delivery boundary", () => {
 		expect(
 			getAdminVerificationServerApi({
 				sendVerificationOTP: vi.fn(),
-				signInMagicLink: vi.fn(),
 				sendPhoneNumberOTP: vi.fn(),
 				logAudit: vi.fn(),
 			}),
@@ -123,14 +123,13 @@ describe("Admin verification delivery boundary", () => {
 		expect(
 			getAdminVerificationServerApi({
 				sendVerificationOTP: vi.fn(),
-				signInMagicLink: vi.fn(),
 				sendPhoneNumberOTP: vi.fn(),
 			}),
 		).toBeNull();
 	});
 
-	it("exposes all three server APIs from the configured Worker auth instance", () => {
-		const auth = createAuth(
+	it("exposes the enabled server APIs from the configured Worker auth instance", async () => {
+		const auth = await createAuth(
 			makeOriginEnv({
 				HYPERDRIVE: {
 					connectionString: "postgres://localhost/cinaauth-test",
@@ -378,12 +377,8 @@ describe("Admin verification delivery boundary", () => {
 		});
 	});
 
-	it.each([
-		"email-otp",
-		"magic-link",
-	] as const)("rejects an invalid target email for %s", async (type) => {
-		const { dependencies, findUserById, sendEmailOtp, sendMagicLink } =
-			makeDependencies();
+	it("rejects an invalid target email for email OTP", async () => {
+		const { dependencies, findUserById, sendEmailOtp } = makeDependencies();
 		findUserById.mockResolvedValueOnce({
 			id: "user-2",
 			email: "not-an-email",
@@ -391,7 +386,7 @@ describe("Admin verification delivery boundary", () => {
 
 		const result = await handleAdminSendVerification(dependencies, {
 			userId: "user-2",
-			type,
+			type: "email-otp",
 		});
 
 		expect(result).toMatchObject({
@@ -399,31 +394,16 @@ describe("Admin verification delivery boundary", () => {
 			body: { error: { code: "INVALID_EMAIL" } },
 		});
 		expect(sendEmailOtp).not.toHaveBeenCalled();
-		expect(sendMagicLink).not.toHaveBeenCalled();
-	});
-
-	it("routes magic links through the internal server API", async () => {
-		const { dependencies, sendMagicLink } = makeDependencies();
-
-		const result = await handleAdminSendVerification(dependencies, {
-			userId: "user-2",
-			type: "magic-link",
-		});
-
-		expect(result.status).toBe(200);
-		expect(sendMagicLink).toHaveBeenCalledWith({
-			email: "user@example.com",
-		});
 	});
 
 	it("does not write a success audit and logs a delivery failure", async () => {
-		const { dependencies, sendMagicLink, writeAuditEvent, logEvent } =
+		const { dependencies, sendEmailOtp, writeAuditEvent, logEvent } =
 			makeDependencies();
-		sendMagicLink.mockRejectedValueOnce(new Error("provider rejected"));
+		sendEmailOtp.mockRejectedValueOnce(new Error("provider rejected"));
 
 		const result = await handleAdminSendVerification(dependencies, {
 			userId: "user-2",
-			type: "magic-link",
+			type: "email-otp",
 		});
 
 		expect(result).toMatchObject({
@@ -437,7 +417,7 @@ describe("Admin verification delivery boundary", () => {
 			code: "VERIFICATION_DELIVERY_FAILED",
 			actorId: "admin-1",
 			targetId: "user-2",
-			channel: "magic-link",
+			channel: "email-otp",
 			error: "provider rejected",
 		});
 	});

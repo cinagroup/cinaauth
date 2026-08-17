@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import { completeLocalSignInSuccess } from "./auth-form-response";
 import {
 	completeEmailOtpSignUp,
 	getEmailOtpCopy,
 	normalizeEmailOtp,
+	requiresExistingEmailOtpUser,
 	requiresNewEmailOtpUser,
 	suppressEmailOtpAutomaticRedirect,
 } from "./email-otp-flow";
@@ -75,6 +77,8 @@ describe("Accounts authentication UI phase two contract", () => {
 		});
 		expect(requiresNewEmailOtpUser("signup")).toBe(true);
 		expect(requiresNewEmailOtpUser("signin")).toBe(false);
+		expect(requiresExistingEmailOtpUser("signin")).toBe(true);
+		expect(requiresExistingEmailOtpUser("signup")).toBe(false);
 	});
 
 	it("continues prompt=create exactly once without trusting redirect_uri", async () => {
@@ -139,8 +143,53 @@ describe("Accounts authentication UI phase two contract", () => {
 		expect(formSource).toContain("throw: true");
 		expect(formSource).toContain('type: "sign-in"');
 		expect(formSource).toContain("requiresNewEmailOtpUser(intent)");
+		expect(formSource).toContain("requiresExistingEmailOtpUser(intent)");
+		expect(formSource).toContain("completeLocalSignInSuccess");
 		expect(formSource).not.toContain("<button");
 		expect(formSource).not.toContain("setInterval(");
+	});
+
+	it("does not complete email OTP sign-in while a 2FA redirect is pending", () => {
+		const notifySuccess = vi.fn();
+		const onSuccess = vi.fn();
+
+		expect(
+			completeLocalSignInSuccess(
+				{ twoFactorRedirect: true, twoFactorMethods: ["totp"] },
+				{ notifySuccess, onSuccess },
+			),
+		).toBe(false);
+		expect(notifySuccess).not.toHaveBeenCalled();
+		expect(onSuccess).not.toHaveBeenCalled();
+
+		expect(
+			completeLocalSignInSuccess(
+				{ token: "session-token" },
+				{ notifySuccess, onSuccess },
+			),
+		).toBe(true);
+		expect(notifySuccess).toHaveBeenCalledOnce();
+		expect(onSuccess).toHaveBeenCalledOnce();
+	});
+
+	it("forwards the complete signed OIDC query through email OTP requests", () => {
+		const accountClientSource = readSource("./auth-client.ts");
+		const oauthClientSource = readSource(
+			"../../../packages/oauth-provider/src/client.ts",
+		);
+		const signedQuerySource = readSource(
+			"../../../packages/oauth-provider/src/signed-query.ts",
+		);
+
+		expect(accountClientSource).toContain("oauthProviderClient()");
+		expect(oauthClientSource).toContain(
+			"oauth_query: buildSignedOAuthQuery(window.location.search)",
+		);
+		expect(signedQuerySource).toContain(
+			"for (const [key, value] of params.entries())",
+		);
+		expect(signedQuerySource).toContain("signedParams.append(key, value)");
+		expect(signedQuerySource).not.toContain("Object.fromEntries(params)");
 	});
 
 	it("wires both registration pages through the preserved auth context", () => {

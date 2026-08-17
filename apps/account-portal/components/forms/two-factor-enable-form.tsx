@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
+import { getTwoFactorPasswordBody } from "@/lib/security-center";
 import { formatBackupCodesText } from "@/lib/two-factor-verification";
 
 const passwordSchema = z.object({
@@ -35,11 +36,13 @@ type EnrollmentStep = "password" | "verify" | "backupCodes";
 interface TwoFactorEnableFormProps {
 	onSuccess?: () => void;
 	onBackupCodesPendingChange?: (pending: boolean) => void;
+	requiresPassword?: boolean;
 }
 
 export function TwoFactorEnableForm({
 	onSuccess,
 	onBackupCodesPendingChange,
+	requiresPassword = true,
 }: TwoFactorEnableFormProps) {
 	const [loading, startTransition] = useTransition();
 	const [totpURI, setTotpURI] = useState<string>("");
@@ -60,10 +63,10 @@ export function TwoFactorEnableForm({
 		},
 	});
 
-	const onPasswordSubmit = (data: PasswordFormValues) => {
+	const beginEnrollment = (password: string) => {
 		startTransition(async () => {
 			await authClient.twoFactor.enable({
-				password: data.password,
+				...getTwoFactorPasswordBody(requiresPassword, password),
 				fetchOptions: {
 					onSuccess(ctx) {
 						setTotpURI(ctx.data.totpURI);
@@ -76,6 +79,10 @@ export function TwoFactorEnableForm({
 				},
 			});
 		});
+	};
+
+	const onPasswordSubmit = (data: PasswordFormValues) => {
+		beginEnrollment(data.password);
 	};
 
 	const onOtpSubmit = (data: OtpFormValues) => {
@@ -199,6 +206,27 @@ export function TwoFactorEnableForm({
 						)}
 					</Button>
 				</form>
+			</div>
+		);
+	}
+
+	if (!requiresPassword) {
+		return (
+			<div className="flex flex-col gap-4">
+				<p className="text-sm text-muted-foreground">
+					Your recent passwordless sign-in confirms this security change.
+				</p>
+				<Button
+					type="button"
+					disabled={loading}
+					onClick={() => beginEnrollment("")}
+				>
+					{loading ? (
+						<Loader2 size={16} className="animate-spin" />
+					) : (
+						"Continue"
+					)}
+				</Button>
 			</div>
 		);
 	}

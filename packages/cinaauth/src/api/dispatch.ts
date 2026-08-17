@@ -49,6 +49,7 @@ const defuReplaceArrays = createDefu((obj, key, value) => {
 });
 
 type Hook = {
+	priority?: number | undefined;
 	matcher: (context: HookEndpointContext) => boolean;
 	handler: AuthMiddleware;
 };
@@ -57,6 +58,16 @@ const hooksSourceWeakMap = new WeakMap<
 	AuthMiddleware,
 	`user` | `plugin:${string}`
 >();
+
+function orderPluginHooks(hooks: Hook[]): Hook[] {
+	return hooks
+		.map((hook, index) => ({ hook, index }))
+		.sort(
+			(a, b) =>
+				(b.hook.priority ?? 0) - (a.hook.priority ?? 0) || a.index - b.index,
+		)
+		.map(({ hook }) => hook);
+}
 
 /**
  * Resolves the operation id used for spans, preferring an explicit
@@ -284,17 +295,21 @@ function getHooks(authContext: AuthContext) {
 			handler: afterHookHandler,
 		});
 	}
-	const pluginBeforeHooks = plugins.flatMap((plugin) =>
-		(plugin.hooks?.before ?? []).map((h) => {
-			hooksSourceWeakMap.set(h.handler, `plugin:${plugin.id}`);
-			return h;
-		}),
+	const pluginBeforeHooks = orderPluginHooks(
+		plugins.flatMap((plugin) =>
+			(plugin.hooks?.before ?? []).map((h) => {
+				hooksSourceWeakMap.set(h.handler, `plugin:${plugin.id}`);
+				return h;
+			}),
+		),
 	);
-	const pluginAfterHooks = plugins.flatMap((plugin) =>
-		(plugin.hooks?.after ?? []).map((h) => {
-			hooksSourceWeakMap.set(h.handler, `plugin:${plugin.id}`);
-			return h;
-		}),
+	const pluginAfterHooks = orderPluginHooks(
+		plugins.flatMap((plugin) =>
+			(plugin.hooks?.after ?? []).map((h) => {
+				hooksSourceWeakMap.set(h.handler, `plugin:${plugin.id}`);
+				return h;
+			}),
+		),
 	);
 
 	// Plugin hooks run after the user-configured hooks.

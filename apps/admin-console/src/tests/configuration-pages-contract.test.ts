@@ -47,6 +47,21 @@ describe("post-deploy configuration pages", () => {
 		expect(source).not.toContain("URLSearchParams");
 	});
 
+	it("offers both email providers with provider-specific write-only fields", () => {
+		const source = readPage("delivery");
+
+		for (const field of [
+			"cloudflare-email",
+			"apiToken",
+			"accountId",
+			"delivery.provider.resend",
+			"delivery.provider.cloudflare-email",
+			"delivery.provider.${status.provider}",
+		]) {
+			expect(source).toContain(field);
+		}
+	});
+
 	it("uses structured erasure targets without displaying target secrets", () => {
 		const source = readPage("privacy-erasure");
 

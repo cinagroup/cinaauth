@@ -416,6 +416,10 @@ export * from "./middlewares";
 export * from "./routes";
 export { getOAuthState } from "./state/oauth";
 export {
+	hasPendingAuthenticationGate,
+	markAuthenticationGatePending,
+} from "./state/pending-authentication-gates";
+export {
 	getShouldSkipSessionRefresh,
 	setShouldSkipSessionRefresh,
 } from "./state/should-session-refresh";

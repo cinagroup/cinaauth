@@ -2,12 +2,121 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	evaluateDeployedWalletReadiness,
+	evaluateEmailProviderReady,
 	evaluateOneTapBuild,
+	evaluatePasswordlessEmailRelease,
 	evaluatePlannedReownBuild,
 	evaluatePlannedSiweRelease,
 	evaluateReownBuild,
 	resolveAccountBuildReadinessTarget,
 } from "./check-oauth-build.mjs";
+
+const capabilities = (methods) => ({ version: 4, methods });
+
+describe("passwordless email release parity", () => {
+	it("allows the provider-first gate while the live password method is still enabled", () => {
+		assert.deepEqual(
+			evaluateEmailProviderReady({
+				capabilities: capabilities({
+					emailOtp: true,
+					emailPassword: true,
+					magicLink: true,
+					username: true,
+				}),
+				cacheControl: "private, no-store",
+			}),
+			{
+				ok: true,
+				reason: "the production email OTP provider is active",
+			},
+		);
+	});
+
+	it("fails closed when the provider-first gate cannot prove email OTP readiness", () => {
+		for (const value of [
+			undefined,
+			null,
+			{},
+			capabilities({ emailOtp: false }),
+			capabilities({ emailOtp: "true" }),
+		]) {
+			const result = evaluateEmailProviderReady({
+				capabilities: value,
+				cacheControl: "no-store, max-age=0",
+			});
+			assert.equal(result.ok, false);
+			assert.match(result.reason, /Email OTP/);
+		}
+	});
+
+	it("rejects cacheable or unspecified capability responses", () => {
+		const liveCapabilities = capabilities({ emailOtp: true });
+		for (const cacheControl of [undefined, "", "public, max-age=60"]) {
+			const result = evaluateEmailProviderReady({
+				capabilities: liveCapabilities,
+				cacheControl,
+			});
+			assert.equal(result.ok, false);
+			assert.match(result.reason, /no-store/);
+		}
+	});
+
+	it("accepts only the exact post-Auth passwordless email policy", () => {
+		const exactMethods = {
+			emailOtp: true,
+			emailPassword: false,
+			username: false,
+			magicLink: false,
+		};
+		assert.equal(
+			evaluatePasswordlessEmailRelease({
+				capabilities: capabilities(exactMethods),
+				cacheControl: "private, no-store",
+			}).ok,
+			true,
+		);
+		const cacheable = evaluatePasswordlessEmailRelease({
+			capabilities: capabilities(exactMethods),
+			cacheControl: "public, max-age=60",
+		});
+		assert.equal(cacheable.ok, false);
+		assert.match(cacheable.reason, /no-store/);
+
+		for (const methods of [
+			{
+				emailOtp: false,
+				emailPassword: false,
+				username: false,
+				magicLink: false,
+			},
+			{
+				emailOtp: true,
+				emailPassword: true,
+				username: false,
+				magicLink: false,
+			},
+			{
+				emailOtp: true,
+				emailPassword: false,
+				username: true,
+				magicLink: false,
+			},
+			{
+				emailOtp: true,
+				emailPassword: false,
+				username: false,
+				magicLink: true,
+			},
+		]) {
+			const result = evaluatePasswordlessEmailRelease({
+				capabilities: capabilities(methods),
+				cacheControl: "no-store",
+			});
+			assert.equal(result.ok, false);
+			assert.match(result.reason, /passwordless email policy/);
+		}
+	});
+});
 
 describe("account OAuth build parity", () => {
 	it("allows a disabled production One Tap capability", () => {

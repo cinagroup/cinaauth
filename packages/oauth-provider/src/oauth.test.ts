@@ -1,3 +1,4 @@
+import { createOTP } from "@better-auth/utils/otp";
 import { APIError } from "better-call";
 import { createAuthMiddleware } from "cinaauth/api";
 import { createAuthClient } from "cinaauth/client";
@@ -7,8 +8,10 @@ import {
 	magicLinkClient,
 	multiSessionClient,
 	organizationClient,
+	twoFactorClient,
 } from "cinaauth/client/plugins";
-import { makeSignature } from "cinaauth/crypto";
+import { parseCookies } from "cinaauth/cookies";
+import { makeSignature, symmetricDecrypt } from "cinaauth/crypto";
 import { toNodeHandler } from "cinaauth/node";
 import { emailOTP } from "cinaauth/plugins/email-otp";
 import type { GenericOAuthConfig } from "cinaauth/plugins/generic-oauth";
@@ -18,6 +21,7 @@ import { magicLink } from "cinaauth/plugins/magic-link";
 import { multiSession } from "cinaauth/plugins/multi-session";
 import type { Organization } from "cinaauth/plugins/organization";
 import { organization } from "cinaauth/plugins/organization";
+import { twoFactor } from "cinaauth/plugins/two-factor";
 import { getTestInstance } from "cinaauth/test";
 import { createLocalJWKSet, jwtVerify } from "jose";
 import type { Listener } from "listhen";
@@ -377,14 +381,19 @@ describe("oauth", async () => {
 	const port = 3001;
 	const authServerBaseUrl = `http://localhost:${port}`;
 	const rpBaseUrl = "http://localhost:5000";
+	const emailSignInOTP = "654321";
+	const authSecret = "oauth-email-otp-two-factor-test-secret";
 	const {
 		auth: authorizationServer,
 		signInWithTestUser,
 		customFetchImpl,
 		cookieSetter,
+		db,
 		testUser,
 	} = await getTestInstance({
 		baseURL: authServerBaseUrl,
+		secret: authSecret,
+		rateLimit: { enabled: false },
 		plugins: [
 			jwt(),
 			oauthProvider({
@@ -395,10 +404,19 @@ describe("oauth", async () => {
 					openidConfig: true,
 				},
 			}),
+			twoFactor({
+				allowPasswordless: true,
+				additionalSignInEndpoints: ["/sign-in/email-otp"],
+			}),
+			emailOTP({
+				disableImplicitSignUp: true,
+				generateOTP: () => emailSignInOTP,
+				async sendVerificationOTP() {},
+			}),
 		],
 	});
 	const authClient = createAuthClient({
-		plugins: [oauthProviderClient()],
+		plugins: [twoFactorClient(), oauthProviderClient(), emailOTPClient()],
 		baseURL: authServerBaseUrl,
 		fetchOptions: {
 			customFetchImpl,
@@ -504,6 +522,38 @@ describe("oauth", async () => {
 				disableTestUser: true,
 			},
 		);
+	}
+
+	async function createSignedLoginRedirect() {
+		const { customFetchImpl: customFetchImplRP } = await createTestInstance();
+		const client = createAuthClient({
+			plugins: [genericOAuthClient()],
+			baseURL: rpBaseUrl,
+			fetchOptions: {
+				customFetchImpl: customFetchImplRP,
+			},
+		});
+		const data = await client.signIn.oauth2(
+			{
+				providerId,
+				callbackURL: "/success",
+			},
+			{ throw: true },
+		);
+
+		let loginRedirectUri = "";
+		await authClient.$fetch(data.url, {
+			method: "GET",
+			onError(context) {
+				loginRedirectUri = context.response.headers.get("Location") || "";
+			},
+		});
+
+		const signedLogin = new URL(loginRedirectUri, authServerBaseUrl);
+		expect(signedLogin.pathname).toBe("/login");
+		expect(signedLogin.searchParams.get("sig")).toBeTruthy();
+		expect(signedLogin.searchParams.getAll("ba_param")).toContain("client_id");
+		return signedLogin;
 	}
 
 	// Tests if it is oauth2 compatible
@@ -1157,6 +1207,209 @@ describe("oauth", async () => {
 			},
 		});
 		expect(callbackURL).toContain("/success");
+	});
+
+	it("resumes a signed OIDC authorization request after Email OTP sign-in", async ({
+		onTestFinished,
+	}) => {
+		const signedLogin = await createSignedLoginRedirect();
+		const location = {
+			href: "",
+			search: signedLogin.search,
+		};
+		const expectedState = signedLogin.searchParams.get("state");
+		expect(expectedState).toBeTruthy();
+		vi.stubGlobal("window", { location });
+		onTestFinished(() => {
+			vi.unstubAllGlobals();
+		});
+
+		await authClient.emailOtp.sendVerificationOtp(
+			{
+				email: testUser.email,
+				type: "sign-in",
+			},
+			{ throw: true },
+		);
+		const signIn = await authClient.signIn.emailOtp(
+			{
+				email: testUser.email,
+				otp: emailSignInOTP,
+				existingUserOnly: true,
+			},
+			{ throw: true },
+		);
+
+		expect(isRedirectResult(signIn)).toBe(true);
+		if (!isRedirectResult(signIn)) {
+			expect.unreachable();
+		}
+		expect(signIn).toMatchObject({
+			redirect: true,
+			url: expect.stringContaining(
+				`${rpBaseUrl}/api/auth/oauth2/callback/${providerId}`,
+			),
+		});
+		expect(new URL(signIn.url).searchParams.get("state")).toBe(expectedState);
+		expect(location.href).toBe(signIn.url);
+	});
+
+	it("runs independent 2FA before signed OIDC continuation regardless of plugin order", async ({
+		onTestFinished,
+	}) => {
+		const enrollmentHeaders = new Headers();
+		await authClient.emailOtp.sendVerificationOtp(
+			{
+				email: testUser.email,
+				type: "sign-in",
+			},
+			{ throw: true },
+		);
+		const enrollmentSession = await authClient.signIn.emailOtp(
+			{
+				email: testUser.email,
+				otp: emailSignInOTP,
+				existingUserOnly: true,
+			},
+			{
+				throw: true,
+				onSuccess: cookieSetter(enrollmentHeaders),
+			},
+		);
+		const enrollment = await authClient.twoFactor.enable({
+			fetchOptions: {
+				headers: enrollmentHeaders,
+			},
+		});
+		const totpURI = enrollment.data?.totpURI;
+		const backupCode = enrollment.data?.backupCodes.at(0);
+		expect(totpURI).toBeDefined();
+		expect(backupCode).toBeDefined();
+		if (!totpURI || !backupCode) {
+			throw new Error("Expected TOTP enrollment material");
+		}
+		const twoFactorRecord = await db.findOne<{ secret: string }>({
+			model: "twoFactor",
+			where: [{ field: "userId", value: enrollmentSession.user.id }],
+		});
+		if (!twoFactorRecord) {
+			throw new Error("Expected TOTP enrollment record");
+		}
+		const totpSecret = await symmetricDecrypt({
+			key: authSecret,
+			data: twoFactorRecord.secret,
+		});
+		const enrollmentVerification = await authClient.twoFactor.verifyTotp({
+			code: await createOTP(totpSecret).totp(),
+			fetchOptions: {
+				headers: enrollmentHeaders,
+				onSuccess: cookieSetter(enrollmentHeaders),
+			},
+		});
+		expect(enrollmentVerification).toMatchObject({
+			error: null,
+			data: { token: expect.any(String) },
+		});
+		const enabledUser = await db.findOne<{ twoFactorEnabled?: boolean }>({
+			model: "user",
+			where: [{ field: "id", value: enrollmentSession.user.id }],
+		});
+		expect(enabledUser?.twoFactorEnabled).toBe(true);
+
+		onTestFinished(() => {
+			vi.unstubAllGlobals();
+		});
+
+		const beginTwoFactorSignIn = async () => {
+			const signedLogin = await createSignedLoginRedirect();
+			const location = {
+				href: "",
+				search: signedLogin.search,
+			};
+			const expectedState = signedLogin.searchParams.get("state");
+			expect(expectedState).toBeTruthy();
+			vi.stubGlobal("window", { location });
+			await authClient.emailOtp.sendVerificationOtp(
+				{
+					email: testUser.email,
+					type: "sign-in",
+				},
+				{ throw: true },
+			);
+			const challengeHeaders = new Headers();
+			const challenge = await authClient.signIn.emailOtp(
+				{
+					email: testUser.email,
+					otp: emailSignInOTP,
+					existingUserOnly: true,
+				},
+				{
+					throw: true,
+					onSuccess: cookieSetter(challengeHeaders),
+				},
+			);
+			expect(challenge).toMatchObject({
+				twoFactorRedirect: true,
+				twoFactorMethods: ["totp"],
+			});
+			const challengeCookies = challengeHeaders.get("cookie") ?? "";
+			const parsedChallengeCookies = parseCookies(challengeCookies);
+			expect(parsedChallengeCookies.get("cinaauth.two_factor")).toBeTruthy();
+			expect(parsedChallengeCookies.get("cinaauth.session_token")).toBe("");
+			expect(parsedChallengeCookies.get("cinaauth.session_data")).toBe("");
+			expect(location.href).toBe("");
+			const pendingSession = await authClient.getSession({
+				fetchOptions: { headers: challengeHeaders },
+			});
+			expect(pendingSession.data).toBeNull();
+			return { challengeHeaders, expectedState, location };
+		};
+
+		const totpChallenge = await beginTwoFactorSignIn();
+		const totpContinuation = await authClient.twoFactor.verifyTotp({
+			code: await createOTP(totpSecret).totp(),
+			fetchOptions: {
+				headers: totpChallenge.challengeHeaders,
+				throw: true,
+			},
+		});
+		expect(isRedirectResult(totpContinuation)).toBe(true);
+		if (!isRedirectResult(totpContinuation)) {
+			expect.unreachable();
+		}
+		expect(totpContinuation).toMatchObject({
+			redirect: true,
+			url: expect.stringContaining(
+				`${rpBaseUrl}/api/auth/oauth2/callback/${providerId}`,
+			),
+		});
+		expect(new URL(totpContinuation.url).searchParams.get("state")).toBe(
+			totpChallenge.expectedState,
+		);
+		expect(totpChallenge.location.href).toBe(totpContinuation.url);
+
+		const backupChallenge = await beginTwoFactorSignIn();
+		const backupContinuation = await authClient.twoFactor.verifyBackupCode({
+			code: backupCode,
+			fetchOptions: {
+				headers: backupChallenge.challengeHeaders,
+				throw: true,
+			},
+		});
+		expect(isRedirectResult(backupContinuation)).toBe(true);
+		if (!isRedirectResult(backupContinuation)) {
+			expect.unreachable();
+		}
+		expect(backupContinuation).toMatchObject({
+			redirect: true,
+			url: expect.stringContaining(
+				`${rpBaseUrl}/api/auth/oauth2/callback/${providerId}`,
+			),
+		});
+		expect(new URL(backupContinuation.url).searchParams.get("state")).toBe(
+			backupChallenge.expectedState,
+		);
+		expect(backupChallenge.location.href).toBe(backupContinuation.url);
 	});
 });
 

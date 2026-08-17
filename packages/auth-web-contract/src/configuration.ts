@@ -15,8 +15,11 @@ export type ConfigurationReadinessState = {
 
 export type DeliveryChannel = "email" | "sms";
 
+/** Vendor that can serve the email delivery channel. */
+export type DeliveryEmailProvider = "resend" | "cloudflare-email";
+
 export type DeliveryChannelStatus = {
-	provider: "resend" | "twilio";
+	provider: DeliveryEmailProvider | "twilio";
 	configured: boolean;
 	validated: boolean;
 	activeVersion: number | null;
@@ -30,7 +33,7 @@ export type DeliveryChannelStatus = {
 export type DeliveryConfigurationStatus = ConfigurationReadinessState & {
 	capabilities: { email: boolean; sms: boolean };
 	channels: {
-		email: DeliveryChannelStatus & { provider: "resend" };
+		email: DeliveryChannelStatus & { provider: DeliveryEmailProvider };
 		sms: DeliveryChannelStatus & { provider: "twilio" };
 	};
 };
@@ -41,7 +44,14 @@ export type DeliveryConfigurationStageInput = {
 } & (
 	| {
 			channel: "email";
-			config: { provider: "resend"; apiKey: string; from: string };
+			config:
+				| { provider: "resend"; apiKey: string; from: string }
+				| {
+						provider: "cloudflare-email";
+						apiToken: string;
+						accountId: string;
+						from: string;
+				  };
 	  }
 	| {
 			channel: "sms";
@@ -208,6 +218,14 @@ const isEmailFrom = (value: unknown): value is string => {
 const isE164 = (value: unknown): value is string =>
 	typeof value === "string" && /^\+[1-9]\d{7,14}$/.test(value);
 
+/** Cloudflare API token bound to the Email Sending permission. */
+const isCloudflareApiToken = (value: unknown): value is string =>
+	typeof value === "string" && /^[A-Za-z0-9_-]{20,512}$/.test(value);
+
+/** Cloudflare account ID owning the Email Sending resource. */
+const isCloudflareAccountId = (value: unknown): value is string =>
+	typeof value === "string" && /^[a-fA-F0-9]{32}$/.test(value);
+
 /** Parse a write-only delivery staging request and reject all unknown fields. */
 export const parseDeliveryConfigurationStageInput = (
 	input: unknown,
@@ -229,28 +247,54 @@ export const parseDeliveryConfigurationStageInput = (
 
 	if (input.channel === "email") {
 		if (
-			!hasExactKeys(input.config, ["provider", "apiKey", "from"]) ||
-			input.config.provider !== "resend" ||
-			typeof input.config.apiKey !== "string" ||
-			input.config.apiKey.length < 16 ||
-			input.config.apiKey.length > 512 ||
-			!input.config.apiKey.startsWith("re_") ||
-			!isEmailFrom(input.config.from)
+			hasExactKeys(input.config, ["provider", "apiKey", "from"]) &&
+			input.config.provider === "resend" &&
+			typeof input.config.apiKey === "string" &&
+			input.config.apiKey.length >= 16 &&
+			input.config.apiKey.length <= 512 &&
+			input.config.apiKey.startsWith("re_") &&
+			isEmailFrom(input.config.from)
 		) {
-			return { ok: false, message: "Invalid Resend configuration" };
-		}
-		return {
-			ok: true,
-			value: {
-				...common.value,
-				channel: "email",
-				config: {
-					provider: "resend",
-					apiKey: input.config.apiKey,
-					from: input.config.from,
+			return {
+				ok: true,
+				value: {
+					...common.value,
+					channel: "email",
+					config: {
+						provider: "resend",
+						apiKey: input.config.apiKey,
+						from: input.config.from,
+					},
 				},
-			},
-		};
+			};
+		}
+		if (
+			hasExactKeys(input.config, [
+				"provider",
+				"apiToken",
+				"accountId",
+				"from",
+			]) &&
+			input.config.provider === "cloudflare-email" &&
+			isCloudflareApiToken(input.config.apiToken) &&
+			isCloudflareAccountId(input.config.accountId) &&
+			isEmailFrom(input.config.from)
+		) {
+			return {
+				ok: true,
+				value: {
+					...common.value,
+					channel: "email",
+					config: {
+						provider: "cloudflare-email",
+						apiToken: input.config.apiToken,
+						accountId: input.config.accountId,
+						from: input.config.from,
+					},
+				},
+			};
+		}
+		return { ok: false, message: "Invalid email provider configuration" };
 	}
 
 	if (
@@ -537,10 +581,10 @@ const parseReadinessState = (
 	};
 };
 
-const parseChannelStatus = (
+const parseChannelStatus = <T extends DeliveryEmailProvider | "twilio">(
 	input: unknown,
-	provider: "resend" | "twilio",
-): DeliveryChannelStatus | null => {
+	allowedProviders: readonly T[],
+): (DeliveryChannelStatus & { provider: T }) | null => {
 	if (
 		!isRecord(input) ||
 		!hasExactKeys(input, [
@@ -553,7 +597,8 @@ const parseChannelStatus = (
 			"updatedAt",
 			"lastTestedAt",
 		]) ||
-		input.provider !== provider ||
+		typeof input.provider !== "string" ||
+		!allowedProviders.includes(input.provider as T) ||
 		typeof input.configured !== "boolean" ||
 		typeof input.validated !== "boolean" ||
 		!isNullableVersion(input.activeVersion) ||
@@ -565,7 +610,7 @@ const parseChannelStatus = (
 		return null;
 	}
 	return {
-		provider,
+		provider: input.provider as T,
 		configured: input.configured,
 		validated: input.validated,
 		activeVersion: input.activeVersion,
@@ -600,8 +645,11 @@ export const parseDeliveryConfigurationStatus = (
 		return { ok: false, message: "Invalid delivery status" };
 	}
 	const readiness = parseReadinessState(input);
-	const email = parseChannelStatus(input.channels.email, "resend");
-	const sms = parseChannelStatus(input.channels.sms, "twilio");
+	const email = parseChannelStatus(input.channels.email, [
+		"resend",
+		"cloudflare-email",
+	]);
+	const sms = parseChannelStatus(input.channels.sms, ["twilio"]);
 	if (!readiness || !email || !sms) {
 		return { ok: false, message: "Invalid delivery status" };
 	}
@@ -614,8 +662,8 @@ export const parseDeliveryConfigurationStatus = (
 				sms: input.capabilities.sms,
 			},
 			channels: {
-				email: { ...email, provider: "resend" },
-				sms: { ...sms, provider: "twilio" },
+				email,
+				sms,
 			},
 		},
 	};

@@ -6,8 +6,8 @@ import { auth } from "@/lib/auth";
 
 const features: { name: string; link: string }[] = [
 	{
-		name: "Email & Password",
-		link: "https://www.cinagroup.com/docs/authentication/email-password",
+		name: "Email code sign-in",
+		link: "https://www.cinagroup.com/docs/plugins/email-otp",
 	},
 	{
 		name: "Organization | Teams",
@@ -20,10 +20,6 @@ const features: { name: string; link: string }[] = [
 	{
 		name: "Multi Factor",
 		link: "https://www.cinagroup.com/docs/plugins/2fa",
-	},
-	{
-		name: "Password Reset",
-		link: "https://www.cinagroup.com/docs/authentication/email-password#request-password-reset",
 	},
 	{
 		name: "Email Verification",

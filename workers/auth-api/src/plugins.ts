@@ -31,10 +31,10 @@ import { bearer } from "cinaauth/plugins/bearer";
 import { customSession } from "cinaauth/plugins/custom-session";
 import { deviceAuthorization } from "cinaauth/plugins/device-authorization";
 import { emailOTP } from "cinaauth/plugins/email-otp";
+import type { GenericOAuthConfig } from "cinaauth/plugins/generic-oauth";
 import { genericOAuth } from "cinaauth/plugins/generic-oauth";
 import { haveIBeenPwned } from "cinaauth/plugins/haveibeenpwned";
 import { jwt } from "cinaauth/plugins/jwt";
-import { magicLink } from "cinaauth/plugins/magic-link";
 import { multiSession } from "cinaauth/plugins/multi-session";
 import { oAuthProxy } from "cinaauth/plugins/oauth-proxy";
 import { oneTimeToken } from "cinaauth/plugins/one-time-token";
@@ -47,7 +47,6 @@ import { phoneNumber } from "cinaauth/plugins/phone-number";
 import { privacyCenter } from "cinaauth/plugins/privacy-center";
 import { siwe } from "cinaauth/plugins/siwe";
 import { twoFactor } from "cinaauth/plugins/two-factor";
-import { username } from "cinaauth/plugins/username";
 import Stripe from "stripe";
 import { adminOidcBridge } from "./admin-oidc-bridge";
 import {
@@ -56,6 +55,7 @@ import {
 	TURNSTILE_PROTECTED_ENDPOINTS,
 } from "./captcha-config";
 import { enqueueDelivery } from "./delivery";
+import { createEmailOtpTargetRateLimitPlugin } from "./email-otp-target-rate-limit";
 import type { RuntimeEntitlementSubject } from "./entitlement-runtime";
 import {
 	getRuntimeEntitlementLimit,
@@ -217,15 +217,18 @@ export const createAuthPlugins = (
 	options: {
 		advancedOrganization?: boolean;
 	} = {},
+	resolvedGenericOAuthConfig?: GenericOAuthConfig[],
 ): CinaAuthPlugin[] => {
 	const origins = requireAuthOriginConfig(env);
 	const baseURL = origins.authOrigin;
 	const authHostname = new URL(origins.authOrigin).hostname;
 	const pairwiseSecret = configuredPairwiseSecret(env);
-	const genericOAuthConfig = parseProductionGenericOAuthConfig(
-		env.GENERIC_OAUTH_CONFIG,
-		origins.accountOrigin,
-	);
+	const genericOAuthConfig =
+		resolvedGenericOAuthConfig ??
+		parseProductionGenericOAuthConfig(
+			env.GENERIC_OAUTH_CONFIG,
+			origins.accountOrigin,
+		);
 	const plans = stripePlans(env);
 	const turnstile = getTurnstileConfig(env);
 	const siweRuntime = getSiweRuntimeConfig(env);
@@ -246,7 +249,6 @@ export const createAuthPlugins = (
 		anonymous({
 			emailDomainName: authHostname,
 		}),
-		username(),
 		lastLoginMethod({
 			storeInDatabase: true,
 		}),
@@ -258,17 +260,12 @@ export const createAuthPlugins = (
 				(session as Record<string, unknown>).activeOrganizationId ?? null,
 		})),
 		twoFactor({
-			// Wire the 2FA "OTP" method to the delivery queue; without a sendOTP
-			// callback /two-factor/send-otp returns 400 OTP_NOT_CONFIGURED and only
-			// TOTP/backup codes work. Reuses the existing email-otp delivery kind.
-			otpOptions: {
-				sendOTP: async ({ user, otp }) => {
-					await enqueueDelivery(env, {
-						kind: "email-otp",
-						payload: { email: user.email, otp, type: "two-factor" },
-					});
-				},
-			},
+			allowPasswordless: true,
+			additionalSignInEndpoints: ["/sign-in/email-otp"],
+			requireFreshSessionForPasswordless: true,
+			// Email OTP is the first factor, so the second factor must remain an
+			// independent TOTP or backup code rather than another message sent to
+			// the same mailbox.
 		}),
 		organization(
 			options.advancedOrganization
@@ -333,8 +330,18 @@ export const createAuthPlugins = (
 			// changes the upstream request URL; clientDataJSON keeps this origin.
 			origin: [origins.accountOrigin],
 		}),
+		createEmailOtpTargetRateLimitPlugin(env),
 		emailOTP({
-			storeOTP: "hashed",
+			// Sign-in requests default to existing accounts only. The dedicated
+			// sign-up flow must opt into account creation with newUserOnly=true.
+			disableImplicitSignUp: true,
+			// Password credentials are not part of the passwordless Accounts
+			// contract, so do not expose OTP routes that can create one.
+			disablePasswordReset: true,
+			// Six-digit codes have too little entropy for an unsalted database hash.
+			// Auth-secret-backed encryption prevents offline enumeration after a
+			// database-only disclosure while preserving atomic single-use checks.
+			storeOTP: "encrypted",
 			// Backfill the core email-verification flow: without this,
 			// /send-verification-email returns 400 VERIFICATION_EMAIL_NOT_ENABLED
 			// because no emailVerification.sendVerificationEmail is configured.
@@ -343,15 +350,6 @@ export const createAuthPlugins = (
 				await enqueueDelivery(env, {
 					kind: "email-otp",
 					payload: { email, otp, type },
-				});
-			},
-		}),
-		magicLink({
-			storeToken: "hashed",
-			sendMagicLink: async ({ email, url }) => {
-				await enqueueDelivery(env, {
-					kind: "magic-link",
-					payload: { email, url },
 				});
 			},
 		}),

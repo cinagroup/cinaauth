@@ -6,12 +6,11 @@ import { getAccountCallbackURL } from "./sign-in-experience";
 
 type TwoFactorSearchParams = Pick<URLSearchParams, "get" | "has" | "toString">;
 
-type TwoFactorPath = "/two-factor" | "/two-factor/otp" | "/two-factor/backup";
+type TwoFactorPath = "/two-factor" | "/two-factor/backup";
 
 /** Selects an available primary factor while retaining backup-code recovery. */
 export const getPreferredTwoFactorPath = (methods?: readonly string[]) => {
 	if (methods?.includes("totp")) return "/two-factor" as const;
-	if (methods?.includes("otp")) return "/two-factor/otp" as const;
 	return methods ? ("/two-factor/backup" as const) : ("/two-factor" as const);
 };
 

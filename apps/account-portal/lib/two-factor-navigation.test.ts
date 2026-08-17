@@ -9,8 +9,11 @@ const signedQuery = new URLSearchParams([
 	["client_id", "cinaauth-oidc-demo"],
 	["redirect_uri", "https://oidc-demo.cinaseek.ai/callback"],
 	["state", "opaque-state"],
+	["resource", "https://api-one.example"],
+	["resource", "https://api-two.example"],
 	["ba_param", "client_id"],
 	["ba_param", "redirect_uri"],
+	["ba_param", "resource"],
 	["sig", "signature"],
 	["callbackURL", "/dashboard"],
 ]);
@@ -36,11 +39,7 @@ describe("two-factor authentication navigation", () => {
 	});
 
 	it("preserves signed OIDC parameters and delegates its final redirect", () => {
-		for (const pathname of [
-			"/two-factor",
-			"/two-factor/otp",
-			"/two-factor/backup",
-		] as const) {
+		for (const pathname of ["/two-factor", "/two-factor/backup"] as const) {
 			const target = new URL(
 				buildTwoFactorAuthPath(pathname, signedQuery),
 				"https://accounts.cinaseek.ai",
@@ -50,6 +49,11 @@ describe("two-factor authentication navigation", () => {
 			expect(target.searchParams.getAll("ba_param")).toEqual([
 				"client_id",
 				"redirect_uri",
+				"resource",
+			]);
+			expect(target.searchParams.getAll("resource")).toEqual([
+				"https://api-one.example",
+				"https://api-two.example",
 			]);
 			expect(target.searchParams.get("sig")).toBe("signature");
 		}
@@ -75,7 +79,6 @@ describe("two-factor authentication navigation", () => {
 	it("wires the client redirect and verification pages to the contract", () => {
 		const clientSource = readSource("./auth-client.ts");
 		const totpPageSource = readSource("../app/(auth)/two-factor/page.tsx");
-		const otpPageSource = readSource("../app/(auth)/two-factor/otp/page.tsx");
 		const backupPageSource = readSource(
 			"../app/(auth)/two-factor/backup/page.tsx",
 		);
@@ -85,11 +88,7 @@ describe("two-factor authentication navigation", () => {
 
 		expect(clientSource).toContain("buildTwoFactorAuthPath");
 		expect(clientSource).not.toContain('window.location.href = "/two-factor"');
-		for (const pageSource of [
-			totpPageSource,
-			otpPageSource,
-			backupPageSource,
-		]) {
+		for (const pageSource of [totpPageSource, backupPageSource]) {
 			expect(pageSource).toContain('import { Suspense } from "react"');
 			expect(pageSource).toContain("<Suspense");
 			expect(pageSource).toContain("buildTwoFactorAuthPath");

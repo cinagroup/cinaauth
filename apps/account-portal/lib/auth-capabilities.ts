@@ -1,16 +1,21 @@
 import type { AuthCapabilities } from "@cinaauth/auth-web-contract";
+import { SOCIAL_PROVIDER_CATALOG_IDS } from "@cinaauth/auth-web-contract";
 import { resolveAuthClientBaseURL } from "./auth-api";
 
 export const AUTH_CAPABILITIES_QUERY_KEY = ["auth-capabilities"] as const;
 
+const SOCIAL_PROVIDER_ID_ALLOWLIST = new Set<string>(
+	SOCIAL_PROVIDER_CATALOG_IDS,
+);
+
 export const CORE_AUTH_CAPABILITIES: AuthCapabilities = {
 	version: 4,
 	methods: {
-		emailPassword: true,
+		emailPassword: false,
 		emailOtp: false,
 		magicLink: false,
 		phoneOtp: false,
-		username: true,
+		username: false,
 		passkey: true,
 		anonymous: true,
 		twoFactor: true,
@@ -40,7 +45,10 @@ const isPublicProvider = (
 	if (!value || typeof value !== "object") return false;
 	const provider = value as Record<string, unknown>;
 	if (provider.type === "social") {
-		return provider.id === "google" || provider.id === "github";
+		return (
+			typeof provider.id === "string" &&
+			SOCIAL_PROVIDER_ID_ALLOWLIST.has(provider.id)
+		);
 	}
 	return (
 		provider.type === "generic-oauth" &&
@@ -168,9 +176,11 @@ const normalizeCapabilities = (value: unknown): AuthCapabilities => {
 		...CORE_AUTH_CAPABILITIES,
 		methods: {
 			...CORE_AUTH_CAPABILITIES.methods,
+			emailPassword: false,
 			emailOtp: methods.emailOtp === true,
-			magicLink: methods.magicLink === true,
+			magicLink: false,
 			phoneOtp: methods.phoneOtp === true,
+			username: false,
 			siwe: methods.siwe === true,
 		},
 		oauthProviders: providers,

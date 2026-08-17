@@ -1,7 +1,7 @@
 import { hasAdminControlPermission } from "@cinaauth/auth-web-contract";
 import { SECURITY_FRESH_AGE_SECONDS } from "./auth";
 
-const VERIFICATION_TYPES = ["email-otp", "magic-link", "phone-number"] as const;
+const VERIFICATION_TYPES = ["email-otp", "phone-number"] as const;
 type VerificationType = (typeof VERIFICATION_TYPES)[number];
 
 export const ADMIN_VERIFICATION_RATE_LIMIT_RULE = {
@@ -23,10 +23,6 @@ type AdminVerificationUser = {
 export type AdminVerificationServerApi = {
 	sendVerificationOTP: (input: {
 		body: { email: string; type: "email-verification" };
-		headers: Headers;
-	}) => Promise<unknown>;
-	signInMagicLink: (input: {
-		body: { email: string };
 		headers: Headers;
 	}) => Promise<unknown>;
 	sendPhoneNumberOTP: (input: {
@@ -52,8 +48,6 @@ const isAdminVerificationServerApi = (
 ): value is AdminVerificationServerApi =>
 	"sendVerificationOTP" in value &&
 	typeof value.sendVerificationOTP === "function" &&
-	"signInMagicLink" in value &&
-	typeof value.signInMagicLink === "function" &&
 	"sendPhoneNumberOTP" in value &&
 	typeof value.sendPhoneNumberOTP === "function" &&
 	"logAudit" in value &&
@@ -110,7 +104,6 @@ export type AdminVerificationDependencies = {
 		email: string;
 		type: "email-verification";
 	}) => Promise<unknown>;
-	sendMagicLink: (input: { email: string }) => Promise<unknown>;
 	sendPhoneOtp: (input: { phoneNumber: string }) => Promise<unknown>;
 	consumeRateLimit:
 		| ((
@@ -409,14 +402,10 @@ export const handleAdminSendVerification = async (
 					"The target user does not have a valid email address",
 				);
 			}
-			if (type === "magic-link") {
-				await dependencies.sendMagicLink({ email });
-			} else {
-				await dependencies.sendEmailOtp({
-					email,
-					type: "email-verification",
-				});
-			}
+			await dependencies.sendEmailOtp({
+				email,
+				type: "email-verification",
+			});
 		}
 	} catch (error) {
 		dependencies.logEvent({

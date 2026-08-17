@@ -142,12 +142,18 @@ Once the user provides the OTP, you can sign in the user using the `signIn.email
        * `USER_ALREADY_EXISTS` after consuming the OTP.
        */
       newUserOnly?: boolean = false
+      /**
+       * Require this OTP verification to sign in an existing account. If the
+       * email is unknown, the endpoint returns `INVALID_OTP` after consuming
+       * the OTP and does not create an account.
+       */
+      existingUserOnly?: boolean = false
   }
   ```
 </APIMethod>
 
 <Callout>
-  If the user is not registered, they'll be automatically registered. Configured [additional fields](/docs/concepts/typescript#additional-fields) are also accepted for new users. To prevent automatic sign-up, pass `disableSignUp` as `true` in the [options](#options).
+  By default, an unregistered user is automatically registered. Configured [additional fields](/docs/concepts/typescript#additional-fields) are also accepted for new users. Set `disableImplicitSignUp: true` to require `newUserOnly: true` for account creation, or set `disableSignUp: true` to disable Email OTP registration entirely.
 </Callout>
 
 Use `newUserOnly: true` for a registration-only flow. This prevents a valid
@@ -155,8 +161,14 @@ sign-in OTP for an existing account from being treated as proof that a new
 account was created. The OTP is still single-use when the endpoint rejects the
 existing account.
 
+Use `existingUserOnly: true` for a sign-in-only flow. Unknown email addresses
+receive the same `INVALID_OTP` result as an invalid code and are never
+registered. The OTP is consumed before that result is returned. Do not combine
+`existingUserOnly` with `newUserOnly`; the request is rejected before OTP
+verification, so the code remains usable with a valid account mode.
+
 <Callout>
-  When a sign-in OTP confirms a pre-existing account whose email was never verified, any existing password on that account is removed and its sessions are revoked. The user is signed in through the OTP and can set a new password through password reset. This keeps email ownership, proven by the OTP, as the source of truth for the account.
+  When a sign-in OTP confirms a pre-existing account whose email was never verified, any existing password on that account is removed and its sessions are revoked. The user is signed in through the OTP and, when password-reset endpoints are enabled, can set a new password through password reset. This keeps email ownership, proven by the OTP, as the source of truth for the account.
 </Callout>
 
 ### Verify Email with OTP
@@ -404,7 +416,11 @@ export const auth = CinaAuth({
 
 * `sendVerificationOnSignUp`: A boolean value that determines whether to send the OTP when a user signs up. Defaults to `false`.
 
-* `disableSignUp`: A boolean value that determines whether to prevent automatic sign-up when the user is not registered. Defaults to `false`.
+* `disableSignUp`: A boolean value that prevents every Email OTP sign-up when the user is not registered. Defaults to `false`.
+
+* `disableImplicitSignUp`: A boolean value that prevents `/sign-in/email-otp` from creating an account unless the request explicitly passes `newUserOnly: true`. Existing accounts can still sign in without an account-mode flag, so this is useful when sign-in and sign-up are separate UI flows. Defaults to `false`.
+
+* `disablePasswordReset`: A boolean value that prevents the plugin from registering `/email-otp/request-password-reset`, the deprecated `/forget-password/email-otp`, and `/email-otp/reset-password`. Use it for passwordless-only deployments that must not create password credentials through a direct API call. Defaults to `false` for backward compatibility.
 
 * `generateOTP`: A function that generates the OTP. Defaults to a random 6-digit number.
 

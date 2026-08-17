@@ -11,6 +11,7 @@ import { shouldRequirePassword } from "../../../utils/password";
 import { PACKAGE_VERSION } from "../../../version";
 import { DEFAULT_TWO_FACTOR_ALLOWED_ATTEMPTS } from "../constant";
 import { TWO_FACTOR_ERROR_CODES } from "../error-code";
+import { enforceFreshPasswordlessSession } from "../passwordless-session";
 import type {
 	TwoFactorProvider,
 	TwoFactorTable,
@@ -60,6 +61,12 @@ export interface BackupCodeOptions {
 	 * @default false
 	 */
 	allowPasswordless?: boolean | undefined;
+	/**
+	 * Require a fresh session when passwordless backup-code regeneration is
+	 * allowed.
+	 * @default false
+	 */
+	requireFreshSessionForPasswordless?: boolean | undefined;
 }
 
 function generateBackupCodesFn(options?: BackupCodeOptions | undefined) {
@@ -472,18 +479,24 @@ export const backupCode2fa = (opts: BackupCodeOptions) => {
 					},
 				},
 				async (ctx) => {
-					const user = ctx.context.session.user as UserWithTwoFactor;
+					let user = ctx.context.session.user as UserWithTwoFactor;
+					const requirePassword = await shouldRequirePassword(
+						ctx,
+						user.id,
+						opts.allowPasswordless,
+					);
+					await enforceFreshPasswordlessSession(
+						ctx,
+						requirePassword,
+						opts.requireFreshSessionForPasswordless,
+					);
+					user = ctx.context.session.user as UserWithTwoFactor;
 					if (!user.twoFactorEnabled) {
 						throw APIError.from(
 							"BAD_REQUEST",
 							TWO_FACTOR_ERROR_CODES.TWO_FACTOR_NOT_ENABLED,
 						);
 					}
-					const requirePassword = await shouldRequirePassword(
-						ctx,
-						user.id,
-						opts.allowPasswordless,
-					);
 					if (requirePassword) {
 						if (!ctx.body.password) {
 							throw APIError.from(

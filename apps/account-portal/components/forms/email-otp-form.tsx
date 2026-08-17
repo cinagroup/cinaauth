@@ -20,10 +20,12 @@ import { Input } from "@/components/ui/input";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
 import { useResendCooldown } from "@/hooks/use-resend-cooldown";
 import { authClient } from "@/lib/auth-client";
+import { completeLocalSignInSuccess } from "@/lib/auth-form-response";
 import type { EmailOtpIntent } from "@/lib/email-otp-flow";
 import {
 	getEmailOtpCopy,
 	normalizeEmailOtp,
+	requiresExistingEmailOtpUser,
 	requiresNewEmailOtpUser,
 	suppressEmailOtpAutomaticRedirect,
 } from "@/lib/email-otp-flow";
@@ -127,16 +129,19 @@ export function EmailOtpForm({
 
 		setAction("verify");
 		setErrorMessage("");
+		let signInResponse: unknown;
 		try {
 			await authClient.signIn.emailOtp(
 				{
 					email: email.trim(),
 					otp,
+					existingUserOnly: requiresExistingEmailOtpUser(intent),
 					newUserOnly: requiresNewEmailOtpUser(intent),
 				},
 				{
 					throw: true,
 					onSuccess(context) {
+						signInResponse = context.data;
 						if (suppressAutomaticRedirect) {
 							suppressEmailOtpAutomaticRedirect(context.data);
 						}
@@ -152,14 +157,19 @@ export function EmailOtpForm({
 			return;
 		}
 
+		const completed = completeLocalSignInSuccess(signInResponse, {
+			notifySuccess: () => {
+				if (!suppressAutomaticRedirect) toast.success(copy.successMessage);
+			},
+		});
 		setAction(null);
+		if (!completed) return;
 		if (suppressAutomaticRedirect) {
 			setVerificationComplete(true);
 			await continueAfterVerification();
 			return;
 		}
 
-		toast.success(copy.successMessage);
 		await onSuccess?.();
 	};
 

@@ -4,6 +4,7 @@ import AccountSwitcher from "@/components/account-switch";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { auth } from "@/lib/auth";
 import { getBillingUiState } from "@/lib/billing-console";
+import { requiresPasswordForTwoFactor as getRequiresPasswordForTwoFactor } from "@/lib/security-center";
 import OrganizationCard from "./_components/organization-card";
 import SubscriptionCard from "./_components/subscription-card";
 import UserCard from "./_components/user-card";
@@ -18,15 +19,24 @@ export default async function Page() {
 		redirect("/sign-in");
 	}
 
-	const [deviceSessions, capabilities, entitlements] = await Promise.all([
-		auth.api.listDeviceSessions({ headers: requestHeaders }),
-		auth.api
-			.getCapabilities({ headers: requestHeaders })
-			.catch(() => ({ billing: false })),
-		auth.api
-			.getEntitlements(undefined, { headers: requestHeaders })
-			.catch(() => null),
-	]);
+	const [deviceSessions, capabilities, entitlements, accountsResult] =
+		await Promise.all([
+			auth.api.listDeviceSessions({ headers: requestHeaders }),
+			auth.api
+				.getCapabilities({ headers: requestHeaders })
+				.catch(() => ({ billing: false })),
+			auth.api
+				.getEntitlements(undefined, { headers: requestHeaders })
+				.catch(() => null),
+			auth.api
+				.listUserAccounts({ headers: requestHeaders })
+				.then((data) => ({ data, unavailable: false }))
+				.catch(() => ({ data: [], unavailable: true })),
+		]);
+	const requiresPasswordForTwoFactor = getRequiresPasswordForTwoFactor(
+		accountsResult.data,
+		accountsResult.unavailable,
+	);
 	const billing = getBillingUiState({
 		billingCapability: capabilities.billing === true,
 		entitlements,
@@ -44,7 +54,10 @@ export default async function Page() {
 					initialSession={session}
 				/>
 				<div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-					<UserCard session={session} />
+					<UserCard
+						session={session}
+						requiresPasswordForTwoFactor={requiresPasswordForTwoFactor}
+					/>
 					<div className="flex min-w-0 flex-col gap-4">
 						<OrganizationCard session={session} />
 						<SubscriptionCard

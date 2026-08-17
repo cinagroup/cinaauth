@@ -23,7 +23,12 @@ describe("auth capability query failures", () => {
 
 		await expect(fetchAuthCapabilitiesForQuery(fetcher)).resolves.toMatchObject(
 			{
-				methods: { emailOtp: true, magicLink: true },
+				methods: {
+					emailPassword: false,
+					emailOtp: true,
+					magicLink: false,
+					username: false,
+				},
 				oauthProviders: [{ id: "github", type: "social" }],
 			},
 		);
@@ -58,23 +63,11 @@ describe("auth capability query failures", () => {
 		const hookSource = readSource("../hooks/use-auth-capabilities.ts");
 		const oauthSource = readSource("../components/oauth-provider-buttons.tsx");
 		const emailOtpSource = readSource("../components/forms/email-otp-form.tsx");
-		const resetSource = readSource(
-			"../components/forms/forgot-password-form.tsx",
-		);
-		const twoFactorEmailSource = readSource(
-			"../components/forms/two-factor-email-otp-form.tsx",
-		);
 		const captchaSource = readSource("../components/turnstile-challenge.tsx");
 
 		expect(hookSource).toContain("retry: 1");
 		expect(oauthSource).toContain("data?.oauthProviders ?? []");
 		expect(emailOtpSource).toContain(
-			"capabilities.data?.methods.emailOtp === true",
-		);
-		expect(resetSource).toContain(
-			"capabilities.data?.methods.magicLink === true",
-		);
-		expect(twoFactorEmailSource).toContain(
 			"capabilities.data?.methods.emailOtp === true",
 		);
 		expect(captchaSource).toContain("captcha?.enabled === true");

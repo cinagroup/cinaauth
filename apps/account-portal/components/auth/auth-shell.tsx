@@ -20,7 +20,7 @@ export function AuthShell({
 	footer,
 }: {
 	title: string;
-	description: string;
+	description?: string;
 	children: ReactNode;
 	backHref?: string;
 	backLabel?: string;
@@ -42,21 +42,20 @@ export function AuthShell({
 									className="size-full object-cover"
 								/>
 							</div>
-							<p className="truncate font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-body">
-								CinaSeek account
-							</p>
+							<h1
+								id="auth-title"
+								className="min-w-0 text-balance text-left text-[28px] font-semibold leading-9 tracking-[-0.8px] text-ink sm:text-[32px] sm:leading-10 sm:tracking-[-1.1px]"
+							>
+								{title}
+							</h1>
 						</div>
 						<ThemeToggle />
 					</div>
-					<h1
-						id="auth-title"
-						className="mt-7 w-full text-balance text-left text-[28px] font-semibold leading-9 tracking-[-0.8px] text-ink sm:text-[32px] sm:leading-10 sm:tracking-[-1.1px]"
-					>
-						{title}
-					</h1>
-					<p className="mt-2 w-full max-w-[42ch] text-pretty text-left text-sm leading-6 text-body">
-						{description}
-					</p>
+					{description ? (
+						<p className="mt-6 w-full max-w-[42ch] text-pretty text-left text-sm leading-6 text-body">
+							{description}
+						</p>
+					) : null}
 				</CardHeader>
 
 				<CardContent className="p-[var(--cina-auth-card-padding)] pt-6 sm:p-8 sm:pt-7">

@@ -216,7 +216,7 @@ export function UserActions({
 				/>
 			</RoleGuard>
 
-			{/* Send verification (email OTP / magic link) */}
+			{/* Send verification (email / phone OTP) */}
 			<RoleGuard allow={["super_admin", "security_admin"]}>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
@@ -240,22 +240,6 @@ export function UserActions({
 							}}
 						>
 							{t("userDetail.sendVerification.emailOTP")}
-						</DropdownMenuItem>
-						<DropdownMenuItem
-							onClick={async () => {
-								const r = await fetchAdminResponse(
-									`/api/admin/users/${userId}/send-verification`,
-									{
-										method: "POST",
-										headers: { "content-type": "application/json" },
-										body: JSON.stringify({ type: "magic-link" }),
-									},
-								);
-								if (r.ok) toast.success(t("toast.magicLinkSent"));
-								else toast.error(t("toast.saveFailed"));
-							}}
-						>
-							{t("userDetail.sendVerification.magicLink")}
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={async () => {

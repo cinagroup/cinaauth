@@ -121,6 +121,74 @@ describe("email-otp", async () => {
 		expect(result.data?.user.email).toBe(email);
 	});
 
+	it("should sign in an existing account when an existing account is required", async () => {
+		await client.emailOtp.sendVerificationOtp({
+			email: testUser.email,
+			type: "sign-in",
+		});
+
+		const result = await client.signIn.emailOtp({
+			email: testUser.email,
+			otp,
+			existingUserOnly: true,
+		});
+
+		expect(result.error).toBeNull();
+		expect(result.data?.user.email).toBe(testUser.email);
+	});
+
+	it("should reject and consume an OTP for an unknown existing-only account", async () => {
+		const email = "unknown-existing-user-only@email.com";
+		await client.emailOtp.sendVerificationOtp({
+			email,
+			type: "sign-in",
+		});
+
+		const result = await client.signIn.emailOtp({
+			email,
+			otp,
+			existingUserOnly: true,
+		});
+
+		expect(result.error?.code).toBe("INVALID_OTP");
+		const authContext = await auth.$context;
+		expect(await authContext.internalAdapter.findUserByEmail(email)).toBeNull();
+
+		const replay = await client.signIn.emailOtp({
+			email,
+			otp,
+			existingUserOnly: true,
+		});
+		expect(replay.error?.code).toBe("INVALID_OTP");
+	});
+
+	it("should reject incompatible account-mode flags without consuming the OTP", async () => {
+		const email = "conflicting-account-mode@email.com";
+		await client.emailOtp.sendVerificationOtp({
+			email,
+			type: "sign-in",
+		});
+
+		const result = await client.signIn.emailOtp({
+			email,
+			otp,
+			existingUserOnly: true,
+			newUserOnly: true,
+		});
+
+		expect(result.error?.status).toBe(400);
+		const authContext = await auth.$context;
+		expect(await authContext.internalAdapter.findUserByEmail(email)).toBeNull();
+
+		const retry = await client.signIn.emailOtp({
+			email,
+			otp,
+			newUserOnly: true,
+		});
+		expect(retry.error).toBeNull();
+		expect(retry.data?.user.email).toBe(email);
+	});
+
 	it("should clear an unverified account's password when sign-in adopts it", async () => {
 		// An account created with a password but never email-verified must not keep
 		// that password once a sign-in OTP proves control of the mailbox.
@@ -541,6 +609,153 @@ describe("email-otp", async () => {
 			otp,
 		});
 		expect(verifyRes.error?.code).toBe("OTP_EXPIRED");
+	});
+});
+
+describe("email-otp implicit sign-up policy", async () => {
+	let otp = "";
+	const { auth, client, testUser } = await getTestInstance(
+		{
+			plugins: [
+				emailOTP({
+					disableImplicitSignUp: true,
+					async sendVerificationOTP({ otp: nextOtp }) {
+						otp = nextOtp;
+					},
+				}),
+			],
+		},
+		{
+			clientOptions: {
+				plugins: [emailOTPClient()],
+			},
+		},
+	);
+
+	it("signs in an existing user when account-mode flags are omitted", async () => {
+		await client.emailOtp.sendVerificationOtp({
+			email: testUser.email,
+			type: "sign-in",
+		});
+
+		const result = await client.signIn.emailOtp({
+			email: testUser.email,
+			otp,
+		});
+
+		expect(result.error).toBeNull();
+		expect(result.data?.user.email).toBe(testUser.email);
+	});
+
+	it("rejects and consumes an unknown user's OTP when flags are omitted", async () => {
+		const email = "implicit-signup-disabled@email.com";
+		await client.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
+
+		const result = await client.signIn.emailOtp({ email, otp });
+
+		expect(result.error?.code).toBe("INVALID_OTP");
+		const authContext = await auth.$context;
+		expect(await authContext.internalAdapter.findUserByEmail(email)).toBeNull();
+		const replay = await client.signIn.emailOtp({
+			email,
+			otp,
+			newUserOnly: true,
+		});
+		expect(replay.error?.code).toBe("INVALID_OTP");
+	});
+
+	it("allows explicit new-user registration", async () => {
+		const email = "explicit-signup@email.com";
+		await client.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
+
+		const result = await client.signIn.emailOtp({
+			email,
+			otp,
+			newUserOnly: true,
+		});
+
+		expect(result.error).toBeNull();
+		expect(result.data?.user.email).toBe(email);
+	});
+});
+
+describe("email-otp password reset endpoint policy", async () => {
+	const createPlugin = (disablePasswordReset?: boolean) =>
+		emailOTP({
+			disablePasswordReset,
+			async sendVerificationOTP() {},
+		});
+	const { customFetchImpl: defaultFetch } = await getTestInstance({
+		plugins: [createPlugin()],
+	});
+	const { customFetchImpl: disabledFetch } = await getTestInstance({
+		plugins: [createPlugin(true)],
+	});
+
+	it("registers password reset endpoints by default", () => {
+		const endpoints = Object.keys(createPlugin().endpoints ?? {});
+
+		expect(endpoints).toEqual(
+			expect.arrayContaining([
+				"requestPasswordResetEmailOTP",
+				"forgetPasswordEmailOTP",
+				"resetPasswordEmailOTP",
+			]),
+		);
+	});
+
+	it("does not register password reset endpoints when disabled", () => {
+		const endpoints = Object.keys(createPlugin(true).endpoints ?? {});
+
+		expect(endpoints).not.toContain("requestPasswordResetEmailOTP");
+		expect(endpoints).not.toContain("forgetPasswordEmailOTP");
+		expect(endpoints).not.toContain("resetPasswordEmailOTP");
+	});
+
+	it("keeps the default password reset request route available", async () => {
+		const response = await defaultFetch(
+			"http://localhost:3000/api/auth/email-otp/request-password-reset",
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ email: "unknown@example.com" }),
+			},
+		);
+
+		expect(response.status).toBe(200);
+	});
+
+	it.each([
+		{
+			path: "/email-otp/request-password-reset",
+			body: { email: "test@example.com" },
+		},
+		{
+			path: "/forget-password/email-otp",
+			body: { email: "test@example.com" },
+		},
+		{
+			path: "/email-otp/reset-password",
+			body: {
+				email: "test@example.com",
+				otp: "123456",
+				password: "new-password-123",
+			},
+		},
+	])("returns 404 for $path when password reset is disabled", async ({
+		path,
+		body,
+	}) => {
+		const response = await disabledFetch(
+			`http://localhost:3000/api/auth${path}`,
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify(body),
+			},
+		);
+
+		expect(response.status).toBe(404);
 	});
 });
 
