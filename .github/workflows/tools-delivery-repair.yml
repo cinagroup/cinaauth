@@ -64,7 +64,18 @@ jobs:
           STORE_ID=$(node -e "const w=require('./workers/auth-api/wrangler.json');const e=(w.secrets_store_secrets||[]).find(i=>i.binding==='CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2');if(!e){process.exit(1)}console.log(e.store_id)")
           SECRET_NAME=$(node -e "const w=require('./workers/auth-api/wrangler.json');const e=(w.secrets_store_secrets||[]).find(i=>i.binding==='CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2');if(!e){process.exit(1)}console.log(e.secret_name)")
           test -n "$STORE_ID" && test -n "$SECRET_NAME"
-          printf '%s' "$DELIVERY_SECRET_VALUE" | pnpm --dir workers/delivery exec wrangler secrets-store secret put "$SECRET_NAME" --store-id "$STORE_ID"
+          WRANGLER="pnpm --dir workers/delivery exec wrangler"
+          echo "== update help =="
+          $WRANGLER secrets-store secret update --help || true
+          echo "== attempt: update with stdin =="
+          printf '%s' "$DELIVERY_SECRET_VALUE" | $WRANGLER secrets-store secret update "$STORE_ID" --name "$SECRET_NAME" && exit 0
+          echo "== attempt: update with --value =="
+          $WRANGLER secrets-store secret update "$STORE_ID" --name "$SECRET_NAME" --value "$DELIVERY_SECRET_VALUE" && exit 0
+          echo "== attempt: create with stdin =="
+          printf '%s' "$DELIVERY_SECRET_VALUE" | $WRANGLER secrets-store secret create "$STORE_ID" --name "$SECRET_NAME" && exit 0
+          echo "== attempt: create with --value =="
+          $WRANGLER secrets-store secret create "$STORE_ID" --name "$SECRET_NAME" --value "$DELIVERY_SECRET_VALUE" && exit 0
+          echo "All wrangler secrets-store attempts failed" && exit 1
 
       - name: Run the delivery configuration control plane
         if: inputs.mode != 'reset'
