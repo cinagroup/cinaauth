@@ -65,12 +65,12 @@ jobs:
           SECRET_NAME=$(node -e "const w=require('./workers/auth-api/wrangler.json');const e=(w.secrets_store_secrets||[]).find(i=>i.binding==='CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2');if(!e){process.exit(1)}console.log(e.secret_name)")
           test -n "$STORE_ID" && test -n "$SECRET_NAME"
           WRANGLER="pnpm --dir workers/delivery exec wrangler"
-          echo "== attempt: update with stdin =="
-          printf '%s' "$DELIVERY_SECRET_VALUE" | $WRANGLER secrets-store secret update "$STORE_ID" --name "$SECRET_NAME" --scopes workers --remote && exit 0
+          echo "== update help =="
+          $WRANGLER secrets-store secret update --help || true
           echo "== attempt: update with --value =="
-          $WRANGLER secrets-store secret update "$STORE_ID" --name "$SECRET_NAME" --value "$DELIVERY_SECRET_VALUE" --scopes workers --remote && exit 0
-          echo "== attempt: create with stdin =="
-          printf '%s' "$DELIVERY_SECRET_VALUE" | $WRANGLER secrets-store secret create "$STORE_ID" --name "$SECRET_NAME" --scopes workers --remote && exit 0
+          $WRANGLER secrets-store secret update "$STORE_ID" --secret-id "$SECRET_NAME" --value "$DELIVERY_SECRET_VALUE" --scopes workers --remote && exit 0
+          echo "== attempt: update with stdin =="
+          printf '%s' "$DELIVERY_SECRET_VALUE" | $WRANGLER secrets-store secret update "$STORE_ID" --secret-id "$SECRET_NAME" --scopes workers --remote && exit 0
           echo "== attempt: create with --value =="
           $WRANGLER secrets-store secret create "$STORE_ID" --name "$SECRET_NAME" --value "$DELIVERY_SECRET_VALUE" --scopes workers --remote && exit 0
           echo "All wrangler secrets-store attempts failed" && exit 1
