@@ -67,10 +67,39 @@ jobs:
           WRANGLER="pnpm --dir workers/delivery exec wrangler"
           echo "== update help =="
           $WRANGLER secrets-store secret update --help || true
-          echo "== attempt: update with --value =="
-          $WRANGLER secrets-store secret update "$STORE_ID" --secret-id "$SECRET_NAME" --value "$DELIVERY_SECRET_VALUE" --scopes workers --remote && exit 0
-          echo "== attempt: update with stdin =="
-          printf '%s' "$DELIVERY_SECRET_VALUE" | $WRANGLER secrets-store secret update "$STORE_ID" --secret-id "$SECRET_NAME" --scopes workers --remote && exit 0
+          echo "== list store secrets to resolve the internal id =="
+          SECRET_INTERNAL_ID=$(node -e "
+            const run = async () => {
+              const response = await fetch(
+                'https://api.cloudflare.com/client/v4/accounts/' +
+                  process.env.CLOUDFLARE_ACCOUNT_ID +
+                  '/secrets_store/stores/' +
+                  '$STORE_ID' +
+                  '/secrets?per_page=100',
+                { headers: { Authorization: 'Bearer ' + process.env.CLOUDFLARE_API_TOKEN } },
+              );
+              const payload = await response.json().catch(() => null);
+              if (!response.ok || !payload?.success) {
+                console.error('list failed HTTP ' + response.status);
+                process.exit(1);
+              }
+              const entries = payload.result ?? [];
+              const found = entries.find((item) => item.name === '$SECRET_NAME');
+              if (!found) {
+                console.error('secret name not found; entries: ' + JSON.stringify(entries.map((e) => e.name)));
+                process.exit(1);
+              }
+              console.log(found.id ?? found.secret_id ?? '');
+            };
+            run();
+          ")
+          echo "internal id: $SECRET_INTERNAL_ID"
+          if [ -n "$SECRET_INTERNAL_ID" ]; then
+            echo "== update by internal id with --value =="
+            $WRANGLER secrets-store secret update "$STORE_ID" --secret-id "$SECRET_INTERNAL_ID" --value "$DELIVERY_SECRET_VALUE" --scopes workers --remote && exit 0
+            echo "== update by internal id with stdin =="
+            printf '%s' "$DELIVERY_SECRET_VALUE" | $WRANGLER secrets-store secret update "$STORE_ID" --secret-id "$SECRET_INTERNAL_ID" --scopes workers --remote && exit 0
+          fi
           echo "== attempt: create with --value =="
           $WRANGLER secrets-store secret create "$STORE_ID" --name "$SECRET_NAME" --value "$DELIVERY_SECRET_VALUE" --scopes workers --remote && exit 0
           echo "All wrangler secrets-store attempts failed" && exit 1
