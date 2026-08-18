@@ -179,6 +179,12 @@ jobs:
           lib/auth-runtime-routes.test.ts
           lib/auth.test.ts
           lib/auth-capabilities.test.ts
+          lib/auth-card-sign-in-contract.test.ts
+          lib/auth-ui-phase1-contract.test.ts
+          lib/auth-ui-phase2-contract.test.ts
+          lib/sign-in-step-up-contract.test.ts
+          lib/two-factor-navigation.test.ts
+          lib/two-factor-recovery.test.ts
           lib/admin-access.test.ts
           lib/oidc-navigation.test.ts
           lib/reown-wallet-gate.test.ts
@@ -193,6 +199,8 @@ jobs:
       - name: Validate planned SIWE and Reown build parity
         env:
           CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.ai/api/build-readiness
+          CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities
+          CINAAUTH_EMAIL_AUTH_GATE: provider-ready
           CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json
           REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
         run: |
