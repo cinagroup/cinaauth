@@ -1,5 +1,4 @@
 import type { CinaAuthPlugin } from "@cinaauth/core";
-import { getIp } from "@cinaauth/core/utils/ip";
 import { middlewareResponse } from "../../utils/middleware-response";
 import { PACKAGE_VERSION } from "../../version";
 import { defaultEndpoints, Providers, siteVerifyMap } from "./constants";
@@ -65,7 +64,6 @@ export const captcha = (options: CaptchaOptions) =>
 				}
 
 				const captchaResponse = request.headers.get("x-captcha-response");
-				const remoteUserIP = getIp(request, ctx.options) ?? undefined;
 
 				if (!captchaResponse) {
 					return middlewareResponse({
@@ -78,11 +76,15 @@ export const captcha = (options: CaptchaOptions) =>
 				const siteVerifyURL =
 					options.siteVerifyURLOverride || siteVerifyMap[options.provider];
 
+				// The visitor IP is deliberately not forwarded to siteverify.
+				// getIp applies IPv6 subnet normalization by default, and a
+				// browser may also solve the challenge over a different address
+				// family than the API request; either mismatch rejects every
+				// legitimate token. remoteip is optional for all providers.
 				const handlerParams = {
 					siteVerifyURL,
 					captchaResponse,
 					secretKey: options.secretKey,
-					remoteIP: remoteUserIP,
 				};
 
 				if (options.provider === Providers.CLOUDFLARE_TURNSTILE) {

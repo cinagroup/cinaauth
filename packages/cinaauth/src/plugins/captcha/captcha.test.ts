@@ -203,7 +203,8 @@ describe("captcha", async () => {
 			});
 
 			expect(res.data?.user).toBeDefined();
-			// Verify the auto-detected IP was sent to the provider
+			// The visitor IP is deliberately not forwarded: subnet-normalized or
+			// family-switched addresses reject legitimate tokens at siteverify.
 			expect(mockBetterFetch).toHaveBeenCalled();
 		});
 
@@ -274,11 +275,12 @@ describe("captcha", async () => {
 
 			expect(res.data?.user).toBeDefined();
 
-			// Verify the auto-detected IP was sent to the provider
+			// The visitor IP is deliberately not forwarded: subnet-normalized or
+			// family-switched addresses reject legitimate tokens at siteverify.
 			expect(mockBetterFetch).toHaveBeenCalled();
 			const fetchOptions = mockBetterFetch.mock.calls[0]![1];
 			const body = new URLSearchParams(fetchOptions.body as string);
-			expect(body.get("remoteip")).toBe("127.0.0.1");
+			expect(body.get("remoteip")).toBeNull();
 		});
 
 		it("Should return 500 if the call to /siteverify fails", async () => {
@@ -374,11 +376,12 @@ describe("captcha", async () => {
 
 			expect(res.data?.user).toBeDefined();
 
-			// Verify the auto-detected IP was sent to the provider
+			// The visitor IP is deliberately not forwarded: subnet-normalized or
+			// family-switched addresses reject legitimate tokens at siteverify.
 			expect(mockBetterFetch).toHaveBeenCalled();
 			const fetchOptions = mockBetterFetch.mock.calls[0]![1];
 			const body = new URLSearchParams(fetchOptions.body as string);
-			expect(body.get("remoteip")).toBe("127.0.0.1");
+			expect(body.get("remoteip")).toBeNull();
 		});
 
 		it("Should return 500 if the call to /siteverify fails", async () => {
@@ -452,7 +455,8 @@ describe("captcha", async () => {
 
 			expect(res.data?.user).toBeDefined();
 
-			// Verify the auto-detected IP was sent to the provider
+			// The visitor IP is deliberately not forwarded: subnet-normalized or
+			// family-switched addresses reject legitimate tokens at siteverify.
 			expect(mockBetterFetch).toHaveBeenCalled();
 		});
 
