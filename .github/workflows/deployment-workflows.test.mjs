@@ -404,6 +404,16 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 	);
 	assert.doesNotMatch(account, /vars\.REOWN_PROJECT_ID/);
 	assert.match(preflight, /pnpm run check:oauth-build/);
+	assert.match(preflight, /CINAAUTH_EMAIL_AUTH_GATE: provider-ready/);
+	assert.match(
+		preflight,
+		/CINAAUTH_CAPABILITIES_URL: https:\/\/accounts\.cinaseek\.ai\/api\/auth\/capabilities/,
+	);
+	assert.match(account, /CINAAUTH_EMAIL_AUTH_GATE: passwordless/);
+	assert.match(
+		account,
+		/CINAAUTH_CAPABILITIES_URL: https:\/\/accounts\.cinaseek\.ai\/api\/auth\/capabilities/,
+	);
 	assert.match(preflight, /pnpm run build:cf/);
 	assert.match(
 		preflight,
@@ -418,6 +428,12 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 		"lib/auth-runtime-config.test.ts",
 		"lib/auth-runtime-routes.test.ts",
 		"lib/auth.test.ts",
+		"lib/auth-card-sign-in-contract.test.ts",
+		"lib/auth-ui-phase1-contract.test.ts",
+		"lib/auth-ui-phase2-contract.test.ts",
+		"lib/sign-in-step-up-contract.test.ts",
+		"lib/two-factor-navigation.test.ts",
+		"lib/two-factor-recovery.test.ts",
 		"lib/reown-wallet-gate.test.ts",
 		"lib/reown-wallet-cookie.test.ts",
 		"lib/siwe-wallet-protocol.test.ts",
@@ -439,6 +455,11 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 		).length,
 		1,
 		"the reusable Account Portal workflow must deploy exactly once",
+	);
+	assert.ok(
+		account.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") <
+			account.indexOf("run: pnpm run deploy:cf --deployment-target=production"),
+		"the exact live passwordless policy gate must run before the Account write",
 	);
 	assert.doesNotMatch(account, /cloudflare\/wrangler-action|command: deploy/);
 
@@ -518,6 +539,8 @@ test("backend bootstrap preserves stateful secrets and never writes deferred V1 
 	for (const forbidden of [
 		"RESEND_API_KEY",
 		"RESEND_EMAIL_FROM",
+		"CLOUDFLARE_EMAIL_API_TOKEN",
+		"CLOUDFLARE_EMAIL_FROM",
 		"TWILIO_ACCOUNT_SID",
 		"TWILIO_AUTH_TOKEN",
 		"TWILIO_FROM_NUMBER",
