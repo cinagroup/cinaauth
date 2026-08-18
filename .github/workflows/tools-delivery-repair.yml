@@ -4,14 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "status only reads state; repair stages, tests, and activates Cloudflare Email"
+        description: "status reads state; reset rotates the shared webhook secret into the Secrets Store; repair stages, tests, and activates Cloudflare Email"
         required: true
         type: choice
         options:
           - status
+          - reset
           - repair
       sender:
-        description: "Verified sender, e.g. CinaSeek <no-reply@cinaseek.ai>"
+        description: "Verified sender, e.g. no-reply@cinaseek.ai"
         required: false
         type: string
       test_recipient:
@@ -27,13 +28,93 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      DELIVERY_ORIGIN: https://cinauth-delivery.cinagroup.com
+      DELIVERY_ORIGIN: https://cinaauth-delivery.cinagroup.com
       DELIVERY_SECRET: ${{ secrets.CINAAUTH_DELIVERY_WEBHOOK_SECRET }}
     steps:
       - name: Fail closed without the shared delivery secret
         run: test -n "$DELIVERY_SECRET" || (echo "Missing CINAAUTH_DELIVERY_WEBHOOK_SECRET" && exit 1)
 
+      - name: Checkout code
+        if: inputs.mode == 'reset'
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Rotate the shared webhook secret in the Secrets Store
+        if: inputs.mode == 'reset'
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cat > /tmp/reset.mjs <<'SCRIPT'
+          import { readFileSync } from "node:fs";
+
+          const token = process.env.CF_API_TOKEN;
+          const accountId = process.env.CF_ACCOUNT_ID;
+          const newSecret = process.env.DELIVERY_SECRET;
+          if (!token || !accountId) throw new Error("Missing Cloudflare credentials");
+          if (typeof newSecret !== "string" || newSecret.length < 32) {
+            throw new Error("The replacement webhook secret must be at least 32 characters");
+          }
+          if (!/^[\x21-\x7e]+$/.test(newSecret)) {
+            throw new Error("The replacement webhook secret must be printable ASCII");
+          }
+
+          const wrangler = JSON.parse(
+            readFileSync("workers/auth-api/wrangler.json", "utf8"),
+          );
+          const entry = (wrangler.secrets_store_secrets ?? []).find(
+            (item) => item.binding === "CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2",
+          );
+          if (!entry) throw new Error("Secrets Store binding not found in wrangler.json");
+
+          const api = async (path, init = {}) => {
+            const response = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+              ...init,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                ...(init.headers ?? {}),
+              },
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || payload?.success !== true) {
+              throw new Error(
+                `Cloudflare API ${response.status} on ${path}: ${JSON.stringify(payload?.errors ?? payload)}`,
+              );
+            }
+            return payload;
+          };
+
+          const body = JSON.stringify({
+            name: entry.secret_name,
+            value: newSecret,
+            scopes: ["workers"],
+          });
+          let stored = false;
+          try {
+            await api(
+              `/accounts/${accountId}/secrets_store/stores/${entry.store_id}/secrets/${entry.secret_name}`,
+              { method: "PUT", body },
+            );
+            stored = true;
+          } catch (error) {
+            console.log(`PUT update was not accepted (${error.message}); trying POST create`);
+          }
+          if (!stored) {
+            await api(
+              `/accounts/${accountId}/secrets_store/stores/${entry.store_id}/secrets`,
+              { method: "POST", body },
+            );
+          }
+          console.log(
+            `Secret ${entry.secret_name} stored in Secrets Store ${entry.store_id}.`,
+          );
+          SCRIPT
+          node /tmp/reset.mjs
+
       - name: Run the delivery configuration control plane
+        if: inputs.mode != 'reset'
         env:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CF_EMAIL_API_TOKEN: ${{ secrets.CLOUDFLARE_EMAIL_API_TOKEN }}
@@ -137,3 +218,45 @@ jobs:
           console.log("Cloudflare Email is active for verification codes.");
           SCRIPT
           node /tmp/repair.mjs
+
+      - name: Verify the rotated secret end to end
+        if: inputs.mode == 'reset'
+        run: |
+          cat > /tmp/verify.mjs <<'SCRIPT'
+          const origin = process.env.DELIVERY_ORIGIN;
+          const secret = process.env.DELIVERY_SECRET;
+          const encoder = new TextEncoder();
+          const rawBody = "{}";
+          const deliveryId = `verify-${Date.now()}`;
+          const timestamp = Math.floor(Date.now() / 1000).toString();
+          const key = await crypto.subtle.importKey(
+            "raw",
+            encoder.encode(secret),
+            { name: "HMAC", hash: "SHA-256" },
+            false,
+            ["sign"],
+          );
+          const signature = await crypto.subtle.sign(
+            "HMAC",
+            key,
+            encoder.encode(`${timestamp}.${deliveryId}.${rawBody}`),
+          );
+          const hex = [...new Uint8Array(signature)]
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("");
+          const response = await fetch(`${origin}/cinaauth/delivery/config/status`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${secret}`,
+              "Content-Type": "application/json",
+              "X-CinaAuth-Delivery-Id": deliveryId,
+              "X-CinaAuth-Delivery-Timestamp": timestamp,
+              "X-CinaAuth-Delivery-Signature": `v1=${hex}`,
+            },
+            body: rawBody,
+          });
+          console.log(`== status with rotated secret -> HTTP ${response.status}`);
+          console.log(await response.text());
+          if (response.status !== 200) throw new Error("Rotated secret is not accepted yet");
+          SCRIPT
+          node /tmp/verify.mjs
