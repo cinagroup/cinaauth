@@ -5,6 +5,8 @@ export const PRODUCTION_ORIGIN_ENV = {
 	CINAAUTH_URL: "https://auth.cinaseek.ai",
 	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.ai",
 	CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.ai",
+	CINAAUTH_CINATOKEN_ORIGIN: "https://cinatoken.com",
+	CINAAUTH_CINATOKEN_CLIENT_ID: "cinatoken-admin",
 	CINAAUTH_PASSKEY_RP_ID: "cinaseek.ai",
 	CINAAUTH_LEGACY_ACCOUNT_ORIGIN: "https://demo-auth.cinagroup.com",
 	CINAAUTH_OIDC_DEMO_ENVIRONMENT: "production",

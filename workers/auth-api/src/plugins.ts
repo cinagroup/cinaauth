@@ -54,6 +54,8 @@ import {
 	TURNSTILE_ACTION,
 	TURNSTILE_PROTECTED_ENDPOINTS,
 } from "./captcha-config";
+import { cinatokenOidcBridge } from "./cinatoken-oidc-bridge";
+import { CINATOKEN_OIDC_CLIENT_ID } from "./cinatoken-oidc-client";
 import { enqueueDelivery } from "./delivery";
 import { createEmailOtpTargetRateLimitPlugin } from "./email-otp-target-rate-limit";
 import type { RuntimeEntitlementSubject } from "./entitlement-runtime";
@@ -246,6 +248,15 @@ export const createAuthPlugins = (
 		}),
 		bearer(),
 		adminOidcBridge(env, origins.authOrigin, origins.adminOrigin),
+		...(origins.cinatokenProfile
+			? [
+					cinatokenOidcBridge(
+						env,
+						origins.authOrigin,
+						origins.cinatokenProfile.applicationOrigin,
+					),
+				]
+			: []),
 		anonymous({
 			emailDomainName: authHostname,
 		}),
@@ -483,12 +494,16 @@ export const createAuthPlugins = (
 			validAudiences: [
 				baseURL,
 				origins.adminOrigin,
+				...(origins.cinatokenProfile
+					? [origins.cinatokenProfile.applicationOrigin]
+					: []),
 				`${origins.accountOrigin}/api/mcp`,
 			],
 			allowDynamicClientRegistration: true,
 			allowUnauthenticatedClientRegistration: false,
 			cachedTrustedClients: new Set([
 				ADMIN_OIDC_CLIENT_ID,
+				...(origins.cinatokenProfile ? [CINATOKEN_OIDC_CLIENT_ID] : []),
 				...(origins.oidcDemoProfile ? [origins.oidcDemoProfile.clientId] : []),
 			]),
 			clientRegistrationDefaultScopes: [
@@ -500,7 +515,11 @@ export const createAuthPlugins = (
 			clientPrivileges: ({ session, user }) =>
 				canUseDeveloperOAuthClients({ session, user }),
 			authorizeClient: ({ client }) => {
-				if (client.clientId === ADMIN_OIDC_CLIENT_ID) {
+				if (
+					client.clientId === ADMIN_OIDC_CLIENT_ID ||
+					(origins.cinatokenProfile &&
+						client.clientId === CINATOKEN_OIDC_CLIENT_ID)
+				) {
 					return (
 						client.public === false &&
 						client.disabled !== true &&
