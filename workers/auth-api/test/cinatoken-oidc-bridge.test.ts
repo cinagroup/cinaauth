@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { CINATOKEN_OIDC_CLIENT_ID } from "../src/cinatoken-oidc-client";
 import {
 	CINATOKEN_OIDC_SESSION_RATE_LIMIT,
 	CINATOKEN_ROLE_VERIFY_RATE_LIMIT,
 	hasAuthorizedCinatokenRole,
 	isCinatokenAccessToken,
-} from "../src/cinatoken-oidc-bridge";
-import { CINATOKEN_OIDC_CLIENT_ID } from "../src/cinatoken-oidc-client";
+} from "../src/cinatoken-oidc-policy";
 
 describe("cinatoken OIDC bridge policy", () => {
 	it("uses bounded session and live-role rate limits", () => {

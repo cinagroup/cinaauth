@@ -5,7 +5,7 @@ import {
 import { hashOidcClientSecret } from "./admin-oidc-client";
 
 export const CINATOKEN_OIDC_CLIENT_ID = "cinatoken-admin";
-export const CINATOKEN_OIDC_SCOPES = ["openid", "profile", "email"] as const;
+const CINATOKEN_OIDC_SCOPES = ["openid", "profile", "email"] as const;
 
 type CinatokenOidcClientDatabase = {
 	query: (queryText: string, values: unknown[]) => Promise<unknown>;
