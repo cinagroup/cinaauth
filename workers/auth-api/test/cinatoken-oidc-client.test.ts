@@ -6,7 +6,8 @@ import {
 	isCinatokenOidcAuthorizationRequest,
 } from "../src/cinatoken-oidc-client";
 
-const CLIENT_SECRET_PAYLOAD = "cinatoken-client-secret-with-at-least-32-characters";
+const CLIENT_SECRET_PAYLOAD =
+	"cinatoken-client-secret-with-at-least-32-characters";
 const CLIENT_SECRET = `${ADMIN_OIDC_CLIENT_SECRET_PREFIX}${CLIENT_SECRET_PAYLOAD}`;
 const APPLICATION_ORIGIN = "https://cinatoken.com";
 
@@ -35,9 +36,7 @@ describe("cinatoken OIDC client bootstrap", () => {
 		expect(sql).toContain('INSERT INTO "oauthClient"');
 		expect(values).toContain(CINATOKEN_OIDC_CLIENT_ID);
 		expect(values).toContain(
-			JSON.stringify([
-				"https://cinatoken.com/api/auth/cinaauth/callback",
-			]),
+			JSON.stringify(["https://cinatoken.com/api/auth/cinaauth/callback"]),
 		);
 		expect(values).toContain("client_secret_basic");
 		expect(values).toContain(true);
