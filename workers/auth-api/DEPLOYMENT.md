@@ -50,6 +50,13 @@ An audit-write failure is logged but never permits the rejected mutation.
 Never put a PostgreSQL URI, password, API token, or Worker secret in
 `wrangler.json`, a tracked file, or a CLI argument.
 
+The fixed `cinatoken-admin` OIDC client uses `https://cinatoken.com` as its
+resource and `https://cinatoken.com/api/auth/cinaauth/callback` as its only
+redirect URI. `CINATOKEN_OIDC_CLIENT_SECRET` (with the `cina_cs_` prefix) and
+`CINATOKEN_OIDC_BRIDGE_SECRET` are preserved stateful secrets shared only with
+the cinatoken Admin Worker. Bootstrap or rotate them through Wrangler stdin;
+never add them to mutable bulk-provisioning inputs or tracked configuration.
+
 ## SIWE rollout controls
 
 Production and staging are separate identity environments. Before creating any

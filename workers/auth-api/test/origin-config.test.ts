@@ -13,6 +13,8 @@ const productionEnv = {
 	CINAAUTH_URL: "https://auth.cinaseek.ai",
 	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.ai",
 	CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.ai",
+	CINAAUTH_CINATOKEN_ORIGIN: "https://cinatoken.com",
+	CINAAUTH_CINATOKEN_CLIENT_ID: "cinatoken-admin",
 	CINAAUTH_PASSKEY_RP_ID: "cinaseek.ai",
 	CINAAUTH_LEGACY_ACCOUNT_ORIGIN: "https://demo-auth.cinagroup.com",
 	CINAAUTH_OIDC_DEMO_ENVIRONMENT: "production",
@@ -33,12 +35,17 @@ describe("Auth Worker origin configuration", () => {
 				oidcDemoProfile: resolveOidcDemoProfile(
 					OIDC_DEMO_PRODUCTION_PROFILE_INPUT,
 				),
+				cinatokenProfile: {
+					applicationOrigin: "https://cinatoken.com",
+					clientId: "cinatoken-admin",
+				},
 				trustedOrigins: [
 					"https://auth.cinaseek.ai",
 					"https://accounts.cinaseek.ai",
 					"https://admin.cinaseek.ai",
 					"https://demo-auth.cinagroup.com",
 					"https://oidc-demo.cinaseek.ai",
+					"https://cinatoken.com",
 				],
 				trustedHostnames: [
 					"auth.cinaseek.ai",
@@ -46,6 +53,7 @@ describe("Auth Worker origin configuration", () => {
 					"admin.cinaseek.ai",
 					"demo-auth.cinagroup.com",
 					"oidc-demo.cinaseek.ai",
+					"cinatoken.com",
 				],
 			},
 		});
@@ -161,6 +169,19 @@ describe("Auth Worker origin configuration", () => {
 		expect(result).toMatchObject({ ok: false });
 		if (result.ok) throw new Error("Expected partial OIDC profile to fail");
 		expect(result.issues).toContain("invalid_cinaauth_oidc_demo_profile");
+	});
+
+	it("rejects a partial or unexpected cinatoken client profile", () => {
+		for (const override of [
+			{ CINAAUTH_CINATOKEN_CLIENT_ID: undefined },
+			{ CINAAUTH_CINATOKEN_CLIENT_ID: "untrusted-client" },
+			{ CINAAUTH_CINATOKEN_ORIGIN: "http://cinatoken.com" },
+		]) {
+			const result = parseAuthOriginConfig({ ...productionEnv, ...override });
+			expect(result).toMatchObject({ ok: false });
+			if (result.ok) throw new Error("Expected invalid cinatoken profile");
+			expect(result.issues).toContain("invalid_cinaauth_cinatoken_profile");
+		}
 	});
 
 	it("resolves an isolated staging OIDC demo profile", () => {

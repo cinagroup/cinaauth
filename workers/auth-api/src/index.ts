@@ -47,6 +47,11 @@ import {
 } from "./auth-routing";
 import { getAuthCapabilities } from "./capabilities";
 import {
+	ensureCinatokenOidcClient,
+	isCinatokenOidcAuthorizationRequest,
+	isValidCinatokenOidcClientSecret,
+} from "./cinatoken-oidc-client";
+import {
 	CLOUDFLARE_ACCESS_JWKS_PATH,
 	normalizeCloudflareAccessJwks,
 } from "./cloudflare-access-jwks";
@@ -210,6 +215,10 @@ type RuntimeConfigIssue =
 	| "weak_cinaadmin_oidc_client_secret"
 	| "missing_cinaadmin_oidc_bridge_secret"
 	| "weak_cinaadmin_oidc_bridge_secret"
+	| "missing_cinatoken_oidc_client_secret"
+	| "weak_cinatoken_oidc_client_secret"
+	| "missing_cinatoken_oidc_bridge_secret"
+	| "weak_cinatoken_oidc_bridge_secret"
 	| "missing_hyperdrive_binding"
 	| "missing_legacy_d1_binding"
 	| "missing_version_metadata"
@@ -849,6 +858,18 @@ export const getRuntimeConfigIssues = (
 		issues.push("missing_cinaadmin_oidc_bridge_secret");
 	} else if (env.CINAADMIN_OIDC_BRIDGE_SECRET.length < 32) {
 		issues.push("weak_cinaadmin_oidc_bridge_secret");
+	}
+	if (!env.CINATOKEN_OIDC_CLIENT_SECRET) {
+		issues.push("missing_cinatoken_oidc_client_secret");
+	} else if (
+		!isValidCinatokenOidcClientSecret(env.CINATOKEN_OIDC_CLIENT_SECRET)
+	) {
+		issues.push("weak_cinatoken_oidc_client_secret");
+	}
+	if (!env.CINATOKEN_OIDC_BRIDGE_SECRET) {
+		issues.push("missing_cinatoken_oidc_bridge_secret");
+	} else if (env.CINATOKEN_OIDC_BRIDGE_SECRET.length < 32) {
+		issues.push("weak_cinatoken_oidc_bridge_secret");
 	}
 
 	if (!isHyperdrive(env.HYPERDRIVE)) {
@@ -2131,11 +2152,12 @@ app.on(
 app.use("/api/auth/oauth2/authorize", async (c, next) => {
 	const origins = requireAuthOriginConfig(c.var.runtimeEnv);
 	const isAdminRequest = isAdminOidcAuthorizationRequest(c.req.raw);
+	const isCinatokenRequest = isCinatokenOidcAuthorizationRequest(c.req.raw);
 	const isDemoRequest = isOidcDemoAuthorizationRequest(
 		c.req.raw,
 		origins.oidcDemoProfile,
 	);
-	if (!isAdminRequest && !isDemoRequest) {
+	if (!isAdminRequest && !isCinatokenRequest && !isDemoRequest) {
 		await next();
 		return;
 	}
@@ -2148,6 +2170,15 @@ app.use("/api/auth/oauth2/authorize", async (c, next) => {
 				c.var.runtimeEnv.CINAADMIN_OIDC_CLIENT_SECRET,
 				origins.adminOrigin,
 			);
+		} else if (isCinatokenRequest) {
+			if (!origins.cinatokenProfile) {
+				throw new Error("cinatoken OIDC profile is unavailable");
+			}
+			await ensureCinatokenOidcClient(
+				database,
+				c.var.runtimeEnv.CINATOKEN_OIDC_CLIENT_SECRET,
+				origins.cinatokenProfile.applicationOrigin,
+			);
 		} else if (origins.oidcDemoProfile) {
 			await ensureOidcDemoClient(database, origins.oidcDemoProfile);
 		}
@@ -2157,7 +2188,9 @@ app.use("/api/auth/oauth2/authorize", async (c, next) => {
 				level: "error",
 				message: isAdminRequest
 					? "cinaauth.admin_oidc_client.reconcile_failed"
-					: "cinaauth.oidc_demo_client.reconcile_failed",
+					: isCinatokenRequest
+						? "cinaauth.cinatoken_oidc_client.reconcile_failed"
+						: "cinaauth.oidc_demo_client.reconcile_failed",
 				error: error instanceof Error ? error.message : String(error),
 			}),
 		);
@@ -2167,7 +2200,9 @@ app.use("/api/auth/oauth2/authorize", async (c, next) => {
 					error: "temporarily_unavailable",
 					error_description: isAdminRequest
 						? "Admin OIDC client is temporarily unavailable"
-						: "OIDC demo client is temporarily unavailable",
+						: isCinatokenRequest
+							? "cinatoken OIDC client is temporarily unavailable"
+							: "OIDC demo client is temporarily unavailable",
 				},
 				503,
 			),

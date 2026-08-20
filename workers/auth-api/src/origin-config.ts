@@ -5,6 +5,8 @@ export type AuthOriginEnv = {
 	CINAAUTH_URL?: string;
 	CINAAUTH_ACCOUNT_ORIGIN?: string;
 	CINAAUTH_ADMIN_ORIGIN?: string;
+	CINAAUTH_CINATOKEN_ORIGIN?: string;
+	CINAAUTH_CINATOKEN_CLIENT_ID?: string;
 	CINAAUTH_PASSKEY_RP_ID?: string;
 	CINAAUTH_LEGACY_ACCOUNT_ORIGIN?: string;
 	CINAAUTH_OIDC_DEMO_ENVIRONMENT?: string;
@@ -26,6 +28,7 @@ export type AuthOriginConfigIssue =
 	| "invalid_cinaauth_passkey_rp_id"
 	| "invalid_cinaauth_legacy_account_origin"
 	| "invalid_cinaauth_oidc_demo_profile"
+	| "invalid_cinaauth_cinatoken_profile"
 	| "duplicate_cinaauth_origins"
 	| "invalid_cinaauth_siwe_rp_origin";
 
@@ -36,6 +39,7 @@ export type AuthOriginConfig = {
 	passkeyRpId: string;
 	legacyAccountOrigin: string | null;
 	oidcDemoProfile: OidcDemoProfile | null;
+	cinatokenProfile: { applicationOrigin: string; clientId: string } | null;
 	trustedOrigins: string[];
 	trustedHostnames: string[];
 };
@@ -127,6 +131,27 @@ export const parseAuthOriginConfig = (
 	} else if (hasOidcDemoProfile) {
 		hasInvalidOidcDemoProfile = true;
 	}
+	const cinatokenOrigin = parseCanonicalHttpsOrigin(
+		env.CINAAUTH_CINATOKEN_ORIGIN,
+	);
+	const cinatokenValues = [
+		env.CINAAUTH_CINATOKEN_ORIGIN,
+		env.CINAAUTH_CINATOKEN_CLIENT_ID,
+	];
+	const hasCinatokenProfile = cinatokenValues.some(
+		(value) => value !== undefined,
+	);
+	const cinatokenProfile =
+		hasCinatokenProfile &&
+		cinatokenValues.every((value) => value !== undefined) &&
+		cinatokenOrigin &&
+		env.CINAAUTH_CINATOKEN_CLIENT_ID === "cinatoken-admin" &&
+		/^[a-z0-9][a-z0-9._-]{2,127}$/u.test(env.CINAAUTH_CINATOKEN_CLIENT_ID ?? "")
+			? {
+					applicationOrigin: cinatokenOrigin.origin,
+					clientId: env.CINAAUTH_CINATOKEN_CLIENT_ID!,
+				}
+			: null;
 
 	if (env.CINAAUTH_URL === undefined) issues.push("missing_cinaauth_url");
 	else if (!authOrigin) issues.push("invalid_cinaauth_url");
@@ -157,12 +182,16 @@ export const parseAuthOriginConfig = (
 	if (hasInvalidOidcDemoProfile) {
 		issues.push("invalid_cinaauth_oidc_demo_profile");
 	}
+	if (hasCinatokenProfile && !cinatokenProfile) {
+		issues.push("invalid_cinaauth_cinatoken_profile");
+	}
 	const configuredOrigins = [
 		authOrigin?.origin,
 		accountOrigin?.origin,
 		adminOrigin?.origin,
 		legacyAccountOrigin?.origin,
 		oidcDemoProfile?.applicationOrigin,
+		cinatokenProfile?.applicationOrigin,
 	].filter((origin): origin is string => origin !== undefined);
 	if (new Set(configuredOrigins).size !== configuredOrigins.length) {
 		issues.push("duplicate_cinaauth_origins");
@@ -186,6 +215,7 @@ export const parseAuthOriginConfig = (
 		adminOrigin.origin,
 		...(legacyAccountOrigin ? [legacyAccountOrigin.origin] : []),
 		...(oidcDemoProfile ? [oidcDemoProfile.applicationOrigin] : []),
+		...(cinatokenProfile ? [cinatokenProfile.applicationOrigin] : []),
 	];
 
 	return {
@@ -197,6 +227,7 @@ export const parseAuthOriginConfig = (
 			passkeyRpId: env.CINAAUTH_PASSKEY_RP_ID!,
 			legacyAccountOrigin: legacyAccountOrigin?.origin ?? null,
 			oidcDemoProfile,
+			cinatokenProfile,
 			trustedOrigins: [...new Set(trustedOrigins)],
 			trustedHostnames: [
 				...new Set(trustedOrigins.map((origin) => new URL(origin).hostname)),
