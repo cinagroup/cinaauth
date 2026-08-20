@@ -5,7 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	AlertCircle,
 	CheckCircle2,
+	Globe,
 	LogIn,
+	Pencil,
+	Plus,
 	RefreshCw,
 	Trash2,
 } from "lucide-react";
@@ -22,6 +25,15 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +93,24 @@ const emptyGenericForm = (): GenericFormState => ({
 	userInfoUrl: "",
 	pkce: false,
 });
+
+const genericFormFromProvider = (
+	provider: SocialProviderSummary,
+): GenericFormState => {
+	const entry = provider.entry ?? {};
+	return {
+		providerId: provider.id,
+		clientId: provider.clientId ?? "",
+		clientSecret: "",
+		discoveryUrl:
+			typeof entry.discoveryUrl === "string" ? entry.discoveryUrl : "",
+		authorizationUrl:
+			typeof entry.authorizationUrl === "string" ? entry.authorizationUrl : "",
+		tokenUrl: typeof entry.tokenUrl === "string" ? entry.tokenUrl : "",
+		userInfoUrl: typeof entry.userInfoUrl === "string" ? entry.userInfoUrl : "",
+		pkce: entry.pkce === true,
+	};
+};
 
 const genericUpsertBody = (form: GenericFormState) => {
 	const body: Record<string, unknown> = {
@@ -162,6 +192,10 @@ export default function SocialProvidersPage() {
 	const [socialForms, setSocialForms] = useState<
 		Record<string, SocialFormState>
 	>({});
+	const [editingProviderId, setEditingProviderId] = useState<string | null>(
+		null,
+	);
+	const [genericDialogOpen, setGenericDialogOpen] = useState(false);
 	const [genericForm, setGenericForm] = useState<GenericFormState>(
 		emptyGenericForm(),
 	);
@@ -206,12 +240,33 @@ export default function SocialProvidersPage() {
 	);
 	const socialProviders = data.providers.filter((p) => p.kind === "social");
 	const genericProviders = data.providers.filter((p) => p.kind === "generic");
+	const editingGeneric = genericProviders.find(
+		(p) => p.id === editingProviderId,
+	);
 	const socialForm = (provider: SocialProviderSummary) =>
 		socialForms[provider.id] ?? emptySocialForm(provider);
 	const setSocialForm = (id: string, next: SocialFormState) =>
 		setSocialForms((current) => ({ ...current, [id]: next }));
+	const clearSocialClientSecret = (id: string, form: SocialFormState) =>
+		setSocialForm(id, { ...form, clientSecret: "" });
 	const limitValue = limit ?? String(data.settings.socialProviderLimit);
 	const otpValue = otpEnabled ?? data.settings.emailOtpLoginEnabled;
+	const settingsDirty =
+		Number.parseInt(limitValue, 10) !== data.settings.socialProviderLimit ||
+		otpValue !== data.settings.emailOtpLoginEnabled;
+	const socialDirty = (provider: SocialProviderSummary) => {
+		const form = socialForm(provider);
+		return (
+			form.clientId.trim() !== (provider.clientId ?? "") ||
+			form.clientSecret.length > 0 ||
+			form.enabled !== provider.enabled
+		);
+	};
+	const closeGenericDialog = () => {
+		setGenericDialogOpen(false);
+		setEditingProviderId(null);
+		setGenericForm(emptyGenericForm());
+	};
 
 	return (
 		<div className="max-w-6xl space-y-6" aria-busy={mutation.isPending}>
@@ -270,18 +325,18 @@ export default function SocialProvidersPage() {
 							<Button
 								type="submit"
 								size="sm"
-								disabled={!canManage || mutation.isPending}
+								disabled={!canManage || mutation.isPending || !settingsDirty}
 							>
 								{t("social.save")}
 							</Button>
 						</div>
 						<label className="flex items-start gap-2 text-[13px] leading-5 text-body">
-							<input
-								type="checkbox"
-								className="mt-0.5"
+							<Checkbox
 								checked={otpValue}
 								disabled={!canManage || mutation.isPending}
-								onChange={(event) => setOtpEnabled(event.target.checked)}
+								onCheckedChange={(checked) => setOtpEnabled(checked === true)}
+								className="mt-0.5"
+								aria-label={t("social.emailOtp")}
 							/>
 							<span>
 								{t("social.emailOtp")}
@@ -299,18 +354,20 @@ export default function SocialProvidersPage() {
 					<CardTitle>{t("social.catalog")}</CardTitle>
 					<CardDescription>{t("social.oneTapHint")}</CardDescription>
 				</CardHeader>
-				<CardContent className="space-y-4 pt-0">
+				<CardContent className="space-y-3 pt-0">
 					{socialProviders.map((provider) => {
 						const form = socialForm(provider);
+						const editing = editingProviderId === provider.id;
+						const dirty = socialDirty(provider);
 						return (
 							<div
 								key={provider.id}
 								className="space-y-3 rounded-[var(--radius-sm)] border border-hairline p-3"
 							>
 								<div className="flex flex-wrap items-center justify-between gap-2">
-									<div className="flex items-center gap-2">
-										<LogIn size={16} aria-hidden />
-										<span className="text-[14px] text-ink">
+									<div className="flex min-w-0 items-center gap-2">
+										<LogIn size={16} aria-hidden className="shrink-0" />
+										<span className="truncate text-[14px] text-ink">
 											{displayNames.get(provider.id) ?? provider.id}
 										</span>
 										<Badge variant="muted">
@@ -331,100 +388,221 @@ export default function SocialProvidersPage() {
 												<CheckCircle2 size={13} />
 												{t("social.enabled")}
 											</>
+										) : provider.configured ? (
+											t("social.disabled")
 										) : (
 											t("social.source.none")
 										)}
 									</Badge>
 								</div>
 								{provider.clientId && (
-									<p className="font-mono text-[12px] text-mute">
+									<p className="truncate font-mono text-[12px] text-mute">
 										{provider.clientId}
 									</p>
 								)}
 								{canManage && (
-									<form
-										className="grid gap-3 sm:grid-cols-2"
-										onSubmit={async (event) => {
-											event.preventDefault();
-											const saved = await run(
-												"/api/admin/social-providers",
-												"PUT",
-												{
-													kind: "social",
-													providerId: provider.id,
-													clientId: form.clientId.trim(),
-													clientSecret: form.clientSecret,
-													enabled: form.enabled,
-												},
-											);
-											if (saved) {
-												setSocialForm(provider.id, {
-													...form,
-													clientSecret: "",
-												});
-											}
-										}}
-									>
-										<div className="space-y-1.5">
-											<Label htmlFor={`social-${provider.id}-client-id`}>
-												{t("social.clientId")}
-											</Label>
-											<Input
-												id={`social-${provider.id}-client-id`}
-												autoComplete="off"
-												required
-												maxLength={512}
-												value={form.clientId}
-												onChange={(event) =>
-													setSocialForm(provider.id, {
-														...form,
-														clientId: event.target.value,
-													})
-												}
-											/>
-										</div>
-										<div className="space-y-1.5">
-											<Label htmlFor={`social-${provider.id}-client-secret`}>
-												{t("social.clientSecret")}
-											</Label>
-											<Input
-												id={`social-${provider.id}-client-secret`}
-												type="password"
-												autoComplete="new-password"
-												required
-												minLength={1}
-												maxLength={512}
-												value={form.clientSecret}
-												onChange={(event) =>
-													setSocialForm(provider.id, {
-														...form,
-														clientSecret: event.target.value,
-													})
-												}
-											/>
-										</div>
-										<label className="flex items-center gap-2 text-[13px] text-body sm:col-span-2">
-											<input
-												type="checkbox"
-												checked={form.enabled}
-												onChange={(event) =>
-													setSocialForm(provider.id, {
-														...form,
-														enabled: event.target.checked,
-													})
-												}
-											/>
-											{t("social.enabled")}
-										</label>
-										<div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+									<>
+										{!editing && provider.configured && (
 											<Button
-												type="submit"
+												type="button"
+												variant="outline"
 												size="sm"
 												disabled={mutation.isPending}
+												onClick={() => setEditingProviderId(provider.id)}
 											>
-												{t("social.save")}
+												<Pencil size={15} />
+												{t("social.edit")}
 											</Button>
-											{provider.source === "database" && (
+										)}
+										{editing && (
+											<form
+												className="grid gap-3 sm:grid-cols-2"
+												onSubmit={async (event) => {
+													event.preventDefault();
+													const saved = await run(
+														"/api/admin/social-providers",
+														"PUT",
+														{
+															kind: "social",
+															providerId: provider.id,
+															clientId: form.clientId.trim(),
+															clientSecret: form.clientSecret,
+															enabled: form.enabled,
+														},
+													);
+													if (saved) {
+														clearSocialClientSecret(provider.id, form);
+														setEditingProviderId(null);
+													}
+												}}
+											>
+												<div className="space-y-1.5">
+													<Label htmlFor={`social-${provider.id}-client-id`}>
+														{t("social.clientId")}
+													</Label>
+													<Input
+														id={`social-${provider.id}-client-id`}
+														autoComplete="off"
+														required
+														maxLength={512}
+														value={form.clientId}
+														onChange={(event) =>
+															setSocialForm(provider.id, {
+																...form,
+																clientId: event.target.value,
+															})
+														}
+													/>
+												</div>
+												<div className="space-y-1.5">
+													<Label
+														htmlFor={`social-${provider.id}-client-secret`}
+													>
+														{t("social.clientSecret")}
+													</Label>
+													<Input
+														id={`social-${provider.id}-client-secret`}
+														type="password"
+														autoComplete="new-password"
+														required
+														minLength={1}
+														maxLength={512}
+														value={form.clientSecret}
+														onChange={(event) =>
+															setSocialForm(provider.id, {
+																...form,
+																clientSecret: event.target.value,
+															})
+														}
+													/>
+												</div>
+												<label className="flex items-center gap-2 text-[13px] text-body sm:col-span-2">
+													<Checkbox
+														checked={form.enabled}
+														onCheckedChange={(checked) =>
+															setSocialForm(provider.id, {
+																...form,
+																enabled: checked === true,
+															})
+														}
+														aria-label={t("social.enabled")}
+													/>
+													{t("social.enabled")}
+												</label>
+												<div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+													<Button
+														type="submit"
+														size="sm"
+														disabled={mutation.isPending || !dirty}
+													>
+														{t("social.save")}
+													</Button>
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														disabled={mutation.isPending}
+														onClick={() => {
+															setSocialForms((current) => {
+																const next = { ...current };
+																delete next[provider.id];
+																return next;
+															});
+															setEditingProviderId(null);
+														}}
+													>
+														{t("social.cancel")}
+													</Button>
+												</div>
+											</form>
+										)}
+										{!provider.configured && !editing && (
+											<form
+												className="grid gap-3 sm:grid-cols-2"
+												onSubmit={async (event) => {
+													event.preventDefault();
+													const saved = await run(
+														"/api/admin/social-providers",
+														"PUT",
+														{
+															kind: "social",
+															providerId: provider.id,
+															clientId: form.clientId.trim(),
+															clientSecret: form.clientSecret,
+															enabled: form.enabled,
+														},
+													);
+													if (saved) clearSocialClientSecret(provider.id, form);
+												}}
+											>
+												<div className="space-y-1.5">
+													<Label
+														htmlFor={`social-${provider.id}-new-client-id`}
+													>
+														{t("social.clientId")}
+													</Label>
+													<Input
+														id={`social-${provider.id}-new-client-id`}
+														autoComplete="off"
+														required
+														maxLength={512}
+														value={form.clientId}
+														onChange={(event) =>
+															setSocialForm(provider.id, {
+																...form,
+																clientId: event.target.value,
+															})
+														}
+													/>
+												</div>
+												<div className="space-y-1.5">
+													<Label
+														htmlFor={`social-${provider.id}-new-client-secret`}
+													>
+														{t("social.clientSecret")}
+													</Label>
+													<Input
+														id={`social-${provider.id}-new-client-secret`}
+														type="password"
+														autoComplete="new-password"
+														required
+														minLength={1}
+														maxLength={512}
+														value={form.clientSecret}
+														onChange={(event) =>
+															setSocialForm(provider.id, {
+																...form,
+																clientSecret: event.target.value,
+															})
+														}
+													/>
+												</div>
+												<label className="flex items-center gap-2 text-[13px] text-body sm:col-span-2">
+													<Checkbox
+														checked={form.enabled}
+														onCheckedChange={(checked) =>
+															setSocialForm(provider.id, {
+																...form,
+																enabled: checked === true,
+															})
+														}
+														aria-label={t("social.enabled")}
+													/>
+													{t("social.enabled")}
+												</label>
+												<div className="sm:col-span-2">
+													<Button
+														type="submit"
+														size="sm"
+														disabled={mutation.isPending}
+													>
+														{t("social.save")}
+													</Button>
+												</div>
+											</form>
+										)}
+										{provider.source === "database" && !editing && (
+											<div className="flex flex-wrap gap-2 border-t border-hairline pt-3">
 												<ConfirmDialog
 													trigger={
 														<Button
@@ -438,7 +616,13 @@ export default function SocialProvidersPage() {
 														</Button>
 													}
 													title={t("social.delete")}
-													description={provider.id}
+													description={
+														provider.configured
+															? t("social.deleteHint", {
+																	provider: provider.id,
+																})
+															: provider.id
+													}
 													confirmationText={provider.id.toUpperCase()}
 													confirmationLabel={provider.id.toUpperCase()}
 													onConfirm={() =>
@@ -447,9 +631,9 @@ export default function SocialProvidersPage() {
 														})
 													}
 												/>
-											)}
-										</div>
-									</form>
+											</div>
+										)}
+									</>
 								)}
 							</div>
 						);
@@ -460,6 +644,7 @@ export default function SocialProvidersPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>{t("social.generic")}</CardTitle>
+					<CardDescription>{t("social.genericHint")}</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4 pt-0">
 					{genericProviders.length === 0 && (
@@ -471,20 +656,37 @@ export default function SocialProvidersPage() {
 							className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-hairline p-3"
 						>
 							<div className="min-w-0">
-								<p className="truncate font-mono text-[13px] text-ink">
-									{provider.id}
-								</p>
+								<div className="flex items-center gap-2">
+									<Globe size={15} aria-hidden className="shrink-0 text-mute" />
+									<p className="truncate font-mono text-[13px] text-ink">
+										{provider.id}
+									</p>
+									<Badge variant="muted">
+										{t(`social.source.${provider.source}`)}
+									</Badge>
+								</div>
 								{typeof provider.entry?.discoveryUrl === "string" && (
-									<p className="truncate text-[12px] text-mute">
+									<p className="mt-1 truncate text-[12px] text-mute">
 										{provider.entry.discoveryUrl}
 									</p>
 								)}
 							</div>
-							<div className="flex items-center gap-2">
-								<Badge variant="muted">
-									{t(`social.source.${provider.source}`)}
-								</Badge>
-								{provider.source === "database" && canManage && (
+							{canManage && provider.source === "database" && (
+								<div className="flex items-center gap-2">
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										disabled={mutation.isPending}
+										onClick={() => {
+											setGenericForm(genericFormFromProvider(provider));
+											setEditingProviderId(provider.id);
+											setGenericDialogOpen(true);
+										}}
+									>
+										<Pencil size={15} />
+										{t("social.edit")}
+									</Button>
 									<ConfirmDialog
 										trigger={
 											<Button
@@ -498,7 +700,9 @@ export default function SocialProvidersPage() {
 											</Button>
 										}
 										title={t("social.delete")}
-										description={provider.id}
+										description={t("social.deleteHint", {
+											provider: provider.id,
+										})}
 										confirmationText={provider.id.toUpperCase()}
 										confirmationLabel={provider.id.toUpperCase()}
 										onConfirm={() =>
@@ -507,165 +711,213 @@ export default function SocialProvidersPage() {
 											})
 										}
 									/>
-								)}
-							</div>
+								</div>
+							)}
 						</div>
 					))}
 
 					{canManage && (
-						<form
-							className="grid gap-3 sm:grid-cols-2"
-							onSubmit={async (event) => {
-								event.preventDefault();
-								const saved = await run(
-									"/api/admin/social-providers",
-									"PUT",
-									genericUpsertBody(genericForm),
-								);
-								if (saved) setGenericForm(emptyGenericForm());
-							}}
-						>
-							<div className="space-y-1.5">
-								<Label htmlFor="generic-provider-id">
-									{t("social.providerId")}
-								</Label>
-								<Input
-									id="generic-provider-id"
-									autoComplete="off"
-									required
-									pattern="[a-z0-9][a-z0-9._-]{0,62}"
-									value={genericForm.providerId}
-									onChange={(event) =>
-										setGenericForm((current) => ({
-											...current,
-											providerId: event.target.value,
-										}))
-									}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="generic-client-id">
-									{t("social.clientId")}
-								</Label>
-								<Input
-									id="generic-client-id"
-									autoComplete="off"
-									required
-									maxLength={512}
-									value={genericForm.clientId}
-									onChange={(event) =>
-										setGenericForm((current) => ({
-											...current,
-											clientId: event.target.value,
-										}))
-									}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="generic-client-secret">
-									{t("social.clientSecret")}
-								</Label>
-								<Input
-									id="generic-client-secret"
-									type="password"
-									autoComplete="new-password"
-									required={!genericForm.pkce}
-									maxLength={512}
-									value={genericForm.clientSecret}
-									onChange={(event) =>
-										setGenericForm((current) => ({
-											...current,
-											clientSecret: event.target.value,
-										}))
-									}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="generic-discovery-url">
-									{t("social.discoveryUrl")}
-								</Label>
-								<Input
-									id="generic-discovery-url"
-									autoComplete="off"
-									type="url"
-									value={genericForm.discoveryUrl}
-									onChange={(event) =>
-										setGenericForm((current) => ({
-											...current,
-											discoveryUrl: event.target.value,
-										}))
-									}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="generic-authorization-url">
-									authorizationUrl
-								</Label>
-								<Input
-									id="generic-authorization-url"
-									autoComplete="off"
-									type="url"
-									value={genericForm.authorizationUrl}
-									onChange={(event) =>
-										setGenericForm((current) => ({
-											...current,
-											authorizationUrl: event.target.value,
-										}))
-									}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="generic-token-url">tokenUrl</Label>
-								<Input
-									id="generic-token-url"
-									autoComplete="off"
-									type="url"
-									value={genericForm.tokenUrl}
-									onChange={(event) =>
-										setGenericForm((current) => ({
-											...current,
-											tokenUrl: event.target.value,
-										}))
-									}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="generic-user-info-url">userInfoUrl</Label>
-								<Input
-									id="generic-user-info-url"
-									autoComplete="off"
-									type="url"
-									value={genericForm.userInfoUrl}
-									onChange={(event) =>
-										setGenericForm((current) => ({
-											...current,
-											userInfoUrl: event.target.value,
-										}))
-									}
-								/>
-							</div>
-							<label className="flex items-center gap-2 self-end text-[13px] text-body">
-								<input
-									type="checkbox"
-									checked={genericForm.pkce}
-									onChange={(event) =>
-										setGenericForm((current) => ({
-											...current,
-											pkce: event.target.checked,
-										}))
-									}
-								/>
-								{t("social.pkce")}
-							</label>
-							<div className="sm:col-span-2">
-								<Button type="submit" size="sm" disabled={mutation.isPending}>
-									{t("social.addGeneric")}
-								</Button>
-							</div>
-						</form>
+						<div>
+							<Button
+								type="button"
+								variant="secondary"
+								size="sm"
+								disabled={mutation.isPending}
+								onClick={() => {
+									setGenericForm(emptyGenericForm());
+									setEditingProviderId(null);
+									setGenericDialogOpen(true);
+								}}
+							>
+								<Plus size={15} />
+								{t("social.addGeneric")}
+							</Button>
+						</div>
 					)}
 				</CardContent>
 			</Card>
+
+			<Dialog
+				open={genericDialogOpen}
+				onOpenChange={(open) => {
+					if (!open) closeGenericDialog();
+				}}
+			>
+				<DialogContent className="max-w-2xl">
+					<DialogHeader>
+						<DialogTitle>
+							{editingGeneric
+								? t("social.editGenericTitle", { provider: editingGeneric.id })
+								: t("social.addGeneric")}
+						</DialogTitle>
+						<DialogDescription>{t("social.genericHint")}</DialogDescription>
+					</DialogHeader>
+					<form
+						id="generic-provider-form"
+						className="grid gap-3 sm:grid-cols-2"
+						onSubmit={async (event) => {
+							event.preventDefault();
+							const saved = await run(
+								"/api/admin/social-providers",
+								"PUT",
+								genericUpsertBody(genericForm),
+							);
+							if (saved) closeGenericDialog();
+						}}
+					>
+						<div className="space-y-1.5">
+							<Label htmlFor="generic-provider-id">
+								{t("social.providerId")}
+							</Label>
+							<Input
+								id="generic-provider-id"
+								autoComplete="off"
+								required
+								pattern="[a-z0-9][a-z0-9._-]{0,62}"
+								disabled={editingGeneric !== undefined}
+								value={genericForm.providerId}
+								onChange={(event) =>
+									setGenericForm((current) => ({
+										...current,
+										providerId: event.target.value,
+									}))
+								}
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label htmlFor="generic-client-id">{t("social.clientId")}</Label>
+							<Input
+								id="generic-client-id"
+								autoComplete="off"
+								required
+								maxLength={512}
+								value={genericForm.clientId}
+								onChange={(event) =>
+									setGenericForm((current) => ({
+										...current,
+										clientId: event.target.value,
+									}))
+								}
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label htmlFor="generic-client-secret">
+								{t("social.clientSecret")}
+							</Label>
+							<Input
+								id="generic-client-secret"
+								type="password"
+								autoComplete="new-password"
+								required={!genericForm.pkce}
+								maxLength={512}
+								value={genericForm.clientSecret}
+								onChange={(event) =>
+									setGenericForm((current) => ({
+										...current,
+										clientSecret: event.target.value,
+									}))
+								}
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label htmlFor="generic-discovery-url">
+								{t("social.discoveryUrl")}
+							</Label>
+							<Input
+								id="generic-discovery-url"
+								autoComplete="off"
+								type="url"
+								value={genericForm.discoveryUrl}
+								onChange={(event) =>
+									setGenericForm((current) => ({
+										...current,
+										discoveryUrl: event.target.value,
+									}))
+								}
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label htmlFor="generic-authorization-url">
+								authorizationUrl
+							</Label>
+							<Input
+								id="generic-authorization-url"
+								autoComplete="off"
+								type="url"
+								value={genericForm.authorizationUrl}
+								onChange={(event) =>
+									setGenericForm((current) => ({
+										...current,
+										authorizationUrl: event.target.value,
+									}))
+								}
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label htmlFor="generic-token-url">tokenUrl</Label>
+							<Input
+								id="generic-token-url"
+								autoComplete="off"
+								type="url"
+								value={genericForm.tokenUrl}
+								onChange={(event) =>
+									setGenericForm((current) => ({
+										...current,
+										tokenUrl: event.target.value,
+									}))
+								}
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label htmlFor="generic-user-info-url">userInfoUrl</Label>
+							<Input
+								id="generic-user-info-url"
+								autoComplete="off"
+								type="url"
+								value={genericForm.userInfoUrl}
+								onChange={(event) =>
+									setGenericForm((current) => ({
+										...current,
+										userInfoUrl: event.target.value,
+									}))
+								}
+							/>
+						</div>
+						<label className="flex items-center gap-2 self-end text-[13px] text-body">
+							<Checkbox
+								checked={genericForm.pkce}
+								onCheckedChange={(checked) =>
+									setGenericForm((current) => ({
+										...current,
+										pkce: checked === true,
+									}))
+								}
+								aria-label={t("social.pkce")}
+							/>
+							{t("social.pkce")}
+						</label>
+					</form>
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={closeGenericDialog}
+							disabled={mutation.isPending}
+						>
+							{t("social.cancel")}
+						</Button>
+						<Button
+							type="submit"
+							form="generic-provider-form"
+							size="sm"
+							disabled={mutation.isPending}
+						>
+							{editingGeneric ? t("social.save") : t("social.addGeneric")}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
