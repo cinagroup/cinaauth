@@ -89,6 +89,8 @@ describe("social provider runtime resolution", () => {
 		expect(config.socialProviders.google).toEqual({
 			clientId: "env-google-id",
 			clientSecret: "env-google-secret",
+			disableImplicitSignUp: false,
+			disableSignUp: false,
 			redirectURI: `${ACCOUNT_ORIGIN}/api/auth/callback/google`,
 		});
 		expect(config.socialProviders.github).toMatchObject({
@@ -110,6 +112,8 @@ describe("social provider runtime resolution", () => {
 		});
 		expect(config.socialProviders.discord).toMatchObject({
 			clientId: "db-discord-id",
+			disableImplicitSignUp: false,
+			disableSignUp: false,
 			redirectURI: `${ACCOUNT_ORIGIN}/api/auth/callback/discord`,
 		});
 		expect(config.capabilitiesProviders).toEqual([
