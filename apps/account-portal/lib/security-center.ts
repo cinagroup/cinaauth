@@ -68,10 +68,7 @@ export type WalletOverviewSummary = {
 
 /** Keeps the account overview limited to one representative wallet and a count. */
 export const getWalletOverviewSummary = (
-	wallets: readonly Pick<
-		SecurityWallet,
-		"address" | "chainId" | "isPrimary"
-	>[],
+	wallets: readonly Pick<SecurityWallet, "address" | "chainId" | "isPrimary">[],
 	unavailable = false,
 ): WalletOverviewSummary => {
 	if (unavailable) {

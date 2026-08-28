@@ -5,8 +5,8 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { auth } from "@/lib/auth";
 import { getBillingUiState } from "@/lib/billing-console";
 import {
-	getWalletOverviewSummary,
 	requiresPasswordForTwoFactor as getRequiresPasswordForTwoFactor,
+	getWalletOverviewSummary,
 } from "@/lib/security-center";
 import OrganizationCard from "./_components/organization-card";
 import SubscriptionCard from "./_components/subscription-card";
@@ -29,24 +29,23 @@ export default async function Page() {
 		entitlements,
 		accountsResult,
 		walletsResult,
-	] =
-		await Promise.all([
-			auth.api.listDeviceSessions({ headers: requestHeaders }),
-			auth.api
-				.getCapabilities({ headers: requestHeaders })
-				.catch(() => ({ billing: false })),
-			auth.api
-				.getEntitlements(undefined, { headers: requestHeaders })
-				.catch(() => null),
-			auth.api
-				.listUserAccounts({ headers: requestHeaders })
-				.then((data) => ({ data, unavailable: false }))
-				.catch(() => ({ data: [], unavailable: true })),
-			auth.api
-				.listWallets({ headers: requestHeaders })
-				.then((data) => ({ data: data.wallets, unavailable: false }))
-				.catch(() => ({ data: [], unavailable: true })),
-		]);
+	] = await Promise.all([
+		auth.api.listDeviceSessions({ headers: requestHeaders }),
+		auth.api
+			.getCapabilities({ headers: requestHeaders })
+			.catch(() => ({ billing: false })),
+		auth.api
+			.getEntitlements(undefined, { headers: requestHeaders })
+			.catch(() => null),
+		auth.api
+			.listUserAccounts({ headers: requestHeaders })
+			.then((data) => ({ data, unavailable: false }))
+			.catch(() => ({ data: [], unavailable: true })),
+		auth.api
+			.listWallets({ headers: requestHeaders })
+			.then((data) => ({ data: data.wallets, unavailable: false }))
+			.catch(() => ({ data: [], unavailable: true })),
+	]);
 	const requiresPasswordForTwoFactor = getRequiresPasswordForTwoFactor(
 		accountsResult.data,
 		accountsResult.unavailable,

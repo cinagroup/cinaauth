@@ -10,11 +10,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import {
-	formatWalletAddress,
-	formatWalletChain,
-	type WalletOverviewSummary,
-} from "@/lib/security-center";
+import type { WalletOverviewSummary } from "@/lib/security-center";
+import { formatWalletAddress, formatWalletChain } from "@/lib/security-center";
 
 type WalletOverviewCardProps = {
 	summary: WalletOverviewSummary;

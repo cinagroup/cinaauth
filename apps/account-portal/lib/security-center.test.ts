@@ -130,9 +130,7 @@ describe("security center policy helpers", () => {
 			isPrimary: true,
 		};
 
-		expect(
-			getWalletOverviewSummary([secondaryWallet, primaryWallet]),
-		).toEqual({
+		expect(getWalletOverviewSummary([secondaryWallet, primaryWallet])).toEqual({
 			available: true,
 			count: 2,
 			wallet: primaryWallet,
