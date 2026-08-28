@@ -184,7 +184,7 @@ const normalizeCapabilities = (value: unknown): AuthCapabilities => {
 			siwe: methods.siwe === true,
 		},
 		oauthProviders: providers,
-		oneTap: candidate.oneTap === true,
+		oneTap: false,
 		captcha: normalizeCaptcha(candidate.captcha),
 		billing: candidate.billing === true,
 	};
@@ -193,14 +193,12 @@ const normalizeCapabilities = (value: unknown): AuthCapabilities => {
 export const getCaptchaRequestHeaders = (token: string | null) =>
 	token ? { "x-captcha-response": token } : undefined;
 
-export const isOneTapClientReady = (
+export const isCaptchaEndpointProtected = (
 	capabilities: AuthCapabilities | undefined,
-	clientId: string | undefined,
+	endpoint: string,
 ) =>
-	capabilities?.oneTap === true &&
-	typeof clientId === "string" &&
-	clientId.trim().length > 0 &&
-	clientId.length <= 512;
+	capabilities?.captcha.enabled === true &&
+	capabilities.captcha.protectedEndpoints.includes(endpoint);
 
 export const fetchAuthCapabilities = async (
 	fetcher: CapabilityFetcher = fetch,

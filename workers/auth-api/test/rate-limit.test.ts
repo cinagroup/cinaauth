@@ -4,6 +4,7 @@ import { decideRateLimit } from "../src/rate-limit-policy";
 import {
 	AUTH_RATE_LIMIT_RULES,
 	createDurableObjectRateLimitStorage,
+	EMAIL_OTP_SEND_RATE_LIMIT_RULES,
 	getRateLimitShardName,
 	LOGIN_RATE_LIMIT_RULES,
 	SIWE_RATE_LIMIT_RULES,
@@ -55,7 +56,14 @@ describe("Durable Object rate-limit policy", () => {
 		});
 		expect(AUTH_RATE_LIMIT_RULES).toEqual({
 			...LOGIN_RATE_LIMIT_RULES,
+			...EMAIL_OTP_SEND_RATE_LIMIT_RULES,
 			...SIWE_RATE_LIMIT_RULES,
+		});
+	});
+
+	it("limits email code sends per IP before the per-recipient quota", () => {
+		expect(EMAIL_OTP_SEND_RATE_LIMIT_RULES).toEqual({
+			"/email-otp/send-verification-otp": { window: 60, max: 10 },
 		});
 	});
 });

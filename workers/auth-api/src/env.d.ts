@@ -58,7 +58,7 @@ export interface CloudflareBindings extends Cloudflare.Env {
 	OAUTH_PAIRWISE_SECRET?: string;
 	/** JSON array of cinaauth generic OAuth provider configs. */
 	GENERIC_OAUTH_CONFIG?: string;
-	/** Google client ID shared by One Tap and Google social sign-in. */
+	/** Google OAuth client ID paired with GOOGLE_CLIENT_SECRET. */
 	GOOGLE_CLIENT_ID?: string;
 	/** Google OAuth client secret; paired with GOOGLE_CLIENT_ID for social sign-in. */
 	GOOGLE_CLIENT_SECRET?: string;

@@ -36,7 +36,7 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const inputRef = useRef<HTMLInputElement>(null);
-	const captcha = useTurnstileChallenge();
+	const captcha = useTurnstileChallenge("/email-otp/send-verification-otp");
 	const [action, setAction] = useState<VerificationAction | null>(null);
 	const [codeSent, setCodeSent] = useState(false);
 	const { cooldown, isCoolingDown, startCooldown } = useResendCooldown();

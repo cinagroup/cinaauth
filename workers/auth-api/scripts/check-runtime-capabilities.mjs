@@ -12,12 +12,9 @@ export const evaluateRuntimeCapabilities = ({
 		capabilities.oauthProviders.some(
 			(provider) => provider?.id === id && provider?.type === type,
 		);
-	if (
-		hasAll(configuredInputs, ["GOOGLE_CLIENT_ID"]) &&
-		capabilities.oneTap !== true
-	) {
+	if (capabilities.oneTap !== false) {
 		failures.push(
-			"GOOGLE_CLIENT_ID is configured but the live capabilities endpoint does not enable One Tap",
+			"Live One Tap capability must remain disabled for redirect-based Google OAuth",
 		);
 	}
 	if (

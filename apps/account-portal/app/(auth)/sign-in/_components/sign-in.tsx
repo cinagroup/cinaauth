@@ -1,15 +1,13 @@
 "use client";
 
-import { AlertCircle, KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
+import { AlertCircle, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 import { EmailOtpForm } from "@/components/forms/email-otp-form";
 import { OAuthProviderButtons } from "@/components/oauth-provider-buttons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ReownWalletEntry } from "@/components/wallet/reown-wallet-entry";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
-import { authClient } from "@/lib/auth-client";
 import {
 	getAccountSignInPolicy,
 	getAccountStepUpNotice,
@@ -65,33 +63,8 @@ export default function SignIn({
 				}}
 			/>
 
-			<div className="flex flex-col gap-3" aria-label="Other sign-in methods">
-				<Button
-					type="button"
-					variant="outline"
-					size="lg"
-					className="relative h-auto min-h-12 w-full whitespace-normal px-3 py-3 text-center"
-					onClick={() =>
-						authClient.signIn.passkey({
-							fetchOptions: {
-								onSuccess() {
-									toast.success("Successfully signed in");
-									if (!hasOidcQuery) window.location.href = callbackURL;
-								},
-								onError(context) {
-									toast.error(
-										`Authentication failed: ${context.error.message}`,
-									);
-								},
-							},
-						})
-					}
-				>
-					<KeyRound data-icon="inline-start" aria-hidden />
-					<span>Continue with passkey</span>
-				</Button>
-
-				{signInPolicy.allowFederatedProviders ? (
+			{signInPolicy.allowFederatedProviders ? (
+				<div className="flex flex-col gap-3" aria-label="Other sign-in methods">
 					<ReownWalletEntry
 						capabilities={capabilities.data}
 						walletCookie={walletCookie}
@@ -102,8 +75,8 @@ export default function SignIn({
 							if (!hasOidcQuery) window.location.href = callbackURL;
 						}}
 					/>
-				) : null}
-			</div>
+				</div>
+			) : null}
 
 			{capabilities.isPending ? (
 				<p
@@ -153,8 +126,9 @@ export default function SignIn({
 			) : (
 				<p className="rounded-md bg-canvas-soft-2 px-3 py-2 text-center text-xs leading-5 text-body">
 					Automatic and social sign-in are unavailable for this identity check.
-					Use your passkey
-					{emailOtpReady ? " or request an email code." : "."}
+					{emailOtpReady
+						? " Request an email code to continue."
+						: " No eligible sign-in method is currently available."}
 				</p>
 			)}
 		</div>

@@ -26,8 +26,13 @@ export const SIWE_RATE_LIMIT_RULES = {
 	"/siwe/link-wallet": { window: 60, max: 10 },
 } as const;
 
+export const EMAIL_OTP_SEND_RATE_LIMIT_RULES = {
+	"/email-otp/send-verification-otp": { window: 60, max: 10 },
+} as const;
+
 export const AUTH_RATE_LIMIT_RULES = {
 	...LOGIN_RATE_LIMIT_RULES,
+	...EMAIL_OTP_SEND_RATE_LIMIT_RULES,
 	...SIWE_RATE_LIMIT_RULES,
 } as const;
 

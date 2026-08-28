@@ -8,7 +8,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
-import { isOneTapClientReady } from "@/lib/auth-capabilities";
 import {
 	buildPreservedAuthPath,
 	hasSignedOidcCreatePrompt,
@@ -16,17 +15,13 @@ import {
 import { getAccountCallbackURL } from "@/lib/sign-in-experience";
 import { getSignUpAvailability } from "./sign-up-state";
 
-const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
 export default function SignUp() {
 	const searchParams = useSearchParams();
 	const callbackURL = getAccountCallbackURL(searchParams);
 	const hasCreatePrompt = hasSignedOidcCreatePrompt(searchParams);
 	const capabilities = useAuthCapabilities();
 	const emailOtpReady = capabilities.data?.methods.emailOtp === true;
-	const oauthReady =
-		(capabilities.data?.oauthProviders.length ?? 0) > 0 ||
-		isOneTapClientReady(capabilities.data, googleClientId);
+	const oauthReady = (capabilities.data?.oauthProviders.length ?? 0) > 0;
 	const availability = getSignUpAvailability({
 		isPending: capabilities.isPending,
 		isError: capabilities.isError,
@@ -101,7 +96,7 @@ export default function SignUp() {
 				</Button>
 			) : null}
 			{availability.kind === "ready" && availability.showOAuth ? (
-				<OAuthProviderButtons callbackURL={callbackURL} context="signup" />
+				<OAuthProviderButtons callbackURL={callbackURL} />
 			) : null}
 
 			{availability.kind === "create-unavailable" ? (

@@ -143,6 +143,17 @@ describe("authoritative Admin role permissions", () => {
 });
 
 describe("OIDC signing and social provider configuration", () => {
+	it("uses redirect OAuth for Google without registering One Tap", () => {
+		const plugins = createAuthPlugins(
+			makeOriginEnv({
+				GOOGLE_CLIENT_ID: "google-client-id",
+				GOOGLE_CLIENT_SECRET: "google-secret",
+			}),
+		);
+
+		expect(plugins.some((plugin) => plugin.id === "one-tap")).toBe(false);
+	});
+
 	it("rejects a persisted demo client when the optional demo origin is disabled", async () => {
 		const plugin = createAuthPlugins(
 			makeOriginEnv({

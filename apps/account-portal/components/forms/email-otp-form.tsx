@@ -55,7 +55,7 @@ export function EmailOtpForm({
 	const [verificationComplete, setVerificationComplete] = useState(false);
 	const { cooldown, isCoolingDown, resetCooldown, startCooldown } =
 		useResendCooldown();
-	const captcha = useTurnstileChallenge();
+	const captcha = useTurnstileChallenge("/email-otp/send-verification-otp");
 	const capabilities = useAuthCapabilities();
 	const emailOtpReady = capabilities.data?.methods.emailOtp === true;
 	const isPending = action !== null;

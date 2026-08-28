@@ -79,7 +79,7 @@ export const getAuthCapabilities = (
 			sso: true,
 		},
 		oauthProviders,
-		oneTap: hasCredential(env.GOOGLE_CLIENT_ID),
+		oneTap: false,
 		captcha: {
 			enabled: turnstile.enabled,
 			provider: turnstile.enabled ? TURNSTILE_PROVIDER : null,
