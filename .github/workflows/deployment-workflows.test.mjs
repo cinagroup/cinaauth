@@ -11,6 +11,7 @@ const rootPackage = JSON.parse(
 const knip = readFileSync(new URL("../../knip.jsonc", import.meta.url), "utf8");
 const central = readWorkflow("deploy-cloudflare.yml");
 const ci = readWorkflow("ci.yml");
+const preview = readWorkflow("preview.yml");
 const account = readWorkflow("deploy-account-portal.yml");
 const admin = readWorkflow("deploy-admin-console.yml");
 const oidcClient = readWorkflow("deploy-oidc-client-demo.yml");
@@ -84,6 +85,17 @@ test("production workflows use the root packageManager pnpm version", () => {
 			);
 		}
 	}
+});
+
+test("package preview publishing requires an explicit repository opt-in", () => {
+	const publishStart = preview.indexOf(
+		"      - name: Publish package previews",
+	);
+	assert.notEqual(publishStart, -1, "missing named package preview step");
+	const publish = preview.slice(publishStart);
+
+	assert.match(publish, /if: vars\.PKG_PR_NEW_ENABLED == 'true'/);
+	assert.match(publish, /pnpm dlx pkg-pr-new publish/);
 });
 
 test("production writes have only the governed central and Account Phase One entrypoints", () => {

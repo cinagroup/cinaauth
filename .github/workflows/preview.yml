@@ -46,4 +46,6 @@ jobs:
       - name: Build
         run: pnpm build
           
-      - run: pnpm dlx pkg-pr-new publish --pnpm './packages/*'
+      - name: Publish package previews
+        if: vars.PKG_PR_NEW_ENABLED == 'true'
+        run: pnpm dlx pkg-pr-new publish --pnpm './packages/*'
