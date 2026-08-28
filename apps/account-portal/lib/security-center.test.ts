@@ -9,6 +9,7 @@ import {
 	getSecurityPosture,
 	getSecurityProviderLinkFailure,
 	getTwoFactorPasswordBody,
+	getWalletOverviewSummary,
 	isApiKeyExpired,
 	isSessionRecent,
 	requiresPasswordForTwoFactor,
@@ -115,6 +116,37 @@ describe("security center policy helpers", () => {
 		expect(formatWalletChain(1)).toBe("Ethereum");
 		expect(formatWalletChain(8453)).toBe("Base");
 		expect(formatWalletChain(777)).toBe("Chain 777");
+	});
+
+	it("summarizes only the wallet details needed by the account overview", () => {
+		const secondaryWallet = {
+			address: "0x0000000000000000000000000000000000000001",
+			chainId: 8453,
+			isPrimary: false,
+		};
+		const primaryWallet = {
+			address: "0x000000000000000000000000000000000000dEaD",
+			chainId: 1,
+			isPrimary: true,
+		};
+
+		expect(
+			getWalletOverviewSummary([secondaryWallet, primaryWallet]),
+		).toEqual({
+			available: true,
+			count: 2,
+			wallet: primaryWallet,
+		});
+		expect(getWalletOverviewSummary([])).toEqual({
+			available: true,
+			count: 0,
+			wallet: null,
+		});
+		expect(getWalletOverviewSummary([], true)).toEqual({
+			available: false,
+			count: 0,
+			wallet: null,
+		});
 	});
 
 	it("summarizes common user agents without exposing the full value", () => {

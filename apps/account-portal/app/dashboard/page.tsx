@@ -4,10 +4,14 @@ import AccountSwitcher from "@/components/account-switch";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { auth } from "@/lib/auth";
 import { getBillingUiState } from "@/lib/billing-console";
-import { requiresPasswordForTwoFactor as getRequiresPasswordForTwoFactor } from "@/lib/security-center";
+import {
+	getWalletOverviewSummary,
+	requiresPasswordForTwoFactor as getRequiresPasswordForTwoFactor,
+} from "@/lib/security-center";
 import OrganizationCard from "./_components/organization-card";
 import SubscriptionCard from "./_components/subscription-card";
 import UserCard from "./_components/user-card";
+import { WalletOverviewCard } from "./_components/wallet-overview-card";
 
 export default async function Page() {
 	const requestHeaders = await headers();
@@ -19,7 +23,13 @@ export default async function Page() {
 		redirect("/sign-in");
 	}
 
-	const [deviceSessions, capabilities, entitlements, accountsResult] =
+	const [
+		deviceSessions,
+		capabilities,
+		entitlements,
+		accountsResult,
+		walletsResult,
+	] =
 		await Promise.all([
 			auth.api.listDeviceSessions({ headers: requestHeaders }),
 			auth.api
@@ -32,6 +42,10 @@ export default async function Page() {
 				.listUserAccounts({ headers: requestHeaders })
 				.then((data) => ({ data, unavailable: false }))
 				.catch(() => ({ data: [], unavailable: true })),
+			auth.api
+				.listWallets({ headers: requestHeaders })
+				.then((data) => ({ data: data.wallets, unavailable: false }))
+				.catch(() => ({ data: [], unavailable: true })),
 		]);
 	const requiresPasswordForTwoFactor = getRequiresPasswordForTwoFactor(
 		accountsResult.data,
@@ -41,6 +55,10 @@ export default async function Page() {
 		billingCapability: capabilities.billing === true,
 		entitlements,
 	});
+	const walletOverview = getWalletOverviewSummary(
+		walletsResult.data,
+		walletsResult.unavailable,
+	);
 
 	return (
 		<div className="w-full">
@@ -59,6 +77,7 @@ export default async function Page() {
 						requiresPasswordForTwoFactor={requiresPasswordForTwoFactor}
 					/>
 					<div className="flex min-w-0 flex-col gap-4">
+						<WalletOverviewCard summary={walletOverview} />
 						<OrganizationCard session={session} />
 						<SubscriptionCard
 							billingEnabled={billing.billingEnabled}
