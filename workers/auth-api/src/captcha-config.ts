@@ -1,7 +1,6 @@
 export const TURNSTILE_ACTION = "cinaauth";
 
 export const TURNSTILE_PROTECTED_ENDPOINTS = [
-	"/email-otp/send-verification-otp",
 	"/phone-number/send-otp",
 	"/phone-number/request-password-reset",
 ] as const;

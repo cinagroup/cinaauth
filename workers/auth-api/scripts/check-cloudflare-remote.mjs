@@ -70,10 +70,6 @@ const OPTIONAL_PLUGIN_INPUT_GROUPS = [
 		],
 	},
 	{
-		name: "Google One Tap plugin",
-		inputs: ["GOOGLE_CLIENT_ID"],
-	},
-	{
 		name: "Google social provider",
 		inputs: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
 	},

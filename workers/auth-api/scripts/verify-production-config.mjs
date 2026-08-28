@@ -1064,7 +1064,6 @@ checkIncludesAll(
 	captchaConfigTs,
 	[
 		'TURNSTILE_ACTION = "cinaauth"',
-		'"/email-otp/send-verification-otp"',
 		'"/phone-number/send-otp"',
 		'"/phone-number/request-password-reset"',
 		"CLOUDFLARE_TURNSTILE_SITE_KEY",
@@ -1072,6 +1071,10 @@ checkIncludesAll(
 	],
 	captchaConfigFile,
 	"Turnstile must fail closed unless the paired keys and protected auth paths are configured",
+);
+check(
+	!captchaConfigTs.includes('"/email-otp/send-verification-otp"'),
+	`${rel(captchaConfigFile)} must leave Email OTP on the dedicated IP and recipient rate limits`,
 );
 check(
 	[
@@ -2268,9 +2271,10 @@ checkIncludesAll(
 	oauthProductionDoc,
 	[
 		"https://accounts.cinaseek.ai",
-		"Authorized JavaScript origin",
+		"oneTap: false",
+		"Google 与 GitHub 使用相同的重定向按钮和回调模型",
+		"https://accounts.cinaseek.ai/api/auth/callback/google",
 		"https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>",
-		"NEXT_PUBLIC_GOOGLE_CLIENT_ID",
 		"GENERIC_OAUTH_CONFIG",
 		"requireIssuerValidation",
 		"Wrangler stdin",
@@ -2282,20 +2286,29 @@ checkIncludesAll(
 checkIncludesAll(
 	oauthProviderButtonsTs,
 	[
-		"isOneTapClientReady",
-		"authClient.oneTap",
-		"NEXT_PUBLIC_GOOGLE_CLIENT_ID",
-		'type: "standard"',
-		'context === "signup" ? "signup_with" : "continue_with"',
+		"authClient.signIn.social",
+		"provider: provider.id",
+		"callbackURL",
+		"formatOAuthProviderName(provider.id)",
 	],
 	oauthProviderButtonsFile,
-	"the account portal must render the official Google control only after server and client capability agreement",
+	"the account portal must route every social provider through the standard redirect flow",
+);
+check(
+	![oauthProviderButtonsTs, authClientTs].some((source) =>
+		source.includes("oneTap"),
+	),
+	"the account portal must not bundle or invoke Google One Tap",
+);
+check(
+	!pluginsTs.includes("oneTap("),
+	"the Auth Worker must use redirect OAuth without registering the One Tap plugin",
 );
 checkIncludesAll(
 	accountOAuthBuildCheck,
 	[
 		"https://auth.cinaseek.ai/api/auth/capabilities",
-		"evaluateOneTapBuild",
+		"evaluateRedirectOAuthBuild",
 		"evaluateReownBuild",
 		"evaluatePlannedReownBuild",
 		"evaluatePlannedSiweRelease",
@@ -2318,7 +2331,7 @@ checkIncludesAll(
 		"the deployed Account Portal Reown Project ID does not match production",
 		"the planned Auth Worker CINAAUTH_SIWE_ENABLED value must be exactly true or false",
 		"the planned Auth Worker enables SIWE but production has no exact 32-hex REOWN_PROJECT_ID",
-		"the production Auth Worker advertises One Tap but the account build has no GOOGLE_CLIENT_ID",
+		"the production Auth Worker still advertises One Tap instead of redirect OAuth",
 		"the production Auth Worker advertises SIWE but the account build has no valid REOWN_PROJECT_ID",
 	],
 	accountOAuthBuildCheckFile,
@@ -3381,16 +3394,18 @@ checkIncludesAll(
 	rateLimitStorageTs,
 	[
 		'"/sign-in/*": { window: 60, max: 5 }',
+		'"/email-otp/send-verification-otp": { window: 60, max: 10 }',
 		'"/siwe/challenge": { window: 60, max: 10 }',
 		'"/siwe/verify": { window: 60, max: 10 }',
 		'"/siwe/link-wallet": { window: 60, max: 10 }',
+		"...EMAIL_OTP_SEND_RATE_LIMIT_RULES",
 		"...SIWE_RATE_LIMIT_RULES",
 		"crypto.subtle.digest",
 		"getByName",
 		"consume:",
 	],
 	rateLimitStorageFile,
-	"CinaAuth login and SIWE proof endpoints must use deterministically sharded DO storage",
+	"CinaAuth login, Email OTP, and SIWE proof endpoints must use deterministically sharded DO storage",
 );
 
 checkIncludesAll(
@@ -3948,7 +3963,6 @@ checkIncludesAll(
 		"apps/account-portal",
 		"accounts.cinaseek.ai",
 		"NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai",
-		"NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}",
 		"REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"Configure wallet UI rollout from tracked Auth config",
@@ -3986,6 +4000,10 @@ checkIncludesAll(
 	],
 	accountWorkflowFile,
 	"account portal CI must remain a reusable production-environment unit with governed readiness and redirect smoke coverage",
+);
+check(
+	!accountWorkflow.includes("NEXT_PUBLIC_GOOGLE_CLIENT_ID"),
+	`${rel(accountWorkflowFile)} must not expose the Google OAuth client ID to the Account Portal bundle`,
 );
 check(
 	accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") >= 0 &&
@@ -4343,7 +4361,7 @@ check(
 checkIncludesAll(
 	runtimeCapabilitiesCheck,
 	[
-		"GOOGLE_CLIENT_ID is configured but the live capabilities endpoint does not enable One Tap",
+		"Live One Tap capability must remain disabled for redirect-based Google OAuth",
 		"Google social credentials are configured but the live capability is disabled",
 		"GitHub social credentials are configured but the live capability is disabled",
 		"GENERIC_OAUTH_CONFIG is configured but the live capabilities endpoint exposes no valid providers",

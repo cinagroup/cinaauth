@@ -3,10 +3,10 @@ import { describe, it } from "node:test";
 import {
 	evaluateDeployedWalletReadiness,
 	evaluateEmailProviderReady,
-	evaluateOneTapBuild,
 	evaluatePasswordlessEmailRelease,
 	evaluatePlannedReownBuild,
 	evaluatePlannedSiweRelease,
+	evaluateRedirectOAuthBuild,
 	evaluateReownBuild,
 	resolveAccountBuildReadinessTarget,
 } from "./check-oauth-build.mjs";
@@ -119,31 +119,14 @@ describe("passwordless email release parity", () => {
 });
 
 describe("account OAuth build parity", () => {
-	it("allows a disabled production One Tap capability", () => {
-		assert.equal(
-			evaluateOneTapBuild({ oneTapEnabled: false, googleClientId: undefined })
-				.ok,
-			true,
-		);
+	it("allows the redirect OAuth build when One Tap is disabled", () => {
+		assert.equal(evaluateRedirectOAuthBuild({ oneTapEnabled: false }).ok, true);
 	});
 
-	it("requires the client build ID when production advertises One Tap", () => {
-		const result = evaluateOneTapBuild({
-			oneTapEnabled: true,
-			googleClientId: undefined,
-		});
+	it("rejects a production Auth Worker that still advertises One Tap", () => {
+		const result = evaluateRedirectOAuthBuild({ oneTapEnabled: true });
 		assert.equal(result.ok, false);
-		assert.match(result.reason, /no GOOGLE_CLIENT_ID/);
-	});
-
-	it("accepts a paired server and client configuration", () => {
-		assert.equal(
-			evaluateOneTapBuild({
-				oneTapEnabled: true,
-				googleClientId: "google-client-id",
-			}).ok,
-			true,
-		);
+		assert.match(result.reason, /One Tap/);
 	});
 });
 

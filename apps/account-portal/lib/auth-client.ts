@@ -15,7 +15,6 @@ import {
 	lastLoginMethodClient,
 	multiSessionClient,
 	oauthPopupClient,
-	oneTapClient,
 	oneTimeTokenClient,
 	organizationClient,
 	phoneNumberClient,
@@ -31,8 +30,6 @@ import {
 	buildTwoFactorAuthPath,
 	getPreferredTwoFactorPath,
 } from "./two-factor-navigation";
-
-const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 export const authClient = createAuthClient({
 	baseURL: resolveAuthClientBaseURL(
@@ -76,7 +73,6 @@ export const authClient = createAuthClient({
 		genericOAuthClient(),
 		oneTimeTokenClient(),
 		siweClient(),
-		...(googleClientId ? [oneTapClient({ clientId: googleClientId })] : []),
 		electronProxyClient({
 			protocol: {
 				scheme: "com.cinaauth.demo",

@@ -374,8 +374,8 @@ cannot claim them.
 The advertised login list `/api/auth/capabilities` → `oauthProviders` is
 truncated server-side to `social_provider_limit`, so the sign-in page shows at
 most that many federated options (0 hides all of them) without any portal
-change. Google One Tap remains tied to the deploy-time `GOOGLE_CLIENT_ID`
-build-parity check and is not switched by database rows.
+change. Google uses the same redirect OAuth flow as GitHub; One Tap remains
+disabled and `/api/auth/capabilities` always reports `oneTap: false`.
 
 The same settings row owns `email_otp_login_enabled` (default `true`). Email
 code sign-in is the only email authentication path — password login is
@@ -539,7 +539,7 @@ configuration exists should the child operational readiness and real
 provider/target acceptance gates be required. Rollback selects the retained
 validated PREVIOUS version.
 
-Optional plugin inputs include Turnstile, Google One Tap, Google/GitHub social
+Optional plugin inputs include Turnstile, Google/GitHub social
 OAuth, Generic OAuth, Stripe, pairwise OAuth identifiers, and the admin audit
 service key. Production
 account deletion always registers the external erasure processor. The
@@ -559,18 +559,20 @@ deletion receipt, so the controller must retain the original provider record.
 Turnstile requires both `CLOUDFLARE_TURNSTILE_SITE_KEY` and
 `CLOUDFLARE_TURNSTILE_SECRET_KEY`. Provisioning either value without the other
 fails closed; the public capabilities endpoint exposes only the site key after
-the pair is complete. The Demo then renders the challenge and sends the
-single-use token in `x-captcha-response`.
+the pair is complete. The Account Portal renders a challenge only for endpoints
+listed in that capability and sends the single-use token in
+`x-captcha-response`. Email OTP send is protected instead by the global
+10-per-minute IP bucket plus HMAC-derived per-recipient limits (3 per minute
+and 10 per day), so a failed Turnstile token cannot consume a legitimate
+email-code attempt.
 
-Google One Tap, Google/GitHub social OAuth, and Generic OAuth must follow the production callback/origin
+Google/GitHub social OAuth and Generic OAuth must follow the production callback/origin
 matrix in [`docs/CINAAUTH_OAUTH_PRODUCTION.md`](../../docs/CINAAUTH_OAUTH_PRODUCTION.md).
 In particular, Generic OAuth callbacks stay on `accounts.cinaseek.ai` so the
 same-origin state and session cookies survive the Service Binding hop. The
-account portal build and Auth Worker must receive the same Google Client ID;
-an enabled backend plugin alone does not render a working One Tap client.
-The account deployment runs `check:oauth-build` against the live capabilities
-endpoint and fails if the backend advertises One Tap while the client build
-input is absent.
+account deployment runs `check:oauth-build` against the live capabilities
+endpoint and fails if the backend advertises One Tap. Google remains available
+only through the redirect-based social provider contract.
 Google Social OAuth is registered only when both `GOOGLE_CLIENT_ID` and
 `GOOGLE_CLIENT_SECRET` are present. GitHub is registered only when both
 `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are present. Their callbacks are
@@ -910,7 +912,7 @@ sixth request in a 60-second window must return HTTP 429 and `X-Retry-After`.
 - optional plugin credentials already listed above
 - when social login is enabled, `GOOGLE_CLIENT_ID` plus
   `GOOGLE_CLIENT_SECRET`, and/or `GITHUB_CLIENT_ID` plus
-  `GITHUB_CLIENT_SECRET`; Google One Tap may use `GOOGLE_CLIENT_ID` alone
+  `GITHUB_CLIENT_SECRET`
 
 Put production credentials in the GitHub `production` environment. Create that
 environment before the first run, restrict it to `main`, require an independent

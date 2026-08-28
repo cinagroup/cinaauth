@@ -137,7 +137,6 @@ jobs:
 
       - name: Test and check OAuth build parity
         env:
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
         run: |
           pnpm run test:oauth-build
@@ -148,7 +147,6 @@ jobs:
         env:
           CINAAUTH_URL: https://auth.cinaseek.ai
           NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
 
       - name: Wait for governed Auth readiness
@@ -190,7 +188,6 @@ jobs:
         env:
           CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities
           CINAAUTH_EMAIL_AUTH_GATE: passwordless
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
         run: pnpm run check:oauth-build
 

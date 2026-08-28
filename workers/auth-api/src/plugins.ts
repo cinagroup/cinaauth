@@ -20,7 +20,6 @@ import {
 	captcha,
 	lastLoginMethod,
 	oauthPopup,
-	oneTap,
 	openAPI,
 } from "cinaauth/plugins";
 import { createAccessControl } from "cinaauth/plugins/access";
@@ -671,14 +670,6 @@ export const createAuthPlugins = (
 				endpoints: [...TURNSTILE_PROTECTED_ENDPOINTS],
 				expectedAction: TURNSTILE_ACTION,
 				allowedHostnames: origins.trustedHostnames,
-			}),
-		);
-	}
-
-	if (env.GOOGLE_CLIENT_ID) {
-		plugins.push(
-			oneTap({
-				clientId: env.GOOGLE_CLIENT_ID,
 			}),
 		);
 	}

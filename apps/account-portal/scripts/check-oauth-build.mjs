@@ -141,26 +141,17 @@ export const resolveAccountBuildReadinessTarget = ({
 	return expectedReadinessUrl;
 };
 
-export const evaluateOneTapBuild = ({ oneTapEnabled, googleClientId }) => {
+export const evaluateRedirectOAuthBuild = ({ oneTapEnabled }) => {
 	if (!oneTapEnabled) {
 		return {
 			ok: true,
-			reason: "the production Auth Worker does not advertise One Tap",
+			reason: "Google uses the standard redirect OAuth flow",
 		};
-	}
-	if (!googleClientId || googleClientId.trim().length === 0) {
-		return {
-			ok: false,
-			reason:
-				"the production Auth Worker advertises One Tap but the account build has no GOOGLE_CLIENT_ID",
-		};
-	}
-	if (googleClientId.length > 512) {
-		return { ok: false, reason: "GOOGLE_CLIENT_ID is unexpectedly long" };
 	}
 	return {
-		ok: true,
-		reason: "the One Tap server and client build are enabled",
+		ok: false,
+		reason:
+			"the production Auth Worker still advertises One Tap instead of redirect OAuth",
 	};
 };
 
@@ -387,14 +378,13 @@ const main = async () => {
 
 	const url = process.env.CINAAUTH_CAPABILITIES_URL || DEFAULT_CAPABILITIES_URL;
 	const { capabilities, cacheControl } = await fetchCapabilities(url);
-	const oneTapResult = evaluateOneTapBuild({
+	const redirectOAuthResult = evaluateRedirectOAuthBuild({
 		oneTapEnabled:
 			typeof capabilities === "object" &&
 			capabilities !== null &&
 			capabilities.oneTap === true,
-		googleClientId: process.env.GOOGLE_CLIENT_ID,
 	});
-	if (!oneTapResult.ok) throw new Error(oneTapResult.reason);
+	if (!redirectOAuthResult.ok) throw new Error(redirectOAuthResult.reason);
 	const reownResult = evaluateReownBuild({
 		siweEnabled:
 			typeof capabilities === "object" &&
@@ -414,7 +404,7 @@ const main = async () => {
 		throw new Error(emailAuthResult.reason);
 	}
 	console.log(
-		`Account identity build parity passed: ${oneTapResult.reason}; ${reownResult.reason}${emailAuthResult ? `; ${emailAuthResult.reason}` : ""}.`,
+		`Account identity build parity passed: ${redirectOAuthResult.reason}; ${reownResult.reason}${emailAuthResult ? `; ${emailAuthResult.reason}` : ""}.`,
 	);
 };
 

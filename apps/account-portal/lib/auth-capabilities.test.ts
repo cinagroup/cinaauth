@@ -5,7 +5,7 @@ import {
 	formatOAuthProviderName,
 	getCaptchaRequestHeaders,
 	isAuthCapabilitiesSnapshot,
-	isOneTapClientReady,
+	isCaptchaEndpointProtected,
 } from "./auth-capabilities";
 
 describe("auth capability discovery", () => {
@@ -186,6 +186,32 @@ describe("auth capability discovery", () => {
 		});
 	});
 
+	it("requires Turnstile only for endpoints named by the server capability", () => {
+		const capabilities = {
+			...CORE_AUTH_CAPABILITIES,
+			captcha: {
+				enabled: true as const,
+				provider: "cloudflare-turnstile" as const,
+				siteKey: "turnstile-site-key",
+				action: "cinaauth",
+				protectedEndpoints: ["/phone-number/send-otp"],
+			},
+		};
+
+		expect(
+			isCaptchaEndpointProtected(capabilities, "/phone-number/send-otp"),
+		).toBe(true);
+		expect(
+			isCaptchaEndpointProtected(
+				capabilities,
+				"/email-otp/send-verification-otp",
+			),
+		).toBe(false);
+		expect(
+			isCaptchaEndpointProtected(undefined, "/phone-number/send-otp"),
+		).toBe(false);
+	});
+
 	it("formats provider identifiers for safe text-only buttons", () => {
 		expect(formatOAuthProviderName("github-enterprise")).toBe(
 			"Github Enterprise",
@@ -195,24 +221,11 @@ describe("auth capability discovery", () => {
 		);
 	});
 
-	it("shows One Tap only when the server and client build both enable it", () => {
-		expect(
-			isOneTapClientReady(
-				{ ...CORE_AUTH_CAPABILITIES, oneTap: true },
-				"google-client-id",
-			),
-		).toBe(true);
-		expect(
-			isOneTapClientReady(
-				{ ...CORE_AUTH_CAPABILITIES, oneTap: false },
-				"google-client-id",
-			),
-		).toBe(false);
-		expect(
-			isOneTapClientReady(
-				{ ...CORE_AUTH_CAPABILITIES, oneTap: true },
-				undefined,
-			),
-		).toBe(false);
+	it("keeps One Tap disabled even if a stale server advertises it", async () => {
+		const capabilities = await fetchAuthCapabilities(async () =>
+			Response.json({ ...CORE_AUTH_CAPABILITIES, oneTap: true }),
+		);
+
+		expect(capabilities.oneTap).toBe(false);
 	});
 });

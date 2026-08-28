@@ -5,7 +5,10 @@ import { useTheme } from "next-themes";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
-import { getCaptchaRequestHeaders } from "@/lib/auth-capabilities";
+import {
+	getCaptchaRequestHeaders,
+	isCaptchaEndpointProtected,
+} from "@/lib/auth-capabilities";
 
 type TurnstileRenderOptions = {
 	sitekey: string;
@@ -72,14 +75,16 @@ export const isTurnstileSubmissionReady = ({
 	!hasCapabilityError &&
 	(!enabled || Boolean(siteKey && action && token));
 
-export const useTurnstileChallenge = (): TurnstileChallengeState => {
+export const useTurnstileChallenge = (
+	endpoint: string,
+): TurnstileChallengeState => {
 	const capabilities = useAuthCapabilities();
 	const [token, setToken] = useState<string | null>(null);
 	const [resetKey, setResetKey] = useState(0);
 	const captcha = capabilities.data?.captcha;
-	const enabled = captcha?.enabled === true;
-	const siteKey = enabled ? captcha.siteKey : null;
-	const action = enabled ? captcha.action : null;
+	const enabled = isCaptchaEndpointProtected(capabilities.data, endpoint);
+	const siteKey = enabled ? (captcha?.siteKey ?? null) : null;
+	const action = enabled ? (captcha?.action ?? null) : null;
 
 	useEffect(() => {
 		setToken(null);

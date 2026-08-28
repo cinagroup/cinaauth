@@ -141,7 +141,7 @@ describe("public auth capabilities", () => {
 			{ id: "github", type: "social" },
 			{ id: "github-enterprise", type: "generic-oauth" },
 		]);
-		expect(capabilities.oneTap).toBe(true);
+		expect(capabilities.oneTap).toBe(false);
 		expect(capabilities.methods.emailOtp).toBe(true);
 		expect(capabilities.methods.emailPassword).toBe(false);
 		expect(capabilities.methods.magicLink).toBe(false);
@@ -153,8 +153,11 @@ describe("public auth capabilities", () => {
 			siteKey: "turnstile-site-key",
 			action: "cinaauth",
 		});
-		expect(capabilities.captcha.protectedEndpoints).toContain(
+		expect(capabilities.captcha.protectedEndpoints).not.toContain(
 			"/email-otp/send-verification-otp",
+		);
+		expect(capabilities.captcha.protectedEndpoints).toContain(
+			"/phone-number/send-otp",
 		);
 		for (const retiredEndpoint of [
 			"/sign-up/email",

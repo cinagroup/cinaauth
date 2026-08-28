@@ -13,6 +13,9 @@ describe("Accounts card-first sign-in contract", () => {
 		const providerSource = readSource(
 			"../components/oauth-provider-buttons.tsx",
 		);
+		const signUpSource = readSource(
+			"../app/(auth)/sign-up/_components/sign-up.tsx",
+		);
 
 		expect(source).toContain("<EmailOtpForm");
 		expect(source).toContain("window.location.href = callbackURL");
@@ -21,18 +24,24 @@ describe("Accounts card-first sign-in contract", () => {
 		expect(source).toContain("signInPolicy.allowFederatedProviders");
 		expect(source).not.toContain("password");
 		expect(source).not.toContain("Magic Link");
+		expect(source).not.toContain("Continue with passkey");
+		expect(source).not.toContain("signIn.passkey");
 		expect(formSource).toContain('autoComplete="one-time-code"');
 		expect(formSource).toContain("existingUserOnly");
 		expect(clientSource).not.toContain("usernameClient");
 		expect(clientSource).not.toContain("magicLinkClient");
+		expect(clientSource).not.toContain("oneTapClient");
+		expect(clientSource).not.toContain("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
 		expect(providerSource).toContain("<FieldSeparator>Or</FieldSeparator>");
 		expect(providerSource).toContain('data-icon="inline-start"');
-		expect(providerSource).toContain("new ResizeObserver");
-		expect(providerSource).toContain("googleButtonWidth");
-		expect(providerSource).toContain("googleButtonMeasureRef");
-		expect(providerSource).toContain('key={googleButtonWidth ?? "pending"}');
+		expect(providerSource).toContain("authClient.signIn.social");
+		expect(providerSource).not.toContain("authClient.oneTap");
+		expect(providerSource).not.toContain("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
+		expect(providerSource).not.toContain("new ResizeObserver");
 		expect(providerSource).not.toContain("content-visibility: hidden");
 		expect(providerSource).not.toContain("flex-grow border-t");
+		expect(signUpSource).not.toContain("isOneTapClientReady");
+		expect(signUpSource).not.toContain("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
 	});
 
 	it("isolates every authentication route from the marketing chrome", () => {

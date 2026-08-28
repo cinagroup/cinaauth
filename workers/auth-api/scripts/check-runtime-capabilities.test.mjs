@@ -25,7 +25,7 @@ describe("live optional capability checks", () => {
 					"CINAAUTH_ENTITLEMENT_CONFIG",
 				),
 				capabilities: {
-					oneTap: true,
+					oneTap: false,
 					oauthProviders: [
 						{ id: "google", type: "social" },
 						{ id: "github", type: "social" },
@@ -61,11 +61,26 @@ describe("live optional capability checks", () => {
 				billing: false,
 			},
 		});
-		assert.equal(failures.length, 6);
-		assert.match(failures.join("\n"), /GOOGLE_CLIENT_ID/);
+		assert.equal(failures.length, 5);
 		assert.match(failures.join("\n"), /GENERIC_OAUTH_CONFIG/);
 		assert.match(failures.join("\n"), /Google social/);
 		assert.match(failures.join("\n"), /GitHub social/);
+	});
+
+	it("rejects a runtime that advertises Google One Tap", () => {
+		const failures = evaluateRuntimeCapabilities({
+			configuredInputs: configured("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
+			capabilities: {
+				oneTap: true,
+				oauthProviders: [{ id: "google", type: "social" }],
+				captcha: { enabled: false },
+				billing: false,
+			},
+		});
+
+		assert.deepEqual(failures, [
+			"Live One Tap capability must remain disabled for redirect-based Google OAuth",
+		]);
 	});
 
 	it("does not treat Stripe secrets without a Price as configured billing", () => {
@@ -106,7 +121,7 @@ describe("live optional capability checks", () => {
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "false" },
-				capabilities: { methods: { siwe: false } },
+				capabilities: { oneTap: false, methods: { siwe: false } },
 			}),
 			[],
 		);
@@ -114,7 +129,7 @@ describe("live optional capability checks", () => {
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "true" },
-				capabilities: { methods: { siwe: true } },
+				capabilities: { oneTap: false, methods: { siwe: true } },
 			}),
 			[],
 		);
@@ -122,7 +137,7 @@ describe("live optional capability checks", () => {
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "false" },
-				capabilities: { methods: { siwe: true } },
+				capabilities: { oneTap: false, methods: { siwe: true } },
 			})[0],
 			/SIWE kill switch/,
 		);
@@ -130,7 +145,7 @@ describe("live optional capability checks", () => {
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "true" },
-				capabilities: { methods: { siwe: false } },
+				capabilities: { oneTap: false, methods: { siwe: false } },
 			})[0],
 			/SIWE kill switch/,
 		);
