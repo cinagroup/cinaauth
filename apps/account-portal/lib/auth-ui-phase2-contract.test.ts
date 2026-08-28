@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { completeLocalSignInSuccess } from "./auth-form-response";
 import {
-	completeEmailOtpSignUp,
+	completeEmailOtpAuthentication,
 	getEmailOtpCopy,
 	normalizeEmailOtp,
 	requiresExistingEmailOtpUser,
@@ -39,9 +39,9 @@ signedCreateQuery.set("prompt", "consent create");
 signedCreateQuery.append("ba_param", "prompt");
 
 describe("Accounts authentication UI phase two contract", () => {
-	it("preserves signed OIDC context through email registration", () => {
+	it("preserves signed OIDC context through unified email authentication", () => {
 		const target = new URL(
-			buildPreservedAuthPath("/sign-up/email", signedSignUpQuery, "/dashboard"),
+			buildPreservedAuthPath("/sign-in", signedSignUpQuery, "/dashboard"),
 			"https://accounts.cinaseek.ai",
 		);
 
@@ -66,7 +66,7 @@ describe("Accounts authentication UI phase two contract", () => {
 		).toBe(false);
 	});
 
-	it("keeps sign-up on the sign-in email OTP server contract", () => {
+	it("allows ordinary email sign-in to create a verified user", () => {
 		expect(getEmailOtpCopy("signup")).toMatchObject({
 			sendButton: "Send sign-up code",
 			verifyButton: "Verify and continue",
@@ -77,14 +77,14 @@ describe("Accounts authentication UI phase two contract", () => {
 		});
 		expect(requiresNewEmailOtpUser("signup")).toBe(true);
 		expect(requiresNewEmailOtpUser("signin")).toBe(false);
-		expect(requiresExistingEmailOtpUser("signin")).toBe(true);
+		expect(requiresExistingEmailOtpUser("signin")).toBe(false);
 		expect(requiresExistingEmailOtpUser("signup")).toBe(false);
 	});
 
 	it("continues prompt=create exactly once without trusting redirect_uri", async () => {
 		const continueOidcCreation = vi.fn().mockResolvedValue(undefined);
 		const navigate = vi.fn();
-		const outcome = await completeEmailOtpSignUp({
+		const outcome = await completeEmailOtpAuthentication({
 			params: signedCreateQuery,
 			callbackURL: "/dashboard",
 			continueOidcCreation,
@@ -101,7 +101,7 @@ describe("Accounts authentication UI phase two contract", () => {
 		const navigate = vi.fn();
 
 		expect(
-			await completeEmailOtpSignUp({
+			await completeEmailOtpAuthentication({
 				params: signedSignUpQuery,
 				callbackURL: "/dashboard",
 				continueOidcCreation,
@@ -112,7 +112,7 @@ describe("Accounts authentication UI phase two contract", () => {
 		expect(navigate).not.toHaveBeenCalled();
 
 		expect(
-			await completeEmailOtpSignUp({
+			await completeEmailOtpAuthentication({
 				params: new URLSearchParams(),
 				callbackURL: "/device?user_code=ABCD-EFGH",
 				continueOidcCreation,
@@ -192,40 +192,21 @@ describe("Accounts authentication UI phase two contract", () => {
 		expect(signedQuerySource).not.toContain("Object.fromEntries(params)");
 	});
 
-	it("wires both registration pages through the preserved auth context", () => {
+	it("wires the unified sign-in page through the preserved auth context", () => {
 		const signInPageSource = readSource("../app/(auth)/sign-in/page.tsx");
-		const signUpLinkSource = readSource(
-			"../app/(auth)/sign-in/_components/sign-up-link.tsx",
+		const signInSource = readSource(
+			"../app/(auth)/sign-in/_components/sign-in.tsx",
 		);
-		const signUpSource = readSource(
-			"../app/(auth)/sign-up/_components/sign-up.tsx",
-		);
-		const signUpStateSource = readSource(
-			"../app/(auth)/sign-up/_components/sign-up-state.ts",
-		);
-		const emailPageSource = readSource("../app/(auth)/sign-up/email/page.tsx");
 
-		expect(signUpSource).toContain("useSearchParams");
-		expect(signUpSource).toContain("buildPreservedAuthPath");
-		expect(signUpSource).toContain("hasSignedOidcCreatePrompt");
-		expect(signUpSource).toContain("getSignUpAvailability");
-		expect(signUpStateSource).toContain(
-			"const showOAuth = !hasCreatePrompt && oauthReady",
+		expect(signInSource).toContain("hasSignedOidcCreatePrompt");
+		expect(signInSource).toContain("completeEmailOtpAuthentication");
+		expect(signInSource).toContain("authClient.oauth2.continue");
+		expect(signInSource).toContain("created: true");
+		expect(signInSource).toContain("suppressAutomaticRedirect");
+		expect(signInSource).toContain(
+			'intent={hasCreatePrompt ? "signup" : "signin"}',
 		);
-		expect(signUpSource).not.toContain('href="/sign-up/email"');
-		expect(signUpSource).not.toContain('callbackURL="/dashboard"');
-		expect(emailPageSource).toContain("completeEmailOtpSignUp");
-		expect(emailPageSource).toContain("hasSignedOidcCreatePrompt");
-		expect(emailPageSource).toContain("authClient.oauth2.continue");
-		expect(emailPageSource).toContain("created: true");
-		expect(emailPageSource).toContain("suppressAutomaticRedirect");
-		expect(emailPageSource).toContain('intent="signup"');
-		expect(emailPageSource).not.toContain(
-			'onSuccess={() => (window.location.href = "/dashboard")}',
-		);
-		expect(signInPageSource).toContain("<SignUpLink />");
-		expect(signUpLinkSource).toContain("useSearchParams");
-		expect(signUpLinkSource).toContain("buildPreservedAuthPath");
-		expect(signUpLinkSource).not.toContain('href="/sign-up"');
+		expect(signInSource).toContain("Wallet sign-in is for existing accounts");
+		expect(signInPageSource).not.toContain("<SignUpLink />");
 	});
 });

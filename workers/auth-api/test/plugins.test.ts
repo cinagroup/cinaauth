@@ -109,7 +109,7 @@ describe("passwordless email authentication policy", () => {
 			),
 		).toBeLessThan(plugins.findIndex((plugin) => plugin.id === "email-otp"));
 		expect(emailOtpPlugin?.options).toMatchObject({
-			disableImplicitSignUp: true,
+			disableImplicitSignUp: false,
 			disablePasswordReset: true,
 			storeOTP: "encrypted",
 		});
@@ -150,8 +150,15 @@ describe("OIDC signing and social provider configuration", () => {
 				GOOGLE_CLIENT_SECRET: "google-secret",
 			}),
 		);
+		const oauthProviderPlugin = plugins.find(
+			(plugin) => plugin.id === "oauth-provider",
+		);
 
 		expect(plugins.some((plugin) => plugin.id === "one-tap")).toBe(false);
+		expect(oauthProviderPlugin?.options).toMatchObject({
+			loginPage: "https://accounts.cinaseek.ai/sign-in",
+			signup: { page: "https://accounts.cinaseek.ai/sign-in" },
+		});
 	});
 
 	it("rejects a persisted demo client when the optional demo origin is disabled", async () => {
@@ -276,11 +283,15 @@ describe("OIDC signing and social provider configuration", () => {
 				clientId: "google-client-id",
 				clientSecret: "google-secret",
 				redirectURI: "https://accounts.cinaseek.ai/api/auth/callback/google",
+				disableImplicitSignUp: false,
+				disableSignUp: false,
 			},
 			github: {
 				clientId: "github-client-id",
 				clientSecret: "github-secret",
 				redirectURI: "https://accounts.cinaseek.ai/api/auth/callback/github",
+				disableImplicitSignUp: false,
+				disableSignUp: false,
 			},
 		});
 	});

@@ -45,6 +45,14 @@ export function buildLegacyPasswordSignInRedirect(
 	return buildPreservedAuthPath("/sign-in", params, callbackURL);
 }
 
+/**
+ * Keeps old registration links functional while routing every account through
+ * the unified sign-in-or-create experience.
+ */
+export function buildUnifiedSignUpRedirect(input: LegacyAuthSearchParams) {
+	return buildLegacyPasswordSignInRedirect(input);
+}
+
 /** Retires email-delivered 2FA while retaining the pending challenge state. */
 export function buildRetiredEmailTwoFactorRedirect(
 	input: LegacyAuthSearchParams,

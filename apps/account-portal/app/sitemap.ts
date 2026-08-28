@@ -4,7 +4,7 @@ const SITE_URL = "https://accounts.cinaseek.ai";
 
 export default function sitemap(): MetadataRoute.Sitemap {
 	// Public marketing routes only — auth/dashboard/admin excluded.
-	const publicRoutes = ["", "/sign-in", "/sign-up", "/pricing"];
+	const publicRoutes = ["", "/sign-in", "/pricing"];
 
 	return publicRoutes.map((route) => ({
 		url: `${SITE_URL}${route}`,

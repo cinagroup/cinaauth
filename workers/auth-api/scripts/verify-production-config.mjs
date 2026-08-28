@@ -245,6 +245,11 @@ const adminSuperAdminGuardFile = join(
 const auditRetentionFile = join(workerDir, "src", "audit-retention.ts");
 const oauthConfigFile = join(workerDir, "src", "oauth-config.ts");
 const pluginsFile = join(workerDir, "src", "plugins.ts");
+const socialProviderCatalogFile = join(
+	workerDir,
+	"src",
+	"social-provider-catalog.ts",
+);
 const emailOtpTargetRateLimitFile = join(
 	workerDir,
 	"src",
@@ -442,6 +447,42 @@ const accountSignInExperienceFile = join(
 	nextDemoDir,
 	"lib",
 	"sign-in-experience.ts",
+);
+const accountEmailOtpFlowFile = join(nextDemoDir, "lib", "email-otp-flow.ts");
+const accountLegacyAuthRedirectFile = join(
+	nextDemoDir,
+	"lib",
+	"legacy-auth-redirect.ts",
+);
+const accountSignInPageFile = join(
+	nextDemoDir,
+	"app",
+	"(auth)",
+	"sign-in",
+	"page.tsx",
+);
+const accountSignInComponentFile = join(
+	nextDemoDir,
+	"app",
+	"(auth)",
+	"sign-in",
+	"_components",
+	"sign-in.tsx",
+);
+const accountLegacySignUpPageFile = join(
+	nextDemoDir,
+	"app",
+	"(auth)",
+	"sign-up",
+	"page.tsx",
+);
+const accountLegacyEmailSignUpPageFile = join(
+	nextDemoDir,
+	"app",
+	"(auth)",
+	"sign-up",
+	"email",
+	"page.tsx",
 );
 const legacyAdminPageFile = join(nextDemoDir, "app", "admin", "page.tsx");
 const adminConsoleDir = join(repoRoot, "apps", "admin-console");
@@ -912,6 +953,7 @@ const adminSuperAdminGuardTs = read(adminSuperAdminGuardFile);
 const auditRetentionTs = read(auditRetentionFile);
 const oauthConfigTs = read(oauthConfigFile);
 const pluginsTs = read(pluginsFile);
+const socialProviderCatalogTs = read(socialProviderCatalogFile);
 const emailOtpTargetRateLimitTs = read(emailOtpTargetRateLimitFile);
 const originConfigTs = read(originConfigFile);
 const coreRedirectUriTs = read(coreRedirectUriFile);
@@ -969,6 +1011,12 @@ const localDeploymentScript = read(localDeploymentScriptFile);
 const accountWrangler = read(accountWranglerFile);
 const accountMiddleware = read(accountMiddlewareFile);
 const accountSignInExperience = read(accountSignInExperienceFile);
+const accountEmailOtpFlow = read(accountEmailOtpFlowFile);
+const accountLegacyAuthRedirect = read(accountLegacyAuthRedirectFile);
+const accountSignInPage = read(accountSignInPageFile);
+const accountSignInComponent = read(accountSignInComponentFile);
+const accountLegacySignUpPage = read(accountLegacySignUpPageFile);
+const accountLegacyEmailSignUpPage = read(accountLegacyEmailSignUpPageFile);
 const legacyAdminPage = read(legacyAdminPageFile);
 const adminPackage = readJson(adminPackageFile);
 const adminWrangler = read(adminWranglerFile);
@@ -1343,7 +1391,7 @@ checkIncludesAll(
 	pluginsTs,
 	[
 		"emailOTP({",
-		"disableImplicitSignUp: true",
+		"disableImplicitSignUp: false",
 		"disablePasswordReset: true",
 		'storeOTP: "encrypted"',
 		"createEmailOtpTargetRateLimitPlugin(env)",
@@ -1352,7 +1400,19 @@ checkIncludesAll(
 		'additionalSignInEndpoints: ["/sign-in/email-otp"]',
 	],
 	pluginsFile,
-	"production email authentication must use encrypted OTP storage and opt into two-factor step-up",
+	"production email authentication must create first-time users only after encrypted OTP verification and opt into two-factor step-up",
+);
+checkIncludesAll(
+	pluginsTs,
+	["page: `${origins.accountOrigin}/sign-in`"],
+	pluginsFile,
+	"the OIDC account-creation prompt must use the unified Accounts entry",
+);
+checkIncludesAll(
+	socialProviderCatalogTs,
+	["disableImplicitSignUp: false", "disableSignUp: false"],
+	socialProviderCatalogFile,
+	"configured social providers must allow verified first-time callbacks to create users",
 );
 const emailOtpTargetLimitPluginIndex = pluginsTs.indexOf(
 	"\n\t\tcreateEmailOtpTargetRateLimitPlugin(env),",
@@ -2273,6 +2333,9 @@ checkIncludesAll(
 		"https://accounts.cinaseek.ai",
 		"oneTap: false",
 		"Google 与 GitHub 使用相同的重定向按钮和回调模型",
+		"只有 `/sign-in` 一个“登录或创建账号”入口",
+		"disableImplicitSignUp: false",
+		"disableSignUp: false",
 		"https://accounts.cinaseek.ai/api/auth/callback/google",
 		"https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>",
 		"GENERIC_OAUTH_CONFIG",
@@ -4122,6 +4185,55 @@ checkIncludesAll(
 	accountSignInExperienceFile,
 	"account sign-in return targets must use the canonical callback key, retain the legacy device alias, and stay on the Accounts origin",
 );
+checkIncludesAll(
+	accountEmailOtpFlow,
+	[
+		"requiresExistingEmailOtpUser",
+		"return false",
+		"completeEmailOtpAuthentication",
+		"hasSignedOidcCreatePrompt",
+	],
+	accountEmailOtpFlowFile,
+	"ordinary email authentication must permit OTP-gated first-time users while preserving signed OIDC creation",
+);
+checkIncludesAll(
+	accountSignInPage,
+	['title="Sign in or create your account"'],
+	accountSignInPageFile,
+	"the Account Portal must expose a single sign-in-or-create entry",
+);
+checkIncludesAll(
+	accountSignInComponent,
+	[
+		"completeEmailOtpAuthentication",
+		"hasSignedOidcCreatePrompt",
+		"created: true",
+		"Wallet sign-in is for existing accounts",
+	],
+	accountSignInComponentFile,
+	"the unified entry must preserve create-prompt continuation and keep SIWE existing-account-only",
+);
+checkIncludesAll(
+	accountLegacyAuthRedirect,
+	["buildUnifiedSignUpRedirect", "buildLegacyPasswordSignInRedirect(input)"],
+	accountLegacyAuthRedirectFile,
+	"legacy sign-up links must use the same sanitized signed-query redirect as retired password links",
+);
+for (const [file, source] of [
+	[accountLegacySignUpPageFile, accountLegacySignUpPage],
+	[accountLegacyEmailSignUpPageFile, accountLegacyEmailSignUpPage],
+]) {
+	checkIncludesAll(
+		source,
+		["buildUnifiedSignUpRedirect", "redirect("],
+		file,
+		"legacy sign-up pages must redirect to the unified account entry",
+	);
+	check(
+		!source.includes("<AuthShell") && !source.includes("<EmailOtpForm"),
+		`${rel(file)} must not retain a separate registration UI`,
+	);
+}
 checkIncludesAll(
 	legacyAdminPage,
 	["permanentRedirect", "https://admin.cinaseek.ai"],

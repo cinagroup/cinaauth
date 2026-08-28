@@ -62,6 +62,11 @@ export const buildSocialProviderOption = (
 ) => ({
 	clientId,
 	clientSecret,
+	// The Accounts UI has one "continue" entry point. A provider callback may
+	// therefore create a verified first-time user instead of requiring a
+	// separate registration route.
+	disableImplicitSignUp: false,
+	disableSignUp: false,
 	redirectURI: `${accountOrigin}/api/auth/callback/${id}`,
 });
 

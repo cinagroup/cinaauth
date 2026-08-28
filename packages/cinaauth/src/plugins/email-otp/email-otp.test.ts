@@ -82,6 +82,27 @@ describe("email-otp", async () => {
 		expect(verifiedUser.data?.token).toBeDefined();
 	});
 
+	it("should create a verified account when sign-in mode is not restricted", async () => {
+		const email = "first-time-sign-in@email.com";
+		await client.emailOtp.sendVerificationOtp({
+			email,
+			type: "sign-in",
+		});
+
+		const result = await client.signIn.emailOtp({ email, otp });
+
+		expect(result.error).toBeNull();
+		expect(result.data?.user).toMatchObject({
+			email,
+			emailVerified: true,
+		});
+		await expect(
+			(await auth.$context).internalAdapter.findUserByEmail(email),
+		).resolves.toMatchObject({
+			user: { email, emailVerified: true },
+		});
+	});
+
 	it("should reject an existing account when a new account is required", async () => {
 		await client.emailOtp.sendVerificationOtp({
 			email: testUser.email,

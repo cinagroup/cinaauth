@@ -30,10 +30,15 @@ Google 登录不使用 One Tap 或 Google Identity Services 浏览器组件。�
 * Google 和 GitHub 控制台都只登记各自的精确回调。不要使用通配符或旧 Demo 域名。
 * 账号中心根据 `oauthProviders[].type === "social"` 调用 `signIn.social`；Generic OAuth
   仍调用 `signIn.oauth2`。Google 与 GitHub 使用相同的重定向按钮和回调模型。
+* 账号中心只有 `/sign-in` 一个“登录或创建账号”入口。Google/GitHub 配置显式保持
+  `disableImplicitSignUp: false` 与 `disableSignUp: false`：已有账号建立会话，首次通过
+  供应商回调的用户直接创建账号，不再跳转到独立注册页。
+* 此策略不启用隐式账号合并。邮箱不同或已存在其他身份时，仍必须登录后在 Security
+  中显式关联；不要通过放宽 `disableImplicitLinking` 来规避冲突。
 
 发布后分别验证 `/api/auth/sign-in/social` 发出的 `redirect_uri`、成功回调、拒绝授权、
-state 不匹配、会话建立、注销和账号删除。只有真实供应商端到端验收完成后，才能将相应
-连接器标记为生产可用。
+state 不匹配、已有用户登录、首次用户建号、会话建立、注销和账号删除。只有真实供应商
+端到端验收完成后，才能将相应连接器标记为生产可用。
 
 ## Generic OAuth/OIDC
 
