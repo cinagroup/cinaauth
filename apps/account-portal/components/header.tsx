@@ -31,7 +31,7 @@ const Header = () => {
 					Log in
 				</Link>
 				<Button asChild size="sm" className="hidden md:inline-flex h-7">
-					<Link href="/sign-up">Sign up</Link>
+					<Link href="/sign-in">Get started</Link>
 				</Button>
 				<ThemeToggle />
 			</div>

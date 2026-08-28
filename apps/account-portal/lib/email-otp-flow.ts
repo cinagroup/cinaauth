@@ -40,9 +40,12 @@ export function requiresNewEmailOtpUser(intent: EmailOtpIntent) {
 	return intent === "signup";
 }
 
-/** Prevents the sign-in path from silently registering an unknown address. */
-export function requiresExistingEmailOtpUser(intent: EmailOtpIntent) {
-	return intent === "signin";
+/**
+ * Ordinary email authentication is intentionally account-mode agnostic.
+ * Account creation still occurs only after the OTP has been verified.
+ */
+export function requiresExistingEmailOtpUser(_intent: EmailOtpIntent) {
+	return false;
 }
 
 export function suppressEmailOtpAutomaticRedirect(data: unknown) {
@@ -58,7 +61,7 @@ export function suppressEmailOtpAutomaticRedirect(data: unknown) {
 	return true;
 }
 
-export async function completeEmailOtpSignUp({
+export async function completeEmailOtpAuthentication({
 	params,
 	callbackURL,
 	continueOidcCreation,

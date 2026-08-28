@@ -8,11 +8,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ReownWalletEntry } from "@/components/wallet/reown-wallet-entry";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
+import { authClient } from "@/lib/auth-client";
 import {
 	getAccountSignInPolicy,
 	getAccountStepUpNotice,
 } from "@/lib/client-api";
-import { hasSignedOidcAuthorizationQuery } from "@/lib/oidc-navigation";
+import { completeEmailOtpAuthentication } from "@/lib/email-otp-flow";
+import {
+	hasSignedOidcAuthorizationQuery,
+	hasSignedOidcCreatePrompt,
+} from "@/lib/oidc-navigation";
 import {
 	getAccountCallbackURL,
 	getSignInAlert,
@@ -26,12 +31,15 @@ export default function SignIn({
 	const searchParams = useSearchParams();
 	const callbackURL = getAccountCallbackURL(searchParams);
 	const hasOidcQuery = hasSignedOidcAuthorizationQuery(searchParams);
+	const hasCreatePrompt = hasSignedOidcCreatePrompt(searchParams);
 	const capabilities = useAuthCapabilities();
 	const emailOtpReady = capabilities.data?.methods.emailOtp === true;
 	const alert = getSignInAlert(searchParams.get("error"));
 	const mode = searchParams.get("mode");
 	const signInPolicy = getAccountSignInPolicy(mode);
 	const stepUpNotice = getAccountStepUpNotice(mode);
+	const allowFederatedProviders =
+		signInPolicy.allowFederatedProviders && !hasCreatePrompt;
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -58,12 +66,26 @@ export default function SignIn({
 			) : null}
 
 			<EmailOtpForm
-				onSuccess={() => {
-					if (!hasOidcQuery) window.location.href = callbackURL;
+				intent={hasCreatePrompt ? "signup" : "signin"}
+				suppressAutomaticRedirect={hasCreatePrompt}
+				onSuccess={async () => {
+					await completeEmailOtpAuthentication({
+						params: searchParams,
+						callbackURL,
+						continueOidcCreation: async () => {
+							await authClient.oauth2.continue(
+								{ created: true },
+								{ throw: true },
+							);
+						},
+						navigate: (path) => {
+							window.location.href = path;
+						},
+					});
 				}}
 			/>
 
-			{signInPolicy.allowFederatedProviders ? (
+			{allowFederatedProviders ? (
 				<div className="flex flex-col gap-3" aria-label="Other sign-in methods">
 					<ReownWalletEntry
 						capabilities={capabilities.data}
@@ -75,6 +97,13 @@ export default function SignIn({
 							if (!hasOidcQuery) window.location.href = callbackURL;
 						}}
 					/>
+					{capabilities.data?.methods.siwe === true ? (
+						<p className="text-center text-xs leading-5 text-body">
+							Wallet sign-in is for existing accounts. New users can start with
+							email or another configured provider, then link a wallet in
+							Security.
+						</p>
+					) : null}
 				</div>
 			) : null}
 
@@ -121,16 +150,16 @@ export default function SignIn({
 				</Alert>
 			) : null}
 
-			{signInPolicy.allowFederatedProviders ? (
+			{allowFederatedProviders ? (
 				<OAuthProviderButtons callbackURL={callbackURL} />
-			) : (
+			) : !hasCreatePrompt ? (
 				<p className="rounded-md bg-canvas-soft-2 px-3 py-2 text-center text-xs leading-5 text-body">
 					Automatic and social sign-in are unavailable for this identity check.
 					{emailOtpReady
 						? " Request an email code to continue."
 						: " No eligible sign-in method is currently available."}
 				</p>
-			)}
+			) : null}
 		</div>
 	);
 }

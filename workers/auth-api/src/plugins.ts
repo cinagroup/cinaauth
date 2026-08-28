@@ -342,9 +342,9 @@ export const createAuthPlugins = (
 		}),
 		createEmailOtpTargetRateLimitPlugin(env),
 		emailOTP({
-			// Sign-in requests default to existing accounts only. The dedicated
-			// sign-up flow must opt into account creation with newUserOnly=true.
-			disableImplicitSignUp: true,
+			// Email verification is the account-creation boundary: existing users
+			// sign in and unknown addresses are created only after a valid OTP.
+			disableImplicitSignUp: false,
 			// Password credentials are not part of the passwordless Accounts
 			// contract, so do not expose OTP routes that can create one.
 			disablePasswordReset: true,
@@ -463,7 +463,7 @@ export const createAuthPlugins = (
 			loginPage: `${origins.accountOrigin}/sign-in`,
 			consentPage: `${origins.accountOrigin}/oauth/consent`,
 			signup: {
-				page: `${origins.accountOrigin}/sign-up`,
+				page: `${origins.accountOrigin}/sign-in`,
 			},
 			selectAccount: {
 				page: `${origins.accountOrigin}/oauth/select-account`,

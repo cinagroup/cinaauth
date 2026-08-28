@@ -38,10 +38,10 @@ Fully implemented the Vercel design system across the CinaAuth demo site (`demo-
 ### Page Components
 - `app/layout.tsx` — Added `<main id="main">`, skip-link, footer, deferred ripple background, fixed gutters
 - `app/page.tsx` — Mesh gradient hero, py-48 (192px), display-xl headline, CTA pair, feature grid 3-up
-- `app/(auth)/sign-in/page.tsx` — display-lg headline, sentence-case, period-terminated, link colors
-- `app/(auth)/sign-up/page.tsx` — display-lg headline, sentence-case, period-terminated, link colors
+- `app/(auth)/sign-in/page.tsx` — unified sign-in-or-create card, display-lg headline, sentence-case
+- `app/(auth)/sign-up/page.tsx` — compatibility redirect to the unified sign-in route
 - `app/(auth)/sign-in/email/page.tsx` — display-lg headline, sentence-case, period-terminated
-- `app/(auth)/sign-up/email/page.tsx` — display-lg headline, sentence-case, period-terminated
+- `app/(auth)/sign-up/email/page.tsx` — compatibility redirect to the unified sign-in route
 - `app/(auth)/device/approve/page.tsx` — display-md headline, sentence-case, period-terminated
 - `app/(auth)/device/denied/page.tsx` — display-md headline, sentence-case, period-terminated, error colors
 - `app/(auth)/device/page.tsx` — display-md headline, sentence-case, period-terminated

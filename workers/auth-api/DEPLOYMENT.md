@@ -57,6 +57,28 @@ redirect URI. `CINATOKEN_OIDC_CLIENT_SECRET` (with the `cina_cs_` prefix) and
 the cinatoken Admin Worker. Bootstrap or rotate them through Wrangler stdin;
 never add them to mutable bulk-provisioning inputs or tracked configuration.
 
+## Unified sign-in and first-time account creation
+
+Accounts exposes one user-facing entry at `https://accounts.cinaseek.ai/sign-in`.
+There is no separate registration choice: an existing email signs in, while an
+unknown email creates a verified user only after the six-digit OTP passes its
+atomic single-use check. The production Email OTP plugin therefore keeps
+`disableImplicitSignUp: false`, encrypted OTP storage, recipient/IP rate limits,
+and password-reset routes disabled.
+
+Configured Google and GitHub redirect providers also permit a provider callback
+to create a first-time user. Both provider options pin
+`disableImplicitSignUp: false` and `disableSignUp: false`; a partial credential
+pair still fails closed. The OIDC provider's login and account-creation pages
+both point to `/sign-in`. Legacy `/sign-up` and `/sign-up/email` URLs remain only
+as sanitized redirects so bookmarked and Worker-signed OIDC requests continue
+without exposing a second registration UI.
+
+This policy does not enable implicit account linking. SIWE remains an
+existing-account method because `CINAAUTH_SIWE_AUTO_SIGNUP=false`; a first-time
+wallet user must authenticate with email or another configured provider and
+then explicitly link the wallet from Security.
+
 ## SIWE rollout controls
 
 Production and staging are separate identity environments. Before creating any

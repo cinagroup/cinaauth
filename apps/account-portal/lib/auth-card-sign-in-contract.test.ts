@@ -13,12 +13,9 @@ describe("Accounts card-first sign-in contract", () => {
 		const providerSource = readSource(
 			"../components/oauth-provider-buttons.tsx",
 		);
-		const signUpSource = readSource(
-			"../app/(auth)/sign-up/_components/sign-up.tsx",
-		);
 
 		expect(source).toContain("<EmailOtpForm");
-		expect(source).toContain("window.location.href = callbackURL");
+		expect(source).toContain("window.location.href = path");
 		expect(source).not.toContain("<SignInForm");
 		expect(source).toContain("<OAuthProviderButtons");
 		expect(source).toContain("signInPolicy.allowFederatedProviders");
@@ -28,6 +25,8 @@ describe("Accounts card-first sign-in contract", () => {
 		expect(source).not.toContain("signIn.passkey");
 		expect(formSource).toContain('autoComplete="one-time-code"');
 		expect(formSource).toContain("existingUserOnly");
+		expect(source).toContain("completeEmailOtpAuthentication");
+		expect(source).toContain("Wallet sign-in is for existing accounts");
 		expect(clientSource).not.toContain("usernameClient");
 		expect(clientSource).not.toContain("magicLinkClient");
 		expect(clientSource).not.toContain("oneTapClient");
@@ -40,8 +39,6 @@ describe("Accounts card-first sign-in contract", () => {
 		expect(providerSource).not.toContain("new ResizeObserver");
 		expect(providerSource).not.toContain("content-visibility: hidden");
 		expect(providerSource).not.toContain("flex-grow border-t");
-		expect(signUpSource).not.toContain("isOneTapClientReady");
-		expect(signUpSource).not.toContain("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
 	});
 
 	it("isolates every authentication route from the marketing chrome", () => {
