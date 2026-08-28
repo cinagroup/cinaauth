@@ -55,4 +55,22 @@ describe("Reown wallet bundle boundary", () => {
 		expect(security).not.toContain("buildSiweMessage");
 		expect(security).not.toContain("authClient.siwe.nonce");
 	});
+
+	it("surfaces wallet status from the account overview and deep-links to management", () => {
+		const dashboard = readSource("../app/dashboard/page.tsx");
+		const overview = readSource(
+			"../app/dashboard/_components/wallet-overview-card.tsx",
+		);
+		const security = readSource(
+			"../app/dashboard/security/security-center.tsx",
+		);
+
+		expect(dashboard).toMatch(/auth\.api\s*\.listWallets/);
+		expect(dashboard).toContain("getWalletOverviewSummary");
+		expect(dashboard).toContain("<WalletOverviewCard");
+		expect(overview).toContain('href="/dashboard/security#wallets"');
+		expect(overview).toContain("Bind wallet");
+		expect(overview).toContain("Manage wallets");
+		expect(security).toContain('id="wallets"');
+	});
 });

@@ -60,6 +60,36 @@ export type SecurityWallet = {
 	createdAt: string;
 };
 
+export type WalletOverviewSummary = {
+	available: boolean;
+	count: number;
+	wallet: Pick<SecurityWallet, "address" | "chainId" | "isPrimary"> | null;
+};
+
+/** Keeps the account overview limited to one representative wallet and a count. */
+export const getWalletOverviewSummary = (
+	wallets: readonly Pick<SecurityWallet, "address" | "chainId" | "isPrimary">[],
+	unavailable = false,
+): WalletOverviewSummary => {
+	if (unavailable) {
+		return { available: false, count: 0, wallet: null };
+	}
+
+	const wallet =
+		wallets.find((candidate) => candidate.isPrimary) ?? wallets[0] ?? null;
+	return {
+		available: true,
+		count: wallets.length,
+		wallet: wallet
+			? {
+					address: wallet.address,
+					chainId: wallet.chainId,
+					isPrimary: wallet.isPrimary,
+				}
+			: null,
+	};
+};
+
 export type SecurityPosture = {
 	completed: number;
 	total: number;

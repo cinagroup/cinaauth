@@ -919,7 +919,7 @@ export function SecurityCenter({
 				</Card>
 			</div>
 
-			<Card className="mt-6">
+			<Card id="wallets" className="mt-6 scroll-mt-6">
 				<CardHeader className="flex-row items-start justify-between gap-4">
 					<div>
 						<CardTitle className="flex items-center gap-2">
