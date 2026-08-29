@@ -18,7 +18,7 @@ export default async function AdminLayout({
 	const session = await resolveAdminSessionFromCookie(cookie);
 	const access = getAdminPageAccess(session);
 
-	if (access === "sign-in") {
+	if (!session || access === "sign-in") {
 		redirect(
 			getAdminSignInRedirect(requestHeaders.get("x-cinaadmin-callback-url")),
 		);
@@ -27,5 +27,5 @@ export default async function AdminLayout({
 		redirect("/403");
 	}
 
-	return <AdminShell>{children}</AdminShell>;
+	return <AdminShell initialSession={session}>{children}</AdminShell>;
 }

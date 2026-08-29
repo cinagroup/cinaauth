@@ -12,14 +12,21 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { useAdminSession } from "@/hooks/use-admin-session";
+import type { AdminSession } from "@/lib/cinaauth/types";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { getImpersonationRedirect } from "@/lib/impersonation-navigation";
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({
+	children,
+	initialSession,
+}: {
+	children: React.ReactNode;
+	initialSession: AdminSession;
+}) {
 	const { t } = useI18n();
 	const pathname = usePathname();
 	const router = useRouter();
-	const { data: session } = useAdminSession();
+	const { data: session } = useAdminSession(initialSession);
 	const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const impersonationRedirect = getImpersonationRedirect(session, pathname);
