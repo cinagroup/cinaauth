@@ -67,10 +67,7 @@ export async function GET(request: NextRequest) {
 			{ status: 502, headers: noStoreHeaders },
 		);
 	}
-	return NextResponse.json(
-		{ ok: true, data },
-		{ headers: noStoreHeaders },
-	);
+	return NextResponse.json({ ok: true, data }, { headers: noStoreHeaders });
 }
 
 /** PUT /api/admin/social-providers - stage or update one provider's credentials. */

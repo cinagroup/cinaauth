@@ -26,7 +26,11 @@ type BillingScopeContext = {
 		  };
 };
 
-const errorResponse = (status: 400 | 409 | 502, code: string, message: string) =>
+const errorResponse = (
+	status: 400 | 409 | 502,
+	code: string,
+	message: string,
+) =>
 	NextResponse.json(
 		{ ok: false, error: { code, message, status } },
 		{ status },

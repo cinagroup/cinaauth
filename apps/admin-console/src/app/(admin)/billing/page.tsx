@@ -246,8 +246,7 @@ export default function BillingPage() {
 						variant="secondary"
 						size="sm"
 						disabled={
-							!billingAvailable ||
-							(scope === "organization" && !organizationId)
+							!billingAvailable || (scope === "organization" && !organizationId)
 						}
 						onClick={() => void openBillingWorkflow("portal")}
 					>
