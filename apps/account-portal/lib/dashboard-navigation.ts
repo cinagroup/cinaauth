@@ -19,6 +19,7 @@ export type DashboardNavigationHref =
 
 const AUTHENTICATION_PATH_PREFIXES = [
 	"/forgot-password",
+	"/oauth",
 	"/reset-password",
 	"/sign-in",
 	"/sign-up",

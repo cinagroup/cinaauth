@@ -14,7 +14,8 @@ export function SelectOrganizationBtn({
 }) {
 	return (
 		<Button
-			className="w-full gap-2 h-12"
+			type="button"
+			className="h-auto min-h-14 w-full justify-start gap-3 px-4 py-3"
 			variant="outline"
 			onClick={async () => {
 				try {
@@ -45,17 +46,17 @@ export function SelectOrganizationBtn({
 				}
 			}}
 		>
-			<Avatar className="mr-2 h-5 w-5">
+			<Avatar className="size-9 shrink-0">
 				<AvatarImage
 					src={organization.logo || undefined}
 					alt={organization?.name}
 				/>
 				<AvatarFallback>{organization?.name?.charAt(0)}</AvatarFallback>
 			</Avatar>
-			<div className="flex text-start w-full">
-				<div>
-					<p>{organization?.name}</p>
-				</div>
+			<div className="min-w-0 text-start">
+				<p className="truncate text-sm font-medium text-ink">
+					{organization?.name}
+				</p>
 			</div>
 		</Button>
 	);
@@ -65,11 +66,13 @@ export function GoBackBtn() {
 	const router = useRouter();
 	return (
 		<Button
-			className="w-full gap-2 h-12"
+			type="button"
+			className="h-12 w-full"
+			size="lg"
 			variant="outline"
 			onClick={() => router.back()}
 		>
-			Go Back
+			Go back
 		</Button>
 	);
 }

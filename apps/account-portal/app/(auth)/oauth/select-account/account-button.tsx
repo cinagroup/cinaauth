@@ -11,7 +11,8 @@ import { authClient } from "@/lib/auth-client";
 export function SelectAccountBtn({ session }: { session: Partial<Session> }) {
 	return (
 		<Button
-			className="w-full gap-2 h-12"
+			type="button"
+			className="h-auto min-h-14 w-full justify-start gap-3 px-4 py-3"
 			variant="outline"
 			onClick={async () => {
 				try {
@@ -40,18 +41,18 @@ export function SelectAccountBtn({ session }: { session: Partial<Session> }) {
 				}
 			}}
 		>
-			<Avatar className="mr-2 h-5 w-5">
+			<Avatar className="size-9 shrink-0">
 				<AvatarImage
 					src={session.user?.image || undefined}
 					alt={session.user?.name}
 				/>
 				<AvatarFallback>{session.user?.name?.charAt(0)}</AvatarFallback>
 			</Avatar>
-			<div className="flex text-start w-full">
-				<div>
-					<p>{session.user?.name}</p>
-					<p className="text-xs">{session.user?.email}</p>
-				</div>
+			<div className="min-w-0 text-start">
+				<p className="truncate text-sm font-medium text-ink">
+					{session.user?.name}
+				</p>
+				<p className="truncate text-xs text-body">{session.user?.email}</p>
 			</div>
 		</Button>
 	);
@@ -60,10 +61,10 @@ export function SelectAccountBtn({ session }: { session: Partial<Session> }) {
 export function AnotherAccountBtn() {
 	const params = useSearchParams();
 	return (
-		<Link href={`/sign-in${params ? `?${params.toString()}` : ""}`}>
-			<Button className="w-full gap-2 h-12" variant="outline">
+		<Button asChild className="h-12 w-full" variant="outline">
+			<Link href={`/sign-in${params ? `?${params.toString()}` : ""}`}>
 				Another Account
-			</Button>
-		</Link>
+			</Link>
+		</Button>
 	);
 }

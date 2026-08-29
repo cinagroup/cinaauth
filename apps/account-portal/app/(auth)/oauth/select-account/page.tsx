@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { auth } from "@/lib/auth";
 import { AnotherAccountBtn, SelectAccountBtn } from "./account-button";
 
@@ -14,24 +14,26 @@ export default async function SelectAccountPage() {
 		headers: await headers(),
 	});
 	return (
-		<div className="w-full">
-			<div className="flex items-center flex-col justify-center w-full md:py-10">
-				<div className="md:w-[400px]">
-					<Card className="w-full bg-canvas-soft-2 border-hairline rounded-md">
-						<CardHeader>
-							<CardTitle className="text-lg md:text-xl">
-								Select account.
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="p-6">
-							{sessions.map((s, i) => (
-								<SelectAccountBtn key={s.session.id ?? i} session={s} />
-							))}
-						</CardContent>
-						<AnotherAccountBtn />
-					</Card>
-				</div>
+		<AuthShell
+			variant="transaction"
+			title="Choose an account"
+			description="Select the CinaSeek account you want to use for this authorization request."
+		>
+			<div className="space-y-3">
+				{sessions.length ? (
+					sessions.map((session, index) => (
+						<SelectAccountBtn
+							key={session.session.id ?? index}
+							session={session}
+						/>
+					))
+				) : (
+					<p className="rounded-md border border-hairline bg-canvas-soft p-4 text-sm text-body">
+						No signed-in accounts are available in this browser.
+					</p>
+				)}
+				<AnotherAccountBtn />
 			</div>
-		</div>
+		</AuthShell>
 	);
 }

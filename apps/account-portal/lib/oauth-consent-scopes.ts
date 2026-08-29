@@ -1,3 +1,8 @@
+import {
+	ADMIN_OIDC_CLIENT_ID,
+	ADMIN_OIDC_ORIGIN,
+} from "@cinaauth/auth-web-contract";
+
 export interface OAuthConsentScope {
 	scope: string;
 	label: string;
@@ -83,4 +88,15 @@ export function buildOAuthConsentSignInPath(
 /** Produces a local, non-network client mark for the consent screen. */
 export function getOAuthClientMonogram(clientName: string) {
 	return Array.from(clientName.trim())[0]?.toLocaleUpperCase() ?? "A";
+}
+
+/** Identifies first-party clients whose ownership is defined by the shared Auth contract. */
+export function isOfficialCinaSeekOAuthClient(clientId: string) {
+	return clientId === ADMIN_OIDC_CLIENT_ID;
+}
+
+/** Returns a trusted return host for contract-defined first-party clients. */
+export function getOfficialCinaSeekOAuthClientReturnHost(clientId: string) {
+	if (clientId !== ADMIN_OIDC_CLIENT_ID) return undefined;
+	return new URL(ADMIN_OIDC_ORIGIN).host;
 }

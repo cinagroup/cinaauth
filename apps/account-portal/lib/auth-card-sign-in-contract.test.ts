@@ -44,7 +44,7 @@ describe("Accounts card-first sign-in contract", () => {
 		expect(providerSource).not.toContain("flex-grow border-t");
 	});
 
-	it("isolates every authentication route from the marketing chrome", () => {
+	it("isolates focused authentication and OAuth transaction routes from the marketing chrome", () => {
 		const chromeSource = readSource("../components/site-chrome.tsx");
 
 		expect(chromeSource).toContain("isAuthenticationPath(pathname)");
@@ -53,11 +53,28 @@ describe("Accounts card-first sign-in contract", () => {
 		expect(isAuthenticationPath("/sign-up")).toBe(true);
 		expect(isAuthenticationPath("/forgot-password")).toBe(true);
 		expect(isAuthenticationPath("/reset-password")).toBe(true);
+		expect(isAuthenticationPath("/oauth/consent")).toBe(true);
+		expect(isAuthenticationPath("/oauth/select-account")).toBe(true);
+		expect(isAuthenticationPath("/oauth/select-organization")).toBe(true);
 		expect(isAuthenticationPath("/two-factor/backup")).toBe(false);
-		expect(isAuthenticationPath("/oauth/consent")).toBe(false);
 		expect(isAuthenticationPath("/device/approve")).toBe(false);
 		expect(isAuthenticationPath("/accept-invitation/example")).toBe(false);
 		expect(isAuthenticationPath("/sign-in-preview")).toBe(false);
 		expect(isAuthenticationPath("/dashboard")).toBe(false);
+	});
+
+	it("uses the shared focused shell throughout OAuth transaction steps", () => {
+		const transactionSources = [
+			"../app/(auth)/oauth/consent/consent-view.tsx",
+			"../app/(auth)/oauth/select-account/page.tsx",
+			"../app/(auth)/oauth/select-organization/page.tsx",
+		].map(readSource);
+
+		for (const source of transactionSources) {
+			expect(source).toContain("<AuthShell");
+			expect(source).toContain('variant="transaction"');
+			expect(source).not.toContain("<Card");
+			expect(source).not.toContain("min-h-screen");
+		}
 	});
 });
