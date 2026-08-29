@@ -1370,10 +1370,7 @@ checkIncludesAll(
 );
 checkIncludesAll(
 	capabilitiesTs,
-	[
-		"getSiweRuntimeConfig",
-		"siwe: settings.siweLoginEnabled && siwe.enabled",
-	],
+	["getSiweRuntimeConfig", "siwe: settings.siweLoginEnabled && siwe.enabled"],
 	capabilitiesFile,
 	"public SIWE capability must derive from the same fail-closed runtime configuration as the plugin",
 );
