@@ -4,10 +4,10 @@ import type { CloudflareBindings } from "./env";
 
 export const CINATOKEN_IDENTITY_EVENTS_QUEUE_NAME =
 	"cinaauth-cinatoken-identity-events";
-export const DEFAULT_CINATOKEN_IDENTITY_EVENTS_URL =
+const DEFAULT_CINATOKEN_IDENTITY_EVENTS_URL =
 	"https://cinatoken.com/api/integrations/cinaauth/organization-events";
 export const ORGANIZATION_IDENTITY_OUTBOX_CRON = "* * * * *";
-export const ORGANIZATION_IDENTITY_OUTBOX_RETENTION_DAYS = 30;
+const ORGANIZATION_IDENTITY_OUTBOX_RETENTION_DAYS = 30;
 
 const OUTBOX_TABLE = "cinaauth_cinatoken_identity_outbox";
 const OUTBOX_CLAIM_LIMIT = 100;

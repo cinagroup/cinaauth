@@ -26,6 +26,9 @@ type AuthenticationSettingsPayload = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
+const unwrapWorkerEnvelope = (value: unknown): unknown =>
+	isRecord(value) && value.ok === true && "data" in value ? value.data : value;
+
 const isAuthenticationSettings = (
 	value: unknown,
 ): value is AuthenticationSettings => {
@@ -36,6 +39,20 @@ const isAuthenticationSettings = (
 		actual.length === expected.length &&
 		actual.every((key, index) => key === expected[index]) &&
 		SETTING_KEYS.every((key) => typeof value[key] === "boolean")
+	);
+};
+
+const isAuthenticationSettingsPayload = (
+	value: unknown,
+): value is AuthenticationSettingsPayload => {
+	if (!isRecord(value)) return false;
+	const settings = value.settings;
+	if (!isRecord(settings)) return false;
+	return (
+		Number.isSafeInteger(settings.socialProviderLimit) &&
+		SETTING_KEYS.every((key) => typeof settings[key] === "boolean") &&
+		isRecord(value.methods) &&
+		Number.isSafeInteger(value.activeOAuthProviderCount)
 	);
 };
 
@@ -70,15 +87,8 @@ export async function GET(request: NextRequest) {
 			headers: noStoreHeaders,
 		});
 	}
-	const data = response.data;
-	if (
-		!data ||
-		!isRecord(data.settings) ||
-		!Number.isSafeInteger(data.settings.socialProviderLimit) ||
-		!SETTING_KEYS.every((key) => typeof data.settings[key] === "boolean") ||
-		!isRecord(data.methods) ||
-		!Number.isSafeInteger(data.activeOAuthProviderCount)
-	) {
+	const data = unwrapWorkerEnvelope(response.data);
+	if (!isAuthenticationSettingsPayload(data)) {
 		return NextResponse.json(
 			{
 				ok: false,
@@ -132,8 +142,13 @@ export async function PUT(request: NextRequest) {
 		body,
 		cookie: request.headers.get("cookie") ?? "",
 	});
-	return NextResponse.json(response, {
-		status: response.ok ? 200 : adminUpstreamResponseStatus(response),
-		headers: noStoreHeaders,
-	});
+	return NextResponse.json(
+		response.ok
+			? { ok: true, data: unwrapWorkerEnvelope(response.data) }
+			: response,
+		{
+			status: response.ok ? 200 : adminUpstreamResponseStatus(response),
+			headers: noStoreHeaders,
+		},
+	);
 }
