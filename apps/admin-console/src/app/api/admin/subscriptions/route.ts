@@ -26,7 +26,7 @@ type BillingScopeContext = {
 		  };
 };
 
-const errorResponse = (status: 400 | 502, code: string, message: string) =>
+const errorResponse = (status: 400 | 409 | 502, code: string, message: string) =>
 	NextResponse.json(
 		{ ok: false, error: { code, message, status } },
 		{ status },
@@ -125,6 +125,20 @@ export async function GET(request: NextRequest) {
 		cookie: request.headers.get("cookie") ?? "",
 	});
 	if (!upstream.ok) {
+		if (
+			upstream.error?.code === "CINAUTH_404" &&
+			upstream.error.status === 404
+		) {
+			return NextResponse.json({
+				ok: true,
+				data: {
+					available: false,
+					scope: scope.scope,
+					referenceId: scope.referenceId,
+					subscriptions: [],
+				},
+			});
+		}
 		return NextResponse.json(upstream, {
 			status: adminUpstreamResponseStatus(upstream),
 		});
@@ -141,6 +155,7 @@ export async function GET(request: NextRequest) {
 	return NextResponse.json({
 		ok: true,
 		data: {
+			available: true,
 			scope: scope.scope,
 			referenceId: scope.referenceId,
 			subscriptions,
@@ -277,6 +292,16 @@ export async function POST(request: NextRequest) {
 		cookie: request.headers.get("cookie") ?? "",
 	});
 	if (!upstream.ok) {
+		if (
+			upstream.error?.code === "CINAUTH_404" &&
+			upstream.error.status === 404
+		) {
+			return errorResponse(
+				409,
+				"BILLING_UNAVAILABLE",
+				"Billing is not configured",
+			);
+		}
 		return NextResponse.json(upstream, {
 			status: adminUpstreamResponseStatus(upstream),
 		});

@@ -8,9 +8,16 @@ import { requireRecentAdminAuthentication } from "@/lib/recent-auth-guard";
 const noStoreHeaders = { "Cache-Control": "no-store" };
 
 type SocialProvidersPayload = {
+	catalog?: unknown;
 	providers?: unknown;
 	settings?: { socialProviderLimit?: unknown };
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+const unwrapWorkerEnvelope = (value: unknown): unknown =>
+	isRecord(value) && value.ok === true && "data" in value ? value.data : value;
 
 const badRequest = (message: string) =>
 	NextResponse.json(
@@ -39,8 +46,11 @@ export async function GET(request: NextRequest) {
 			headers: noStoreHeaders,
 		});
 	}
-	const providers = response.data?.providers;
-	const settings = response.data?.settings;
+	const data = unwrapWorkerEnvelope(response.data) as
+		| SocialProvidersPayload
+		| undefined;
+	const providers = data?.providers;
+	const settings = data?.settings;
 	if (
 		!Array.isArray(providers) ||
 		typeof settings?.socialProviderLimit !== "number"
@@ -58,7 +68,7 @@ export async function GET(request: NextRequest) {
 		);
 	}
 	return NextResponse.json(
-		{ ok: true, data: response.data },
+		{ ok: true, data },
 		{ headers: noStoreHeaders },
 	);
 }

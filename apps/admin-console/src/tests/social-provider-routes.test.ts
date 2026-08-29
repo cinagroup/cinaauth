@@ -89,6 +89,29 @@ describe("social providers BFF", () => {
 		expect(body.data.settings.socialProviderLimit).toBe(5);
 	});
 
+	it("accepts the Auth Worker standard response envelope", async () => {
+		mocks.fetch.mockResolvedValueOnce({
+			ok: true,
+			data: {
+				ok: true,
+				data: {
+					catalog: [{ id: "google", displayName: "Google" }],
+					providers: [],
+					settings: { socialProviderLimit: 5 },
+				},
+			},
+		});
+		const { GET } = await import("@/app/api/admin/social-providers/route");
+		const response = await GET(request("/api/admin/social-providers"));
+
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as {
+			data: { providers: unknown[]; settings: { socialProviderLimit: number } };
+		};
+		expect(body.data.providers).toEqual([]);
+		expect(body.data.settings.socialProviderLimit).toBe(5);
+	});
+
 	it("allows security_admin to read but not to mutate", async () => {
 		mocks.session.mockResolvedValue(SECURITY_ADMIN);
 		const { GET, PUT } = await import("@/app/api/admin/social-providers/route");

@@ -442,6 +442,7 @@
   "billing.scope.user": "My account",
   "billing.scope.organization": "Active organization",
   "billing.empty": "No subscriptions in this scope",
+  "billing.unavailable": "Billing is not configured. Configure Stripe to view subscriptions and open the billing portal.",
   "billing.plan": "Plan",
   "billing.status": "Status",
   "billing.interval": "Interval",

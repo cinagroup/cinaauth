@@ -92,6 +92,7 @@ const ac = createAccessControl({
 	user: [...ADMIN_PERMISSION_STATEMENT.user],
 	session: [...ADMIN_PERMISSION_STATEMENT.session],
 	stats: [...ADMIN_PERMISSION_STATEMENT.stats],
+	wallet: [...ADMIN_PERMISSION_STATEMENT.wallet],
 	passkey: [...ADMIN_PERMISSION_STATEMENT.passkey],
 });
 
@@ -100,6 +101,7 @@ export const roles = {
 		user: [...ADMIN_ROLE_PERMISSIONS.super_admin.user],
 		session: [...ADMIN_ROLE_PERMISSIONS.super_admin.session],
 		stats: [...ADMIN_ROLE_PERMISSIONS.super_admin.stats],
+		wallet: [...ADMIN_ROLE_PERMISSIONS.super_admin.wallet],
 		passkey: [...ADMIN_ROLE_PERMISSIONS.super_admin.passkey],
 	}),
 	security_admin: ac.newRole({
@@ -107,12 +109,14 @@ export const roles = {
 		user: [...ADMIN_ROLE_PERMISSIONS.security_admin.user],
 		session: [...ADMIN_ROLE_PERMISSIONS.security_admin.session],
 		stats: [...ADMIN_ROLE_PERMISSIONS.security_admin.stats],
+		wallet: [...ADMIN_ROLE_PERMISSIONS.security_admin.wallet],
 		passkey: [...ADMIN_ROLE_PERMISSIONS.security_admin.passkey],
 	}),
 	user: ac.newRole({
 		user: [...ADMIN_ROLE_PERMISSIONS.user.user],
 		session: [...ADMIN_ROLE_PERMISSIONS.user.session],
 		stats: [...ADMIN_ROLE_PERMISSIONS.user.stats],
+		wallet: [...ADMIN_ROLE_PERMISSIONS.user.wallet],
 		passkey: [...ADMIN_ROLE_PERMISSIONS.user.passkey],
 	}),
 };

@@ -51,6 +51,60 @@ beforeEach(() => {
 });
 
 describe("Admin scoped subscription BFF", () => {
+	it("represents a missing Stripe plugin as an unavailable billing state", async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: false,
+			error: {
+				code: "CINAUTH_404",
+				message: "CinaSeek Identity request failed",
+				status: 404,
+			},
+		});
+		const { GET } = await import("@/app/api/admin/subscriptions/route");
+
+		const response = await GET(request("/api/admin/subscriptions"));
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			ok: true,
+			data: {
+				available: false,
+				scope: "user",
+				referenceId: "admin-1",
+				subscriptions: [],
+			},
+		});
+	});
+
+	it("rejects billing workflows clearly when the Stripe plugin is missing", async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: false,
+			error: {
+				code: "CINAUTH_404",
+				message: "CinaSeek Identity request failed",
+				status: 404,
+			},
+		});
+		const { POST } = await import("@/app/api/admin/subscriptions/route");
+
+		const response = await POST(
+			request("/api/admin/subscriptions", "POST", {
+				action: "portal",
+				returnUrl: "/billing",
+			}),
+		);
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toMatchObject({
+			ok: false,
+			error: {
+				code: "BILLING_UNAVAILABLE",
+				message: "Billing is not configured",
+			},
+		});
+		expect(mocks.recent).toHaveBeenCalledTimes(1);
+	});
+
 	it("normalizes the Stripe plugin's raw array and strips customer identifiers", async () => {
 		mockFetch.mockResolvedValueOnce({
 			ok: true,
@@ -78,6 +132,7 @@ describe("Admin scoped subscription BFF", () => {
 		expect(payload).toEqual({
 			ok: true,
 			data: {
+				available: true,
 				scope: "user",
 				referenceId: "admin-1",
 				subscriptions: [
