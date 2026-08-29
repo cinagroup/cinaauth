@@ -6,6 +6,16 @@ import {
 } from "./check-runtime-capabilities.mjs";
 
 const configured = (...names) => new Set(names);
+const runtimeCapabilities = ({ methods = {}, ...overrides } = {}) => ({
+	version: 5,
+	oneTap: false,
+	oneTapClientId: null,
+	oauthProviders: [],
+	captcha: { enabled: false },
+	billing: false,
+	methods: { siwe: false, ...methods },
+	...overrides,
+});
 
 describe("live optional capability checks", () => {
 	it("accepts configured plugins that are enabled at runtime", () => {
@@ -24,8 +34,7 @@ describe("live optional capability checks", () => {
 					"STRIPE_DEFAULT_PRICE_ID",
 					"CINAAUTH_ENTITLEMENT_CONFIG",
 				),
-				capabilities: {
-					oneTap: false,
+				capabilities: runtimeCapabilities({
 					oauthProviders: [
 						{ id: "google", type: "social" },
 						{ id: "github", type: "social" },
@@ -33,7 +42,7 @@ describe("live optional capability checks", () => {
 					],
 					captcha: { enabled: true },
 					billing: true,
-				},
+				}),
 			}),
 			[],
 		);
@@ -54,33 +63,43 @@ describe("live optional capability checks", () => {
 				"STRIPE_DEFAULT_PRICE_ID",
 				"CINAAUTH_ENTITLEMENT_CONFIG",
 			),
-			capabilities: {
-				oneTap: false,
+			capabilities: runtimeCapabilities({
 				oauthProviders: [],
 				captcha: { enabled: false },
 				billing: false,
-			},
+			}),
 		});
-		assert.equal(failures.length, 5);
-		assert.match(failures.join("\n"), /GENERIC_OAUTH_CONFIG/);
-		assert.match(failures.join("\n"), /Google social/);
-		assert.match(failures.join("\n"), /GitHub social/);
+		assert.equal(failures.length, 2);
+		assert.match(failures.join("\n"), /Turnstile/);
+		assert.match(failures.join("\n"), /Stripe billing/);
 	});
 
-	it("rejects a runtime that advertises Google One Tap", () => {
+	it("rejects One Tap without an enabled Google provider and client id", () => {
 		const failures = evaluateRuntimeCapabilities({
 			configuredInputs: configured("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
-			capabilities: {
+			capabilities: runtimeCapabilities({
 				oneTap: true,
 				oauthProviders: [{ id: "google", type: "social" }],
-				captcha: { enabled: false },
-				billing: false,
-			},
+			}),
 		});
 
 		assert.deepEqual(failures, [
-			"Live One Tap capability must remain disabled for redirect-based Google OAuth",
+			"Live One Tap capability requires an enabled Google provider and public client id",
 		]);
+	});
+
+	it("accepts a complete runtime-enabled Google One Tap capability", () => {
+		assert.deepEqual(
+			evaluateRuntimeCapabilities({
+				configuredInputs: configured(),
+				capabilities: runtimeCapabilities({
+					oneTap: true,
+					oneTapClientId: "google-client-id",
+					oauthProviders: [{ id: "google", type: "social" }],
+				}),
+			}),
+			[],
+		);
 	});
 
 	it("does not treat Stripe secrets without a Price as configured billing", () => {
@@ -90,12 +109,7 @@ describe("live optional capability checks", () => {
 					"STRIPE_SECRET_KEY",
 					"STRIPE_WEBHOOK_SECRET",
 				),
-				capabilities: {
-					oneTap: false,
-					oauthProviders: [],
-					captcha: { enabled: false },
-					billing: false,
-				},
+				capabilities: runtimeCapabilities(),
 			}),
 			[],
 		);
@@ -105,23 +119,18 @@ describe("live optional capability checks", () => {
 		assert.deepEqual(
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured(),
-				capabilities: {
-					oneTap: false,
-					oauthProviders: [],
-					captcha: { enabled: false },
-					billing: false,
-				},
+				capabilities: runtimeCapabilities(),
 			}),
 			[],
 		);
 	});
 
-	it("enforces SIWE kill-switch parity with the live capability", () => {
+	it("lets the runtime switch narrow SIWE but never override the deployment kill switch", () => {
 		assert.deepEqual(
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "false" },
-				capabilities: { oneTap: false, methods: { siwe: false } },
+				capabilities: runtimeCapabilities({ methods: { siwe: false } }),
 			}),
 			[],
 		);
@@ -129,7 +138,7 @@ describe("live optional capability checks", () => {
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "true" },
-				capabilities: { oneTap: false, methods: { siwe: true } },
+				capabilities: runtimeCapabilities({ methods: { siwe: true } }),
 			}),
 			[],
 		);
@@ -137,17 +146,17 @@ describe("live optional capability checks", () => {
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "false" },
-				capabilities: { oneTap: false, methods: { siwe: true } },
+				capabilities: runtimeCapabilities({ methods: { siwe: true } }),
 			})[0],
-			/SIWE kill switch/,
+			/kill switch/,
 		);
-		assert.match(
+		assert.deepEqual(
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "true" },
-				capabilities: { oneTap: false, methods: { siwe: false } },
-			})[0],
-			/SIWE kill switch/,
+				capabilities: runtimeCapabilities({ methods: { siwe: false } }),
+			}),
+			[],
 		);
 	});
 });
@@ -184,15 +193,14 @@ describe("live delivery capability checks", () => {
 			},
 			providers: { email: false, sms: false },
 		});
-		assert.equal(failures.length, 5);
+		assert.equal(failures.length, 4);
 		assert.match(failures.join("\n"), /Email OTP/);
-		assert.match(failures.join("\n"), /email-password/);
 		assert.match(failures.join("\n"), /magic-link/);
 		assert.match(failures.join("\n"), /phone OTP/);
 		assert.match(failures.join("\n"), /username-password/);
 	});
 
-	it("requires an active email provider and enabled Email OTP after Auth deploy", () => {
+	it("allows the runtime setting to disable Email OTP", () => {
 		const failures = evaluateDeliveryCapabilityParity({
 			capabilities: {
 				methods: {
@@ -205,7 +213,6 @@ describe("live delivery capability checks", () => {
 			},
 			providers: { email: false, sms: false },
 		});
-		assert.equal(failures.length, 1);
-		assert.match(failures[0], /active Delivery Worker email provider/);
+		assert.deepEqual(failures, []);
 	});
 });

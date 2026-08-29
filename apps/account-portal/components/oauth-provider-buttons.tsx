@@ -1,9 +1,14 @@
 "use client";
 
+import { oneTapClient } from "cinaauth/client/plugins";
+import { createAuthClient } from "cinaauth/react";
 import { Github, KeyRound } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { FieldSeparator } from "@/components/ui/field";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
+import { resolveAuthClientBaseURL } from "@/lib/auth-api";
 import { formatOAuthProviderName } from "@/lib/auth-capabilities";
 import { authClient } from "@/lib/auth-client";
 
@@ -17,15 +22,95 @@ export function OAuthProviderButtons({
 	 */
 	callbackURL?: string;
 }) {
+	const googleButtonMeasureRef = useRef<HTMLDivElement>(null);
+	const googleButtonRef = useRef<HTMLDivElement>(null);
+	const [googleButtonWidth, setGoogleButtonWidth] = useState<number>();
 	const { data } = useAuthCapabilities();
 	const providers = data?.oauthProviders ?? [];
+	const oneTapReady =
+		data?.oneTap === true && typeof data.oneTapClientId === "string";
+	const googleOneTapClient = useMemo(
+		() =>
+			oneTapReady && data?.oneTapClientId
+				? createAuthClient({
+						baseURL: resolveAuthClientBaseURL(
+							typeof window === "undefined"
+								? undefined
+								: window.location.origin,
+						),
+						plugins: [oneTapClient({ clientId: data.oneTapClientId })],
+					})
+				: null,
+		[oneTapReady, data?.oneTapClientId],
+	);
+	const visibleProviders = providers.filter(
+		(provider) =>
+			!(oneTapReady && provider.type === "social" && provider.id === "google"),
+	);
 
-	if (providers.length === 0) return null;
+	useEffect(() => {
+		const container = googleButtonMeasureRef.current;
+		if (!oneTapReady || !container) return;
+		const updateWidth = () => {
+			const nextWidth = Math.min(Math.round(container.clientWidth), 400);
+			if (nextWidth > 0) {
+				setGoogleButtonWidth((current) =>
+					current === nextWidth ? current : nextWidth,
+				);
+			}
+		};
+		updateWidth();
+		const observer = new ResizeObserver(updateWidth);
+		observer.observe(container);
+		return () => observer.disconnect();
+	}, [oneTapReady]);
+
+	useEffect(() => {
+		const container = googleButtonRef.current;
+		if (!googleOneTapClient || !container || !googleButtonWidth) return;
+		container.replaceChildren();
+		void googleOneTapClient.oneTap({
+			callbackURL,
+			context: "signin",
+			button: {
+				container,
+				config: {
+					type: "standard",
+					theme: "outline",
+					size: "large",
+					shape: "rectangular",
+					text: "continue_with",
+					width: googleButtonWidth,
+				},
+			},
+			fetchOptions: {
+				onError(error) {
+					toast.error(error.error.message || "Google authentication failed");
+				},
+			},
+		});
+		return () => container.replaceChildren();
+	}, [callbackURL, googleButtonWidth, googleOneTapClient]);
+
+	if (visibleProviders.length === 0 && !oneTapReady) return null;
 
 	return (
 		<>
 			<FieldSeparator>Or</FieldSeparator>
-			{providers.map((provider) => (
+			{oneTapReady ? (
+				<div
+					ref={googleButtonMeasureRef}
+					className="flex min-h-12 w-full items-center justify-center overflow-hidden"
+					aria-label="Continue with Google"
+				>
+					<div
+						key={googleButtonWidth ?? "pending"}
+						ref={googleButtonRef}
+						className="flex w-full items-center justify-center"
+					/>
+				</div>
+			) : null}
+			{visibleProviders.map((provider) => (
 				<Button
 					key={provider.id}
 					type="button"

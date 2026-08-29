@@ -379,6 +379,45 @@ describe("SIWE production gate", () => {
 		});
 	});
 
+	it("keeps wallet management installed while the runtime sign-in switch gates verification", () => {
+		const plugin = createAuthPlugins(enabledSiweEnv, {
+			authenticationSettings: {
+				socialProviderLimit: 20,
+				emailOtpLoginEnabled: true,
+				emailPasswordLoginEnabled: false,
+				passkeyLoginEnabled: false,
+				siweLoginEnabled: false,
+				googleOneTapEnabled: false,
+			},
+		}).find((candidate) => candidate.id === "siwe");
+
+		expect(plugin).toBeDefined();
+	});
+
+	it("registers Google One Tap only when the runtime switch and client id are ready", () => {
+		const authenticationSettings = {
+			socialProviderLimit: 20,
+			emailOtpLoginEnabled: true,
+			emailPasswordLoginEnabled: false,
+			passkeyLoginEnabled: false,
+			siweLoginEnabled: true,
+			googleOneTapEnabled: true,
+		};
+		const enabled = createAuthPlugins(makeOriginEnv(), {
+			authenticationSettings,
+			googleOneTapClientId: "google-client-id",
+		}).find((candidate) => candidate.id === "one-tap");
+		expect(enabled?.options).toMatchObject({
+			clientId: "google-client-id",
+			disableSignup: false,
+		});
+
+		const missingClient = createAuthPlugins(makeOriginEnv(), {
+			authenticationSettings,
+		}).find((candidate) => candidate.id === "one-tap");
+		expect(missingClient).toBeUndefined();
+	});
+
 	it("verifies a real EIP-191 personal signature for the recovered EOA", async () => {
 		const plugin = createAuthPlugins(enabledSiweEnv).find(
 			(candidate) => candidate.id === "siwe",

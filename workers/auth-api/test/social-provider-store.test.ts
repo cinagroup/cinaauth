@@ -67,10 +67,25 @@ const mockDatabase = ({
 	rows = [],
 	limit = 20,
 	emailOtpLoginEnabled = true,
+	emailPasswordLoginEnabled = false,
+	passkeyLoginEnabled = false,
+	siweLoginEnabled = true,
+	googleOneTapEnabled = false,
 } = {}) => ({
 	query: vi.fn(async (text: string) => {
 		if (text.includes("cinaauth_sign_in_settings")) {
-			return { rows: [{ socialProviderLimit: limit, emailOtpLoginEnabled }] };
+			return {
+				rows: [
+					{
+						socialProviderLimit: limit,
+						emailOtpLoginEnabled,
+						emailPasswordLoginEnabled,
+						passkeyLoginEnabled,
+						siweLoginEnabled,
+						googleOneTapEnabled,
+					},
+				],
+			};
 		}
 		return { rows };
 	}),
@@ -100,6 +115,7 @@ describe("social provider runtime resolution", () => {
 			{ id: "google", type: "social" },
 			{ id: "github", type: "social" },
 		]);
+		expect(config.googleOneTapClientId).toBe("env-google-id");
 	});
 
 	it("overlays database social rows over environment credentials", async () => {
@@ -214,6 +230,7 @@ describe("social provider runtime resolution", () => {
 
 		const disabled = await resolve(baseEnv, mockDatabase({ rows, limit: 0 }));
 		expect(disabled.capabilitiesProviders).toEqual([]);
+		expect(disabled.googleOneTapClientId).toBeNull();
 		expect(disabled.socialProviders.google).toMatchObject({
 			clientId: "env-google-id",
 		});
@@ -229,6 +246,25 @@ describe("social provider runtime resolution", () => {
 		expect(disabled.emailOtpLoginEnabled).toBe(false);
 	});
 
+	it("exposes all runtime authentication toggles with safe defaults", async () => {
+		const configured = await resolve(
+			baseEnv,
+			mockDatabase({
+				emailPasswordLoginEnabled: true,
+				passkeyLoginEnabled: true,
+				siweLoginEnabled: false,
+				googleOneTapEnabled: true,
+			}),
+		);
+		expect(configured).toMatchObject({
+			emailOtpLoginEnabled: true,
+			emailPasswordLoginEnabled: true,
+			passkeyLoginEnabled: true,
+			siweLoginEnabled: false,
+			googleOneTapEnabled: true,
+		});
+	});
+
 	it("falls back to environment-only sign-in when the store is unreachable", async () => {
 		invalidateSocialSignInCache();
 		createDatabaseMock.mockImplementation(() => {
@@ -241,6 +277,10 @@ describe("social provider runtime resolution", () => {
 		});
 		expect(config.socialProviderLimit).toBe(20);
 		expect(config.emailOtpLoginEnabled).toBe(true);
+		expect(config.emailPasswordLoginEnabled).toBe(false);
+		expect(config.passkeyLoginEnabled).toBe(false);
+		expect(config.siweLoginEnabled).toBe(true);
+		expect(config.googleOneTapEnabled).toBe(false);
 	});
 
 	it("reads rows and settings through the shared database pool", async () => {
@@ -250,7 +290,16 @@ describe("social provider runtime resolution", () => {
 				queries.push(text);
 				if (text.includes("cinaauth_sign_in_settings")) {
 					return {
-						rows: [{ socialProviderLimit: 3, emailOtpLoginEnabled: false }],
+						rows: [
+							{
+								socialProviderLimit: 3,
+								emailOtpLoginEnabled: false,
+								emailPasswordLoginEnabled: true,
+								passkeyLoginEnabled: true,
+								siweLoginEnabled: false,
+								googleOneTapEnabled: true,
+							},
+						],
 					};
 				}
 				return {
@@ -281,6 +330,10 @@ describe("social provider runtime resolution", () => {
 		await expect(readSocialSignInSettings(database)).resolves.toEqual({
 			socialProviderLimit: 3,
 			emailOtpLoginEnabled: false,
+			emailPasswordLoginEnabled: true,
+			passkeyLoginEnabled: true,
+			siweLoginEnabled: false,
+			googleOneTapEnabled: true,
 		});
 		expect(queries[0]).toContain("cinaauth_social_provider");
 	});

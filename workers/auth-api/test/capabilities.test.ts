@@ -27,16 +27,17 @@ describe("public auth capabilities", () => {
 	it("does not advertise optional providers without complete configuration", () => {
 		const capabilities = getAuthCapabilities({});
 
-		expect(capabilities.version).toBe(4);
+		expect(capabilities.version).toBe(5);
 		expect(capabilities.methods.emailPassword).toBe(false);
 		expect(capabilities.methods.emailOtp).toBe(false);
 		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(false);
 		expect(capabilities.methods.username).toBe(false);
-		expect(capabilities.methods.passkey).toBe(true);
+		expect(capabilities.methods.passkey).toBe(false);
 		expect(capabilities.methods.siwe).toBe(false);
 		expect(capabilities.oauthProviders).toEqual([]);
 		expect(capabilities.oneTap).toBe(false);
+		expect(capabilities.oneTapClientId).toBeNull();
 		expect(capabilities.captcha).toEqual({
 			enabled: false,
 			provider: null,
@@ -45,6 +46,53 @@ describe("public auth capabilities", () => {
 			protectedEndpoints: [],
 		});
 		expect(capabilities.billing).toBe(false);
+	});
+
+	it("applies runtime login settings only when deployment prerequisites are ready", () => {
+		const settings = {
+			socialProviderLimit: 20,
+			emailOtpLoginEnabled: true,
+			emailPasswordLoginEnabled: true,
+			passkeyLoginEnabled: true,
+			siweLoginEnabled: true,
+			googleOneTapEnabled: true,
+		};
+		const capabilities = getAuthCapabilities(
+			{
+				CINAAUTH_ACCOUNT_ORIGIN: ACCOUNT_ORIGIN,
+				CINAAUTH_SIWE_ENABLED: "true",
+				CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1",
+				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
+				CINAAUTH_SIWE_RP_URI: ACCOUNT_ORIGIN,
+				CINAAUTH_SIWE_ALLOW_LEGACY: "false",
+				CINAAUTH_SIWE_AUTO_SIGNUP: "true",
+			},
+			{ email: true, sms: false },
+			[{ id: "google", type: "social" }],
+			settings,
+			"dynamic-google-client-id",
+		);
+
+		expect(capabilities.methods).toMatchObject({
+			emailPassword: true,
+			emailOtp: true,
+			passkey: true,
+			siwe: true,
+		});
+		expect(capabilities.oneTap).toBe(true);
+		expect(capabilities.oneTapClientId).toBe("dynamic-google-client-id");
+
+		const unavailable = getAuthCapabilities(
+			{},
+			{ email: false, sms: false },
+			[],
+			settings,
+			null,
+		);
+		expect(unavailable.methods.emailOtp).toBe(false);
+		expect(unavailable.methods.siwe).toBe(false);
+		expect(unavailable.oneTap).toBe(false);
+		expect(unavailable.oneTapClientId).toBeNull();
 	});
 
 	it("advertises SIWE only for a complete strict EOA configuration", () => {
@@ -159,9 +207,9 @@ describe("public auth capabilities", () => {
 		expect(capabilities.captcha.protectedEndpoints).toContain(
 			"/phone-number/send-otp",
 		);
+		expect(capabilities.captcha.protectedEndpoints).toContain("/sign-in/email");
 		for (const retiredEndpoint of [
 			"/sign-up/email",
-			"/sign-in/email",
 			"/request-password-reset",
 			"/sign-in/magic-link",
 			"/email-otp/request-password-reset",

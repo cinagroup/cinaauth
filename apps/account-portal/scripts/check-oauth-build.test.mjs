@@ -1,22 +1,29 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+	evaluateConfigurableAuthenticationRelease,
 	evaluateDeployedWalletReadiness,
-	evaluateEmailProviderReady,
-	evaluatePasswordlessEmailRelease,
+	evaluateGoogleAuthenticationBuild,
 	evaluatePlannedReownBuild,
 	evaluatePlannedSiweRelease,
-	evaluateRedirectOAuthBuild,
+	evaluatePortalCompatibility,
 	evaluateReownBuild,
 	resolveAccountBuildReadinessTarget,
 } from "./check-oauth-build.mjs";
 
-const capabilities = (methods) => ({ version: 4, methods });
+const capabilities = (methods, overrides = {}) => ({
+	version: 5,
+	methods,
+	oauthProviders: [],
+	oneTap: false,
+	oneTapClientId: null,
+	...overrides,
+});
 
-describe("passwordless email release parity", () => {
-	it("allows the provider-first gate while the live password method is still enabled", () => {
+describe("authentication capability release parity", () => {
+	it("allows the read-only preflight across capability versions 4 and 5", () => {
 		assert.deepEqual(
-			evaluateEmailProviderReady({
+			evaluatePortalCompatibility({
 				capabilities: capabilities({
 					emailOtp: true,
 					emailPassword: true,
@@ -27,32 +34,43 @@ describe("passwordless email release parity", () => {
 			}),
 			{
 				ok: true,
-				reason: "the production email OTP provider is active",
+				reason:
+					"the live Auth capability is compatible with the planned Account Portal",
 			},
+		);
+		assert.equal(
+			evaluatePortalCompatibility({
+				capabilities: {
+					version: 4,
+					methods: { emailOtp: false },
+				},
+				cacheControl: "no-store",
+			}).ok,
+			true,
 		);
 	});
 
-	it("fails closed when the provider-first gate cannot prove email OTP readiness", () => {
+	it("fails closed when the preflight cannot prove portal compatibility", () => {
 		for (const value of [
 			undefined,
 			null,
 			{},
-			capabilities({ emailOtp: false }),
+			capabilities({ emailOtp: "false" }),
 			capabilities({ emailOtp: "true" }),
 		]) {
-			const result = evaluateEmailProviderReady({
+			const result = evaluatePortalCompatibility({
 				capabilities: value,
 				cacheControl: "no-store, max-age=0",
 			});
 			assert.equal(result.ok, false);
-			assert.match(result.reason, /Email OTP/);
+			assert.match(result.reason, /compatible/);
 		}
 	});
 
 	it("rejects cacheable or unspecified capability responses", () => {
 		const liveCapabilities = capabilities({ emailOtp: true });
 		for (const cacheControl of [undefined, "", "public, max-age=60"]) {
-			const result = evaluateEmailProviderReady({
+			const result = evaluatePortalCompatibility({
 				capabilities: liveCapabilities,
 				cacheControl,
 			});
@@ -61,22 +79,28 @@ describe("passwordless email release parity", () => {
 		}
 	});
 
-	it("accepts only the exact post-Auth passwordless email policy", () => {
-		const exactMethods = {
+	it("accepts the runtime-configurable v5 authentication contract", () => {
+		const configurableMethods = {
 			emailOtp: true,
-			emailPassword: false,
+			emailPassword: true,
+			phoneOtp: false,
+			passkey: true,
+			anonymous: true,
+			twoFactor: true,
+			siwe: true,
+			sso: true,
 			username: false,
 			magicLink: false,
 		};
 		assert.equal(
-			evaluatePasswordlessEmailRelease({
-				capabilities: capabilities(exactMethods),
+			evaluateConfigurableAuthenticationRelease({
+				capabilities: capabilities(configurableMethods),
 				cacheControl: "private, no-store",
 			}).ok,
 			true,
 		);
-		const cacheable = evaluatePasswordlessEmailRelease({
-			capabilities: capabilities(exactMethods),
+		const cacheable = evaluateConfigurableAuthenticationRelease({
+			capabilities: capabilities(configurableMethods),
 			cacheControl: "public, max-age=60",
 		});
 		assert.equal(cacheable.ok, false);
@@ -84,49 +108,83 @@ describe("passwordless email release parity", () => {
 
 		for (const methods of [
 			{
-				emailOtp: false,
-				emailPassword: false,
-				username: false,
-				magicLink: false,
-			},
-			{
-				emailOtp: true,
-				emailPassword: true,
-				username: false,
-				magicLink: false,
-			},
-			{
-				emailOtp: true,
-				emailPassword: false,
+				...configurableMethods,
 				username: true,
-				magicLink: false,
 			},
 			{
-				emailOtp: true,
-				emailPassword: false,
-				username: false,
+				...configurableMethods,
 				magicLink: true,
 			},
+			{ ...configurableMethods, passkey: "true" },
 		]) {
-			const result = evaluatePasswordlessEmailRelease({
+			const result = evaluateConfigurableAuthenticationRelease({
 				capabilities: capabilities(methods),
 				cacheControl: "no-store",
 			});
 			assert.equal(result.ok, false);
-			assert.match(result.reason, /passwordless email policy/);
+			assert.match(result.reason, /runtime-configurable/);
 		}
+	});
+
+	it("requires complete Google configuration when One Tap is enabled", () => {
+		const methods = {
+			emailOtp: true,
+			emailPassword: false,
+			phoneOtp: false,
+			passkey: false,
+			anonymous: true,
+			twoFactor: true,
+			siwe: false,
+			sso: true,
+			username: false,
+			magicLink: false,
+		};
+		const incomplete = evaluateConfigurableAuthenticationRelease({
+			capabilities: capabilities(methods, { oneTap: true }),
+			cacheControl: "no-store",
+		});
+		assert.equal(incomplete.ok, false);
+
+		const configured = evaluateConfigurableAuthenticationRelease({
+			capabilities: capabilities(methods, {
+				oneTap: true,
+				oneTapClientId: "google-client-id",
+				oauthProviders: [{ id: "google", type: "social" }],
+			}),
+			cacheControl: "no-store",
+		});
+		assert.equal(configured.ok, true);
 	});
 });
 
 describe("account OAuth build parity", () => {
 	it("allows the redirect OAuth build when One Tap is disabled", () => {
-		assert.equal(evaluateRedirectOAuthBuild({ oneTapEnabled: false }).ok, true);
+		assert.equal(
+			evaluateGoogleAuthenticationBuild({
+				capabilities: capabilities({}),
+			}).ok,
+			true,
+		);
 	});
 
-	it("rejects a production Auth Worker that still advertises One Tap", () => {
-		const result = evaluateRedirectOAuthBuild({ oneTapEnabled: true });
-		assert.equal(result.ok, false);
-		assert.match(result.reason, /One Tap/);
+	it("accepts One Tap only with a Google provider and public client id", () => {
+		const incomplete = evaluateGoogleAuthenticationBuild({
+			capabilities: capabilities({}, { oneTap: true }),
+		});
+		assert.equal(incomplete.ok, false);
+		assert.match(incomplete.reason, /incomplete Google One Tap/);
+
+		const configured = evaluateGoogleAuthenticationBuild({
+			capabilities: capabilities(
+				{},
+				{
+					oneTap: true,
+					oneTapClientId: "google-client-id",
+					oauthProviders: [{ id: "google", type: "social" }],
+				},
+			),
+		});
+		assert.equal(configured.ok, true);
 	});
 });
 

@@ -200,7 +200,6 @@ export default function SocialProvidersPage() {
 		emptyGenericForm(),
 	);
 	const [limit, setLimit] = useState<string | null>(null);
-	const [otpEnabled, setOtpEnabled] = useState<boolean | null>(null);
 
 	if (statusQuery.isLoading) {
 		return (
@@ -250,10 +249,8 @@ export default function SocialProvidersPage() {
 	const clearSocialClientSecret = (id: string, form: SocialFormState) =>
 		setSocialForm(id, { ...form, clientSecret: "" });
 	const limitValue = limit ?? String(data.settings.socialProviderLimit);
-	const otpValue = otpEnabled ?? data.settings.emailOtpLoginEnabled;
 	const settingsDirty =
-		Number.parseInt(limitValue, 10) !== data.settings.socialProviderLimit ||
-		otpValue !== data.settings.emailOtpLoginEnabled;
+		Number.parseInt(limitValue, 10) !== data.settings.socialProviderLimit;
 	const socialDirty = (provider: SocialProviderSummary) => {
 		const form = socialForm(provider);
 		return (
@@ -302,7 +299,7 @@ export default function SocialProvidersPage() {
 							if (!Number.isSafeInteger(parsed)) return;
 							await run("/api/admin/sign-in-settings", "PUT", {
 								socialProviderLimit: parsed,
-								emailOtpLoginEnabled: otpValue,
+								emailOtpLoginEnabled: data.settings.emailOtpLoginEnabled,
 							});
 						}}
 					>
@@ -330,21 +327,6 @@ export default function SocialProvidersPage() {
 								{t("social.save")}
 							</Button>
 						</div>
-						<label className="flex items-start gap-2 text-[13px] leading-5 text-body">
-							<Checkbox
-								checked={otpValue}
-								disabled={!canManage || mutation.isPending}
-								onCheckedChange={(checked) => setOtpEnabled(checked === true)}
-								className="mt-0.5"
-								aria-label={t("social.emailOtp")}
-							/>
-							<span>
-								{t("social.emailOtp")}
-								<span className="block text-[12px] text-mute">
-									{t("social.emailOtpHint")}
-								</span>
-							</span>
-						</label>
 					</form>
 				</CardContent>
 			</Card>

@@ -24,6 +24,10 @@ describe("active Secrets Store runtime resolution", () => {
 			),
 			CINAADMIN_OIDC_BRIDGE_SECRET: "legacy-bridge-".repeat(4),
 			CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2: binding("store-bridge-".repeat(4)),
+			CINATOKEN_IDENTITY_EVENTS_SECRET: "legacy-identity-events-".repeat(3),
+			CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2: binding(
+				"store-identity-events-".repeat(3),
+			),
 		} as unknown as CloudflareBindings;
 
 		const resolved = await resolveAuthRuntimeSecrets(raw);
@@ -40,6 +44,9 @@ describe("active Secrets Store runtime resolution", () => {
 		);
 		expect(resolved.CINAADMIN_OIDC_BRIDGE_SECRET).toBe(
 			"store-bridge-".repeat(4),
+		);
+		expect(resolved.CINATOKEN_IDENTITY_EVENTS_SECRET).toBe(
+			"store-identity-events-".repeat(3),
 		);
 		expect(raw.CINAAUTH_DELIVERY_WEBHOOK_SECRET).toBe("legacy-".repeat(8));
 	});

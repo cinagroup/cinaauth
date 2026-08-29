@@ -416,12 +416,12 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 	);
 	assert.doesNotMatch(account, /vars\.REOWN_PROJECT_ID/);
 	assert.match(preflight, /pnpm run check:oauth-build/);
-	assert.match(preflight, /CINAAUTH_EMAIL_AUTH_GATE: provider-ready/);
+	assert.match(preflight, /CINAAUTH_EMAIL_AUTH_GATE: portal-compatible/);
 	assert.match(
 		preflight,
 		/CINAAUTH_CAPABILITIES_URL: https:\/\/accounts\.cinaseek\.ai\/api\/auth\/capabilities/,
 	);
-	assert.match(account, /CINAAUTH_EMAIL_AUTH_GATE: passwordless/);
+	assert.match(account, /CINAAUTH_EMAIL_AUTH_GATE: runtime-configurable/);
 	assert.match(
 		account,
 		/CINAAUTH_CAPABILITIES_URL: https:\/\/accounts\.cinaseek\.ai\/api\/auth\/capabilities/,
@@ -469,9 +469,9 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 		"the reusable Account Portal workflow must deploy exactly once",
 	);
 	assert.ok(
-		account.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") <
+		account.indexOf("CINAAUTH_EMAIL_AUTH_GATE: runtime-configurable") <
 			account.indexOf("run: pnpm run deploy:cf --deployment-target=production"),
-		"the exact live passwordless policy gate must run before the Account write",
+		"the live configurable authentication contract gate must run before the Account write",
 	);
 	assert.doesNotMatch(account, /cloudflare\/wrangler-action|command: deploy/);
 

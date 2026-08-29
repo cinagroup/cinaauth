@@ -200,7 +200,7 @@ jobs:
         env:
           CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.ai/api/build-readiness
           CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities
-          CINAAUTH_EMAIL_AUTH_GATE: provider-ready
+          CINAAUTH_EMAIL_AUTH_GATE: portal-compatible
           CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json
           REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
         run: |

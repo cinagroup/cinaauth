@@ -15,7 +15,7 @@
     "binding": "VERSION_METADATA"
   },
   "triggers": {
-    "crons": ["0 3 * * *"]
+    "crons": ["* * * * *", "0 3 * * *"]
   },
   "hyperdrive": [
     {
@@ -43,6 +43,11 @@
       "binding": "CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2",
       "store_id": "346e2b4b86334bc29083c064116e91cf",
       "secret_name": "CINAADMIN_OIDC_BRIDGE_SECRET_V2"
+    },
+    {
+      "binding": "CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2",
+      "store_id": "346e2b4b86334bc29083c064116e91cf",
+      "secret_name": "CINATOKEN_IDENTITY_EVENTS_SECRET_V2"
     }
   ],
   "services": [
@@ -53,6 +58,10 @@
     {
       "binding": "CINAAUTH_ERASURE_SERVICE",
       "service": "cinaauth-privacy-erasure"
+    },
+    {
+      "binding": "CINATOKEN_IDENTITY_EVENTS_SERVICE",
+      "service": "cinatoken-admin"
     }
   ],
   "d1_databases": [
@@ -88,6 +97,7 @@
     "CINAAUTH_ADMIN_ORIGIN": "https://admin.cinaseek.ai",
     "CINAAUTH_CINATOKEN_ORIGIN": "https://cinatoken.com",
     "CINAAUTH_CINATOKEN_CLIENT_ID": "cinatoken-admin",
+    "CINATOKEN_IDENTITY_EVENTS_URL": "https://cinatoken.com/api/integrations/cinaauth/organization-events",
     "CINAAUTH_PASSKEY_RP_ID": "cinaseek.ai",
     "CINAAUTH_LEGACY_ACCOUNT_ORIGIN": "https://demo-auth.cinagroup.com",
     "CINAAUTH_OIDC_DEMO_ENVIRONMENT": "production",
@@ -110,6 +120,10 @@
       {
         "queue": "cinaauth-privacy-export",
         "binding": "CINAAUTH_PRIVACY_EXPORT_QUEUE"
+      },
+      {
+        "queue": "cinaauth-cinatoken-identity-events",
+        "binding": "CINATOKEN_IDENTITY_EVENTS_QUEUE"
       }
     ],
     "consumers": [
@@ -132,6 +146,16 @@
         "retry_delay": 30,
         "visibility_timeout_ms": 300000,
         "dead_letter_queue": "cinaauth-privacy-export-dlq"
+      },
+      {
+        "queue": "cinaauth-cinatoken-identity-events",
+        "max_batch_size": 10,
+        "max_batch_timeout": 1,
+        "max_concurrency": 5,
+        "max_retries": 10,
+        "retry_delay": 30,
+        "visibility_timeout_ms": 60000,
+        "dead_letter_queue": "cinaauth-cinatoken-identity-events-dlq"
       }
     ]
   },

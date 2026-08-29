@@ -9,14 +9,14 @@ const SOCIAL_PROVIDER_ID_ALLOWLIST = new Set<string>(
 );
 
 export const CORE_AUTH_CAPABILITIES: AuthCapabilities = {
-	version: 4,
+	version: 5,
 	methods: {
 		emailPassword: false,
 		emailOtp: false,
 		magicLink: false,
 		phoneOtp: false,
 		username: false,
-		passkey: true,
+		passkey: false,
 		anonymous: true,
 		twoFactor: true,
 		siwe: false,
@@ -24,6 +24,7 @@ export const CORE_AUTH_CAPABILITIES: AuthCapabilities = {
 	},
 	oauthProviders: [],
 	oneTap: false,
+	oneTapClientId: null,
 	captcha: {
 		enabled: false,
 		provider: null,
@@ -76,10 +77,20 @@ export const isAuthCapabilitiesSnapshot = (
 ): value is AuthCapabilities => {
 	if (!value || typeof value !== "object") return false;
 	const candidate = value as Record<string, unknown>;
-	if (candidate.version !== 4 || typeof candidate.billing !== "boolean") {
+	if (candidate.version !== 5 || typeof candidate.billing !== "boolean") {
 		return false;
 	}
 	if (typeof candidate.oneTap !== "boolean") return false;
+	if (
+		!(
+			candidate.oneTapClientId === null ||
+			(typeof candidate.oneTapClientId === "string" &&
+				candidate.oneTapClientId.trim().length > 0 &&
+				candidate.oneTapClientId.length <= 512)
+		)
+	) {
+		return false;
+	}
 	if (
 		!Array.isArray(candidate.oauthProviders) ||
 		!candidate.oauthProviders.every(isPublicProvider)
@@ -110,15 +121,25 @@ export const isAuthCapabilitiesSnapshot = (
 	) {
 		return false;
 	}
+	const oneTapReady =
+		candidate.oneTap === false ||
+		(typeof candidate.oneTapClientId === "string" &&
+			candidate.oauthProviders.some(
+				(provider) =>
+					isPublicProvider(provider) &&
+					provider.type === "social" &&
+					provider.id === "google",
+			));
 	return (
-		captcha.enabled === false ||
-		(captcha.provider === "cloudflare-turnstile" &&
-			typeof captcha.siteKey === "string" &&
-			captcha.siteKey.trim().length > 0 &&
-			captcha.siteKey.length <= 256 &&
-			typeof captcha.action === "string" &&
-			/^[a-zA-Z0-9_-]{1,32}$/.test(captcha.action) &&
-			captcha.protectedEndpoints.length > 0)
+		oneTapReady &&
+		(captcha.enabled === false ||
+			(captcha.provider === "cloudflare-turnstile" &&
+				typeof captcha.siteKey === "string" &&
+				captcha.siteKey.trim().length > 0 &&
+				captcha.siteKey.length <= 256 &&
+				typeof captcha.action === "string" &&
+				/^[a-zA-Z0-9_-]{1,32}$/.test(captcha.action) &&
+				captcha.protectedEndpoints.length > 0))
 	);
 };
 
@@ -165,6 +186,7 @@ const normalizeCaptcha = (value: unknown): AuthCapabilities["captcha"] => {
 const normalizeCapabilities = (value: unknown): AuthCapabilities => {
 	if (!value || typeof value !== "object") return CORE_AUTH_CAPABILITIES;
 	const candidate = value as Record<string, unknown>;
+	if (candidate.version !== 5) return CORE_AUTH_CAPABILITIES;
 	const providers = Array.isArray(candidate.oauthProviders)
 		? candidate.oauthProviders.filter(isPublicProvider)
 		: [];
@@ -172,19 +194,32 @@ const normalizeCapabilities = (value: unknown): AuthCapabilities => {
 		candidate.methods && typeof candidate.methods === "object"
 			? (candidate.methods as Record<string, unknown>)
 			: {};
+	const oneTapClientId =
+		typeof candidate.oneTapClientId === "string" &&
+		candidate.oneTapClientId.trim().length > 0 &&
+		candidate.oneTapClientId.length <= 512
+			? candidate.oneTapClientId.trim()
+			: null;
+	const googleConfigured = providers.some(
+		(provider) => provider.type === "social" && provider.id === "google",
+	);
+	const oneTap =
+		candidate.oneTap === true && Boolean(oneTapClientId) && googleConfigured;
 	return {
 		...CORE_AUTH_CAPABILITIES,
 		methods: {
 			...CORE_AUTH_CAPABILITIES.methods,
-			emailPassword: false,
+			emailPassword: methods.emailPassword === true,
 			emailOtp: methods.emailOtp === true,
 			magicLink: false,
 			phoneOtp: methods.phoneOtp === true,
 			username: false,
+			passkey: methods.passkey === true,
 			siwe: methods.siwe === true,
 		},
 		oauthProviders: providers,
-		oneTap: false,
+		oneTap,
+		oneTapClientId: oneTap ? oneTapClientId : null,
 		captcha: normalizeCaptcha(candidate.captcha),
 		billing: candidate.billing === true,
 	};

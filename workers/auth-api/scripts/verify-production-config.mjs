@@ -63,6 +63,10 @@ const expectedSecretsStoreBindings = {
 			binding: "CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2",
 			secret_name: "CINAADMIN_OIDC_BRIDGE_SECRET_V2",
 		},
+		{
+			binding: "CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2",
+			secret_name: "CINATOKEN_IDENTITY_EVENTS_SECRET_V2",
+		},
 	],
 	delivery: [
 		{
@@ -198,8 +202,23 @@ const impersonationMutationGuardFile = join(
 );
 const authFile = join(workerDir, "src", "auth.ts");
 const authRoutingFile = join(workerDir, "src", "auth-routing.ts");
+const authenticationMethodGateFile = join(
+	workerDir,
+	"src",
+	"authentication-method-gate.ts",
+);
+const adminSocialProvidersFile = join(
+	workerDir,
+	"src",
+	"admin-social-providers.ts",
+);
 const captchaConfigFile = join(workerDir, "src", "captcha-config.ts");
 const capabilitiesFile = join(workerDir, "src", "capabilities.ts");
+const socialProviderStoreFile = join(
+	workerDir,
+	"src",
+	"social-provider-store.ts",
+);
 const entitlementsFile = join(workerDir, "src", "entitlements.ts");
 const entitlementEnforcementFile = join(
 	workerDir,
@@ -222,6 +241,16 @@ const providerNamespaceInvariantFile = join(
 	workerDir,
 	"src",
 	"provider-namespace-invariant.ts",
+);
+const organizationIdentityOutboxInvariantFile = join(
+	workerDir,
+	"src",
+	"organization-identity-outbox-invariant.ts",
+);
+const organizationIdentityEventsFile = join(
+	workerDir,
+	"src",
+	"organization-identity-events.ts",
 );
 const databaseInvariantsFile = join(workerDir, "src", "database-invariants.ts");
 const adminPluginFile = join(
@@ -938,8 +967,11 @@ const adminSendVerificationTs = read(adminSendVerificationFile);
 const impersonationMutationGuardTs = read(impersonationMutationGuardFile);
 const authTs = read(authFile);
 const authRoutingTs = read(authRoutingFile);
+const authenticationMethodGateTs = read(authenticationMethodGateFile);
+const adminSocialProvidersTs = read(adminSocialProvidersFile);
 const captchaConfigTs = read(captchaConfigFile);
 const capabilitiesTs = read(capabilitiesFile);
+const socialProviderStoreTs = read(socialProviderStoreFile);
 const entitlementsTs = read(entitlementsFile);
 const entitlementEnforcementTs = read(entitlementEnforcementFile);
 const entitlementRuntimeTs = read(entitlementRuntimeFile);
@@ -947,6 +979,10 @@ const entitlementLockTs = read(entitlementLockFile);
 const superAdminGovernanceTs = read(superAdminGovernanceFile);
 const superAdminDatabaseInvariantTs = read(superAdminDatabaseInvariantFile);
 const providerNamespaceInvariantTs = read(providerNamespaceInvariantFile);
+const organizationIdentityOutboxInvariantTs = read(
+	organizationIdentityOutboxInvariantFile,
+);
+const organizationIdentityEventsTs = read(organizationIdentityEventsFile);
 const databaseInvariantsTs = read(databaseInvariantsFile);
 const adminPluginTs = read(adminPluginFile);
 const adminSuperAdminGuardTs = read(adminSuperAdminGuardFile);
@@ -1112,6 +1148,7 @@ checkIncludesAll(
 	captchaConfigTs,
 	[
 		'TURNSTILE_ACTION = "cinaauth"',
+		'"/sign-in/email"',
 		'"/phone-number/send-otp"',
 		'"/phone-number/request-password-reset"',
 		"CLOUDFLARE_TURNSTILE_SITE_KEY",
@@ -1127,13 +1164,12 @@ check(
 check(
 	[
 		'"/sign-up/email"',
-		'"/sign-in/email"',
 		'"/request-password-reset"',
 		'"/sign-in/magic-link"',
 		'"/email-otp/request-password-reset"',
 		'"/forget-password/email-otp"',
 	].every((path) => !captchaConfigTs.includes(path)),
-	`${rel(captchaConfigFile)} must not advertise retired password or Magic Link endpoints as protected production flows`,
+	`${rel(captchaConfigFile)} must not advertise retired sign-up, reset, or Magic Link endpoints as protected production flows`,
 );
 checkIncludesAll(
 	adminSendVerificationTs,
@@ -1156,18 +1192,72 @@ checkIncludesAll(
 		'"cloudflare-turnstile"',
 		"protectedEndpoints",
 		"DeliveryProviderCapabilities",
-		"version: 4",
-		"emailPassword: false",
-		"emailOtp: delivery.email",
+		"version: 5",
+		"emailPassword: settings.emailPasswordLoginEnabled",
+		"emailOtp: settings.emailOtpLoginEnabled && delivery.email",
 		"magicLink: false",
 		"phoneOtp: delivery.sms",
 		"username: false",
+		"passkey: settings.passkeyLoginEnabled",
+		"oneTapClientId: oneTap ? googleOneTapClientId : null",
 		"isBillingRuntimeReady(env)",
 		'providers.push({ id: "google", type: "social" })',
 		'providers.push({ id: "github", type: "social" })',
 	],
 	capabilitiesFile,
 	"public capability discovery must expose only the client-safe Turnstile configuration",
+);
+checkIncludesAll(
+	socialProviderStoreTs,
+	[
+		"DEFAULT_SOCIAL_SIGN_IN_SETTINGS",
+		"emailOtpLoginEnabled: true",
+		"emailPasswordLoginEnabled: false",
+		"passkeyLoginEnabled: false",
+		"siweLoginEnabled: true",
+		"googleOneTapEnabled: false",
+		"capabilitiesProviders.splice(settings.socialProviderLimit)",
+		"googleOneTapClientId = null",
+	],
+	socialProviderStoreFile,
+	"runtime authentication methods must default safely and apply the provider limit to One Tap",
+);
+checkIncludesAll(
+	authenticationMethodGateTs,
+	[
+		'authPath === "/sign-in/email"',
+		'authPath === "/sign-in/email-otp"',
+		'authPath === "/passkey/verify-authentication"',
+		'authPath === "/siwe/verify"',
+		'authPath === "/one-tap/callback"',
+	],
+	authenticationMethodGateFile,
+	"disabled runtime authentication methods must fail closed at the Auth API boundary",
+);
+const authenticationMethodGateIndex = indexTs.indexOf(
+	"const disabledAuthenticationMethod = getDisabledAuthenticationMethod(",
+);
+const requestScopedAuthIndex = indexTs.indexOf(
+	'c.set("auth", await createAuth(runtimeEnv))',
+);
+check(
+	authenticationMethodGateIndex >= 0 &&
+		requestScopedAuthIndex > authenticationMethodGateIndex,
+	`${rel(indexFile)} must enforce runtime authentication switches before invoking the Auth handler`,
+);
+checkIncludesAll(
+	adminSocialProvidersTs,
+	[
+		"AUTHENTICATION_SETTING_KEYS",
+		'"security.policy.publish"',
+		"enablingUnavailable",
+		'"AUTHENTICATION_METHOD_UNAVAILABLE"',
+		"hasEffectiveRuntimeMethod",
+		'"LAST_SIGN_IN_METHOD_REQUIRED"',
+		"invalidateSocialSignInCache()",
+	],
+	adminSocialProvidersFile,
+	"admin authentication changes must require policy permission, reject unavailable methods, and prevent lockout",
 );
 checkIncludesAll(
 	originConfigTs,
@@ -1366,7 +1456,7 @@ checkIncludesAll(
 );
 checkIncludesAll(
 	capabilitiesTs,
-	["getSiweRuntimeConfig", "siwe: siwe.enabled"],
+	["getSiweRuntimeConfig", "siwe: settings.siweLoginEnabled && siwe.enabled"],
 	capabilitiesFile,
 	"public SIWE capability must derive from the same fail-closed runtime configuration as the plugin",
 );
@@ -1374,7 +1464,8 @@ checkIncludesAll(
 	authTs,
 	[
 		"emailAndPassword:",
-		"enabled: false",
+		"enabled: social.emailPasswordLoginEnabled",
+		"disableSignUp: true",
 		"SECURITY_FRESH_AGE_SECONDS = 15 * 60",
 		"freshAge: SECURITY_FRESH_AGE_SECONDS",
 		"deleteUser:",
@@ -2331,8 +2422,9 @@ checkIncludesAll(
 	oauthProductionDoc,
 	[
 		"https://accounts.cinaseek.ai",
-		"oneTap: false",
-		"Google 与 GitHub 使用相同的重定向按钮和回调模型",
+		"oneTapClientId",
+		"Authorized JavaScript origin",
+		"权威能力响应启用 One Tap",
 		"只有 `/sign-in` 一个“登录或创建账号”入口",
 		"disableImplicitSignUp: false",
 		"disableSignUp: false",
@@ -2349,6 +2441,11 @@ checkIncludesAll(
 checkIncludesAll(
 	oauthProviderButtonsTs,
 	[
+		"oneTapClient",
+		"createAuthClient",
+		"data?.oneTap === true",
+		"data.oneTapClientId",
+		"googleOneTapClient.oneTap",
 		"authClient.signIn.social",
 		"provider: provider.id",
 		"callbackURL",
@@ -2358,29 +2455,34 @@ checkIncludesAll(
 	"the account portal must route every social provider through the standard redirect flow",
 );
 check(
-	![oauthProviderButtonsTs, authClientTs].some((source) =>
-		source.includes("oneTap"),
-	),
-	"the account portal must not bundle or invoke Google One Tap",
+	!authClientTs.includes("oneTapClient"),
+	"the shared account auth client must keep One Tap isolated to the capability-gated sign-in component",
 );
-check(
-	!pluginsTs.includes("oneTap("),
-	"the Auth Worker must use redirect OAuth without registering the One Tap plugin",
+checkIncludesAll(
+	pluginsTs,
+	[
+		"options.authenticationSettings?.googleOneTapEnabled === true",
+		"options.googleOneTapClientId",
+		"oneTap({",
+		"clientId: options.googleOneTapClientId",
+	],
+	pluginsFile,
+	"the Auth Worker must register One Tap only from complete runtime configuration",
 );
 checkIncludesAll(
 	accountOAuthBuildCheck,
 	[
 		"https://auth.cinaseek.ai/api/auth/capabilities",
-		"evaluateRedirectOAuthBuild",
+		"evaluateGoogleAuthenticationBuild",
 		"evaluateReownBuild",
 		"evaluatePlannedReownBuild",
 		"evaluatePlannedSiweRelease",
 		"evaluateDeployedWalletReadiness",
-		"evaluateEmailProviderReady",
-		"evaluatePasswordlessEmailRelease",
+		"evaluatePortalCompatibility",
+		"evaluateConfigurableAuthenticationRelease",
 		"CINAAUTH_EMAIL_AUTH_GATE",
-		'gate === "provider-ready"',
-		'gate === "passwordless"',
+		'gate === "portal-compatible"',
+		'gate === "runtime-configurable"',
 		'response.headers.get("cache-control")',
 		"the live Auth capability response is not no-store",
 		"CINAAUTH_PLANNED_WORKER_CONFIG",
@@ -2394,7 +2496,7 @@ checkIncludesAll(
 		"the deployed Account Portal Reown Project ID does not match production",
 		"the planned Auth Worker CINAAUTH_SIWE_ENABLED value must be exactly true or false",
 		"the planned Auth Worker enables SIWE but production has no exact 32-hex REOWN_PROJECT_ID",
-		"the production Auth Worker still advertises One Tap instead of redirect OAuth",
+		"the production Auth Worker advertises an incomplete Google One Tap capability",
 		"the production Auth Worker advertises SIWE but the account build has no valid REOWN_PROJECT_ID",
 	],
 	accountOAuthBuildCheckFile,
@@ -2975,14 +3077,18 @@ const deliveryService = wrangler.services?.find(
 const erasureService = wrangler.services?.find(
 	(binding) => binding.binding === "CINAAUTH_ERASURE_SERVICE",
 );
+const cinatokenIdentityService = wrangler.services?.find(
+	(binding) => binding.binding === "CINATOKEN_IDENTITY_EVENTS_SERVICE",
+);
 check(
 	deliveryService?.service === "cinaauth-delivery",
 	"wrangler.json must bind CINAAUTH_DELIVERY_SERVICE to cinaauth-delivery",
 );
 check(
-	wrangler.services?.length === 2 &&
-		erasureService?.service === "cinaauth-privacy-erasure",
-	"wrangler.json must bind exactly CINAAUTH_DELIVERY_SERVICE and CINAAUTH_ERASURE_SERVICE to their authoritative Workers",
+	wrangler.services?.length === 3 &&
+		erasureService?.service === "cinaauth-privacy-erasure" &&
+		cinatokenIdentityService?.service === "cinatoken-admin",
+	"wrangler.json must bind delivery, erasure, and CinaToken identity services to their authoritative Workers",
 );
 const rateLimiter = wrangler.durable_objects?.bindings?.find(
 	(binding) => binding.name === "RATE_LIMITER",
@@ -3090,6 +3196,83 @@ check(
 
 const privacyProducer = wrangler.queues?.producers?.find(
 	(item) => item.binding === "CINAAUTH_PRIVACY_EXPORT_QUEUE",
+);
+const identityProducer = wrangler.queues?.producers?.find(
+	(item) => item.binding === "CINATOKEN_IDENTITY_EVENTS_QUEUE",
+);
+check(
+	Array.isArray(wrangler.triggers?.crons) &&
+		wrangler.triggers.crons.includes("* * * * *") &&
+		wrangler.triggers.crons.includes("0 3 * * *"),
+	"Auth Worker must schedule both minute-level identity outbox dispatch and daily retention",
+);
+check(
+	identityProducer?.queue === "cinaauth-cinatoken-identity-events",
+	"CINATOKEN_IDENTITY_EVENTS_QUEUE must produce to cinaauth-cinatoken-identity-events",
+);
+const identityConsumer = wrangler.queues?.consumers?.find(
+	(item) => item.queue === "cinaauth-cinatoken-identity-events",
+);
+check(
+	identityConsumer?.dead_letter_queue ===
+		"cinaauth-cinatoken-identity-events-dlq",
+	"CinaToken identity event consumer must use its dedicated DLQ",
+);
+check(
+	identityConsumer?.max_retries >= 10,
+	"CinaToken identity event delivery must retry transient failures at least ten times",
+);
+checkIncludesAll(
+	organizationIdentityOutboxInvariantTs,
+	[
+		"cinaauth_cinatoken_identity_outbox",
+		"cinaauth_cinatoken_identity_clock",
+		"AFTER INSERT OR UPDATE OR DELETE",
+		'AFTER UPDATE OF "email"',
+		"pg_advisory_xact_lock",
+		"clock_timestamp()",
+		"INTERVAL '1 millisecond'",
+		'ON CONFLICT ("dedupe_key") DO NOTHING',
+		"backfill:organization:",
+		"backfill:membership:",
+	],
+	organizationIdentityOutboxInvariantFile,
+	"organization identity writes and bootstrap must be transactionally captured and ordered",
+);
+checkIncludesAll(
+	organizationIdentityEventsTs,
+	[
+		"FOR UPDATE SKIP LOCKED",
+		"OUTBOX_LEASE_MS = 120_000",
+		"OUTBOX_BATCH_BYTES = 230 * 1024",
+		"CINATOKEN_IDENTITY_EVENTS_QUEUE.sendBatch",
+		"markOrganizationIdentityOutboxQueued",
+		"replayOrganizationIdentityOutbox",
+		"ORGANIZATION_IDENTITY_OUTBOX_RETENTION_DAYS = 30",
+	],
+	organizationIdentityEventsFile,
+	"scheduled identity dispatch must use bounded leases, durable Queue batches, replay, and retention",
+);
+checkIncludes(
+	databaseInvariantsTs,
+	"ORGANIZATION_IDENTITY_OUTBOX_INVARIANT_ID",
+	databaseInvariantsFile,
+	"the outbox schema must be installed and verified by the governed migration",
+);
+checkIncludesAll(
+	indexTs,
+	[
+		"/api/operations/cinatoken-identity-outbox/replay",
+		"isAuthorizedMigrationRequest",
+		"parseOrganizationIdentityOutboxReplayInput",
+	],
+	indexFile,
+	"identity outbox replay must remain a validated operations-only action",
+);
+check(
+	!pluginsTs.includes("createOrganizationIdentityHooks") &&
+		!pluginsTs.includes("enqueueOrganizationMembershipSnapshot"),
+	"organization identity production must not retain non-transactional post-commit hooks",
 );
 check(
 	privacyProducer?.queue === "cinaauth-privacy-export",
@@ -3331,7 +3514,9 @@ checkIncludesAll(
 		"AUTH_RATE_LIMIT_RULES",
 		"createDatabase(env)",
 		"createAuthPlugins(",
-		"{ advancedOrganization: true }",
+		"advancedOrganization: true",
+		"authenticationSettings: social",
+		"googleOneTapClientId: social.googleOneTapClientId",
 		"social.genericProviders",
 		"waitUntil(",
 		"runWithExecutionCtx",
@@ -3672,6 +3857,8 @@ checkIncludesAll(
 	[
 		"cinaauth-delivery",
 		"cinaauth-delivery-dlq",
+		"cinaauth-cinatoken-identity-events",
+		"cinaauth-cinatoken-identity-events-dlq",
 		"--message-retention-period-secs",
 		"DELIVERY_QUEUE_RETENTION_SECONDS",
 		"backlog_count",
@@ -3876,7 +4063,7 @@ checkIncludesAll(
 		"CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json",
 		"CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.ai/api/build-readiness",
 		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities",
-		"CINAAUTH_EMAIL_AUTH_GATE: provider-ready",
+		"CINAAUTH_EMAIL_AUTH_GATE: portal-compatible",
 		"REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"Configure wallet UI rollout from tracked Auth config",
@@ -4034,9 +4221,9 @@ checkIncludesAll(
 		"NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED",
 		"pnpm run test:oauth-build",
 		"pnpm run check:oauth-build",
-		"Verify live passwordless email policy",
+		"Verify live configurable authentication contract",
 		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities",
-		"CINAAUTH_EMAIL_AUTH_GATE: passwordless",
+		"CINAAUTH_EMAIL_AUTH_GATE: runtime-configurable",
 		"lib/auth-runtime-config.test.ts",
 		"lib/auth-runtime-routes.test.ts",
 		"lib/auth.test.ts",
@@ -4071,12 +4258,13 @@ check(
 	`${rel(accountWorkflowFile)} must not expose the Google OAuth client ID to the Account Portal bundle`,
 );
 check(
-	accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") >= 0 &&
-		accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") <
+	accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: runtime-configurable") >=
+		0 &&
+		accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: runtime-configurable") <
 			accountWorkflow.indexOf(
 				"pnpm run deploy:cf --deployment-target=production",
 			),
-	`${rel(accountWorkflowFile)} must verify the exact live passwordless email policy before the Account Portal write`,
+	`${rel(accountWorkflowFile)} must verify the live configurable authentication contract before the Account Portal write`,
 );
 check(
 	!accountWorkflow.includes("vars.REOWN_PROJECT_ID"),
@@ -4475,18 +4663,17 @@ check(
 checkIncludesAll(
 	runtimeCapabilitiesCheck,
 	[
-		"Live One Tap capability must remain disabled for redirect-based Google OAuth",
-		"Google social credentials are configured but the live capability is disabled",
-		"GitHub social credentials are configured but the live capability is disabled",
-		"GENERIC_OAUTH_CONFIG is configured but the live capabilities endpoint exposes no valid providers",
+		"Live authentication capabilities must use the runtime-configurable schema version 5",
+		"Live One Tap capability requires an enabled Google provider and public client id",
+		"Disabled One Tap capability must not expose a Google client id",
 		"Turnstile secrets are configured but the live captcha capability is disabled",
 		"Stripe billing inputs are configured but the live billing capability is disabled",
-		"Live SIWE capability does not match the tracked SIWE kill switch",
-		"Production Email OTP requires an active Delivery Worker email provider and methods.emailOtp=true",
-		"Live email-password capability must remain disabled for passwordless email authentication",
-		"Live magic-link capability must remain disabled for OTP-only email authentication",
+		"Live SIWE capability must remain disabled while the deployment kill switch is off",
+		"Live Email OTP cannot be enabled without an active Delivery Worker email provider",
+		"Live email-password capability must be a boolean runtime setting",
+		"Live magic-link capability must remain disabled because the method is not deployed",
 		"Live phone OTP capability does not match Delivery Worker readiness",
-		"Live username-password capability must remain disabled for passwordless email authentication",
+		"Live username-password capability must remain disabled because the method is not deployed",
 	],
 	runtimeCapabilitiesCheckFile,
 	"remote preflight must fail when configured optional secrets are rejected by the live runtime",
@@ -4949,8 +5136,8 @@ checkIncludesAll(
 		"32-hex-character `REOWN_PROJECT_ID`",
 		"A disabled rollout does not require a Project ID.",
 		"repeats the live capability parity check",
-		"Passwordless email cutover",
-		"reset endpoints are also disabled",
+		"Email authentication and runtime cutover",
+		"reset endpoints remain disabled",
 		"3 requests per 60 seconds",
 		"10 requests per 24 hours",
 		"`CINAAUTH_SECRET`-keyed HMAC",
@@ -4959,12 +5146,12 @@ checkIncludesAll(
 		"verified sender",
 		"not GitHub Secrets",
 		"methods.emailOtp=true",
-		"CINAAUTH_EMAIL_AUTH_GATE=provider-ready",
-		"CINAAUTH_EMAIL_AUTH_GATE=passwordless",
-		"emailPassword=false",
-		"username=false",
-		"magicLink=false",
-		"only for a reviewed rollback",
+		"CINAAUTH_EMAIL_AUTH_GATE=portal-compatible",
+		"CINAAUTH_EMAIL_AUTH_GATE=runtime-configurable",
+		"email_password_login_enabled",
+		"google_one_tap_enabled",
+		"Capability version 5",
+		"operator change can make",
 		"ownership-proving OTP",
 		"unproven credential",
 		"revokes its old sessions",

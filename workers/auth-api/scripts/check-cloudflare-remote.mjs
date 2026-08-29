@@ -48,10 +48,16 @@ const SECRETS_STORE_BINDINGS = [
 		storeId: "346e2b4b86334bc29083c064116e91cf",
 		secretName: "CINAADMIN_OIDC_BRIDGE_SECRET_V2",
 	},
+	{
+		name: "CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2",
+		storeId: "346e2b4b86334bc29083c064116e91cf",
+		secretName: "CINATOKEN_IDENTITY_EVENTS_SECRET_V2",
+	},
 ];
 const SERVICE_BINDINGS = [
 	{ name: "CINAAUTH_DELIVERY_SERVICE", service: "cinaauth-delivery" },
 	{ name: "CINAAUTH_ERASURE_SERVICE", service: "cinaauth-privacy-erasure" },
+	{ name: "CINATOKEN_IDENTITY_EVENTS_SERVICE", service: "cinatoken-admin" },
 ];
 const SIWE_RUNTIME_VARIABLE_NAMES = [
 	"CINAAUTH_SIWE_ENABLED",

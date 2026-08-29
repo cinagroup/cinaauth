@@ -38,15 +38,23 @@ export const installSocialSignInInvariant = async (
 		"singleton" BOOLEAN PRIMARY KEY DEFAULT TRUE,
 		"social_provider_limit" INTEGER NOT NULL DEFAULT ${MAX_SOCIAL_PROVIDER_LIMIT},
 		"email_otp_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE,
+		"email_password_login_enabled" BOOLEAN NOT NULL DEFAULT FALSE,
+		"passkey_login_enabled" BOOLEAN NOT NULL DEFAULT FALSE,
+		"siwe_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE,
+		"google_one_tap_enabled" BOOLEAN NOT NULL DEFAULT FALSE,
 		"updated_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		"updated_by" TEXT NOT NULL,
 		CONSTRAINT "cinaauth_sign_in_settings_singleton_check" CHECK ("singleton"),
 		CONSTRAINT "cinaauth_sign_in_settings_limit_check"
 			CHECK ("social_provider_limit" BETWEEN 0 AND ${MAX_SOCIAL_PROVIDER_LIMIT})
 	)`);
-	// Existing deployments created the table before the OTP login toggle existed.
+	// Existing deployments may predate one or more runtime login toggles.
 	await client.query(`ALTER TABLE "cinaauth_sign_in_settings"
-		ADD COLUMN IF NOT EXISTS "email_otp_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE`);
+		ADD COLUMN IF NOT EXISTS "email_otp_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE,
+		ADD COLUMN IF NOT EXISTS "email_password_login_enabled" BOOLEAN NOT NULL DEFAULT FALSE,
+		ADD COLUMN IF NOT EXISTS "passkey_login_enabled" BOOLEAN NOT NULL DEFAULT FALSE,
+		ADD COLUMN IF NOT EXISTS "siwe_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE,
+		ADD COLUMN IF NOT EXISTS "google_one_tap_enabled" BOOLEAN NOT NULL DEFAULT FALSE`);
 	await client.query(`INSERT INTO "cinaauth_sign_in_settings"
 		("singleton", "social_provider_limit", "updated_by")
 		VALUES (TRUE, ${MAX_SOCIAL_PROVIDER_LIMIT}, 'system')

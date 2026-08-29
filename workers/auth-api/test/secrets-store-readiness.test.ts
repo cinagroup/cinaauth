@@ -15,6 +15,9 @@ describe("active Secrets Store readiness", () => {
 			CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2: binding(strong("erasure")),
 			CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2: binding(clientSecret),
 			CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2: binding(strong("bridge")),
+			CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2: binding(
+				strong("identity-events"),
+			),
 		};
 
 		const readiness = await getActiveSecretsStoreReadiness(env);
@@ -44,6 +47,9 @@ describe("active Secrets Store readiness", () => {
 				`cina_cs_${"x".repeat(32)}`,
 			),
 			CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2: binding(strong("bridge")),
+			CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2: binding(
+				strong("identity-events"),
+			),
 		});
 
 		expect(readiness).toEqual({

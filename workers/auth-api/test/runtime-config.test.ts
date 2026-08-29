@@ -16,6 +16,7 @@ import worker, {
 	requiresFreshSessionForMutation,
 	secureEqual,
 } from "../src/index";
+import type { OrganizationIdentityEvent } from "../src/organization-identity-events";
 import { roles } from "../src/plugins";
 import type { PrivacyExportMessage } from "../src/privacy-export";
 import { PRODUCTION_ORIGIN_ENV } from "./origin-test-env";
@@ -35,6 +36,9 @@ const makeEnv = (
 		CINAAUTH_MIGRATION_TOKEN: strong("migration"),
 		CINAAUTH_DELIVERY_WEBHOOK_URL: "https://delivery.example.com/cinaauth",
 		CINAAUTH_DELIVERY_WEBHOOK_SECRET: strong("delivery"),
+		CINATOKEN_IDENTITY_EVENTS_URL:
+			"https://cinatoken.com/api/integrations/cinaauth/organization-events",
+		CINATOKEN_IDENTITY_EVENTS_SECRET: strong("identity-events"),
 		CINAAUTH_URL: "https://auth.cinaseek.ai",
 		HYPERDRIVE: {
 			connectionString: "postgres://hyperdrive.local/cinaauth",
@@ -47,6 +51,13 @@ const makeEnv = (
 			send: async () => undefined,
 		} as unknown as Queue<DeliveryMessage>,
 		CINAAUTH_DELIVERY_SERVICE: {
+			fetch: async () => Response.json({ success: true }),
+		},
+		CINATOKEN_IDENTITY_EVENTS_QUEUE: {
+			send: async () => undefined,
+			sendBatch: async () => undefined,
+		} as unknown as Queue<OrganizationIdentityEvent>,
+		CINATOKEN_IDENTITY_EVENTS_SERVICE: {
 			fetch: async () => Response.json({ success: true }),
 		},
 		CINAAUTH_ERASURE_SERVICE: {
@@ -80,6 +91,8 @@ describe("runtime config guardrails", () => {
 			hasDatabaseInvariantTables([
 				"user",
 				"account",
+				"organization",
+				"member",
 				"ssoProvider",
 				"scimProvider",
 			]),
@@ -150,6 +163,11 @@ describe("runtime config guardrails", () => {
 				CINAAUTH_MIGRATION_TOKEN: "",
 				CINAAUTH_DELIVERY_QUEUE: undefined as unknown as Queue<DeliveryMessage>,
 				CINAAUTH_DELIVERY_SERVICE: undefined as unknown as Fetcher,
+				CINATOKEN_IDENTITY_EVENTS_QUEUE:
+					undefined as unknown as Queue<OrganizationIdentityEvent>,
+				CINATOKEN_IDENTITY_EVENTS_SERVICE: undefined as unknown as Fetcher,
+				CINATOKEN_IDENTITY_EVENTS_URL: "",
+				CINATOKEN_IDENTITY_EVENTS_SECRET: "",
 				CINAAUTH_ERASURE_SERVICE: undefined as unknown as Fetcher,
 				CINAAUTH_PRIVACY_EXPORT_QUEUE:
 					undefined as unknown as Queue<PrivacyExportMessage>,
@@ -184,6 +202,10 @@ describe("runtime config guardrails", () => {
 			"missing_erasure_service",
 			"invalid_delivery_webhook_url",
 			"missing_delivery_webhook_secret",
+			"missing_cinatoken_identity_events_queue",
+			"missing_cinatoken_identity_events_service",
+			"missing_cinatoken_identity_events_url",
+			"missing_cinatoken_identity_events_secret",
 			"missing_privacy_export_queue",
 			"missing_privacy_export_bucket",
 			"missing_privacy_export_key",
@@ -211,6 +233,7 @@ describe("runtime config guardrails", () => {
 					CINATOKEN_OIDC_BRIDGE_SECRET: "short",
 					CINAAUTH_MIGRATION_TOKEN: "short",
 					CINAAUTH_DELIVERY_WEBHOOK_SECRET: "short",
+					CINATOKEN_IDENTITY_EVENTS_SECRET: "short",
 					CINAAUTH_PRIVACY_EXPORT_KEY: "short",
 					CINAAUTH_ERASURE_WEBHOOK_SECRET: "short",
 				}),
@@ -223,6 +246,7 @@ describe("runtime config guardrails", () => {
 			"weak_cinatoken_oidc_bridge_secret",
 			"weak_cinaauth_migration_token",
 			"weak_delivery_webhook_secret",
+			"weak_cinatoken_identity_events_secret",
 			"weak_privacy_export_key",
 			"weak_erasure_webhook_secret",
 		]);
@@ -360,6 +384,37 @@ describe("SCIM ownership migration route boundary", () => {
 });
 
 describe("migration authorization", () => {
+	it("protects and validates the identity outbox replay operation before database access", async () => {
+		const env = makeEnv();
+		const url =
+			"https://auth.cinaseek.ai/api/operations/cinatoken-identity-outbox/replay";
+		const forbidden = await worker.fetch(
+			new Request(url, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ eventIds: ["cinaauth-outbox-1"] }),
+			}),
+			env,
+			{} as ExecutionContext,
+		);
+		expect(forbidden.status).toBe(403);
+
+		const invalid = await worker.fetch(
+			new Request(url, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${env.CINAAUTH_MIGRATION_TOKEN}`,
+					"content-type": "application/json",
+				},
+				body: JSON.stringify({ eventIds: [], all: true }),
+			}),
+			env,
+			{} as ExecutionContext,
+		);
+		expect(invalid.status).toBe(400);
+		expect(invalid.headers.get("cache-control")).toBe("no-store");
+	});
+
 	it("accepts only the explicit advanced-organization migration feature", () => {
 		expect(
 			getMigrationFeatureSelection(

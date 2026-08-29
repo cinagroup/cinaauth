@@ -10,13 +10,16 @@ Generic OAuth 回调改到 Auth Worker 域名，否则 `state` 与登录会话 C
 | 能力                                         | 供应商控制台配置                     | 生产值                                                                  |
 | ------------------------------------------ | ---------------------------- | -------------------------------------------------------------------- |
 | Google Social OAuth                        | Redirect URI                 | `https://accounts.cinaseek.ai/api/auth/callback/google`              |
+| Google One Tap（启用时）                    | Authorized JavaScript origin | `https://accounts.cinaseek.ai`                                      |
 | GitHub OAuth App                           | Authorization callback URL   | `https://accounts.cinaseek.ai/api/auth/callback/github`              |
 | Generic OAuth/OIDC，供应商 ID 为 `<providerId>` | Redirect URI / Callback URL  | `https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>` |
 
-Google 登录不使用 One Tap 或 Google Identity Services 浏览器组件。不要为当前登录 UI
-配置 Authorized JavaScript origin，也不要向账号中心构建注入 Google Client ID。线上
-`/api/auth/capabilities` 必须保持 `oneTap: false`；账号中心流水线会运行
-`test:oauth-build` 和 `check:oauth-build`，阻止 One Tap 被重新启用。
+Google 默认使用重定向 OAuth。管理员可在认证设置中启用 One Tap；只有 Google Provider
+有效、其 Client ID 可用且 Google 仍在公开登录列表中时，Worker 才注册 One Tap，公开
+`/api/auth/capabilities` 才同时返回 `oneTap: true` 与 `oneTapClientId`。Client ID 是公开标识，
+账号中心从无缓存能力响应中读取它，不把它注入构建环境；Client Secret 绝不进入该响应。
+启用 One Tap 前，必须精确登记上表中的 Authorized JavaScript origin。流水线运行
+`test:oauth-build` 和 `check:oauth-build`，拒绝缺少 Google Provider 或 Client ID 的半启用状态。
 
 ## Google 与 GitHub Social OAuth
 
@@ -29,7 +32,8 @@ Google 登录不使用 One Tap 或 Google Identity Services 浏览器组件。�
   state Cookie 不会随跨域回调返回。
 * Google 和 GitHub 控制台都只登记各自的精确回调。不要使用通配符或旧 Demo 域名。
 * 账号中心根据 `oauthProviders[].type === "social"` 调用 `signIn.social`；Generic OAuth
-  仍调用 `signIn.oauth2`。Google 与 GitHub 使用相同的重定向按钮和回调模型。
+  仍调用 `signIn.oauth2`。Google 默认与 GitHub 使用相同的重定向按钮和回调模型；只有
+  权威能力响应启用 One Tap 时，Google 按钮才切换到 Google Identity Services。
 * 账号中心只有 `/sign-in` 一个“登录或创建账号”入口。Google/GitHub 配置显式保持
   `disableImplicitSignUp: false` 与 `disableSignUp: false`：已有账号建立会话，首次通过
   供应商回调的用户直接创建账号，不再跳转到独立注册页。
@@ -91,7 +95,8 @@ pnpm --dir workers/auth-api run check:cloudflare
 `provision-secrets.mjs` 只通过环境变量读取配置并经 Wrangler stdin 写入，不应在命令参数、
 日志、GitHub Actions 输出或受版本控制文件中打印 JSON。完成 Auth Worker 发布后，验证：
 
-1. `/api/auth/capabilities` 只公开预期的 `providerId`，不含 Client ID/Secret 或 endpoint。
+1. `/api/auth/capabilities` 只公开预期的 `providerId`；除 One Tap 启用时所需的公开 Google
+   Client ID 外，不含其他 Client ID、任何 Client Secret 或 endpoint。
 2. 账号中心只显示 capabilities 中已经启用的连接器。
 3. 浏览器从 `accounts.cinaseek.ai/api/auth/sign-in/oauth2` 开始流程，供应商收到的
    `redirect_uri` 与控制台配置逐字符相同。

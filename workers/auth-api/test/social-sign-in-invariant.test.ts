@@ -54,10 +54,28 @@ describe("social sign-in configuration invariant", () => {
 		expect(queries[1]).toContain(
 			'"email_otp_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE',
 		);
-		expect(queries[2]).toContain('ALTER TABLE "cinaauth_sign_in_settings"');
-		expect(queries[2]).toContain(
-			'ADD COLUMN IF NOT EXISTS "email_otp_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE',
+		expect(queries[1]).toContain(
+			'"email_password_login_enabled" BOOLEAN NOT NULL DEFAULT FALSE',
 		);
+		expect(queries[1]).toContain(
+			'"passkey_login_enabled" BOOLEAN NOT NULL DEFAULT FALSE',
+		);
+		expect(queries[1]).toContain(
+			'"siwe_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE',
+		);
+		expect(queries[1]).toContain(
+			'"google_one_tap_enabled" BOOLEAN NOT NULL DEFAULT FALSE',
+		);
+		expect(queries[2]).toContain('ALTER TABLE "cinaauth_sign_in_settings"');
+		for (const column of [
+			'"email_otp_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE',
+			'"email_password_login_enabled" BOOLEAN NOT NULL DEFAULT FALSE',
+			'"passkey_login_enabled" BOOLEAN NOT NULL DEFAULT FALSE',
+			'"siwe_login_enabled" BOOLEAN NOT NULL DEFAULT TRUE',
+			'"google_one_tap_enabled" BOOLEAN NOT NULL DEFAULT FALSE',
+		]) {
+			expect(queries[2]).toContain(`ADD COLUMN IF NOT EXISTS ${column}`);
+		}
 		expect(queries[3]).toContain('INSERT INTO "cinaauth_sign_in_settings"');
 		expect(queries[3]).toContain('ON CONFLICT ("singleton") DO NOTHING');
 	});

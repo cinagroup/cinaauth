@@ -2,7 +2,12 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const API_BASE = "https://api.cloudflare.com/client/v4";
-const QUEUES = ["cinaauth-delivery", "cinaauth-delivery-dlq"];
+const QUEUES = [
+	"cinaauth-delivery",
+	"cinaauth-delivery-dlq",
+	"cinaauth-cinatoken-identity-events",
+	"cinaauth-cinatoken-identity-events-dlq",
+];
 export const DELIVERY_QUEUE_RETENTION_SECONDS = 86_400;
 
 export const evaluateRetentionChange = ({

@@ -8,6 +8,8 @@ This Worker serves `https://auth.cinaseek.ai` with three production primitives:
   every client request, with `/sign-in/*` fixed at 5 attempts per 60 seconds.
 - A Worker queue lock plus a transaction-local PostgreSQL trigger protects
   every route that can remove a `super_admin` role.
+- PostgreSQL organization/member triggers append immutable CinaToken projection
+  events transactionally; a one-minute Cron leases and persists them to Queue.
 - A dedicated Queue generates large privacy exports into a private R2 bucket;
   every manifest and data object uses a derived 32-byte SSE-C key and expires.
 
@@ -286,9 +288,10 @@ evidence; it is not a provider-signed physical-media sanitization certificate.
 ## 2. Configure delivery queues
 
 Authentication delivery payloads contain an email address or phone number and
-a short-lived credential. Keep the primary Queue and DLQ at 24-hour retention;
-Cloudflare otherwise defaults paid Queues to four days. The idempotent command
-creates missing Queues and updates existing ones:
+a short-lived credential. Organization identity events contain organization
+name/slug, user email, and role names. Keep both primary Queues and both DLQs at
+24-hour retention; Cloudflare otherwise defaults paid Queues to four days. The
+idempotent command creates missing Queues and updates existing ones:
 
 ```powershell
 pnpm --dir workers/auth-api run configure:delivery-queues
@@ -297,6 +300,40 @@ pnpm --dir workers/auth-api run configure:delivery-queues
 Reducing an existing Queue from four days to one day causes messages older than
 the new limit to expire. Review or replay any required DLQ entries before the
 first production run.
+
+The `cinaauth-cinatoken-identity-events` Queue is consumed only by the Auth
+Worker and delivered to the `cinatoken-admin` Service Binding. Its dedicated
+`cinaauth-cinatoken-identity-events-dlq` must be monitored and replayed before
+retention expiry. Delivery is idempotent at the CinaToken event inbox.
+
+`cinatoken-organization-identity-outbox-v1` is the authoritative producer.
+Its row triggers record organization, membership, deletion, and member-email
+changes inside the same PostgreSQL transaction as the source mutation. This
+also covers direct SSO/SCIM adapter writes. The `* * * * *` UTC Cron claims at
+most 100 rows with a two-minute lease, keeps Queue batches below 100 messages
+and 256 KiB, and marks rows queued only after `sendBatch()` confirms durable
+Queue persistence. A persistent per-aggregate logical clock advances source
+timestamps by at least one millisecond, so downstream last-write-wins remains
+deterministic under fast consecutive writes and Queue reordering. A crash after
+Queue acceptance can redeliver the same stable event ID; CinaToken's inbox
+suppresses that duplicate. Confirmed rows remain for 30 days for incident replay,
+then the daily retention Cron removes them.
+Replaying a retained row preserves its event ID and is therefore safe whether
+or not the receiver already applied it.
+
+Replay only reviewed event IDs (up to 1,000 per request) with the migration
+credential. The response reports counts and logs no event IDs:
+
+```powershell
+$headers = @{
+  Authorization = "Bearer $env:CINAAUTH_MIGRATION_TOKEN"
+  "Content-Type" = "application/json"
+}
+$body = @{ eventIds = @("cinaauth-outbox-123") } | ConvertTo-Json
+Invoke-RestMethod `
+  https://auth.cinaseek.ai/api/operations/cinatoken-identity-outbox/replay `
+  -Method Post -Headers $headers -Body $body
+```
 
 The Auth Worker reaches `cinaauth-delivery` through the
 `CINAAUTH_DELIVERY_SERVICE` Service Binding. The public delivery custom domain
@@ -308,16 +345,19 @@ returns `503 DELIVERY_PROVIDER_UNAVAILABLE` before generating a credential or
 enqueueing a message. The account portal consumes the same versioned capability
 contract and does not render unavailable flows.
 
-### Passwordless email cutover
+### Email authentication and runtime cutover
 
-Production email sign-in uses a six-digit Email OTP. Email-password,
-username-password, and Magic Link sign-in remain disabled. Email OTP password
-reset endpoints are also disabled and must not reactivate retained rollback
-credentials. Do not delete or bulk-migrate existing credential rows during the
-cutover; verified accounts keep them only for a reviewed rollback, and the
-passwordless Auth policy does not accept them. The intentional core safety
-exception applies when the first successful ownership-proving OTP reaches an
-unverified account: CinaAuth removes that account's unproven credential and
+Production defaults to six-digit Email OTP. Username-password and Magic Link
+remain unavailable, and Email OTP password-reset endpoints remain disabled.
+Email-password sign-in is an administrator-controlled runtime option for
+existing credential rows only: account creation remains disabled on the
+password endpoint, and `/sign-in/email` stays behind the shared login rate
+limit plus Turnstile whenever the paired Turnstile keys are configured. Do not
+delete or bulk-migrate existing credential rows during rollout; a reviewed
+operator change can make valid existing password credentials usable again. The
+intentional core safety exception applies when the first successful
+ownership-proving OTP reaches an unverified account: CinaAuth removes that
+account's unproven credential and
 revokes its old sessions. Email OTP is the first factor. A user who has 2FA
 enabled must then complete an independent TOTP or backup-code challenge; email
 OTP is not available as the second factor.
@@ -348,14 +388,15 @@ no-store capability `methods.emailOtp=true` instead of requiring both channels.
 The rollout is deliberately two-gated:
 
 1. Before any Cloudflare write, the central Account Portal preflight sets
-   `CINAAUTH_EMAIL_AUTH_GATE=provider-ready`. It requires live
-   `methods.emailOtp=true` but permits the currently deployed Worker to continue
-   advertising password methods until Auth is replaced.
+   `CINAAUTH_EMAIL_AUTH_GATE=portal-compatible`. It requires a no-store live
+   capability response compatible with the planned portal while accepting
+   schema version 4 or 5 during the rolling upgrade.
 2. After the Auth Worker reaches governed readiness and before the Account
    Portal write, the reusable Account workflow sets
-   `CINAAUTH_EMAIL_AUTH_GATE=passwordless`. It requires the exact live policy
-   `emailOtp=true`, `emailPassword=false`, `username=false`, and
-   `magicLink=false`.
+   `CINAAUTH_EMAIL_AUTH_GATE=runtime-configurable`. It requires schema version
+   5, boolean runtime methods, permanently disabled `username` and `magicLink`,
+   and a complete Google Provider plus public Client ID whenever One Tap is
+   advertised.
 
 If provider activation or the first gate fails, make no deployment write and
 repair or roll back the staged Delivery configuration. If Auth deploys but the
@@ -398,16 +439,21 @@ cannot claim them.
 The advertised login list `/api/auth/capabilities` → `oauthProviders` is
 truncated server-side to `social_provider_limit`, so the sign-in page shows at
 most that many federated options (0 hides all of them) without any portal
-change. Google uses the same redirect OAuth flow as GitHub; One Tap remains
-disabled and `/api/auth/capabilities` always reports `oneTap: false`.
+change. Google defaults to the same redirect OAuth flow as GitHub. One Tap is
+off by default and can become effective only when its runtime switch is on,
+Google is enabled and visible under the provider limit, and a Google Client ID
+is available. The capability then exposes that public Client ID while never
+exposing the Client Secret.
 
-The same settings row owns `email_otp_login_enabled` (default `true`). Email
-code sign-in is the only email authentication path — password login is
-permanently retired and is not a configurable option. When an operator
-disables the toggle, public email code delivery endpoints fail closed with
-`EMAIL_OTP_LOGIN_DISABLED` even while the delivery provider stays healthy, and
-`/api/auth/capabilities` stops advertising `methods.emailOtp`, which hides the
-portal's email form without any frontend change.
+The same settings row owns `email_otp_login_enabled` (default `true`),
+`email_password_login_enabled` (default `false`), `passkey_login_enabled`
+(default `false`), `siwe_login_enabled` (default `true`), and
+`google_one_tap_enabled` (default `false`). Disabled public endpoints fail
+closed with `AUTHENTICATION_METHOD_DISABLED`; Email OTP delivery also retains
+its dedicated `EMAIL_OTP_LOGIN_DISABLED` guard. Capability version 5 reports
+only effective methods, so the portal hides a disabled or unavailable flow
+without a frontend deployment. The admin mutation rejects unavailable methods
+and refuses to disable the last effective sign-in path.
 
 ## 3. Create privacy export storage and queues
 
@@ -481,6 +527,7 @@ and rejects any additional or incorrectly mapped entry:
 | Auth | `CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_ERASURE_WEBHOOK_SECRET_V2` |
 | Auth | `CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2` | `CINAADMIN_OIDC_CLIENT_SECRET_V2` |
 | Auth | `CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2` | `CINAADMIN_OIDC_BRIDGE_SECRET_V2` |
+| Auth | `CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2` | `CINATOKEN_IDENTITY_EVENTS_SECRET_V2` |
 | Delivery | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` |
 | Delivery | `CINAAUTH_DELIVERY_CONFIG_KEK_STORE` | `CINAAUTH_DELIVERY_CONFIG_KEK_V1` |
 | Privacy Erasure | `CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2` | `CINAAUTH_ERASURE_WEBHOOK_SECRET_V2` |
@@ -490,9 +537,11 @@ and rejects any additional or incorrectly mapped entry:
 | Admin | `CINAADMIN_OIDC_TRANSACTION_SECRET_STORE_V2` | `CINAADMIN_OIDC_TRANSACTION_SECRET_V2` |
 
 The client and bridge OIDC values are shared by Auth and Admin; the transaction
-value is Admin-only. All three must be distinct random values of at least 32
-characters, and the client secret retains the `cina_cs_` prefix followed by at
-least 32 random characters. The two webhook values are shared only with their
+value is Admin-only. The identity-event value is shared only between the Auth
+binding and CinaToken's `CINATOKEN_IDENTITY_EVENTS_SECRET` Worker secret. All
+of these values must be distinct random values of at least 32 characters, and
+the client secret retains the `cina_cs_` prefix followed by at least 32 random
+characters. The two delivery/privacy webhook values are shared only with their
 named child Worker. Each configuration KEK is independent and must have at
 least 32 bytes of entropy. Never replace a KEK in place while encrypted
 ACTIVE/NEXT/PREVIOUS versions exist; introduce a separately named key and an
@@ -595,8 +644,9 @@ matrix in [`docs/CINAAUTH_OAUTH_PRODUCTION.md`](../../docs/CINAAUTH_OAUTH_PRODUC
 In particular, Generic OAuth callbacks stay on `accounts.cinaseek.ai` so the
 same-origin state and session cookies survive the Service Binding hop. The
 account deployment runs `check:oauth-build` against the live capabilities
-endpoint and fails if the backend advertises One Tap. Google remains available
-only through the redirect-based social provider contract.
+endpoint and fails if One Tap is advertised without an enabled Google Provider
+and its public Client ID. With One Tap disabled, Google remains available
+through the redirect-based social provider contract.
 Google Social OAuth is registered only when both `GOOGLE_CLIENT_ID` and
 `GOOGLE_CLIENT_SECRET` are present. GitHub is registered only when both
 `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are present. Their callbacks are
@@ -669,9 +719,9 @@ pnpm --dir workers/auth-api run deploy
 `check:cloudflare` requires `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID`. Set `CINAAUTH_REQUIRE_ALL_PLUGIN_INPUTS=1` to make all
 optional commercial plugin inputs mandatory.
-The remote gate verifies both `cinaauth-delivery` and
-`cinaauth-privacy-erasure` Service Bindings plus all four exact active Auth
-Secrets Store bindings. When `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` (or an
+The remote gate verifies the `cinaauth-delivery`, `cinaauth-privacy-erasure`,
+and `cinatoken-admin` Service Bindings plus all five exact active Auth Secrets
+Store bindings. When `CINAAUTH_DELIVERY_WEBHOOK_SECRET_V2` (or an
 explicit legacy fallback value) is present in the operator process, it also
 requires public Auth capabilities to match authorized Delivery provider
 readiness.
@@ -744,13 +794,17 @@ Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Headers $headers
 Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Method Post -Headers $headers
 ```
 
-The POST applies the framework schema and then installs both deployment-owned
-PostgreSQL invariants in one additional transaction: the final-super-admin
-trigger and the persistent account/SSO/SCIM provider-namespace registry. It
-verifies both before committing. Installation fails if there is no non-anonymous
-exact `super_admin`, if an anonymous exact `super_admin` exists, or if current
-provider rows/configuration collide. Repair those data conditions explicitly;
-do not weaken or skip the invariant. Preview and apply responses list
+The POST applies the framework schema and then installs all deployment-owned
+PostgreSQL invariants in one additional transaction: final-super-admin
+governance, the persistent account/SSO/SCIM provider-namespace registry,
+runtime social-sign-in settings, and the transactional CinaToken identity
+outbox. It verifies every invariant before committing. The outbox installation
+creates source triggers first and then atomically backfills current organizations
+and memberships with stable bootstrap dedupe keys. Installation fails if there
+is no non-anonymous exact `super_admin`, if an anonymous exact `super_admin`
+exists, if current provider rows/configuration collide, or if a membership has
+no usable role. Repair those data conditions explicitly; do not weaken or skip
+the invariant. Preview and apply responses list
 `requiredInvariants`, and their `invariants` object reports installed/missing
 IDs without exposing provider IDs or credentials.
 

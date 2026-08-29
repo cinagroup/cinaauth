@@ -25,7 +25,9 @@ import type {
 } from "./admin-social-providers";
 import {
 	handleAdminDeleteSocialProvider,
+	handleAdminGetAuthenticationSettings,
 	handleAdminGetSocialProviders,
+	handleAdminUpdateAuthenticationSettings,
 	handleAdminUpdateSignInSettings,
 	handleAdminUpsertSocialProvider,
 } from "./admin-social-providers";
@@ -45,6 +47,7 @@ import {
 	createCanonicalDiscoveryRequest,
 	isAuthHandlerRequestPath,
 } from "./auth-routing";
+import { getDisabledAuthenticationMethod } from "./authentication-method-gate";
 import { getAuthCapabilities } from "./capabilities";
 import {
 	ensureCinatokenOidcClient,
@@ -97,6 +100,16 @@ import {
 	isOidcDemoAuthorizationRequest,
 	normalizeOidcDemoAuthorizationResponse,
 } from "./oidc-demo-client";
+import type { OrganizationIdentityEvent } from "./organization-identity-events";
+import {
+	CINATOKEN_IDENTITY_EVENTS_QUEUE_NAME,
+	drainOrganizationIdentityOutbox,
+	handleOrganizationIdentityBatch,
+	ORGANIZATION_IDENTITY_OUTBOX_CRON,
+	parseOrganizationIdentityOutboxReplayInput,
+	pruneOrganizationIdentityOutbox,
+	replayOrganizationIdentityOutbox,
+} from "./organization-identity-events";
 import type { AuthOriginConfigIssue } from "./origin-config";
 import {
 	isExactTrustedOrigin,
@@ -231,6 +244,12 @@ type RuntimeConfigIssue =
 	| "invalid_delivery_webhook_url"
 	| "missing_delivery_webhook_secret"
 	| "weak_delivery_webhook_secret"
+	| "missing_cinatoken_identity_events_queue"
+	| "missing_cinatoken_identity_events_service"
+	| "missing_cinatoken_identity_events_url"
+	| "invalid_cinatoken_identity_events_url"
+	| "missing_cinatoken_identity_events_secret"
+	| "weak_cinatoken_identity_events_secret"
 	| "missing_privacy_export_queue"
 	| "missing_privacy_export_bucket"
 	| "missing_privacy_export_key"
@@ -251,6 +270,8 @@ const REQUIRED_DATABASE_TABLES = [
 const DATABASE_INVARIANT_TABLES = [
 	"user",
 	"account",
+	"organization",
+	"member",
 	"ssoProvider",
 	"scimProvider",
 ] as const;
@@ -755,6 +776,14 @@ export const isVersionMetadata = (
 const isDeliveryQueue = (value: unknown): value is Queue<DeliveryMessage> =>
 	typeof (value as Queue<DeliveryMessage> | undefined)?.send === "function";
 
+const isOrganizationIdentityQueue = (
+	value: unknown,
+): value is Queue<OrganizationIdentityEvent> =>
+	typeof (value as Queue<OrganizationIdentityEvent> | undefined)?.send ===
+		"function" &&
+	typeof (value as Queue<OrganizationIdentityEvent> | undefined)?.sendBatch ===
+		"function";
+
 const isFetcher = (value: unknown): value is Fetcher =>
 	typeof (value as Fetcher | undefined)?.fetch === "function";
 
@@ -909,6 +938,22 @@ export const getRuntimeConfigIssues = (
 		issues.push("missing_delivery_webhook_secret");
 	} else if (env.CINAAUTH_DELIVERY_WEBHOOK_SECRET.length < 32) {
 		issues.push("weak_delivery_webhook_secret");
+	}
+	if (!isOrganizationIdentityQueue(env.CINATOKEN_IDENTITY_EVENTS_QUEUE)) {
+		issues.push("missing_cinatoken_identity_events_queue");
+	}
+	if (!isFetcher(env.CINATOKEN_IDENTITY_EVENTS_SERVICE)) {
+		issues.push("missing_cinatoken_identity_events_service");
+	}
+	if (!env.CINATOKEN_IDENTITY_EVENTS_URL) {
+		issues.push("missing_cinatoken_identity_events_url");
+	} else if (!isHttpsUrl(env.CINATOKEN_IDENTITY_EVENTS_URL)) {
+		issues.push("invalid_cinatoken_identity_events_url");
+	}
+	if (!env.CINATOKEN_IDENTITY_EVENTS_SECRET) {
+		issues.push("missing_cinatoken_identity_events_secret");
+	} else if (env.CINATOKEN_IDENTITY_EVENTS_SECRET.length < 32) {
+		issues.push("weak_cinatoken_identity_events_secret");
 	}
 
 	if (!isPrivacyExportQueue(env.CINAAUTH_PRIVACY_EXPORT_QUEUE)) {
@@ -1222,6 +1267,30 @@ app.use("*", async (c, next) => {
 		);
 	}
 
+	const accountOriginForSignIn =
+		requireAuthOriginConfig(runtimeEnv).accountOrigin;
+	const socialForSignIn = await resolveSocialSignInConfig(
+		runtimeEnv,
+		accountOriginForSignIn,
+	);
+	const disabledAuthenticationMethod = getDisabledAuthenticationMethod(
+		pathname,
+		socialForSignIn,
+	);
+	if (disabledAuthenticationMethod) {
+		return withNoStore(
+			c.json(
+				{
+					success: false,
+					code: "AUTHENTICATION_METHOD_DISABLED",
+					message: "This authentication method is currently disabled",
+					method: disabledAuthenticationMethod,
+				},
+				503,
+			),
+		);
+	}
+
 	const requiredDeliveryProvider = getRequiredDeliveryProvider(pathname);
 	if (requiredDeliveryProvider) {
 		const delivery = await getDeliveryProviderCapabilities(runtimeEnv);
@@ -1241,13 +1310,7 @@ app.use("*", async (c, next) => {
 		// disables it at runtime, public code delivery endpoints fail closed even
 		// though the delivery provider itself may still be healthy.
 		if (requiredDeliveryProvider === "email") {
-			const accountOriginForOtp =
-				requireAuthOriginConfig(runtimeEnv).accountOrigin;
-			const socialForOtp = await resolveSocialSignInConfig(
-				runtimeEnv,
-				accountOriginForOtp,
-			);
-			if (!socialForOtp.emailOtpLoginEnabled) {
+			if (!socialForSignIn.emailOtpLoginEnabled) {
 				return withNoStore(
 					c.json(
 						{
@@ -1341,6 +1404,8 @@ app.get("/api/auth/capabilities", async (c) => {
 					sms: delivery.sms,
 				},
 				social.capabilitiesProviders,
+				social,
+				social.googleOneTapClientId,
 			),
 		),
 	);
@@ -1661,15 +1726,20 @@ const getAdminSocialDependencies = (c: Context<AppEnv>) => {
 			if (typeof auditApi.logAudit !== "function") {
 				throw new Error("Social provider audit API is unavailable");
 			}
+			const authenticationSettings = event.action.startsWith(
+				"security.authentication",
+			);
 			await auditApi.logAudit({
 				headers,
 				body: {
-					category: "integration",
+					category: authenticationSettings ? "security" : "integration",
 					action: `${event.action}.${event.phase}`,
 					result: event.result,
 					actorSite: "admin-console",
 					targetType: "configuration",
-					targetId: "social-provider",
+					targetId: authenticationSettings
+						? "authentication-settings"
+						: "social-provider",
 					metadata: {
 						actorId: event.actorId,
 						...event.metadata,
@@ -1757,6 +1827,24 @@ app.put("/api/auth/admin/sign-in-settings", async (c) =>
 	runAdminSocialHandler(c, (dependencies) => {
 		const { origin, allowedOrigin } = adminSocialOrigin(c);
 		return handleAdminUpdateSignInSettings(
+			dependencies,
+			origin,
+			allowedOrigin,
+			() => readAdminSocialBody(c),
+		);
+	}),
+);
+
+app.get("/api/auth/admin/authentication-settings", async (c) =>
+	runAdminSocialHandler(c, (dependencies) =>
+		handleAdminGetAuthenticationSettings(dependencies),
+	),
+);
+
+app.put("/api/auth/admin/authentication-settings", async (c) =>
+	runAdminSocialHandler(c, (dependencies) => {
+		const { origin, allowedOrigin } = adminSocialOrigin(c);
+		return handleAdminUpdateAuthenticationSettings(
 			dependencies,
 			origin,
 			allowedOrigin,
@@ -2505,6 +2593,53 @@ app.post("/api/migrate", async (c) => {
 	}
 });
 
+// Operations-only replay for retained outbox rows. Stable event ids make this
+// idempotent at the CinaToken inbox even when an incident range overlaps rows
+// that were already delivered successfully.
+app.post("/api/operations/cinatoken-identity-outbox/replay", async (c) => {
+	if (!(await isAuthorizedMigrationRequest(c.req.raw.headers, c.env))) {
+		return withNoStore(c.json({ error: "Forbidden" }, 403));
+	}
+	let input: ReturnType<typeof parseOrganizationIdentityOutboxReplayInput>;
+	try {
+		input = parseOrganizationIdentityOutboxReplayInput(await c.req.json());
+	} catch {
+		return withNoStore(c.json({ error: "Invalid replay request" }, 400));
+	}
+
+	const database = createDatabase(c.env);
+	try {
+		const replayed = await replayOrganizationIdentityOutbox(
+			database,
+			input.eventIds,
+		);
+		console.info(
+			JSON.stringify({
+				level: "info",
+				message: "cinaauth.cinatoken_identity.outbox_replayed",
+				requested: input.eventIds.length,
+				replayed,
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json({ success: true, requested: input.eventIds.length, replayed }),
+		);
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.cinatoken_identity.outbox_replay_failed",
+				error: errorMessage(error),
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(c.json({ success: false, error: "Replay failed" }, 500));
+	} finally {
+		await database.end().catch(() => undefined);
+	}
+});
+
 // Claims one fail-closed legacy SCIM connection for a verified organization
 // owner/admin. This is an operations-only data migration, not a public SCIM
 // plugin endpoint. Omitting `apply: true` always performs a preview.
@@ -2818,13 +2953,23 @@ const runRetention = async (env: CloudflareBindings) => {
 	);
 };
 
-type WorkerQueueMessage = DeliveryMessage | PrivacyExportMessage;
+type WorkerQueueMessage =
+	| DeliveryMessage
+	| OrganizationIdentityEvent
+	| PrivacyExportMessage;
 
 const handleQueueBatch = async (
 	batch: MessageBatch<WorkerQueueMessage>,
 	env: CloudflareBindings,
 ) => {
 	const runtimeEnv = await resolveAuthRuntimeSecrets(env);
+	if (batch.queue === CINATOKEN_IDENTITY_EVENTS_QUEUE_NAME) {
+		await handleOrganizationIdentityBatch(
+			batch as MessageBatch<OrganizationIdentityEvent>,
+			runtimeEnv,
+		);
+		return;
+	}
 	if (batch.queue === PRIVACY_EXPORT_QUEUE_NAME) {
 		await handlePrivacyExportBatch(
 			batch as MessageBatch<PrivacyExportMessage>,
@@ -2836,10 +2981,49 @@ const handleQueueBatch = async (
 	await handleDeliveryBatch(batch as MessageBatch<DeliveryMessage>, runtimeEnv);
 };
 
+const runOrganizationIdentityOutboxRetention = async (
+	env: CloudflareBindings,
+) => {
+	const database = createDatabase(env);
+	try {
+		return await pruneOrganizationIdentityOutbox(database);
+	} finally {
+		await database.end().catch(() => undefined);
+	}
+};
+
 export default {
 	fetch: (request, env, ctx) => app.fetch(request, env, ctx),
 	queue: handleQueueBatch,
-	scheduled: (_event, env, ctx) => {
+	scheduled: (event, env, ctx) => {
+		if (event.cron === ORGANIZATION_IDENTITY_OUTBOX_CRON) {
+			ctx.waitUntil(
+				drainOrganizationIdentityOutbox(env)
+					.then((result) => {
+						if (result.claimed === 0) return;
+						console.info(
+							JSON.stringify({
+								level: "info",
+								message: "cinaauth.cinatoken_identity.outbox_drained",
+								...result,
+								version: getVersionMetadata(env),
+							}),
+						);
+					})
+					.catch((error) => {
+						console.error(
+							JSON.stringify({
+								level: "error",
+								message: "cinaauth.cinatoken_identity.outbox_drain_failed",
+								error: errorMessage(error),
+								version: getVersionMetadata(env),
+							}),
+						);
+					}),
+			);
+			return;
+		}
+		if (event.cron !== "0 3 * * *") return;
 		ctx.waitUntil(
 			resolveAuthRuntimeSecrets(env)
 				.then(runRetention)
@@ -2879,5 +3063,28 @@ export default {
 					}),
 			);
 		}
+		ctx.waitUntil(
+			runOrganizationIdentityOutboxRetention(env)
+				.then((deletedRows) => {
+					console.info(
+						JSON.stringify({
+							level: "info",
+							message: "cinaauth.cinatoken_identity.outbox_retention_swept",
+							deletedRows,
+							version: getVersionMetadata(env),
+						}),
+					);
+				})
+				.catch((error) => {
+					console.error(
+						JSON.stringify({
+							level: "error",
+							message: "cinaauth.cinatoken_identity.outbox_retention_failed",
+							error: errorMessage(error),
+							version: getVersionMetadata(env),
+						}),
+					);
+				}),
+		);
 	},
 } satisfies ExportedHandler<CloudflareBindings, WorkerQueueMessage>;

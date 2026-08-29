@@ -12,36 +12,27 @@ export const evaluateRuntimeCapabilities = ({
 		capabilities.oauthProviders.some(
 			(provider) => provider?.id === id && provider?.type === type,
 		);
-	if (capabilities.oneTap !== false) {
+	if (capabilities.version !== 5) {
 		failures.push(
-			"Live One Tap capability must remain disabled for redirect-based Google OAuth",
+			"Live authentication capabilities must use the runtime-configurable schema version 5",
 		);
 	}
 	if (
-		hasAll(configuredInputs, ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]) &&
-		!hasProvider("google", "social")
+		capabilities.oneTap !== false &&
+		!(
+			capabilities.oneTap === true &&
+			typeof capabilities.oneTapClientId === "string" &&
+			capabilities.oneTapClientId.trim().length > 0 &&
+			hasProvider("google", "social")
+		)
 	) {
 		failures.push(
-			"Google social credentials are configured but the live capability is disabled",
+			"Live One Tap capability requires an enabled Google provider and public client id",
 		);
 	}
-	if (
-		hasAll(configuredInputs, ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) &&
-		!hasProvider("github", "social")
-	) {
+	if (capabilities.oneTap === false && capabilities.oneTapClientId !== null) {
 		failures.push(
-			"GitHub social credentials are configured but the live capability is disabled",
-		);
-	}
-	if (
-		hasAll(configuredInputs, ["GENERIC_OAUTH_CONFIG"]) &&
-		(!Array.isArray(capabilities.oauthProviders) ||
-			!capabilities.oauthProviders.some(
-				(provider) => provider?.type === "generic-oauth",
-			))
-	) {
-		failures.push(
-			"GENERIC_OAUTH_CONFIG is configured but the live capabilities endpoint exposes no valid providers",
+			"Disabled One Tap capability must not expose a Google client id",
 		);
 	}
 	if (
@@ -69,10 +60,11 @@ export const evaluateRuntimeCapabilities = ({
 		);
 	}
 	if (Object.hasOwn(configuredValues, "CINAAUTH_SIWE_ENABLED")) {
-		const expectedSiwe = configuredValues.CINAAUTH_SIWE_ENABLED === "true";
-		if (capabilities.methods?.siwe !== expectedSiwe) {
+		const deploymentAllowsSiwe =
+			configuredValues.CINAAUTH_SIWE_ENABLED === "true";
+		if (!deploymentAllowsSiwe && capabilities.methods?.siwe === true) {
 			failures.push(
-				"Live SIWE capability does not match the tracked SIWE kill switch",
+				"Live SIWE capability must remain disabled while the deployment kill switch is off",
 			);
 		}
 	}
@@ -84,19 +76,30 @@ export const evaluateDeliveryCapabilityParity = ({
 	providers,
 }) => {
 	const failures = [];
-	if (providers.email !== true || capabilities.methods?.emailOtp !== true) {
+	if (
+		capabilities.methods?.emailOtp !== false &&
+		capabilities.methods?.emailOtp !== true
+	) {
+		failures.push("Live Email OTP capability must be a boolean");
+	} else if (
+		capabilities.methods.emailOtp === true &&
+		providers.email !== true
+	) {
 		failures.push(
-			"Production Email OTP requires an active Delivery Worker email provider and methods.emailOtp=true",
+			"Live Email OTP cannot be enabled without an active Delivery Worker email provider",
 		);
 	}
-	if (capabilities.methods?.emailPassword !== false) {
+	if (
+		capabilities.methods?.emailPassword !== false &&
+		capabilities.methods?.emailPassword !== true
+	) {
 		failures.push(
-			"Live email-password capability must remain disabled for passwordless email authentication",
+			"Live email-password capability must be a boolean runtime setting",
 		);
 	}
 	if (capabilities.methods?.magicLink !== false) {
 		failures.push(
-			"Live magic-link capability must remain disabled for OTP-only email authentication",
+			"Live magic-link capability must remain disabled because the method is not deployed",
 		);
 	}
 	if (capabilities.methods?.phoneOtp !== providers.sms) {
@@ -106,7 +109,7 @@ export const evaluateDeliveryCapabilityParity = ({
 	}
 	if (capabilities.methods?.username !== false) {
 		failures.push(
-			"Live username-password capability must remain disabled for passwordless email authentication",
+			"Live username-password capability must remain disabled because the method is not deployed",
 		);
 	}
 	return failures;

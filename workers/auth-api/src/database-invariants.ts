@@ -1,6 +1,11 @@
 import type { PoolClient } from "pg";
 import type { CinaAuthDatabase } from "./database";
 import {
+	getOrganizationIdentityOutboxInvariantReadiness,
+	installOrganizationIdentityOutboxInvariant,
+	ORGANIZATION_IDENTITY_OUTBOX_INVARIANT_ID,
+} from "./organization-identity-outbox-invariant";
+import {
 	getProviderNamespaceInvariantReadiness,
 	installProviderNamespaceInvariant,
 	PROVIDER_NAMESPACE_INVARIANT_ID,
@@ -40,6 +45,7 @@ export const DATABASE_INVARIANT_IDS = [
 	SUPER_ADMIN_DATABASE_INVARIANT_ID,
 	PROVIDER_NAMESPACE_INVARIANT_ID,
 	SOCIAL_SIGN_IN_INVARIANT_ID,
+	ORGANIZATION_IDENTITY_OUTBOX_INVARIANT_ID,
 ] as const;
 
 const getDatabaseInvariantDefinitions = (
@@ -61,6 +67,11 @@ const getDatabaseInvariantDefinitions = (
 		id: SOCIAL_SIGN_IN_INVARIANT_ID,
 		install: installSocialSignInInvariant,
 		getReadiness: getSocialSignInInvariantReadiness,
+	},
+	{
+		id: ORGANIZATION_IDENTITY_OUTBOX_INVARIANT_ID,
+		install: installOrganizationIdentityOutboxInvariant,
+		getReadiness: getOrganizationIdentityOutboxInvariantReadiness,
 	},
 ];
 

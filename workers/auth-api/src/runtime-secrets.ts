@@ -48,25 +48,30 @@ export const resolveStrongRuntimeSecret = (
 export const resolveAuthRuntimeSecrets = async (
 	env: CloudflareBindings,
 ): Promise<CloudflareBindings> => {
-	const [delivery, erasure, oidcClient, oidcBridge] = await Promise.all([
-		resolveStrongRuntimeSecret(
-			env.CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2,
-			env.CINAAUTH_DELIVERY_WEBHOOK_SECRET,
-		),
-		resolveStrongRuntimeSecret(
-			env.CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2,
-			env.CINAAUTH_ERASURE_WEBHOOK_SECRET,
-		),
-		resolveRuntimeSecret(
-			env.CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2,
-			env.CINAADMIN_OIDC_CLIENT_SECRET,
-			isValidAdminOidcClientSecret,
-		),
-		resolveStrongRuntimeSecret(
-			env.CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2,
-			env.CINAADMIN_OIDC_BRIDGE_SECRET,
-		),
-	]);
+	const [delivery, erasure, oidcClient, oidcBridge, identityEvents] =
+		await Promise.all([
+			resolveStrongRuntimeSecret(
+				env.CINAAUTH_DELIVERY_WEBHOOK_SECRET_STORE_V2,
+				env.CINAAUTH_DELIVERY_WEBHOOK_SECRET,
+			),
+			resolveStrongRuntimeSecret(
+				env.CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2,
+				env.CINAAUTH_ERASURE_WEBHOOK_SECRET,
+			),
+			resolveRuntimeSecret(
+				env.CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2,
+				env.CINAADMIN_OIDC_CLIENT_SECRET,
+				isValidAdminOidcClientSecret,
+			),
+			resolveStrongRuntimeSecret(
+				env.CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2,
+				env.CINAADMIN_OIDC_BRIDGE_SECRET,
+			),
+			resolveStrongRuntimeSecret(
+				env.CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2,
+				env.CINATOKEN_IDENTITY_EVENTS_SECRET,
+			),
+		]);
 
 	return {
 		...env,
@@ -74,5 +79,6 @@ export const resolveAuthRuntimeSecrets = async (
 		CINAAUTH_ERASURE_WEBHOOK_SECRET: erasure,
 		CINAADMIN_OIDC_CLIENT_SECRET: oidcClient,
 		CINAADMIN_OIDC_BRIDGE_SECRET: oidcBridge,
+		CINATOKEN_IDENTITY_EVENTS_SECRET: identityEvents,
 	};
 };

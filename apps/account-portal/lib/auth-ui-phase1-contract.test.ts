@@ -9,11 +9,20 @@ const readSource = (path: string) =>
 	readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("Accounts authentication UI phase one contract", () => {
-	it("redirects the retired password sign-in route", () => {
+	it("gates existing-account password sign-in from the runtime capability", () => {
 		const pageSource = readSource("../app/(auth)/sign-in/password/page.tsx");
+		const formSource = readSource(
+			"../components/forms/password-sign-in-form.tsx",
+		);
 
-		expect(pageSource).toContain("buildLegacyPasswordSignInRedirect");
-		expect(pageSource).not.toContain("SignInForm");
+		expect(pageSource).toContain("useAuthCapabilities");
+		expect(pageSource).toContain("methods.emailPassword === true");
+		expect(pageSource).toContain("<PasswordSignInForm");
+		expect(pageSource).toContain("Password sign-in is unavailable");
+		expect(formSource).toContain("authClient.signIn.email");
+		expect(formSource).toContain('useTurnstileChallenge("/sign-in/email")');
+		expect(formSource).toContain('autoComplete="current-password"');
+		expect(formSource).not.toContain("authClient.signUp");
 	});
 
 	it("preserves repeated signed OIDC parameters through the retired password route", () => {

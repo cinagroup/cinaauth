@@ -1,12 +1,16 @@
+import type { AdminControlPermission } from "@cinaauth/auth-web-contract";
 import { hasAdminControlPermission } from "@cinaauth/auth-web-contract";
 import { SECURITY_FRESH_AGE_SECONDS } from "./auth";
 import type { CinaAuthDatabase } from "./database";
+import type { DeliveryProviderCapabilities } from "./delivery";
+import { getDeliveryProviderCapabilities } from "./delivery";
 import type { CloudflareBindings } from "./env";
 import {
 	genericOAuthRedirectURI,
 	isValidGenericOAuthProvider,
 	parseProductionGenericOAuthConfig,
 } from "./oauth-config";
+import { getSiweRuntimeConfig } from "./siwe-runtime-config";
 import {
 	getConfiguredSocialProviders,
 	isSocialCatalogId,
@@ -15,6 +19,7 @@ import {
 	SOCIAL_PROVIDER_CATALOG,
 } from "./social-provider-catalog";
 import {
+	DEFAULT_SOCIAL_SIGN_IN_SETTINGS,
 	invalidateSocialSignInCache,
 	readSocialProviderRows,
 	readSocialSignInSettings,
@@ -45,6 +50,7 @@ export type AdminSocialProvidersDependencies = {
 		key: string,
 		rule: { window: number; max: number },
 	) => Promise<{ allowed: boolean; retryAfter: number | null }>;
+	getDeliveryCapabilities?: () => Promise<DeliveryProviderCapabilities>;
 	writeAuditEvent: (event: AdminSocialAuditEvent) => Promise<void>;
 	logEvent: (event: {
 		level: "warn" | "error";
@@ -69,9 +75,6 @@ const ADMIN_SOCIAL_PROVIDER_RATE_LIMIT_RULE = {
 	window: 300,
 	max: 10,
 } as const;
-
-const adminSocialRateLimitKey = (actorId: string) =>
-	`admin-social-provider:${actorId}`;
 
 const GENERIC_CONFIG_EXTRA_KEYS = [
 	"scopes",
@@ -148,6 +151,8 @@ const guardMutation = async (
 	dependencies: AdminSocialProvidersDependencies,
 	origin: string | null,
 	allowedOrigin: string,
+	permission: AdminControlPermission = "integration.social-provider.manage",
+	rateLimitNamespace = "admin-social-provider",
 ): Promise<GuardedMutation> => {
 	const session = await dependencies.getSession();
 	if (!session) {
@@ -158,12 +163,7 @@ const guardMutation = async (
 		});
 		return failure(401, "UNAUTHORIZED", "Authentication required");
 	}
-	if (
-		!hasAdminControlPermission(
-			session.user.role,
-			"integration.social-provider.manage",
-		)
-	) {
+	if (!hasAdminControlPermission(session.user.role, permission)) {
 		dependencies.logEvent({
 			level: "warn",
 			message: "cinaauth.admin_social_providers.rejected",
@@ -217,7 +217,7 @@ const guardMutation = async (
 		);
 	}
 	const limit = await dependencies.consumeRateLimit(
-		adminSocialRateLimitKey(session.user.id),
+		`${rateLimitNamespace}:${session.user.id}`,
 		ADMIN_SOCIAL_PROVIDER_RATE_LIMIT_RULE,
 	);
 	if (!limit.allowed) {
@@ -301,9 +301,7 @@ export const handleAdminGetSocialProviders = async (
 		return [];
 	});
 	const settings = await readSocialSignInSettings(dependencies.database).catch(
-		() => ({
-			socialProviderLimit: MAX_SOCIAL_PROVIDER_LIMIT,
-		}),
+		() => DEFAULT_SOCIAL_SIGN_IN_SETTINGS,
 	);
 
 	const rowsById = new Map(rows.map((row) => [row.providerId, row]));
@@ -387,6 +385,330 @@ export const handleAdminGetSocialProviders = async (
 			settings,
 		},
 	});
+};
+
+const readAuthenticationPrerequisites = async (
+	dependencies: Pick<
+		AdminSocialProvidersDependencies,
+		"env" | "database" | "getDeliveryCapabilities"
+	>,
+) => {
+	const [rows, delivery] = await Promise.all([
+		readSocialProviderRows(dependencies.database),
+		dependencies.getDeliveryCapabilities
+			? dependencies.getDeliveryCapabilities()
+			: getDeliveryProviderCapabilities(dependencies.env),
+	]);
+	const rowsById = new Map(rows.map((row) => [row.providerId, row]));
+	const envSocial = getConfiguredSocialProviders(dependencies.env, "");
+	let activeOAuthProviderCount = 0;
+	let googleClientId: string | null = null;
+	for (const entry of SOCIAL_PROVIDER_CATALOG) {
+		const row = rowsById.get(entry.id);
+		const envOption = envSocial[entry.optionKey as keyof typeof envSocial] as
+			| { clientId?: string }
+			| undefined;
+		const active = row
+			? row.enabled && Boolean(row.clientId) && Boolean(row.clientSecret)
+			: Boolean(envOption?.clientId);
+		if (!active) continue;
+		activeOAuthProviderCount += 1;
+		if (entry.id === "google") {
+			googleClientId = row?.clientId ?? envOption?.clientId ?? null;
+		}
+	}
+	const configuredGenericIds = new Set<string>();
+	for (const provider of parseProductionGenericOAuthConfig(
+		dependencies.env.GENERIC_OAUTH_CONFIG,
+		"",
+	)) {
+		configuredGenericIds.add(provider.providerId);
+	}
+	for (const row of rows) {
+		if (row.kind !== "generic" || !row.enabled || !row.clientId) continue;
+		configuredGenericIds.add(row.providerId);
+	}
+	activeOAuthProviderCount += configuredGenericIds.size;
+	return {
+		delivery,
+		activeOAuthProviderCount,
+		googleClientId,
+		siweAvailable: getSiweRuntimeConfig(dependencies.env).enabled,
+	};
+};
+
+const methodStatus = (
+	enabled: boolean,
+	available: boolean,
+	reason: string | null,
+	management: "runtime" | "integration" | "deployment",
+) => ({
+	enabled,
+	available,
+	effective: enabled && available,
+	reason,
+	management,
+});
+
+const buildAuthenticationMethods = (
+	settings: Awaited<ReturnType<typeof readSocialSignInSettings>>,
+	prerequisites: Awaited<ReturnType<typeof readAuthenticationPrerequisites>>,
+) => ({
+	emailOtp: methodStatus(
+		settings.emailOtpLoginEnabled,
+		prerequisites.delivery.email,
+		prerequisites.delivery.email ? null : "email_delivery_unavailable",
+		"runtime",
+	),
+	emailPassword: methodStatus(
+		settings.emailPasswordLoginEnabled,
+		true,
+		null,
+		"runtime",
+	),
+	passkey: methodStatus(settings.passkeyLoginEnabled, true, null, "runtime"),
+	siwe: methodStatus(
+		settings.siweLoginEnabled,
+		prerequisites.siweAvailable,
+		prerequisites.siweAvailable ? null : "siwe_deployment_unavailable",
+		"runtime",
+	),
+	googleOneTap: methodStatus(
+		settings.googleOneTapEnabled,
+		Boolean(prerequisites.googleClientId),
+		prerequisites.googleClientId ? null : "google_provider_unavailable",
+		"runtime",
+	),
+	phoneOtp: methodStatus(
+		false,
+		prerequisites.delivery.sms,
+		prerequisites.delivery.sms
+			? "login_ui_not_deployed"
+			: "sms_delivery_unavailable",
+		"deployment",
+	),
+	magicLink: methodStatus(false, false, "not_deployed", "deployment"),
+	username: methodStatus(false, false, "not_deployed", "deployment"),
+	twoFactor: methodStatus(true, true, "secondary_factor", "integration"),
+	sso: methodStatus(true, true, "managed_in_sso", "integration"),
+	oauth: methodStatus(
+		prerequisites.activeOAuthProviderCount > 0,
+		prerequisites.activeOAuthProviderCount > 0,
+		prerequisites.activeOAuthProviderCount > 0
+			? "managed_in_social_providers"
+			: "no_active_provider",
+		"integration",
+	),
+});
+
+const applySocialProviderLimit = (
+	settings: Awaited<ReturnType<typeof readSocialSignInSettings>>,
+	prerequisites: Awaited<ReturnType<typeof readAuthenticationPrerequisites>>,
+) => ({
+	...prerequisites,
+	activeOAuthProviderCount: Math.min(
+		prerequisites.activeOAuthProviderCount,
+		settings.socialProviderLimit,
+	),
+	googleClientId:
+		settings.socialProviderLimit > 0 ? prerequisites.googleClientId : null,
+});
+
+/** Read the authoritative runtime switches and deployment prerequisites. */
+export const handleAdminGetAuthenticationSettings = async (
+	dependencies: Pick<
+		AdminSocialProvidersDependencies,
+		"env" | "database" | "getSession" | "getDeliveryCapabilities" | "logEvent"
+	>,
+): Promise<AdminSocialResult> => {
+	const session = await dependencies.getSession();
+	if (!session) return failure(401, "UNAUTHORIZED", "Authentication required");
+	if (!hasAdminControlPermission(session.user.role, "security.policy.read")) {
+		return failure(403, "FORBIDDEN", "Permission denied");
+	}
+	try {
+		const [settings, discoveredPrerequisites] = await Promise.all([
+			readSocialSignInSettings(dependencies.database),
+			readAuthenticationPrerequisites(dependencies),
+		]);
+		const prerequisites = applySocialProviderLimit(
+			settings,
+			discoveredPrerequisites,
+		);
+		return jsonNoStore(200, {
+			ok: true,
+			data: {
+				settings,
+				methods: buildAuthenticationMethods(settings, prerequisites),
+				activeOAuthProviderCount: prerequisites.activeOAuthProviderCount,
+			},
+		});
+	} catch {
+		dependencies.logEvent({
+			level: "error",
+			message: "cinaauth.admin_authentication_settings.read_failed",
+			actorId: session.user.id,
+		});
+		return failure(
+			503,
+			"AUTHENTICATION_SETTINGS_UNAVAILABLE",
+			"Authentication settings are unavailable",
+		);
+	}
+};
+
+const AUTHENTICATION_SETTING_KEYS = [
+	"emailOtpLoginEnabled",
+	"emailPasswordLoginEnabled",
+	"passkeyLoginEnabled",
+	"siweLoginEnabled",
+	"googleOneTapEnabled",
+] as const;
+
+type AuthenticationSettingsMutation = Pick<
+	Awaited<ReturnType<typeof readSocialSignInSettings>>,
+	(typeof AUTHENTICATION_SETTING_KEYS)[number]
+>;
+
+const isAuthenticationSettingsMutation = (
+	value: unknown,
+): value is AuthenticationSettingsMutation =>
+	isRecord(value) &&
+	hasExactKeys(value, AUTHENTICATION_SETTING_KEYS) &&
+	AUTHENTICATION_SETTING_KEYS.every((key) => typeof value[key] === "boolean");
+
+/** Update runtime login methods without allowing an operator to lock out every user. */
+export const handleAdminUpdateAuthenticationSettings = async (
+	dependencies: AdminSocialProvidersDependencies,
+	origin: string | null,
+	allowedOrigin: string,
+	readBody: () => Promise<{ ok: true; body: unknown } | { ok: false }>,
+): Promise<AdminSocialResult> => {
+	const guard = await guardMutation(
+		dependencies,
+		origin,
+		allowedOrigin,
+		"security.policy.publish",
+		"admin-authentication-settings",
+	);
+	if ("status" in guard) return guard;
+	const actorId = guard.session.user.id;
+	const bodyResult = await readBody();
+	if (!bodyResult.ok) {
+		return failure(400, "INVALID_JSON", "Request body must be valid JSON");
+	}
+	if (!isAuthenticationSettingsMutation(bodyResult.body)) {
+		return failure(
+			400,
+			"INVALID_AUTHENTICATION_SETTINGS",
+			"Invalid authentication settings",
+		);
+	}
+	const next = bodyResult.body;
+	let current: Awaited<ReturnType<typeof readSocialSignInSettings>>;
+	let prerequisites: Awaited<
+		ReturnType<typeof readAuthenticationPrerequisites>
+	>;
+	try {
+		let discoveredPrerequisites: Awaited<
+			ReturnType<typeof readAuthenticationPrerequisites>
+		>;
+		[current, discoveredPrerequisites] = await Promise.all([
+			readSocialSignInSettings(dependencies.database),
+			readAuthenticationPrerequisites(dependencies),
+		]);
+		prerequisites = applySocialProviderLimit(current, discoveredPrerequisites);
+	} catch {
+		return failure(
+			503,
+			"AUTHENTICATION_SETTINGS_UNAVAILABLE",
+			"Authentication settings are unavailable",
+		);
+	}
+	const enablingUnavailable =
+		(!current.emailOtpLoginEnabled &&
+			next.emailOtpLoginEnabled &&
+			!prerequisites.delivery.email) ||
+		(!current.siweLoginEnabled &&
+			next.siweLoginEnabled &&
+			!prerequisites.siweAvailable) ||
+		(!current.googleOneTapEnabled &&
+			next.googleOneTapEnabled &&
+			!prerequisites.googleClientId);
+	if (enablingUnavailable) {
+		return failure(
+			409,
+			"AUTHENTICATION_METHOD_UNAVAILABLE",
+			"A selected authentication method is not configured",
+		);
+	}
+	const hasEffectiveRuntimeMethod =
+		next.emailPasswordLoginEnabled ||
+		next.passkeyLoginEnabled ||
+		(next.emailOtpLoginEnabled && prerequisites.delivery.email) ||
+		(next.siweLoginEnabled && prerequisites.siweAvailable) ||
+		(next.googleOneTapEnabled && Boolean(prerequisites.googleClientId));
+	if (
+		!hasEffectiveRuntimeMethod &&
+		prerequisites.activeOAuthProviderCount === 0
+	) {
+		return failure(
+			409,
+			"LAST_SIGN_IN_METHOD_REQUIRED",
+			"At least one effective sign-in method must remain enabled",
+		);
+	}
+	const metadata = { ...next };
+	await writeAudit(dependencies, {
+		action: "security.authentication.settings",
+		phase: "intent",
+		result: "success",
+		actorId,
+		metadata,
+	});
+	try {
+		const result = await dependencies.database.query(
+			`UPDATE "cinaauth_sign_in_settings"
+			SET "email_otp_login_enabled" = $1,
+				"email_password_login_enabled" = $2,
+				"passkey_login_enabled" = $3,
+				"siwe_login_enabled" = $4,
+				"google_one_tap_enabled" = $5,
+				"updated_at" = CURRENT_TIMESTAMP, "updated_by" = $6
+			WHERE "singleton" = TRUE`,
+			[
+				next.emailOtpLoginEnabled,
+				next.emailPasswordLoginEnabled,
+				next.passkeyLoginEnabled,
+				next.siweLoginEnabled,
+				next.googleOneTapEnabled,
+				actorId,
+			],
+		);
+		if ((result.rowCount ?? 0) === 0) throw new Error("settings row missing");
+	} catch {
+		await writeAudit(dependencies, {
+			action: "security.authentication.settings",
+			phase: "outcome",
+			result: "failure",
+			actorId,
+			metadata,
+		});
+		return failure(
+			503,
+			"AUTHENTICATION_SETTINGS_UNAVAILABLE",
+			"Authentication settings are unavailable",
+		);
+	}
+	invalidateSocialSignInCache();
+	await writeAudit(dependencies, {
+		action: "security.authentication.settings",
+		phase: "outcome",
+		result: "success",
+		actorId,
+		metadata,
+	});
+	return jsonNoStore(200, { ok: true, data: next });
 };
 
 /**

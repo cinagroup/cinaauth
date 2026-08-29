@@ -6,6 +6,7 @@ import {
 	getDatabaseInvariantReadiness,
 	installDatabaseInvariants,
 } from "../src/database-invariants";
+import { ORGANIZATION_IDENTITY_OUTBOX_INVARIANT_ID } from "../src/organization-identity-outbox-invariant";
 import { PROVIDER_NAMESPACE_INVARIANT_ID } from "../src/provider-namespace-invariant";
 import { SOCIAL_SIGN_IN_INVARIANT_ID } from "../src/social-sign-in-invariant";
 import { SUPER_ADMIN_DATABASE_INVARIANT_ID } from "../src/super-admin-database-invariant";
@@ -38,6 +39,7 @@ describe("production database invariants", () => {
 			SUPER_ADMIN_DATABASE_INVARIANT_ID,
 			PROVIDER_NAMESPACE_INVARIANT_ID,
 			SOCIAL_SIGN_IN_INVARIANT_ID,
+			ORGANIZATION_IDENTITY_OUTBOX_INVARIANT_ID,
 		]);
 	});
 

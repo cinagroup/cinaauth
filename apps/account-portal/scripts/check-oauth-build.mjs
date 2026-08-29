@@ -8,11 +8,11 @@ const DEFAULT_CAPABILITIES_URL =
 const hasNoStore = (cacheControl) =>
 	/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cacheControl ?? "");
 
-const readCapabilityMethods = (capabilities) => {
+const readCapabilityMethods = (capabilities, acceptedVersions = [5]) => {
 	if (
 		typeof capabilities !== "object" ||
 		capabilities === null ||
-		capabilities.version !== 4 ||
+		!acceptedVersions.includes(capabilities.version) ||
 		typeof capabilities.methods !== "object" ||
 		capabilities.methods === null
 	) {
@@ -21,28 +21,42 @@ const readCapabilityMethods = (capabilities) => {
 	return capabilities.methods;
 };
 
-export const evaluateEmailProviderReady = ({ capabilities, cacheControl }) => {
+export const evaluatePortalCompatibility = ({ capabilities, cacheControl }) => {
 	if (!hasNoStore(cacheControl)) {
 		return {
 			ok: false,
 			reason: "the live Auth capability response is not no-store",
 		};
 	}
-	const methods = readCapabilityMethods(capabilities);
-	if (methods?.emailOtp !== true) {
+	const methods = readCapabilityMethods(capabilities, [4, 5]);
+	if (typeof methods?.emailOtp !== "boolean") {
 		return {
 			ok: false,
 			reason:
-				"the live Auth capability cannot prove that the Email OTP provider is active",
+				"the live Auth capability is not compatible with the planned Account Portal",
 		};
 	}
 	return {
 		ok: true,
-		reason: "the production email OTP provider is active",
+		reason:
+			"the live Auth capability is compatible with the planned Account Portal",
 	};
 };
 
-export const evaluatePasswordlessEmailRelease = ({
+const hasGoogleSocialProvider = (capabilities) =>
+	Array.isArray(capabilities?.oauthProviders) &&
+	capabilities.oauthProviders.some(
+		(provider) => provider?.id === "google" && provider?.type === "social",
+	);
+
+const hasValidOneTapCapability = (capabilities) =>
+	capabilities?.oneTap === false ||
+	(capabilities?.oneTap === true &&
+		typeof capabilities.oneTapClientId === "string" &&
+		capabilities.oneTapClientId.trim().length > 0 &&
+		hasGoogleSocialProvider(capabilities));
+
+export const evaluateConfigurableAuthenticationRelease = ({
 	capabilities,
 	cacheControl,
 }) => {
@@ -54,35 +68,49 @@ export const evaluatePasswordlessEmailRelease = ({
 	}
 	const methods = readCapabilityMethods(capabilities);
 	if (
-		methods?.emailOtp !== true ||
-		methods.emailPassword !== false ||
+		!methods ||
+		![
+			"emailPassword",
+			"emailOtp",
+			"phoneOtp",
+			"passkey",
+			"anonymous",
+			"twoFactor",
+			"siwe",
+			"sso",
+		].every((method) => typeof methods[method] === "boolean") ||
 		methods.username !== false ||
-		methods.magicLink !== false
+		methods.magicLink !== false ||
+		!hasValidOneTapCapability(capabilities)
 	) {
 		return {
 			ok: false,
 			reason:
-				"the live Auth capabilities do not match the passwordless email policy (emailOtp=true, emailPassword=false, username=false, magicLink=false)",
+				"the live Auth capabilities do not match the runtime-configurable authentication contract v5",
 		};
 	}
 	return {
 		ok: true,
-		reason: "the live Auth capabilities match the passwordless email policy",
+		reason:
+			"the live Auth capabilities match the runtime-configurable authentication contract v5",
 	};
 };
 
 const evaluateEmailAuthGate = ({ gate, capabilities, cacheControl }) => {
 	if (gate === undefined || gate === "") return undefined;
-	if (gate === "provider-ready") {
-		return evaluateEmailProviderReady({ capabilities, cacheControl });
+	if (gate === "portal-compatible") {
+		return evaluatePortalCompatibility({ capabilities, cacheControl });
 	}
-	if (gate === "passwordless") {
-		return evaluatePasswordlessEmailRelease({ capabilities, cacheControl });
+	if (gate === "runtime-configurable") {
+		return evaluateConfigurableAuthenticationRelease({
+			capabilities,
+			cacheControl,
+		});
 	}
 	return {
 		ok: false,
 		reason:
-			"CINAAUTH_EMAIL_AUTH_GATE must be exactly provider-ready or passwordless",
+			"CINAAUTH_EMAIL_AUTH_GATE must be exactly portal-compatible or runtime-configurable",
 	};
 };
 
@@ -141,17 +169,23 @@ export const resolveAccountBuildReadinessTarget = ({
 	return expectedReadinessUrl;
 };
 
-export const evaluateRedirectOAuthBuild = ({ oneTapEnabled }) => {
-	if (!oneTapEnabled) {
+export const evaluateGoogleAuthenticationBuild = ({ capabilities }) => {
+	if (!hasValidOneTapCapability(capabilities)) {
+		return {
+			ok: false,
+			reason:
+				"the production Auth Worker advertises an incomplete Google One Tap capability",
+		};
+	}
+	if (capabilities.oneTap !== true) {
 		return {
 			ok: true,
 			reason: "Google uses the standard redirect OAuth flow",
 		};
 	}
 	return {
-		ok: false,
-		reason:
-			"the production Auth Worker still advertises One Tap instead of redirect OAuth",
+		ok: true,
+		reason: "Google One Tap is paired with its public client configuration",
 	};
 };
 
@@ -378,13 +412,12 @@ const main = async () => {
 
 	const url = process.env.CINAAUTH_CAPABILITIES_URL || DEFAULT_CAPABILITIES_URL;
 	const { capabilities, cacheControl } = await fetchCapabilities(url);
-	const redirectOAuthResult = evaluateRedirectOAuthBuild({
-		oneTapEnabled:
-			typeof capabilities === "object" &&
-			capabilities !== null &&
-			capabilities.oneTap === true,
+	const googleAuthenticationResult = evaluateGoogleAuthenticationBuild({
+		capabilities,
 	});
-	if (!redirectOAuthResult.ok) throw new Error(redirectOAuthResult.reason);
+	if (!googleAuthenticationResult.ok) {
+		throw new Error(googleAuthenticationResult.reason);
+	}
 	const reownResult = evaluateReownBuild({
 		siweEnabled:
 			typeof capabilities === "object" &&
@@ -404,7 +437,7 @@ const main = async () => {
 		throw new Error(emailAuthResult.reason);
 	}
 	console.log(
-		`Account identity build parity passed: ${redirectOAuthResult.reason}; ${reownResult.reason}${emailAuthResult ? `; ${emailAuthResult.reason}` : ""}.`,
+		`Account identity build parity passed: ${googleAuthenticationResult.reason}; ${reownResult.reason}${emailAuthResult ? `; ${emailAuthResult.reason}` : ""}.`,
 	);
 };
 

@@ -20,6 +20,7 @@ import {
 	captcha,
 	lastLoginMethod,
 	oauthPopup,
+	oneTap,
 	openAPI,
 } from "cinaauth/plugins";
 import { createAccessControl } from "cinaauth/plugins/access";
@@ -73,6 +74,7 @@ import {
 	hasPrivacyExportRuntime,
 } from "./privacy-export";
 import { getSiweRuntimeConfig } from "./siwe-runtime-config";
+import type { SocialSignInSettings } from "./social-provider-store";
 
 export const JWT_ROTATION_INTERVAL_SECONDS = 60 * 60 * 24 * 30;
 export const JWT_GRACE_PERIOD_SECONDS = 60 * 60 * 24 * 30;
@@ -217,6 +219,8 @@ export const createAuthPlugins = (
 	env: CloudflareBindings,
 	options: {
 		advancedOrganization?: boolean;
+		authenticationSettings?: SocialSignInSettings;
+		googleOneTapClientId?: string | null;
 	} = {},
 	resolvedGenericOAuthConfig?: GenericOAuthConfig[],
 ): CinaAuthPlugin[] => {
@@ -277,8 +281,8 @@ export const createAuthPlugins = (
 			// independent TOTP or backup code rather than another message sent to
 			// the same mailbox.
 		}),
-		organization(
-			options.advancedOrganization
+		organization({
+			...(options.advancedOrganization
 				? {
 						ac: organizationAccessControl,
 						roles: organizationRoles,
@@ -313,8 +317,8 @@ export const createAuthPlugins = (
 								),
 						},
 					}
-				: undefined,
-		),
+				: {}),
+		}),
 		apiKey({
 			// API keys are scoped to individual users, not organizations.
 			references: "user",
@@ -560,16 +564,17 @@ export const createAuthPlugins = (
 			},
 			organizationProvisioning: {
 				defaultRole: "member",
-				withOrganizationMemberProvisioning: (
+				withOrganizationMemberProvisioning: async (
 					{ organizationId, userId },
 					provision,
-				) =>
-					withRuntimeOrganizationMemberCapacity(
+				) => {
+					return withRuntimeOrganizationMemberCapacity(
 						env,
 						organizationId,
 						userId,
 						provision,
-					),
+					);
+				},
 			},
 			authorizeProvider: ({ provider }) => {
 				const subject = getOwnedRuntimeSubject(provider);
@@ -591,16 +596,17 @@ export const createAuthPlugins = (
 					? isRuntimeEntitlementFeatureEnabled(env, subject, "scim")
 					: false;
 			},
-			withOrganizationMemberProvisioning: (
+			withOrganizationMemberProvisioning: async (
 				{ organizationId, userId },
 				provision,
-			) =>
-				withRuntimeOrganizationMemberCapacity(
+			) => {
+				return withRuntimeOrganizationMemberCapacity(
 					env,
 					organizationId,
 					userId,
 					provision,
-				),
+				);
+			},
 		}),
 		createElectronPlugin({
 			clientID: "electron",
@@ -712,6 +718,18 @@ export const createAuthPlugins = (
 						: {
 								enabled: false,
 							},
+			}),
+		);
+	}
+
+	if (
+		options.authenticationSettings?.googleOneTapEnabled === true &&
+		options.googleOneTapClientId
+	) {
+		plugins.push(
+			oneTap({
+				clientId: options.googleOneTapClientId,
+				disableSignup: false,
 			}),
 		);
 	}

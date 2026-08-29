@@ -183,11 +183,11 @@ jobs:
           echo "Auth Worker did not reach governed readiness" >&2
           exit 1
 
-      - name: Verify live passwordless email policy
+      - name: Verify live configurable authentication contract
         if: inputs.deployment_mode == 'central'
         env:
           CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities
-          CINAAUTH_EMAIL_AUTH_GATE: passwordless
+          CINAAUTH_EMAIL_AUTH_GATE: runtime-configurable
           REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
         run: pnpm run check:oauth-build
 
@@ -206,7 +206,7 @@ jobs:
             const fs = require("node:fs");
             const capabilities = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
             if (
-              capabilities.version !== 4 ||
+              capabilities.version !== 5 ||
               typeof capabilities.methods !== "object" ||
               capabilities.methods === null
             ) {

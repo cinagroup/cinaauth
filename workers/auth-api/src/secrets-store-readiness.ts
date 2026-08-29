@@ -7,6 +7,7 @@ type StagedSecretsStoreEnv = Pick<
 	| "CINAAUTH_ERASURE_WEBHOOK_SECRET_STORE_V2"
 	| "CINAADMIN_OIDC_CLIENT_SECRET_STORE_V2"
 	| "CINAADMIN_OIDC_BRIDGE_SECRET_STORE_V2"
+	| "CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2"
 >;
 
 type StagedSecretsStoreIssue =
@@ -17,7 +18,9 @@ type StagedSecretsStoreIssue =
 	| "admin_oidc_client_secret_store_v2_unavailable"
 	| "admin_oidc_client_secret_store_v2_weak"
 	| "admin_oidc_bridge_secret_store_v2_unavailable"
-	| "admin_oidc_bridge_secret_store_v2_weak";
+	| "admin_oidc_bridge_secret_store_v2_weak"
+	| "cinatoken_identity_events_secret_store_v2_unavailable"
+	| "cinatoken_identity_events_secret_store_v2_weak";
 
 type SecretStoreBinding = Pick<SecretsStoreSecret, "get"> | undefined;
 
@@ -68,6 +71,12 @@ export const getActiveSecretsStoreReadiness = async (
 			isStrongSecret,
 			"admin_oidc_bridge_secret_store_v2_unavailable",
 			"admin_oidc_bridge_secret_store_v2_weak",
+		),
+		probeSecret(
+			env.CINATOKEN_IDENTITY_EVENTS_SECRET_STORE_V2,
+			isStrongSecret,
+			"cinatoken_identity_events_secret_store_v2_unavailable",
+			"cinatoken_identity_events_secret_store_v2_weak",
 		),
 	]);
 	const issues = results.filter(

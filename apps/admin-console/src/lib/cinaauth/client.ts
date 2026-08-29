@@ -28,6 +28,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
 const EXPOSED_UPSTREAM_ERROR_CODES = new Set([
+	"AUTHENTICATION_METHOD_UNAVAILABLE",
+	"LAST_SIGN_IN_METHOD_REQUIRED",
 	"SESSION_NOT_FRESH",
 	"UNAUTHORIZED",
 ]);
