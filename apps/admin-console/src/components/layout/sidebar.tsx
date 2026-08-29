@@ -38,7 +38,7 @@ export interface NavSection {
 	items: NavItem[];
 }
 
-export const NAV: NavSection[] = [
+const NAV: NavSection[] = [
 	{
 		groupKey: null,
 		items: [

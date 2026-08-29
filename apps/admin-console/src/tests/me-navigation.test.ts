@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { getAdminNavigationForSession, NAV } from "@/components/layout/sidebar";
+import { getAdminNavigationForSession } from "@/components/layout/sidebar";
 import type { AdminSession } from "@/lib/cinaauth/types";
 import { getImpersonationRedirect } from "@/lib/impersonation-navigation";
 import { getMeSelfServiceAccess, ME_SECTIONS } from "@/lib/me";
@@ -14,7 +14,9 @@ const adminSession = (impersonatedBy: string | null = null): AdminSession => ({
 
 describe("administrator /me navigation contract", () => {
 	it("adds My Account to the protected Admin navigation", () => {
-		const items = NAV.flatMap((section) => section.items);
+		const items = getAdminNavigationForSession(adminSession()).flatMap(
+			(section) => section.items,
+		);
 		expect(items).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ href: "/me", key: "nav.me" }),
@@ -56,7 +58,13 @@ describe("administrator /me navigation contract", () => {
 			adminSession("actor-admin"),
 		).flatMap((section) => section.items);
 		expect(items.map((item) => item.href)).toEqual(["/me"]);
-		expect(getAdminNavigationForSession(adminSession())).toBe(NAV);
+		expect(
+			getAdminNavigationForSession(adminSession()).flatMap((section) =>
+				section.items.map((item) => item.href),
+			),
+		).toEqual(
+			expect.arrayContaining(["/dashboard", "/users", "/audit", "/me"]),
+		);
 	});
 
 	it("redirects impersonated sessions away from administrator routes", () => {
