@@ -1,22 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentApprovalQuery } from "../src/agent-approval-preview";
-import {
-	getAgentApprovalPreview,
-	hashAgentUserCode,
-	normalizeAgentUserCode,
-} from "../src/agent-approval-preview";
+import { getAgentApprovalPreview } from "../src/agent-approval-preview";
 
 describe("Agent approval preview", () => {
-	it("normalizes device codes without accepting malformed input", () => {
-		expect(normalizeAgentUserCode("abcd-2345")).toBe("ABCD-2345");
-		expect(normalizeAgentUserCode("ABCD 2345")).toBe("ABCD-2345");
-		expect(normalizeAgentUserCode("short")).toBeNull();
-	});
-
-	it("matches the Agent Auth SHA-256 base64url code hash", async () => {
-		await expect(hashAgentUserCode("ABCD-2345")).resolves.toBe(
+	it("normalizes and hashes the code exactly like Agent Auth", async () => {
+		const query = vi.fn(async () => ({ rows: [] })) as AgentApprovalQuery;
+		await expect(
+			getAgentApprovalPreview(query, "agent_123", "abcd 2345"),
+		).resolves.toBeNull();
+		expect(query).toHaveBeenCalledWith(expect.any(String), [
+			"agent_123",
 			"-6njsc8I4U3yojJjR8ONdjruD01ZxUcOeMsvSZtLU80",
-		);
+		]);
 	});
 
 	it("returns only a code-bound pending approval and its requested grants", async () => {
@@ -56,6 +51,9 @@ describe("Agent approval preview", () => {
 		const query = vi.fn() as AgentApprovalQuery;
 		await expect(
 			getAgentApprovalPreview(query, "../agent", "ABCD-2345"),
+		).resolves.toBeNull();
+		await expect(
+			getAgentApprovalPreview(query, "agent_123", "short"),
 		).resolves.toBeNull();
 		expect(query).not.toHaveBeenCalled();
 	});

@@ -31,7 +31,7 @@ export type AgentApprovalPreview = {
 };
 
 /** Normalizes an RFC 8628-style user code and rejects malformed values. */
-export const normalizeAgentUserCode = (code: string) => {
+const normalizeAgentUserCode = (code: string) => {
 	const stripped = code.replaceAll(/[^A-Z0-9]/gi, "").toUpperCase();
 	if (!/^[A-Z0-9]{8}$/.test(stripped)) return null;
 	return `${stripped.slice(0, 4)}-${stripped.slice(4)}`;
@@ -55,7 +55,7 @@ const base64url = (bytes: Uint8Array) => {
 	return result;
 };
 
-export const hashAgentUserCode = async (code: string) => {
+const hashAgentUserCode = async (code: string) => {
 	const normalized = normalizeAgentUserCode(code);
 	if (!normalized) return null;
 	const digest = await globalThis.crypto.subtle.digest(

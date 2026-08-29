@@ -2,7 +2,7 @@ import type { Capability } from "@cinaauth/agent-auth";
 import { agentAuth } from "@cinaauth/agent-auth";
 import type { CinaAuthPlugin } from "cinaauth";
 
-export const IDENTITY_PROFILE_CAPABILITY = {
+const IDENTITY_PROFILE_CAPABILITY = {
 	name: "identity.profile.read",
 	description: "Read the approved user's basic CinaSeek Identity profile.",
 	approvalStrength: "session",
@@ -18,7 +18,7 @@ export const IDENTITY_PROFILE_CAPABILITY = {
 	},
 } satisfies Capability;
 
-export const AGENT_CAPABILITIES = [IDENTITY_PROFILE_CAPABILITY] as const;
+const AGENT_CAPABILITIES = [IDENTITY_PROFILE_CAPABILITY] as const;
 
 export const getAgentCapabilityDescription = (name: string) =>
 	AGENT_CAPABILITIES.find((capability) => capability.name === name)
