@@ -19,7 +19,7 @@ describe("Admin billing page contract", () => {
 		expect(source).toContain("billing.portal");
 	});
 
-	it("renders the unconfigured billing state and disables unavailable actions", () => {
+	it("renders the unavailable billing state and disables unavailable actions", () => {
 		expect(source).toContain("billing.unavailable");
 		expect(source).toContain("data?.available === false");
 		expect(source).toContain("!billingAvailable");
