@@ -31,6 +31,7 @@ import {
 	userHasPermission,
 } from "./routes";
 import { schema } from "./schema";
+import { listAllSessions, revokeUserSessionById } from "./session-admin";
 import { statsOverview, statsSecurityToday, statsSignups } from "./stats";
 import {
 	assertAnonymousUserIsNotSuperAdmin,
@@ -211,6 +212,8 @@ export const admin = <O extends AdminOptions>(options?: O | undefined) => {
 			],
 		},
 		endpoints: {
+			listAllSessions: listAllSessions(opts),
+			revokeUserSessionById: revokeUserSessionById(opts),
 			adminListUserPasskeys: adminListUserPasskeys(opts),
 			adminDeleteUserPasskey: adminDeleteUserPasskey(opts),
 			adminUpdateUserPasskey: adminUpdateUserPasskey(opts),

@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { NAV } from "@/components/layout/sidebar";
+import { getAdminNavigationForSession, NAV } from "@/components/layout/sidebar";
 import type { AdminSession } from "@/lib/cinaauth/types";
+import { getImpersonationRedirect } from "@/lib/impersonation-navigation";
 import { getMeSelfServiceAccess, ME_SECTIONS } from "@/lib/me";
 
 const adminSession = (impersonatedBy: string | null = null): AdminSession => ({
@@ -48,6 +49,35 @@ describe("administrator /me navigation contract", () => {
 		expect(getMeSelfServiceAccess(adminSession("actor-admin"))).toBe(
 			"impersonating",
 		);
+	});
+
+	it("limits impersonated sessions to My Account navigation", () => {
+		const items = getAdminNavigationForSession(
+			adminSession("actor-admin"),
+		).flatMap((section) => section.items);
+		expect(items.map((item) => item.href)).toEqual(["/me"]);
+		expect(getAdminNavigationForSession(adminSession())).toBe(NAV);
+	});
+
+	it("redirects impersonated sessions away from administrator routes", () => {
+		expect(
+			getImpersonationRedirect(adminSession("actor-admin"), "/dashboard"),
+		).toBe("/me");
+		expect(
+			getImpersonationRedirect(adminSession("actor-admin"), "/me/security"),
+		).toBeNull();
+		expect(getImpersonationRedirect(adminSession(), "/dashboard")).toBeNull();
+	});
+
+	it("lands on the safe My Account page after starting impersonation", () => {
+		const actions = readFileSync(
+			new URL(
+				"../app/(admin)/users/[id]/user-actions.tsx",
+				`file://${__filename}`,
+			),
+			"utf8",
+		);
+		expect(actions).toContain('window.location.assign("/me")');
 	});
 
 	it("exposes the current page to assistive technology", () => {

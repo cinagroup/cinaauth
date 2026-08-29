@@ -69,7 +69,10 @@ export function BanDialog({ userId }: { userId: string }) {
 			onConfirm={ban}
 		>
 			<Select value={duration} onValueChange={setDuration}>
-				<SelectTrigger className="h-10">
+				<SelectTrigger
+					aria-label={t("userDetail.ban.duration")}
+					className="h-10"
+				>
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
@@ -79,6 +82,7 @@ export function BanDialog({ userId }: { userId: string }) {
 				</SelectContent>
 			</Select>
 			<Input
+				aria-label={t("userDetail.ban.reason")}
 				value={reason}
 				onChange={(e) => setReason(e.target.value)}
 				placeholder={t("userDetail.ban.reason")}

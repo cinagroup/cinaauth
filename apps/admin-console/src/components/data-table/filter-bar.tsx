@@ -9,6 +9,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface FilterState {
 	searchField?: string;
@@ -29,6 +30,7 @@ export function FilterBar({
 	onChange: (f: FilterState) => void;
 	searchLabel?: string;
 }) {
+	const { t } = useI18n();
 	const [field, setField] = useState(fields[0]?.value ?? "email");
 	const [value, setValue] = useState("");
 
@@ -52,7 +54,10 @@ export function FilterBar({
 	return (
 		<div className="mb-4 flex flex-col gap-2 sm:flex-row">
 			<Select value={field} onValueChange={setField}>
-				<SelectTrigger className="h-10 w-full sm:w-[140px]">
+				<SelectTrigger
+					aria-label={t("common.searchField")}
+					className="h-10 w-full sm:w-[140px]"
+				>
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
@@ -64,6 +69,7 @@ export function FilterBar({
 				</SelectContent>
 			</Select>
 			<Input
+				aria-label={searchLabel}
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
 				placeholder={searchLabel}

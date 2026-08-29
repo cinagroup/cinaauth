@@ -130,11 +130,13 @@ export default function ApiKeysPage() {
 			if (!response.data?.key) throw new Error(t("toast.actionFailed"));
 			setCreatedKey(response.data.key);
 			await invalidateKeys();
+			return true;
 		} catch (error) {
 			// Rotation failures carry explicit residual-state guidance from the BFF.
 			toast.error(
 				error instanceof Error ? error.message : t("toast.actionFailed"),
 			);
+			return false;
 		}
 	};
 
@@ -218,13 +220,18 @@ export default function ApiKeysPage() {
 								>
 									{key.enabled ? t("common.disable") : t("common.enable")}
 								</Button>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => void rotateKey(key.id)}
-								>
-									{t("common.rotate")}
-								</Button>
+								<ConfirmDialog
+									trigger={
+										<Button variant="ghost" size="sm">
+											{t("common.rotate")}
+										</Button>
+									}
+									title={t("apiKeys.rotate.title")}
+									description={t("apiKeys.rotate.description")}
+									confirmText={t("common.rotate")}
+									danger
+									onConfirm={() => rotateKey(key.id)}
+								/>
 								<ConfirmDialog
 									trigger={
 										<Button variant="ghost" size="sm" className="text-error">

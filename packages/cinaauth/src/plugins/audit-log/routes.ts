@@ -15,6 +15,16 @@ type ResolvedOptions = Required<
 > &
 	Pick<AuditLogPluginOptions, "schema">;
 
+const hasAllowedRole = (
+	role: string | null | undefined,
+	allowedRoles: readonly string[],
+) =>
+	(role ?? "")
+		.split(",")
+		.map((candidate) => candidate.trim())
+		.filter(Boolean)
+		.some((candidate) => allowedRoles.includes(candidate));
+
 /**
  * Build a fully-populated CleanedWhere clause. `CleanedWhere = Required<Where>`,
  * so connector/mode must be present even though they default at runtime.
@@ -104,7 +114,7 @@ export const listAudit = (opts: ResolvedOptions) =>
 			query: listAuditQuerySchema,
 		},
 		async (ctx) => {
-			if (!opts.allowedRoles.includes(ctx.context.session.user.role ?? "")) {
+			if (!hasAllowedRole(ctx.context.session.user.role, opts.allowedRoles)) {
 				throw APIError.from(
 					"FORBIDDEN",
 					AUDIT_LOG_ERROR_CODES.AUDIT_LOG_QUERY_NOT_ALLOWED,
@@ -330,7 +340,7 @@ export const logAudit = (opts: ResolvedOptions) =>
 				// session.
 				const { session } = await getFreshSessionFromCtx(ctx);
 				const role = session?.user?.role ?? null;
-				if (!role || !opts.allowedRoles.includes(role)) {
+				if (!hasAllowedRole(role, opts.allowedRoles)) {
 					throw APIError.from(
 						"FORBIDDEN",
 						AUDIT_LOG_ERROR_CODES.AUDIT_LOG_WRITE_NOT_ALLOWED,
@@ -396,7 +406,7 @@ export const exportAudit = (opts: ResolvedOptions) =>
 			query: exportAuditQuerySchema,
 		},
 		async (ctx) => {
-			if (!opts.allowedRoles.includes(ctx.context.session.user.role ?? "")) {
+			if (!hasAllowedRole(ctx.context.session.user.role, opts.allowedRoles)) {
 				throw APIError.from(
 					"FORBIDDEN",
 					AUDIT_LOG_ERROR_CODES.AUDIT_LOG_QUERY_NOT_ALLOWED,
@@ -497,7 +507,7 @@ export const auditAlerts = (opts: ResolvedOptions) =>
 			query: alertsQuerySchema,
 		},
 		async (ctx) => {
-			if (!opts.allowedRoles.includes(ctx.context.session.user.role ?? "")) {
+			if (!hasAllowedRole(ctx.context.session.user.role, opts.allowedRoles)) {
 				throw APIError.from(
 					"FORBIDDEN",
 					AUDIT_LOG_ERROR_CODES.AUDIT_LOG_QUERY_NOT_ALLOWED,

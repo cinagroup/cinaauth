@@ -438,7 +438,10 @@ GET /admin/stats/overview
 ```
 
 Returns `{ totalUsers, newUsers30d, activeSessions, organizationCount,
-bannedCount, usersWithout2FA, loginChannels: { emailPassword, github, siwe } }`.
+bannedCount, usersWithout2FA, loginChannels }`. `loginChannels` counts linked
+accounts by provider: credentials are exposed as `emailPassword`, and every
+configured provider ID (for example `google`, `github`, `siwe`, or a custom
+OAuth provider ID) is included dynamically.
 Counts that depend on an optional plugin (e.g. `organization`) gracefully
 return 0 when that plugin is absent. Requires `stats:read`.
 
@@ -463,6 +466,33 @@ GET /admin/stats/security-today
 
 Returns `{ failedLoginsToday, otpRequestsToday, geoAnomalyCount }` from the
 audit log (0 when the audit-log plugin is not installed). Requires `stats:read`.
+
+### List All Sessions
+
+**Server:** `auth.api.listAllSessions({ headers, query })`
+
+```
+GET /admin/list-all-sessions?limit=50&offset=0&activeOnly=true&userId=
+```
+
+Returns a paginated platform-wide session inventory as
+`{ sessions, total, limit, offset }`. Session rows contain the non-secret
+database ID, user ID, timestamps, IP address, user agent, and impersonation
+metadata; bearer session tokens are never returned. `userId` is optional and
+`activeOnly` defaults to `true`. Requires `session:list`.
+
+### Revoke a Session by ID
+
+**Server:** `auth.api.revokeUserSessionById({ headers, body })`
+
+```
+POST /admin/revoke-user-session-by-id
+body: { sessionId }
+```
+
+Revokes a session using its non-secret database ID. The endpoint resolves the
+bearer token internally and never exposes it to the caller. Repeating the call
+after the session is gone remains successful. Requires `session:revoke`.
 
 ### List User Wallets
 

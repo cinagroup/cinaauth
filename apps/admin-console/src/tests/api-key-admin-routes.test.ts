@@ -510,6 +510,8 @@ describe("Admin API key UI and DTO contract", () => {
 		expect(english["apiKeys.description"]).toContain(
 			"not a global key inventory",
 		);
+		expect(page).toContain('title={t("apiKeys.rotate.title")}');
+		expect(page).toContain("onConfirm={() => rotateKey(key.id)}");
 	});
 
 	it("matches the package's safe API key metadata field names", () => {

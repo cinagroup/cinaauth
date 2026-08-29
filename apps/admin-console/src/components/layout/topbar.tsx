@@ -131,7 +131,10 @@ export function Topbar({
 					value={lang}
 					onValueChange={(value) => setLang(value as "zh" | "en")}
 				>
-					<SelectTrigger className="h-8 w-[76px] text-[13px] sm:w-[88px]">
+					<SelectTrigger
+						aria-label={t("language.select")}
+						className="h-8 w-[76px] text-[13px] sm:w-[88px]"
+					>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -144,6 +147,7 @@ export function Topbar({
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
+							aria-label={t("nav.accountMenu")}
 							className="flex h-11 w-11 items-center justify-center gap-2 rounded-[var(--radius-pill)] p-1 transition-colors hover:bg-canvas-soft sm:h-9 sm:w-auto sm:justify-start sm:pr-2"
 						>
 							<span className="flex h-7 w-7 items-center justify-center rounded-full bg-canvas-soft-2 text-[12px] font-semibold text-ink">

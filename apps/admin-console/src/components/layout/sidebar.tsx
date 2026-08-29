@@ -22,6 +22,8 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AdminBrand } from "@/components/layout/admin-brand";
+import { useAdminSession } from "@/hooks/use-admin-session";
+import type { AdminSession } from "@/lib/cinaauth/types";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
@@ -94,6 +96,17 @@ export const NAV: NavSection[] = [
 	},
 ];
 
+/** Hide administrator destinations while the session represents another user. */
+export function getAdminNavigationForSession(
+	session: Pick<AdminSession, "impersonatedBy"> | null | undefined,
+): NavSection[] {
+	if (!session?.impersonatedBy) return NAV;
+	return NAV.map((section) => ({
+		...section,
+		items: section.items.filter((item) => item.href === "/me"),
+	})).filter((section) => section.items.length > 0);
+}
+
 export function Sidebar({
 	collapsed = false,
 	className,
@@ -105,6 +118,8 @@ export function Sidebar({
 }) {
 	const { t } = useI18n();
 	const pathname = usePathname();
+	const { data: session } = useAdminSession();
+	const navigation = getAdminNavigationForSession(session);
 
 	return (
 		<aside
@@ -124,7 +139,7 @@ export function Sidebar({
 			</div>
 
 			<nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3">
-				{NAV.map((section) => (
+				{navigation.map((section) => (
 					<div key={section.groupKey ?? "top"}>
 						{section.groupKey && !collapsed && (
 							<div className="mb-1 px-2 text-[11px] font-medium text-mute">

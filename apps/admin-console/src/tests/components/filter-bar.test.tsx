@@ -19,6 +19,19 @@ afterEach(() => {
 });
 
 describe("FilterBar", () => {
+	it("gives the field selector and search input accessible names", () => {
+		render(
+			<FilterBar
+				fields={FIELDS}
+				onChange={vi.fn()}
+				searchLabel="Search users"
+			/>,
+		);
+
+		expect(screen.getByRole("combobox", { name: "搜索字段" })).toBeEnabled();
+		expect(screen.getByRole("textbox", { name: "Search users" })).toBeEnabled();
+	});
+
 	it("debounces and fires onChange once with the typed value", () => {
 		vi.useFakeTimers();
 		const onChange = vi.fn();

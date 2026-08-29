@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { translate } from "@/lib/i18n/dictionary";
 import en from "@/lib/i18n/locales/en.json";
 import zh from "@/lib/i18n/locales/zh.json";
 
@@ -23,5 +24,14 @@ describe("translation dictionaries", () => {
 			expect(en[key as keyof typeof en], `en:${key}`).toBeTruthy();
 			expect(zh[key as keyof typeof zh], `zh:${key}`).toBeTruthy();
 		}
+	});
+
+	it("interpolates both supported placeholder styles", () => {
+		expect(translate("en", "common.typeToConfirm", { value: "user-123" })).toBe(
+			"Type user-123 to confirm.",
+		);
+		expect(
+			translate("zh", "impersonate.banner", { user: "admin@cina.test" }),
+		).toBe("正在以 admin@cina.test 身份操作");
 	});
 });

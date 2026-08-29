@@ -18,7 +18,11 @@ export function RoleGuard({
 
 	useEffect(() => setMounted(true), []);
 
-	if (!mounted || !session || !allow.includes(session.role))
+	const roles = session?.role
+		.split(",")
+		.map((role) => role.trim())
+		.filter(Boolean);
+	if (!mounted || !roles?.some((role) => allow.includes(role)))
 		return <>{fallback}</>;
 	return <>{children}</>;
 }

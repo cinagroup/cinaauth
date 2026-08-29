@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getTestInstance } from "../../test-utils/test-instance";
 import { auditLog } from "../audit-log";
 import { admin } from "./admin";
+import { aggregateLoginChannels } from "./stats";
 
 /**
  * Build a test instance where the default test user is assigned the "admin"
@@ -27,6 +28,25 @@ async function statsInstance() {
 }
 
 describe("admin stats endpoints", () => {
+	it("counts every configured account provider without dropping Google or custom OAuth", () => {
+		expect(
+			aggregateLoginChannels([
+				{ providerId: "credential" },
+				{ providerId: "google" },
+				{ providerId: "github" },
+				{ providerId: "siwe" },
+				{ providerId: "acme-oidc" },
+				{ providerId: "google" },
+			]),
+		).toEqual({
+			emailPassword: 1,
+			google: 2,
+			github: 1,
+			siwe: 1,
+			"acme-oidc": 1,
+		});
+	});
+
 	it("overview returns counts and login channels", async () => {
 		const { auth, signInWithTestUser } = await statsInstance();
 		const { headers } = await signInWithTestUser();

@@ -33,7 +33,10 @@ export function translate(
 	let str = dict[key] ?? key;
 	if (vars) {
 		for (const [k, val] of Object.entries(vars)) {
-			str = str.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), String(val));
+			const replacement = String(val);
+			str = str
+				.replaceAll(`{{${k}}}`, replacement)
+				.replaceAll(`{${k}}`, replacement);
 		}
 	}
 	return str;

@@ -5,10 +5,7 @@ import { cinaauthFetch } from "@/lib/cinaauth/client";
 import { resolveAdminSession } from "@/lib/cinaauth/session";
 import { adminUpstreamResponseStatus } from "@/lib/cinaauth/upstream-response";
 
-/** GET /api/admin/sessions — proxy cinaauth's core /list-sessions endpoint.
- *  The admin plugin doesn't expose a global session list; the core
- *  /list-sessions endpoint returns the current user's sessions. For a true
- *  global view, the backend would need an admin-level endpoint. */
+/** GET /api/admin/sessions — proxy the token-safe global Admin inventory. */
 export async function GET(request: NextRequest) {
 	const session = await resolveAdminSession(request);
 	if (!session) {
@@ -20,7 +17,10 @@ export async function GET(request: NextRequest) {
 		return e as Response;
 	}
 	const cookie = request.headers.get("cookie") ?? "";
-	// Try the core list-sessions endpoint (returns caller's sessions).
-	const res = await cinaauthFetch(`/list-sessions`, { cookie });
+	const query = new URL(request.url).searchParams.toString();
+	const res = await cinaauthFetch(
+		`/admin/list-all-sessions${query ? `?${query}` : ""}`,
+		{ cookie },
+	);
 	return NextResponse.json(res, { status: adminUpstreamResponseStatus(res) });
 }

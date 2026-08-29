@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Download, Search } from "lucide-react";
@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
 	Select,
 	SelectContent,
@@ -17,6 +18,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	buildAuditExportPath,
+	buildAuditListPath,
+	resolveAuditFilters,
+} from "@/lib/audit-query";
 import type { AuditLogDTO } from "@/lib/cinaauth/dto";
 import { downloadAdminCsv, fetchAdminJson } from "@/lib/client-api";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -31,6 +37,7 @@ const CATEGORIES = [
 	"org",
 	"apikey",
 ];
+const PAGE_SIZE = 100;
 
 export default function AuditPage() {
 	const { t } = useI18n();
@@ -38,37 +45,31 @@ export default function AuditPage() {
 	const [result, setResult] = useState("all");
 	const [dateRange, setDateRange] = useState("all");
 	const [search, setSearch] = useState("");
+	const [offset, setOffset] = useState(0);
+	const auditFilters = useMemo(
+		() => resolveAuditFilters({ category, result, dateRange }),
+		[category, dateRange, result],
+	);
 
 	// Only the server-side facets belong in the query key. `search` is a
 	// purely client-side filter over the already-fetched page, so keeping it
 	// out of the key means typing filters instantly without re-hitting the API
 	// on every keystroke.
 	const { data, isFetching, isError, refetch } = useQuery({
-		queryKey: ["audit", category, result, dateRange],
+		queryKey: ["audit", auditFilters, offset],
 		queryFn: async () => {
-			const now = new Date();
-			const qs = new URLSearchParams({
-				limit: "100",
-				...(category !== "all" && { category }),
-				...(result !== "all" && { result }),
-			});
-			if (dateRange !== "all") {
-				const days = parseInt(dateRange, 10);
-				const start = new Date(now);
-				start.setDate(start.getDate() - days);
-				qs.set("start", start.toISOString());
-			}
 			const d = await fetchAdminJson<{
 				ok: boolean;
-				data?: { rows: AuditLogDTO[] };
-			}>(`/api/admin/audit?${qs}`);
-			return d.data?.rows ?? [];
+				data?: { rows: AuditLogDTO[]; total: number };
+			}>(buildAuditListPath(auditFilters, offset, PAGE_SIZE));
+			return d.data ?? { rows: [], total: 0 };
 		},
+		placeholderData: keepPreviousData,
 	});
 
 	// Client-side search filter (IP, actor, action, target, category).
 	const rows = useMemo(() => {
-		const all = data ?? [];
+		const all = data?.rows ?? [];
 		const q = search.trim().toLowerCase();
 		if (!q) return all;
 		return all.filter(
@@ -127,10 +128,8 @@ export default function AuditPage() {
 		getCoreRowModel: getCoreRowModel(),
 	});
 
-	const exportHref = `/api/admin/export?kind=audit&${new URLSearchParams({
-		...(category !== "all" && { category }),
-		...(result !== "all" && { result }),
-	})}`;
+	const exportHref = buildAuditExportPath(auditFilters);
+	const total = data?.total ?? 0;
 
 	return (
 		<div>
@@ -145,8 +144,17 @@ export default function AuditPage() {
 				</Button>
 			</PageHeader>
 			<div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[160px_160px_140px_minmax(220px,1fr)]">
-				<Select value={category} onValueChange={setCategory}>
-					<SelectTrigger className="h-10 w-full">
+				<Select
+					value={category}
+					onValueChange={(value) => {
+						setCategory(value);
+						setOffset(0);
+					}}
+				>
+					<SelectTrigger
+						aria-label={t("audit.filter.category")}
+						className="h-10 w-full"
+					>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -158,8 +166,17 @@ export default function AuditPage() {
 						))}
 					</SelectContent>
 				</Select>
-				<Select value={result} onValueChange={setResult}>
-					<SelectTrigger className="h-10 w-full">
+				<Select
+					value={result}
+					onValueChange={(value) => {
+						setResult(value);
+						setOffset(0);
+					}}
+				>
+					<SelectTrigger
+						aria-label={t("audit.filter.result")}
+						className="h-10 w-full"
+					>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -172,8 +189,17 @@ export default function AuditPage() {
 						</SelectItem>
 					</SelectContent>
 				</Select>
-				<Select value={dateRange} onValueChange={setDateRange}>
-					<SelectTrigger className="h-10 w-full">
+				<Select
+					value={dateRange}
+					onValueChange={(value) => {
+						setDateRange(value);
+						setOffset(0);
+					}}
+				>
+					<SelectTrigger
+						aria-label={t("audit.filter.date")}
+						className="h-10 w-full"
+					>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
@@ -189,6 +215,7 @@ export default function AuditPage() {
 						className="absolute left-3 top-1/2 -translate-y-1/2 text-mute"
 					/>
 					<Input
+						aria-label={t("audit.filter.search")}
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
 						placeholder={t("common.search")}
@@ -205,6 +232,13 @@ export default function AuditPage() {
 				isLoading={isFetching && !data}
 				isError={isError}
 				onRetry={() => void refetch()}
+			/>
+			<Pagination
+				offset={offset}
+				pageSize={PAGE_SIZE}
+				total={total}
+				onPrev={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))}
+				onNext={() => setOffset((current) => current + PAGE_SIZE)}
 			/>
 		</div>
 	);
