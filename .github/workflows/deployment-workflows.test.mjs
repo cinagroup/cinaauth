@@ -11,6 +11,7 @@ const rootPackage = JSON.parse(
 const knip = readFileSync(new URL("../../knip.jsonc", import.meta.url), "utf8");
 const central = readWorkflow("deploy-cloudflare.yml");
 const ci = readWorkflow("ci.yml");
+const e2e = readWorkflow("e2e.yml");
 const preview = readWorkflow("preview.yml");
 const account = readWorkflow("deploy-account-portal.yml");
 const admin = readWorkflow("deploy-admin-console.yml");
@@ -536,6 +537,19 @@ test("Auth Worker verifies the deployed Agent Auth policy", () => {
 		"Agent Auth policy verification must run after readiness",
 	);
 	assert.match(auth.slice(verification), /run: pnpm run check:agent-auth/);
+});
+
+test("E2E jobs use one consistent runner selection contract", () => {
+	for (const [job, nextJob] of [
+		["smoke", "integration"],
+		["integration", "adapter-integration"],
+		["adapter-integration", "e2e"],
+	]) {
+		const block = jobBlock(e2e, job, nextJob);
+		assert.match(block, /head\.repo\.full_name == 'cinaauth\/cinaauth'/);
+		assert.match(block, /github\.repository == 'cinaauth\/cinaauth'/);
+		assert.doesNotMatch(block, /cinagroup\/cinaauth/);
+	}
 });
 
 test("application workflows remain reusable production-environment units", () => {
