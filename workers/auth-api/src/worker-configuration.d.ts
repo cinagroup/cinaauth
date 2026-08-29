@@ -31,7 +31,9 @@ interface __BaseEnv_CloudflareBindings {
 	CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai";
 	CINAAUTH_SIWE_ALLOW_LEGACY: "false";
 	CINAAUTH_SIWE_AUTO_SIGNUP: "true";
-	RATE_LIMITER: DurableObjectNamespace<import("./index").RateLimitDurableObject>;
+	RATE_LIMITER: DurableObjectNamespace<
+		import("./index").RateLimitDurableObject
+	>;
 	CINAAUTH_DELIVERY_SERVICE: Fetcher /* cinaauth-delivery */;
 	CINAAUTH_ERASURE_SERVICE: Fetcher /* cinaauth-privacy-erasure */;
 	CINATOKEN_IDENTITY_EVENTS_SERVICE: Fetcher /* cinatoken-admin */;
@@ -45,8 +47,33 @@ declare namespace Cloudflare {
 }
 interface CloudflareBindings extends __BaseEnv_CloudflareBindings {}
 type StringifyValues<EnvType extends Record<string, unknown>> = {
-	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
+	[Binding in keyof EnvType]: EnvType[Binding] extends string
+		? EnvType[Binding]
+		: string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "CINAAUTH_URL" | "CINAAUTH_ACCOUNT_ORIGIN" | "CINAAUTH_ADMIN_ORIGIN" | "CINAAUTH_CINATOKEN_ORIGIN" | "CINAAUTH_CINATOKEN_CLIENT_ID" | "CINATOKEN_IDENTITY_EVENTS_URL" | "CINAAUTH_PASSKEY_RP_ID" | "CINAAUTH_LEGACY_ACCOUNT_ORIGIN" | "CINAAUTH_OIDC_DEMO_ENVIRONMENT" | "CINAAUTH_OIDC_DEMO_ORIGIN" | "CINAAUTH_OIDC_DEMO_CLIENT_ID" | "CINAAUTH_CUTOVER_STATE" | "CINAAUTH_SIWE_ENABLED" | "CINAAUTH_SIWE_ALLOWED_CHAIN_IDS" | "CINAAUTH_SIWE_RP_DOMAIN" | "CINAAUTH_SIWE_RP_URI" | "CINAAUTH_SIWE_ALLOW_LEGACY" | "CINAAUTH_SIWE_AUTO_SIGNUP">> {}
+	interface ProcessEnv
+		extends StringifyValues<
+			Pick<
+				Cloudflare.Env,
+				| "CINAAUTH_URL"
+				| "CINAAUTH_ACCOUNT_ORIGIN"
+				| "CINAAUTH_ADMIN_ORIGIN"
+				| "CINAAUTH_CINATOKEN_ORIGIN"
+				| "CINAAUTH_CINATOKEN_CLIENT_ID"
+				| "CINATOKEN_IDENTITY_EVENTS_URL"
+				| "CINAAUTH_PASSKEY_RP_ID"
+				| "CINAAUTH_LEGACY_ACCOUNT_ORIGIN"
+				| "CINAAUTH_OIDC_DEMO_ENVIRONMENT"
+				| "CINAAUTH_OIDC_DEMO_ORIGIN"
+				| "CINAAUTH_OIDC_DEMO_CLIENT_ID"
+				| "CINAAUTH_CUTOVER_STATE"
+				| "CINAAUTH_SIWE_ENABLED"
+				| "CINAAUTH_SIWE_ALLOWED_CHAIN_IDS"
+				| "CINAAUTH_SIWE_RP_DOMAIN"
+				| "CINAAUTH_SIWE_RP_URI"
+				| "CINAAUTH_SIWE_ALLOW_LEGACY"
+				| "CINAAUTH_SIWE_AUTO_SIGNUP"
+			>
+		> {}
 }
