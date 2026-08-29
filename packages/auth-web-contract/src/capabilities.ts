@@ -18,7 +18,7 @@ export type SocialProviderCatalogId =
 
 /** Public, secret-free runtime capabilities advertised by the Auth Worker. */
 export type AuthCapabilities = {
-	version: 4;
+	version: 5;
 	methods: {
 		emailPassword: boolean;
 		emailOtp: boolean;
@@ -42,6 +42,8 @@ export type AuthCapabilities = {
 		  }
 	>;
 	oneTap: boolean;
+	/** Public Google OAuth client id used only to initialize Google Identity Services. */
+	oneTapClientId: string | null;
 	captcha: {
 		enabled: boolean;
 		provider: "cloudflare-turnstile" | null;

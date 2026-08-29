@@ -1112,6 +1112,7 @@ checkIncludesAll(
 	captchaConfigTs,
 	[
 		'TURNSTILE_ACTION = "cinaauth"',
+		'"/sign-in/email"',
 		'"/phone-number/send-otp"',
 		'"/phone-number/request-password-reset"',
 		"CLOUDFLARE_TURNSTILE_SITE_KEY",
@@ -1127,13 +1128,12 @@ check(
 check(
 	[
 		'"/sign-up/email"',
-		'"/sign-in/email"',
 		'"/request-password-reset"',
 		'"/sign-in/magic-link"',
 		'"/email-otp/request-password-reset"',
 		'"/forget-password/email-otp"',
 	].every((path) => !captchaConfigTs.includes(path)),
-	`${rel(captchaConfigFile)} must not advertise retired password or Magic Link endpoints as protected production flows`,
+	`${rel(captchaConfigFile)} must not advertise retired password-registration/reset or Magic Link endpoints as protected production flows`,
 );
 checkIncludesAll(
 	adminSendVerificationTs,
@@ -1156,12 +1156,16 @@ checkIncludesAll(
 		'"cloudflare-turnstile"',
 		"protectedEndpoints",
 		"DeliveryProviderCapabilities",
-		"version: 4",
-		"emailPassword: false",
-		"emailOtp: delivery.email",
+		"version: 5",
+		"emailPassword: settings.emailPasswordLoginEnabled",
+		"emailOtp: settings.emailOtpLoginEnabled && delivery.email",
 		"magicLink: false",
 		"phoneOtp: delivery.sms",
 		"username: false",
+		"passkey: settings.passkeyLoginEnabled",
+		"siwe: settings.siweLoginEnabled && siwe.enabled",
+		"settings.googleOneTapEnabled",
+		"oneTapClientId: oneTap ? googleOneTapClientId : null",
 		"isBillingRuntimeReady(env)",
 		'providers.push({ id: "google", type: "social" })',
 		'providers.push({ id: "github", type: "social" })',
@@ -1366,7 +1370,7 @@ checkIncludesAll(
 );
 checkIncludesAll(
 	capabilitiesTs,
-	["getSiweRuntimeConfig", "siwe: siwe.enabled"],
+	["getSiweRuntimeConfig", "siwe: settings.siweLoginEnabled && siwe.enabled"],
 	capabilitiesFile,
 	"public SIWE capability must derive from the same fail-closed runtime configuration as the plugin",
 );
@@ -1374,7 +1378,8 @@ checkIncludesAll(
 	authTs,
 	[
 		"emailAndPassword:",
-		"enabled: false",
+		"enabled: social.emailPasswordLoginEnabled",
+		"disableSignUp: true",
 		"SECURITY_FRESH_AGE_SECONDS = 15 * 60",
 		"freshAge: SECURITY_FRESH_AGE_SECONDS",
 		"deleteUser:",
@@ -2350,22 +2355,27 @@ checkIncludesAll(
 	oauthProviderButtonsTs,
 	[
 		"authClient.signIn.social",
+		"oneTapClient",
+		"data?.oneTap === true",
+		"data.oneTapClientId",
+		"googleOneTapClient.oneTap",
 		"provider: provider.id",
 		"callbackURL",
 		"formatOAuthProviderName(provider.id)",
 	],
 	oauthProviderButtonsFile,
-	"the account portal must route every social provider through the standard redirect flow",
+	"the account portal must support runtime-selected Google One Tap with redirect OAuth fallback",
 );
-check(
-	![oauthProviderButtonsTs, authClientTs].some((source) =>
-		source.includes("oneTap"),
-	),
-	"the account portal must not bundle or invoke Google One Tap",
-);
-check(
-	!pluginsTs.includes("oneTap("),
-	"the Auth Worker must use redirect OAuth without registering the One Tap plugin",
+checkIncludesAll(
+	pluginsTs,
+	[
+		"options.authenticationSettings?.googleOneTapEnabled === true",
+		"options.googleOneTapClientId",
+		"oneTap({",
+		"disableSignup: false",
+	],
+	pluginsFile,
+	"the Auth Worker must register One Tap only when the authoritative setting and Google client id are ready",
 );
 checkIncludesAll(
 	accountOAuthBuildCheck,
@@ -2378,9 +2388,11 @@ checkIncludesAll(
 		"evaluateDeployedWalletReadiness",
 		"evaluateEmailProviderReady",
 		"evaluatePasswordlessEmailRelease",
+		"evaluateConfigurableEmailRelease",
 		"CINAAUTH_EMAIL_AUTH_GATE",
 		'gate === "provider-ready"',
 		'gate === "passwordless"',
+		'gate === "configurable"',
 		'response.headers.get("cache-control")',
 		"the live Auth capability response is not no-store",
 		"CINAAUTH_PLANNED_WORKER_CONFIG",
@@ -2394,7 +2406,8 @@ checkIncludesAll(
 		"the deployed Account Portal Reown Project ID does not match production",
 		"the planned Auth Worker CINAAUTH_SIWE_ENABLED value must be exactly true or false",
 		"the planned Auth Worker enables SIWE but production has no exact 32-hex REOWN_PROJECT_ID",
-		"the production Auth Worker still advertises One Tap instead of redirect OAuth",
+		"the production Auth Worker advertises One Tap without a client id",
+		"Google One Tap is enabled by the authoritative runtime settings",
 		"the production Auth Worker advertises SIWE but the account build has no valid REOWN_PROJECT_ID",
 	],
 	accountOAuthBuildCheckFile,
@@ -3331,7 +3344,9 @@ checkIncludesAll(
 		"AUTH_RATE_LIMIT_RULES",
 		"createDatabase(env)",
 		"createAuthPlugins(",
-		"{ advancedOrganization: true }",
+		"advancedOrganization: true",
+		"authenticationSettings: social",
+		"googleOneTapClientId: social.googleOneTapClientId",
 		"social.genericProviders",
 		"waitUntil(",
 		"runWithExecutionCtx",
@@ -4034,9 +4049,9 @@ checkIncludesAll(
 		"NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED",
 		"pnpm run test:oauth-build",
 		"pnpm run check:oauth-build",
-		"Verify live passwordless email policy",
+		"Verify live configurable email policy",
 		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities",
-		"CINAAUTH_EMAIL_AUTH_GATE: passwordless",
+		"CINAAUTH_EMAIL_AUTH_GATE: configurable",
 		"lib/auth-runtime-config.test.ts",
 		"lib/auth-runtime-routes.test.ts",
 		"lib/auth.test.ts",
@@ -4071,12 +4086,12 @@ check(
 	`${rel(accountWorkflowFile)} must not expose the Google OAuth client ID to the Account Portal bundle`,
 );
 check(
-	accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") >= 0 &&
-		accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: passwordless") <
+	accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: configurable") >= 0 &&
+		accountWorkflow.indexOf("CINAAUTH_EMAIL_AUTH_GATE: configurable") <
 			accountWorkflow.indexOf(
 				"pnpm run deploy:cf --deployment-target=production",
 			),
-	`${rel(accountWorkflowFile)} must verify the exact live passwordless email policy before the Account Portal write`,
+	`${rel(accountWorkflowFile)} must verify the live configurable-email contract before the Account Portal write`,
 );
 check(
 	!accountWorkflow.includes("vars.REOWN_PROJECT_ID"),
@@ -4217,9 +4232,9 @@ checkIncludesAll(
 );
 checkIncludesAll(
 	accountLegacyAuthRedirect,
-	["buildUnifiedSignUpRedirect", "buildLegacyPasswordSignInRedirect(input)"],
+	["buildUnifiedSignUpRedirect", "buildUnifiedSignInRedirect(input)"],
 	accountLegacyAuthRedirectFile,
-	"legacy sign-up links must use the same sanitized signed-query redirect as retired password links",
+	"legacy sign-up links must use the sanitized signed-query redirect for the unified entry",
 );
 for (const [file, source] of [
 	[accountLegacySignUpPageFile, accountLegacySignUpPage],
@@ -4475,15 +4490,15 @@ check(
 checkIncludesAll(
 	runtimeCapabilitiesCheck,
 	[
-		"Live One Tap capability must remain disabled for redirect-based Google OAuth",
-		"Google social credentials are configured but the live capability is disabled",
-		"GitHub social credentials are configured but the live capability is disabled",
-		"GENERIC_OAUTH_CONFIG is configured but the live capabilities endpoint exposes no valid providers",
+		"Live One Tap requires configured Google credentials, an advertised Google provider, and a public client id",
+		"The live Google social capability is advertised without configured credentials",
+		"The live GitHub social capability is advertised without configured credentials",
+		"The live generic OAuth capability is advertised without GENERIC_OAUTH_CONFIG",
 		"Turnstile secrets are configured but the live captcha capability is disabled",
 		"Stripe billing inputs are configured but the live billing capability is disabled",
-		"Live SIWE capability does not match the tracked SIWE kill switch",
-		"Production Email OTP requires an active Delivery Worker email provider and methods.emailOtp=true",
-		"Live email-password capability must remain disabled for passwordless email authentication",
+		"Live SIWE capability exceeds the tracked SIWE deployment kill switch",
+		"Live Email OTP cannot be enabled without an active Delivery Worker email provider",
+		"Live email-password capability must be an explicit boolean",
 		"Live magic-link capability must remain disabled for OTP-only email authentication",
 		"Live phone OTP capability does not match Delivery Worker readiness",
 		"Live username-password capability must remain disabled for passwordless email authentication",
@@ -4949,8 +4964,8 @@ checkIncludesAll(
 		"32-hex-character `REOWN_PROJECT_ID`",
 		"A disabled rollout does not require a Project ID.",
 		"repeats the live capability parity check",
-		"Passwordless email cutover",
-		"reset endpoints are also disabled",
+		"Administrator-governed email authentication",
+		"password reset remain disabled",
 		"3 requests per 60 seconds",
 		"10 requests per 24 hours",
 		"`CINAAUTH_SECRET`-keyed HMAC",
@@ -4960,17 +4975,17 @@ checkIncludesAll(
 		"not GitHub Secrets",
 		"methods.emailOtp=true",
 		"CINAAUTH_EMAIL_AUTH_GATE=provider-ready",
-		"CINAAUTH_EMAIL_AUTH_GATE=passwordless",
-		"emailPassword=false",
+		"CINAAUTH_EMAIL_AUTH_GATE=configurable",
+		"email-password while `username=false`",
 		"username=false",
 		"magicLink=false",
-		"only for a reviewed rollback",
+		"administrator-selected values are not deployment",
 		"ownership-proving OTP",
 		"unproven credential",
 		"revokes its old sessions",
 		"independent TOTP",
 		"backup-code challenge",
-		"pre-cutover version",
+		"pre-deployment version",
 		"two separate production runs",
 		"same-run enable attempt fails closed",
 		"exact Project ID",

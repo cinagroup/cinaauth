@@ -25,7 +25,9 @@ import type {
 } from "./admin-social-providers";
 import {
 	handleAdminDeleteSocialProvider,
+	handleAdminGetAuthenticationSettings,
 	handleAdminGetSocialProviders,
+	handleAdminUpdateAuthenticationSettings,
 	handleAdminUpdateSignInSettings,
 	handleAdminUpsertSocialProvider,
 } from "./admin-social-providers";
@@ -45,6 +47,7 @@ import {
 	createCanonicalDiscoveryRequest,
 	isAuthHandlerRequestPath,
 } from "./auth-routing";
+import { getDisabledAuthenticationMethod } from "./authentication-method-gate";
 import { getAuthCapabilities } from "./capabilities";
 import {
 	ensureCinatokenOidcClient,
@@ -1222,6 +1225,30 @@ app.use("*", async (c, next) => {
 		);
 	}
 
+	const accountOriginForSignIn =
+		requireAuthOriginConfig(runtimeEnv).accountOrigin;
+	const socialForSignIn = await resolveSocialSignInConfig(
+		runtimeEnv,
+		accountOriginForSignIn,
+	);
+	const disabledAuthenticationMethod = getDisabledAuthenticationMethod(
+		pathname,
+		socialForSignIn,
+	);
+	if (disabledAuthenticationMethod) {
+		return withNoStore(
+			c.json(
+				{
+					success: false,
+					code: "AUTHENTICATION_METHOD_DISABLED",
+					message: "This authentication method is currently disabled",
+					method: disabledAuthenticationMethod,
+				},
+				503,
+			),
+		);
+	}
+
 	const requiredDeliveryProvider = getRequiredDeliveryProvider(pathname);
 	if (requiredDeliveryProvider) {
 		const delivery = await getDeliveryProviderCapabilities(runtimeEnv);
@@ -1241,13 +1268,7 @@ app.use("*", async (c, next) => {
 		// disables it at runtime, public code delivery endpoints fail closed even
 		// though the delivery provider itself may still be healthy.
 		if (requiredDeliveryProvider === "email") {
-			const accountOriginForOtp =
-				requireAuthOriginConfig(runtimeEnv).accountOrigin;
-			const socialForOtp = await resolveSocialSignInConfig(
-				runtimeEnv,
-				accountOriginForOtp,
-			);
-			if (!socialForOtp.emailOtpLoginEnabled) {
+			if (!socialForSignIn.emailOtpLoginEnabled) {
 				return withNoStore(
 					c.json(
 						{
@@ -1341,6 +1362,8 @@ app.get("/api/auth/capabilities", async (c) => {
 					sms: delivery.sms,
 				},
 				social.capabilitiesProviders,
+				social,
+				social.googleOneTapClientId,
 			),
 		),
 	);
@@ -1661,15 +1684,20 @@ const getAdminSocialDependencies = (c: Context<AppEnv>) => {
 			if (typeof auditApi.logAudit !== "function") {
 				throw new Error("Social provider audit API is unavailable");
 			}
+			const authenticationSettings = event.action.startsWith(
+				"security.authentication",
+			);
 			await auditApi.logAudit({
 				headers,
 				body: {
-					category: "integration",
+					category: authenticationSettings ? "security" : "integration",
 					action: `${event.action}.${event.phase}`,
 					result: event.result,
 					actorSite: "admin-console",
 					targetType: "configuration",
-					targetId: "social-provider",
+					targetId: authenticationSettings
+						? "authentication-settings"
+						: "social-provider",
 					metadata: {
 						actorId: event.actorId,
 						...event.metadata,
@@ -1757,6 +1785,24 @@ app.put("/api/auth/admin/sign-in-settings", async (c) =>
 	runAdminSocialHandler(c, (dependencies) => {
 		const { origin, allowedOrigin } = adminSocialOrigin(c);
 		return handleAdminUpdateSignInSettings(
+			dependencies,
+			origin,
+			allowedOrigin,
+			() => readAdminSocialBody(c),
+		);
+	}),
+);
+
+app.get("/api/auth/admin/authentication-settings", async (c) =>
+	runAdminSocialHandler(c, (dependencies) =>
+		handleAdminGetAuthenticationSettings(dependencies),
+	),
+);
+
+app.put("/api/auth/admin/authentication-settings", async (c) =>
+	runAdminSocialHandler(c, (dependencies) => {
+		const { origin, allowedOrigin } = adminSocialOrigin(c);
+		return handleAdminUpdateAuthenticationSettings(
 			dependencies,
 			origin,
 			allowedOrigin,

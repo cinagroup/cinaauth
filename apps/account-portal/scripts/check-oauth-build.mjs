@@ -12,7 +12,7 @@ const readCapabilityMethods = (capabilities) => {
 	if (
 		typeof capabilities !== "object" ||
 		capabilities === null ||
-		capabilities.version !== 4 ||
+		(capabilities.version !== 4 && capabilities.version !== 5) ||
 		typeof capabilities.methods !== "object" ||
 		capabilities.methods === null
 	) {
@@ -71,6 +71,36 @@ export const evaluatePasswordlessEmailRelease = ({
 	};
 };
 
+export const evaluateConfigurableEmailRelease = ({
+	capabilities,
+	cacheControl,
+}) => {
+	if (!hasNoStore(cacheControl)) {
+		return {
+			ok: false,
+			reason: "the live Auth capability response is not no-store",
+		};
+	}
+	const methods = readCapabilityMethods(capabilities);
+	if (
+		typeof methods?.emailOtp !== "boolean" ||
+		typeof methods.emailPassword !== "boolean" ||
+		methods.username !== false ||
+		methods.magicLink !== false
+	) {
+		return {
+			ok: false,
+			reason:
+				"the live Auth capabilities do not match the configurable email policy (emailOtp and emailPassword must be booleans; username and magicLink must remain false)",
+		};
+	}
+	return {
+		ok: true,
+		reason:
+			"the live Auth capabilities support administrator-configurable email authentication",
+	};
+};
+
 const evaluateEmailAuthGate = ({ gate, capabilities, cacheControl }) => {
 	if (gate === undefined || gate === "") return undefined;
 	if (gate === "provider-ready") {
@@ -79,10 +109,13 @@ const evaluateEmailAuthGate = ({ gate, capabilities, cacheControl }) => {
 	if (gate === "passwordless") {
 		return evaluatePasswordlessEmailRelease({ capabilities, cacheControl });
 	}
+	if (gate === "configurable") {
+		return evaluateConfigurableEmailRelease({ capabilities, cacheControl });
+	}
 	return {
 		ok: false,
 		reason:
-			"CINAAUTH_EMAIL_AUTH_GATE must be exactly provider-ready or passwordless",
+			"CINAAUTH_EMAIL_AUTH_GATE must be exactly provider-ready, passwordless, or configurable",
 	};
 };
 
@@ -141,17 +174,25 @@ export const resolveAccountBuildReadinessTarget = ({
 	return expectedReadinessUrl;
 };
 
-export const evaluateRedirectOAuthBuild = ({ oneTapEnabled }) => {
+export const evaluateRedirectOAuthBuild = ({
+	oneTapEnabled,
+	oneTapClientId,
+}) => {
 	if (!oneTapEnabled) {
 		return {
 			ok: true,
 			reason: "Google uses the standard redirect OAuth flow",
 		};
 	}
+	if (typeof oneTapClientId === "string" && oneTapClientId.trim().length > 0) {
+		return {
+			ok: true,
+			reason: "Google One Tap is enabled by the authoritative runtime settings",
+		};
+	}
 	return {
 		ok: false,
-		reason:
-			"the production Auth Worker still advertises One Tap instead of redirect OAuth",
+		reason: "the production Auth Worker advertises One Tap without a client id",
 	};
 };
 
@@ -383,6 +424,10 @@ const main = async () => {
 			typeof capabilities === "object" &&
 			capabilities !== null &&
 			capabilities.oneTap === true,
+		oneTapClientId:
+			typeof capabilities === "object" && capabilities !== null
+				? capabilities.oneTapClientId
+				: undefined,
 	});
 	if (!redirectOAuthResult.ok) throw new Error(redirectOAuthResult.reason);
 	const reownResult = evaluateReownBuild({

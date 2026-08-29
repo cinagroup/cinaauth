@@ -13,10 +13,12 @@ Generic OAuth 回调改到 Auth Worker 域名，否则 `state` 与登录会话 C
 | GitHub OAuth App                           | Authorization callback URL   | `https://accounts.cinaseek.ai/api/auth/callback/github`              |
 | Generic OAuth/OIDC，供应商 ID 为 `<providerId>` | Redirect URI / Callback URL  | `https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>` |
 
-Google 登录不使用 One Tap 或 Google Identity Services 浏览器组件。不要为当前登录 UI
-配置 Authorized JavaScript origin，也不要向账号中心构建注入 Google Client ID。线上
-`/api/auth/capabilities` 必须保持 `oneTap: false`；账号中心流水线会运行
-`test:oauth-build` 和 `check:oauth-build`，阻止 One Tap 被重新启用。
+Google 默认与 GitHub 一样使用重定向 OAuth，权威设置默认 `oneTap: false`。
+管理员启用 One Tap 时，Google OAuth 客户端必须把
+`https://accounts.cinaseek.ai` 注册为 Authorized JavaScript origin；Auth Worker
+仅在 Google 供应商、公开 Client ID 和 One Tap 开关同时就绪时发布有效能力。
+账号中心流水线会运行 `test:oauth-build` 和 `check:oauth-build`，拒绝缺少公开
+Client ID 的半启用 One Tap 状态。
 
 ## Google 与 GitHub Social OAuth
 

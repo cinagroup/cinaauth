@@ -1,7 +1,15 @@
 "use client";
 
-import { AlertCircle, LoaderCircle, ShieldCheck } from "lucide-react";
+import {
+	AlertCircle,
+	Fingerprint,
+	KeyRound,
+	LoaderCircle,
+	ShieldCheck,
+} from "lucide-react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { EmailOtpForm } from "@/components/forms/email-otp-form";
 import { OAuthProviderButtons } from "@/components/oauth-provider-buttons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,6 +42,10 @@ export default function SignIn({
 	const hasCreatePrompt = hasSignedOidcCreatePrompt(searchParams);
 	const capabilities = useAuthCapabilities();
 	const emailOtpReady = capabilities.data?.methods.emailOtp === true;
+	const emailPasswordReady = capabilities.data?.methods.emailPassword === true;
+	const passkeyReady = capabilities.data?.methods.passkey === true;
+	const passwordQuery = searchParams.toString();
+	const passwordHref = `/sign-in/password${passwordQuery ? `?${passwordQuery}` : ""}`;
 	const alert = getSignInAlert(searchParams.get("error"));
 	const mode = searchParams.get("mode");
 	const signInPolicy = getAccountSignInPolicy(mode);
@@ -65,25 +77,68 @@ export default function SignIn({
 				</Alert>
 			) : null}
 
-			<EmailOtpForm
-				intent={hasCreatePrompt ? "signup" : "signin"}
-				suppressAutomaticRedirect={hasCreatePrompt}
-				onSuccess={async () => {
-					await completeEmailOtpAuthentication({
-						params: searchParams,
-						callbackURL,
-						continueOidcCreation: async () => {
-							await authClient.oauth2.continue(
-								{ created: true },
-								{ throw: true },
-							);
-						},
-						navigate: (path) => {
-							window.location.href = path;
-						},
-					});
-				}}
-			/>
+			{(capabilities.isPending || emailOtpReady) && (
+				<EmailOtpForm
+					intent={hasCreatePrompt ? "signup" : "signin"}
+					suppressAutomaticRedirect={hasCreatePrompt}
+					onSuccess={async () => {
+						await completeEmailOtpAuthentication({
+							params: searchParams,
+							callbackURL,
+							continueOidcCreation: async () => {
+								await authClient.oauth2.continue(
+									{ created: true },
+									{ throw: true },
+								);
+							},
+							navigate: (path) => {
+								window.location.href = path;
+							},
+						});
+					}}
+				/>
+			)}
+
+			{emailPasswordReady || passkeyReady ? (
+				<div
+					className="flex flex-col gap-3"
+					aria-label="Additional direct sign-in methods"
+				>
+					{emailPasswordReady ? (
+						<Button
+							asChild
+							type="button"
+							variant="outline"
+							size="lg"
+							className="w-full"
+						>
+							<Link href={passwordHref}>
+								<KeyRound data-icon="inline-start" aria-hidden />
+								Continue with email and password
+							</Link>
+						</Button>
+					) : null}
+					{passkeyReady ? (
+						<Button
+							type="button"
+							variant="outline"
+							size="lg"
+							className="w-full"
+							onClick={async () => {
+								const result = await authClient.signIn.passkey();
+								if (result.error) {
+									toast.error(result.error.message || "Passkey sign-in failed");
+									return;
+								}
+								window.location.href = callbackURL;
+							}}
+						>
+							<Fingerprint data-icon="inline-start" aria-hidden />
+							Continue with passkey
+						</Button>
+					) : null}
+				</div>
+			) : null}
 
 			{allowFederatedProviders ? (
 				<div className="flex flex-col gap-3" aria-label="Other sign-in methods">

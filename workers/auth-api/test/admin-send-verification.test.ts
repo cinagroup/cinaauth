@@ -94,7 +94,7 @@ const makeDependencies = (role: string | null = "security_admin") => {
 describe("Admin verification delivery boundary", () => {
 	it("keeps only enabled public delivery endpoints Turnstile-protected", () => {
 		expect(TURNSTILE_PROTECTED_ENDPOINTS).toEqual(
-			expect.arrayContaining(["/phone-number/send-otp"]),
+			expect.arrayContaining(["/phone-number/send-otp", "/sign-in/email"]),
 		);
 		expect(TURNSTILE_PROTECTED_ENDPOINTS).not.toContain(
 			"/email-otp/send-verification-otp",

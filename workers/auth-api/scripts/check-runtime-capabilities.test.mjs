@@ -39,7 +39,7 @@ describe("live optional capability checks", () => {
 		);
 	});
 
-	it("fails when configured secrets produce disabled runtime capabilities", () => {
+	it("allows administrators to disable configured sign-in providers", () => {
 		const failures = evaluateRuntimeCapabilities({
 			configuredInputs: configured(
 				"GOOGLE_CLIENT_ID",
@@ -61,26 +61,59 @@ describe("live optional capability checks", () => {
 				billing: false,
 			},
 		});
-		assert.equal(failures.length, 5);
-		assert.match(failures.join("\n"), /GENERIC_OAUTH_CONFIG/);
-		assert.match(failures.join("\n"), /Google social/);
-		assert.match(failures.join("\n"), /GitHub social/);
+		assert.equal(failures.length, 2);
+		assert.match(failures.join("\n"), /Turnstile/);
+		assert.match(failures.join("\n"), /Stripe/);
 	});
 
-	it("rejects a runtime that advertises Google One Tap", () => {
+	it("accepts administrator-enabled Google One Tap when its public client is complete", () => {
+		assert.deepEqual(
+			evaluateRuntimeCapabilities({
+				configuredInputs: configured(
+					"GOOGLE_CLIENT_ID",
+					"GOOGLE_CLIENT_SECRET",
+				),
+				capabilities: {
+					oneTap: true,
+					oneTapClientId: "google-client-id",
+					oauthProviders: [{ id: "google", type: "social" }],
+					captcha: { enabled: false },
+					billing: false,
+				},
+			}),
+			[],
+		);
+	});
+
+	it("rejects One Tap without a configured Google provider and public client id", () => {
 		const failures = evaluateRuntimeCapabilities({
-			configuredInputs: configured("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
+			configuredInputs: configured(),
 			capabilities: {
 				oneTap: true,
+				oneTapClientId: null,
+				oauthProviders: [],
+				captcha: { enabled: false },
+				billing: false,
+			},
+		});
+
+		assert.equal(failures.length, 1);
+		assert.match(failures.join("\n"), /One Tap/);
+	});
+
+	it("rejects an advertised social provider without its deployment credentials", () => {
+		const failures = evaluateRuntimeCapabilities({
+			configuredInputs: configured(),
+			capabilities: {
+				oneTap: false,
 				oauthProviders: [{ id: "google", type: "social" }],
 				captcha: { enabled: false },
 				billing: false,
 			},
 		});
 
-		assert.deepEqual(failures, [
-			"Live One Tap capability must remain disabled for redirect-based Google OAuth",
-		]);
+		assert.equal(failures.length, 1);
+		assert.match(failures[0], /Google social/);
 	});
 
 	it("does not treat Stripe secrets without a Price as configured billing", () => {
@@ -116,7 +149,7 @@ describe("live optional capability checks", () => {
 		);
 	});
 
-	it("enforces SIWE kill-switch parity with the live capability", () => {
+	it("treats the SIWE environment switch as a deployment ceiling", () => {
 		assert.deepEqual(
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
@@ -129,7 +162,7 @@ describe("live optional capability checks", () => {
 			evaluateRuntimeCapabilities({
 				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "true" },
-				capabilities: { oneTap: false, methods: { siwe: true } },
+				capabilities: { oneTap: false, methods: { siwe: false } },
 			}),
 			[],
 		);
@@ -139,27 +172,19 @@ describe("live optional capability checks", () => {
 				configuredValues: { CINAAUTH_SIWE_ENABLED: "false" },
 				capabilities: { oneTap: false, methods: { siwe: true } },
 			})[0],
-			/SIWE kill switch/,
-		);
-		assert.match(
-			evaluateRuntimeCapabilities({
-				configuredInputs: configured("CINAAUTH_SIWE_ENABLED"),
-				configuredValues: { CINAAUTH_SIWE_ENABLED: "true" },
-				capabilities: { oneTap: false, methods: { siwe: false } },
-			})[0],
-			/SIWE kill switch/,
+			/SIWE deployment kill switch/,
 		);
 	});
 });
 
 describe("live delivery capability checks", () => {
-	it("accepts capabilities that match per-channel delivery readiness", () => {
+	it("accepts administrator-selected email methods backed by delivery readiness", () => {
 		assert.deepEqual(
 			evaluateDeliveryCapabilityParity({
 				capabilities: {
 					methods: {
-						emailOtp: true,
-						emailPassword: false,
+						emailOtp: false,
+						emailPassword: true,
 						magicLink: false,
 						phoneOtp: false,
 						username: false,
@@ -171,7 +196,7 @@ describe("live delivery capability checks", () => {
 		);
 	});
 
-	it("rejects every half-enabled delivery capability", () => {
+	it("rejects delivery-dependent methods that lack an active provider", () => {
 		const failures = evaluateDeliveryCapabilityParity({
 			capabilities: {
 				methods: {
@@ -184,15 +209,14 @@ describe("live delivery capability checks", () => {
 			},
 			providers: { email: false, sms: false },
 		});
-		assert.equal(failures.length, 5);
+		assert.equal(failures.length, 4);
 		assert.match(failures.join("\n"), /Email OTP/);
-		assert.match(failures.join("\n"), /email-password/);
 		assert.match(failures.join("\n"), /magic-link/);
 		assert.match(failures.join("\n"), /phone OTP/);
 		assert.match(failures.join("\n"), /username-password/);
 	});
 
-	it("requires an active email provider and enabled Email OTP after Auth deploy", () => {
+	it("allows an administrator to disable Email OTP while delivery stays ready", () => {
 		const failures = evaluateDeliveryCapabilityParity({
 			capabilities: {
 				methods: {
@@ -203,9 +227,8 @@ describe("live delivery capability checks", () => {
 					username: false,
 				},
 			},
-			providers: { email: false, sms: false },
+			providers: { email: true, sms: false },
 		});
-		assert.equal(failures.length, 1);
-		assert.match(failures[0], /active Delivery Worker email provider/);
+		assert.deepEqual(failures, []);
 	});
 });

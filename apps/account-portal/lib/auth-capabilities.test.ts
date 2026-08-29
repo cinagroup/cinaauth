@@ -20,6 +20,8 @@ describe("auth capability discovery", () => {
 				phoneOtp: false,
 				username: true,
 			},
+			oneTap: true,
+			oneTapClientId: "google-client-id",
 			oauthProviders: [
 				{ id: "google", type: "social" },
 				{ id: "github", type: "social" },
@@ -42,11 +44,13 @@ describe("auth capability discovery", () => {
 
 		expect(capabilities.oauthProviders).toEqual(response.oauthProviders);
 		expect(capabilities.captcha).toEqual(response.captcha);
-		expect(capabilities.methods.emailPassword).toBe(false);
+		expect(capabilities.methods.emailPassword).toBe(true);
 		expect(capabilities.methods.emailOtp).toBe(true);
 		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(false);
 		expect(capabilities.methods.username).toBe(false);
+		expect(capabilities.oneTap).toBe(true);
+		expect(capabilities.oneTapClientId).toBe("google-client-id");
 		expect(fetcher).toHaveBeenCalledWith(
 			"https://accounts.cinaseek.ai/api/auth/capabilities",
 			expect.objectContaining({ credentials: "include" }),
@@ -94,7 +98,7 @@ describe("auth capability discovery", () => {
 		);
 
 		expect(capabilities.methods.emailPassword).toBe(false);
-		expect(capabilities.methods.passkey).toBe(true);
+		expect(capabilities.methods.passkey).toBe(false);
 		expect(capabilities.methods.emailOtp).toBe(false);
 		expect(capabilities.methods.magicLink).toBe(false);
 		expect(capabilities.methods.phoneOtp).toBe(false);
@@ -105,7 +109,7 @@ describe("auth capability discovery", () => {
 		expect(capabilities.captcha.enabled).toBe(false);
 	});
 
-	it("keeps retired password and magic-link methods closed despite remote values", async () => {
+	it("honors runtime password and passkey switches while keeping retired methods closed", async () => {
 		const capabilities = await fetchAuthCapabilities(async () =>
 			Response.json({
 				...CORE_AUTH_CAPABILITIES,
@@ -115,15 +119,17 @@ describe("auth capability discovery", () => {
 					emailOtp: true,
 					magicLink: true,
 					username: true,
+					passkey: true,
 				},
 			}),
 		);
 
 		expect(capabilities.methods).toMatchObject({
-			emailPassword: false,
+			emailPassword: true,
 			emailOtp: true,
 			magicLink: false,
 			username: false,
+			passkey: true,
 		});
 	});
 
@@ -221,11 +227,29 @@ describe("auth capability discovery", () => {
 		);
 	});
 
-	it("keeps One Tap disabled even if a stale server advertises it", async () => {
-		const capabilities = await fetchAuthCapabilities(async () =>
+	it("enables One Tap only for an authoritative Google provider and client id", async () => {
+		const missingClient = await fetchAuthCapabilities(async () =>
 			Response.json({ ...CORE_AUTH_CAPABILITIES, oneTap: true }),
 		);
+		const missingProvider = await fetchAuthCapabilities(async () =>
+			Response.json({
+				...CORE_AUTH_CAPABILITIES,
+				oneTap: true,
+				oneTapClientId: "google-client-id",
+			}),
+		);
+		const enabled = await fetchAuthCapabilities(async () =>
+			Response.json({
+				...CORE_AUTH_CAPABILITIES,
+				oneTap: true,
+				oneTapClientId: "google-client-id",
+				oauthProviders: [{ id: "google", type: "social" }],
+			}),
+		);
 
-		expect(capabilities.oneTap).toBe(false);
+		expect(missingClient.oneTap).toBe(false);
+		expect(missingProvider.oneTap).toBe(false);
+		expect(enabled.oneTap).toBe(true);
+		expect(enabled.oneTapClientId).toBe("google-client-id");
 	});
 });
