@@ -31,6 +31,8 @@ import {
 	handleAdminUpdateSignInSettings,
 	handleAdminUpsertSocialProvider,
 } from "./admin-social-providers";
+import type { AgentApprovalQuery } from "./agent-approval-preview";
+import { getAgentApprovalPreview } from "./agent-approval-preview";
 import {
 	DEFAULT_AUDIT_RETENTION_DAYS,
 	getAuditRetentionPolicy,
@@ -265,6 +267,10 @@ const REQUIRED_DATABASE_TABLES = [
 	"session",
 	"account",
 	"verification",
+	"agentHost",
+	"agent",
+	"agentCapabilityGrant",
+	"approvalRequest",
 	D1_CUTOVER_MARKER_TABLE,
 ] as const;
 const DATABASE_INVARIANT_TABLES = [
@@ -1409,6 +1415,53 @@ app.get("/api/auth/capabilities", async (c) => {
 			),
 		),
 	);
+});
+
+// Code-bound informed-consent metadata for the Agent Auth approval page. The
+// one-time code is hashed exactly as it is by the plugin, so an authenticated
+// user cannot enumerate pending agents by id.
+app.get("/api/auth/agent/approval-preview", async (c) => {
+	const session = await c.var.auth.api.getSession({
+		headers: c.req.raw.headers,
+		query: { disableCookieCache: true },
+	});
+	if (!session) {
+		return withNoStore(c.json({ error: "Unauthorized" }, 401));
+	}
+
+	const agentId = c.req.query("agent_id") ?? "";
+	const userCode = c.req.query("user_code") ?? "";
+	const database = createDatabase(c.env);
+	try {
+		const query: AgentApprovalQuery = async <
+			Row extends Record<string, unknown>,
+		>(
+			text: string,
+			values: readonly unknown[],
+		) => {
+			const result = await database.query<Row>(text, [...values]);
+			return { rows: result.rows };
+		};
+		const preview = await getAgentApprovalPreview(query, agentId, userCode);
+		if (!preview) {
+			return withNoStore(c.json({ error: "Approval request not found" }, 404));
+		}
+		return withNoStore(c.json(preview));
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				level: "error",
+				message: "cinaauth.agent_approval_preview.failed",
+				error: errorMessage(error),
+				version: getVersionMetadata(c.env),
+			}),
+		);
+		return withNoStore(
+			c.json({ error: "Approval details are temporarily unavailable" }, 503),
+		);
+	} finally {
+		await database.end().catch(() => undefined);
+	}
 });
 
 // Cloudflare Access supports ES256 but can be strict about mixed-algorithm

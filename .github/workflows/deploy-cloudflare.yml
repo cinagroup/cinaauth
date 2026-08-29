@@ -192,6 +192,7 @@ jobs:
           lib/siwe-wallet-protocol.test.ts
           lib/reown-wallet-source-contract.test.ts
           lib/account-build-readiness.test.ts
+          lib/agent-authorization-flow.test.ts
 
       - name: Test Account Portal deployment target guard
         run: pnpm run test:deploy-cf
@@ -444,6 +445,9 @@ jobs:
 
       - name: Verify deployed OIDC Discovery and ES256 JWKS
         run: pnpm run check:oidc
+
+      - name: Verify deployed Agent Auth discovery and capability policy
+        run: pnpm run check:agent-auth
 
   deploy-account-portal:
     name: Deploy Account Portal

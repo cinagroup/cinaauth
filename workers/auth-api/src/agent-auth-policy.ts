@@ -1,0 +1,52 @@
+import type { Capability } from "@cinaauth/agent-auth";
+import { agentAuth } from "@cinaauth/agent-auth";
+import type { CinaAuthPlugin } from "cinaauth";
+
+export const IDENTITY_PROFILE_CAPABILITY = {
+	name: "identity.profile.read",
+	description: "Read the approved user's basic CinaSeek Identity profile.",
+	approvalStrength: "session",
+	grantTTL: 24 * 60 * 60,
+	output: {
+		type: "object",
+		properties: {
+			id: { type: "string" },
+			name: { type: "string" },
+			email: { type: "string" },
+		},
+		required: ["id", "name", "email"],
+	},
+} satisfies Capability;
+
+export const AGENT_CAPABILITIES = [IDENTITY_PROFILE_CAPABILITY] as const;
+
+export const getAgentCapabilityDescription = (name: string) =>
+	AGENT_CAPABILITIES.find((capability) => capability.name === name)
+		?.description ?? "Access a capability requested by this agent.";
+
+/** Creates the production Agent Auth plugin with a deliberately narrow policy. */
+export const createAgentAuthPlugin = (accountOrigin: string): CinaAuthPlugin =>
+	agentAuth({
+		providerName: "CinaSeek Identity",
+		providerDescription:
+			"User-approved identity access for AI agents through CinaSeek Identity.",
+		modes: ["delegated"],
+		approvalMethods: ["device_authorization"],
+		deviceAuthorizationPage: `${accountOrigin}/device/capabilities`,
+		allowDynamicHostRegistration: true,
+		freshSessionWindow: 15 * 60,
+		agentSessionTTL: 60 * 60,
+		agentMaxLifetime: 24 * 60 * 60,
+		maxAgentsPerUser: 10,
+		capabilities: [...AGENT_CAPABILITIES],
+		onExecute: ({ capability, agentSession }) => {
+			if (capability !== IDENTITY_PROFILE_CAPABILITY.name) {
+				throw new Error("Unsupported agent capability");
+			}
+			return {
+				id: agentSession.user.id,
+				name: agentSession.user.name,
+				email: agentSession.user.email,
+			};
+		},
+	});

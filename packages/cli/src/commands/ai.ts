@@ -191,7 +191,7 @@ async function setupMcp() {
 
 	showNextSteps([
 		`${chalk.cyan("Docs")}    ${PROTOCOL_URL}/docs/integrate-client`,
-		`${chalk.cyan("GitHub")}  https://github.com/cinagroup/cinaauth/agent-auth`,
+		`${chalk.cyan("GitHub")}  https://github.com/cinagroup/cinaauth/tree/main/packages/agent-auth`,
 	]);
 
 	console.log(
@@ -407,7 +407,7 @@ async function setupCli() {
 
 	showNextSteps([
 		`${chalk.cyan("Docs")}    ${PROTOCOL_URL}/docs/integrate-client`,
-		`${chalk.cyan("GitHub")}  https://github.com/cinagroup/cinaauth/agent-auth`,
+		`${chalk.cyan("GitHub")}  https://github.com/cinagroup/cinaauth/tree/main/packages/agent-auth`,
 	]);
 
 	console.log(
@@ -632,7 +632,7 @@ function showServerOutro() {
 	);
 	console.log(`  ${chalk.cyan("Docs")}    ${PROTOCOL_URL}/docs/build-server`);
 	console.log(
-		`  ${chalk.cyan("GitHub")}  https://github.com/cinagroup/cinaauth/agent-auth`,
+		`  ${chalk.cyan("GitHub")}  https://github.com/cinagroup/cinaauth/tree/main/packages/agent-auth`,
 	);
 
 	console.log(

@@ -49,6 +49,7 @@ import { siwe } from "cinaauth/plugins/siwe";
 import { twoFactor } from "cinaauth/plugins/two-factor";
 import Stripe from "stripe";
 import { adminOidcBridge } from "./admin-oidc-bridge";
+import { createAgentAuthPlugin } from "./agent-auth-policy";
 import {
 	getTurnstileConfig,
 	TURNSTILE_ACTION,
@@ -239,6 +240,7 @@ export const createAuthPlugins = (
 	const siweRuntime = getSiweRuntimeConfig(env);
 
 	const plugins: CinaAuthPlugin[] = [
+		createAgentAuthPlugin(origins.accountOrigin),
 		jwt({
 			jwks: {
 				keyPairConfig: { alg: "ES256" },

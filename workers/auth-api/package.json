@@ -13,6 +13,7 @@
     "check:siwe-staging-foundation": "node ./scripts/verify-siwe-staging.mjs --foundation",
     "check:cloudflare": "node ./scripts/check-cloudflare-remote.mjs",
     "check:oidc": "node ./scripts/check-oidc-production.mjs",
+    "check:agent-auth": "node ./scripts/check-agent-auth-production.mjs",
     "check:planetscale-backups": "node ./scripts/check-planetscale-backups.mjs",
     "configure:hyperdrive": "node ./scripts/configure-hyperdrive.mjs",
     "configure:turnstile": "node ./scripts/configure-turnstile.mjs",
@@ -23,6 +24,7 @@
     "test:runtime-capabilities": "node --test ./scripts/check-runtime-capabilities.test.mjs",
     "test:remote-readiness": "node --test ./scripts/check-auth-readiness.test.mjs",
     "test:oidc": "node --test ./scripts/check-oidc-production.test.mjs",
+    "test:agent-auth": "node --test ./scripts/check-agent-auth-production.test.mjs",
     "test:production-lifecycle-acceptance": "node --test ./scripts/run-production-lifecycle-acceptance.test.mjs",
     "test:backup-audit": "node --test ./scripts/check-planetscale-backups.test.mjs",
     "test:provision-secrets": "node --test ./scripts/provision-secrets.test.mjs",
@@ -31,9 +33,10 @@
     "provision:secrets": "node ./scripts/provision-secrets.mjs",
     "cf-typegen": "wrangler types ./src/worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime false",
     "cf-typegen:check": "wrangler types ./src/worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime false --check",
-    "check": "pnpm run check:production && pnpm run check:siwe-staging-foundation && pnpm run test:siwe-staging-inventory && pnpm run test:provision-secrets && pnpm run test:remote-readiness && pnpm run test:backup-audit && pnpm run test:delivery-queues && pnpm run test:runtime-capabilities && pnpm run test:oidc && pnpm run test:production-lifecycle-acceptance && pnpm run test && wrangler types ./src/worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime false --check && tsc --noEmit"
+    "check": "pnpm run check:production && pnpm run check:siwe-staging-foundation && pnpm run test:siwe-staging-inventory && pnpm run test:provision-secrets && pnpm run test:remote-readiness && pnpm run test:backup-audit && pnpm run test:delivery-queues && pnpm run test:runtime-capabilities && pnpm run test:oidc && pnpm run test:agent-auth && pnpm run test:production-lifecycle-acceptance && pnpm run test && wrangler types ./src/worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime false --check && tsc --noEmit"
   },
   "dependencies": {
+    "@cinaauth/agent-auth": "workspace:*",
     "@cinaauth/auth-web-contract": "workspace:*",
     "@cinaauth/api-key": "workspace:*",
     "@cinaauth/electron": "workspace:*",

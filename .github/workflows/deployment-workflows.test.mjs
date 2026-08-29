@@ -518,6 +518,26 @@ test("Auth Worker builds workspace dependencies before configuration and checks"
 	);
 });
 
+test("Auth Worker verifies the deployed Agent Auth policy", () => {
+	const auth = jobBlock(central, "deploy-worker", "deploy-account-portal");
+	const deploy = auth.indexOf("- name: Deploy Worker");
+	const readiness = auth.indexOf("- name: Check Worker readiness");
+	const verification = auth.indexOf(
+		"- name: Verify deployed Agent Auth discovery and capability policy",
+	);
+
+	assert.ok(deploy >= 0, "Auth Worker must deploy");
+	assert.ok(
+		readiness > deploy,
+		"Auth Worker must verify readiness after deploy",
+	);
+	assert.ok(
+		verification > readiness,
+		"Agent Auth policy verification must run after readiness",
+	);
+	assert.match(auth.slice(verification), /run: pnpm run check:agent-auth/);
+});
+
 test("application workflows remain reusable production-environment units", () => {
 	for (const source of [account, admin]) {
 		const trigger = source.slice(

@@ -3,6 +3,8 @@ import { jwt } from "cinaauth/plugins/jwt";
 import { getTestInstance } from "cinaauth/test";
 import { describe, expect, it } from "vitest";
 import {
+	AGENT_CONFIGURATION_API_PATH,
+	AGENT_CONFIGURATION_PATH,
 	AUTH_DISCOVERY_PATHS,
 	createCanonicalDiscoveryRequest,
 	isAuthHandlerRequestPath,
@@ -28,6 +30,7 @@ describe("Auth issuer routing", () => {
 			`/api/auth${OAUTH_AUTHORIZATION_SERVER_PATH}`,
 			OAUTH_AUTHORIZATION_SERVER_PATH,
 		],
+		[AGENT_CONFIGURATION_PATH, AGENT_CONFIGURATION_API_PATH],
 	])("rewrites %s to %s", (input, expected) => {
 		const request = createCanonicalDiscoveryRequest(
 			new Request(`https://auth.cinaseek.ai${input}?client=cloudflare`, {
@@ -43,6 +46,13 @@ describe("Auth issuer routing", () => {
 	it("leaves canonical discovery requests unchanged", () => {
 		const request = new Request(
 			`https://auth.cinaseek.ai${OPENID_CONFIGURATION_PATH}`,
+		);
+		expect(createCanonicalDiscoveryRequest(request)).toBe(request);
+	});
+
+	it("leaves the Agent Auth API endpoint unchanged", () => {
+		const request = new Request(
+			`https://auth.cinaseek.ai${AGENT_CONFIGURATION_API_PATH}`,
 		);
 		expect(createCanonicalDiscoveryRequest(request)).toBe(request);
 	});

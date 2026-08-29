@@ -2,12 +2,18 @@ export const OPENID_CONFIGURATION_PATH =
 	"/.well-known/openid-configuration" as const;
 export const OAUTH_AUTHORIZATION_SERVER_PATH =
 	"/.well-known/oauth-authorization-server" as const;
+export const AGENT_CONFIGURATION_PATH =
+	"/.well-known/agent-configuration" as const;
+export const AGENT_CONFIGURATION_API_PATH =
+	"/api/auth/agent-configuration" as const;
 
 export const AUTH_DISCOVERY_PATHS = [
 	OPENID_CONFIGURATION_PATH,
 	`/api/auth${OPENID_CONFIGURATION_PATH}`,
 	OAUTH_AUTHORIZATION_SERVER_PATH,
 	`/api/auth${OAUTH_AUTHORIZATION_SERVER_PATH}`,
+	AGENT_CONFIGURATION_PATH,
+	AGENT_CONFIGURATION_API_PATH,
 ] as const;
 
 const AUTH_DISCOVERY_ALIASES = new Map<string, string>([
@@ -16,6 +22,7 @@ const AUTH_DISCOVERY_ALIASES = new Map<string, string>([
 		`/api/auth${OAUTH_AUTHORIZATION_SERVER_PATH}`,
 		OAUTH_AUTHORIZATION_SERVER_PATH,
 	],
+	[AGENT_CONFIGURATION_PATH, AGENT_CONFIGURATION_API_PATH],
 ]);
 
 const ADMIN_CONFIGURATION_PATH_PREFIX = "/api/admin/configuration/";

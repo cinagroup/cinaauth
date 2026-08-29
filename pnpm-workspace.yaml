@@ -82,6 +82,14 @@ packageExtensions:
     peerDependencies:
       '@types/react': '>=18.2.0'
       '@types/react-dom': '>=18.2.0'
+  # The Zod resolver imports zod/v4 directly but does not declare Zod as a
+  # peer, which breaks strict pnpm/Turbopack resolution in consuming apps.
+  '@hookform/resolvers@>=5 <6':
+    peerDependencies:
+      zod: '>=3.25.0'
+    peerDependenciesMeta:
+      zod:
+        optional: true
 
 catalog:
   '@better-auth/utils': 0.5.0

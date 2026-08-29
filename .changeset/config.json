@@ -10,6 +10,7 @@
       "cinaauth",
       "@cinaauth/core",
       "@cinaauth/cli",
+      "@cinaauth/agent-auth",
       "@cinaauth/api-key",
       "@cinaauth/drizzle-adapter",
       "@cinaauth/electron",
