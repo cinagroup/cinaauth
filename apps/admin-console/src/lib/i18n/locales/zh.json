@@ -442,6 +442,7 @@
   "billing.scope.user": "我的账户",
   "billing.scope.organization": "活跃组织",
   "billing.empty": "当前范围暂无订阅",
+  "billing.unavailable": "账单功能尚未配置。配置 Stripe 后即可查看订阅并打开账单门户。",
   "billing.plan": "方案",
   "billing.status": "状态",
   "billing.interval": "计费周期",

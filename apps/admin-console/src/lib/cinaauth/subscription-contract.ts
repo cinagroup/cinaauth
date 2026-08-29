@@ -25,6 +25,7 @@ export type AdminSubscriptionView = {
 };
 
 export type AdminSubscriptionList = {
+	available: boolean;
 	scope: BillingScope;
 	referenceId: string;
 	subscriptions: AdminSubscriptionView[];

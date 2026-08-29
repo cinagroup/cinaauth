@@ -33,6 +33,7 @@ export const ADMIN_PERMISSION_STATEMENT = {
 	],
 	session: ["list", "revoke", "delete"],
 	stats: ["read"],
+	wallet: ["list", "unbind"],
 	passkey: ["list", "revoke", "update"],
 } as const;
 
@@ -42,12 +43,14 @@ export const ADMIN_ROLE_PERMISSIONS = {
 		user: ["list", "ban", "get"],
 		session: ["list", "revoke", "delete"],
 		stats: ["read"],
+		wallet: ["list", "unbind"],
 		passkey: ["list", "revoke"],
 	},
 	user: {
 		user: [],
 		session: [],
 		stats: [],
+		wallet: [],
 		passkey: [],
 	},
 } as const;

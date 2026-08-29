@@ -155,6 +155,15 @@ describe("passwordless email authentication policy", () => {
 });
 
 describe("authoritative Admin role permissions", () => {
+	it("allows both Admin roles to inspect and unbind user wallets", () => {
+		expect(
+			roles.super_admin.authorize({ wallet: ["list", "unbind"] }).success,
+		).toBe(true);
+		expect(
+			roles.security_admin.authorize({ wallet: ["list", "unbind"] }).success,
+		).toBe(true);
+	});
+
 	it("keeps security_admin scoped to reversible security operations", () => {
 		expect(roles.security_admin.authorize({ user: ["ban"] }).success).toBe(
 			true,

@@ -19,6 +19,12 @@ describe("Admin billing page contract", () => {
 		expect(source).toContain("billing.portal");
 	});
 
+	it("renders the unavailable billing state and disables unavailable actions", () => {
+		expect(source).toContain("billing.unavailable");
+		expect(source).toContain("data?.available === false");
+		expect(source).toContain("!billingAvailable");
+	});
+
 	it("selects organization scope only from the actor-scoped organizations BFF", () => {
 		expect(source).toContain('"/api/admin/organizations"');
 		expect(source).toContain("OrgDTO");

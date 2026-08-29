@@ -11,6 +11,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
 	Select,
 	SelectContent,
@@ -92,6 +93,8 @@ export default function BillingPage() {
 		enabled: scope === "user" || Boolean(organizationId),
 	});
 	const subscriptions = data?.subscriptions ?? [];
+	const billingUnavailable = data?.available === false;
+	const billingAvailable = data?.available === true;
 	const returnParameters = new URLSearchParams({ scope });
 	if (scope === "organization" && organizationId) {
 		returnParameters.set("organizationId", organizationId);
@@ -178,6 +181,7 @@ export default function BillingPage() {
 			cell: ({ row }) => {
 				const subscriptionId = row.original.stripeSubscriptionId;
 				if (
+					!billingAvailable ||
 					!canManage ||
 					!subscriptionId ||
 					(row.original.status !== "active" &&
@@ -241,7 +245,9 @@ export default function BillingPage() {
 					<Button
 						variant="secondary"
 						size="sm"
-						disabled={scope === "organization" && !organizationId}
+						disabled={
+							!billingAvailable || (scope === "organization" && !organizationId)
+						}
 						onClick={() => void openBillingWorkflow("portal")}
 					>
 						{t("billing.portal")}
@@ -264,13 +270,19 @@ export default function BillingPage() {
 					</Select>
 				</div>
 			) : null}
-			<DataTable
-				table={table}
-				emptyLabel={t("billing.empty")}
-				isLoading={isFetching && !data}
-				isError={isError}
-				onRetry={() => void refetch()}
-			/>
+			{billingUnavailable ? (
+				<EmptyState>
+					<p>{t("billing.unavailable")}</p>
+				</EmptyState>
+			) : (
+				<DataTable
+					table={table}
+					emptyLabel={t("billing.empty")}
+					isLoading={isFetching && !data}
+					isError={isError}
+					onRetry={() => void refetch()}
+				/>
+			)}
 		</div>
 	);
 }
