@@ -1209,6 +1209,50 @@ describe("Admin plugin", async () => {
 		expect(sessions2.data?.sessions.length).toBe(2);
 	});
 
+	it("should list active sessions without exposing bearer tokens", async () => {
+		const sessions = await auth.api.listAllSessions({
+			headers: adminHeaders,
+			query: { limit: 10, offset: 0 },
+		});
+
+		expect(sessions.total).toBeGreaterThanOrEqual(1);
+		expect(sessions.sessions.length).toBeGreaterThanOrEqual(1);
+		expect(sessions.sessions[0]).toHaveProperty("id");
+		expect(sessions.sessions[0]).not.toHaveProperty("token");
+	});
+
+	it("should revoke one user session by its non-secret id", async () => {
+		const email = `session-by-id-${Date.now()}@cina.test`;
+		const password = "session-by-id-password";
+		const registration = await client.signUp.email({
+			email,
+			password,
+			name: "Session By Id",
+		});
+		const userId = registration.data?.user.id ?? "";
+		await signInWithUser(email, password);
+		const before = await client.admin.listUserSessions(
+			{ userId },
+			{ headers: adminHeaders },
+		);
+		const target = before.data?.sessions[0];
+		expect(target?.id).toBeTruthy();
+
+		const revoked = await auth.api.revokeUserSessionById({
+			headers: adminHeaders,
+			body: { sessionId: target?.id ?? "" },
+		});
+		expect(revoked.success).toBe(true);
+
+		const after = await client.admin.listUserSessions(
+			{ userId },
+			{ headers: adminHeaders },
+		);
+		expect(
+			after.data?.sessions.some((session) => session.id === target?.id),
+		).toBe(false);
+	});
+
 	it("should not allow non-admin to revoke user sessions", async () => {
 		const res = await client.admin.revokeUserSessions(
 			{ userId: newUser?.id || "" },

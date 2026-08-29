@@ -9,12 +9,14 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { NAV } from "./sidebar";
+import { getAdminNavigationForSession } from "./sidebar";
 
 export function CommandMenu() {
 	const { t } = useI18n();
 	const router = useRouter();
+	const { data: session } = useAdminSession();
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const deferredQuery = useDeferredValue(query);
@@ -32,14 +34,14 @@ export function CommandMenu() {
 
 	const items = useMemo(
 		() =>
-			NAV.flatMap((section) =>
+			getAdminNavigationForSession(session).flatMap((section) =>
 				section.items.map((item) => ({
 					...item,
 					label: t(item.key),
 					group: section.groupKey ? t(section.groupKey) : t("nav.overview"),
 				})),
 			),
-		[t],
+		[session, t],
 	);
 
 	const normalized = deferredQuery.trim().toLocaleLowerCase();
@@ -84,6 +86,7 @@ export function CommandMenu() {
 						<Search size={17} className="shrink-0 text-mute" />
 						<input
 							autoFocus
+							aria-label={t("command.placeholder")}
 							value={query}
 							onChange={(event) => setQuery(event.target.value)}
 							onKeyDown={(event) => {

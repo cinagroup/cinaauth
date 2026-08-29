@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ImpersonateBanner } from "@/components/layout/impersonate-banner";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -11,17 +11,26 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { getImpersonationRedirect } from "@/lib/impersonation-navigation";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
 	const { t } = useI18n();
 	const pathname = usePathname();
+	const router = useRouter();
+	const { data: session } = useAdminSession();
 	const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+	const impersonationRedirect = getImpersonationRedirect(session, pathname);
 
 	useEffect(() => {
 		setMobileNavigationOpen(false);
 	}, [pathname]);
+
+	useEffect(() => {
+		if (impersonationRedirect) router.replace(impersonationRedirect);
+	}, [impersonationRedirect, router]);
 
 	return (
 		<div className="flex h-dvh w-full min-w-0 overflow-hidden bg-canvas-soft">
@@ -52,7 +61,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 				<ImpersonateBanner />
 				<main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
 					<div className="mx-auto box-border w-full min-w-0 max-w-[1480px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
-						{children}
+						{impersonationRedirect ? null : children}
 					</div>
 				</main>
 			</div>

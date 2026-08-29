@@ -96,9 +96,11 @@ export default function NewUserPage() {
 							</p>
 						</div>
 						<div className="space-y-1.5">
-							<Label>{t("userDetail.profile.role")}</Label>
+							<Label htmlFor="new-user-role">
+								{t("userDetail.profile.role")}
+							</Label>
 							<Select value={role} onValueChange={setRole}>
-								<SelectTrigger className="h-10">
+								<SelectTrigger id="new-user-role" className="h-10">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>

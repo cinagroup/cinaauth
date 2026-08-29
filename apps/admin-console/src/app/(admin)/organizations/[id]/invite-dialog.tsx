@@ -62,6 +62,7 @@ export function InviteDialog({ orgId }: { orgId: string }) {
 			onConfirm={invite}
 		>
 			<Input
+				aria-label={t("users.col.email")}
 				type="email"
 				required
 				value={email}
@@ -69,7 +70,7 @@ export function InviteDialog({ orgId }: { orgId: string }) {
 				placeholder="user@example.com"
 			/>
 			<Select value={role} onValueChange={setRole}>
-				<SelectTrigger className="h-10">
+				<SelectTrigger aria-label={t("users.col.role")} className="h-10">
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>

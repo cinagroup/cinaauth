@@ -190,7 +190,7 @@ export function UserActions({
 						);
 						if (r.ok) {
 							toast.success(t("toast.impersonating"));
-							window.location.reload();
+							window.location.assign("/me");
 							return true;
 						} else {
 							toast.error(t("toast.actionFailed"));

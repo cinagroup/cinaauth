@@ -2,15 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { AccessibleChart } from "@/components/charts/accessible-chart";
 import { ChartState } from "@/components/charts/chart-state";
+import { useLoginActivity } from "@/hooks/use-login-activity";
 import { useThemeTokens } from "@/hooks/use-theme-tokens";
 import { fetchAdminJson } from "@/lib/client-api";
+import { trailingUtcDayKeys } from "@/lib/dashboard-metrics";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
-interface AuditRow {
-	timestamp: string;
-	actorId?: string | null;
-	result?: string | null;
-}
 interface SignupPoint {
 	date: string;
 	count: number;
@@ -30,16 +29,8 @@ interface SignupPoint {
  * than exact counts on this overview).
  */
 export function CohortBars({ days = 14 }: { days?: number }) {
-	const loginsQuery = useQuery<AuditRow[]>({
-		queryKey: ["cohort-logins", days],
-		queryFn: async () => {
-			const d = await fetchAdminJson<{
-				ok?: boolean;
-				data?: { rows?: AuditRow[] };
-			}>(`/api/admin/audit?action=user.login&result=success&limit=1000`);
-			return d.data?.rows ?? [];
-		},
-	});
+	const loginsQuery = useLoginActivity(days);
+	const { t } = useI18n();
 	const signupsQuery = useQuery<SignupPoint[]>({
 		queryKey: ["cohort-signups", days],
 		queryFn: async () => {
@@ -53,11 +44,8 @@ export function CohortBars({ days = 14 }: { days?: number }) {
 
 	// Build day buckets for the window.
 	const byDay = new Map<string, { newUsers: number; returning: number }>();
-	const today = new Date();
-	for (let i = days - 1; i >= 0; i--) {
-		const d = new Date(today);
-		d.setDate(d.getDate() - i);
-		byDay.set(d.toISOString().slice(0, 10), { newUsers: 0, returning: 0 });
+	for (const day of trailingUtcDayKeys(days)) {
+		byDay.set(day, { newUsers: 0, returning: 0 });
 	}
 	// New users per day from the signup series.
 	for (const p of signupsQuery.data ?? []) {
@@ -69,7 +57,7 @@ export function CohortBars({ days = 14 }: { days?: number }) {
 	// (Approximation: distinct actor per day, minus that day's new signups.)
 	const actorsPerDay = new Map<string, Set<string>>();
 	for (const day of byDay.keys()) actorsPerDay.set(day, new Set<string>());
-	for (const row of loginsQuery.data ?? []) {
+	for (const row of loginsQuery.data?.rows ?? []) {
 		const day = (row.timestamp ?? "").slice(0, 10);
 		const set = actorsPerDay.get(day);
 		if (set) set.add(row.actorId ?? "anon");
@@ -105,40 +93,50 @@ export function CohortBars({ days = 14 }: { days?: number }) {
 		);
 	}
 	if (
-		(loginsQuery.data?.length ?? 0) === 0 &&
+		(loginsQuery.data?.rows.length ?? 0) === 0 &&
 		(signupsQuery.data?.length ?? 0) === 0
 	) {
 		return <ChartState status="empty" height={200} />;
 	}
 
 	return (
-		<ResponsiveContainer width="100%" height={200}>
-			<BarChart key={themeKey} data={chartData} barCategoryGap="20%">
-				<XAxis
-					dataKey="date"
-					stroke={v("--mute", "#888")}
-					fontSize={11}
-					tickLine={false}
-					axisLine={false}
-				/>
-				{/* Y-axis intentionally hidden — BAC shows relative shape only */}
-				<Tooltip
-					cursor={{ fill: v("--canvas-soft-2", "#f5f5f5"), radius: 4 }}
-					contentStyle={{
-						background: v("--canvas", "#fff"),
-						border: `1px solid ${v("--hairline", "#ebebeb")}`,
-						borderRadius: "6px",
-						color: v("--ink", "#171717"),
-					}}
-				/>
-				<Bar dataKey="new" stackId="cohort" fill={c1} radius={[0, 0, 0, 0]} />
-				<Bar
-					dataKey="returning"
-					stackId="cohort"
-					fill={c2}
-					radius={[4, 4, 0, 0]}
-				/>
-			</BarChart>
-		</ResponsiveContainer>
+		<AccessibleChart
+			label={t("dashboard.cohort.title")}
+			summary={chartData
+				.map(
+					(point) =>
+						`${point.date}: ${t("dashboard.cohort.new")} ${point.new}, ${t("dashboard.cohort.returning")} ${point.returning}`,
+				)
+				.join(", ")}
+		>
+			<ResponsiveContainer width="100%" height={200}>
+				<BarChart key={themeKey} data={chartData} barCategoryGap="20%">
+					<XAxis
+						dataKey="date"
+						stroke={v("--mute", "#888")}
+						fontSize={11}
+						tickLine={false}
+						axisLine={false}
+					/>
+					{/* Y-axis intentionally hidden — BAC shows relative shape only */}
+					<Tooltip
+						cursor={{ fill: v("--canvas-soft-2", "#f5f5f5"), radius: 4 }}
+						contentStyle={{
+							background: v("--canvas", "#fff"),
+							border: `1px solid ${v("--hairline", "#ebebeb")}`,
+							borderRadius: "6px",
+							color: v("--ink", "#171717"),
+						}}
+					/>
+					<Bar dataKey="new" stackId="cohort" fill={c1} radius={[0, 0, 0, 0]} />
+					<Bar
+						dataKey="returning"
+						stackId="cohort"
+						fill={c2}
+						radius={[4, 4, 0, 0]}
+					/>
+				</BarChart>
+			</ResponsiveContainer>
+		</AccessibleChart>
 	);
 }

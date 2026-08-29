@@ -670,6 +670,19 @@ describe("POST /api/admin/sessions/revoke", () => {
 			expect.anything(),
 		);
 	});
+
+	it("routes a non-secret session id to the by-id revocation endpoint", async () => {
+		const { POST } = await import("@/app/api/admin/sessions/revoke/route");
+		await POST(
+			postReq("/api/admin/sessions/revoke", { sessionId: "session-2" }),
+		);
+		expect(mockFetch).toHaveBeenCalledWith(
+			"/admin/revoke-user-session-by-id",
+			expect.objectContaining({
+				body: { sessionId: "session-2" },
+			}),
+		);
+	});
 });
 
 describe("POST /api/admin/api-keys/[id]/toggle", () => {

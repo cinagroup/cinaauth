@@ -546,6 +546,49 @@ describe("audit-log endpoints", () => {
 });
 
 describe("audit-log export + alerts", () => {
+	it("accepts an allowed role from a comma-separated session role", async () => {
+		const { auth, signInWithTestUser } = await getTestInstance({
+			session: { freshAge: 60 },
+			plugins: [admin(), auditLog({ allowedRoles: ["super_admin"] })],
+			databaseHooks: {
+				user: {
+					create: {
+						async before(user) {
+							return { data: { ...user, role: "user,super_admin" } };
+						},
+					},
+				},
+			},
+		});
+		const { headers } = await signInWithTestUser();
+
+		await expect(
+			auth.api.listAudit({ headers, query: { limit: 10 } }),
+		).resolves.toMatchObject({
+			rows: expect.any(Array),
+			total: expect.any(Number),
+		});
+		await expect(
+			auth.api.auditAlerts({
+				headers,
+				query: { windowHours: 24, failThreshold: 10 },
+			}),
+		).resolves.toMatchObject({ flagged: [] });
+		await expect(
+			auth.api.logAudit({
+				headers,
+				body: {
+					category: "admin",
+					action: "admin.composite_role_probe",
+					result: "success",
+				},
+			}),
+		).resolves.toMatchObject({ ok: true });
+		await expect(
+			auth.api.exportAudit({ headers, query: {} }),
+		).resolves.toBeInstanceOf(Response);
+	});
+
 	it("auditAlerts flags actors exceeding the failure threshold", async () => {
 		// Load the admin plugin so the test user is assigned a `role` ("user"
 		// by default), then allow that role to query audit. Without admin, the

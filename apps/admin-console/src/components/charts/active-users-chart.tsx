@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import {
 	Bar,
 	BarChart,
@@ -10,15 +9,12 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { AccessibleChart } from "@/components/charts/accessible-chart";
 import { ChartState } from "@/components/charts/chart-state";
+import { useLoginActivity } from "@/hooks/use-login-activity";
 import { useThemeTokens } from "@/hooks/use-theme-tokens";
-import { fetchAdminJson } from "@/lib/client-api";
-
-interface AuditRow {
-	timestamp: string;
-	actorId?: string | null;
-	result?: string | null;
-}
+import { trailingUtcDayKeys } from "@/lib/dashboard-metrics";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 /**
  * Daily active-users trend, derived client-side from the audit log
@@ -29,29 +25,15 @@ interface AuditRow {
  * requires a backend cohort endpoint — see the retention placeholder card.
  */
 export function ActiveUsersChart({ days = 14 }: { days?: number }) {
-	const { data, isLoading, isError, refetch } = useQuery<AuditRow[]>({
-		queryKey: ["active-users", days],
-		queryFn: async () => {
-			// Pull a generous window of successful logins.
-			const d = await fetchAdminJson<{
-				ok?: boolean;
-				data?: { rows?: AuditRow[] };
-			}>(`/api/admin/audit?action=user.login&result=success&limit=1000`);
-			return d.data?.rows ?? [];
-		},
-	});
+	const { data, isLoading, isError, refetch } = useLoginActivity(days);
 	const { v, themeKey } = useThemeTokens();
+	const { t } = useI18n();
 
-	const rows = data ?? [];
+	const rows = data?.rows ?? [];
 
 	// Bucket into the last `days` days, counting distinct actors per day.
 	const byDay = new Map<string, Set<string>>();
-	const today = new Date();
-	for (let i = days - 1; i >= 0; i--) {
-		const d = new Date(today);
-		d.setDate(d.getDate() - i);
-		byDay.set(d.toISOString().slice(0, 10), new Set());
-	}
+	for (const day of trailingUtcDayKeys(days)) byDay.set(day, new Set());
 	for (const row of rows) {
 		const day = (row.timestamp ?? "").slice(0, 10);
 		const bucket = byDay.get(day);
@@ -69,42 +51,49 @@ export function ActiveUsersChart({ days = 14 }: { days?: number }) {
 		return <ChartState status="empty" />;
 
 	return (
-		<ResponsiveContainer width="100%" height={240}>
-			<BarChart key={themeKey} data={chartData}>
-				<CartesianGrid
-					stroke={v("--hairline", "#ebebeb")}
-					strokeDasharray="3 3"
-					vertical={false}
-				/>
-				<XAxis
-					dataKey="date"
-					stroke={v("--mute", "#888")}
-					fontSize={11}
-					tickLine={false}
-					axisLine={{ stroke: v("--hairline", "#ebebeb") }}
-				/>
-				<YAxis
-					stroke={v("--mute", "#888")}
-					fontSize={11}
-					allowDecimals={false}
-					tickLine={false}
-					axisLine={false}
-				/>
-				<Tooltip
-					cursor={{ fill: v("--canvas-soft-2", "#f5f5f5") }}
-					contentStyle={{
-						background: v("--canvas", "#fff"),
-						border: `1px solid ${v("--hairline", "#ebebeb")}`,
-						borderRadius: "6px",
-						color: v("--ink", "#171717"),
-					}}
-				/>
-				<Bar
-					dataKey="active"
-					fill={v("--chart-1", "#0070f3")}
-					radius={[4, 4, 0, 0]}
-				/>
-			</BarChart>
-		</ResponsiveContainer>
+		<AccessibleChart
+			label={t("dashboard.activeTrend.title")}
+			summary={chartData
+				.map((point) => `${point.date}: ${point.active}`)
+				.join(", ")}
+		>
+			<ResponsiveContainer width="100%" height={240}>
+				<BarChart key={themeKey} data={chartData}>
+					<CartesianGrid
+						stroke={v("--hairline", "#ebebeb")}
+						strokeDasharray="3 3"
+						vertical={false}
+					/>
+					<XAxis
+						dataKey="date"
+						stroke={v("--mute", "#888")}
+						fontSize={11}
+						tickLine={false}
+						axisLine={{ stroke: v("--hairline", "#ebebeb") }}
+					/>
+					<YAxis
+						stroke={v("--mute", "#888")}
+						fontSize={11}
+						allowDecimals={false}
+						tickLine={false}
+						axisLine={false}
+					/>
+					<Tooltip
+						cursor={{ fill: v("--canvas-soft-2", "#f5f5f5") }}
+						contentStyle={{
+							background: v("--canvas", "#fff"),
+							border: `1px solid ${v("--hairline", "#ebebeb")}`,
+							borderRadius: "6px",
+							color: v("--ink", "#171717"),
+						}}
+					/>
+					<Bar
+						dataKey="active"
+						fill={v("--chart-1", "#0070f3")}
+						radius={[4, 4, 0, 0]}
+					/>
+				</BarChart>
+			</ResponsiveContainer>
+		</AccessibleChart>
 	);
 }

@@ -196,7 +196,12 @@ export default function OrganizationDetailPage() {
 							value={role}
 							onValueChange={(v) => changeRole(row.original.id, v)}
 						>
-							<SelectTrigger className="h-7 w-[110px] text-[13px]">
+							<SelectTrigger
+								aria-label={t("organizations.memberRoleFor", {
+									user: row.original.user?.email ?? row.original.userId,
+								})}
+								className="h-7 w-[110px] text-[13px]"
+							>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>

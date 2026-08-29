@@ -29,17 +29,8 @@ import type {
 	StatsOverviewDTO,
 } from "@/lib/cinaauth/dto";
 import { fetchAdminJson } from "@/lib/client-api";
+import { sumTrailingSignupWindow } from "@/lib/dashboard-metrics";
 import { useI18n } from "@/lib/i18n/i18n-context";
-
-/** Sum counts in `series` whose date falls within the last `days` days. */
-function sumLastDays(series: SignupPointDTO[], days: number): number {
-	const cutoff = new Date();
-	cutoff.setHours(0, 0, 0, 0);
-	cutoff.setDate(cutoff.getDate() - days);
-	return series
-		.filter((p) => new Date(p.date) >= cutoff)
-		.reduce((a, p) => a + p.count, 0);
-}
 
 /** Percent change of `cur` vs `prev`. Returns null when prev is 0 (undefined). */
 function pctChange(cur: number, prev: number): number | null {
@@ -147,8 +138,8 @@ export default function DashboardPage() {
 	};
 
 	// Derive deltas from the 30d signup series: compare last 7d vs prior 7d.
-	const signups7d = sumLastDays(signupSeries, 7);
-	const signupsPrev7d = sumLastDays(signupSeries, 14) - signups7d;
+	const signups7d = sumTrailingSignupWindow(signupSeries, 7);
+	const signupsPrev7d = sumTrailingSignupWindow(signupSeries, 7, 7);
 	const signupsDelta = pctChange(signups7d, signupsPrev7d);
 	const sparkSignups = signupSeries.slice(-14).map((p) => p.count);
 
@@ -318,6 +309,9 @@ export default function DashboardPage() {
 						<CardHeader>
 							<div className="text-[14px] leading-5 text-body">
 								{t("dashboard.channelDist")}
+							</div>
+							<div className="text-[12px] leading-4 text-mute">
+								{t("dashboard.channelDist.hint")}
 							</div>
 						</CardHeader>
 						<CardContent className="pt-0">

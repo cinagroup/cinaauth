@@ -54,14 +54,34 @@ async function safeCount(
 
 const DAY_MS = 86_400_000;
 
+/** Aggregate account links by provider without dropping configured providers. */
+export function aggregateLoginChannels(
+	accounts: readonly { providerId: string }[],
+): Record<string, number> {
+	const channels = new Map<string, number>([
+		["emailPassword", 0],
+		["github", 0],
+		["siwe", 0],
+	]);
+	for (const account of accounts) {
+		const provider =
+			account.providerId === "credential"
+				? "emailPassword"
+				: account.providerId.trim();
+		if (!provider) continue;
+		channels.set(provider, (channels.get(provider) ?? 0) + 1);
+	}
+	return Object.fromEntries(channels);
+}
+
 /**
  * ### Endpoint
  *
  * GET `/admin/stats/overview`
  *
- * Aggregated totals for the admin dashboard plus login-channel distribution
- * (email/password, github, siwe), derived from the account table's
- * `providerId`. Requires the `stats:read` permission.
+ * Aggregated totals for the admin dashboard plus linked-account provider
+ * distribution, derived from every account-table `providerId`. Requires the
+ * `stats:read` permission.
  *
  * **server:** `auth.api.statsOverview`
  */
@@ -105,12 +125,7 @@ export const statsOverview = (opts: AdminOptions) =>
 				}),
 			]);
 
-			const loginChannels = { emailPassword: 0, github: 0, siwe: 0 };
-			for (const acc of accounts) {
-				if (acc.providerId === "credential") loginChannels.emailPassword += 1;
-				else if (acc.providerId === "github") loginChannels.github += 1;
-				else if (acc.providerId === "siwe") loginChannels.siwe += 1;
-			}
+			const loginChannels = aggregateLoginChannels(accounts);
 
 			return ctx.json({
 				totalUsers,

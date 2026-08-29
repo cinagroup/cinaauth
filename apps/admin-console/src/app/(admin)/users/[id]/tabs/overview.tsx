@@ -217,9 +217,11 @@ export function OverviewTab({ user }: { user: UserDTO }) {
 						)}
 						{isSuperAdmin && (
 							<div className="space-y-1.5">
-								<Label>{t("userDetail.profile.role")}</Label>
+								<Label htmlFor="user-role">
+									{t("userDetail.profile.role")}
+								</Label>
 								<Select value={role} onValueChange={setRole}>
-									<SelectTrigger className="h-10">
+									<SelectTrigger id="user-role" className="h-10">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
