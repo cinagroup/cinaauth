@@ -26,7 +26,9 @@ describe("Accounts card-first sign-in contract", () => {
 		expect(formSource).toContain('autoComplete="one-time-code"');
 		expect(formSource).toContain("existingUserOnly");
 		expect(source).toContain("completeEmailOtpAuthentication");
-		expect(source).toContain("Wallet sign-in is for existing accounts");
+		expect(source).toContain(
+			"New wallet? We'll create your account after you verify the",
+		);
 		expect(clientSource).not.toContain("usernameClient");
 		expect(clientSource).not.toContain("magicLinkClient");
 		expect(clientSource).not.toContain("oneTapClient");

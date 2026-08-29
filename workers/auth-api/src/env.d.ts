@@ -50,9 +50,9 @@ export interface CloudflareBindings extends Cloudflare.Env {
 	CINAAUTH_SIWE_RP_DOMAIN?: string;
 	/** Canonical HTTPS relying-party URI bound into every SIWE message. */
 	CINAAUTH_SIWE_RP_URI?: string;
-	/** Phase-one safety gate; production accepts only the exact value "false". */
+	/** Legacy SIWE is disabled unless this is the exact value "false". */
 	CINAAUTH_SIWE_ALLOW_LEGACY?: string;
-	/** Phase-one safety gate; unknown wallets must not create users. */
+	/** Exact boolean string controlling account creation for verified wallets. */
 	CINAAUTH_SIWE_AUTO_SIGNUP?: string;
 	/** Optional HMAC secret for OAuth pairwise subject identifiers. */
 	OAUTH_PAIRWISE_SECRET?: string;

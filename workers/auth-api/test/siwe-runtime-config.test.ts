@@ -31,7 +31,7 @@ describe("SIWE runtime configuration", () => {
 		).toEqual({ enabled: false });
 	});
 
-	it("accepts the strict production EOA-only configuration", () => {
+	it("accepts a strict link-first EOA-only configuration", () => {
 		expect(getSiweRuntimeConfig(enabledConfiguration)).toEqual({
 			enabled: true,
 			rpDomain: "accounts.cinaseek.ai",
@@ -39,6 +39,23 @@ describe("SIWE runtime configuration", () => {
 			allowedChainIds: [1, 11155111],
 			allowLegacy: false,
 			autoSignup: false,
+			walletType: "eoa-only",
+		});
+	});
+
+	it("allows the explicit stage-two wallet account-creation policy", () => {
+		expect(
+			getSiweRuntimeConfig({
+				...enabledConfiguration,
+				CINAAUTH_SIWE_AUTO_SIGNUP: "true",
+			}),
+		).toEqual({
+			enabled: true,
+			rpDomain: "accounts.cinaseek.ai",
+			rpUri: "https://accounts.cinaseek.ai",
+			allowedChainIds: [1, 11155111],
+			allowLegacy: false,
+			autoSignup: true,
 			walletType: "eoa-only",
 		});
 	});
@@ -72,7 +89,7 @@ describe("SIWE runtime configuration", () => {
 			{ CINAAUTH_ACCOUNT_ORIGIN: "https://other.cinaseek.ai" },
 		],
 		["legacy mode", { CINAAUTH_SIWE_ALLOW_LEGACY: "true" }],
-		["automatic signup", { CINAAUTH_SIWE_AUTO_SIGNUP: "true" }],
+		["invalid signup switch", { CINAAUTH_SIWE_AUTO_SIGNUP: "TRUE" }],
 		["missing legacy switch", { CINAAUTH_SIWE_ALLOW_LEGACY: undefined }],
 		["missing signup switch", { CINAAUTH_SIWE_AUTO_SIGNUP: undefined }],
 	] as const)("fails closed for %s", (_name, override) => {

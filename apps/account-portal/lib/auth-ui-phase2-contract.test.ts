@@ -206,7 +206,9 @@ describe("Accounts authentication UI phase two contract", () => {
 		expect(signInSource).toContain(
 			'intent={hasCreatePrompt ? "signup" : "signin"}',
 		);
-		expect(signInSource).toContain("Wallet sign-in is for existing accounts");
+		expect(signInSource).toContain(
+			"New wallet? We'll create your account after you verify the",
+		);
 		expect(signInPageSource).not.toContain("<SignUpLink />");
 	});
 });
