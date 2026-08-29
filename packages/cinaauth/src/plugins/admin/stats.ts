@@ -55,7 +55,7 @@ async function safeCount(
 const DAY_MS = 86_400_000;
 
 /** Aggregate account links by provider without dropping configured providers. */
-export function aggregateLoginChannels(
+function aggregateLoginChannels(
 	accounts: readonly { providerId: string }[],
 ): Record<string, number> {
 	const channels = new Map<string, number>([

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { getTestInstance } from "../../test-utils/test-instance";
 import { auditLog } from "../audit-log";
 import { admin } from "./admin";
-import { aggregateLoginChannels } from "./stats";
 
 /**
  * Build a test instance where the default test user is assigned the "admin"
@@ -28,36 +27,35 @@ async function statsInstance() {
 }
 
 describe("admin stats endpoints", () => {
-	it("counts every configured account provider without dropping Google or custom OAuth", () => {
-		expect(
-			aggregateLoginChannels([
-				{ providerId: "credential" },
-				{ providerId: "google" },
-				{ providerId: "github" },
-				{ providerId: "siwe" },
-				{ providerId: "acme-oidc" },
-				{ providerId: "google" },
-			]),
-		).toEqual({
+	it("overview counts every configured account provider", async () => {
+		const { auth, signInWithTestUser } = await statsInstance();
+		const { headers, user } = await signInWithTestUser();
+		const context = await auth.$context;
+		for (const [providerId, accountId] of [
+			["google", "google-1"],
+			["google", "google-2"],
+			["github", "github-1"],
+			["siwe", "wallet-1"],
+			["acme-oidc", "acme-1"],
+		] as const) {
+			await context.internalAdapter.createAccount({
+				userId: user.id,
+				providerId,
+				accountId,
+			});
+		}
+		const res = (await auth.api.statsOverview({ headers })) as {
+			totalUsers: number;
+			loginChannels: Record<string, number>;
+		};
+		expect(res.totalUsers).toBeGreaterThanOrEqual(1);
+		expect(res.loginChannels).toMatchObject({
 			emailPassword: 1,
 			google: 2,
 			github: 1,
 			siwe: 1,
 			"acme-oidc": 1,
 		});
-	});
-
-	it("overview returns counts and login channels", async () => {
-		const { auth, signInWithTestUser } = await statsInstance();
-		const { headers } = await signInWithTestUser();
-		const res = (await auth.api.statsOverview({ headers })) as {
-			totalUsers: number;
-			loginChannels: Record<string, number>;
-		};
-		expect(res.totalUsers).toBeGreaterThanOrEqual(1);
-		expect(res.loginChannels).toBeDefined();
-		// The default test user signs in via email/password → credential account.
-		expect(res.loginChannels.emailPassword).toBeGreaterThanOrEqual(1);
 	});
 
 	it("signups returns a bucket per day in the range", async () => {
