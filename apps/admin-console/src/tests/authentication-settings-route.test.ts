@@ -80,6 +80,34 @@ describe("authentication settings BFF", () => {
 		});
 	});
 
+	it("unwraps the authoritative Worker's standard response envelope", async () => {
+		mocks.fetch.mockResolvedValueOnce({
+			ok: true,
+			data: {
+				ok: true,
+				data: {
+					settings: { socialProviderLimit: 20, ...validSettings },
+					methods: {},
+					activeOAuthProviderCount: 2,
+				},
+			},
+		});
+		const { GET } = await import(
+			"@/app/api/admin/authentication-settings/route"
+		);
+		const response = await GET(request("GET"));
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			ok: true,
+			data: {
+				settings: { socialProviderLimit: 20, ...validSettings },
+				methods: {},
+				activeOAuthProviderCount: 2,
+			},
+		});
+	});
+
 	it("requires publish permission, recent authentication, and no impersonation", async () => {
 		const { PUT } = await import(
 			"@/app/api/admin/authentication-settings/route"
@@ -116,11 +144,19 @@ describe("authentication settings BFF", () => {
 	});
 
 	it("forwards the exact governed setting payload", async () => {
+		mocks.fetch.mockResolvedValueOnce({
+			ok: true,
+			data: { ok: true, data: validSettings },
+		});
 		const { PUT } = await import(
 			"@/app/api/admin/authentication-settings/route"
 		);
 		const response = await PUT(request("PUT", validSettings));
 		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			ok: true,
+			data: validSettings,
+		});
 		expect(mocks.fetch).toHaveBeenCalledWith(
 			"/admin/authentication-settings",
 			expect.objectContaining({
