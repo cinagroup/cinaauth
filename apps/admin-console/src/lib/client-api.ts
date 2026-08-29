@@ -134,6 +134,44 @@ export async function fetchAdminJson<T>(
 	return payload;
 }
 
+/** Fetch Admin JSON with a bounded wait while preserving caller cancellation. */
+export async function fetchAdminJsonWithTimeout<T>(
+	input: RequestInfo | URL,
+	init?: RequestInit,
+	timeoutMs = 15_000,
+): Promise<T> {
+	const controller = new AbortController();
+	const callerSignal = init?.signal;
+	let timedOut = false;
+	const forwardAbort = () => controller.abort(callerSignal?.reason);
+
+	if (callerSignal?.aborted) {
+		forwardAbort();
+	} else {
+		callerSignal?.addEventListener("abort", forwardAbort, { once: true });
+	}
+
+	const timeout = setTimeout(() => {
+		timedOut = true;
+		controller.abort();
+	}, timeoutMs);
+
+	try {
+		return await fetchAdminJson<T>(input, {
+			...init,
+			signal: controller.signal,
+		});
+	} catch (error) {
+		if (timedOut) {
+			throw new AdminApiError("The request timed out", 408, "REQUEST_TIMEOUT");
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeout);
+		callerSignal?.removeEventListener("abort", forwardAbort);
+	}
+}
+
 /** Clipboard writes can fail due to browser permissions or an insecure origin. */
 export async function copyText(text: string): Promise<boolean> {
 	try {

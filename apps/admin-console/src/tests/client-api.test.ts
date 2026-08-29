@@ -4,6 +4,7 @@ import {
 	copyText,
 	downloadAdminCsv,
 	fetchAdminJson,
+	fetchAdminJsonWithTimeout,
 	getAdminApiErrorMessage,
 	handleAdminStepUpError,
 	openExternal,
@@ -12,6 +13,7 @@ import {
 afterEach(() => {
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
+	vi.useRealTimers();
 });
 
 describe("fetchAdminJson", () => {
@@ -117,6 +119,35 @@ describe("fetchAdminJson", () => {
 			),
 		);
 		await expect(fetchAdminJson("/test")).rejects.toThrow("denied");
+	});
+
+	it("fails a stalled Admin request within the configured timeout", async () => {
+		vi.useFakeTimers();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				(_input: RequestInfo | URL, init?: RequestInit) =>
+					new Promise<Response>((_resolve, reject) => {
+						init?.signal?.addEventListener(
+							"abort",
+							() => reject(new DOMException("Aborted", "AbortError")),
+							{ once: true },
+						);
+					}),
+			),
+		);
+
+		const request = fetchAdminJsonWithTimeout(
+			"/stalled",
+			undefined,
+			1_000,
+		).catch((error: unknown) => error);
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		await expect(request).resolves.toMatchObject({
+			status: 408,
+			code: "REQUEST_TIMEOUT",
+		});
 	});
 });
 

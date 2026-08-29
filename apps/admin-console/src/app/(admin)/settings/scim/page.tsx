@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import type { OrgDTO } from "@/lib/cinaauth/dto";
-import { copyText, fetchAdminJson } from "@/lib/client-api";
+import { copyText, fetchAdminJsonWithTimeout } from "@/lib/client-api";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { AdminScimProvider } from "@/lib/integration-contract";
 
@@ -50,7 +50,7 @@ interface OrganizationListResponse {
 
 export default function ScimPage() {
 	const { t } = useI18n();
-	const { data: session } = useAdminSession();
+	const { data: session, isPending: isSessionPending } = useAdminSession();
 	const queryClient = useQueryClient();
 	const canManage = hasAdminControlPermission(
 		session?.role,
@@ -61,32 +61,40 @@ export default function ScimPage() {
 	const [createdToken, setCreatedToken] = useState<string | null>(null);
 	const [generating, setGenerating] = useState(false);
 
-	const { data: organizationData, isFetching: isFetchingOrganizations } =
-		useQuery({
-			queryKey: ["organizations", "scim-tenant-selector"],
-			queryFn: async () => {
-				const payload = await fetchAdminJson<OrganizationListResponse>(
-					"/api/admin/organizations",
-				);
-				return Array.isArray(payload.data)
-					? payload.data
-					: (payload.data?.organizations ?? []);
-			},
-		});
+	const {
+		data: organizationData,
+		isFetching: isFetchingOrganizations,
+		isError: isOrganizationError,
+		refetch: refetchOrganizations,
+	} = useQuery({
+		queryKey: ["organizations", "scim-tenant-selector"],
+		queryFn: async ({ signal }) => {
+			const payload = await fetchAdminJsonWithTimeout<OrganizationListResponse>(
+				"/api/admin/organizations",
+				{ signal },
+			);
+			return Array.isArray(payload.data)
+				? payload.data
+				: (payload.data?.organizations ?? []);
+		},
+		retry: false,
+	});
 	const organizations = organizationData ?? [];
 
 	const { data, isFetching, isError, refetch } = useQuery({
 		queryKey: ["scim-providers", selectedOrganizationId],
-		queryFn: async () => {
+		queryFn: async ({ signal }) => {
 			const query = new URLSearchParams({
 				organizationId: selectedOrganizationId,
 			});
-			const payload = await fetchAdminJson<ScimListResponse>(
+			const payload = await fetchAdminJsonWithTimeout<ScimListResponse>(
 				`/api/admin/scim/tokens?${query.toString()}`,
+				{ signal },
 			);
 			return payload.data?.providers ?? [];
 		},
 		enabled: Boolean(selectedOrganizationId),
+		retry: false,
 	});
 	const providers = data ?? [];
 
@@ -94,7 +102,7 @@ export default function ScimPage() {
 		event.preventDefault();
 		setGenerating(true);
 		try {
-			const payload = await fetchAdminJson<ScimGenerateResponse>(
+			const payload = await fetchAdminJsonWithTimeout<ScimGenerateResponse>(
 				"/api/admin/scim/tokens",
 				{
 					method: "POST",
@@ -122,7 +130,7 @@ export default function ScimPage() {
 			const query = new URLSearchParams({
 				organizationId: provider.organizationId ?? "",
 			});
-			await fetchAdminJson(
+			await fetchAdminJsonWithTimeout(
 				`/api/admin/scim/tokens/${provider.providerId}?${query.toString()}`,
 				{ method: "DELETE" },
 			);
@@ -199,24 +207,54 @@ export default function ScimPage() {
 				<Select
 					value={selectedOrganizationId}
 					onValueChange={setSelectedOrganizationId}
+					disabled={
+						isFetchingOrganizations ||
+						isOrganizationError ||
+						organizations.length === 0
+					}
 				>
 					<SelectTrigger id="scim-tenant-selector" className="mt-2 max-w-xl">
 						<SelectValue placeholder={t("scim.selectTenantPlaceholder")} />
 					</SelectTrigger>
-					<SelectContent>
-						{organizations.map((organization) => (
-							<SelectItem key={organization.id} value={organization.id}>
-								{organization.name} ({organization.id})
-							</SelectItem>
-						))}
-					</SelectContent>
+					{organizations.length > 0 && (
+						<SelectContent>
+							{organizations.map((organization) => (
+								<SelectItem key={organization.id} value={organization.id}>
+									{organization.name} ({organization.id})
+								</SelectItem>
+							))}
+						</SelectContent>
+					)}
 				</Select>
-				{!isFetchingOrganizations && organizations.length === 0 && (
-					<p className="mt-2 text-[12px] text-mute">{t("scim.noTenant")}</p>
+				{isFetchingOrganizations && (
+					<p className="mt-2 text-[12px] text-mute">
+						{t("scim.loadingTenants")}
+					</p>
 				)}
+				{isOrganizationError && (
+					<div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-error">
+						<span>{t("scim.organizationLoadError")}</span>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void refetchOrganizations()}
+						>
+							{t("error.retry")}
+						</Button>
+					</div>
+				)}
+				{!isFetchingOrganizations &&
+					!isOrganizationError &&
+					organizations.length === 0 && (
+						<p className="mt-2 text-[12px] text-mute">{t("scim.noTenant")}</p>
+					)}
 			</div>
 
-			{canManage ? (
+			{isSessionPending ? (
+				<div className="mb-4 rounded-[var(--radius-md)] border border-hairline bg-canvas-soft p-4 text-[13px] text-body">
+					{t("scim.checkingPermissions")}
+				</div>
+			) : canManage ? (
 				<form
 					onSubmit={generate}
 					className="mb-4 rounded-[var(--radius-md)] border border-hairline bg-canvas p-4 shadow-card"
