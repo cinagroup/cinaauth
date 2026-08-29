@@ -69,6 +69,10 @@
 		"workers/auth-api/src/entitlements.ts": ["exports"],
 		"workers/auth-api/src/impersonation-mutation-guard.ts": ["exports"],
 		"workers/auth-api/src/oauth-config.ts": ["exports"],
+		"workers/auth-api/src/organization-identity-events.ts": ["exports"],
+		"workers/auth-api/src/organization-identity-outbox-invariant.ts": [
+			"exports"
+		],
 		"workers/auth-api/src/plugins.ts": ["exports"],
 		"workers/auth-api/src/privacy-deletion.ts": ["exports"],
 		"workers/auth-api/src/provider-namespace-governance.ts": ["exports"],
