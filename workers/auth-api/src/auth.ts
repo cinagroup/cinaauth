@@ -60,10 +60,10 @@ const buildAuth = (
 		database: createDatabase(env),
 		socialProviders: social.socialProviders,
 		emailAndPassword: {
-			// Production email authentication is deliberately passwordless. Existing
-			// credential rows remain untouched as a rollback aid, but no public email
-			// password sign-in, sign-up, or reset route is registered.
-			enabled: false,
+			// Password sign-in can be restored at runtime for existing credential
+			// rows, but account creation stays on verified OTP/OAuth/SIWE paths.
+			enabled: social.emailPasswordLoginEnabled,
+			disableSignUp: true,
 		},
 		session: {
 			// Sensitive account operations require a recent authentication. Keep
@@ -102,7 +102,11 @@ const buildAuth = (
 		},
 		plugins: createAuthPlugins(
 			env,
-			{ advancedOrganization: true },
+			{
+				advancedOrganization: true,
+				authenticationSettings: social,
+				googleOneTapClientId: social.googleOneTapClientId,
+			},
 			social.genericProviders,
 		),
 		trustedOrigins: origins.trustedOrigins,

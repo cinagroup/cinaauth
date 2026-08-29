@@ -12,36 +12,44 @@ export const evaluateRuntimeCapabilities = ({
 		capabilities.oauthProviders.some(
 			(provider) => provider?.id === id && provider?.type === type,
 		);
-	if (capabilities.oneTap !== false) {
+	const googleConfigured = hasAll(configuredInputs, [
+		"GOOGLE_CLIENT_ID",
+		"GOOGLE_CLIENT_SECRET",
+	]);
+	const githubConfigured = hasAll(configuredInputs, [
+		"GITHUB_CLIENT_ID",
+		"GITHUB_CLIENT_SECRET",
+	]);
+	if (
+		capabilities.oneTap === true &&
+		(!googleConfigured ||
+			!hasProvider("google", "social") ||
+			typeof capabilities.oneTapClientId !== "string" ||
+			capabilities.oneTapClientId.trim().length === 0)
+	) {
 		failures.push(
-			"Live One Tap capability must remain disabled for redirect-based Google OAuth",
+			"Live One Tap requires configured Google credentials, an advertised Google provider, and a public client id",
+		);
+	}
+	if (hasProvider("google", "social") && !googleConfigured) {
+		failures.push(
+			"The live Google social capability is advertised without configured credentials",
+		);
+	}
+	if (hasProvider("github", "social") && !githubConfigured) {
+		failures.push(
+			"The live GitHub social capability is advertised without configured credentials",
 		);
 	}
 	if (
-		hasAll(configuredInputs, ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]) &&
-		!hasProvider("google", "social")
+		!hasAll(configuredInputs, ["GENERIC_OAUTH_CONFIG"]) &&
+		Array.isArray(capabilities.oauthProviders) &&
+		capabilities.oauthProviders.some(
+			(provider) => provider?.type === "generic-oauth",
+		)
 	) {
 		failures.push(
-			"Google social credentials are configured but the live capability is disabled",
-		);
-	}
-	if (
-		hasAll(configuredInputs, ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) &&
-		!hasProvider("github", "social")
-	) {
-		failures.push(
-			"GitHub social credentials are configured but the live capability is disabled",
-		);
-	}
-	if (
-		hasAll(configuredInputs, ["GENERIC_OAUTH_CONFIG"]) &&
-		(!Array.isArray(capabilities.oauthProviders) ||
-			!capabilities.oauthProviders.some(
-				(provider) => provider?.type === "generic-oauth",
-			))
-	) {
-		failures.push(
-			"GENERIC_OAUTH_CONFIG is configured but the live capabilities endpoint exposes no valid providers",
+			"The live generic OAuth capability is advertised without GENERIC_OAUTH_CONFIG",
 		);
 	}
 	if (
@@ -68,13 +76,13 @@ export const evaluateRuntimeCapabilities = ({
 			"Stripe billing inputs are configured but the live billing capability is disabled",
 		);
 	}
-	if (Object.hasOwn(configuredValues, "CINAAUTH_SIWE_ENABLED")) {
-		const expectedSiwe = configuredValues.CINAAUTH_SIWE_ENABLED === "true";
-		if (capabilities.methods?.siwe !== expectedSiwe) {
-			failures.push(
-				"Live SIWE capability does not match the tracked SIWE kill switch",
-			);
-		}
+	if (
+		configuredValues.CINAAUTH_SIWE_ENABLED === "false" &&
+		capabilities.methods?.siwe === true
+	) {
+		failures.push(
+			"Live SIWE capability exceeds the tracked SIWE deployment kill switch",
+		);
 	}
 	return failures;
 };
@@ -84,15 +92,15 @@ export const evaluateDeliveryCapabilityParity = ({
 	providers,
 }) => {
 	const failures = [];
-	if (providers.email !== true || capabilities.methods?.emailOtp !== true) {
+	if (typeof capabilities.methods?.emailOtp !== "boolean") {
+		failures.push("Live Email OTP capability must be an explicit boolean");
+	} else if (capabilities.methods.emailOtp && providers.email !== true) {
 		failures.push(
-			"Production Email OTP requires an active Delivery Worker email provider and methods.emailOtp=true",
+			"Live Email OTP cannot be enabled without an active Delivery Worker email provider",
 		);
 	}
-	if (capabilities.methods?.emailPassword !== false) {
-		failures.push(
-			"Live email-password capability must remain disabled for passwordless email authentication",
-		);
+	if (typeof capabilities.methods?.emailPassword !== "boolean") {
+		failures.push("Live email-password capability must be an explicit boolean");
 	}
 	if (capabilities.methods?.magicLink !== false) {
 		failures.push(

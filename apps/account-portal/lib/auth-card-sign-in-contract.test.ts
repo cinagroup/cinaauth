@@ -6,7 +6,7 @@ const readSource = (path: string) =>
 	readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("Accounts card-first sign-in contract", () => {
-	it("renders email OTP as the primary task without exposing retired methods", () => {
+	it("renders runtime-enabled primary methods without restoring retired sign-up flows", () => {
 		const source = readSource("../app/(auth)/sign-in/_components/sign-in.tsx");
 		const formSource = readSource("../components/forms/email-otp-form.tsx");
 		const clientSource = readSource("./auth-client.ts");
@@ -16,13 +16,13 @@ describe("Accounts card-first sign-in contract", () => {
 
 		expect(source).toContain("<EmailOtpForm");
 		expect(source).toContain("window.location.href = path");
-		expect(source).not.toContain("<SignInForm");
+		expect(source).toContain("methods.emailPassword");
+		expect(source).toContain("methods.passkey");
 		expect(source).toContain("<OAuthProviderButtons");
 		expect(source).toContain("signInPolicy.allowFederatedProviders");
-		expect(source).not.toContain("password");
 		expect(source).not.toContain("Magic Link");
-		expect(source).not.toContain("Continue with passkey");
-		expect(source).not.toContain("signIn.passkey");
+		expect(source).toContain("Continue with passkey");
+		expect(source).toContain("signIn.passkey");
 		expect(formSource).toContain('autoComplete="one-time-code"');
 		expect(formSource).toContain("existingUserOnly");
 		expect(source).toContain("completeEmailOtpAuthentication");
@@ -31,14 +31,15 @@ describe("Accounts card-first sign-in contract", () => {
 		);
 		expect(clientSource).not.toContain("usernameClient");
 		expect(clientSource).not.toContain("magicLinkClient");
-		expect(clientSource).not.toContain("oneTapClient");
 		expect(clientSource).not.toContain("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
 		expect(providerSource).toContain("<FieldSeparator>Or</FieldSeparator>");
 		expect(providerSource).toContain('data-icon="inline-start"');
 		expect(providerSource).toContain("authClient.signIn.social");
-		expect(providerSource).not.toContain("authClient.oneTap");
+		expect(providerSource).toContain("oneTapClient");
+		expect(providerSource).toContain("oneTapClientId");
+		expect(providerSource).toContain("googleOneTapClient.oneTap");
 		expect(providerSource).not.toContain("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
-		expect(providerSource).not.toContain("new ResizeObserver");
+		expect(providerSource).toContain("new ResizeObserver");
 		expect(providerSource).not.toContain("content-visibility: hidden");
 		expect(providerSource).not.toContain("flex-grow border-t");
 	});

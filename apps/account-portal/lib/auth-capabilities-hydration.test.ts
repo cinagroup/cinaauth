@@ -126,7 +126,9 @@ describe("sign-in capability hydration", () => {
 		expect(signInSource).not.toContain("initialCapabilities");
 		expect(signInSource).toContain("capabilities.isError");
 		expect(signInSource).toContain("capabilities.refetch()");
-		expect(formSource).toContain("useTurnstileChallenge()");
+		expect(formSource).toContain(
+			'useTurnstileChallenge("/email-otp/send-verification-otp")',
+		);
 		expect(formSource).not.toContain("initialCapabilities");
 		expect(turnstileSource).toContain("hasCapabilities:");
 		expect(turnstileSource).toContain("hasCapabilityError:");

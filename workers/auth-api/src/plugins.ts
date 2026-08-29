@@ -20,6 +20,7 @@ import {
 	captcha,
 	lastLoginMethod,
 	oauthPopup,
+	oneTap,
 	openAPI,
 } from "cinaauth/plugins";
 import { createAccessControl } from "cinaauth/plugins/access";
@@ -73,6 +74,7 @@ import {
 	hasPrivacyExportRuntime,
 } from "./privacy-export";
 import { getSiweRuntimeConfig } from "./siwe-runtime-config";
+import type { SocialSignInSettings } from "./social-provider-store";
 
 export const JWT_ROTATION_INTERVAL_SECONDS = 60 * 60 * 24 * 30;
 export const JWT_GRACE_PERIOD_SECONDS = 60 * 60 * 24 * 30;
@@ -217,6 +219,8 @@ export const createAuthPlugins = (
 	env: CloudflareBindings,
 	options: {
 		advancedOrganization?: boolean;
+		authenticationSettings?: SocialSignInSettings;
+		googleOneTapClientId?: string | null;
 	} = {},
 	resolvedGenericOAuthConfig?: GenericOAuthConfig[],
 ): CinaAuthPlugin[] => {
@@ -712,6 +716,18 @@ export const createAuthPlugins = (
 						: {
 								enabled: false,
 							},
+			}),
+		);
+	}
+
+	if (
+		options.authenticationSettings?.googleOneTapEnabled === true &&
+		options.googleOneTapClientId
+	) {
+		plugins.push(
+			oneTap({
+				clientId: options.googleOneTapClientId,
+				disableSignup: false,
 			}),
 		);
 	}

@@ -5,6 +5,8 @@ import { isBillingRuntimeReady } from "./entitlements";
 import { getPublicGenericOAuthProviders } from "./oauth-config";
 import type { SiweRuntimeEnv } from "./siwe-runtime-config";
 import { getSiweRuntimeConfig } from "./siwe-runtime-config";
+import type { SocialSignInSettings } from "./social-provider-store";
+import { DEFAULT_SOCIAL_SIGN_IN_SETTINGS } from "./social-provider-store";
 
 type CapabilitiesEnv = SiweRuntimeEnv & {
 	CINAAUTH_ACCOUNT_ORIGIN?: string;
@@ -60,26 +62,36 @@ export const getAuthCapabilities = (
 	oauthProviders: AuthCapabilities["oauthProviders"] = getPublicOAuthProviders(
 		env,
 	),
+	settings: SocialSignInSettings = DEFAULT_SOCIAL_SIGN_IN_SETTINGS,
+	googleOneTapClientId: string | null = env.GOOGLE_CLIENT_ID ?? null,
 ): AuthCapabilities => {
 	const turnstile = getTurnstileConfig(env);
 	const siwe = getSiweRuntimeConfig(env);
+	const googleConfigured = oauthProviders.some(
+		(provider) => provider.type === "social" && provider.id === "google",
+	);
+	const oneTap =
+		settings.googleOneTapEnabled &&
+		googleConfigured &&
+		hasCredential(googleOneTapClientId ?? undefined);
 
 	return {
-		version: 4,
+		version: 5,
 		methods: {
-			emailPassword: false,
-			emailOtp: delivery.email,
+			emailPassword: settings.emailPasswordLoginEnabled,
+			emailOtp: settings.emailOtpLoginEnabled && delivery.email,
 			magicLink: false,
 			phoneOtp: delivery.sms,
 			username: false,
-			passkey: true,
+			passkey: settings.passkeyLoginEnabled,
 			anonymous: true,
 			twoFactor: true,
-			siwe: siwe.enabled,
+			siwe: settings.siweLoginEnabled && siwe.enabled,
 			sso: true,
 		},
 		oauthProviders,
-		oneTap: false,
+		oneTap,
+		oneTapClientId: oneTap ? googleOneTapClientId : null,
 		captcha: {
 			enabled: turnstile.enabled,
 			provider: turnstile.enabled ? TURNSTILE_PROVIDER : null,

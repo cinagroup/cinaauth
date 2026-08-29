@@ -308,14 +308,14 @@ returns `503 DELIVERY_PROVIDER_UNAVAILABLE` before generating a credential or
 enqueueing a message. The account portal consumes the same versioned capability
 contract and does not render unavailable flows.
 
-### Passwordless email cutover
+### Administrator-governed email authentication
 
-Production email sign-in uses a six-digit Email OTP. Email-password,
-username-password, and Magic Link sign-in remain disabled. Email OTP password
-reset endpoints are also disabled and must not reactivate retained rollback
-credentials. Do not delete or bulk-migrate existing credential rows during the
-cutover; verified accounts keep them only for a reviewed rollback, and the
-passwordless Auth policy does not accept them. The intentional core safety
+Production defaults to six-digit Email OTP while email-password sign-in is off.
+Security administrators can independently enable either method at runtime.
+Email-password account creation and password reset remain disabled even when
+sign-in is enabled; username-password, Magic Link, and Email OTP password-reset
+endpoints remain retired. Do not delete or bulk-migrate existing credential rows.
+The intentional core safety
 exception applies when the first successful ownership-proving OTP reaches an
 unverified account: CinaAuth removes that account's unproven credential and
 revokes its old sessions. Email OTP is the first factor. A user who has 2FA
@@ -353,14 +353,15 @@ The rollout is deliberately two-gated:
    advertising password methods until Auth is replaced.
 2. After the Auth Worker reaches governed readiness and before the Account
    Portal write, the reusable Account workflow sets
-   `CINAAUTH_EMAIL_AUTH_GATE=passwordless`. It requires the exact live policy
-   `emailOtp=true`, `emailPassword=false`, `username=false`, and
-   `magicLink=false`.
+   `CINAAUTH_EMAIL_AUTH_GATE=configurable`. It requires explicit boolean states
+   for Email OTP and email-password while `username=false` and
+   `magicLink=false`; the administrator-selected values are not deployment
+   failures.
 
 If provider activation or the first gate fails, make no deployment write and
 repair or roll back the staged Delivery configuration. If Auth deploys but the
 exact second gate or Account deployment fails, roll Auth back to the recorded
-pre-cutover version, confirm its public no-store capabilities, and retry only
+   pre-deployment version, confirm its public no-store capabilities, and retry only
 after the provider and frontend bundle are ready. A code rollback does not
 delete credential rows or roll back the database.
 
@@ -398,13 +399,13 @@ cannot claim them.
 The advertised login list `/api/auth/capabilities` → `oauthProviders` is
 truncated server-side to `social_provider_limit`, so the sign-in page shows at
 most that many federated options (0 hides all of them) without any portal
-change. Google uses the same redirect OAuth flow as GitHub; One Tap remains
-disabled and `/api/auth/capabilities` always reports `oneTap: false`.
+change. Google uses the same redirect OAuth flow as GitHub by default. An
+administrator can enable One Tap only when Google is enabled and its public
+client ID is available; `/api/auth/capabilities` publishes the effective mode.
 
-The same settings row owns `email_otp_login_enabled` (default `true`). Email
-code sign-in is the only email authentication path — password login is
-permanently retired and is not a configurable option. When an operator
-disables the toggle, public email code delivery endpoints fail closed with
+The same settings row owns `email_otp_login_enabled` (default `true`) and
+`email_password_login_enabled` (default `false`). When an operator disables
+the OTP toggle, public email code delivery endpoints fail closed with
 `EMAIL_OTP_LOGIN_DISABLED` even while the delivery provider stays healthy, and
 `/api/auth/capabilities` stops advertising `methods.emailOtp`, which hides the
 portal's email form without any frontend change.
@@ -595,8 +596,8 @@ matrix in [`docs/CINAAUTH_OAUTH_PRODUCTION.md`](../../docs/CINAAUTH_OAUTH_PRODUC
 In particular, Generic OAuth callbacks stay on `accounts.cinaseek.ai` so the
 same-origin state and session cookies survive the Service Binding hop. The
 account deployment runs `check:oauth-build` against the live capabilities
-endpoint and fails if the backend advertises One Tap. Google remains available
-only through the redirect-based social provider contract.
+endpoint and verifies that enabled One Tap includes its public client ID; when
+One Tap is off, Google remains available through the redirect-based contract.
 Google Social OAuth is registered only when both `GOOGLE_CLIENT_ID` and
 `GOOGLE_CLIENT_SECRET` are present. GitHub is registered only when both
 `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are present. Their callbacks are

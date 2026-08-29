@@ -5,6 +5,7 @@ import {
 	BookOpen,
 	Building2,
 	CreditCard,
+	Fingerprint,
 	Key,
 	KeyRound,
 	LayoutDashboard,
@@ -58,6 +59,11 @@ const NAV: NavSection[] = [
 	{
 		groupKey: "nav.compliance",
 		items: [
+			{
+				href: "/settings/authentication",
+				key: "nav.authentication",
+				icon: Fingerprint,
+			},
 			{
 				href: "/settings/privacy-erasure",
 				key: "nav.privacyErasure",

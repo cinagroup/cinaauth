@@ -32,6 +32,20 @@ export type SocialProviderRow = {
 export type SocialSignInSettings = {
 	socialProviderLimit: number;
 	emailOtpLoginEnabled: boolean;
+	emailPasswordLoginEnabled: boolean;
+	passkeyLoginEnabled: boolean;
+	siweLoginEnabled: boolean;
+	googleOneTapEnabled: boolean;
+};
+
+/** Defaults preserve the current public sign-in experience after migration. */
+export const DEFAULT_SOCIAL_SIGN_IN_SETTINGS: SocialSignInSettings = {
+	socialProviderLimit: MAX_SOCIAL_PROVIDER_LIMIT,
+	emailOtpLoginEnabled: true,
+	emailPasswordLoginEnabled: false,
+	passkeyLoginEnabled: false,
+	siweLoginEnabled: true,
+	googleOneTapEnabled: false,
 };
 
 /** Resolved runtime configuration consumed by the auth instance and capabilities. */
@@ -42,6 +56,11 @@ export type SocialSignInRuntimeConfig = {
 	capabilitiesProviders: AuthCapabilities["oauthProviders"];
 	socialProviderLimit: number;
 	emailOtpLoginEnabled: boolean;
+	emailPasswordLoginEnabled: boolean;
+	passkeyLoginEnabled: boolean;
+	siweLoginEnabled: boolean;
+	googleOneTapEnabled: boolean;
+	googleOneTapClientId: string | null;
 	rows: SocialProviderRow[];
 	databaseReady: boolean;
 };
@@ -58,6 +77,10 @@ type SocialProviderQueryRow = {
 type SocialSettingsQueryRow = {
 	socialProviderLimit: number | null;
 	emailOtpLoginEnabled: boolean | null;
+	emailPasswordLoginEnabled: boolean | null;
+	passkeyLoginEnabled: boolean | null;
+	siweLoginEnabled: boolean | null;
+	googleOneTapEnabled: boolean | null;
 };
 
 let socialConfigCache:
@@ -107,7 +130,11 @@ export const readSocialSignInSettings = async (
 ): Promise<SocialSignInSettings> => {
 	const result = await database.query<SocialSettingsQueryRow>(
 		`SELECT "social_provider_limit" AS "socialProviderLimit",
-			"email_otp_login_enabled" AS "emailOtpLoginEnabled"
+			"email_otp_login_enabled" AS "emailOtpLoginEnabled",
+			"email_password_login_enabled" AS "emailPasswordLoginEnabled",
+			"passkey_login_enabled" AS "passkeyLoginEnabled",
+			"siwe_login_enabled" AS "siweLoginEnabled",
+			"google_one_tap_enabled" AS "googleOneTapEnabled"
 		FROM "cinaauth_sign_in_settings"
 		WHERE "singleton" = TRUE`,
 	);
@@ -121,6 +148,11 @@ export const readSocialSignInSettings = async (
 				? limit
 				: MAX_SOCIAL_PROVIDER_LIMIT,
 		emailOtpLoginEnabled: result.rows[0]?.emailOtpLoginEnabled !== false,
+		emailPasswordLoginEnabled:
+			result.rows[0]?.emailPasswordLoginEnabled === true,
+		passkeyLoginEnabled: result.rows[0]?.passkeyLoginEnabled === true,
+		siweLoginEnabled: result.rows[0]?.siweLoginEnabled !== false,
+		googleOneTapEnabled: result.rows[0]?.googleOneTapEnabled === true,
 	};
 };
 
@@ -205,6 +237,7 @@ const buildSocialSignInRuntimeConfig = (
 	);
 
 	const capabilitiesProviders: AuthCapabilities["oauthProviders"] = [];
+	let googleOneTapClientId: string | null = null;
 	for (const entry of SOCIAL_PROVIDER_CATALOG) {
 		const row = socialRowsById.get(entry.id);
 		const option = socialProviders[entry.optionKey];
@@ -214,6 +247,9 @@ const buildSocialSignInRuntimeConfig = (
 				: option !== undefined && option !== RESERVED_SOCIAL_PROVIDER_CONFIG;
 		if (active) {
 			capabilitiesProviders.push({ id: entry.id, type: "social" });
+			if (entry.id === "google") {
+				googleOneTapClientId = row?.clientId ?? env.GOOGLE_CLIENT_ID ?? null;
+			}
 		}
 	}
 	const listedIds = new Set(
@@ -236,6 +272,11 @@ const buildSocialSignInRuntimeConfig = (
 		capabilitiesProviders,
 		socialProviderLimit: settings.socialProviderLimit,
 		emailOtpLoginEnabled: settings.emailOtpLoginEnabled,
+		emailPasswordLoginEnabled: settings.emailPasswordLoginEnabled,
+		passkeyLoginEnabled: settings.passkeyLoginEnabled,
+		siweLoginEnabled: settings.siweLoginEnabled,
+		googleOneTapEnabled: settings.googleOneTapEnabled,
+		googleOneTapClientId,
 		rows,
 		databaseReady,
 	};
@@ -256,10 +297,7 @@ export const resolveSocialSignInConfig = async (
 	}
 
 	let rows: SocialProviderRow[] = [];
-	let settings: SocialSignInSettings = {
-		socialProviderLimit: MAX_SOCIAL_PROVIDER_LIMIT,
-		emailOtpLoginEnabled: true,
-	};
+	let settings: SocialSignInSettings = DEFAULT_SOCIAL_SIGN_IN_SETTINGS;
 	let databaseReady = true;
 	try {
 		const database = createDatabase(env);

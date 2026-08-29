@@ -572,6 +572,45 @@ address substring (case-insensitive).
 
 ## Access Control
 
+### CinaSeek Admin authentication-method governance
+
+The production CinaSeek Admin console exposes a dedicated **Authentication
+Methods** page backed by the Auth Worker's authoritative runtime configuration.
+It keeps the status of every sign-in integration visible in one place while
+only rendering switches for methods that can safely change without a deploy.
+
+The runtime switches are email verification-code sign-in, email-and-password
+sign-in for existing credential accounts, passkey sign-in, SIWE wallet sign-in,
+and Google One Tap.
+
+Email/password account creation and password reset remain disabled when the
+email/password switch is enabled. New users still enter through verified email
+OTP, OAuth, or SIWE. Disabling passkey or SIWE login does not remove existing
+credentials and does not disable passkey registration or wallet management in
+the account security center.
+
+The page also reports integration-owned capabilities—social and generic OAuth,
+SSO, phone OTP, magic links, usernames, and two-factor authentication—and links
+to the owning Admin page when one exists. An enabled switch is only effective
+when its prerequisite is ready: email OTP requires operational email delivery,
+SIWE requires the strict deployment configuration, and One Tap requires an
+enabled Google provider with a client ID. The public capability snapshot exposes
+that Google client ID because browser-side Google Identity Services needs it;
+client secrets are never returned.
+
+Reads require `security.policy.read`. Mutations require
+`security.policy.publish`, a recent non-impersonated administrator session, the
+exact Admin origin, rate limiting, and intent/outcome audit events. The Worker
+rejects a change that would leave no effective runtime method and no visible
+OAuth provider, so reducing the social-provider display limit to zero cannot be
+used to bypass the last-login-method safeguard.
+
+The browser facade is `GET|PUT /api/admin/authentication-settings`; the
+authoritative Worker endpoint is `GET|PUT /api/auth/admin/authentication-settings`.
+Runtime settings are stored in the
+singleton `cinaauth_sign_in_settings` row and invalidate the five-second sign-in
+configuration cache after a successful update.
+
 The admin plugin offers a highly flexible access control system, allowing you to manage user permissions based on their role. You can define custom permission sets to fit your needs.
 
 ### Roles

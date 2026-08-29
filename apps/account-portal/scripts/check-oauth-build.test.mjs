@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+	evaluateConfigurableEmailRelease,
 	evaluateDeployedWalletReadiness,
 	evaluateEmailProviderReady,
 	evaluatePasswordlessEmailRelease,
@@ -11,9 +12,76 @@ import {
 	resolveAccountBuildReadinessTarget,
 } from "./check-oauth-build.mjs";
 
-const capabilities = (methods) => ({ version: 4, methods });
+const capabilities = (methods, version = 5) => ({ version, methods });
 
 describe("passwordless email release parity", () => {
+	it("accepts v4 during rolling preflight and v5 after the Worker deploy", () => {
+		for (const version of [4, 5]) {
+			assert.equal(
+				evaluateEmailProviderReady({
+					capabilities: capabilities({ emailOtp: true }, version),
+					cacheControl: "no-store",
+				}).ok,
+				true,
+			);
+		}
+	});
+
+	it("accepts administrator-configurable email methods while retired methods stay off", () => {
+		for (const methods of [
+			{
+				emailOtp: true,
+				emailPassword: false,
+				username: false,
+				magicLink: false,
+			},
+			{
+				emailOtp: false,
+				emailPassword: true,
+				username: false,
+				magicLink: false,
+			},
+			{
+				emailOtp: false,
+				emailPassword: false,
+				username: false,
+				magicLink: false,
+			},
+		]) {
+			assert.equal(
+				evaluateConfigurableEmailRelease({
+					capabilities: capabilities(methods),
+					cacheControl: "private, no-store",
+				}).ok,
+				true,
+			);
+		}
+	});
+
+	it("rejects malformed configurable email state and retired methods", () => {
+		for (const methods of [
+			{
+				emailOtp: "true",
+				emailPassword: false,
+				username: false,
+				magicLink: false,
+			},
+			{
+				emailOtp: true,
+				emailPassword: false,
+				username: true,
+				magicLink: false,
+			},
+		]) {
+			const result = evaluateConfigurableEmailRelease({
+				capabilities: capabilities(methods),
+				cacheControl: "no-store",
+			});
+			assert.equal(result.ok, false);
+			assert.match(result.reason, /configurable email policy/);
+		}
+	});
+
 	it("allows the provider-first gate while the live password method is still enabled", () => {
 		assert.deepEqual(
 			evaluateEmailProviderReady({
@@ -123,10 +191,19 @@ describe("account OAuth build parity", () => {
 		assert.equal(evaluateRedirectOAuthBuild({ oneTapEnabled: false }).ok, true);
 	});
 
-	it("rejects a production Auth Worker that still advertises One Tap", () => {
+	it("allows administrator-enabled One Tap when the Worker publishes its client id", () => {
+		const result = evaluateRedirectOAuthBuild({
+			oneTapEnabled: true,
+			oneTapClientId: "google-client-id",
+		});
+		assert.equal(result.ok, true);
+		assert.match(result.reason, /One Tap/);
+	});
+
+	it("rejects enabled One Tap without a public client id", () => {
 		const result = evaluateRedirectOAuthBuild({ oneTapEnabled: true });
 		assert.equal(result.ok, false);
-		assert.match(result.reason, /One Tap/);
+		assert.match(result.reason, /client id/);
 	});
 });
 

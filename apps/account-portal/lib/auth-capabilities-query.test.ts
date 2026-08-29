@@ -70,6 +70,8 @@ describe("auth capability query failures", () => {
 		expect(emailOtpSource).toContain(
 			"capabilities.data?.methods.emailOtp === true",
 		);
-		expect(captchaSource).toContain("captcha?.enabled === true");
+		expect(captchaSource).toContain(
+			"isCaptchaEndpointProtected(capabilities.data, endpoint)",
+		);
 	});
 });
