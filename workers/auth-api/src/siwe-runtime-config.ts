@@ -16,7 +16,7 @@ export type SiweRuntimeConfig =
 			rpUri: string;
 			allowedChainIds: number[];
 			allowLegacy: false;
-			autoSignup: false;
+			autoSignup: boolean;
 			walletType: "eoa-only";
 	  };
 
@@ -69,8 +69,9 @@ const isCanonicalRpUri = (value: string, domain: string) => {
 
 /**
  * Parses the non-secret SIWE rollout controls. Every production input is
- * explicit so a missing, malformed, legacy, or auto-signup configuration keeps
- * both the plugin and its public capability disabled.
+ * explicit so a missing, malformed, or legacy configuration keeps both the
+ * plugin and its public capability disabled. Account creation is enabled only
+ * by the exact string "true" and can remain disabled in isolated environments.
  */
 export const getSiweRuntimeConfig = (
 	env: SiweRuntimeEnv,
@@ -90,7 +91,8 @@ export const getSiweRuntimeConfig = (
 		env.CINAAUTH_ACCOUNT_ORIGIN !== rpUri ||
 		!allowedChainIds ||
 		env.CINAAUTH_SIWE_ALLOW_LEGACY !== "false" ||
-		env.CINAAUTH_SIWE_AUTO_SIGNUP !== "false"
+		(env.CINAAUTH_SIWE_AUTO_SIGNUP !== "false" &&
+			env.CINAAUTH_SIWE_AUTO_SIGNUP !== "true")
 	) {
 		return DISABLED_SIWE_CONFIG;
 	}
@@ -101,7 +103,7 @@ export const getSiweRuntimeConfig = (
 		rpUri,
 		allowedChainIds,
 		allowLegacy: false,
-		autoSignup: false,
+		autoSignup: env.CINAAUTH_SIWE_AUTO_SIGNUP === "true",
 		walletType: "eoa-only",
 	};
 };

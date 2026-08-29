@@ -353,7 +353,7 @@ describe("SIWE production gate", () => {
 		CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
 		CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
 		CINAAUTH_SIWE_ALLOW_LEGACY: "false",
-		CINAAUTH_SIWE_AUTO_SIGNUP: "false",
+		CINAAUTH_SIWE_AUTO_SIGNUP: "true",
 	});
 
 	it("does not register SIWE without a complete enabled configuration", () => {
@@ -364,7 +364,7 @@ describe("SIWE production gate", () => {
 		).toBeUndefined();
 	});
 
-	it("passes the strict RP, chain, and account-creation policy to SIWE v2", () => {
+	it("passes the strict RP, chain, and stage-two account-creation policy to SIWE v2", () => {
 		const plugin = createAuthPlugins(enabledSiweEnv).find(
 			(candidate) => candidate.id === "siwe",
 		);
@@ -375,7 +375,7 @@ describe("SIWE production gate", () => {
 			enabled: true,
 			allowedChainIds: [1, 11155111],
 			legacyNonce: false,
-			allowUserCreation: false,
+			allowUserCreation: true,
 		});
 	});
 

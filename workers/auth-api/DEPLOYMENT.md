@@ -74,10 +74,11 @@ both point to `/sign-in`. Legacy `/sign-up` and `/sign-up/email` URLs remain onl
 as sanitized redirects so bookmarked and Worker-signed OIDC requests continue
 without exposing a second registration UI.
 
-This policy does not enable implicit account linking. SIWE remains an
-existing-account method because `CINAAUTH_SIWE_AUTO_SIGNUP=false`; a first-time
-wallet user must authenticate with email or another configured provider and
-then explicitly link the wallet from Security.
+SIWE follows the same first-use policy in production. With
+`CINAAUTH_SIWE_AUTO_SIGNUP=true`, an unknown wallet creates a wallet-native
+account only after the v2 challenge and EIP-191 signature prove control of the
+address. This does not enable implicit account linking: a wallet that should
+belong to an existing account must still be linked explicitly from Security.
 
 ## SIWE rollout controls
 
@@ -119,14 +120,15 @@ An enabled configuration requires all of the following exact inputs:
 - `CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.ai`;
 - `CINAAUTH_SIWE_RP_URI=https://accounts.cinaseek.ai`;
 - `CINAAUTH_SIWE_ALLOW_LEGACY=false`;
-- `CINAAUTH_SIWE_AUTO_SIGNUP=false`.
+- `CINAAUTH_SIWE_AUTO_SIGNUP=true`.
 
-Missing, malformed, duplicated, non-HTTPS, cross-host, legacy, or auto-signup
-values keep SIWE disabled. The enabled production rollout is EOA-only, accepts
-only a 65-byte EIP-191 personal-sign signature, and uses the Worker-side chain
-allowlist.
-Unknown wallets cannot create users. The v2 challenge path binds the RP,
-wallet, chain, purpose, and expiry; legacy nonce issuance remains disabled.
+Missing, malformed, duplicated, non-HTTPS, cross-host, legacy, or non-boolean
+values keep SIWE disabled. Production enables account creation for an unknown
+verified wallet; isolated environments may set the same switch to `false` for
+link-first acceptance testing. The rollout is EOA-only, accepts only a 65-byte
+EIP-191 personal-sign signature, and uses the Worker-side chain allowlist. The
+v2 challenge binds the RP, wallet, chain, purpose, and expiry; legacy nonce
+issuance remains disabled.
 Change the enable switch only through a reviewed deployment after running the
 local production gate, the remote capability parity check, and browser tests
 against the Accounts origin.

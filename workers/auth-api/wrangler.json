@@ -99,7 +99,7 @@
     "CINAAUTH_SIWE_RP_DOMAIN": "accounts.cinaseek.ai",
     "CINAAUTH_SIWE_RP_URI": "https://accounts.cinaseek.ai",
     "CINAAUTH_SIWE_ALLOW_LEGACY": "false",
-    "CINAAUTH_SIWE_AUTO_SIGNUP": "false"
+    "CINAAUTH_SIWE_AUTO_SIGNUP": "true"
   },
   "queues": {
     "producers": [

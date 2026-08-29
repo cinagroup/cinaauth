@@ -99,9 +99,8 @@ export default function SignIn({
 					/>
 					{capabilities.data?.methods.siwe === true ? (
 						<p className="text-center text-xs leading-5 text-body">
-							Wallet sign-in is for existing accounts. New users can start with
-							email or another configured provider, then link a wallet in
-							Security.
+							New wallet? We'll create your account after you verify the
+							signature.
 						</p>
 					) : null}
 				</div>

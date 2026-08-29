@@ -3032,8 +3032,8 @@ check(
 		wrangler.vars?.CINAAUTH_SIWE_RP_DOMAIN === "accounts.cinaseek.ai" &&
 		wrangler.vars?.CINAAUTH_SIWE_RP_URI === "https://accounts.cinaseek.ai" &&
 		wrangler.vars?.CINAAUTH_SIWE_ALLOW_LEGACY === "false" &&
-		wrangler.vars?.CINAAUTH_SIWE_AUTO_SIGNUP === "false",
-	"Tracked production SIWE config must enable the governed Stage Two rollout, bind Accounts as RP, allow only Ethereum mainnet, and forbid legacy or automatic signup",
+		wrangler.vars?.CINAAUTH_SIWE_AUTO_SIGNUP === "true",
+	"Tracked production SIWE config must enable the governed Stage Two rollout, bind Accounts as RP, allow only Ethereum mainnet, forbid legacy requests, and enable verified-wallet account creation",
 );
 const forbiddenVars = [
 	"CINAAUTH_SECRET",
@@ -3751,6 +3751,8 @@ checkIncludesAll(
 		'url.protocol === "https:"',
 		'env.CINAAUTH_SIWE_ALLOW_LEGACY !== "false"',
 		'env.CINAAUTH_SIWE_AUTO_SIGNUP !== "false"',
+		'env.CINAAUTH_SIWE_AUTO_SIGNUP !== "true"',
+		'autoSignup: env.CINAAUTH_SIWE_AUTO_SIGNUP === "true"',
 		'walletType: "eoa-only"',
 	],
 	siweRuntimeConfigFile,
@@ -4208,10 +4210,10 @@ checkIncludesAll(
 		"completeEmailOtpAuthentication",
 		"hasSignedOidcCreatePrompt",
 		"created: true",
-		"Wallet sign-in is for existing accounts",
+		"New wallet? We'll create your account after you verify the",
 	],
 	accountSignInComponentFile,
-	"the unified entry must preserve create-prompt continuation and keep SIWE existing-account-only",
+	"the unified entry must preserve create-prompt continuation and explain first-wallet account creation",
 );
 checkIncludesAll(
 	accountLegacyAuthRedirect,
@@ -4940,8 +4942,8 @@ checkIncludesAll(
 		"CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.ai",
 		"CINAAUTH_SIWE_RP_URI=https://accounts.cinaseek.ai",
 		"CINAAUTH_SIWE_ALLOW_LEGACY=false",
-		"CINAAUTH_SIWE_AUTO_SIGNUP=false",
-		"Unknown wallets cannot create users",
+		"CINAAUTH_SIWE_AUTO_SIGNUP=true",
+		"Production enables account creation for an unknown",
 		"Account Portal preflight",
 		"planned `CINAAUTH_SIWE_ENABLED`",
 		"32-hex-character `REOWN_PROJECT_ID`",
