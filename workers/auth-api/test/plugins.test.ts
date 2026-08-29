@@ -45,6 +45,38 @@ const entitlementConfig = () =>
 		},
 	});
 
+describe("Agent Auth production policy", () => {
+	it("enables only delegated device-approved profile access", () => {
+		const plugin = createAuthPlugins(makeOriginEnv()).find(
+			(candidate) => candidate.id === "agent-auth",
+		);
+
+		expect(plugin?.options).toMatchObject({
+			providerName: "CinaSeek Identity",
+			modes: ["delegated"],
+			approvalMethods: ["device_authorization"],
+			deviceAuthorizationPage:
+				"https://accounts.cinaseek.ai/device/capabilities",
+			allowDynamicHostRegistration: true,
+			freshSessionWindow: 15 * 60,
+			maxAgentsPerUser: 10,
+			capabilities: [
+				expect.objectContaining({
+					name: "identity.profile.read",
+					approvalStrength: "session",
+					grantTTL: 24 * 60 * 60,
+				}),
+			],
+		});
+		expect(plugin?.schema).toMatchObject({
+			agentHost: expect.any(Object),
+			agent: expect.any(Object),
+			agentCapabilityGrant: expect.any(Object),
+			approvalRequest: expect.any(Object),
+		});
+	});
+});
+
 describe("organization schema mode", () => {
 	it("keeps advanced organization schema dormant by default", () => {
 		const schema = getOrganizationSchema(false);
