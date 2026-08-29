@@ -4232,9 +4232,9 @@ checkIncludesAll(
 );
 checkIncludesAll(
 	accountLegacyAuthRedirect,
-	["buildUnifiedSignUpRedirect", "buildLegacyPasswordSignInRedirect(input)"],
+	["buildUnifiedSignUpRedirect", "buildUnifiedSignInRedirect(input)"],
 	accountLegacyAuthRedirectFile,
-	"legacy sign-up links must use the same sanitized signed-query redirect as retired password links",
+	"legacy sign-up links must use the sanitized signed-query redirect for the unified entry",
 );
 for (const [file, source] of [
 	[accountLegacySignUpPageFile, accountLegacySignUpPage],

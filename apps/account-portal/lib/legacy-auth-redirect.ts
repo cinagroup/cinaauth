@@ -25,10 +25,8 @@ const toURLSearchParams = (input: LegacyAuthSearchParams) => {
 	return params;
 };
 
-/** Retires password sign-in without dropping a Worker-signed OIDC request. */
-export function buildLegacyPasswordSignInRedirect(
-	input: LegacyAuthSearchParams,
-) {
+/** Preserves a Worker-signed OIDC request while unifying legacy entry routes. */
+const buildUnifiedSignInRedirect = (input: LegacyAuthSearchParams) => {
 	const params = toURLSearchParams(input);
 	const callbackURL = getAccountCallbackURL(params);
 	if (!hasSignedOidcAuthorizationQuery(params)) {
@@ -43,14 +41,14 @@ export function buildLegacyPasswordSignInRedirect(
 		params.delete("callbackUrl");
 	}
 	return buildPreservedAuthPath("/sign-in", params, callbackURL);
-}
+};
 
 /**
  * Keeps old registration links functional while routing every account through
  * the unified sign-in-or-create experience.
  */
 export function buildUnifiedSignUpRedirect(input: LegacyAuthSearchParams) {
-	return buildLegacyPasswordSignInRedirect(input);
+	return buildUnifiedSignInRedirect(input);
 }
 
 /** Retires email-delivered 2FA while retaining the pending challenge state. */
