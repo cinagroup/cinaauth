@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { GoBackBtn, SelectOrganizationBtn } from "./org-buttons";
 
@@ -16,39 +16,34 @@ export default async function SelectOrganizationPage() {
 		headers: await headers(),
 	});
 	return (
-		<div className="w-full">
-			<div className="flex items-center flex-col justify-center w-full md:py-10">
-				<div className="md:w-[400px]">
-					<Card className="w-full bg-canvas-soft-2 border-hairline rounded-md">
-						<CardHeader>
-							<CardTitle className="text-lg md:text-xl">
-								Select organization.
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="p-6">
-							{organizations.length ? (
-								organizations.map((o, i) => (
-									<SelectOrganizationBtn key={o.id ?? i} organization={o} />
-								))
-							) : (
-								<div>
-									<p>
-										Application is requesting scopes for an organization but no
-										organizations exist for this account.
-									</p>
-									<br />
-									<div className="flex flex-col gap-1">
-										<Link href="/dashboard">
-											<Button className="w-full">Create Organization</Button>
-										</Link>
-										<GoBackBtn />
-									</div>
-								</div>
-							)}
-						</CardContent>
-					</Card>
+		<AuthShell
+			variant="transaction"
+			title="Choose an organization"
+			description="Select the organization whose information this application may access."
+		>
+			{organizations.length ? (
+				<div className="space-y-3">
+					{organizations.map((organization, index) => (
+						<SelectOrganizationBtn
+							key={organization.id ?? index}
+							organization={organization}
+						/>
+					))}
 				</div>
-			</div>
-		</div>
+			) : (
+				<div className="space-y-4">
+					<p className="rounded-md border border-hairline bg-canvas-soft p-4 text-sm leading-6 text-body">
+						This application requested organization access, but this account
+						does not have an organization yet.
+					</p>
+					<div className="grid gap-3 sm:grid-cols-2">
+						<Button asChild size="lg" className="w-full">
+							<Link href="/dashboard">Create organization</Link>
+						</Button>
+						<GoBackBtn />
+					</div>
+				</div>
+			)}
+		</AuthShell>
 	);
 }

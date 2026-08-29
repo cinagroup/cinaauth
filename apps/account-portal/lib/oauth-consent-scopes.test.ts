@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
 	buildOAuthConsentSignInPath,
 	getOAuthClientMonogram,
+	getOfficialCinaSeekOAuthClientReturnHost,
+	isOfficialCinaSeekOAuthClient,
 	resolveOAuthConsentScopes,
 } from "./oauth-consent-scopes";
 
@@ -91,15 +93,48 @@ describe("OAuth consent shell safety", () => {
 		expect(getOAuthClientMonogram("  Example App ")).toBe("E");
 		expect(getOAuthClientMonogram(" ")).toBe("A");
 
+		const viewSource = readFileSync(
+			fileURLToPath(
+				new URL(
+					"../app/(auth)/oauth/consent/consent-view.tsx",
+					import.meta.url,
+				),
+			),
+			"utf8",
+		);
+		expect(viewSource).not.toContain('from "next/image"');
+		expect(viewSource).not.toContain("clientDetails.logo_uri");
+		expect(viewSource).toContain("getOAuthClientMonogram");
+		expect(viewSource).toContain("<AuthShell");
+		expect(viewSource).toContain("CinaSeek official application");
+		expect(viewSource).not.toContain("<h1");
+		expect(viewSource).not.toContain("min-h-screen bg-ink");
+		expect(viewSource).not.toContain("ArrowUpRight");
+
 		const pageSource = readFileSync(
 			fileURLToPath(
 				new URL("../app/(auth)/oauth/consent/page.tsx", import.meta.url),
 			),
 			"utf8",
 		);
-		expect(pageSource).not.toContain('from "next/image"');
-		expect(pageSource).not.toContain("clientDetails.logo_uri");
-		expect(pageSource).toContain("getOAuthClientMonogram");
+		expect(pageSource).toContain("<OAuthConsentView");
+	});
+
+	it("labels only contract-defined CinaSeek clients as official", () => {
+		expect(isOfficialCinaSeekOAuthClient("cinaseek-admin-console")).toBe(true);
+		expect(isOfficialCinaSeekOAuthClient("cinaseek-admin-console-copy")).toBe(
+			false,
+		);
+		expect(isOfficialCinaSeekOAuthClient("third-party-client")).toBe(false);
+	});
+
+	it("shows return hosts only for contract-defined first-party clients", () => {
+		expect(
+			getOfficialCinaSeekOAuthClientReturnHost("cinaseek-admin-console"),
+		).toBe("admin.cinaseek.ai");
+		expect(
+			getOfficialCinaSeekOAuthClientReturnHost("third-party-client"),
+		).toBeUndefined();
 	});
 
 	it("makes authorize and cancel mutually exclusive and fail closed", () => {
@@ -116,5 +151,8 @@ describe("OAuth consent shell safety", () => {
 		expect(buttonSource).toContain("disabled={pendingAction !== null}");
 		expect(buttonSource).toContain("finally");
 		expect(buttonSource).toContain("throw: true");
+		expect(buttonSource).toContain("Allow and continue");
+		expect(buttonSource).toContain("Cancel and return");
+		expect(buttonSource).not.toContain("<CardFooter");
 	});
 });

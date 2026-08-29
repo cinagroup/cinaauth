@@ -4,10 +4,9 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { CardFooter } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
 
-export function ConsentBtns() {
+export function ConsentBtns({ clientName }: { clientName: string }) {
 	const [pendingAction, setPendingAction] = useState<
 		"authorize" | "cancel" | null
 	>(null);
@@ -32,31 +31,48 @@ export function ConsentBtns() {
 	};
 
 	return (
-		<CardFooter
-			className="flex items-center gap-2"
-			aria-busy={pendingAction !== null}
-		>
+		<div className="grid grid-cols-2 gap-3" aria-busy={pendingAction !== null}>
 			<Button
+				type="button"
+				className="w-full"
+				size="lg"
+				aria-label={`Allow and continue to ${clientName}`}
 				disabled={pendingAction !== null}
 				onClick={() => submitConsent(true)}
 			>
 				{pendingAction === "authorize" ? (
-					<Loader2 size={15} className="animate-spin" />
+					<>
+						<Loader2 size={16} aria-hidden className="animate-spin" />
+						Allowing…
+					</>
 				) : (
-					"Authorize"
+					<>
+						<span className="sm:hidden">Allow</span>
+						<span className="hidden sm:inline">Allow and continue</span>
+					</>
 				)}
 			</Button>
 			<Button
+				type="button"
+				className="w-full"
+				size="lg"
 				variant="outline"
+				aria-label={`Cancel and return to ${clientName}`}
 				disabled={pendingAction !== null}
 				onClick={() => submitConsent(false)}
 			>
 				{pendingAction === "cancel" ? (
-					<Loader2 size={15} className="animate-spin" />
+					<>
+						<Loader2 size={16} aria-hidden className="animate-spin" />
+						Returning…
+					</>
 				) : (
-					"Cancel"
+					<>
+						<span className="sm:hidden">Cancel</span>
+						<span className="hidden sm:inline">Cancel and return</span>
+					</>
 				)}
 			</Button>
-		</CardFooter>
+		</div>
 	);
 }

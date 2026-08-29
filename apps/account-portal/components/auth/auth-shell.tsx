@@ -10,6 +10,7 @@ import {
 	CardHeader,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 export function AuthShell({
 	title,
@@ -18,6 +19,7 @@ export function AuthShell({
 	backHref,
 	backLabel = "Back to sign in",
 	footer,
+	variant = "default",
 }: {
 	title: string;
 	description?: string;
@@ -25,16 +27,46 @@ export function AuthShell({
 	backHref?: string;
 	backLabel?: string;
 	footer?: string | ReactElement;
+	variant?: "default" | "transaction";
 }) {
+	const isTransaction = variant === "transaction";
+
 	return (
 		<section
 			aria-labelledby="auth-title"
-			className="cina-auth-backdrop flex min-h-svh items-center justify-center px-4 py-6 md:px-6 md:py-12"
+			className={cn(
+				"cina-auth-backdrop flex min-h-svh items-center justify-center px-4 md:px-6",
+				isTransaction ? "py-3 md:py-6" : "py-6 md:py-12",
+			)}
 		>
-			<Card className="cina-auth-card w-full max-w-[var(--cina-auth-shell-width)]">
-				<CardHeader className="p-[var(--cina-auth-card-padding)] pb-0 sm:p-8 sm:pb-0">
-					<div className="flex w-full items-center justify-between gap-4">
-						<div className="flex min-w-0 items-center gap-3">
+			<Card
+				className={cn(
+					"cina-auth-card w-full max-w-[var(--cina-auth-shell-width)]",
+					isTransaction && "max-w-[34rem]",
+				)}
+			>
+				<CardHeader
+					className={cn(
+						"p-[var(--cina-auth-card-padding)] pb-0",
+						isTransaction ? "sm:p-6 sm:pb-0" : "sm:p-8 sm:pb-0",
+					)}
+				>
+					<div
+						className={cn(
+							"w-full",
+							isTransaction
+								? "relative"
+								: "flex items-center justify-between gap-4",
+						)}
+					>
+						<div
+							className={cn(
+								"min-w-0",
+								isTransaction
+									? "flex flex-col items-start gap-3 sm:flex-row sm:items-center"
+									: "flex items-center gap-3",
+							)}
+						>
 							<div className="cina-auth-logo-frame shrink-0">
 								<Logo
 									size={44}
@@ -44,21 +76,38 @@ export function AuthShell({
 							</div>
 							<h1
 								id="auth-title"
-								className="min-w-0 text-balance text-left text-[28px] font-semibold leading-9 tracking-[-0.8px] text-ink sm:text-[32px] sm:leading-10 sm:tracking-[-1.1px]"
+								className={cn(
+									"min-w-0 text-balance text-left font-semibold text-ink",
+									isTransaction
+										? "text-2xl leading-8 tracking-[-0.8px] sm:pr-12"
+										: "text-[28px] leading-9 tracking-[-0.8px] sm:text-[32px] sm:leading-10 sm:tracking-[-1.1px]",
+								)}
 							>
 								{title}
 							</h1>
 						</div>
-						<ThemeToggle />
+						<div className={cn(isTransaction && "absolute right-0 top-0")}>
+							<ThemeToggle />
+						</div>
 					</div>
 					{description ? (
-						<p className="mt-6 w-full max-w-[42ch] text-pretty text-left text-sm leading-6 text-body">
+						<p
+							className={cn(
+								"w-full max-w-[48ch] text-pretty text-left text-sm leading-6 text-body",
+								isTransaction ? "mt-3" : "mt-6",
+							)}
+						>
 							{description}
 						</p>
 					) : null}
 				</CardHeader>
 
-				<CardContent className="p-[var(--cina-auth-card-padding)] pt-6 sm:p-8 sm:pt-7">
+				<CardContent
+					className={cn(
+						"p-[var(--cina-auth-card-padding)] pt-6",
+						isTransaction ? "sm:p-6 sm:pt-5" : "sm:p-8 sm:pt-7",
+					)}
+				>
 					{backHref ? (
 						<Link
 							href={backHref}
@@ -71,7 +120,12 @@ export function AuthShell({
 					{children}
 				</CardContent>
 
-				<CardFooter className="flex flex-col items-stretch gap-4 p-[var(--cina-auth-card-padding)] pt-0 text-center sm:px-8 sm:pb-8">
+				<CardFooter
+					className={cn(
+						"flex flex-col items-stretch p-[var(--cina-auth-card-padding)] pt-0 text-center",
+						isTransaction ? "gap-3 sm:px-6 sm:pb-6" : "gap-4 sm:px-8 sm:pb-8",
+					)}
+				>
 					<Separator />
 					{footer ? (
 						<div className="text-sm leading-6 text-body">{footer}</div>
