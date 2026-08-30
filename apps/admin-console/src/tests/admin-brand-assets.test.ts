@@ -17,6 +17,12 @@ describe("CinaSeek Admin brand assets", () => {
 	it("keeps public Admin copy on the CinaSeek brand", () => {
 		const layout = readFileSync("src/app/layout.tsx", "utf8");
 		const apiDocs = readFileSync("src/app/(admin)/api-docs/page.tsx", "utf8");
+		const englishCopy = JSON.parse(
+			readFileSync("src/lib/i18n/locales/en.json", "utf8"),
+		) as Record<string, string>;
+		const chineseCopy = JSON.parse(
+			readFileSync("src/lib/i18n/locales/zh.json", "utf8"),
+		) as Record<string, string>;
 		const apiKeyRotation = readFileSync(
 			"src/app/api/admin/api-keys/[id]/rotate/route.ts",
 			"utf8",
@@ -29,7 +35,10 @@ describe("CinaSeek Admin brand assets", () => {
 		expect(layout).toContain("CinaSeek Admin");
 		expect(layout).toContain("/favicon.ico");
 		expect(layout).toContain("/logo.png");
-		expect(apiDocs).toContain("CinaSeek Identity API Reference");
+		expect(apiDocs).toContain('title={t("apiDocs.title")}');
+		expect(apiDocs).toContain('description={t("apiDocs.description")}');
+		expect(englishCopy["apiDocs.description"]).toContain("CinaSeek Identity");
+		expect(chineseCopy["apiDocs.description"]).toContain("CinaSeek Identity");
 		expect(apiDocs).not.toContain('title="CinaAuth');
 		expect(apiKeyRotation).not.toContain('"CinaAuth');
 		expect(subscriptions).not.toContain('"CinaAuth');
