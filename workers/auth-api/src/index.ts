@@ -6,6 +6,10 @@ import {
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import {
+	handleAdminAgentAuthMutation,
+	handleAdminGetAgentAuth,
+} from "./admin-agent-auth";
 import type {
 	AdminConfigurationAction,
 	AdminConfigurationService,
@@ -1782,6 +1786,15 @@ const getAdminSocialDependencies = (c: Context<AppEnv>) => {
 			const authenticationSettings = event.action.startsWith(
 				"security.authentication",
 			);
+			const agentAuth = event.action.startsWith("integration.agent-auth");
+			const agentAuthResource =
+				typeof event.metadata.resource === "string"
+					? event.metadata.resource
+					: "agent-auth";
+			const agentAuthTargetId =
+				typeof event.metadata.targetId === "string"
+					? event.metadata.targetId
+					: "agent-auth";
 			await auditApi.logAudit({
 				headers,
 				body: {
@@ -1789,10 +1802,12 @@ const getAdminSocialDependencies = (c: Context<AppEnv>) => {
 					action: `${event.action}.${event.phase}`,
 					result: event.result,
 					actorSite: "admin-console",
-					targetType: "configuration",
+					targetType: agentAuth ? agentAuthResource : "configuration",
 					targetId: authenticationSettings
 						? "authentication-settings"
-						: "social-provider",
+						: agentAuth
+							? agentAuthTargetId
+							: "social-provider",
 					metadata: {
 						actorId: event.actorId,
 						...event.metadata,
@@ -1904,6 +1919,44 @@ app.put("/api/auth/admin/authentication-settings", async (c) =>
 			() => readAdminSocialBody(c),
 		);
 	}),
+);
+
+const readAdminAgentAuthLimit = (c: Context<AppEnv>) => {
+	const rawLimit = c.req.query("limit");
+	if (!rawLimit) return undefined;
+	const limit = Number(rawLimit);
+	return Number.isSafeInteger(limit) ? limit : undefined;
+};
+
+app.get("/api/auth/admin/agent-auth", async (c) =>
+	runAdminSocialHandler(c, (dependencies) =>
+		handleAdminGetAgentAuth(dependencies, readAdminAgentAuthLimit(c)),
+	),
+);
+
+const runAdminAgentAuthMutation = (
+	c: Context<AppEnv>,
+	resource: "agent" | "host" | "grant" | "approval",
+) =>
+	runAdminSocialHandler(c, (dependencies) => {
+		const { origin, allowedOrigin } = adminSocialOrigin(c);
+		return handleAdminAgentAuthMutation(dependencies, origin, allowedOrigin, {
+			resource,
+			id: c.req.param("id") ?? "",
+		});
+	});
+
+app.post("/api/auth/admin/agent-auth/agents/:id/revoke", (c) =>
+	runAdminAgentAuthMutation(c, "agent"),
+);
+app.post("/api/auth/admin/agent-auth/hosts/:id/revoke", (c) =>
+	runAdminAgentAuthMutation(c, "host"),
+);
+app.post("/api/auth/admin/agent-auth/grants/:id/revoke", (c) =>
+	runAdminAgentAuthMutation(c, "grant"),
+);
+app.post("/api/auth/admin/agent-auth/approvals/:id/deny", (c) =>
+	runAdminAgentAuthMutation(c, "approval"),
 );
 
 const ADMIN_CONFIGURATION_SERVICES = new Set<AdminConfigurationService>([

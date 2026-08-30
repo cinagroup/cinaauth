@@ -455,6 +455,37 @@ only effective methods, so the portal hides a disabled or unavailable flow
 without a frontend deployment. The admin mutation rejects unavailable methods
 and refuses to disable the last effective sign-in path.
 
+## Agent Auth administration
+
+The Agent Auth plugin is enabled in the Auth Worker, while its operational
+control plane is exposed in the Admin console at `/settings/agent-auth`. The
+page shows the active provider policy and a redacted inventory of registered
+agents, hosts, active capability grants, and unexpired pending approvals. Key
+material, enrollment hashes, device codes, login hints, and notification
+tokens are never selected or returned by the administration API.
+
+Read access uses `integration.agent-auth.read` and is available to security and
+super administrators. Mutations use the separate
+`integration.agent-auth.manage` permission and are restricted to super
+administrators. Revoking an agent or host also revokes its active or pending
+grants and denies its pending approvals; individual grants can be revoked and
+pending approvals can be denied. Every mutation requires the exact Admin
+origin, a session younger than 15 minutes, a non-impersonated session, and the
+shared mutation rate limiter. Intent and outcome are written as Agent Auth
+audit events.
+
+The authoritative Worker routes are:
+
+- `GET /api/auth/admin/agent-auth`
+- `POST /api/auth/admin/agent-auth/agents/:id/revoke`
+- `POST /api/auth/admin/agent-auth/hosts/:id/revoke`
+- `POST /api/auth/admin/agent-auth/grants/:id/revoke`
+- `POST /api/auth/admin/agent-auth/approvals/:id/deny`
+
+These routes do not change the deploy-time Agent Auth capability catalog or
+protocol mode. Policy changes remain code-reviewed deployment changes; the
+Admin page reports the effective policy so operators can verify that boundary.
+
 ## 3. Create privacy export storage and queues
 
 The idempotent command creates the APAC R2 bucket, export Queue, DLQ, 24-hour

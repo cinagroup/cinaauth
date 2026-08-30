@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
+	Bot,
 	Building2,
 	CreditCard,
 	Fingerprint,
@@ -80,6 +81,11 @@ const NAV: NavSection[] = [
 	{
 		groupKey: "nav.integrations",
 		items: [
+			{
+				href: "/settings/agent-auth",
+				key: "nav.agentAuth",
+				icon: Bot,
+			},
 			{
 				href: "/settings/delivery",
 				key: "nav.delivery",
