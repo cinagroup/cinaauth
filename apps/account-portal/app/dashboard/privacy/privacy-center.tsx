@@ -27,6 +27,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type { PrivacyAsyncExportStatus } from "@/lib/privacy-center";
 import {
 	getPersonalDataExportFilename,
@@ -37,7 +38,6 @@ import {
 	PRIVACY_EXPORT_PATH,
 	parsePrivacyAsyncExportStatus,
 } from "@/lib/privacy-center";
-import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 
 const ACTIVE_ASYNC_EXPORT_STATES = new Set([
 	"queued",
@@ -372,7 +372,9 @@ export function PrivacyCenter({
 								</div>
 								<p className="text-xs text-muted-foreground">
 									{formatDashboardMessage(messages.encryptedExportStorage, {
-										date: new Date(asyncExport.expiresAt).toLocaleString(locale),
+										date: new Date(asyncExport.expiresAt).toLocaleString(
+											locale,
+										),
 									})}
 								</p>
 								<div className="flex flex-wrap gap-2">

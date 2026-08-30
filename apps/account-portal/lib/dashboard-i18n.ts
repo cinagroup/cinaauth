@@ -152,8 +152,7 @@ const englishDashboardMessages = {
 	downloadTextFile: "Download .txt",
 	savedBackupCodes: "I saved these codes",
 	copyUriToClipboard: "Copy URI to clipboard",
-	scanQrAndEnterCode:
-		"Scan the QR code with your TOTP app and enter the code",
+	scanQrAndEnterCode: "Scan the QR code with your TOTP app and enter the code",
 	enterOtpCode: "Enter OTP code",
 	verifyAndEnable: "Verify & Enable",
 	continue: "Continue",
@@ -165,12 +164,10 @@ const englishDashboardMessages = {
 		"The encrypted export could not be prepared. Try again.",
 	signInAgainForEncryptedExport:
 		"Sign in again before requesting an encrypted export.",
-	queueEncryptedExportFailed:
-		"CinaSeek could not queue the encrypted export.",
+	queueEncryptedExportFailed: "CinaSeek could not queue the encrypted export.",
 	encryptedExportQueued:
 		"Encrypted export queued. This page will update automatically.",
-	signInAgainForPersonalExport:
-		"Sign in again before exporting personal data.",
+	signInAgainForPersonalExport: "Sign in again before exporting personal data.",
 	preparePersonalExportFailed:
 		"CinaSeek could not prepare the personal data export.",
 	personalExportReady: "Your personal data export is ready.",
@@ -185,15 +182,13 @@ const englishDashboardMessages = {
 	recentAuthenticationPrivacyDescription:
 		"Sign out and sign in again before exporting or deleting personal data.",
 	personalDataExport: "Personal data export",
-	downloadStructuredJson:
-		"Download a structured, machine-readable JSON copy.",
+	downloadStructuredJson: "Download a structured, machine-readable JSON copy.",
 	jsonSchemaBadge: "JSON · schema v1",
 	categoryProfileMetadata: "Profile and account metadata",
 	categorySessionsIdentities: "Sessions and sign-in identities",
 	categoryAuthenticatorsWalletsApiKeys:
 		"Authenticators, wallets, and API key metadata",
-	categoryOrganizationMemberships:
-		"Organization memberships and invitations",
+	categoryOrganizationMemberships: "Organization memberships and invitations",
 	categoryOauthAudit: "OAuth authorizations and security audit events",
 	credentialSecretsExcluded: "Credential secrets stay excluded",
 	credentialSecretsExcludedDescription:
@@ -260,8 +255,7 @@ const englishDashboardMessages = {
 	ipUnavailable: "IP unavailable",
 	sessionDetails: "{ip} · Started {started} · Expires {expires}",
 	terminate: "Terminate",
-	sessionDetailsRequireFreshSignIn:
-		"Session details require a fresh sign-in.",
+	sessionDetailsRequireFreshSignIn: "Session details require a fresh sign-in.",
 	personalApiKeys: "Personal API keys",
 	personalApiKeysDescription:
 		"Create personal credentials bound to this account for scripts and integrations. The full secret is shown only once.",
@@ -310,8 +304,7 @@ const englishDashboardMessages = {
 	walletDetails: "Chain ID {chainId} · Connected {date}",
 	makePrimary: "Make primary",
 	disconnect: "Disconnect",
-	noEthereumWallets:
-		"No Ethereum wallets are connected to this account.",
+	noEthereumWallets: "No Ethereum wallets are connected to this account.",
 	disconnectWalletTitle: "Disconnect this wallet?",
 	thisWallet: "This wallet",
 	disconnectWalletDescription:
@@ -366,7 +359,8 @@ const englishDashboardMessages = {
 	copyApiKeyFailed: "Copy failed. Select and copy the key manually.",
 	noEthereumWallet:
 		"No Ethereum wallet was found. Install or enable an EIP-1193 wallet first.",
-	switchEthereumMainnet: "Switch your wallet to Ethereum Mainnet and try again.",
+	switchEthereumMainnet:
+		"Switch your wallet to Ethereum Mainnet and try again.",
 	walletConnected: "Wallet connected",
 	unableConnectWallet: "Unable to connect the wallet",
 	primaryWalletUpdated: "Primary wallet updated",
@@ -466,8 +460,7 @@ const englishDashboardMessages = {
 		"Select an existing organization or create one to manage shared access.",
 	slugTooShort: "Slug must be at least 2 characters",
 	slugTooLong: "Slug must be at most 50 characters",
-	slugInvalid:
-		"Slug can only contain lowercase letters, numbers, and hyphens",
+	slugInvalid: "Slug can only contain lowercase letters, numbers, and hyphens",
 	organizationName: "Organization name",
 	organizationNamePlaceholder: "My Organization",
 	organizationSlug: "Organization slug",
@@ -527,7 +520,8 @@ const englishDashboardMessages = {
 	multipleRolesDescription:
 		"A member can hold multiple static or organization-defined roles.",
 	unavailableRoleDefinitions: "Unavailable role definitions",
-	staleRolesDescription: "Remove these stale assignments before saving: {roles}",
+	staleRolesDescription:
+		"Remove these stale assignments before saving: {roles}",
 	saveRoles: "Save roles",
 	teamDeleted: "Team deleted",
 	unableDeleteTeam: "Unable to delete the team",
@@ -581,8 +575,7 @@ const englishDashboardMessages = {
 	permissionActionCancel: "Cancel",
 	providerIdRequired: "Enter a stable provider ID.",
 	providerIdTooLong: "Provider ID must be 64 characters or less.",
-	providerIdInvalid:
-		"Use lowercase letters, numbers, hyphens, or underscores.",
+	providerIdInvalid: "Use lowercase letters, numbers, hyphens, or underscores.",
 	providerIdInUse: "That provider ID is already in use.",
 	scimTokenCopied: "SCIM token copied",
 	unableCopyScimToken: "Unable to copy SCIM token",
@@ -610,8 +603,7 @@ const englishDashboardMessages = {
 		"Provisioning requests using this provider stop immediately. This cannot be undone.",
 	keepToken: "Keep token",
 	revokeToken: "Revoke token",
-	noScimConnection:
-		"No SCIM token connection exists for this organization.",
+	noScimConnection: "No SCIM token connection exists for this organization.",
 	createScimToken: "Create SCIM token",
 	createScimTokenDescription:
 		"Use a stable provider ID for this IdP. The token is scoped to the active organization and shown once.",
@@ -674,8 +666,7 @@ const englishDashboardMessages = {
 	serviceProviderMetadataUrl: "Service Provider metadata URL",
 	ssoProviderRegistered: "SSO provider registered",
 	ssoProviderUpdated: "SSO provider updated",
-	domainDnsRecordFailed:
-		"Provider domains cannot be converted to DNS records",
+	domainDnsRecordFailed: "Provider domains cannot be converted to DNS records",
 	dnsInstructionsReady: "DNS verification instructions are ready",
 	ssoDomainVerified: "SSO domain verified",
 	ssoProviderDeleted: "SSO provider deleted",
@@ -790,14 +781,12 @@ const englishDashboardMessages = {
 		"Native callbacks require HTTPS, a loopback HTTP URI, or an app-specific custom scheme.",
 	applicationNameRequired: "Application name is required.",
 	applicationNameTooLong: "Application name must be 100 characters or less.",
-	openidScopeRequired:
-		"OpenID Connect clients must include the openid scope.",
+	openidScopeRequired: "OpenID Connect clients must include the openid scope.",
 	oauthClientCreated: "OAuth client created",
 	unableCreateOauthClient: "Unable to create the OAuth client",
 	oauthClientUpdated: "OAuth client updated",
 	unableUpdateOauthClient: "Unable to update the OAuth client",
-	rotatedSecretMissing:
-		"CinaSeek did not return the newly rotated secret.",
+	rotatedSecretMissing: "CinaSeek did not return the newly rotated secret.",
 	clientSecretRotated: "Client secret rotated",
 	unableRotateClientSecret: "Unable to rotate the client secret",
 	oauthClientDeleted: "OAuth client deleted",
@@ -970,7 +959,8 @@ const chineseDashboardMessages = {
 	scanQrDescription: "使用您的 TOTP 应用扫描二维码。",
 	disableTwoFactor: "停用两步验证",
 	enableTwoFactor: "启用两步验证",
-	legacyCredentialConfirmation: "保留的旧凭据将确认此项敏感更改，但不能用于登录。",
+	legacyCredentialConfirmation:
+		"保留的旧凭据将确认此项敏感更改，但不能用于登录。",
 	passwordlessConfirmation: "最近的无密码登录将确认此项敏感更改。",
 	stopImpersonation: "停止模拟用户",
 	impersonationStopped: "已成功停止模拟用户",
@@ -1069,7 +1059,8 @@ const chineseDashboardMessages = {
 	deleteExport: "删除导出",
 	exportSafeguards: "导出保护措施",
 	exportSafeguardSubject: "仅选择与当前登录主体关联的记录。",
-	exportSafeguardHeaders: "响应以附件形式提供，并包含 no-store 和 nosniff 标头。",
+	exportSafeguardHeaders:
+		"响应以附件形式提供，并包含 no-store 和 nosniff 标头。",
 	exportSafeguardSize: "过大的数据分区会明确失败，不会被静默截断。",
 	deleteAccount: "删除账户",
 	deleteAccountPrivacyDescription:
@@ -1080,7 +1071,8 @@ const chineseDashboardMessages = {
 	securityLevelGood: "良好",
 	securityLevelBaseline: "基础",
 	securityDataUnavailable: "部分安全数据暂时不可用",
-	securityDataUnavailableDescription: "在所有权威安全数据加载完成前，敏感控制保持禁用。",
+	securityDataUnavailableDescription:
+		"在所有权威安全数据加载完成前，敏感控制保持禁用。",
 	recentAuthenticationSecurityDescription:
 		"更改验证器、关联身份或删除账户前，请重新登录。",
 	reauthenticate: "重新验证",
@@ -1319,7 +1311,8 @@ const chineseDashboardMessages = {
 	newRole: "新建角色",
 	editRole: "编辑角色",
 	createRole: "创建角色",
-	rolePermissionsDescription: "权限作用于组织范围，并会由 Auth Worker 再次检查。",
+	rolePermissionsDescription:
+		"权限作用于组织范围，并会由 Auth Worker 再次检查。",
 	roleName: "角色名称",
 	roleNamePlaceholder: "support_agent",
 	roleNameDescription:
@@ -1370,7 +1363,8 @@ const chineseDashboardMessages = {
 	customRoles: "自定义角色",
 	customRolesDescription: "最多可定义 25 个组织范围的角色。",
 	roleDefinitionsUnavailable: "角色定义不可用",
-	roleDefinitionsUnavailableDescription: "在权威数据加载完成前，角色控制保持禁用。",
+	roleDefinitionsUnavailableDescription:
+		"在权威数据加载完成前，角色控制保持禁用。",
 	deleteRoleDescription: "删除角色定义前，请先从成员中移除此角色。",
 	deleteRole: "删除角色",
 	noCustomRoles: "尚无自定义角色；所有者、管理员和成员静态角色仍可使用。",
@@ -1379,7 +1373,8 @@ const chineseDashboardMessages = {
 	teamNameControlCharacters: "团队名称不能包含控制字符。",
 	roleNameRequired: "请输入角色名称。",
 	reservedRoleName: "所有者、管理员和成员是保留角色。",
-	invalidRoleName: "角色名称必须以字母开头，只能使用小写字母、数字、连字符或下划线。",
+	invalidRoleName:
+		"角色名称必须以字母开头，只能使用小写字母、数字、连字符或下划线。",
 	duplicateRoleName: "该角色名称已存在。",
 	permissionRequired: "请至少选择一项权限。",
 	roleSelectionRequired: "请至少选择一个角色。",
@@ -1414,7 +1409,8 @@ const chineseDashboardMessages = {
 		"连接清单仍可查看，但在重新登录前，DNS 验证和 SCIM 令牌更改保持禁用。",
 	newToken: "新建令牌",
 	scimInventoryUnavailable: "SCIM 清单不可用",
-	scimInventoryUnavailableDescription: "不会显示缓存的令牌连接数据，且更改保持禁用。",
+	scimInventoryUnavailableDescription:
+		"不会显示缓存的令牌连接数据，且更改保持禁用。",
 	scimTokenHashed: "令牌以哈希形式存储，无法恢复。",
 	rotate: "轮换",
 	rotateScimToken: "轮换 SCIM 令牌？",
@@ -1438,7 +1434,8 @@ const chineseDashboardMessages = {
 	copyScimTokenNowDescription:
 		"CinaSeek 仅存储哈希。关闭此对话框后令牌将永久隐藏；如需新令牌请轮换。",
 	oneTimeSecretFor: "{provider} 的一次性密钥",
-	oneTimeSecretDescription: "请存入身份提供商的密钥字段，切勿存入源代码或浏览器存储。",
+	oneTimeSecretDescription:
+		"请存入身份提供商的密钥字段，切勿存入源代码或浏览器存储。",
 	scimBaseUrl: "SCIM 基础 URL",
 	copyToken: "复制令牌",
 	storedSecurely: "我已安全保存",
@@ -1492,7 +1489,8 @@ const chineseDashboardMessages = {
 	ssoProviderDeleted: "SSO 提供商已删除",
 	newProvider: "新建提供商",
 	ssoInventoryUnavailable: "SSO 清单不可用",
-	ssoInventoryUnavailableDescription: "不会显示缓存的提供商数据，且更改保持禁用。",
+	ssoInventoryUnavailableDescription:
+		"不会显示缓存的提供商数据，且更改保持禁用。",
 	domainVerified: "域名已验证",
 	verificationPending: "等待验证",
 	masked: "已隐藏",
@@ -1524,7 +1522,8 @@ const chineseDashboardMessages = {
 	deleteProvider: "删除提供商",
 	providerIdCharacters: "提供商 ID 可包含小写字母、数字、连字符和下划线。",
 	issuerHttpsRequired: "颁发者必须是 HTTPS URL。",
-	emailDomainsRequired: "请输入一个或多个以逗号分隔的邮箱域名，不要包含路径或协议。",
+	emailDomainsRequired:
+		"请输入一个或多个以逗号分隔的邮箱域名，不要包含路径或协议。",
 	oidcClientIdRequired: "必须填写 OIDC 客户端 ID。",
 	oidcClientSecretRequired: "必须填写 OIDC 客户端密钥。",
 	oidcReplacementCredentials: "请同时填写替换客户端 ID 和密钥，或全部留空。",
@@ -1572,7 +1571,8 @@ const chineseDashboardMessages = {
 	applicationType: "应用类型",
 	webServerApplication: "Web 服务器应用",
 	nativeDeviceApplication: "原生或设备应用",
-	confidentialClientDescription: "机密客户端。密钥只显示一次，且必须仅保存在服务器端。",
+	confidentialClientDescription:
+		"机密客户端。密钥只显示一次，且必须仅保存在服务器端。",
 	publicPkceClientDescription:
 		"公共 PKCE 客户端。不签发客户端密钥，也可使用设备授权流程。",
 	redirectUris: "重定向 URI",
@@ -1608,7 +1608,8 @@ const chineseDashboardMessages = {
 	oauthChangesLocked: "OAuth 客户端更改已锁定",
 	verifyEmailForDeveloper: "注册开发者应用前请先验证邮箱。",
 	freshSessionForOauth: "更改 OAuth 凭据前，请重新登录以建立新会话。",
-	oauthClientListUnavailable: "权威 OAuth 客户端列表不可用，因此写入操作已禁用。",
+	oauthClientListUnavailable:
+		"权威 OAuth 客户端列表不可用，因此写入操作已禁用。",
 	protectedDeveloperAccess: "受保护的开发者访问",
 	protectedDeveloperAccessDescription:
 		"CinaSeek 会强制执行所有权。每次写入还要求账户已验证且会话为近期会话。",
@@ -1628,7 +1629,8 @@ const chineseDashboardMessages = {
 	deleteClient: "删除客户端",
 	deviceFlow: "设备授权流程",
 	deviceFlowDescription: "适用于电视、命令行工具和输入受限设备。",
-	deviceFlowClientRequirement: "只有已注册、已启用的原生公共客户端可以请求设备代码。",
+	deviceFlowClientRequirement:
+		"只有已注册、已启用的原生公共客户端可以请求设备代码。",
 	deviceCode: "设备代码",
 	tokenExchange: "令牌交换",
 	userVerification: "用户验证",

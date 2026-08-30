@@ -50,10 +50,8 @@ import {
 	useSCIMTokenGenerateMutation,
 } from "@/data/organization/enterprise-connection-mutations";
 import type { SCIMProviderConnection, SSOProviderSummary } from "@/lib/auth";
-import {
-	formatDashboardMessage,
-	type DashboardMessages,
-} from "@/lib/dashboard-i18n";
+import type { DashboardMessages } from "@/lib/dashboard-i18n";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import { SSOProviderManager } from "./sso-provider-manager";
 
 type EnterpriseConnectionsCardProps = {
@@ -257,7 +255,8 @@ export function EnterpriseConnectionsCard({
 																generateSCIMMutation.isPending
 															}
 														>
-															<RefreshCw className="h-4 w-4" /> {messages.rotate}
+															<RefreshCw className="h-4 w-4" />{" "}
+															{messages.rotate}
 														</Button>
 													</AlertDialogTrigger>
 													<AlertDialogContent>

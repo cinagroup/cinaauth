@@ -5,11 +5,11 @@ import { Loader2, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import {
 	TurnstileChallenge,
 	useTurnstileChallenge,
 } from "@/components/turnstile-challenge";
-import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,9 +72,7 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 			setOtp("");
 			startCooldown();
 		} catch (error: unknown) {
-			setErrorMessage(
-				getErrorMessage(error, messages.unableToSendCode),
-			);
+			setErrorMessage(getErrorMessage(error, messages.unableToSendCode));
 		} finally {
 			captcha.reset();
 			setAction(null);
@@ -97,15 +95,12 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 			const result = await authClient.emailOtp.verifyEmail({ email, otp });
 			if (result.error || result.data?.status !== true) {
 				throw new Error(
-					result.error?.message ||
-						messages.codeVerificationFailed,
+					result.error?.message || messages.codeVerificationFailed,
 				);
 			}
 		} catch (error: unknown) {
 			setOtp("");
-			setErrorMessage(
-				getErrorMessage(error, messages.codeVerificationFailed),
-			);
+			setErrorMessage(getErrorMessage(error, messages.codeVerificationFailed));
 			setAction(null);
 			return;
 		}
@@ -125,9 +120,7 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 			<Alert variant="destructive">
 				<Mail aria-hidden />
 				<AlertTitle>{messages.emailVerificationUnavailable}</AlertTitle>
-				<AlertDescription>
-					{messages.emailMissing}
-				</AlertDescription>
+				<AlertDescription>{messages.emailMissing}</AlertDescription>
 			</Alert>
 		);
 	}

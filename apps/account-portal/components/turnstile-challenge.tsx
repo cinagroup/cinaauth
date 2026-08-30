@@ -2,9 +2,9 @@
 
 import Script from "next/script";
 import { useTheme } from "next-themes";
-import { useI18n } from "@/components/i18n-provider";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
 import {
 	getCaptchaRequestHeaders,

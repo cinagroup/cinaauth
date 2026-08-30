@@ -13,9 +13,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type { WalletOverviewSummary } from "@/lib/security-center";
 import { formatWalletAddress, formatWalletChain } from "@/lib/security-center";
-import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 
 type WalletOverviewCardProps = {
 	summary: WalletOverviewSummary;
@@ -59,7 +59,9 @@ export function WalletOverviewCard({ summary }: WalletOverviewCardProps) {
 							<Badge variant="outline">
 								{formatWalletChain(summary.wallet.chainId)}
 							</Badge>
-							{summary.wallet.isPrimary ? <Badge>{messages.primary}</Badge> : null}
+							{summary.wallet.isPrimary ? (
+								<Badge>{messages.primary}</Badge>
+							) : null}
 						</div>
 						<p className="mt-2 text-xs text-muted-foreground">
 							{summary.count === 1

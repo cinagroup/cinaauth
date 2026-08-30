@@ -2,10 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
-import {
-	formatDashboardMessage,
-	type DashboardMessageKey,
-} from "@/lib/dashboard-i18n";
+import type { DashboardMessageKey } from "@/lib/dashboard-i18n";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 
 export function DashboardPageHeader({
 	title,

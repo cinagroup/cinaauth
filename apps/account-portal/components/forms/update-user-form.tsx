@@ -5,6 +5,7 @@ import { Loader2, X } from "lucide-react";
 import Image from "next/image";
 import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
@@ -13,7 +14,6 @@ import {
 	FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { useUpdateUserMutation } from "@/data/user/update-user-mutation";
 import { useImagePreview } from "@/hooks/use-image-preview";
 import { convertImageToBase64 } from "@/lib/utils";
@@ -28,9 +28,7 @@ const createUpdateUserSchema = (nameTooShort: string, nameTooLong: string) =>
 			.or(z.literal("")),
 	});
 
-type UpdateUserFormValues = z.infer<
-	ReturnType<typeof createUpdateUserSchema>
->;
+type UpdateUserFormValues = z.infer<ReturnType<typeof createUpdateUserSchema>>;
 
 interface UpdateUserFormProps {
 	currentName?: string;
@@ -87,9 +85,7 @@ export function UpdateUserForm({
 			);
 		} catch (error) {
 			onError?.(
-				error instanceof Error
-					? error.message
-					: messages.imageProcessingFailed,
+				error instanceof Error ? error.message : messages.imageProcessingFailed,
 			);
 		}
 	};

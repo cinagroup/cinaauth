@@ -94,9 +94,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 						</AvatarFallback>
 					</Avatar>
 					<div>
-						<p>
-							{activeOrganization?.name || messages.personalWorkspace}
-						</p>
+						<p>{activeOrganization?.name || messages.personalWorkspace}</p>
 						<p className="text-xs text-muted-foreground">
 							{formatDashboardMessage(messages.membersCount, {
 								count: String(activeOrganization?.members?.length || 1),

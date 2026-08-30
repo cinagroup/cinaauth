@@ -40,6 +40,8 @@ import {
 	loadOrganizationAuditExport,
 	useOrganizationAuditPageQuery,
 } from "@/data/organization/organization-audit";
+import type { DashboardMessages } from "@/lib/dashboard-i18n";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type { OrganizationAuditExportFormat } from "@/lib/organization-audit-export";
 import {
 	createOrganizationAuditCSV,
@@ -52,10 +54,6 @@ import {
 	formatOrganizationDate,
 	getOrganizationAuditActionLabel,
 } from "@/lib/organization-console";
-import {
-	formatDashboardMessage,
-	type DashboardMessages,
-} from "@/lib/dashboard-i18n";
 
 const PAGE_SIZE = 25;
 

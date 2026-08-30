@@ -117,9 +117,7 @@ export function TwoFactorQrForm({
 					control={form.control}
 					render={({ field, fieldState }) => (
 						<Field data-invalid={fieldState.invalid}>
-							<FieldLabel htmlFor="qr-password">
-								{messages.password}
-							</FieldLabel>
+							<FieldLabel htmlFor="qr-password">{messages.password}</FieldLabel>
 							<PasswordInput
 								{...field}
 								id="qr-password"

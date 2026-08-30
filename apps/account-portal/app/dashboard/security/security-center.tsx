@@ -64,6 +64,7 @@ import { formatOAuthProviderName } from "@/lib/auth-capabilities";
 import { authClient } from "@/lib/auth-client";
 import { cinaAuthSiweProtocolClient } from "@/lib/cinaauth-siwe-client";
 import { deleteAccountPasskey } from "@/lib/client-api";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import {
 	getInjectedEthereumProvider,
 	requestEthereumWalletIdentity,
@@ -81,7 +82,6 @@ import {
 	parsePrivacyDeletionReadiness,
 } from "@/lib/privacy-center";
 import { isSiweWalletUiEnabled } from "@/lib/reown-wallet-gate";
-import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type {
 	SecurityAccount,
 	SecurityApiKey,
@@ -700,9 +700,7 @@ export function SecurityCenter({
 				}
 				setDeleteDialogOpen(false);
 				toast.success(
-					receipt
-						? messages.accountDeletedReceipt
-						: messages.accountDeleted,
+					receipt ? messages.accountDeletedReceipt : messages.accountDeleted,
 				);
 				router.push("/");
 				router.refresh();
@@ -868,9 +866,7 @@ export function SecurityCenter({
 						<CardTitle className="flex items-center gap-2">
 							<Fingerprint className="h-5 w-5" /> {messages.passkeys}
 						</CardTitle>
-						<CardDescription>
-							{messages.passkeysDescription}
-						</CardDescription>
+						<CardDescription>{messages.passkeysDescription}</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						{passkeys.length > 0 ? (
@@ -1086,7 +1082,7 @@ export function SecurityCenter({
 												<p className="font-medium">{apiKey.name}</p>
 												<Badge
 													variant={
-												status === messages.active ? "default" : "secondary"
+														status === messages.active ? "default" : "secondary"
 													}
 												>
 													{status}
@@ -1096,26 +1092,35 @@ export function SecurityCenter({
 												</code>
 											</div>
 											<p className="text-xs text-muted-foreground">
-										{formatDashboardMessage(messages.createdOn, {
-											date: formatSecurityDate(apiKey.createdAt, locale),
-										})}
-										{" | "}
-										{apiKey.expiresAt
-											? formatDashboardMessage(messages.expiresOn, {
-													date: formatSecurityDate(apiKey.expiresAt, locale),
-												})
-											: messages.noExpiration}
+												{formatDashboardMessage(messages.createdOn, {
+													date: formatSecurityDate(apiKey.createdAt, locale),
+												})}
+												{" | "}
+												{apiKey.expiresAt
+													? formatDashboardMessage(messages.expiresOn, {
+															date: formatSecurityDate(
+																apiKey.expiresAt,
+																locale,
+															),
+														})
+													: messages.noExpiration}
 											</p>
 											<p className="text-xs text-muted-foreground">
-										{apiKey.lastRequest
-											? formatDashboardMessage(messages.lastUsedOn, {
-													date: formatSecurityDate(apiKey.lastRequest, locale),
-												})
-											: messages.neverUsed}
-										{" | "}
-										{formatDashboardMessage(messages.requestsCurrentWindow, {
-											count: String(apiKey.requestCount),
-										})}
+												{apiKey.lastRequest
+													? formatDashboardMessage(messages.lastUsedOn, {
+															date: formatSecurityDate(
+																apiKey.lastRequest,
+																locale,
+															),
+														})
+													: messages.neverUsed}
+												{" | "}
+												{formatDashboardMessage(
+													messages.requestsCurrentWindow,
+													{
+														count: String(apiKey.requestCount),
+													},
+												)}
 											</p>
 										</div>
 										<div className="flex flex-wrap gap-2">
@@ -1130,7 +1135,7 @@ export function SecurityCenter({
 													!recentAuthentication || dataUnavailable.apiKeys
 												}
 											>
-											<Pencil className="mr-2 h-4 w-4" /> {messages.rename}
+												<Pencil className="mr-2 h-4 w-4" /> {messages.rename}
 											</Button>
 											<Button
 												variant="outline"
@@ -1150,7 +1155,7 @@ export function SecurityCenter({
 												) : (
 													<Power className="mr-2 h-4 w-4" />
 												)}
-											{apiKey.enabled ? messages.disable : messages.enable}
+												{apiKey.enabled ? messages.disable : messages.enable}
 											</Button>
 											<Button
 												variant="destructive"
@@ -1160,7 +1165,7 @@ export function SecurityCenter({
 													!recentAuthentication || dataUnavailable.apiKeys
 												}
 											>
-											<Trash2 className="mr-2 h-4 w-4" /> {messages.revoke}
+												<Trash2 className="mr-2 h-4 w-4" /> {messages.revoke}
 											</Button>
 										</div>
 									</div>
@@ -1342,13 +1347,15 @@ export function SecurityCenter({
 										<Badge variant="secondary">
 											{formatWalletChain(wallet.chainId)}
 										</Badge>
-										{wallet.isPrimary ? <Badge>{messages.primary}</Badge> : null}
+										{wallet.isPrimary ? (
+											<Badge>{messages.primary}</Badge>
+										) : null}
 									</div>
 									<p className="text-xs text-muted-foreground">
-									{formatDashboardMessage(messages.walletDetails, {
-										chainId: String(wallet.chainId),
-										date: formatSecurityDate(wallet.createdAt, locale),
-									})}
+										{formatDashboardMessage(messages.walletDetails, {
+											chainId: String(wallet.chainId),
+											date: formatSecurityDate(wallet.createdAt, locale),
+										})}
 									</p>
 								</div>
 								<div className="flex flex-wrap gap-2">
@@ -1442,9 +1449,9 @@ export function SecurityCenter({
 										{formatOAuthProviderName(account.providerId)}
 									</p>
 									<p className="truncate text-xs text-muted-foreground">
-									{formatDashboardMessage(messages.connectedOn, {
-										date: formatSecurityDate(account.createdAt, locale),
-									})}
+										{formatDashboardMessage(messages.connectedOn, {
+											date: formatSecurityDate(account.createdAt, locale),
+										})}
 									</p>
 								</div>
 								<Button
@@ -1456,10 +1463,10 @@ export function SecurityCenter({
 										!canUnlinkAccount(accounts.length) ||
 										busyAction === `account:${account.id}`
 									}
-								aria-label={formatDashboardMessage(
-									messages.disconnectProvider,
-									{ provider: formatOAuthProviderName(account.providerId) },
-								)}
+									aria-label={formatDashboardMessage(
+										messages.disconnectProvider,
+										{ provider: formatOAuthProviderName(account.providerId) },
+									)}
 								>
 									{busyAction === `account:${account.id}` ? (
 										<Loader2 className="h-4 w-4 animate-spin" />
@@ -1506,9 +1513,7 @@ export function SecurityCenter({
 					<CardTitle className="flex items-center gap-2 text-destructive">
 						<AlertTriangle className="h-5 w-5" /> {messages.dangerZone}
 					</CardTitle>
-					<CardDescription>
-						{messages.dangerZoneDescription}
-					</CardDescription>
+					<CardDescription>{messages.dangerZoneDescription}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<Dialog
@@ -1571,9 +1576,14 @@ export function SecurityCenter({
 															</span>{" "}
 															— {exception.purpose}
 															{exception.maximumRetentionDays
-														? ` (${formatDashboardMessage(messages.upToDays, {
-																count: String(exception.maximumRetentionDays),
-															})})`
+																? ` (${formatDashboardMessage(
+																		messages.upToDays,
+																		{
+																			count: String(
+																				exception.maximumRetentionDays,
+																			),
+																		},
+																	)})`
 																: ""}
 														</li>
 													),

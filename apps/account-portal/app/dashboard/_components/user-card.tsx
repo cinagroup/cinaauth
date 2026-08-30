@@ -122,7 +122,9 @@ const UserCard = ({
 									<DialogTrigger asChild>
 										<Button variant="outline" className="gap-2">
 											<QrCode size={16} />
-											<span className="md:text-sm text-xs">{messages.scanQrCode}</span>
+											<span className="md:text-sm text-xs">
+												{messages.scanQrCode}
+											</span>
 										</Button>
 									</DialogTrigger>
 									<DialogContent className="sm:max-w-[425px] w-11/12">
@@ -406,7 +408,9 @@ function ListPasskeys() {
 			<DialogTrigger asChild>
 				<Button variant="outline" className="text-xs md:text-sm">
 					<Fingerprint className="mr-2 h-4 w-4" />
-					<span>{messages.passkeys} {data?.length ? `[${data?.length}]` : ""}</span>
+					<span>
+						{messages.passkeys} {data?.length ? `[${data?.length}]` : ""}
+					</span>
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px] w-11/12">
@@ -434,12 +438,12 @@ function ListPasskeys() {
 												setIsDeletePasskey(true);
 												try {
 													await deleteAccountPasskey(authClient, passkey.id);
-											toast.success(messages.passkeyDeleted);
+													toast.success(messages.passkeyDeleted);
 												} catch (error) {
 													toast.error(
 														error instanceof Error
 															? error.message
-													: messages.passkeyDeleteFailed,
+															: messages.passkeyDeleteFailed,
 													);
 												} finally {
 													setIsDeletePasskey(false);

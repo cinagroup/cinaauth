@@ -50,9 +50,7 @@ export function DashboardTopbar({
 					size="icon"
 					onClick={onToggleSidebar}
 					aria-label={
-						sidebarCollapsed
-							? messages.expandSidebar
-							: messages.collapseSidebar
+						sidebarCollapsed ? messages.expandSidebar : messages.collapseSidebar
 					}
 					className="hidden lg:inline-flex"
 				>

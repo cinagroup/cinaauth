@@ -408,9 +408,7 @@ export function OrganizationConsole({
 						</Card>
 						<Card>
 							<CardHeader className="pb-2">
-								<CardDescription>
-									{messages.pendingInvitations}
-								</CardDescription>
+								<CardDescription>{messages.pendingInvitations}</CardDescription>
 								<CardTitle className="flex items-center gap-2 text-2xl">
 									<MailPlus className="h-5 w-5 text-muted-foreground" />
 									{pendingInvitations.length}
@@ -435,9 +433,7 @@ export function OrganizationConsole({
 							{entitlementsUnavailable || !initialEntitlements ? (
 								<Alert>
 									<AlertTriangle className="h-4 w-4" />
-									<AlertTitle>
-										{messages.planPolicyUnavailable}
-									</AlertTitle>
+									<AlertTitle>{messages.planPolicyUnavailable}</AlertTitle>
 									<AlertDescription>
 										{messages.planPolicyUnavailableDescription}
 									</AlertDescription>
@@ -460,9 +456,9 @@ export function OrganizationConsole({
 																feature as EntitlementFeature
 															]
 														}{" "}
-												{enabled
-													? messages.featureEnabled
-													: messages.featureUnavailable}
+														{enabled
+															? messages.featureEnabled
+															: messages.featureUnavailable}
 													</Badge>
 												),
 											)}
@@ -551,8 +547,8 @@ export function OrganizationConsole({
 											</Avatar>
 											<div className="min-w-0">
 												<p className="truncate text-sm font-medium">
-											{member.user.name}{" "}
-											{isCurrentUser && `(${messages.you})`}
+													{member.user.name}{" "}
+													{isCurrentUser && `(${messages.you})`}
 												</p>
 												<p className="truncate text-xs text-muted-foreground">
 													{member.user.email}
@@ -561,7 +557,7 @@ export function OrganizationConsole({
 										</div>
 										<div className="flex items-center gap-2">
 											<Badge variant="outline">
-										{getOrganizationRoleLabel(member.role, locale)}
+												{getOrganizationRoleLabel(member.role, locale)}
 											</Badge>
 											<AdvancedMemberRoleEditor
 												member={member}
@@ -584,10 +580,10 @@ export function OrganizationConsole({
 																deleteMutationDisabled ||
 																removeMemberMutation.isPending
 															}
-													aria-label={formatDashboardMessage(
-														messages.removeNamedItem,
-														{ name: member.user.name },
-													)}
+															aria-label={formatDashboardMessage(
+																messages.removeNamedItem,
+																{ name: member.user.name },
+															)}
 														>
 															<Trash2 className="h-4 w-4" />
 														</Button>
@@ -595,22 +591,25 @@ export function OrganizationConsole({
 													<AlertDialogContent>
 														<AlertDialogHeader>
 															<AlertDialogTitle>
-														{formatDashboardMessage(messages.removeMemberTitle, {
-															name: member.user.name,
-														})}
+																{formatDashboardMessage(
+																	messages.removeMemberTitle,
+																	{
+																		name: member.user.name,
+																	},
+																)}
 															</AlertDialogTitle>
 															<AlertDialogDescription>
-														{messages.removeMemberDescription}
+																{messages.removeMemberDescription}
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
-													<AlertDialogCancel>
-														{messages.cancel}
-													</AlertDialogCancel>
+															<AlertDialogCancel>
+																{messages.cancel}
+															</AlertDialogCancel>
 															<AlertDialogAction
 																onClick={() => removeMember(member)}
 															>
-														{messages.removeMember}
+																{messages.removeMember}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
@@ -688,16 +687,16 @@ export function OrganizationConsole({
 												</p>
 												<div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 													<Badge variant="outline">
-													{getOrganizationRoleLabel(invitation.role, locale)}
+														{getOrganizationRoleLabel(invitation.role, locale)}
 													</Badge>
 													<span className="flex items-center gap-1">
-													<CalendarDays className="h-3 w-3" />
-													{formatDashboardMessage(messages.expiresOn, {
-														date: formatOrganizationDate(
-															invitation.expiresAt,
-															locale,
-														),
-													})}
+														<CalendarDays className="h-3 w-3" />
+														{formatDashboardMessage(messages.expiresOn, {
+															date: formatOrganizationDate(
+																invitation.expiresAt,
+																locale,
+															),
+														})}
 													</span>
 												</div>
 											</div>
@@ -707,7 +706,7 @@ export function OrganizationConsole({
 													size="sm"
 													onClick={() => copyInvitationLink(invitation.id)}
 												>
-												<Copy className="mr-2 h-4 w-4" /> {messages.copyLink}
+													<Copy className="mr-2 h-4 w-4" /> {messages.copyLink}
 												</Button>
 												<Button
 													variant="destructive"
@@ -720,7 +719,7 @@ export function OrganizationConsole({
 														cancelInvitationMutation.isPending
 													}
 												>
-												{messages.revoke}
+													{messages.revoke}
 												</Button>
 											</div>
 										</div>
@@ -795,31 +794,31 @@ export function OrganizationConsole({
 										) : (
 											<LogOut className="mr-2 h-4 w-4" />
 										)}
-									{formatDashboardMessage(messages.leaveNamedOrganization, {
-										name: initialOrganization.name,
-									})}
+										{formatDashboardMessage(messages.leaveNamedOrganization, {
+											name: initialOrganization.name,
+										})}
 									</Button>
 								</AlertDialogTrigger>
 								<AlertDialogContent>
 									<AlertDialogHeader>
 										<AlertDialogTitle>
-										{formatDashboardMessage(messages.leaveOrganizationTitle, {
-											name: initialOrganization.name,
-										})}
+											{formatDashboardMessage(messages.leaveOrganizationTitle, {
+												name: initialOrganization.name,
+											})}
 										</AlertDialogTitle>
 										<AlertDialogDescription>
-										{messages.leaveOrganizationDialogDescription}
+											{messages.leaveOrganizationDialogDescription}
 										</AlertDialogDescription>
 									</AlertDialogHeader>
 									<AlertDialogFooter>
-									<AlertDialogCancel>
-										{messages.keepMembership}
-									</AlertDialogCancel>
+										<AlertDialogCancel>
+											{messages.keepMembership}
+										</AlertDialogCancel>
 										<AlertDialogAction
 											onClick={leaveActiveOrganization}
 											className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 										>
-										{messages.leaveOrganization}
+											{messages.leaveOrganization}
 										</AlertDialogAction>
 									</AlertDialogFooter>
 								</AlertDialogContent>

@@ -82,15 +82,13 @@ import {
 	toggleRolePermission,
 	toRolePermissionPayload,
 } from "@/lib/advanced-organization-console";
+import type { DashboardMessages } from "@/lib/dashboard-i18n";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type { OrganizationMember } from "@/lib/organization-console";
 import {
 	getOrganizationRoleLabel,
 	parseOrganizationRoles,
 } from "@/lib/organization-console";
-import {
-	formatDashboardMessage,
-	type DashboardMessages,
-} from "@/lib/dashboard-i18n";
 
 type AdvancedOrganizationCardProps = {
 	organizationId: string;
@@ -311,7 +309,7 @@ const RoleEditorDialog = ({
 													disabled={mutation.isPending}
 												/>
 												<Label htmlFor={id} className="font-normal capitalize">
-											{permissionActionLabels[action] ?? action}
+													{permissionActionLabels[action] ?? action}
 												</Label>
 											</div>
 										);
@@ -329,7 +327,7 @@ const RoleEditorDialog = ({
 						{mutation.isPending && (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 						)}
-					{role ? messages.saveRole : messages.createRole}
+						{role ? messages.saveRole : messages.createRole}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -405,9 +403,7 @@ const TeamEditorDialog = ({
 					<DialogTitle>
 						{team ? messages.renameTeam : messages.createTeam}
 					</DialogTitle>
-					<DialogDescription>
-						{messages.teamDescription}
-					</DialogDescription>
+					<DialogDescription>{messages.teamDescription}</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-2">
 					<Label htmlFor={`team-name-${team?.id ?? "new"}`}>
@@ -429,7 +425,7 @@ const TeamEditorDialog = ({
 						{mutation.isPending && (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 						)}
-					{team ? messages.saveName : messages.createTeam}
+						{team ? messages.saveName : messages.createTeam}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -533,7 +529,7 @@ const TeamMembershipDialog = ({
 										>
 											<div>
 												<p className="text-sm font-medium">
-											{member?.user.name ?? messages.unknownMember}
+													{member?.user.name ?? messages.unknownMember}
 												</p>
 												<p className="text-xs text-muted-foreground">
 													{member?.user.email ?? membership.userId}
@@ -550,7 +546,7 @@ const TeamMembershipDialog = ({
 													})
 												}
 											>
-										{messages.remove}
+												{messages.remove}
 											</Button>
 										</div>
 									);
@@ -569,9 +565,12 @@ const TeamMembershipDialog = ({
 									disabled={disabled || membershipMutation.isPending}
 								>
 									<SelectTrigger
-										aria-label={formatDashboardMessage(messages.addMemberToTeam, {
-											name: team.name,
-										})}
+										aria-label={formatDashboardMessage(
+											messages.addMemberToTeam,
+											{
+												name: team.name,
+											},
+										)}
 									>
 										<SelectValue
 											placeholder={messages.selectOrganizationMember}
@@ -802,9 +801,7 @@ export const AdvancedOrganizationCard = ({
 						<CardTitle className="flex items-center gap-2">
 							<FolderKanban className="h-5 w-5" /> {messages.teams}
 						</CardTitle>
-						<CardDescription>
-							{messages.teamsDescription}
-						</CardDescription>
+						<CardDescription>{messages.teamsDescription}</CardDescription>
 					</div>
 					<TeamEditorDialog
 						organizationId={organizationId}
@@ -833,9 +830,9 @@ export const AdvancedOrganizationCard = ({
 								<div>
 									<p className="text-sm font-medium">{team.name}</p>
 									<p className="text-xs text-muted-foreground">
-									{formatDashboardMessage(messages.teamId, {
-										id: team.id.slice(-8),
-									})}
+										{formatDashboardMessage(messages.teamId, {
+											id: team.id.slice(-8),
+										})}
 									</p>
 								</div>
 								<div className="flex items-center gap-2">
@@ -867,10 +864,10 @@ export const AdvancedOrganizationCard = ({
 																mutationContextUnavailable ||
 																deleteTeamMutation.isPending
 															}
-													aria-label={formatDashboardMessage(
-														messages.deleteNamedItem,
-														{ name: team.name },
-													)}
+															aria-label={formatDashboardMessage(
+																messages.deleteNamedItem,
+																{ name: team.name },
+															)}
 														>
 															<Trash2 className="h-4 w-4" />
 														</Button>
@@ -878,24 +875,27 @@ export const AdvancedOrganizationCard = ({
 													<AlertDialogContent>
 														<AlertDialogHeader>
 															<AlertDialogTitle>
-														{formatDashboardMessage(messages.deleteNamedItemTitle, {
-															name: team.name,
-														})}
+																{formatDashboardMessage(
+																	messages.deleteNamedItemTitle,
+																	{
+																		name: team.name,
+																	},
+																)}
 															</AlertDialogTitle>
 															<AlertDialogDescription>
-														{messages.deleteTeamDescription}
+																{messages.deleteTeamDescription}
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
-													<AlertDialogCancel>
-														{messages.cancel}
-													</AlertDialogCancel>
+															<AlertDialogCancel>
+																{messages.cancel}
+															</AlertDialogCancel>
 															<AlertDialogAction
 																onClick={() =>
 																	deleteTeamMutation.mutate(team.id)
 																}
 															>
-														{messages.deleteTeam}
+																{messages.deleteTeam}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
@@ -907,9 +907,7 @@ export const AdvancedOrganizationCard = ({
 							</div>
 						))
 					) : (
-						<p className="text-sm text-muted-foreground">
-							{messages.noTeams}
-						</p>
+						<p className="text-sm text-muted-foreground">{messages.noTeams}</p>
 					)}
 				</CardContent>
 			</Card>
@@ -920,9 +918,7 @@ export const AdvancedOrganizationCard = ({
 						<CardTitle className="flex items-center gap-2">
 							<ShieldCheck className="h-5 w-5" /> {messages.customRoles}
 						</CardTitle>
-						<CardDescription>
-							{messages.customRolesDescription}
-						</CardDescription>
+						<CardDescription>{messages.customRolesDescription}</CardDescription>
 					</div>
 					<RoleEditorDialog
 						organizationId={organizationId}
@@ -949,7 +945,7 @@ export const AdvancedOrganizationCard = ({
 								<div className="flex items-start justify-between gap-3">
 									<div>
 										<p className="text-sm font-medium">
-										{getOrganizationRoleLabel(role.role, locale)}
+											{getOrganizationRoleLabel(role.role, locale)}
 										</p>
 										<p className="text-xs text-muted-foreground">{role.role}</p>
 									</div>
@@ -974,10 +970,10 @@ export const AdvancedOrganizationCard = ({
 																mutationContextUnavailable ||
 																deleteRoleMutation.isPending
 															}
-													aria-label={formatDashboardMessage(
-														messages.deleteNamedItem,
-														{ name: role.role },
-													)}
+															aria-label={formatDashboardMessage(
+																messages.deleteNamedItem,
+																{ name: role.role },
+															)}
 														>
 															<Trash2 className="h-4 w-4" />
 														</Button>
@@ -985,24 +981,27 @@ export const AdvancedOrganizationCard = ({
 													<AlertDialogContent>
 														<AlertDialogHeader>
 															<AlertDialogTitle>
-														{formatDashboardMessage(messages.deleteNamedItemTitle, {
-															name: role.role,
-														})}
+																{formatDashboardMessage(
+																	messages.deleteNamedItemTitle,
+																	{
+																		name: role.role,
+																	},
+																)}
 															</AlertDialogTitle>
 															<AlertDialogDescription>
-														{messages.deleteRoleDescription}
+																{messages.deleteRoleDescription}
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
-													<AlertDialogCancel>
-														{messages.cancel}
-													</AlertDialogCancel>
+															<AlertDialogCancel>
+																{messages.cancel}
+															</AlertDialogCancel>
 															<AlertDialogAction
 																onClick={() =>
 																	deleteRoleMutation.mutate(role.role)
 																}
 															>
-														{messages.deleteRole}
+																{messages.deleteRole}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
@@ -1015,8 +1014,8 @@ export const AdvancedOrganizationCard = ({
 									{ORGANIZATION_PERMISSION_RESOURCES.flatMap((resource) =>
 										(role.permission[resource] ?? []).map((action) => (
 											<Badge key={`${resource}:${action}`} variant="secondary">
-											{permissionResourceLabels[resource]}:
-											{permissionActionLabels[action] ?? action}
+												{permissionResourceLabels[resource]}:
+												{permissionActionLabels[action] ?? action}
 											</Badge>
 										)),
 									)}

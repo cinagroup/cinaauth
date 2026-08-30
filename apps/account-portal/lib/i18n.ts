@@ -284,7 +284,9 @@ export function resolveLocale({
 			};
 		})
 		.filter(({ quality }) => quality > 0)
-		.sort((left, right) => right.quality - left.quality || left.index - right.index);
+		.sort(
+			(left, right) => right.quality - left.quality || left.index - right.index,
+		);
 
 	for (const { language } of languageRanges) {
 		if (language === "en" || language?.startsWith("en-")) return "en";

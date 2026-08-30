@@ -56,9 +56,7 @@ describe("two-factor recovery UI contract", () => {
 		expect(source).toContain("setBackupCodes(ctx.data.backupCodes)");
 		expect(source).toContain('setStep("backupCodes")');
 		expect(source).toContain("messages.savedBackupCodes");
-		expect(dashboardI18n).toContain(
-			'savedBackupCodes: "I saved these codes"',
-		);
+		expect(dashboardI18n).toContain('savedBackupCodes: "I saved these codes"');
 		expect(source).toContain("onBackupCodesPendingChange?.(true)");
 		for (const parentSource of [overview, securityCenter]) {
 			expect(parentSource).toContain("backupCodesPending");

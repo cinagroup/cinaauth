@@ -63,10 +63,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { OAuthClientRecord } from "@/lib/auth";
 import { authClient } from "@/lib/auth-client";
-import {
-	formatDashboardMessage,
-	type DashboardMessages,
-} from "@/lib/dashboard-i18n";
+import type { DashboardMessages } from "@/lib/dashboard-i18n";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type {
 	DeveloperOAuthClient,
 	DeveloperOAuthClientType,
@@ -117,10 +115,7 @@ const EMPTY_DRAFT: ClientDraft = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null;
 
-const localizeDeveloperError = (
-	error: string,
-	messages: DashboardMessages,
-) => {
+const localizeDeveloperError = (error: string, messages: DashboardMessages) => {
 	if (error.startsWith("Invalid redirect URI: ")) {
 		return formatDashboardMessage(messages.redirectUriInvalid, {
 			uri: error.slice("Invalid redirect URI: ".length),
@@ -483,9 +478,13 @@ export function DeveloperConsole({
 		runAction(
 			`client:delete:${client.clientId}`,
 			async () => {
-				await mutateAuth<null>("/api/auth/oauth2/delete-client", {
-					client_id: client.clientId,
-				}, messages.httpError);
+				await mutateAuth<null>(
+					"/api/auth/oauth2/delete-client",
+					{
+						client_id: client.clientId,
+					},
+					messages.httpError,
+				);
 				setClients((current) =>
 					current.filter((item) => item.clientId !== client.clientId),
 				);
@@ -501,9 +500,13 @@ export function DeveloperConsole({
 		runAction(
 			`consent:delete:${consent.id}`,
 			async () => {
-				await mutateAuth<null>("/api/auth/oauth2/delete-consent", {
-					id: consent.id,
-				}, messages.httpError);
+				await mutateAuth<null>(
+					"/api/auth/oauth2/delete-consent",
+					{
+						id: consent.id,
+					},
+					messages.httpError,
+				);
 				setConsents((current) =>
 					current.filter((item) => item.id !== consent.id),
 				);
@@ -770,14 +773,10 @@ export function DeveloperConsole({
 						<CardTitle className="flex items-center gap-2">
 							<Smartphone className="h-5 w-5" /> {messages.deviceFlow}
 						</CardTitle>
-						<CardDescription>
-							{messages.deviceFlowDescription}
-						</CardDescription>
+						<CardDescription>{messages.deviceFlowDescription}</CardDescription>
 					</CardHeader>
 					<CardContent className="grid gap-4 text-sm">
-						<p>
-							{messages.deviceFlowClientRequirement}
-						</p>
+						<p>{messages.deviceFlowClientRequirement}</p>
 						<div className="grid gap-2">
 							<div>
 								<span className="text-muted-foreground">
@@ -1019,9 +1018,7 @@ export function DeveloperConsole({
 										setSecretAcknowledged(checked === true)
 									}
 								/>
-								<span>
-									{messages.storedClientSecret}
-								</span>
+								<span>{messages.storedClientSecret}</span>
 							</label>
 						</div>
 					) : null}

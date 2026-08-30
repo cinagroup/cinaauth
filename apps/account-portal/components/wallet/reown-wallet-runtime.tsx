@@ -89,9 +89,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 					typeof error.message === "string"
 				? error.message
 				: fallback;
-	return message.length <= 256
-		? message
-		: fallback;
+	return message.length <= 256 ? message : fallback;
 };
 
 type WalletControllerProps = {

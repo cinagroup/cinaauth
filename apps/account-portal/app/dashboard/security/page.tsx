@@ -3,8 +3,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { CORE_AUTH_CAPABILITIES } from "@/lib/auth-capabilities";
-import { getReownInitialCookie } from "@/lib/reown-wallet-cookie";
 import { dashboardMessages } from "@/lib/dashboard-i18n";
+import { getReownInitialCookie } from "@/lib/reown-wallet-cookie";
 import { getRequestLocale } from "@/lib/request-locale";
 import type {
 	SecurityAccount,

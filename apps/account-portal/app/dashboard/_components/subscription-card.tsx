@@ -56,9 +56,7 @@ const SubscriptionCard = ({
 							? messages.entitlementsUnavailable
 							: messages.unmeteredAccess}
 					</p>
-					<p>
-						{messages.billingNotReady}
-					</p>
+					<p>{messages.billingNotReady}</p>
 				</CardContent>
 			</Card>
 		);
@@ -141,7 +139,9 @@ const SubscriptionCard = ({
 											: messages.renews}
 								</span>
 								<span className="font-medium text-ink">
-									{new Date(currentSubscription.periodEnd).toLocaleDateString(locale)}
+									{new Date(currentSubscription.periodEnd).toLocaleDateString(
+										locale,
+									)}
 								</span>
 							</div>
 						)}
@@ -225,7 +225,9 @@ function ChangePlanDialog(props: {
 									Plus
 								</Label>
 								<p id={`${id}-1-description`} className="text-xs text-mute">
-									{formatDashboardMessage(messages.pricePerMonth, { price: "20" })}
+									{formatDashboardMessage(messages.pricePerMonth, {
+										price: "20",
+									})}
 								</p>
 							</div>
 						</div>
@@ -241,7 +243,9 @@ function ChangePlanDialog(props: {
 									Pro
 								</Label>
 								<p id={`${id}-2-description`} className="text-xs text-mute">
-									{formatDashboardMessage(messages.pricePerMonth, { price: "200" })}
+									{formatDashboardMessage(messages.pricePerMonth, {
+										price: "200",
+									})}
 								</p>
 							</div>
 						</div>

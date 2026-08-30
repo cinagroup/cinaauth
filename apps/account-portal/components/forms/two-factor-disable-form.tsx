@@ -49,7 +49,7 @@ export function TwoFactorDisableForm({
 		startTransition(async () => {
 			await authClient.twoFactor.disable({
 				...getTwoFactorPasswordBody(requiresPassword, password),
-					fetchOptions: {
+				fetchOptions: {
 					onSuccess() {
 						toast.success(messages.twoFactorDisabledSuccess);
 						onSuccess?.();

@@ -57,10 +57,8 @@ import {
 	useSSOProviderDeleteMutation,
 } from "@/data/organization/enterprise-connection-mutations";
 import type { SCIMProviderConnection, SSOProviderSummary } from "@/lib/auth";
-import {
-	formatDashboardMessage,
-	type DashboardMessages,
-} from "@/lib/dashboard-i18n";
+import type { DashboardMessages } from "@/lib/dashboard-i18n";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type {
 	ProviderDraft,
 	ProviderEditorMode,
@@ -471,9 +469,7 @@ function ProviderEditorFields({
 					) : null}
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="grid gap-2">
-							<Label htmlFor="saml-audience">
-								{messages.audienceOptional}
-							</Label>
+							<Label htmlFor="saml-audience">{messages.audienceOptional}</Label>
 							<Input
 								id="saml-audience"
 								value={draft.audience}
@@ -760,8 +756,7 @@ export function SSOProviderManager({
 									<p className="mt-2 text-xs text-muted-foreground">
 										{formatDashboardMessage(messages.clientIdentifier, {
 											id:
-												provider.oidcConfig.clientIdLastFour ??
-												messages.masked,
+												provider.oidcConfig.clientIdLastFour ?? messages.masked,
 										})}
 									</p>
 								) : null}
