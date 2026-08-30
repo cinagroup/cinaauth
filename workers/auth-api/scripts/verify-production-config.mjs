@@ -478,6 +478,8 @@ const accountSignInExperienceFile = join(
 	"sign-in-experience.ts",
 );
 const accountEmailOtpFlowFile = join(nextDemoDir, "lib", "email-otp-flow.ts");
+const accountHomeI18nFile = join(nextDemoDir, "lib", "i18n.ts");
+const accountDashboardI18nFile = join(nextDemoDir, "lib", "dashboard-i18n.ts");
 const accountLegacyAuthRedirectFile = join(
 	nextDemoDir,
 	"lib",
@@ -497,6 +499,12 @@ const accountSignInComponentFile = join(
 	"sign-in",
 	"_components",
 	"sign-in.tsx",
+);
+const accountSignInPageShellFile = join(
+	nextDemoDir,
+	"components",
+	"auth",
+	"sign-in-page-shell.tsx",
 );
 const accountLegacySignUpPageFile = join(
 	nextDemoDir,
@@ -1048,9 +1056,12 @@ const accountWrangler = read(accountWranglerFile);
 const accountMiddleware = read(accountMiddlewareFile);
 const accountSignInExperience = read(accountSignInExperienceFile);
 const accountEmailOtpFlow = read(accountEmailOtpFlowFile);
+const accountHomeI18n = read(accountHomeI18nFile);
+const accountDashboardI18n = read(accountDashboardI18nFile);
 const accountLegacyAuthRedirect = read(accountLegacyAuthRedirectFile);
 const accountSignInPage = read(accountSignInPageFile);
 const accountSignInComponent = read(accountSignInComponentFile);
+const accountSignInPageShell = read(accountSignInPageShellFile);
 const accountLegacySignUpPage = read(accountLegacySignUpPageFile);
 const accountLegacyEmailSignUpPage = read(accountLegacyEmailSignUpPageFile);
 const legacyAdminPage = read(legacyAdminPageFile);
@@ -1721,6 +1732,53 @@ checkIncludesAll(
 	"all Admin deletion guards must share the exact role-membership invariant",
 );
 checkIncludesAll(
+	accountDashboardI18n,
+	[
+		"Copy your API key now",
+		"full secret is shown only once",
+		"Connect wallet",
+		"Make primary",
+		"Disconnect wallet",
+		"signed deletion receipt was downloaded",
+		"External erasure confirmation required",
+		"Recent authentication required",
+		"Leave organization",
+		"Plan and entitlements",
+		"Protected operations remain fail-closed",
+		"50 teams and 100 organization members per team",
+		"Up to 25 organization-scoped role definitions",
+		"Export JSON",
+		"Export CSV",
+		"Apply filters",
+		"No cached events or exports are shown",
+		"10,000 events and fail rather than truncate",
+		"Fresh sign-in required for changes",
+		"No cached token connection data is shown",
+		"Copy this SCIM token now",
+		"CinaSeek stores only a hash",
+		"Sensitive values are sent",
+		"Stored credentials are never loaded",
+		"linked SSO account records",
+		"Copy this client secret now",
+		"shown only once",
+		"Credential secrets stay excluded",
+		"Current access mode: Unmetered.",
+		"Entitlement status is temporarily unavailable.",
+		"No checkout or subscription request will be sent",
+	],
+	accountDashboardI18nFile,
+	"localized dashboard copy must preserve production safety guidance while UI components consume dictionary keys",
+);
+checkIncludesAll(
+	accountHomeI18n,
+	[
+		"Sign in or create your account",
+		"New wallet? We'll create your account after you verify the",
+	],
+	accountHomeI18nFile,
+	"localized sign-in copy must preserve the unified first-user account-creation contract",
+);
+checkIncludesAll(
 	securityCenterPageTs,
 	[
 		"Promise.all",
@@ -1746,8 +1804,8 @@ checkIncludesAll(
 		"authClient.apiKey.create",
 		"authClient.apiKey.update",
 		"authClient.apiKey.delete",
-		"Copy your API key now",
-		"full secret is shown only once",
+		"messages.copyApiKeyNow",
+		"messages.personalApiKeysDescription",
 		"authClient.unlinkAccount",
 		"authClient.oauth2.link",
 		'authClient.$fetch("/siwe/list-wallets"',
@@ -1759,9 +1817,9 @@ checkIncludesAll(
 		'"/siwe/set-primary-wallet"',
 		'authClient.$fetch("/siwe/unlink-wallet"',
 		"signSiweMessage",
-		"Connect wallet",
-		"Make primary",
-		"Disconnect wallet",
+		"messages.connectWallet",
+		"messages.makePrimary",
+		"messages.disconnectWallet",
 		"PRIVACY_DELETE_ACCOUNT_PATH",
 		'method: "POST"',
 		'credentials: "include"',
@@ -1770,11 +1828,11 @@ checkIncludesAll(
 		"parsePrivacyDeletionReadiness",
 		"getPrivacyDeletionReceipt",
 		"getPrivacyDeletionReceiptFilename",
-		"signed deletion receipt was downloaded",
+		"messages.accountDeletedReceipt",
 		"PRIVACY_PROCESSOR_ERASURE_PENDING",
 		"PRIVACY_PROCESSOR_ERASURE_FAILED",
-		"External erasure confirmation required",
-		"Recent authentication required",
+		"messages.externalErasureRequired",
+		"messages.recentAuthenticationRequired",
 	],
 	securityCenterComponentFile,
 	"the user-facing Security Center must protect session, authenticator, identity, and deletion actions with retention preflight and signed receipt delivery",
@@ -1826,15 +1884,15 @@ checkIncludesAll(
 		"CreateOrganizationForm",
 		"getOrganizationInvitationUrl",
 		"authClient.signOut",
-		"Leave organization",
+		"messages.leaveOrganization",
 		"OrganizationAuditCard",
 		"EnterpriseConnectionsCard",
 		"AdvancedMemberRoleEditor",
 		"AdvancedOrganizationCard",
-		"Plan and entitlements",
+		"messages.planAndEntitlements",
 		"initialEntitlements.features",
 		"initialEntitlements.limits",
-		"Protected operations remain fail-closed",
+		"messages.planPolicyUnavailableDescription",
 		"router.refresh",
 	],
 	organizationConsoleComponentFile,
@@ -1852,8 +1910,8 @@ checkIncludesAll(
 		"recentAuthentication",
 		"authoritativeOrganizationData",
 		"dataUnavailable",
-		"50 teams and 100 organization members per team",
-		"Up to 25 organization-scoped role definitions",
+		"messages.teamsDescription",
+		"messages.customRolesDescription",
 	],
 	advancedOrganizationComponentFile,
 	"advanced organization UX must remain bounded, fresh-session protected, and fail closed on missing data",
@@ -1894,11 +1952,11 @@ checkIncludesAll(
 		"useOrganizationAuditPageQuery",
 		"loadOrganizationAuditExport",
 		"getOrganizationAuditDateRange",
-		"Export JSON",
-		"Export CSV",
-		"Apply filters",
-		"No cached events or exports are shown",
-		"10,000 events and fail rather than truncate",
+		"messages.exportJson",
+		"messages.exportCsv",
+		"messages.applyFilters",
+		"messages.activityUnavailableDescription",
+		"messages.auditPagination",
 	],
 	organizationAuditComponentFile,
 	"organization audit UX must provide authoritative filtering, pagination, and bounded JSON/CSV export",
@@ -1934,13 +1992,13 @@ checkIncludesAll(
 	enterpriseConnectionsComponentTs,
 	[
 		"recentAuthentication",
-		"Fresh sign-in required for changes",
-		"No cached token connection data is shown",
+		"messages.freshSignInChanges",
+		"messages.scimInventoryUnavailableDescription",
 		"SSOProviderManager",
 		"useSCIMTokenGenerateMutation",
 		"useSCIMProviderRevokeMutation",
-		"Copy this SCIM token now",
-		"CinaSeek stores only a hash",
+		"messages.copyScimTokenNow",
+		"messages.copyScimTokenNowDescription",
 		"router.refresh",
 	],
 	enterpriseConnectionsComponentFile,
@@ -1959,9 +2017,9 @@ checkIncludesAll(
 		"useSSOProviderDeleteMutation",
 		"useSSODomainVerificationRequestMutation",
 		"useSSODomainVerificationMutation",
-		"Sensitive values are sent",
-		"Stored credentials are never loaded",
-		"linked SSO account records",
+		"messages.ssoConfigurationDescription",
+		"messages.storedCredentialsDescription",
+		"messages.deleteSsoProviderDescription",
 		"router.refresh",
 	],
 	ssoProviderManagerFile,
@@ -2068,8 +2126,8 @@ checkIncludesAll(
 		'"/api/auth/oauth2/client/rotate-secret"',
 		'"/api/auth/oauth2/delete-client"',
 		'"/api/auth/oauth2/delete-consent"',
-		"Copy this client secret now",
-		"shown only once",
+		"messages.copyClientSecretNow",
+		"messages.copyClientSecretDescription",
 		"secretAcknowledged",
 		"https://auth.cinaseek.ai/api/auth/device/code",
 		"https://auth.cinaseek.ai/api/auth/device/token",
@@ -2276,7 +2334,7 @@ checkIncludesAll(
 		"PRIVACY_ASYNC_EXPORT_PATH",
 		"parsePrivacyAsyncExportStatus",
 		"AbortController",
-		"Credential secrets stay excluded",
+		"messages.credentialSecretsExcluded",
 		'Link href="/dashboard/security#delete-account"',
 	],
 	privacyCenterComponentFile,
@@ -2698,9 +2756,9 @@ checkIncludesAll(
 	subscriptionCardTs,
 	[
 		"useSubscriptionListQuery(billingEnabled)",
-		"Current access mode: Unmetered.",
-		"Entitlement status is temporarily unavailable.",
-		"No checkout or subscription request will be sent",
+		"messages.unmeteredAccess",
+		"messages.entitlementsUnavailable",
+		"messages.billingNotReady",
 	],
 	subscriptionCardFile,
 	"the subscription card must not query or offer mutations while billing is disabled",
@@ -4388,9 +4446,15 @@ checkIncludesAll(
 );
 checkIncludesAll(
 	accountSignInPage,
-	['title="Sign in or create your account"'],
+	["SignInPageShell"],
 	accountSignInPageFile,
 	"the Account Portal must expose a single sign-in-or-create entry",
+);
+checkIncludesAll(
+	accountSignInPageShell,
+	["messages.signInPageTitle"],
+	accountSignInPageShellFile,
+	"the Account Portal sign-in shell must render its localized unified-entry title",
 );
 checkIncludesAll(
 	accountSignInComponent,
@@ -4398,7 +4462,7 @@ checkIncludesAll(
 		"completeEmailOtpAuthentication",
 		"hasSignedOidcCreatePrompt",
 		"created: true",
-		"New wallet? We'll create your account after you verify the",
+		"messages.newWalletAccount",
 	],
 	accountSignInComponentFile,
 	"the unified entry must preserve create-prompt continuation and explain first-wallet account creation",
