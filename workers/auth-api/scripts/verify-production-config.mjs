@@ -212,6 +212,7 @@ const adminSocialProvidersFile = join(
 	"src",
 	"admin-social-providers.ts",
 );
+const adminAgentAuthFile = join(workerDir, "src", "admin-agent-auth.ts");
 const captchaConfigFile = join(workerDir, "src", "captcha-config.ts");
 const capabilitiesFile = join(workerDir, "src", "capabilities.ts");
 const socialProviderStoreFile = join(
@@ -977,6 +978,7 @@ const authTs = read(authFile);
 const authRoutingTs = read(authRoutingFile);
 const authenticationMethodGateTs = read(authenticationMethodGateFile);
 const adminSocialProvidersTs = read(adminSocialProvidersFile);
+const adminAgentAuthTs = read(adminAgentAuthFile);
 const captchaConfigTs = read(captchaConfigFile);
 const capabilitiesTs = read(capabilitiesFile);
 const socialProviderStoreTs = read(socialProviderStoreFile);
@@ -1269,6 +1271,37 @@ checkIncludesAll(
 	],
 	adminSocialProvidersFile,
 	"admin authentication changes must require policy permission, reject unavailable methods, and prevent lockout",
+);
+checkIncludesAll(
+	adminAgentAuthTs,
+	[
+		'"integration.agent-auth.read"',
+		'"integration.agent-auth.manage"',
+		"session.session.impersonatedBy",
+		"origin !== allowedOrigin",
+		"isFreshSession(session.session.createdAt)",
+		"RATE_LIMIT_UNAVAILABLE",
+		'phase: "intent"',
+		'phase: "outcome"',
+		'FROM "agent" AS "agent"',
+		'FROM "agentHost" AS "host"',
+		'FROM "agentCapabilityGrant" AS "grant"',
+		'FROM "approvalRequest" AS "approval"',
+	],
+	adminAgentAuthFile,
+	"Agent Auth administration must stay permission-scoped, redacted, fresh-authenticated, origin-bound, rate-limited, and audited",
+);
+checkIncludesAll(
+	indexTs,
+	[
+		'"/api/auth/admin/agent-auth"',
+		'"/api/auth/admin/agent-auth/agents/:id/revoke"',
+		'"/api/auth/admin/agent-auth/hosts/:id/revoke"',
+		'"/api/auth/admin/agent-auth/grants/:id/revoke"',
+		'"/api/auth/admin/agent-auth/approvals/:id/deny"',
+	],
+	indexFile,
+	"the Auth Worker must expose the governed Agent Auth administration routes",
 );
 checkIncludesAll(
 	originConfigTs,
