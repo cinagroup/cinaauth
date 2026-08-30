@@ -13,6 +13,7 @@ describe("Accounts card-first sign-in contract", () => {
 		const providerSource = readSource(
 			"../components/oauth-provider-buttons.tsx",
 		);
+		const i18nSource = readSource("./i18n.ts");
 
 		expect(source).toContain("<EmailOtpForm");
 		expect(source).toContain("window.location.href = path");
@@ -21,18 +22,22 @@ describe("Accounts card-first sign-in contract", () => {
 		expect(source).toContain("<OAuthProviderButtons");
 		expect(source).toContain("signInPolicy.allowFederatedProviders");
 		expect(source).not.toContain("Magic Link");
-		expect(source).toContain("Continue with passkey");
+		expect(source).toContain("messages.continuePasskey");
+		expect(i18nSource).toContain('continuePasskey: "Continue with passkey"');
 		expect(source).toContain("signIn.passkey");
 		expect(formSource).toContain('autoComplete="one-time-code"');
 		expect(formSource).toContain("existingUserOnly");
 		expect(source).toContain("completeEmailOtpAuthentication");
-		expect(source).toContain(
-			"New wallet? We'll create your account after you verify the",
+		expect(source).toContain("messages.newWalletAccount");
+		expect(i18nSource).toContain(
+			'newWalletAccount:\n\t\t"New wallet? We\'ll create your account after you verify the signature.",',
 		);
 		expect(clientSource).not.toContain("usernameClient");
 		expect(clientSource).not.toContain("magicLinkClient");
 		expect(clientSource).not.toContain("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
-		expect(providerSource).toContain("<FieldSeparator>Or</FieldSeparator>");
+		expect(providerSource).toContain(
+			"<FieldSeparator>{messages.or}</FieldSeparator>",
+		);
 		expect(providerSource).toContain('data-icon="inline-start"');
 		expect(providerSource).toContain("authClient.signIn.social");
 		expect(providerSource).toContain("oneTapClient");

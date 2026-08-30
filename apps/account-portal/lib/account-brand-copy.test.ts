@@ -4,16 +4,23 @@ import { describe, expect, it } from "vitest";
 describe("CinaSeek account brand copy", () => {
 	it("presents the homepage as the CinaSeek Identity account center", () => {
 		const homepageSource = readFileSync(
-			new URL("../app/page.tsx", import.meta.url),
+			new URL("../components/home-page.tsx", import.meta.url),
 			"utf8",
 		);
+		const i18nSource = readFileSync(
+			new URL("./i18n.ts", import.meta.url),
+			"utf8",
+		);
+		const localizedHomepageSource = `${homepageSource}\n${i18nSource}`;
 
-		expect(homepageSource).toContain("CinaSeek Identity account center");
-		expect(homepageSource).toContain("Email code sign-in");
-		expect(homepageSource).not.toContain("Official demo");
-		expect(homepageSource).not.toContain("cinaauth");
-		expect(homepageSource).not.toContain("Email & Password");
-		expect(homepageSource).not.toContain("Password Reset");
+		expect(localizedHomepageSource).toContain(
+			"CinaSeek Identity account center",
+		);
+		expect(localizedHomepageSource).toContain("Email code sign-in");
+		expect(localizedHomepageSource).not.toContain("Official demo");
+		expect(localizedHomepageSource).not.toContain("cinaauth");
+		expect(localizedHomepageSource).not.toContain("Email & Password");
+		expect(localizedHomepageSource).not.toContain("Password Reset");
 	});
 
 	it("keeps account, consent, security, privacy, and organization copy on the CinaSeek brand", () => {
@@ -45,15 +52,19 @@ describe("CinaSeek account brand copy", () => {
 			new URL("../app/dashboard/security/security-center.tsx", import.meta.url),
 			"utf8",
 		);
-		const normalizedSecurityCenterSource = securityCenterSource.replace(
-			/\s+/g,
-			" ",
+		const dashboardI18nSource = readFileSync(
+			new URL("./dashboard-i18n.ts", import.meta.url),
+			"utf8",
 		);
+		const localizedSecuritySource = `${securityCenterSource}\n${dashboardI18nSource}`;
 
-		expect(normalizedSecurityCenterSource).toContain(
+		expect(securityCenterSource).toContain(
+			"messages.personalApiKeysDescription",
+		);
+		expect(localizedSecuritySource).toContain(
 			"Create personal credentials bound to this account for scripts and integrations.",
 		);
-		expect(normalizedSecurityCenterSource).not.toContain(
+		expect(localizedSecuritySource).not.toContain(
 			"Create scoped CinaSeek credentials",
 		);
 	});

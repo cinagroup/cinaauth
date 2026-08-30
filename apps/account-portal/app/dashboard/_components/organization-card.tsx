@@ -3,6 +3,7 @@
 import { ChevronDownIcon } from "@radix-ui/react-icons";
 import { Settings2 } from "lucide-react";
 import Link from "next/link";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import { useOrganizationDetailQuery } from "@/data/organization/organization-det
 import { useOrganizationListQuery } from "@/data/organization/organization-list-query";
 import { useSessionQuery } from "@/data/user/session-query";
 import type { Session } from "@/lib/auth";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import { getOrganizationRoleLabel } from "@/lib/organization-console";
 
 const OrganizationCard = (props: { session: Session | null }) => {
@@ -27,23 +29,26 @@ const OrganizationCard = (props: { session: Session | null }) => {
 	const { data: activeOrganization, isFetching: isOrganizationFetching } =
 		useOrganizationDetailQuery();
 	const setActiveMutation = useOrganizationActiveMutation();
+	const { locale, messages } = useDashboardI18n();
 	const session = sessionData || props.session;
 	const pendingInvitations =
 		activeOrganization?.invitations?.filter(
 			(invitation) => invitation.status === "pending",
 		) ?? [];
 
-	if (isOrganizationFetching) return <OrganizationCardSkeleton />;
+	if (isOrganizationFetching) {
+		return <OrganizationCardSkeleton title={messages.organizationCardTitle} />;
+	}
 
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Organization</CardTitle>
+				<CardTitle>{messages.organizationCardTitle}</CardTitle>
 				<div className="flex justify-between">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="ghost" size="sm" className="gap-1 px-0">
-								{activeOrganization?.name || "Personal"}
+								{activeOrganization?.name || messages.personal}
 								<ChevronDownIcon />
 							</Button>
 						</DropdownMenuTrigger>
@@ -53,7 +58,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 									setActiveMutation.mutate({ organizationId: null })
 								}
 							>
-								Personal
+								{messages.personal}
 							</DropdownMenuItem>
 							{organizations?.map((organization) => (
 								<DropdownMenuItem
@@ -73,7 +78,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 					</DropdownMenu>
 					<Button asChild size="sm" variant="outline">
 						<Link href="/dashboard/organization">
-							<Settings2 className="mr-2 h-4 w-4" /> Manage
+							<Settings2 className="mr-2 h-4 w-4" /> {messages.manage}
 						</Link>
 					</Button>
 				</div>
@@ -89,9 +94,13 @@ const OrganizationCard = (props: { session: Session | null }) => {
 						</AvatarFallback>
 					</Avatar>
 					<div>
-						<p>{activeOrganization?.name || "Personal workspace"}</p>
+						<p>
+							{activeOrganization?.name || messages.personalWorkspace}
+						</p>
 						<p className="text-xs text-muted-foreground">
-							{activeOrganization?.members?.length || 1} members
+							{formatDashboardMessage(messages.membersCount, {
+								count: String(activeOrganization?.members?.length || 1),
+							})}
 						</p>
 					</div>
 				</div>
@@ -100,7 +109,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 				<div className="flex flex-col gap-8 md:flex-row">
 					<div className="flex grow flex-col gap-2">
 						<p className="border-b-2 border-b-foreground/10 font-medium">
-							Members
+							{messages.members}
 						</p>
 						{activeOrganization?.members?.map((member) => (
 							<div key={member.id} className="flex items-center gap-2">
@@ -111,7 +120,7 @@ const OrganizationCard = (props: { session: Session | null }) => {
 								<div>
 									<p className="text-sm">{member.user.name}</p>
 									<p className="text-xs text-muted-foreground">
-										{getOrganizationRoleLabel(member.role)}
+										{getOrganizationRoleLabel(member.role, locale)}
 									</p>
 								</div>
 							</div>
@@ -126,31 +135,33 @@ const OrganizationCard = (props: { session: Session | null }) => {
 								</Avatar>
 								<div>
 									<p className="text-sm">{session?.user.name}</p>
-									<p className="text-xs text-muted-foreground">Owner</p>
+									<p className="text-xs text-muted-foreground">
+										{messages.owner}
+									</p>
 								</div>
 							</div>
 						)}
 					</div>
 					<div className="flex grow flex-col gap-2">
 						<p className="border-b-2 border-b-foreground/10 font-medium">
-							Pending invitations
+							{messages.pendingInvitations}
 						</p>
 						{pendingInvitations.map((invitation) => (
 							<div key={invitation.id}>
 								<p className="text-sm">{invitation.email}</p>
 								<p className="text-xs text-muted-foreground">
-									{getOrganizationRoleLabel(invitation.role)}
+									{getOrganizationRoleLabel(invitation.role, locale)}
 								</p>
 							</div>
 						))}
 						{pendingInvitations.length === 0 && (
 							<p className="text-sm text-muted-foreground">
-								No active invitations
+								{messages.noActiveInvitations}
 							</p>
 						)}
 						{!activeOrganization?.id && (
 							<Label className="text-xs text-muted-foreground">
-								Personal workspaces do not have invitations.
+								{messages.personalNoInvitations}
 							</Label>
 						)}
 					</div>
@@ -162,11 +173,11 @@ const OrganizationCard = (props: { session: Session | null }) => {
 
 export default OrganizationCard;
 
-function OrganizationCardSkeleton() {
+function OrganizationCardSkeleton({ title }: { title: string }) {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Organization</CardTitle>
+				<CardTitle>{title}</CardTitle>
 				<div className="flex justify-between mt-2">
 					<Skeleton className="h-5 w-24" />
 					<Skeleton className="h-8 w-24" />

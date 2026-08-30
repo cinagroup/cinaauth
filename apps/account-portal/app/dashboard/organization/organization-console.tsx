@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { CreateOrganizationForm } from "@/components/forms/create-organization-form";
 import { InviteMemberForm } from "@/components/forms/invite-member-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -72,6 +73,7 @@ import type {
 import { hasOrganizationPermission } from "@/lib/advanced-organization-console";
 import type { SCIMProviderConnection, SSOProviderSummary } from "@/lib/auth";
 import { authClient } from "@/lib/auth-client";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type {
 	OrganizationDetail,
 	OrganizationMember,
@@ -143,6 +145,7 @@ export function OrganizationConsole({
 	enterpriseDataUnavailable,
 	dataUnavailable,
 }: OrganizationConsoleProps) {
+	const { locale, messages } = useDashboardI18n();
 	const router = useRouter();
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -154,22 +157,22 @@ export function OrganizationConsole({
 
 	const recentAuthentication = isSessionRecent(currentSessionCreatedAt);
 	const entitlementFeatureLabels = {
-		sso: "Enterprise SSO",
-		scim: "SCIM provisioning",
-		organizationAudit: "Organization audit",
-		teams: "Teams",
-		dynamicRoles: "Dynamic roles",
-		oauthClients: "OAuth clients",
-		apiKeys: "API keys",
+		sso: messages.enterpriseSso,
+		scim: messages.scimProvisioning,
+		organizationAudit: messages.organizationAudit,
+		teams: messages.teams,
+		dynamicRoles: messages.dynamicRoles,
+		oauthClients: messages.oauthClients,
+		apiKeys: messages.apiKeys,
 	} satisfies Record<EntitlementFeature, string>;
 	const entitlementLimitLabels = {
-		organizationMembers: "Organization members",
-		teams: "Teams",
-		teamMembers: "Members per team",
-		dynamicRoles: "Dynamic roles",
-		oauthClients: "OAuth clients",
-		apiKeys: "API keys",
-		auditRetentionDays: "Audit retention (days)",
+		organizationMembers: messages.organizationMembers,
+		teams: messages.teams,
+		teamMembers: messages.membersPerTeam,
+		dynamicRoles: messages.dynamicRoles,
+		oauthClients: messages.oauthClients,
+		apiKeys: messages.apiKeys,
+		auditRetentionDays: messages.auditRetentionDays,
 	} satisfies Record<EntitlementLimit, string>;
 	const currentMember = initialOrganization?.members.find(
 		(member) => member.userId === currentUser.id,
@@ -241,7 +244,7 @@ export function OrganizationConsole({
 			router.push("/sign-in?callbackURL=/dashboard/organization");
 		} catch {
 			setReauthenticating(false);
-			toast.error("Unable to start a fresh sign-in");
+			toast.error(messages.unableFreshSignIn);
 		}
 	};
 
@@ -273,22 +276,22 @@ export function OrganizationConsole({
 			invitationId,
 		);
 		if (!invitationURL) {
-			toast.error("Unable to build a safe invitation link");
+			toast.error(messages.unableBuildInvitationLink);
 			return;
 		}
 		try {
 			await navigator.clipboard.writeText(invitationURL);
-			toast.success("Invitation link copied");
+			toast.success(messages.invitationLinkCopied);
 		} catch {
-			toast.error("Copy failed. Copy the invitation from its email instead.");
+			toast.error(messages.copyInvitationFailed);
 		}
 	};
 
 	return (
 		<div className="mx-auto w-full max-w-6xl">
 			<DashboardPageHeader
-				title="Organization Console"
-				description="Manage membership, roles, and pending invitations."
+				titleKey="organizationTitle"
+				descriptionKey="organizationDescription"
 			>
 				<div className="flex w-full gap-2 sm:w-auto">
 					<Select
@@ -300,12 +303,14 @@ export function OrganizationConsole({
 					>
 						<SelectTrigger
 							className="min-w-48"
-							aria-label="Active organization"
+							aria-label={messages.activeOrganization}
 						>
-							<SelectValue placeholder="Select an organization" />
+							<SelectValue placeholder={messages.selectOrganization} />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="personal">Personal workspace</SelectItem>
+							<SelectItem value="personal">
+								{messages.personalWorkspace}
+							</SelectItem>
 							{initialOrganizations.map((organization) => (
 								<SelectItem key={organization.id} value={organization.id}>
 									{organization.name}
@@ -320,14 +325,14 @@ export function OrganizationConsole({
 									!recentAuthentication || dataUnavailable.organizations
 								}
 							>
-								<Plus className="mr-2 h-4 w-4" /> New
+								<Plus className="mr-2 h-4 w-4" /> {messages.new}
 							</Button>
 						</DialogTrigger>
 						<DialogContent>
 							<DialogHeader>
-								<DialogTitle>Create organization</DialogTitle>
+								<DialogTitle>{messages.createOrganization}</DialogTitle>
 								<DialogDescription>
-									Create an isolated workspace for a team or product.
+									{messages.createOrganizationDescription}
 								</DialogDescription>
 							</DialogHeader>
 							<CreateOrganizationForm
@@ -346,14 +351,14 @@ export function OrganizationConsole({
 					<AlertTriangle className="h-4 w-4" />
 					<AlertTitle>
 						{recentAuthentication
-							? "Organization data is temporarily unavailable"
-							: "Recent authentication required"}
+							? messages.organizationDataUnavailable
+							: messages.recentAuthenticationRequired}
 					</AlertTitle>
 					<AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<span>
 							{recentAuthentication
-								? "Role and invitation controls stay disabled until authoritative organization data can be loaded."
-								: "Sign in again before changing organization membership, roles, or invitations."}
+								? messages.organizationDataUnavailableDescription
+								: messages.recentAuthenticationOrganizationDescription}
 						</span>
 						{!recentAuthentication && (
 							<Button
@@ -365,7 +370,7 @@ export function OrganizationConsole({
 								{reauthenticating && (
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 								)}
-								Sign in again
+								{messages.signInAgain}
 							</Button>
 						)}
 					</AlertDescription>
@@ -377,7 +382,7 @@ export function OrganizationConsole({
 					<div className="grid gap-4 md:grid-cols-3">
 						<Card>
 							<CardHeader className="pb-2">
-								<CardDescription>Active workspace</CardDescription>
+								<CardDescription>{messages.activeWorkspace}</CardDescription>
 								<CardTitle className="flex items-center gap-2 text-lg">
 									<Avatar className="h-8 w-8">
 										<AvatarImage src={initialOrganization.logo || undefined} />
@@ -394,7 +399,7 @@ export function OrganizationConsole({
 						</Card>
 						<Card>
 							<CardHeader className="pb-2">
-								<CardDescription>Members</CardDescription>
+								<CardDescription>{messages.members}</CardDescription>
 								<CardTitle className="flex items-center gap-2 text-2xl">
 									<Users className="h-5 w-5 text-muted-foreground" />
 									{initialOrganization.members.length}
@@ -403,7 +408,9 @@ export function OrganizationConsole({
 						</Card>
 						<Card>
 							<CardHeader className="pb-2">
-								<CardDescription>Pending invitations</CardDescription>
+								<CardDescription>
+									{messages.pendingInvitations}
+								</CardDescription>
 								<CardTitle className="flex items-center gap-2 text-2xl">
 									<MailPlus className="h-5 w-5 text-muted-foreground" />
 									{pendingInvitations.length}
@@ -415,10 +422,9 @@ export function OrganizationConsole({
 					<Card>
 						<CardHeader className="flex flex-row items-start justify-between gap-4">
 							<div>
-								<CardTitle>Plan and entitlements</CardTitle>
+								<CardTitle>{messages.planAndEntitlements}</CardTitle>
 								<CardDescription>
-									This authoritative policy is enforced again by the Auth Worker
-									for protected operations.
+									{messages.planAndEntitlementsDescription}
 								</CardDescription>
 							</div>
 							{initialEntitlements ? (
@@ -430,17 +436,18 @@ export function OrganizationConsole({
 								<Alert>
 									<AlertTriangle className="h-4 w-4" />
 									<AlertTitle>
-										Plan policy is temporarily unavailable
+										{messages.planPolicyUnavailable}
 									</AlertTitle>
 									<AlertDescription>
-										Protected operations remain fail-closed until the current
-										policy can be loaded.
+										{messages.planPolicyUnavailableDescription}
 									</AlertDescription>
 								</Alert>
 							) : (
 								<>
 									<div>
-										<p className="mb-2 text-sm font-medium">Features</p>
+										<p className="mb-2 text-sm font-medium">
+											{messages.features}
+										</p>
 										<div className="flex flex-wrap gap-2">
 											{Object.entries(initialEntitlements.features).map(
 												([feature, enabled]) => (
@@ -453,14 +460,18 @@ export function OrganizationConsole({
 																feature as EntitlementFeature
 															]
 														}{" "}
-														{enabled ? "enabled" : "unavailable"}
+												{enabled
+													? messages.featureEnabled
+													: messages.featureUnavailable}
 													</Badge>
 												),
 											)}
 										</div>
 									</div>
 									<div>
-										<p className="mb-2 text-sm font-medium">Limits</p>
+										<p className="mb-2 text-sm font-medium">
+											{messages.limits}
+										</p>
 										<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 											{Object.entries(initialEntitlements.limits).map(
 												([limit, value]) => (
@@ -476,7 +487,7 @@ export function OrganizationConsole({
 															}
 														</span>
 														<span className="font-medium">
-															{value === null ? "Unlimited" : value}
+															{value === null ? messages.unlimited : value}
 														</span>
 													</div>
 												),
@@ -491,14 +502,16 @@ export function OrganizationConsole({
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between gap-4">
 							<div>
-								<CardTitle>Members</CardTitle>
+								<CardTitle>{messages.members}</CardTitle>
 								<CardDescription>
-									Role changes are checked again by the CinaSeek organization
-									policy.
+									{messages.membersPolicyDescription}
 								</CardDescription>
 							</div>
 							<Badge variant="secondary">
-								{getOrganizationRoleLabel(currentMember?.role ?? "member")}
+								{getOrganizationRoleLabel(
+									currentMember?.role ?? "member",
+									locale,
+								)}
 							</Badge>
 						</CardHeader>
 						<CardContent className="space-y-3">
@@ -538,7 +551,8 @@ export function OrganizationConsole({
 											</Avatar>
 											<div className="min-w-0">
 												<p className="truncate text-sm font-medium">
-													{member.user.name} {isCurrentUser && "(you)"}
+											{member.user.name}{" "}
+											{isCurrentUser && `(${messages.you})`}
 												</p>
 												<p className="truncate text-xs text-muted-foreground">
 													{member.user.email}
@@ -547,7 +561,7 @@ export function OrganizationConsole({
 										</div>
 										<div className="flex items-center gap-2">
 											<Badge variant="outline">
-												{getOrganizationRoleLabel(member.role)}
+										{getOrganizationRoleLabel(member.role, locale)}
 											</Badge>
 											<AdvancedMemberRoleEditor
 												member={member}
@@ -570,7 +584,10 @@ export function OrganizationConsole({
 																deleteMutationDisabled ||
 																removeMemberMutation.isPending
 															}
-															aria-label={`Remove ${member.user.name}`}
+													aria-label={formatDashboardMessage(
+														messages.removeNamedItem,
+														{ name: member.user.name },
+													)}
 														>
 															<Trash2 className="h-4 w-4" />
 														</Button>
@@ -578,19 +595,22 @@ export function OrganizationConsole({
 													<AlertDialogContent>
 														<AlertDialogHeader>
 															<AlertDialogTitle>
-																Remove {member.user.name}?
+														{formatDashboardMessage(messages.removeMemberTitle, {
+															name: member.user.name,
+														})}
 															</AlertDialogTitle>
 															<AlertDialogDescription>
-																They will immediately lose access to this
-																organization.
+														{messages.removeMemberDescription}
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
-															<AlertDialogCancel>Cancel</AlertDialogCancel>
+													<AlertDialogCancel>
+														{messages.cancel}
+													</AlertDialogCancel>
 															<AlertDialogAction
 																onClick={() => removeMember(member)}
 															>
-																Remove member
+														{messages.removeMember}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
@@ -618,10 +638,9 @@ export function OrganizationConsole({
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between gap-4">
 							<div>
-								<CardTitle>Invitations</CardTitle>
+								<CardTitle>{messages.invitations}</CardTitle>
 								<CardDescription>
-									Pending links expire automatically and can be revoked at any
-									time.
+									{messages.invitationsDescription}
 								</CardDescription>
 							</div>
 							<Dialog
@@ -636,14 +655,14 @@ export function OrganizationConsole({
 											!authoritativeOrganizationData
 										}
 									>
-										<MailPlus className="mr-2 h-4 w-4" /> Invite
+										<MailPlus className="mr-2 h-4 w-4" /> {messages.invite}
 									</Button>
 								</DialogTrigger>
 								<DialogContent>
 									<DialogHeader>
-										<DialogTitle>Invite a member</DialogTitle>
+										<DialogTitle>{messages.inviteMember}</DialogTitle>
 										<DialogDescription>
-											Send an invitation with a least-privilege starting role.
+											{messages.inviteMemberDescription}
 										</DialogDescription>
 									</DialogHeader>
 									<InviteMemberForm
@@ -669,11 +688,16 @@ export function OrganizationConsole({
 												</p>
 												<div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 													<Badge variant="outline">
-														{getOrganizationRoleLabel(invitation.role)}
+													{getOrganizationRoleLabel(invitation.role, locale)}
 													</Badge>
 													<span className="flex items-center gap-1">
-														<CalendarDays className="h-3 w-3" /> Expires{" "}
-														{formatOrganizationDate(invitation.expiresAt)}
+													<CalendarDays className="h-3 w-3" />
+													{formatDashboardMessage(messages.expiresOn, {
+														date: formatOrganizationDate(
+															invitation.expiresAt,
+															locale,
+														),
+													})}
 													</span>
 												</div>
 											</div>
@@ -683,7 +707,7 @@ export function OrganizationConsole({
 													size="sm"
 													onClick={() => copyInvitationLink(invitation.id)}
 												>
-													<Copy className="mr-2 h-4 w-4" /> Copy link
+												<Copy className="mr-2 h-4 w-4" /> {messages.copyLink}
 												</Button>
 												<Button
 													variant="destructive"
@@ -696,7 +720,7 @@ export function OrganizationConsole({
 														cancelInvitationMutation.isPending
 													}
 												>
-													Revoke
+												{messages.revoke}
 												</Button>
 											</div>
 										</div>
@@ -704,7 +728,7 @@ export function OrganizationConsole({
 								</div>
 							) : (
 								<p className="text-sm text-muted-foreground">
-									No active invitations.
+									{messages.noActiveInvitationsPeriod}
 								</p>
 							)}
 						</CardContent>
@@ -734,25 +758,25 @@ export function OrganizationConsole({
 
 					<Card className="border-destructive/40">
 						<CardHeader>
-							<CardTitle>Leave organization</CardTitle>
+							<CardTitle>{messages.leaveOrganization}</CardTitle>
 							<CardDescription>
-								Remove your own membership from this organization.
+								{messages.leaveOrganizationDescription}
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							{onlyOwnerCannotLeave ? (
 								<Alert variant="destructive">
 									<AlertTriangle className="h-4 w-4" />
-									<AlertTitle>Transfer ownership before leaving</AlertTitle>
+									<AlertTitle>
+										{messages.transferOwnershipBeforeLeaving}
+									</AlertTitle>
 									<AlertDescription>
-										An organization must retain at least one owner. Promote
-										another member before removing your membership.
+										{messages.transferOwnershipDescription}
 									</AlertDescription>
 								</Alert>
 							) : (
 								<p className="text-sm text-muted-foreground">
-									You will immediately lose access to shared resources and must
-									be reinvited to return.
+									{messages.leaveOrganizationImpact}
 								</p>
 							)}
 							<AlertDialog>
@@ -771,26 +795,31 @@ export function OrganizationConsole({
 										) : (
 											<LogOut className="mr-2 h-4 w-4" />
 										)}
-										Leave {initialOrganization.name}
+									{formatDashboardMessage(messages.leaveNamedOrganization, {
+										name: initialOrganization.name,
+									})}
 									</Button>
 								</AlertDialogTrigger>
 								<AlertDialogContent>
 									<AlertDialogHeader>
 										<AlertDialogTitle>
-											Leave {initialOrganization.name}?
+										{formatDashboardMessage(messages.leaveOrganizationTitle, {
+											name: initialOrganization.name,
+										})}
 										</AlertDialogTitle>
 										<AlertDialogDescription>
-											This removes your membership immediately and cannot be
-											undone without a new invitation.
+										{messages.leaveOrganizationDialogDescription}
 										</AlertDialogDescription>
 									</AlertDialogHeader>
 									<AlertDialogFooter>
-										<AlertDialogCancel>Keep membership</AlertDialogCancel>
+									<AlertDialogCancel>
+										{messages.keepMembership}
+									</AlertDialogCancel>
 										<AlertDialogAction
 											onClick={leaveActiveOrganization}
 											className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 										>
-											Leave organization
+										{messages.leaveOrganization}
 										</AlertDialogAction>
 									</AlertDialogFooter>
 								</AlertDialogContent>
@@ -802,11 +831,10 @@ export function OrganizationConsole({
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							<ShieldCheck className="h-5 w-5" /> Personal workspace
+							<ShieldCheck className="h-5 w-5" /> {messages.personalWorkspace}
 						</CardTitle>
 						<CardDescription>
-							Select an existing organization or create one to manage shared
-							access.
+							{messages.personalWorkspaceDescription}
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="flex items-center gap-3">

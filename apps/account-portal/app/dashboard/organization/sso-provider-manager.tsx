@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
 	AlertDialog,
@@ -56,6 +57,10 @@ import {
 	useSSOProviderDeleteMutation,
 } from "@/data/organization/enterprise-connection-mutations";
 import type { SCIMProviderConnection, SSOProviderSummary } from "@/lib/auth";
+import {
+	formatDashboardMessage,
+	type DashboardMessages,
+} from "@/lib/dashboard-i18n";
 import type {
 	ProviderDraft,
 	ProviderEditorMode,
@@ -85,16 +90,54 @@ type SSOProviderManagerProps = {
 	unavailable: boolean;
 };
 
-const copyValue = async (value: string, label: string) => {
+const localizeProviderError = (
+	error: string | null,
+	messages: DashboardMessages,
+) => {
+	if (!error) return error;
+	const localizedErrors: Record<string, string> = {
+		"Enter a stable provider ID.": messages.providerIdRequired,
+		"Provider ID must be 64 characters or less.": messages.providerIdTooLong,
+		"Provider ID may contain lowercase letters, numbers, hyphens, and underscores.":
+			messages.providerIdCharacters,
+		"That provider ID is already in use.": messages.providerIdInUse,
+		"Issuer must be an HTTPS URL.": messages.issuerHttpsRequired,
+		"Enter one or more email domains separated by commas, without paths or schemes.":
+			messages.emailDomainsRequired,
+		"OIDC client ID is required.": messages.oidcClientIdRequired,
+		"OIDC client secret is required.": messages.oidcClientSecretRequired,
+		"Enter both replacement client ID and client secret, or leave both blank.":
+			messages.oidcReplacementCredentials,
+		"OIDC scopes must include openid.": messages.oidcOpenidRequired,
+		"All configured OIDC endpoints must use HTTPS.":
+			messages.oidcEndpointsHttps,
+		"Manual OIDC configuration requires authorization, token, and JWKS endpoints.":
+			messages.oidcManualEndpointsRequired,
+		"Paste the IdP metadata XML.": messages.idpMetadataRequired,
+		"IdP metadata must not exceed 100 KiB.": messages.idpMetadataTooLarge,
+		"SAML entry point must be an HTTPS URL.": messages.samlEntryPointHttps,
+		"Paste the IdP signing certificate.": messages.idpCertificateRequired,
+		"IdP-initiated fallback must be a same-origin path or HTTPS URL.":
+			messages.idpFallbackInvalid,
+	};
+	return localizedErrors[error] ?? error;
+};
+
+const copyValue = async (
+	value: string,
+	label: string,
+	messages: DashboardMessages,
+) => {
 	try {
 		await navigator.clipboard.writeText(value);
-		toast.success(`${label} copied`);
+		toast.success(formatDashboardMessage(messages.valueCopied, { label }));
 	} catch {
-		toast.error(`Unable to copy ${label.toLowerCase()}`);
+		toast.error(formatDashboardMessage(messages.unableCopyValue, { label }));
 	}
 };
 
 function CopyableEndpoint({ label, value }: { label: string; value: string }) {
+	const { messages } = useDashboardI18n();
 	return (
 		<div className="space-y-2 rounded-lg border p-3">
 			<div className="flex items-center justify-between gap-3">
@@ -103,9 +146,9 @@ function CopyableEndpoint({ label, value }: { label: string; value: string }) {
 					type="button"
 					size="sm"
 					variant="ghost"
-					onClick={() => copyValue(value, label)}
+					onClick={() => copyValue(value, label, messages)}
 				>
-					<Copy className="h-4 w-4" /> Copy
+					<Copy className="h-4 w-4" /> {messages.copy}
 				</Button>
 			</div>
 			<code className="block break-all rounded bg-muted p-2 text-xs">
@@ -124,12 +167,13 @@ function ProviderEditorFields({
 	mode: ProviderEditorMode;
 	onChange: (draft: ProviderDraft) => void;
 }) {
+	const { messages } = useDashboardI18n();
 	const providerId = draft.providerId.trim().toLowerCase() || "provider-id";
 	return (
 		<div className="grid gap-5 py-2">
 			{mode === "create" ? (
 				<div className="grid gap-2">
-					<Label>Protocol</Label>
+					<Label>{messages.protocol}</Label>
 					<Select
 						value={draft.type}
 						onValueChange={(type: "oidc" | "saml") =>
@@ -155,7 +199,7 @@ function ProviderEditorFields({
 
 			<div className="grid gap-4 sm:grid-cols-2">
 				<div className="grid gap-2">
-					<Label htmlFor="sso-provider-id">Provider ID</Label>
+					<Label htmlFor="sso-provider-id">{messages.providerId}</Label>
 					<Input
 						id="sso-provider-id"
 						value={draft.providerId}
@@ -168,11 +212,11 @@ function ProviderEditorFields({
 					/>
 				</div>
 				<div className="grid gap-2">
-					<Label htmlFor="sso-domains">Email domains</Label>
+					<Label htmlFor="sso-domains">{messages.emailDomains}</Label>
 					<Input
 						id="sso-domains"
 						value={draft.domain}
-						placeholder="acme.example, subsidiary.example"
+						placeholder={messages.emailDomainsPlaceholder}
 						onChange={(event) =>
 							onChange({ ...draft, domain: event.target.value })
 						}
@@ -181,7 +225,9 @@ function ProviderEditorFields({
 			</div>
 			<div className="grid gap-2">
 				<Label htmlFor="sso-issuer">
-					{draft.type === "oidc" ? "OIDC issuer URL" : "IdP entity ID URL"}
+					{draft.type === "oidc"
+						? messages.oidcIssuerUrl
+						: messages.idpEntityIdUrl}
 				</Label>
 				<Input
 					id="sso-issuer"
@@ -199,14 +245,16 @@ function ProviderEditorFields({
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="grid gap-2">
 							<Label htmlFor="oidc-client-id">
-								{mode === "create" ? "Client ID" : "Replacement client ID"}
+								{mode === "create"
+									? messages.clientId
+									: messages.replacementClientId}
 							</Label>
 							<Input
 								id="oidc-client-id"
 								autoComplete="off"
 								value={draft.clientId}
 								placeholder={
-									mode === "edit" ? "Leave blank to keep" : "client-id"
+									mode === "edit" ? messages.leaveBlankToKeep : "client-id"
 								}
 								onChange={(event) =>
 									onChange({ ...draft, clientId: event.target.value })
@@ -216,15 +264,17 @@ function ProviderEditorFields({
 						<div className="grid gap-2">
 							<Label htmlFor="oidc-client-secret">
 								{mode === "create"
-									? "Client secret"
-									: "Replacement client secret"}
+									? messages.clientSecret
+									: messages.replacementClientSecret}
 							</Label>
 							<Input
 								id="oidc-client-secret"
 								type="password"
 								autoComplete="new-password"
 								value={draft.clientSecret}
-								placeholder={mode === "edit" ? "Leave blank to keep" : "secret"}
+								placeholder={
+									mode === "edit" ? messages.leaveBlankToKeep : "secret"
+								}
 								onChange={(event) =>
 									onChange({ ...draft, clientSecret: event.target.value })
 								}
@@ -233,12 +283,11 @@ function ProviderEditorFields({
 					</div>
 					{mode === "edit" ? (
 						<p className="text-xs text-muted-foreground">
-							Stored credentials are never loaded into this form. Enter both
-							fields only to rotate them.
+							{messages.storedCredentialsDescription}
 						</p>
 					) : null}
 					<div className="grid gap-2">
-						<Label htmlFor="oidc-discovery">Discovery endpoint</Label>
+						<Label htmlFor="oidc-discovery">{messages.discoveryEndpoint}</Label>
 						<Input
 							id="oidc-discovery"
 							type="url"
@@ -249,7 +298,7 @@ function ProviderEditorFields({
 							}
 						/>
 						<p className="text-xs text-muted-foreground">
-							Leave blank to use the issuer&apos;s standard discovery URL.
+							{messages.discoveryEndpointHint}
 						</p>
 					</div>
 					<label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
@@ -260,19 +309,21 @@ function ProviderEditorFields({
 							}
 						/>
 						<span>
-							<span className="font-medium">Configure endpoints manually</span>
+							<span className="font-medium">
+								{messages.configureEndpointsManually}
+							</span>
 							<span className="block text-xs text-muted-foreground">
-								Use only when the IdP does not publish OIDC discovery.
+								{messages.configureEndpointsManuallyHint}
 							</span>
 						</span>
 					</label>
 					{draft.manualOIDC ? (
 						<div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
 							{[
-								["Authorization endpoint", "authorizationEndpoint"],
-								["Token endpoint", "tokenEndpoint"],
-								["JWKS endpoint", "jwksEndpoint"],
-								["UserInfo endpoint (optional)", "userInfoEndpoint"],
+								[messages.authorizationEndpoint, "authorizationEndpoint"],
+								[messages.tokenEndpoint, "tokenEndpoint"],
+								[messages.jwksEndpoint, "jwksEndpoint"],
+								[messages.userInfoEndpointOptional, "userInfoEndpoint"],
 							].map(([label, field]) => (
 								<div key={field} className="grid gap-2">
 									<Label htmlFor={`oidc-${field}`}>{label}</Label>
@@ -290,7 +341,7 @@ function ProviderEditorFields({
 					) : null}
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="grid gap-2">
-							<Label htmlFor="oidc-scopes">Scopes</Label>
+							<Label htmlFor="oidc-scopes">{messages.scopes}</Label>
 							<Input
 								id="oidc-scopes"
 								value={draft.scopes}
@@ -300,7 +351,7 @@ function ProviderEditorFields({
 							/>
 						</div>
 						<div className="grid gap-2">
-							<Label>Token endpoint authentication</Label>
+							<Label>{messages.tokenEndpointAuthentication}</Label>
 							<Select
 								value={draft.tokenEndpointAuthentication}
 								onValueChange={(
@@ -330,17 +381,17 @@ function ProviderEditorFields({
 								onChange({ ...draft, pkce: checked === true })
 							}
 						/>
-						Use PKCE for authorization requests
+						{messages.usePkce}
 					</label>
 					<CopyableEndpoint
-						label="OIDC redirect URI"
+						label={messages.oidcRedirectUri}
 						value={getOIDCCallbackURL(providerId)}
 					/>
 				</>
 			) : (
 				<>
 					<div className="grid gap-2">
-						<Label>IdP configuration source</Label>
+						<Label>{messages.idpConfigurationSource}</Label>
 						<Select
 							value={draft.samlMode}
 							onValueChange={(samlMode: SAMLConfigurationMode) =>
@@ -352,18 +403,22 @@ function ProviderEditorFields({
 							</SelectTrigger>
 							<SelectContent>
 								{mode === "edit" ? (
-									<SelectItem value="keep">Keep stored IdP material</SelectItem>
+									<SelectItem value="keep">
+										{messages.keepStoredIdpMaterial}
+									</SelectItem>
 								) : null}
-								<SelectItem value="metadata">IdP metadata XML</SelectItem>
+								<SelectItem value="metadata">
+									{messages.idpMetadataXml}
+								</SelectItem>
 								<SelectItem value="manual">
-									Entry point and certificate
+									{messages.entryPointAndCertificate}
 								</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
 					{draft.samlMode === "metadata" ? (
 						<div className="grid gap-2">
-							<Label htmlFor="saml-metadata">IdP metadata XML</Label>
+							<Label htmlFor="saml-metadata">{messages.idpMetadataXml}</Label>
 							<Textarea
 								id="saml-metadata"
 								className="min-h-44 font-mono text-xs"
@@ -372,13 +427,17 @@ function ProviderEditorFields({
 									onChange({ ...draft, idpMetadataXml: event.target.value })
 								}
 							/>
-							<p className="text-xs text-muted-foreground">Maximum 100 KiB.</p>
+							<p className="text-xs text-muted-foreground">
+								{messages.maximum100Kib}
+							</p>
 						</div>
 					) : null}
 					{draft.samlMode === "manual" ? (
 						<>
 							<div className="grid gap-2">
-								<Label htmlFor="saml-entry-point">IdP SSO entry point</Label>
+								<Label htmlFor="saml-entry-point">
+									{messages.idpSsoEntryPoint}
+								</Label>
 								<Input
 									id="saml-entry-point"
 									type="url"
@@ -391,8 +450,8 @@ function ProviderEditorFields({
 							<div className="grid gap-2">
 								<Label htmlFor="saml-certificate">
 									{mode === "create"
-										? "IdP signing certificate"
-										: "Replacement IdP signing certificate"}
+										? messages.idpSigningCertificate
+										: messages.replacementIdpSigningCertificate}
 								</Label>
 								<Textarea
 									id="saml-certificate"
@@ -407,13 +466,14 @@ function ProviderEditorFields({
 					) : null}
 					{draft.samlMode === "keep" ? (
 						<p className="text-xs text-muted-foreground">
-							Stored metadata and certificate material are not returned to the
-							browser and will remain unchanged.
+							{messages.storedIdpMaterialDescription}
 						</p>
 					) : null}
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="grid gap-2">
-							<Label htmlFor="saml-audience">Audience (optional)</Label>
+							<Label htmlFor="saml-audience">
+								{messages.audienceOptional}
+							</Label>
 							<Input
 								id="saml-audience"
 								value={draft.audience}
@@ -423,7 +483,9 @@ function ProviderEditorFields({
 							/>
 						</div>
 						<div className="grid gap-2">
-							<Label htmlFor="saml-idp-fallback">IdP-initiated fallback</Label>
+							<Label htmlFor="saml-idp-fallback">
+								{messages.idpInitiatedFallback}
+							</Label>
 							<Input
 								id="saml-idp-fallback"
 								value={draft.idpInitiatedCallbackUrl}
@@ -446,14 +508,14 @@ function ProviderEditorFields({
 								})
 							}
 						/>
-						Require signed SAML assertions
+						{messages.requireSignedSamlAssertions}
 					</label>
 					<CopyableEndpoint
-						label="Assertion Consumer Service (ACS) URL"
+						label={messages.acsUrl}
 						value={getSAMLCallbackURL(providerId)}
 					/>
 					<CopyableEndpoint
-						label="Service Provider metadata URL"
+						label={messages.serviceProviderMetadataUrl}
 						value={getSAMLMetadataURL(providerId)}
 					/>
 				</>
@@ -470,6 +532,7 @@ export function SSOProviderManager({
 	scimProviders,
 	unavailable,
 }: SSOProviderManagerProps) {
+	const { messages } = useDashboardI18n();
 	const router = useRouter();
 	const [editorMode, setEditorMode] = useState<ProviderEditorMode | null>(null);
 	const [draft, setDraft] = useState<ProviderDraft>(
@@ -491,12 +554,15 @@ export function SSOProviderManager({
 	const writeActionsAvailable =
 		recentAuthentication && authoritativeOrganizationData && !unavailable;
 	const providerError = editorMode
-		? getSSOProviderDraftError({
-				draft,
-				mode: editorMode,
-				providers,
-				scimProviders,
-			})
+		? localizeProviderError(
+				getSSOProviderDraftError({
+					draft,
+					mode: editorMode,
+					providers,
+					scimProviders,
+				}),
+				messages,
+			)
 		: null;
 	const editorPending =
 		registerOIDCMutation.isPending ||
@@ -535,8 +601,8 @@ export function SSOProviderManager({
 			closeEditor();
 			toast.success(
 				editorMode === "create"
-					? "SSO provider registered"
-					: "SSO provider updated",
+					? messages.ssoProviderRegistered
+					: messages.ssoProviderUpdated,
 			);
 			router.refresh();
 		};
@@ -600,11 +666,11 @@ export function SSOProviderManager({
 					token,
 				);
 				if (records.length === 0) {
-					toast.error("Provider domains cannot be converted to DNS records");
+					toast.error(messages.domainDnsRecordFailed);
 					return;
 				}
 				setDomainProof({ providerId: provider.providerId, records });
-				toast.success("DNS verification instructions are ready");
+				toast.success(messages.dnsInstructionsReady);
 			},
 		});
 	};
@@ -613,7 +679,7 @@ export function SSOProviderManager({
 		verifyDomainMutation.mutate(providerId, {
 			onSuccess: () => {
 				setDomainProof(null);
-				toast.success("SSO domain verified");
+				toast.success(messages.ssoDomainVerified);
 				router.refresh();
 			},
 		});
@@ -627,7 +693,7 @@ export function SSOProviderManager({
 			onSuccess: () => {
 				setDeleteProvider(null);
 				setDeleteConfirmation("");
-				toast.success("SSO provider deleted");
+				toast.success(messages.ssoProviderDeleted);
 				router.refresh();
 			},
 		});
@@ -651,16 +717,16 @@ export function SSOProviderManager({
 							onClick={openCreate}
 							disabled={!writeActionsAvailable}
 						>
-							<Plus className="h-4 w-4" /> New provider
+							<Plus className="h-4 w-4" /> {messages.newProvider}
 						</Button>
 					</div>
 				</div>
 				{unavailable ? (
 					<Alert>
 						<AlertTriangle className="h-4 w-4" />
-						<AlertTitle>SSO inventory unavailable</AlertTitle>
+						<AlertTitle>{messages.ssoInventoryUnavailable}</AlertTitle>
 						<AlertDescription>
-							No cached provider data is shown and changes are disabled.
+							{messages.ssoInventoryUnavailableDescription}
 						</AlertDescription>
 					</Alert>
 				) : providers.length > 0 ? (
@@ -679,8 +745,8 @@ export function SSOProviderManager({
 											}
 										>
 											{provider.domainVerified
-												? "Domain verified"
-												: "Verification pending"}
+												? messages.domainVerified
+												: messages.verificationPending}
 										</Badge>
 									</div>
 								</div>
@@ -692,7 +758,11 @@ export function SSOProviderManager({
 								</p>
 								{provider.type === "oidc" && provider.oidcConfig ? (
 									<p className="mt-2 text-xs text-muted-foreground">
-										Client {provider.oidcConfig.clientIdLastFour ?? "masked"}
+										{formatDashboardMessage(messages.clientIdentifier, {
+											id:
+												provider.oidcConfig.clientIdLastFour ??
+												messages.masked,
+										})}
 									</p>
 								) : null}
 								{provider.type === "saml" ? (
@@ -702,7 +772,7 @@ export function SSOProviderManager({
 										rel="noreferrer"
 										className="mt-2 block break-all text-xs text-primary underline-offset-4 hover:underline"
 									>
-										Service Provider metadata
+										{messages.serviceProviderMetadata}
 									</a>
 								) : null}
 								<div className="mt-4 flex flex-wrap gap-2">
@@ -712,7 +782,7 @@ export function SSOProviderManager({
 										onClick={() => openEdit(provider)}
 										disabled={!writeActionsAvailable}
 									>
-										<Pencil className="h-4 w-4" /> Edit
+										<Pencil className="h-4 w-4" /> {messages.edit}
 									</Button>
 									{!provider.domainVerified ? (
 										<>
@@ -730,7 +800,7 @@ export function SSOProviderManager({
 												) : (
 													<Network className="h-4 w-4" />
 												)}
-												Configure DNS
+												{messages.configureDns}
 											</Button>
 											<Button
 												size="sm"
@@ -745,7 +815,7 @@ export function SSOProviderManager({
 												) : (
 													<CheckCircle2 className="h-4 w-4" />
 												)}
-												Verify now
+												{messages.verifyNow}
 											</Button>
 										</>
 									) : null}
@@ -755,7 +825,7 @@ export function SSOProviderManager({
 										onClick={() => setDeleteProvider(provider)}
 										disabled={!writeActionsAvailable}
 									>
-										<Trash2 className="h-4 w-4" /> Delete
+										<Trash2 className="h-4 w-4" /> {messages.delete}
 									</Button>
 								</div>
 							</div>
@@ -763,7 +833,7 @@ export function SSOProviderManager({
 					</div>
 				) : (
 					<p className="text-sm text-muted-foreground">
-						No SSO provider is registered for this organization.
+						{messages.noSsoProvider}
 					</p>
 				)}
 			</section>
@@ -778,12 +848,11 @@ export function SSOProviderManager({
 					<DialogHeader>
 						<DialogTitle>
 							{editorMode === "create"
-								? "Register SSO provider"
-								: "Edit SSO provider"}
+								? messages.registerSsoProvider
+								: messages.editSsoProvider}
 						</DialogTitle>
 						<DialogDescription>
-							Configuration is organization-scoped. Sensitive values are sent
-							once and are never loaded back into this form.
+							{messages.ssoConfigurationDescription}
 						</DialogDescription>
 					</DialogHeader>
 					{editorMode ? (
@@ -796,20 +865,18 @@ export function SSOProviderManager({
 					{providerError ? (
 						<Alert variant="destructive">
 							<AlertTriangle className="h-4 w-4" />
-							<AlertTitle>Review configuration</AlertTitle>
+							<AlertTitle>{messages.reviewConfiguration}</AlertTitle>
 							<AlertDescription>{providerError}</AlertDescription>
 						</Alert>
 					) : null}
 					{editorMode === "edit" ? (
 						<p className="text-xs text-muted-foreground">
-							Changing issuer, domain, client identity, endpoints, or SAML
-							identity fields may reset domain verification or be rejected while
-							linked accounts exist.
+							{messages.ssoEditWarning}
 						</p>
 					) : null}
 					<DialogFooter>
 						<Button type="button" variant="outline" onClick={closeEditor}>
-							Cancel
+							{messages.cancel}
 						</Button>
 						<Button
 							type="button"
@@ -823,7 +890,9 @@ export function SSOProviderManager({
 							) : (
 								<Pencil className="h-4 w-4" />
 							)}
-							{editorMode === "create" ? "Register provider" : "Save changes"}
+							{editorMode === "create"
+								? messages.registerProvider
+								: messages.saveChanges}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -837,10 +906,9 @@ export function SSOProviderManager({
 			>
 				<DialogContent className="sm:max-w-2xl">
 					<DialogHeader>
-						<DialogTitle>Publish the SSO verification record</DialogTitle>
+						<DialogTitle>{messages.publishSsoVerification}</DialogTitle>
 						<DialogDescription>
-							Add every TXT record below, wait for DNS propagation, then choose
-							Verify now. The proof expires after seven days.
+							{messages.publishSsoVerificationDescription}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
@@ -849,9 +917,12 @@ export function SSOProviderManager({
 								key={record.name}
 								className="space-y-3 rounded-lg border p-4"
 							>
-								<CopyableEndpoint label="TXT record name" value={record.name} />
 								<CopyableEndpoint
-									label="TXT record value"
+									label={messages.txtRecordName}
+									value={record.name}
+								/>
+								<CopyableEndpoint
+									label={messages.txtRecordValue}
 									value={record.value}
 								/>
 							</div>
@@ -859,7 +930,7 @@ export function SSOProviderManager({
 					</div>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setDomainProof(null)}>
-							Close
+							{messages.close}
 						</Button>
 						<Button
 							onClick={() => {
@@ -872,7 +943,7 @@ export function SSOProviderManager({
 							) : (
 								<CheckCircle2 className="h-4 w-4" />
 							)}
-							Verify now
+							{messages.verifyNow}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -889,11 +960,9 @@ export function SSOProviderManager({
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete SSO provider?</AlertDialogTitle>
+						<AlertDialogTitle>{messages.deleteSsoProvider}</AlertDialogTitle>
 						<AlertDialogDescription>
-							This removes the provider and its linked SSO account records.
-							Existing user profiles remain, but users cannot sign in through
-							this provider. Type the provider ID to continue.
+							{messages.deleteSsoProviderDescription}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<div className="grid gap-2">
@@ -908,7 +977,7 @@ export function SSOProviderManager({
 						/>
 					</div>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Keep provider</AlertDialogCancel>
+						<AlertDialogCancel>{messages.keepProvider}</AlertDialogCancel>
 						<AlertDialogAction
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							onClick={confirmDelete}
@@ -922,7 +991,7 @@ export function SSOProviderManager({
 							) : (
 								<Trash2 className="h-4 w-4" />
 							)}
-							Delete provider
+							{messages.deleteProvider}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

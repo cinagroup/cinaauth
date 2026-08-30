@@ -20,6 +20,13 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
 			</main>
 		);
 	}
+	if (pathname === "/") {
+		return (
+			<main id="main" className="min-h-screen">
+				{children}
+			</main>
+		);
+	}
 
 	return (
 		<div className="flex min-h-screen flex-col">

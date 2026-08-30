@@ -9,17 +9,22 @@ import type {
 } from "@/lib/advanced-organization-console";
 import type { SCIMProviderConnection, SSOProviderSummary } from "@/lib/auth";
 import { auth } from "@/lib/auth";
+import { dashboardMessages } from "@/lib/dashboard-i18n";
 import type {
 	OrganizationDetail,
 	OrganizationSummary,
 } from "@/lib/organization-console";
 import { parseOrganizationRoles } from "@/lib/organization-console";
+import { getRequestLocale } from "@/lib/request-locale";
 import { OrganizationConsole } from "./organization-console";
 
-export const metadata: Metadata = {
-	title: "Organization Console",
-	description: "Manage CinaSeek organization members, roles, and invitations.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const messages = dashboardMessages[await getRequestLocale()];
+	return {
+		title: messages.organizationTitle,
+		description: messages.organizationMetadataDescription,
+	};
+}
 
 const toIsoString = (value: Date | string) => new Date(value).toISOString();
 

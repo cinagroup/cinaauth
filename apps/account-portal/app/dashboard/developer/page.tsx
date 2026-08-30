@@ -2,16 +2,21 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { dashboardMessages } from "@/lib/dashboard-i18n";
 import {
 	toDeveloperOAuthClient,
 	toDeveloperOAuthConsent,
 } from "@/lib/developer-console";
+import { getRequestLocale } from "@/lib/request-locale";
 import { DeveloperConsole } from "./developer-console";
 
-export const metadata: Metadata = {
-	title: "Developer Console",
-	description: "Manage CinaSeek OAuth clients, callbacks, and consent grants.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const messages = dashboardMessages[await getRequestLocale()];
+	return {
+		title: messages.developerTitle,
+		description: messages.developerMetadataDescription,
+	};
+}
 
 export default async function DeveloperConsolePage() {
 	const requestHeaders = await headers();

@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { TwoFactorDisableForm } from "@/components/forms/two-factor-disable-form";
 import { TwoFactorEnableForm } from "@/components/forms/two-factor-enable-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -80,6 +81,7 @@ import {
 	parsePrivacyDeletionReadiness,
 } from "@/lib/privacy-center";
 import { isSiweWalletUiEnabled } from "@/lib/reown-wallet-gate";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type {
 	SecurityAccount,
 	SecurityApiKey,
@@ -174,6 +176,7 @@ export function SecurityCenter({
 	providerLinkFailed,
 	dataUnavailable,
 }: SecurityCenterProps) {
+	const { locale, messages } = useDashboardI18n();
 	const router = useRouter();
 	const [sessions, setSessions] = useState(initialSessions);
 	const [accounts, setAccounts] = useState(initialAccounts);
@@ -226,6 +229,11 @@ export function SecurityCenter({
 		passkeyCount: passkeys.length,
 		activeSessionCount: sessions.length,
 	});
+	const postureLabels = {
+		strong: messages.securityLevelStrong,
+		good: messages.securityLevelGood,
+		baseline: messages.securityLevelBaseline,
+	} as const;
 	const requiresPasswordForTwoFactor = getRequiresPasswordForTwoFactor(
 		accounts,
 		dataUnavailable.accounts,
@@ -262,7 +270,7 @@ export function SecurityCenter({
 				await authClient.signOut();
 				router.push("/sign-in?callbackURL=/dashboard/security");
 			},
-			"Unable to start a fresh sign-in",
+			messages.unableFreshSignIn,
 		);
 
 	const revokeSession = (session: SecuritySession) =>
@@ -276,10 +284,10 @@ export function SecurityCenter({
 				setSessions((current) =>
 					current.filter((item) => item.id !== session.id),
 				);
-				toast.success("Session terminated");
+				toast.success(messages.sessionTerminated);
 				if (session.isCurrent) router.push("/sign-in");
 			},
-			"Unable to terminate the session",
+			messages.unableTerminateSession,
 		);
 
 	const revokeOtherSessions = () =>
@@ -289,9 +297,9 @@ export function SecurityCenter({
 				const { error } = await authClient.revokeOtherSessions();
 				if (error) throw error;
 				setSessions((current) => current.filter((item) => item.isCurrent));
-				toast.success("Other sessions terminated");
+				toast.success(messages.otherSessionsTerminated);
 			},
-			"Unable to terminate other sessions",
+			messages.unableTerminateOtherSessions,
 		);
 
 	const refreshPasskeys = async () => {
@@ -311,14 +319,14 @@ export function SecurityCenter({
 			"passkey:add",
 			async () => {
 				const name = passkeyName.trim();
-				if (!name) throw new Error("Enter a name for this passkey");
+				if (!name) throw new Error(messages.enterPasskeyName);
 				const { error } = await authClient.passkey.addPasskey({ name });
 				if (error) throw error;
 				await refreshPasskeys();
 				setPasskeyName("");
-				toast.success("Passkey created");
+				toast.success(messages.passkeyCreated);
 			},
-			"Unable to create the passkey",
+			messages.unableCreatePasskey,
 		);
 
 	const deletePasskey = (passkey: SecurityPasskey) =>
@@ -329,9 +337,9 @@ export function SecurityCenter({
 				setPasskeys((current) =>
 					current.filter((item) => item.id !== passkey.id),
 				);
-				toast.success("Passkey removed");
+				toast.success(messages.passkeyRemoved);
 			},
-			"Unable to remove the passkey",
+			messages.passkeyDeleteFailed,
 		);
 
 	const toSecurityApiKey = (item: {
@@ -349,7 +357,7 @@ export function SecurityCenter({
 		updatedAt: Date | string;
 	}): SecurityApiKey => ({
 		id: item.id,
-		name: item.name || "Unnamed API key",
+		name: item.name || messages.unnamedApiKey,
 		start: item.start ?? null,
 		enabled: item.enabled,
 		rateLimitEnabled: item.rateLimitEnabled,
@@ -369,7 +377,7 @@ export function SecurityCenter({
 			"api-key:create",
 			async () => {
 				const name = apiKeyName.trim();
-				if (!name) throw new Error("Enter a name for this API key");
+				if (!name) throw new Error(messages.enterApiKeyName);
 				const expiresIn = Number(apiKeyExpirationDays) * 24 * 60 * 60;
 				const { data, error } = await authClient.apiKey.create({
 					name,
@@ -377,14 +385,14 @@ export function SecurityCenter({
 				});
 				if (error) throw error;
 				if (!data?.key) {
-					throw new Error("The API key secret was not returned");
+					throw new Error(messages.apiKeySecretMissing);
 				}
 				setCreatedApiKey({ name: data.name || name, secret: data.key });
 				setApiKeys((current) => [toSecurityApiKey(data), ...current]);
 				setApiKeyName("");
-				toast.success("API key created");
+				toast.success(messages.apiKeyCreated);
 			},
-			"Unable to create the API key",
+			messages.unableCreateApiKey,
 		);
 
 	const renameApiKey = () =>
@@ -393,22 +401,22 @@ export function SecurityCenter({
 			async () => {
 				if (!apiKeyToRename) return;
 				const name = apiKeyRename.trim();
-				if (!name) throw new Error("Enter a name for this API key");
+				if (!name) throw new Error(messages.enterApiKeyName);
 				const { data, error } = await authClient.apiKey.update({
 					keyId: apiKeyToRename.id,
 					name,
 				});
 				if (error) throw error;
-				if (!data) throw new Error("The API key was not updated");
+				if (!data) throw new Error(messages.apiKeyNotUpdated);
 				setApiKeys((current) =>
 					current.map((item) =>
 						item.id === data.id ? toSecurityApiKey(data) : item,
 					),
 				);
 				setApiKeyToRename(null);
-				toast.success("API key renamed");
+				toast.success(messages.apiKeyRenamed);
 			},
-			"Unable to rename the API key",
+			messages.unableRenameApiKey,
 		);
 
 	const toggleApiKey = (apiKey: SecurityApiKey) =>
@@ -420,15 +428,17 @@ export function SecurityCenter({
 					enabled: !apiKey.enabled,
 				});
 				if (error) throw error;
-				if (!data) throw new Error("The API key was not updated");
+				if (!data) throw new Error(messages.apiKeyNotUpdated);
 				setApiKeys((current) =>
 					current.map((item) =>
 						item.id === data.id ? toSecurityApiKey(data) : item,
 					),
 				);
-				toast.success(apiKey.enabled ? "API key disabled" : "API key enabled");
+				toast.success(
+					apiKey.enabled ? messages.apiKeyDisabled : messages.apiKeyEnabled,
+				);
 			},
-			"Unable to change the API key status",
+			messages.unableChangeApiKeyStatus,
 		);
 
 	const revokeApiKey = () =>
@@ -444,18 +454,18 @@ export function SecurityCenter({
 					current.filter((item) => item.id !== apiKeyToRevoke.id),
 				);
 				setApiKeyToRevoke(null);
-				toast.success("API key revoked");
+				toast.success(messages.apiKeyRevoked);
 			},
-			"Unable to revoke the API key",
+			messages.unableRevokeApiKey,
 		);
 
 	const copyApiKeySecret = async () => {
 		if (!createdApiKey) return;
 		try {
 			await navigator.clipboard.writeText(createdApiKey.secret);
-			toast.success("API key copied");
+			toast.success(messages.apiKeyCopied);
 		} catch {
-			toast.error("Copy failed. Select and copy the key manually.");
+			toast.error(messages.copyApiKeyFailed);
 		}
 	};
 
@@ -496,15 +506,11 @@ export function SecurityCenter({
 			async () => {
 				const provider = getInjectedEthereumProvider(window);
 				if (!provider) {
-					throw new Error(
-						"No Ethereum wallet was found. Install or enable an EIP-1193 wallet first.",
-					);
+					throw new Error(messages.noEthereumWallet);
 				}
 				const identity = await requestEthereumWalletIdentity(provider);
 				if (identity.chainId !== 1) {
-					throw new Error(
-						"Switch your wallet to Ethereum Mainnet and try again.",
-					);
+					throw new Error(messages.switchEthereumMainnet);
 				}
 				await completeWalletProof({
 					client: cinaAuthSiweProtocolClient,
@@ -515,9 +521,9 @@ export function SecurityCenter({
 						signSiweMessage(provider, message, identity.address),
 				});
 				await refreshWallets();
-				toast.success("Wallet connected");
+				toast.success(messages.walletConnected);
 			},
-			"Unable to connect the wallet",
+			messages.unableConnectWallet,
 		);
 
 	const setPrimaryWallet = (wallet: SecurityWallet) =>
@@ -538,9 +544,9 @@ export function SecurityCenter({
 						isPrimary: item.id === wallet.id,
 					})),
 				);
-				toast.success("Primary wallet updated");
+				toast.success(messages.primaryWalletUpdated);
 			},
-			"Unable to update the primary wallet",
+			messages.unableUpdatePrimaryWallet,
 		);
 
 	const unlinkWallet = () =>
@@ -558,9 +564,9 @@ export function SecurityCenter({
 				if (error) throw error;
 				await refreshWallets();
 				setWalletToUnlink(null);
-				toast.success("Wallet disconnected");
+				toast.success(messages.walletDisconnected);
 			},
-			"Unable to disconnect the wallet",
+			messages.unableDisconnectWallet,
 		);
 
 	const unlinkAccount = (account: SecurityAccount) =>
@@ -575,9 +581,9 @@ export function SecurityCenter({
 				setAccounts((current) =>
 					current.filter((item) => item.id !== account.id),
 				);
-				toast.success("Identity disconnected");
+				toast.success(messages.identityDisconnected);
 			},
-			"Unable to disconnect the identity",
+			messages.unableDisconnectIdentity,
 		);
 
 	const linkProvider = (provider: SecurityOAuthProvider) =>
@@ -594,7 +600,7 @@ export function SecurityCenter({
 					),
 				);
 			},
-			"Unable to connect the identity provider",
+			messages.unableConnectIdentityProvider,
 		);
 
 	const loadDeletionReadiness = async () => {
@@ -610,23 +616,21 @@ export function SecurityCenter({
 			if (!response.ok) {
 				throw new Error(
 					response.status === 403
-						? "Sign in again before deleting this account."
-						: "CinaSeek could not verify deletion readiness.",
+						? messages.signInAgainDeleteAccount
+						: messages.verifyDeletionReadinessFailed,
 				);
 			}
 			const readiness = parsePrivacyDeletionReadiness(
 				(await response.json()) as unknown,
 			);
 			if (!readiness) {
-				throw new Error(
-					"CinaSeek returned an invalid deletion policy response.",
-				);
+				throw new Error(messages.invalidDeletionPolicy);
 			}
 			setDeletionReadiness(readiness);
 		} catch (error) {
 			setDeletionReadiness(null);
 			setDeletionReadinessError(
-				getErrorMessage(error, "CinaSeek could not verify deletion readiness."),
+				getErrorMessage(error, messages.verifyDeletionReadinessFailed),
 			);
 		} finally {
 			setDeletionReadinessLoading(false);
@@ -671,24 +675,24 @@ export function SecurityCenter({
 							const retryAfter = getRetryAfterSeconds(data);
 							throw new Error(
 								retryAfter
-									? `An external processor is still erasing account data. Try again in about ${retryAfter} seconds; no local account data was deleted.`
-									: "An external processor is still erasing account data. Try again shortly; no local account data was deleted.",
+									? formatDashboardMessage(messages.processorErasureRetry, {
+											seconds: String(retryAfter),
+										})
+									: messages.processorErasurePending,
 							);
 						}
 						await loadDeletionReadiness();
-						throw new Error("Account deletion is blocked by a retention hold.");
+						throw new Error(messages.deletionBlockedByRetention);
 					}
 					if (
 						getResponseErrorCode(data) === "PRIVACY_PROCESSOR_ERASURE_FAILED"
 					) {
-						throw new Error(
-							"A required external processor could not confirm erasure. No local account data was deleted; try again later.",
-						);
+						throw new Error(messages.processorErasureFailed);
 					}
 					if (response.status === 401 || response.status === 403) {
-						throw new Error("Sign in again before deleting this account.");
+						throw new Error(messages.signInAgainDeleteAccount);
 					}
-					throw new Error("CinaSeek could not delete this account.");
+					throw new Error(messages.deleteAccountFailed);
 				}
 				const receipt = getPrivacyDeletionReceipt(data);
 				if (receipt) {
@@ -697,23 +701,28 @@ export function SecurityCenter({
 				setDeleteDialogOpen(false);
 				toast.success(
 					receipt
-						? "Account deleted. Your signed deletion receipt was downloaded."
-						: "Account deleted.",
+						? messages.accountDeletedReceipt
+						: messages.accountDeleted,
 				);
 				router.push("/");
 				router.refresh();
 			},
-			"Unable to delete the account",
+			messages.unableDeleteAccount,
 		);
 
 	return (
 		<div className="mx-auto w-full max-w-6xl">
 			<DashboardPageHeader
-				title="Security Center"
-				description={`Manage authentication factors, active sessions, linked identities, and account lifecycle controls for ${user.email}.`}
+				titleKey="securityTitle"
+				descriptionKey="securityDescription"
+				descriptionValues={{ email: user.email }}
 			>
 				<Badge variant={posture.level === "strong" ? "default" : "secondary"}>
-					{posture.level.toUpperCase()} · {posture.completed}/{posture.total}
+					{formatDashboardMessage(messages.securityPosture, {
+						level: postureLabels[posture.level],
+						completed: String(posture.completed),
+						total: String(posture.total),
+					})}
 				</Badge>
 			</DashboardPageHeader>
 
@@ -722,14 +731,14 @@ export function SecurityCenter({
 					<AlertTriangle className="h-4 w-4" />
 					<AlertTitle>
 						{recentAuthentication
-							? "Some security data is temporarily unavailable"
-							: "Recent authentication required"}
+							? messages.securityDataUnavailable
+							: messages.recentAuthenticationRequired}
 					</AlertTitle>
 					<AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<span>
 							{recentAuthentication
-								? "Sensitive controls stay disabled until all authoritative security data can be loaded."
-								: "Sign in again before changing authenticators, linked identities, or deleting the account."}
+								? messages.securityDataUnavailableDescription
+								: messages.recentAuthenticationSecurityDescription}
 						</span>
 						<Button
 							size="sm"
@@ -742,7 +751,7 @@ export function SecurityCenter({
 							) : (
 								<RefreshCw className="mr-2 h-4 w-4" />
 							)}
-							Reauthenticate
+							{messages.reauthenticate}
 						</Button>
 					</AlertDescription>
 				</Alert>
@@ -751,10 +760,9 @@ export function SecurityCenter({
 			{providerLinkFailed && (
 				<Alert variant="destructive" className="mb-6">
 					<AlertTriangle className="h-4 w-4" />
-					<AlertTitle>Identity connection failed</AlertTitle>
+					<AlertTitle>{messages.identityConnectionFailed}</AlertTitle>
 					<AlertDescription>
-						The provider did not link this identity. Try again, or contact
-						support if the provider continues to reject the request.
+						{messages.identityConnectionFailedDescription}
 					</AlertDescription>
 				</Alert>
 			)}
@@ -763,21 +771,26 @@ export function SecurityCenter({
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							<LockKeyhole className="h-5 w-5" /> Authentication
+							<LockKeyhole className="h-5 w-5" />
+							{messages.authentication}
 						</CardTitle>
 						<CardDescription>
-							Passwordless sign-in and multi-factor protection for this account.
+							{messages.authenticationDescription}
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<SecurityRow
-							label="Email verification"
-							value={user.emailVerified ? "Verified" : "Not verified"}
+							label={messages.emailVerification}
+							value={
+								user.emailVerified ? messages.verified : messages.notVerified
+							}
 							secure={user.emailVerified}
 						/>
 						<SecurityRow
-							label="Two-factor authentication"
-							value={user.twoFactorEnabled ? "Enabled" : "Disabled"}
+							label={messages.twoFactor}
+							value={
+								user.twoFactorEnabled ? messages.enabled : messages.disabled
+							}
 							secure={user.twoFactorEnabled}
 						/>
 						<Separator />
@@ -800,7 +813,9 @@ export function SecurityCenter({
 										) : (
 											<ShieldCheck className="mr-2 h-4 w-4" />
 										)}
-										{user.twoFactorEnabled ? "Disable 2FA" : "Enable 2FA"}
+										{user.twoFactorEnabled
+											? messages.disableTwoFactor
+											: messages.enableTwoFactor}
 									</Button>
 								</DialogTrigger>
 								<DialogContent
@@ -814,12 +829,14 @@ export function SecurityCenter({
 								>
 									<DialogHeader>
 										<DialogTitle>
-											{user.twoFactorEnabled ? "Disable 2FA" : "Enable 2FA"}
+											{user.twoFactorEnabled
+												? messages.disableTwoFactor
+												: messages.enableTwoFactor}
 										</DialogTitle>
 										<DialogDescription>
 											{requiresPasswordForTwoFactor
-												? "A retained legacy credential confirms this sensitive change. It cannot be used to sign in."
-												: "Your recent passwordless sign-in confirms this sensitive change."}
+												? messages.legacyCredentialConfirmation
+												: messages.passwordlessConfirmation}
 										</DialogDescription>
 									</DialogHeader>
 									{user.twoFactorEnabled ? (
@@ -849,10 +866,10 @@ export function SecurityCenter({
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							<Fingerprint className="h-5 w-5" /> Passkeys
+							<Fingerprint className="h-5 w-5" /> {messages.passkeys}
 						</CardTitle>
 						<CardDescription>
-							Phishing-resistant credentials registered to this account.
+							{messages.passkeysDescription}
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
@@ -865,10 +882,12 @@ export function SecurityCenter({
 									>
 										<div>
 											<p className="text-sm font-medium">
-												{passkey.name || "Unnamed passkey"}
+												{passkey.name || messages.unnamedPasskey}
 											</p>
 											<p className="text-xs text-muted-foreground">
-												Added {formatSecurityDate(passkey.createdAt)}
+												{formatDashboardMessage(messages.addedOn, {
+													date: formatSecurityDate(passkey.createdAt, locale),
+												})}
 											</p>
 										</div>
 										<Button
@@ -879,7 +898,12 @@ export function SecurityCenter({
 												!recentAuthentication ||
 												busyAction === `passkey:${passkey.id}`
 											}
-											aria-label={`Remove ${passkey.name || "passkey"}`}
+											aria-label={formatDashboardMessage(
+												messages.removeNamedItem,
+												{
+													name: passkey.name || messages.passkeyFallbackName,
+												},
+											)}
 										>
 											{busyAction === `passkey:${passkey.id}` ? (
 												<Loader2 className="h-4 w-4 animate-spin" />
@@ -892,14 +916,14 @@ export function SecurityCenter({
 							</div>
 						) : (
 							<p className="text-sm text-muted-foreground">
-								No passkeys are registered.
+								{messages.noPasskeysRegistered}
 							</p>
 						)}
 						<div className="flex gap-2">
 							<Input
 								value={passkeyName}
 								onChange={(event) => setPasskeyName(event.target.value)}
-								placeholder="Work laptop"
+								placeholder={messages.workLaptop}
 								maxLength={64}
 								disabled={!recentAuthentication}
 							/>
@@ -912,7 +936,7 @@ export function SecurityCenter({
 								) : (
 									<Fingerprint className="mr-2 h-4 w-4" />
 								)}
-								Add
+								{messages.add}
 							</Button>
 						</div>
 					</CardContent>
@@ -923,10 +947,10 @@ export function SecurityCenter({
 				<CardHeader className="flex-row items-start justify-between gap-4">
 					<div>
 						<CardTitle className="flex items-center gap-2">
-							<Laptop className="h-5 w-5" /> Active sessions
+							<Laptop className="h-5 w-5" /> {messages.activeSessions}
 						</CardTitle>
 						<CardDescription className="mt-1.5">
-							Authoritative sessions currently allowed to access your account.
+							{messages.activeSessionsDescription}
 						</CardDescription>
 					</div>
 					<Button
@@ -944,7 +968,7 @@ export function SecurityCenter({
 						) : (
 							<LogOut className="mr-2 h-4 w-4" />
 						)}
-						Revoke others
+						{messages.revokeOthers}
 					</Button>
 				</CardHeader>
 				<CardContent className="space-y-3">
@@ -959,13 +983,15 @@ export function SecurityCenter({
 										{summarizeUserAgent(session.userAgent)}
 									</p>
 									{session.isCurrent ? (
-										<Badge variant="secondary">Current</Badge>
+										<Badge variant="secondary">{messages.current}</Badge>
 									) : null}
 								</div>
 								<p className="mt-1 text-xs text-muted-foreground">
-									{session.ipAddress || "IP unavailable"} · Started{" "}
-									{formatSecurityDate(session.createdAt)} · Expires{" "}
-									{formatSecurityDate(session.expiresAt)}
+									{formatDashboardMessage(messages.sessionDetails, {
+										ip: session.ipAddress || messages.ipUnavailable,
+										started: formatSecurityDate(session.createdAt, locale),
+										expires: formatSecurityDate(session.expiresAt, locale),
+									})}
 								</p>
 							</div>
 							<Button
@@ -979,13 +1005,13 @@ export function SecurityCenter({
 								) : (
 									<LogOut className="mr-2 h-4 w-4" />
 								)}
-								{session.isCurrent ? "Sign out" : "Terminate"}
+								{session.isCurrent ? messages.signOut : messages.terminate}
 							</Button>
 						</div>
 					))}
 					{sessions.length === 0 ? (
 						<p className="text-sm text-muted-foreground">
-							Session details require a fresh sign-in.
+							{messages.sessionDetailsRequireFreshSignIn}
 						</p>
 					) : null}
 				</CardContent>
@@ -994,11 +1020,10 @@ export function SecurityCenter({
 			<Card className="mt-6">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<KeyRound className="h-5 w-5" /> Personal API keys
+						<KeyRound className="h-5 w-5" /> {messages.personalApiKeys}
 					</CardTitle>
 					<CardDescription>
-						Create personal credentials bound to this account for scripts and
-						integrations. The full secret is shown only once.
+						{messages.personalApiKeysDescription}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -1006,23 +1031,23 @@ export function SecurityCenter({
 						<Input
 							value={apiKeyName}
 							onChange={(event) => setApiKeyName(event.target.value)}
-							placeholder="Production automation"
+							placeholder={messages.productionAutomation}
 							maxLength={32}
 							disabled={!recentAuthentication || dataUnavailable.apiKeys}
-							aria-label="API key name"
+							aria-label={messages.apiKeyName}
 						/>
 						<Select
 							value={apiKeyExpirationDays}
 							onValueChange={setApiKeyExpirationDays}
 							disabled={!recentAuthentication || dataUnavailable.apiKeys}
 						>
-							<SelectTrigger aria-label="API key expiration">
-								<SelectValue placeholder="Expiration" />
+							<SelectTrigger aria-label={messages.apiKeyExpiration}>
+								<SelectValue placeholder={messages.expiration} />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="30">30 days</SelectItem>
-								<SelectItem value="90">90 days</SelectItem>
-								<SelectItem value="365">1 year</SelectItem>
+								<SelectItem value="30">{messages.thirtyDays}</SelectItem>
+								<SelectItem value="90">{messages.ninetyDays}</SelectItem>
+								<SelectItem value="365">{messages.oneYear}</SelectItem>
 							</SelectContent>
 						</Select>
 						<Button
@@ -1038,7 +1063,7 @@ export function SecurityCenter({
 							) : (
 								<Plus className="mr-2 h-4 w-4" />
 							)}
-							Create key
+							{messages.createKey}
 						</Button>
 					</div>
 
@@ -1047,10 +1072,10 @@ export function SecurityCenter({
 							{apiKeys.map((apiKey) => {
 								const expired = isApiKeyExpired(apiKey.expiresAt);
 								const status = expired
-									? "Expired"
+									? messages.expired
 									: apiKey.enabled
-										? "Active"
-										: "Disabled";
+										? messages.active
+										: messages.disabled;
 								return (
 									<div
 										key={apiKey.id}
@@ -1061,7 +1086,7 @@ export function SecurityCenter({
 												<p className="font-medium">{apiKey.name}</p>
 												<Badge
 													variant={
-														status === "Active" ? "default" : "secondary"
+												status === messages.active ? "default" : "secondary"
 													}
 												>
 													{status}
@@ -1071,18 +1096,26 @@ export function SecurityCenter({
 												</code>
 											</div>
 											<p className="text-xs text-muted-foreground">
-												Created {formatSecurityDate(apiKey.createdAt)}
-												{" | "}
-												{apiKey.expiresAt
-													? `Expires ${formatSecurityDate(apiKey.expiresAt)}`
-													: "No expiration"}
+										{formatDashboardMessage(messages.createdOn, {
+											date: formatSecurityDate(apiKey.createdAt, locale),
+										})}
+										{" | "}
+										{apiKey.expiresAt
+											? formatDashboardMessage(messages.expiresOn, {
+													date: formatSecurityDate(apiKey.expiresAt, locale),
+												})
+											: messages.noExpiration}
 											</p>
 											<p className="text-xs text-muted-foreground">
-												{apiKey.lastRequest
-													? `Last used ${formatSecurityDate(apiKey.lastRequest)}`
-													: "Never used"}
-												{" | "}
-												{apiKey.requestCount} requests in the current window
+										{apiKey.lastRequest
+											? formatDashboardMessage(messages.lastUsedOn, {
+													date: formatSecurityDate(apiKey.lastRequest, locale),
+												})
+											: messages.neverUsed}
+										{" | "}
+										{formatDashboardMessage(messages.requestsCurrentWindow, {
+											count: String(apiKey.requestCount),
+										})}
 											</p>
 										</div>
 										<div className="flex flex-wrap gap-2">
@@ -1097,7 +1130,7 @@ export function SecurityCenter({
 													!recentAuthentication || dataUnavailable.apiKeys
 												}
 											>
-												<Pencil className="mr-2 h-4 w-4" /> Rename
+											<Pencil className="mr-2 h-4 w-4" /> {messages.rename}
 											</Button>
 											<Button
 												variant="outline"
@@ -1117,7 +1150,7 @@ export function SecurityCenter({
 												) : (
 													<Power className="mr-2 h-4 w-4" />
 												)}
-												{apiKey.enabled ? "Disable" : "Enable"}
+											{apiKey.enabled ? messages.disable : messages.enable}
 											</Button>
 											<Button
 												variant="destructive"
@@ -1127,7 +1160,7 @@ export function SecurityCenter({
 													!recentAuthentication || dataUnavailable.apiKeys
 												}
 											>
-												<Trash2 className="mr-2 h-4 w-4" /> Revoke
+											<Trash2 className="mr-2 h-4 w-4" /> {messages.revoke}
 											</Button>
 										</div>
 									</div>
@@ -1136,7 +1169,7 @@ export function SecurityCenter({
 						</div>
 					) : (
 						<p className="text-sm text-muted-foreground">
-							No personal API keys have been created.
+							{messages.noPersonalApiKeys}
 						</p>
 					)}
 				</CardContent>
@@ -1150,26 +1183,26 @@ export function SecurityCenter({
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Copy your API key now</DialogTitle>
+						<DialogTitle>{messages.copyApiKeyNow}</DialogTitle>
 						<DialogDescription>
-							This is the only time CinaSeek will show the full secret for
-							{createdApiKey ? ` ${createdApiKey.name}` : " this key"}. Store it
-							in a secrets manager; never commit it to source control.
+							{formatDashboardMessage(messages.copyApiKeyDescription, {
+								name: createdApiKey?.name ?? messages.thisKey,
+							})}
 						</DialogDescription>
 					</DialogHeader>
 					<Input
 						value={createdApiKey?.secret ?? ""}
 						readOnly
 						onFocus={(event) => event.currentTarget.select()}
-						aria-label="New API key secret"
+						aria-label={messages.newApiKeySecret}
 						className="font-mono text-xs"
 					/>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setCreatedApiKey(null)}>
-							I have stored it
+							{messages.storedApiKey}
 						</Button>
 						<Button onClick={copyApiKeySecret}>
-							<Copy className="mr-2 h-4 w-4" /> Copy key
+							<Copy className="mr-2 h-4 w-4" /> {messages.copyKey}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -1183,13 +1216,13 @@ export function SecurityCenter({
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Rename API key</DialogTitle>
+						<DialogTitle>{messages.renameApiKey}</DialogTitle>
 						<DialogDescription>
-							Use a name that identifies the workload and environment.
+							{messages.renameApiKeyDescription}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-2">
-						<Label htmlFor="api-key-rename">Name</Label>
+						<Label htmlFor="api-key-rename">{messages.name}</Label>
 						<Input
 							id="api-key-rename"
 							value={apiKeyRename}
@@ -1208,7 +1241,7 @@ export function SecurityCenter({
 							{busyAction === `api-key:rename:${apiKeyToRename?.id}` ? (
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 							) : null}
-							Save name
+							{messages.saveName}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -1222,10 +1255,11 @@ export function SecurityCenter({
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Revoke this API key?</DialogTitle>
+						<DialogTitle>{messages.revokeApiKeyTitle}</DialogTitle>
 						<DialogDescription>
-							{apiKeyToRevoke?.name || "This key"} will stop working
-							immediately. This action cannot be undone.
+							{formatDashboardMessage(messages.revokeApiKeyDescription, {
+								name: apiKeyToRevoke?.name || messages.thisKey,
+							})}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -1239,7 +1273,7 @@ export function SecurityCenter({
 							) : (
 								<Trash2 className="mr-2 h-4 w-4" />
 							)}
-							Revoke permanently
+							{messages.revokePermanently}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -1249,11 +1283,10 @@ export function SecurityCenter({
 				<CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
 						<CardTitle className="flex items-center gap-2">
-							<WalletCards className="h-5 w-5" /> Ethereum wallets
+							<WalletCards className="h-5 w-5" /> {messages.ethereumWallets}
 						</CardTitle>
 						<CardDescription className="mt-1.5">
-							Prove wallet control with EIP-4361, choose a primary wallet, and
-							manage wallet sign-in access.
+							{messages.ethereumWalletsDescription}
 						</CardDescription>
 					</div>
 					<div className="flex flex-wrap gap-2">
@@ -1261,7 +1294,7 @@ export function SecurityCenter({
 							capabilities={walletCapabilities}
 							walletCookie={walletCookie}
 							purpose="link-wallet"
-							label="Connect wallet"
+							label={messages.connectWallet}
 							variant="default"
 							disabled={!recentAuthentication || dataUnavailable.wallets}
 							onSuccess={() =>
@@ -1285,7 +1318,7 @@ export function SecurityCenter({
 								) : (
 									<Plus className="mr-2 h-4 w-4" />
 								)}
-								Use browser wallet
+								{messages.useBrowserWallet}
 							</Button>
 						) : null}
 					</div>
@@ -1293,8 +1326,7 @@ export function SecurityCenter({
 				<CardContent className="space-y-3">
 					{dataUnavailable.wallets ? (
 						<p className="text-sm text-muted-foreground">
-							Wallet data is temporarily unavailable. Sensitive controls remain
-							disabled.
+							{messages.walletDataUnavailable}
 						</p>
 					) : wallets.length > 0 ? (
 						wallets.map((wallet) => (
@@ -1310,11 +1342,13 @@ export function SecurityCenter({
 										<Badge variant="secondary">
 											{formatWalletChain(wallet.chainId)}
 										</Badge>
-										{wallet.isPrimary ? <Badge>Primary</Badge> : null}
+										{wallet.isPrimary ? <Badge>{messages.primary}</Badge> : null}
 									</div>
 									<p className="text-xs text-muted-foreground">
-										Chain ID {wallet.chainId} · Connected{" "}
-										{formatSecurityDate(wallet.createdAt)}
+									{formatDashboardMessage(messages.walletDetails, {
+										chainId: String(wallet.chainId),
+										date: formatSecurityDate(wallet.createdAt, locale),
+									})}
 									</p>
 								</div>
 								<div className="flex flex-wrap gap-2">
@@ -1331,7 +1365,7 @@ export function SecurityCenter({
 											{busyAction === `wallet:primary:${wallet.id}` ? (
 												<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 											) : null}
-											Make primary
+											{messages.makePrimary}
 										</Button>
 									) : null}
 									<Button
@@ -1340,14 +1374,14 @@ export function SecurityCenter({
 										onClick={() => setWalletToUnlink(wallet)}
 										disabled={!recentAuthentication}
 									>
-										<Unlink className="mr-2 h-4 w-4" /> Disconnect
+										<Unlink className="mr-2 h-4 w-4" /> {messages.disconnect}
 									</Button>
 								</div>
 							</div>
 						))
 					) : (
 						<p className="text-sm text-muted-foreground">
-							No Ethereum wallets are connected to this account.
+							{messages.noEthereumWallets}
 						</p>
 					)}
 				</CardContent>
@@ -1361,13 +1395,13 @@ export function SecurityCenter({
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Disconnect this wallet?</DialogTitle>
+						<DialogTitle>{messages.disconnectWalletTitle}</DialogTitle>
 						<DialogDescription>
-							{walletToUnlink
-								? `${formatWalletAddress(walletToUnlink.address)} on ${formatWalletChain(walletToUnlink.chainId)}`
-								: "This wallet"}{" "}
-							will no longer be able to sign in. CinaSeek will refuse the change
-							if it would remove your last login method.
+							{formatDashboardMessage(messages.disconnectWalletDescription, {
+								wallet: walletToUnlink
+									? `${formatWalletAddress(walletToUnlink.address)} (${formatWalletChain(walletToUnlink.chainId)})`
+									: messages.thisWallet,
+							})}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -1381,7 +1415,7 @@ export function SecurityCenter({
 							) : (
 								<Unlink className="mr-2 h-4 w-4" />
 							)}
-							Disconnect wallet
+							{messages.disconnectWallet}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -1390,10 +1424,10 @@ export function SecurityCenter({
 			<Card className="mt-6">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<Link2 className="h-5 w-5" /> Linked identities
+						<Link2 className="h-5 w-5" /> {messages.linkedIdentities}
 					</CardTitle>
 					<CardDescription>
-						Review every sign-in identity attached to this CinaSeek account.
+						{messages.linkedIdentitiesDescription}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -1408,7 +1442,9 @@ export function SecurityCenter({
 										{formatOAuthProviderName(account.providerId)}
 									</p>
 									<p className="truncate text-xs text-muted-foreground">
-										Connected {formatSecurityDate(account.createdAt)}
+									{formatDashboardMessage(messages.connectedOn, {
+										date: formatSecurityDate(account.createdAt, locale),
+									})}
 									</p>
 								</div>
 								<Button
@@ -1420,7 +1456,10 @@ export function SecurityCenter({
 										!canUnlinkAccount(accounts.length) ||
 										busyAction === `account:${account.id}`
 									}
-									aria-label={`Disconnect ${account.providerId}`}
+								aria-label={formatDashboardMessage(
+									messages.disconnectProvider,
+									{ provider: formatOAuthProviderName(account.providerId) },
+								)}
 								>
 									{busyAction === `account:${account.id}` ? (
 										<Loader2 className="h-4 w-4 animate-spin" />
@@ -1449,7 +1488,9 @@ export function SecurityCenter({
 									) : (
 										<Link2 className="mr-2 h-4 w-4" />
 									)}
-									Connect {formatOAuthProviderName(provider.id)}
+									{formatDashboardMessage(messages.connectProvider, {
+										provider: formatOAuthProviderName(provider.id),
+									})}
 								</Button>
 							))}
 						</div>
@@ -1463,12 +1504,10 @@ export function SecurityCenter({
 			>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2 text-destructive">
-						<AlertTriangle className="h-5 w-5" /> Danger zone
+						<AlertTriangle className="h-5 w-5" /> {messages.dangerZone}
 					</CardTitle>
 					<CardDescription>
-						Account deletion removes the active account and invalidates every
-						session. Declared security or legal evidence may remain only for its
-						listed retention period.
+						{messages.dangerZoneDescription}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -1486,29 +1525,29 @@ export function SecurityCenter({
 					>
 						<DialogTrigger asChild>
 							<Button variant="destructive" disabled={!recentAuthentication}>
-								<Trash2 className="mr-2 h-4 w-4" /> Delete account
+								<Trash2 className="mr-2 h-4 w-4" /> {messages.deleteAccount}
 							</Button>
 						</DialogTrigger>
 						<DialogContent>
 							<DialogHeader>
-								<DialogTitle>Delete this CinaSeek account?</DialogTitle>
+								<DialogTitle>{messages.deleteAccountTitle}</DialogTitle>
 								<DialogDescription>
-									This cannot be undone. Review the retention snapshot, then
-									type the full account email to confirm. A signed JSON deletion
-									receipt will download after completion.
+									{messages.deleteAccountDescription}
 								</DialogDescription>
 							</DialogHeader>
 							<div className="space-y-4">
 								{deletionReadinessLoading ? (
 									<div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground">
-										<Loader2 className="h-4 w-4 animate-spin" /> Checking
-										deletion holds and retention policy…
+										<Loader2 className="h-4 w-4 animate-spin" />
+										{messages.checkingDeletionPolicy}
 									</div>
 								) : null}
 								{deletionReadinessError ? (
 									<Alert variant="destructive">
 										<AlertTriangle className="h-4 w-4" />
-										<AlertTitle>Deletion readiness unavailable</AlertTitle>
+										<AlertTitle>
+											{messages.deletionReadinessUnavailable}
+										</AlertTitle>
 										<AlertDescription>
 											{deletionReadinessError}
 										</AlertDescription>
@@ -1517,7 +1556,7 @@ export function SecurityCenter({
 								{deletionReadiness ? (
 									<div className="space-y-3 rounded-md border p-4 text-sm">
 										<div className="flex flex-wrap items-center justify-between gap-2">
-											<p className="font-medium">Retention policy</p>
+											<p className="font-medium">{messages.retentionPolicy}</p>
 											<Badge variant="secondary">
 												{deletionReadiness.policyVersion}
 											</Badge>
@@ -1532,7 +1571,9 @@ export function SecurityCenter({
 															</span>{" "}
 															— {exception.purpose}
 															{exception.maximumRetentionDays
-																? ` (up to ${exception.maximumRetentionDays} days)`
+														? ` (${formatDashboardMessage(messages.upToDays, {
+																count: String(exception.maximumRetentionDays),
+															})})`
 																: ""}
 														</li>
 													),
@@ -1540,29 +1581,35 @@ export function SecurityCenter({
 											</ul>
 										) : (
 											<p className="text-muted-foreground">
-												No retention exceptions are declared.
+												{messages.noRetentionExceptions}
 											</p>
 										)}
 										{deletionReadiness.requiredProcessors.length > 0 ? (
 											<Alert>
 												<ShieldCheck className="h-4 w-4" />
 												<AlertTitle>
-													External erasure confirmation required
+													{messages.externalErasureRequired}
 												</AlertTitle>
 												<AlertDescription>
-													Before local deletion, CinaSeek requires signed,
-													idempotent confirmation from{" "}
-													{deletionReadiness.requiredProcessors
-														.map((processor) => formatProcessorId(processor.id))
-														.join(", ")}
-													.
+													{formatDashboardMessage(
+														messages.externalErasureDescription,
+														{
+															processors: deletionReadiness.requiredProcessors
+																.map((processor) =>
+																	formatProcessorId(processor.id),
+																)
+																.join(", "),
+														},
+													)}
 												</AlertDescription>
 											</Alert>
 										) : null}
 										{deletionReadiness.blockingHolds.length > 0 ? (
 											<Alert variant="destructive">
 												<AlertTriangle className="h-4 w-4" />
-												<AlertTitle>Deletion is currently blocked</AlertTitle>
+												<AlertTitle>
+													{messages.deletionCurrentlyBlocked}
+												</AlertTitle>
 												<AlertDescription>
 													{deletionReadiness.blockingHolds
 														.map((hold) => hold.reason)
@@ -1573,7 +1620,9 @@ export function SecurityCenter({
 									</div>
 								) : null}
 								<div className="space-y-2">
-									<Label htmlFor="delete-confirmation">Account email</Label>
+									<Label htmlFor="delete-confirmation">
+										{messages.accountEmail}
+									</Label>
 									<Input
 										id="delete-confirmation"
 										value={deleteConfirmation}
@@ -1598,7 +1647,7 @@ export function SecurityCenter({
 									) : (
 										<Trash2 className="mr-2 h-4 w-4" />
 									)}
-									Permanently delete
+									{messages.permanentlyDelete}
 								</Button>
 							</DialogFooter>
 						</DialogContent>

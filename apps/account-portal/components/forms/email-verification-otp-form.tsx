@@ -9,6 +9,7 @@ import {
 	TurnstileChallenge,
 	useTurnstileChallenge,
 } from "@/components/turnstile-challenge";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { userKeys } from "@/data/user/keys";
 import { useResendCooldown } from "@/hooks/use-resend-cooldown";
 import { authClient } from "@/lib/auth-client";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import {
 	EMAIL_VERIFICATION_OTP_LENGTH,
 	normalizeEmailVerificationOtp,
@@ -33,6 +35,7 @@ const getErrorMessage = (error: unknown, fallback: string) =>
 	error instanceof Error && error.message.trim() ? error.message : fallback;
 
 export function EmailVerificationOtpForm({ email }: { email: string }) {
+	const { messages } = useDashboardI18n();
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -70,7 +73,7 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 			startCooldown();
 		} catch (error: unknown) {
 			setErrorMessage(
-				getErrorMessage(error, "Unable to send the verification code."),
+				getErrorMessage(error, messages.unableToSendCode),
 			);
 		} finally {
 			captcha.reset();
@@ -83,7 +86,7 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 		if (isPending) return;
 
 		if (otp.length !== EMAIL_VERIFICATION_OTP_LENGTH) {
-			setErrorMessage("Enter the complete six-digit verification code.");
+			setErrorMessage(messages.completeSixDigitCode);
 			return;
 		}
 
@@ -95,13 +98,13 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 			if (result.error || result.data?.status !== true) {
 				throw new Error(
 					result.error?.message ||
-						"The verification code could not be verified.",
+						messages.codeVerificationFailed,
 				);
 			}
 		} catch (error: unknown) {
 			setOtp("");
 			setErrorMessage(
-				getErrorMessage(error, "The verification code could not be verified."),
+				getErrorMessage(error, messages.codeVerificationFailed),
 			);
 			setAction(null);
 			return;
@@ -121,9 +124,9 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 		return (
 			<Alert variant="destructive">
 				<Mail aria-hidden />
-				<AlertTitle>Email verification is unavailable</AlertTitle>
+				<AlertTitle>{messages.emailVerificationUnavailable}</AlertTitle>
 				<AlertDescription>
-					Your signed-in session does not include an email address.
+					{messages.emailMissing}
 				</AlertDescription>
 			</Alert>
 		);
@@ -132,17 +135,17 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 	return (
 		<Alert>
 			<Mail aria-hidden />
-			<AlertTitle>Verify your email address</AlertTitle>
+			<AlertTitle>{messages.verifyEmailAddress}</AlertTitle>
 			<AlertDescription>
 				{codeSent ? (
 					<form onSubmit={verifyCode} className="flex w-full flex-col gap-3">
 						<FieldGroup>
 							<Field data-invalid={Boolean(errorMessage)}>
 								<FieldLabel htmlFor="email-verification-code">
-									Verification code
+									{messages.verificationCodeLabel}
 								</FieldLabel>
 								<FieldDescription>
-									Enter the six-digit code sent to {email}.
+									{formatDashboardMessage(messages.enterCodeSentTo, { email })}
 								</FieldDescription>
 								<Input
 									ref={inputRef}
@@ -177,7 +180,7 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 							{action === "verify" ? (
 								<Loader2 data-icon="inline-start" className="animate-spin" />
 							) : null}
-							Verify email
+							{messages.verifyEmail}
 						</Button>
 
 						<TurnstileChallenge challenge={captcha} />
@@ -191,12 +194,14 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 							{action === "resend" ? (
 								<Loader2 data-icon="inline-start" className="animate-spin" />
 							) : null}
-							{isCoolingDown ? `Resend in ${cooldown}s` : "Resend code"}
+							{isCoolingDown
+								? `${messages.resendIn} ${cooldown}s`
+								: messages.resendCode}
 						</Button>
 					</form>
 				) : (
 					<div className="flex w-full flex-col gap-3">
-						<p>Send a six-digit verification code to {email}.</p>
+						<p>{formatDashboardMessage(messages.sendCodeTo, { email })}</p>
 						{errorMessage ? <FieldError>{errorMessage}</FieldError> : null}
 						<TurnstileChallenge challenge={captcha} />
 						<Button
@@ -208,7 +213,7 @@ export function EmailVerificationOtpForm({ email }: { email: string }) {
 							{action === "send" ? (
 								<Loader2 data-icon="inline-start" className="animate-spin" />
 							) : null}
-							Send verification code
+							{messages.sendVerificationCode}
 						</Button>
 					</div>
 				)}

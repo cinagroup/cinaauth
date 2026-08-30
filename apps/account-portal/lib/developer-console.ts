@@ -1,3 +1,5 @@
+import type { Locale } from "./i18n";
+
 export const DEVELOPER_OAUTH_SCOPES = [
 	"openid",
 	"profile",
@@ -66,11 +68,18 @@ export type DeveloperOAuthConsent = {
 	updatedAt: string;
 };
 
-const developerDateFormatter = new Intl.DateTimeFormat("en", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-});
+const developerDateFormatters: Record<Locale, Intl.DateTimeFormat> = {
+	en: new Intl.DateTimeFormat("en", {
+		dateStyle: "medium",
+		timeStyle: "short",
+		timeZone: "UTC",
+	}),
+	"zh-CN": new Intl.DateTimeFormat("zh-CN", {
+		dateStyle: "medium",
+		timeStyle: "short",
+		timeZone: "UTC",
+	}),
+};
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 const BLOCKED_NATIVE_SCHEMES = new Set([
@@ -198,5 +207,5 @@ export const toDeveloperOAuthConsent = (
 export const canRotateDeveloperSecret = (client: DeveloperOAuthClient) =>
 	!client.public && client.tokenEndpointAuthMethod !== "none";
 
-export const formatDeveloperDate = (value: string) =>
-	`${developerDateFormatter.format(new Date(value))} UTC`;
+export const formatDeveloperDate = (value: string, locale: Locale = "en") =>
+	`${developerDateFormatters[locale].format(new Date(value))} UTC`;

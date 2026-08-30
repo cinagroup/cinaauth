@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
@@ -27,14 +28,20 @@ const ORGANIZATION_ROLES = {
 	MEMBER: "member",
 } as const satisfies Record<string, OrganizationRole>;
 
-const inviteMemberSchema = z.object({
-	email: z.email("Please enter a valid email address"),
-	role: z.enum(["admin", "member"], {
-		error: "Please select a role",
-	}),
-});
+const createInviteMemberSchema = (
+	validEmailRequired: string,
+	selectRoleRequired: string,
+) =>
+	z.object({
+		email: z.email(validEmailRequired),
+		role: z.enum(["admin", "member"], {
+			error: selectRoleRequired,
+		}),
+	});
 
-type InviteMemberFormValues = z.infer<typeof inviteMemberSchema>;
+type InviteMemberFormValues = z.infer<
+	ReturnType<typeof createInviteMemberSchema>
+>;
 
 interface InviteMemberFormProps {
 	onSuccess?: () => void;
@@ -45,6 +52,11 @@ export function InviteMemberForm({
 	onSuccess,
 	onError,
 }: InviteMemberFormProps) {
+	const { messages } = useDashboardI18n();
+	const inviteMemberSchema = createInviteMemberSchema(
+		messages.validEmailRequired,
+		messages.selectRoleRequired,
+	);
 	const inviteMutation = useInviteMemberMutation();
 
 	const {
@@ -86,7 +98,7 @@ export function InviteMemberForm({
 					control={control}
 					render={({ field }) => (
 						<Field>
-							<FieldLabel htmlFor="invite-email">Email</FieldLabel>
+							<FieldLabel htmlFor="invite-email">{messages.email}</FieldLabel>
 							<Input
 								id="invite-email"
 								type="email"
@@ -104,21 +116,21 @@ export function InviteMemberForm({
 					control={control}
 					render={({ field }) => (
 						<Field>
-							<FieldLabel htmlFor="invite-role">Role</FieldLabel>
+							<FieldLabel htmlFor="invite-role">{messages.role}</FieldLabel>
 							<Select
 								value={field.value}
 								onValueChange={field.onChange}
 								disabled={inviteMutation.isPending}
 							>
 								<SelectTrigger id="invite-role">
-									<SelectValue placeholder="Select a role" />
+									<SelectValue placeholder={messages.selectRole} />
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value={ORGANIZATION_ROLES.ADMIN}>
-										Admin
+										{messages.admin}
 									</SelectItem>
 									<SelectItem value={ORGANIZATION_ROLES.MEMBER}>
-										Member
+										{messages.member}
 									</SelectItem>
 								</SelectContent>
 							</Select>
@@ -131,7 +143,7 @@ export function InviteMemberForm({
 					{inviteMutation.isPending ? (
 						<Loader2 size={15} className="animate-spin" />
 					) : (
-						"Invite"
+						messages.invite
 					)}
 				</Button>
 			</FieldGroup>

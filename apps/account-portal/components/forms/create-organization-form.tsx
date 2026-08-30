@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
@@ -18,22 +19,25 @@ import { useOrganizationCreateMutation } from "@/data/organization/organization-
 import { useImagePreview } from "@/hooks/use-image-preview";
 import { convertImageToBase64 } from "@/lib/utils";
 
-const createOrganizationSchema = z.object({
-	name: z
-		.string()
-		.min(2, "Name must be at least 2 characters")
-		.max(50, "Name must be at most 50 characters"),
-	slug: z
-		.string()
-		.min(2, "Slug must be at least 2 characters")
-		.max(50, "Slug must be at most 50 characters")
-		.regex(
-			/^[a-z0-9-]+$/,
-			"Slug can only contain lowercase letters, numbers, and hyphens",
-		),
-});
+const createOrganizationSchema = (copy: {
+	nameTooShort: string;
+	nameTooLong: string;
+	slugTooShort: string;
+	slugTooLong: string;
+	slugInvalid: string;
+}) =>
+	z.object({
+		name: z.string().min(2, copy.nameTooShort).max(50, copy.nameTooLong),
+		slug: z
+			.string()
+			.min(2, copy.slugTooShort)
+			.max(50, copy.slugTooLong)
+			.regex(/^[a-z0-9-]+$/, copy.slugInvalid),
+	});
 
-type CreateOrganizationFormValues = z.infer<typeof createOrganizationSchema>;
+type CreateOrganizationFormValues = z.infer<
+	ReturnType<typeof createOrganizationSchema>
+>;
 
 interface CreateOrganizationFormProps {
 	onSuccess?: () => void;
@@ -44,6 +48,8 @@ export function CreateOrganizationForm({
 	onSuccess,
 	onError,
 }: CreateOrganizationFormProps) {
+	const { messages } = useDashboardI18n();
+	const organizationSchema = createOrganizationSchema(messages);
 	const createMutation = useOrganizationCreateMutation();
 	const { image, imagePreview, handleImageChange, clearImage } =
 		useImagePreview();
@@ -55,7 +61,7 @@ export function CreateOrganizationForm({
 		setValue,
 		formState: { errors, dirtyFields },
 	} = useForm<CreateOrganizationFormValues>({
-		resolver: zodResolver(createOrganizationSchema),
+		resolver: zodResolver(organizationSchema),
 		defaultValues: {
 			name: "",
 			slug: "",
@@ -97,7 +103,7 @@ export function CreateOrganizationForm({
 			);
 		} catch (error) {
 			onError?.(
-				error instanceof Error ? error.message : "Failed to process image",
+				error instanceof Error ? error.message : messages.imageProcessingFailed,
 			);
 		}
 	};
@@ -110,10 +116,12 @@ export function CreateOrganizationForm({
 					control={control}
 					render={({ field }) => (
 						<Field>
-							<FieldLabel htmlFor="org-name">Organization Name</FieldLabel>
+							<FieldLabel htmlFor="org-name">
+								{messages.organizationName}
+							</FieldLabel>
 							<Input
 								id="org-name"
-								placeholder="My Organization"
+								placeholder={messages.organizationNamePlaceholder}
 								disabled={createMutation.isPending}
 								{...field}
 							/>
@@ -127,10 +135,12 @@ export function CreateOrganizationForm({
 					control={control}
 					render={({ field }) => (
 						<Field>
-							<FieldLabel htmlFor="org-slug">Organization Slug</FieldLabel>
+							<FieldLabel htmlFor="org-slug">
+								{messages.organizationSlug}
+							</FieldLabel>
 							<Input
 								id="org-slug"
-								placeholder="my-organization"
+								placeholder={messages.organizationSlugPlaceholder}
 								disabled={createMutation.isPending}
 								{...field}
 							/>
@@ -140,13 +150,13 @@ export function CreateOrganizationForm({
 				/>
 
 				<Field>
-					<FieldLabel htmlFor="org-logo">Logo</FieldLabel>
+					<FieldLabel htmlFor="org-logo">{messages.logo}</FieldLabel>
 					<div className="flex items-end gap-4">
 						{imagePreview && (
 							<div className="relative w-16 h-16 rounded-sm overflow-hidden">
 								<Image
 									src={imagePreview}
-									alt="Logo preview"
+									alt={messages.logoPreview}
 									fill
 									className="object-cover"
 								/>
@@ -165,7 +175,7 @@ export function CreateOrganizationForm({
 								<X
 									className="cursor-pointer"
 									onClick={clearImage}
-									aria-label="Clear logo"
+									aria-label={messages.clearLogo}
 								/>
 							)}
 						</div>
@@ -176,7 +186,7 @@ export function CreateOrganizationForm({
 					{createMutation.isPending ? (
 						<Loader2 size={15} className="animate-spin" />
 					) : (
-						"Create"
+						messages.create
 					)}
 				</Button>
 			</FieldGroup>

@@ -7,6 +7,7 @@ import { Controller, useForm } from "react-hook-form";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Button } from "@/components/ui/button";
 import CopyButton from "@/components/ui/copy-button";
 import {
@@ -19,11 +20,12 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
 import { getTwoFactorPasswordBody } from "@/lib/security-center";
 
-const passwordSchema = z.object({
-	password: z.string().min(8, "Password must be at least 8 characters."),
-});
+const createPasswordSchema = (passwordMinEight: string) =>
+	z.object({
+		password: z.string().min(8, passwordMinEight),
+	});
 
-type PasswordFormValues = z.infer<typeof passwordSchema>;
+type PasswordFormValues = z.infer<ReturnType<typeof createPasswordSchema>>;
 
 interface TwoFactorQrFormProps {
 	onSuccess?: (totpURI: string) => void;
@@ -34,6 +36,8 @@ export function TwoFactorQrForm({
 	onSuccess,
 	requiresPassword = true,
 }: TwoFactorQrFormProps) {
+	const { messages } = useDashboardI18n();
+	const passwordSchema = createPasswordSchema(messages.passwordMinEight);
 	const [loading, startTransition] = useTransition();
 	const [totpURI, setTotpURI] = useState<string>("");
 
@@ -72,7 +76,9 @@ export function TwoFactorQrForm({
 					<QRCode value={totpURI} />
 				</div>
 				<div className="flex gap-2 items-center justify-center">
-					<p className="text-sm text-muted-foreground">Copy URI to clipboard</p>
+					<p className="text-sm text-muted-foreground">
+						{messages.copyUriToClipboard}
+					</p>
 					<CopyButton textToCopy={totpURI} />
 				</div>
 			</div>
@@ -83,7 +89,7 @@ export function TwoFactorQrForm({
 		return (
 			<div className="flex flex-col gap-4">
 				<p className="text-sm text-muted-foreground">
-					Your recent passwordless sign-in confirms this security change.
+					{messages.passwordlessSecurityConfirmation}
 				</p>
 				<Button
 					type="button"
@@ -93,7 +99,7 @@ export function TwoFactorQrForm({
 					{loading ? (
 						<Loader2 size={16} className="animate-spin" />
 					) : (
-						"Show QR Code"
+						messages.showQrCode
 					)}
 				</Button>
 			</div>
@@ -111,11 +117,13 @@ export function TwoFactorQrForm({
 					control={form.control}
 					render={({ field, fieldState }) => (
 						<Field data-invalid={fieldState.invalid}>
-							<FieldLabel htmlFor="qr-password">Password</FieldLabel>
+							<FieldLabel htmlFor="qr-password">
+								{messages.password}
+							</FieldLabel>
 							<PasswordInput
 								{...field}
 								id="qr-password"
-								placeholder="Enter your password"
+								placeholder={messages.enterPassword}
 								aria-invalid={fieldState.invalid}
 								autoComplete="current-password"
 							/>
@@ -128,7 +136,7 @@ export function TwoFactorQrForm({
 				{loading ? (
 					<Loader2 size={16} className="animate-spin" />
 				) : (
-					"Show QR Code"
+					messages.showQrCode
 				)}
 			</Button>
 		</form>

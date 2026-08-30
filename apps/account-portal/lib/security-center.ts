@@ -1,16 +1,24 @@
 import type { AuthCapabilities } from "@cinaauth/auth-web-contract";
+import type { Locale } from "./i18n";
 
 export const SECURITY_FRESH_AGE_SECONDS = 15 * 60;
 
-const securityDateFormatter = new Intl.DateTimeFormat("en", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-});
+const securityDateFormatters: Record<Locale, Intl.DateTimeFormat> = {
+	en: new Intl.DateTimeFormat("en", {
+		dateStyle: "medium",
+		timeStyle: "short",
+		timeZone: "UTC",
+	}),
+	"zh-CN": new Intl.DateTimeFormat("zh-CN", {
+		dateStyle: "medium",
+		timeStyle: "short",
+		timeZone: "UTC",
+	}),
+};
 
 /** Format security-event timestamps identically during SSR and hydration. */
-export const formatSecurityDate = (value: string) =>
-	`${securityDateFormatter.format(new Date(value))} UTC`;
+export const formatSecurityDate = (value: string, locale: Locale = "en") =>
+	`${securityDateFormatters[locale].format(new Date(value))} UTC`;
 
 export type SecuritySession = {
 	id: string;

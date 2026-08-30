@@ -20,6 +20,8 @@ export function AuthShell({
 	backLabel = "Back to sign in",
 	footer,
 	variant = "default",
+	themeLabel,
+	protectedLabel = "Protected by CinaSeek authentication",
 }: {
 	title: string;
 	description?: string;
@@ -28,6 +30,8 @@ export function AuthShell({
 	backLabel?: string;
 	footer?: string | ReactElement;
 	variant?: "default" | "transaction";
+	themeLabel?: string;
+	protectedLabel?: string;
 }) {
 	const isTransaction = variant === "transaction";
 
@@ -87,7 +91,7 @@ export function AuthShell({
 							</h1>
 						</div>
 						<div className={cn(isTransaction && "absolute right-0 top-0")}>
-							<ThemeToggle />
+							<ThemeToggle label={themeLabel} />
 						</div>
 					</div>
 					{description ? (
@@ -132,7 +136,7 @@ export function AuthShell({
 					) : null}
 					<div className="flex items-center justify-center gap-2 text-xs text-body">
 						<ShieldCheck size={14} aria-hidden className="shrink-0" />
-						<span>Protected by CinaSeek authentication</span>
+						<span>{protectedLabel}</span>
 					</div>
 				</CardFooter>
 			</Card>

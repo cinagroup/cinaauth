@@ -53,7 +53,7 @@ describe("CinaSeek Accounts dashboard shell contract", () => {
 			"onActiveNavigate={() => setMobileNavigationOpen(false)}",
 		);
 		expect(topbarSource).toContain("ThemeToggle");
-		expect(topbarSource).toContain('aria-label="Open navigation"');
+		expect(topbarSource).toContain("aria-label={messages.openNavigation}");
 	});
 
 	it("keeps every existing dashboard destination in the shared navigation", () => {

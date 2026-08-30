@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,10 @@ import {
 	formatOrganizationDate,
 	getOrganizationAuditActionLabel,
 } from "@/lib/organization-console";
+import {
+	formatDashboardMessage,
+	type DashboardMessages,
+} from "@/lib/dashboard-i18n";
 
 const PAGE_SIZE = 25;
 
@@ -96,6 +101,18 @@ const downloadExport = (
 const getErrorMessage = (error: unknown, fallback: string) =>
 	error instanceof Error && error.message ? error.message : fallback;
 
+const localizeAuditError = (error: string, messages: DashboardMessages) => {
+	const localizedErrors: Record<string, string> = {
+		"Action filter must be 128 characters or fewer.":
+			messages.actionFilterTooLong,
+		"Start date is invalid.": messages.startDateInvalid,
+		"End date is invalid.": messages.endDateInvalid,
+		"Start date must be on or before the end date.":
+			messages.auditDateRangeInvalid,
+	};
+	return localizedErrors[error] ?? error;
+};
+
 export function OrganizationAuditCard({
 	organizationId,
 	organizationName,
@@ -103,6 +120,7 @@ export function OrganizationAuditCard({
 	initialPage,
 	initiallyUnavailable,
 }: OrganizationAuditCardProps) {
+	const { locale, messages } = useDashboardI18n();
 	const [draft, setDraft] = useState<AuditFilterDraft>(EMPTY_FILTER_DRAFT);
 	const [filters, setFilters] = useState<OrganizationAuditFilters>({});
 	const [offset, setOffset] = useState(0);
@@ -130,7 +148,7 @@ export function OrganizationAuditCard({
 		try {
 			const action = draft.action.trim();
 			if (action.length > 128) {
-				throw new Error("Action filter must be 128 characters or fewer.");
+				throw new Error(messages.actionFilterTooLong);
 			}
 			setFilters({
 				...getOrganizationAuditDateRange(draft.startDate, draft.endDate),
@@ -139,7 +157,12 @@ export function OrganizationAuditCard({
 			});
 			setOffset(0);
 		} catch (error) {
-			toast.error(getErrorMessage(error, "Audit filters are invalid"));
+			toast.error(
+				localizeAuditError(
+					getErrorMessage(error, messages.auditFiltersInvalid),
+					messages,
+				),
+			);
 		}
 	};
 
@@ -180,9 +203,13 @@ export function OrganizationAuditCard({
 					"text/csv;charset=utf-8",
 				);
 			}
-			toast.success(`Exported ${records.length.toLocaleString()} audit events`);
+			toast.success(
+				formatDashboardMessage(messages.auditEventsExported, {
+					count: records.length.toLocaleString(locale),
+				}),
+			);
 		} catch (error) {
-			toast.error(getErrorMessage(error, "Unable to export audit events"));
+			toast.error(getErrorMessage(error, messages.unableExportAudit));
 		} finally {
 			setExportingFormat(null);
 		}
@@ -200,9 +227,9 @@ export function OrganizationAuditCard({
 		<Card>
 			<CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div>
-					<CardTitle>Organization activity</CardTitle>
+					<CardTitle>{messages.organizationActivity}</CardTitle>
 					<CardDescription>
-						Tenant-scoped security events for owners and administrators.
+						{messages.organizationActivityDescription}
 					</CardDescription>
 				</div>
 				<div className="flex flex-wrap gap-2">
@@ -217,7 +244,7 @@ export function OrganizationAuditCard({
 						) : (
 							<FileJson className="mr-2 h-4 w-4" />
 						)}
-						Export JSON
+						{messages.exportJson}
 					</Button>
 					<Button
 						variant="outline"
@@ -230,14 +257,14 @@ export function OrganizationAuditCard({
 						) : (
 							<FileSpreadsheet className="mr-2 h-4 w-4" />
 						)}
-						Export CSV
+						{messages.exportCsv}
 					</Button>
 				</div>
 			</CardHeader>
 			<CardContent className="space-y-5">
 				<div className="grid gap-3 rounded-lg border bg-muted/20 p-4 md:grid-cols-2 xl:grid-cols-4">
 					<div className="space-y-2">
-						<Label htmlFor="audit-start-date">Start date (UTC)</Label>
+						<Label htmlFor="audit-start-date">{messages.startDateUtc}</Label>
 						<Input
 							id="audit-start-date"
 							type="date"
@@ -251,7 +278,7 @@ export function OrganizationAuditCard({
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="audit-end-date">End date (UTC)</Label>
+						<Label htmlFor="audit-end-date">{messages.endDateUtc}</Label>
 						<Input
 							id="audit-end-date"
 							type="date"
@@ -265,7 +292,7 @@ export function OrganizationAuditCard({
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="audit-action">Action</Label>
+						<Label htmlFor="audit-action">{messages.action}</Label>
 						<Input
 							id="audit-action"
 							placeholder="org.member_role_update"
@@ -279,7 +306,7 @@ export function OrganizationAuditCard({
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="audit-result">Result</Label>
+						<Label htmlFor="audit-result">{messages.result}</Label>
 						<Select
 							value={draft.result}
 							onValueChange={(result) =>
@@ -293,18 +320,18 @@ export function OrganizationAuditCard({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="all">All results</SelectItem>
-								<SelectItem value="success">Success</SelectItem>
-								<SelectItem value="failure">Failure</SelectItem>
+								<SelectItem value="all">{messages.allResults}</SelectItem>
+								<SelectItem value="success">{messages.success}</SelectItem>
+								<SelectItem value="failure">{messages.failure}</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
 					<div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-4">
 						<Button size="sm" onClick={applyFilters}>
-							<Filter className="mr-2 h-4 w-4" /> Apply filters
+							<Filter className="mr-2 h-4 w-4" /> {messages.applyFilters}
 						</Button>
 						<Button size="sm" variant="ghost" onClick={clearFilters}>
-							Clear
+							{messages.clear}
 						</Button>
 						<Button
 							size="sm"
@@ -315,7 +342,7 @@ export function OrganizationAuditCard({
 							<RefreshCw
 								className={`mr-2 h-4 w-4 ${auditQuery.isFetching ? "animate-spin" : ""}`}
 							/>
-							Refresh
+							{messages.refresh}
 						</Button>
 					</div>
 				</div>
@@ -323,15 +350,15 @@ export function OrganizationAuditCard({
 				{auditQuery.isError ? (
 					<Alert variant="destructive">
 						<AlertTriangle className="h-4 w-4" />
-						<AlertTitle>Activity is temporarily unavailable</AlertTitle>
+						<AlertTitle>{messages.activityUnavailable}</AlertTitle>
 						<AlertDescription>
-							No cached events or exports are shown. Retry after the
-							authoritative audit service recovers.
+							{messages.activityUnavailableDescription}
 						</AlertDescription>
 					</Alert>
 				) : auditQuery.isPending ? (
 					<div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-						<Loader2 className="h-4 w-4 animate-spin" /> Loading audit events…
+						<Loader2 className="h-4 w-4 animate-spin" />
+						{messages.loadingAuditEvents}
 					</div>
 				) : page && page.rows.length > 0 ? (
 					<div className="space-y-3">
@@ -342,11 +369,15 @@ export function OrganizationAuditCard({
 							>
 								<div>
 									<p className="text-sm font-medium">
-										{getOrganizationAuditActionLabel(event.action)}
+										{getOrganizationAuditActionLabel(event.action, locale)}
 									</p>
 									<p className="mt-1 text-xs text-muted-foreground">
-										{formatOrganizationAuditActor(event.actorId, currentUserId)}{" "}
-										· {formatOrganizationDate(String(event.timestamp))}
+										{formatOrganizationAuditActor(
+											event.actorId,
+											currentUserId,
+											locale,
+										)}{" "}
+										· {formatOrganizationDate(String(event.timestamp), locale)}
 									</p>
 								</div>
 								<Badge
@@ -354,23 +385,26 @@ export function OrganizationAuditCard({
 										event.result === "success" ? "secondary" : "destructive"
 									}
 								>
-									{event.result === "success" ? "Success" : "Failed"}
+									{event.result === "success"
+										? messages.success
+										: messages.failed}
 								</Badge>
 							</div>
 						))}
 					</div>
 				) : (
 					<div className="flex items-center gap-2 py-5 text-sm text-muted-foreground">
-						<History className="h-4 w-4" /> No audit events match these filters.
+						<History className="h-4 w-4" /> {messages.noAuditEvents}
 					</div>
 				)}
 
 				<div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
 					<p className="text-xs text-muted-foreground">
-						Showing {firstVisible.toLocaleString()}–
-						{lastVisible.toLocaleString()} of{" "}
-						{(page?.total ?? 0).toLocaleString()} events. Exports are capped at
-						10,000 events and fail rather than truncate.
+						{formatDashboardMessage(messages.auditPagination, {
+							first: firstVisible.toLocaleString(locale),
+							last: lastVisible.toLocaleString(locale),
+							total: (page?.total ?? 0).toLocaleString(locale),
+						})}
 					</p>
 					<div className="flex gap-2">
 						<Button
@@ -381,7 +415,7 @@ export function OrganizationAuditCard({
 								setOffset((current) => Math.max(0, current - PAGE_SIZE))
 							}
 						>
-							Previous
+							{messages.previous}
 						</Button>
 						<Button
 							variant="outline"
@@ -389,7 +423,7 @@ export function OrganizationAuditCard({
 							disabled={nextDisabled}
 							onClick={() => setOffset((current) => current + PAGE_SIZE)}
 						>
-							Next
+							{messages.next}
 						</Button>
 					</div>
 				</div>

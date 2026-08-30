@@ -1,5 +1,6 @@
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
 	Tooltip,
@@ -13,6 +14,7 @@ interface CopyButtonProps {
 }
 
 export default function CopyButton({ textToCopy }: CopyButtonProps) {
+	const { messages } = useI18n();
 	const [isCopied, setIsCopied] = useState(false);
 
 	useEffect(() => {
@@ -46,11 +48,11 @@ export default function CopyButton({ textToCopy }: CopyButtonProps) {
 						) : (
 							<Copy className="h-4 w-4" />
 						)}
-						<span className="sr-only">Copy to clipboard</span>
+						<span className="sr-only">{messages.copyToClipboard}</span>
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
-					<p>{isCopied ? "Copied!" : "Copy to clipboard"}</p>
+					<p>{isCopied ? messages.copied : messages.copyToClipboard}</p>
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>

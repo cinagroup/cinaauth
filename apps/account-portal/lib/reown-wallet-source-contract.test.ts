@@ -64,13 +64,16 @@ describe("Reown wallet bundle boundary", () => {
 		const security = readSource(
 			"../app/dashboard/security/security-center.tsx",
 		);
+		const dashboardI18n = readSource("./dashboard-i18n.ts");
 
 		expect(dashboard).toMatch(/auth\.api\s*\.listWallets/);
 		expect(dashboard).toContain("getWalletOverviewSummary");
 		expect(dashboard).toContain("<WalletOverviewCard");
 		expect(overview).toContain('href="/dashboard/security#wallets"');
-		expect(overview).toContain("Bind wallet");
-		expect(overview).toContain("Manage wallets");
+		expect(overview).toContain("messages.bindWallet");
+		expect(overview).toContain("messages.manageWallets");
+		expect(dashboardI18n).toContain('bindWallet: "Bind wallet"');
+		expect(dashboardI18n).toContain('manageWallets: "Manage wallets"');
 		expect(security).toContain('id="wallets"');
 	});
 });

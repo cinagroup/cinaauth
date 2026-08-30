@@ -197,6 +197,7 @@ describe("Accounts authentication UI phase two contract", () => {
 		const signInSource = readSource(
 			"../app/(auth)/sign-in/_components/sign-in.tsx",
 		);
+		const i18nSource = readSource("./i18n.ts");
 
 		expect(signInSource).toContain("hasSignedOidcCreatePrompt");
 		expect(signInSource).toContain("completeEmailOtpAuthentication");
@@ -206,7 +207,8 @@ describe("Accounts authentication UI phase two contract", () => {
 		expect(signInSource).toContain(
 			'intent={hasCreatePrompt ? "signup" : "signin"}',
 		);
-		expect(signInSource).toContain(
+		expect(signInSource).toContain("messages.newWalletAccount");
+		expect(i18nSource).toContain(
 			"New wallet? We'll create your account after you verify the",
 		);
 		expect(signInPageSource).not.toContain("<SignUpLink />");

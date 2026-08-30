@@ -23,12 +23,12 @@ describe("Accounts authentication shell theme contract", () => {
 		expect(cardEnd).toBeGreaterThan(cardStart);
 
 		for (const fragment of [
-			"<ThemeToggle />",
+			"<ThemeToggle label={themeLabel} />",
 			"<Logo",
 			'id="auth-title"',
 			"{children}",
 			"{footer ? (",
-			"Protected by CinaSeek authentication",
+			"{protectedLabel}",
 		]) {
 			const position = shellSource.indexOf(fragment);
 			expect(position).toBeGreaterThan(cardStart);
@@ -40,8 +40,9 @@ describe("Accounts authentication shell theme contract", () => {
 		const toggleSource = readSource("../components/theme-toggle.tsx");
 
 		expect(toggleSource).toContain('import { Moon, Sun } from "lucide-react"');
-		expect(toggleSource).toContain('aria-label="Toggle color theme"');
-		expect(toggleSource).toContain('title="Toggle color theme"');
+		expect(toggleSource).toContain('label = "Toggle color theme"');
+		expect(toggleSource).toContain("aria-label={label}");
+		expect(toggleSource).toContain("title={label}");
 		expect(toggleSource).toContain('type="button"');
 		expect(toggleSource).toContain("suppressHydrationWarning");
 		expect(toggleSource).toContain('resolvedTheme === "dark"');

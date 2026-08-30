@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
 	AlertDialog,
@@ -49,6 +50,10 @@ import {
 	useSCIMTokenGenerateMutation,
 } from "@/data/organization/enterprise-connection-mutations";
 import type { SCIMProviderConnection, SSOProviderSummary } from "@/lib/auth";
+import {
+	formatDashboardMessage,
+	type DashboardMessages,
+} from "@/lib/dashboard-i18n";
 import { SSOProviderManager } from "./sso-provider-manager";
 
 type EnterpriseConnectionsCardProps = {
@@ -88,12 +93,31 @@ const getProviderIdError = (
 	return null;
 };
 
-const copyValue = async (value: string, label: string) => {
+const localizeProviderIdError = (
+	error: string | null,
+	messages: DashboardMessages,
+) => {
+	if (!error) return error;
+	const localizedErrors: Record<string, string> = {
+		"Enter a stable provider ID.": messages.providerIdRequired,
+		"Provider ID must be 64 characters or less.": messages.providerIdTooLong,
+		"Use lowercase letters, numbers, hyphens, or underscores.":
+			messages.providerIdInvalid,
+		"That provider ID is already in use.": messages.providerIdInUse,
+	};
+	return localizedErrors[error] ?? error;
+};
+
+const copyValue = async (
+	value: string,
+	successMessage: string,
+	errorMessage: string,
+) => {
 	try {
 		await navigator.clipboard.writeText(value);
-		toast.success(`${label} copied`);
+		toast.success(successMessage);
 	} catch {
-		toast.error(`Unable to copy ${label.toLowerCase()}`);
+		toast.error(errorMessage);
 	}
 };
 
@@ -105,6 +129,7 @@ export function EnterpriseConnectionsCard({
 	initialSCIMProviders,
 	dataUnavailable,
 }: EnterpriseConnectionsCardProps) {
+	const { messages } = useDashboardI18n();
 	const router = useRouter();
 	const [scimToken, setSCIMToken] = useState<SCIMTokenNotice | null>(null);
 	const [createSCIMOpen, setCreateSCIMOpen] = useState(false);
@@ -114,10 +139,13 @@ export function EnterpriseConnectionsCard({
 	const writeActionsAvailable =
 		recentAuthentication && authoritativeOrganizationData;
 	const normalizedProviderId = newProviderId.trim().toLowerCase();
-	const providerIdError = getProviderIdError(
-		normalizedProviderId,
-		initialSSOProviders,
-		initialSCIMProviders,
+	const providerIdError = localizeProviderIdError(
+		getProviderIdError(
+			normalizedProviderId,
+			initialSSOProviders,
+			initialSCIMProviders,
+		),
+		messages,
 	);
 
 	const generateToken = (providerId: string) => {
@@ -128,7 +156,7 @@ export function EnterpriseConnectionsCard({
 					setCreateSCIMOpen(false);
 					setNewProviderId("");
 					setSCIMToken({ providerId, token });
-					toast.success("SCIM token generated. Copy it now.");
+					toast.success(messages.scimTokenGenerated);
 					router.refresh();
 				},
 			},
@@ -138,7 +166,7 @@ export function EnterpriseConnectionsCard({
 	const revokeProvider = (providerId: string) => {
 		revokeSCIMMutation.mutate(providerId, {
 			onSuccess: () => {
-				toast.success("SCIM token revoked");
+				toast.success(messages.scimTokenRevoked);
 				router.refresh();
 			},
 		});
@@ -148,20 +176,18 @@ export function EnterpriseConnectionsCard({
 		<>
 			<Card>
 				<CardHeader>
-					<CardTitle>Enterprise connections</CardTitle>
+					<CardTitle>{messages.enterpriseConnections}</CardTitle>
 					<CardDescription>
-						Authoritative SSO and SCIM connections scoped to this organization.
-						Secret material is only shown at issuance.
+						{messages.enterpriseConnectionsDescription}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
 					{!recentAuthentication ? (
 						<Alert>
 							<AlertTriangle className="h-4 w-4" />
-							<AlertTitle>Fresh sign-in required for changes</AlertTitle>
+							<AlertTitle>{messages.freshSignInChanges}</AlertTitle>
 							<AlertDescription>
-								Inventory remains visible, but DNS verification and SCIM token
-								changes are disabled until you sign in again.
+								{messages.freshSignInChangesDescription}
 							</AlertDescription>
 						</Alert>
 					) : null}
@@ -195,17 +221,16 @@ export function EnterpriseConnectionsCard({
 										onClick={() => setCreateSCIMOpen(true)}
 										disabled={!writeActionsAvailable || dataUnavailable.scim}
 									>
-										<Plus className="h-4 w-4" /> New token
+										<Plus className="h-4 w-4" /> {messages.newToken}
 									</Button>
 								</div>
 							</div>
 							{dataUnavailable.scim ? (
 								<Alert>
 									<AlertTriangle className="h-4 w-4" />
-									<AlertTitle>SCIM inventory unavailable</AlertTitle>
+									<AlertTitle>{messages.scimInventoryUnavailable}</AlertTitle>
 									<AlertDescription>
-										No cached token connection data is shown and changes are
-										disabled.
+										{messages.scimInventoryUnavailableDescription}
 									</AlertDescription>
 								</Alert>
 							) : initialSCIMProviders.length > 0 ? (
@@ -219,7 +244,7 @@ export function EnterpriseConnectionsCard({
 												https://auth.cinaseek.ai/api/auth/scim/v2
 											</p>
 											<p className="mt-1 text-xs text-muted-foreground">
-												Token is stored hashed and cannot be recovered.
+												{messages.scimTokenHashed}
 											</p>
 											<div className="mt-4 flex flex-wrap gap-2">
 												<AlertDialog>
@@ -232,30 +257,28 @@ export function EnterpriseConnectionsCard({
 																generateSCIMMutation.isPending
 															}
 														>
-															<RefreshCw className="h-4 w-4" /> Rotate
+															<RefreshCw className="h-4 w-4" /> {messages.rotate}
 														</Button>
 													</AlertDialogTrigger>
 													<AlertDialogContent>
 														<AlertDialogHeader>
 															<AlertDialogTitle>
-																Rotate SCIM token?
+																{messages.rotateScimToken}
 															</AlertDialogTitle>
 															<AlertDialogDescription>
-																The current token stops working immediately. The
-																replacement is shown once and must be copied
-																before closing.
+																{messages.rotateScimTokenDescription}
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
 															<AlertDialogCancel>
-																Keep current token
+																{messages.keepCurrentToken}
 															</AlertDialogCancel>
 															<AlertDialogAction
 																onClick={() =>
 																	generateToken(provider.providerId)
 																}
 															>
-																Rotate token
+																{messages.rotateToken}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
@@ -270,28 +293,29 @@ export function EnterpriseConnectionsCard({
 																revokeSCIMMutation.isPending
 															}
 														>
-															<Trash2 className="h-4 w-4" /> Revoke
+															<Trash2 className="h-4 w-4" /> {messages.revoke}
 														</Button>
 													</AlertDialogTrigger>
 													<AlertDialogContent>
 														<AlertDialogHeader>
 															<AlertDialogTitle>
-																Revoke SCIM token?
+																{messages.revokeScimToken}
 															</AlertDialogTitle>
 															<AlertDialogDescription>
-																Provisioning requests using this provider stop
-																immediately. This cannot be undone.
+																{messages.revokeScimTokenDescription}
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
-															<AlertDialogCancel>Keep token</AlertDialogCancel>
+															<AlertDialogCancel>
+																{messages.keepToken}
+															</AlertDialogCancel>
 															<AlertDialogAction
 																className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 																onClick={() =>
 																	revokeProvider(provider.providerId)
 																}
 															>
-																Revoke token
+																{messages.revokeToken}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
@@ -302,7 +326,7 @@ export function EnterpriseConnectionsCard({
 								</div>
 							) : (
 								<p className="text-sm text-muted-foreground">
-									No SCIM token connection exists for this organization.
+									{messages.noScimConnection}
 								</p>
 							)}
 						</section>
@@ -319,23 +343,22 @@ export function EnterpriseConnectionsCard({
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Create SCIM token</DialogTitle>
+						<DialogTitle>{messages.createScimToken}</DialogTitle>
 						<DialogDescription>
-							Use a stable provider ID for this IdP. The token is scoped to the
-							active organization and shown once.
+							{messages.createScimTokenDescription}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-2">
-						<Label htmlFor="new-scim-provider-id">Provider ID</Label>
+						<Label htmlFor="new-scim-provider-id">{messages.providerId}</Label>
 						<Input
 							id="new-scim-provider-id"
-							placeholder="acme-scim"
+							placeholder={messages.providerIdPlaceholder}
 							maxLength={64}
 							value={newProviderId}
 							onChange={(event) => setNewProviderId(event.target.value)}
 						/>
 						<p className="text-xs text-muted-foreground">
-							Lowercase letters, numbers, hyphens, and underscores only.
+							{messages.providerIdHint}
 						</p>
 						{newProviderId && providerIdError ? (
 							<p className="text-sm text-destructive">{providerIdError}</p>
@@ -343,7 +366,7 @@ export function EnterpriseConnectionsCard({
 					</div>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setCreateSCIMOpen(false)}>
-							Cancel
+							{messages.cancel}
 						</Button>
 						<Button
 							onClick={() => generateToken(normalizedProviderId)}
@@ -356,7 +379,7 @@ export function EnterpriseConnectionsCard({
 							) : (
 								<KeyRound className="h-4 w-4" />
 							)}
-							Generate token
+							{messages.generateToken}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -370,25 +393,27 @@ export function EnterpriseConnectionsCard({
 			>
 				<DialogContent className="sm:max-w-2xl">
 					<DialogHeader>
-						<DialogTitle>Copy this SCIM token now</DialogTitle>
+						<DialogTitle>{messages.copyScimTokenNow}</DialogTitle>
 						<DialogDescription>
-							CinaSeek stores only a hash. Closing this dialog permanently hides
-							the token; rotate it to obtain another one.
+							{messages.copyScimTokenNowDescription}
 						</DialogDescription>
 					</DialogHeader>
 					<Alert>
 						<KeyRound className="h-4 w-4" />
-						<AlertTitle>One-time secret for {scimToken?.providerId}</AlertTitle>
+						<AlertTitle>
+							{formatDashboardMessage(messages.oneTimeSecretFor, {
+								provider: scimToken?.providerId ?? "",
+							})}
+						</AlertTitle>
 						<AlertDescription>
-							Store it in the identity provider secret field, never in source
-							control or browser storage.
+							{messages.oneTimeSecretDescription}
 						</AlertDescription>
 					</Alert>
 					<code className="block max-h-40 overflow-auto break-all rounded bg-muted p-4 text-xs">
 						{scimToken?.token}
 					</code>
 					<div className="rounded-lg border p-4 text-sm">
-						<p className="font-medium">SCIM base URL</p>
+						<p className="font-medium">{messages.scimBaseUrl}</p>
 						<p className="mt-1 break-all text-xs text-muted-foreground">
 							https://auth.cinaseek.ai/api/auth/scim/v2
 						</p>
@@ -396,13 +421,19 @@ export function EnterpriseConnectionsCard({
 					<DialogFooter>
 						<Button
 							onClick={() => {
-								if (scimToken) void copyValue(scimToken.token, "SCIM token");
+								if (scimToken) {
+									void copyValue(
+										scimToken.token,
+										messages.scimTokenCopied,
+										messages.unableCopyScimToken,
+									);
+								}
 							}}
 						>
-							<Copy className="h-4 w-4" /> Copy token
+							<Copy className="h-4 w-4" /> {messages.copyToken}
 						</Button>
 						<Button variant="outline" onClick={() => setSCIMToken(null)}>
-							I stored it securely
+							{messages.storedSecurely}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
