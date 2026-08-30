@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_LOCALE, homeMessages, resolveLocale } from "./i18n";
+import { homeMessages, resolveLocale } from "./i18n";
 
 describe("CinaSeek Accounts homepage localization", () => {
 	it("defaults to Simplified Chinese and honors an explicit saved locale", () => {
-		expect(DEFAULT_LOCALE).toBe("zh-CN");
+		expect(resolveLocale({})).toBe("zh-CN");
 		expect(resolveLocale({ cookieLocale: "en", acceptLanguage: "zh-CN" })).toBe(
 			"en",
 		);
@@ -22,7 +22,7 @@ describe("CinaSeek Accounts homepage localization", () => {
 			resolveLocale({ acceptLanguage: "fr;q=1,en;q=0.4,zh-CN;q=0.9" }),
 		).toBe("zh-CN");
 		expect(resolveLocale({ cookieLocale: "fr", acceptLanguage: "fr-FR" })).toBe(
-			DEFAULT_LOCALE,
+			"zh-CN",
 		);
 	});
 

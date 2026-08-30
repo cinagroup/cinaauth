@@ -2,7 +2,7 @@ export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
 
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = "zh-CN";
+const DEFAULT_LOCALE: Locale = "zh-CN";
 export const LOCALE_COOKIE_NAME = "cinaseek-accounts-locale";
 export const LOCALE_STORAGE_KEY = "cinaseek.accounts.locale.v1";
 
@@ -255,7 +255,7 @@ export const homeMessages = {
 
 export type Messages = (typeof homeMessages)[Locale];
 
-export function isLocale(value: string | null | undefined): value is Locale {
+function isLocale(value: string | null | undefined): value is Locale {
 	return SUPPORTED_LOCALES.includes(value as Locale);
 }
 

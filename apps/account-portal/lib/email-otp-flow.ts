@@ -5,33 +5,6 @@ import {
 
 export type EmailOtpIntent = "signin" | "signup";
 
-const emailOtpCopy = {
-	signin: {
-		sendButton: "Send sign-in code",
-		verifyButton: "Verify and sign in",
-		sentMessage: "We sent a 6-digit sign-in code to",
-		successMessage: "Successfully signed in",
-	},
-	signup: {
-		sendButton: "Send sign-up code",
-		verifyButton: "Verify and continue",
-		sentMessage: "We sent a 6-digit sign-up code to",
-		successMessage: "Email verified successfully",
-	},
-} as const satisfies Record<
-	EmailOtpIntent,
-	{
-		sendButton: string;
-		verifyButton: string;
-		sentMessage: string;
-		successMessage: string;
-	}
->;
-
-export function getEmailOtpCopy(intent: EmailOtpIntent) {
-	return emailOtpCopy[intent];
-}
-
 export function normalizeEmailOtp(value: string) {
 	return value.replace(/\D/g, "").slice(0, 6);
 }

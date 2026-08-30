@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { completeLocalSignInSuccess } from "./auth-form-response";
 import {
 	completeEmailOtpAuthentication,
-	getEmailOtpCopy,
 	normalizeEmailOtp,
 	requiresExistingEmailOtpUser,
 	requiresNewEmailOtpUser,
@@ -67,14 +66,13 @@ describe("Accounts authentication UI phase two contract", () => {
 	});
 
 	it("allows ordinary email sign-in to create a verified user", () => {
-		expect(getEmailOtpCopy("signup")).toMatchObject({
-			sendButton: "Send sign-up code",
-			verifyButton: "Verify and continue",
-		});
-		expect(getEmailOtpCopy("signin")).toMatchObject({
-			sendButton: "Send sign-in code",
-			verifyButton: "Verify and sign in",
-		});
+		const emailOtpFormSource = readSource(
+			"../components/forms/email-otp-form.tsx",
+		);
+		expect(emailOtpFormSource).toContain("messages.sendSignUpCode");
+		expect(emailOtpFormSource).toContain("messages.sendSignInCode");
+		expect(emailOtpFormSource).toContain("messages.verifyAndContinue");
+		expect(emailOtpFormSource).toContain("messages.verifyAndSignIn");
 		expect(requiresNewEmailOtpUser("signup")).toBe(true);
 		expect(requiresNewEmailOtpUser("signin")).toBe(false);
 		expect(requiresExistingEmailOtpUser("signin")).toBe(false);
