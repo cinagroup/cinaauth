@@ -69,6 +69,7 @@ const runtimeProps = {
 	onBusyChange: vi.fn(),
 	onError: vi.fn(),
 	onSuccess: vi.fn(),
+	fallbackErrorMessage: "Wallet authentication failed.",
 };
 
 describe("Reown wallet runtime theme synchronization", () => {

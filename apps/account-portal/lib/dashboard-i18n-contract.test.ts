@@ -12,6 +12,10 @@ describe("Accounts dashboard localization contract", () => {
 		);
 		expect(dashboardMessages["zh-CN"].navigationLabel).toBe("账户中心导航");
 		expect(dashboardMessages.en.navigationLabel).toBe("Account dashboard");
+		expect(dashboardMessages.en.exportStatusExpired).toBe("Expired");
+		expect(dashboardMessages["zh-CN"].exportStatusExpired).toBe("已过期");
+		expect(dashboardMessages.en.resendCode).toBe("Resend code");
+		expect(dashboardMessages["zh-CN"].resendCode).toBe("重新发送验证码");
 	});
 
 	it("localizes the shared dashboard shell and exposes a language switcher", () => {

@@ -100,6 +100,7 @@ export function PrivacyCenter({
 		retrying: messages.exportStatusRetrying,
 		ready: messages.exportStatusReady,
 		failed: messages.exportStatusFailed,
+		expired: messages.exportStatusExpired,
 	} as const;
 
 	useEffect(() => {
