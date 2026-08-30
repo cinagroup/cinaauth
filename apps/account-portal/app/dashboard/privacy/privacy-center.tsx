@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type { PrivacyAsyncExportStatus } from "@/lib/privacy-center";
 import {
 	getPersonalDataExportFilename,
@@ -72,6 +74,7 @@ export function PrivacyCenter({
 }: {
 	recentAuthentication: boolean;
 }) {
+	const { locale, messages } = useDashboardI18n();
 	const [isExporting, setIsExporting] = useState(false);
 	const [isQueueingExport, setIsQueueingExport] = useState(false);
 	const [isDownloadingAsync, setIsDownloadingAsync] = useState(false);
@@ -81,6 +84,23 @@ export function PrivacyCenter({
 	const asyncExportActive = Boolean(
 		asyncExport && ACTIVE_ASYNC_EXPORT_STATES.has(asyncExport.status),
 	);
+	const exportCategoryLabels = {
+		"Profile and account metadata": messages.categoryProfileMetadata,
+		"Sessions and sign-in identities": messages.categorySessionsIdentities,
+		"Authenticators, wallets, and API key metadata":
+			messages.categoryAuthenticatorsWalletsApiKeys,
+		"Organization memberships and invitations":
+			messages.categoryOrganizationMemberships,
+		"OAuth authorizations and security audit events":
+			messages.categoryOauthAudit,
+	} as const;
+	const exportStatusLabels = {
+		queued: messages.exportStatusQueued,
+		processing: messages.exportStatusProcessing,
+		retrying: messages.exportStatusRetrying,
+		ready: messages.exportStatusReady,
+		failed: messages.exportStatusFailed,
+	} as const;
 
 	useEffect(() => {
 		if (!asyncJobId || !asyncExportActive) return;
@@ -108,9 +128,9 @@ export function PrivacyCenter({
 				if (ACTIVE_ASYNC_EXPORT_STATES.has(status.status)) {
 					timeout = setTimeout(poll, 3_000);
 				} else if (status.status === "ready") {
-					toast.success("Your encrypted personal data export is ready.");
+					toast.success(messages.encryptedExportReady);
 				} else if (status.status === "failed") {
-					toast.error("The encrypted export could not be prepared. Try again.");
+					toast.error(messages.encryptedExportPreparationFailed);
 				}
 			} catch (error) {
 				if (controller.signal.aborted) return;
@@ -124,7 +144,12 @@ export function PrivacyCenter({
 			controller.abort();
 			if (timeout) clearTimeout(timeout);
 		};
-	}, [asyncExportActive, asyncJobId]);
+	}, [
+		asyncExportActive,
+		asyncJobId,
+		messages.encryptedExportPreparationFailed,
+		messages.encryptedExportReady,
+	]);
 
 	const requestAsyncExport = async () => {
 		setIsQueueingExport(true);
@@ -143,19 +168,17 @@ export function PrivacyCenter({
 			if (!response.ok || !status) {
 				throw new Error(
 					response.status === 403
-						? "Sign in again before requesting an encrypted export."
-						: "CinaSeek could not queue the encrypted export.",
+						? messages.signInAgainForEncryptedExport
+						: messages.queueEncryptedExportFailed,
 				);
 			}
 			setAsyncExport(status);
-			toast.success(
-				"Encrypted export queued. This page will update automatically.",
-			);
+			toast.success(messages.encryptedExportQueued);
 		} catch (error) {
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaSeek could not queue the encrypted export.",
+					: messages.queueEncryptedExportFailed,
 			);
 		} finally {
 			setIsQueueingExport(false);
@@ -178,18 +201,18 @@ export function PrivacyCenter({
 			if (!response.ok) {
 				throw new Error(
 					response.status === 403
-						? "Sign in again before exporting personal data."
-						: "CinaSeek could not prepare the personal data export.",
+						? messages.signInAgainForPersonalExport
+						: messages.preparePersonalExportFailed,
 				);
 			}
 
 			await saveExportResponse(response);
-			toast.success("Your personal data export is ready.");
+			toast.success(messages.personalExportReady);
 		} catch (error) {
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaSeek could not prepare the personal data export.",
+					: messages.preparePersonalExportFailed,
 			);
 		} finally {
 			setIsExporting(false);
@@ -209,15 +232,15 @@ export function PrivacyCenter({
 				},
 			);
 			if (!response.ok) {
-				throw new Error("The encrypted export is no longer available.");
+				throw new Error(messages.encryptedExportUnavailable);
 			}
 			await saveExportResponse(response);
-			toast.success("Encrypted personal data export downloaded.");
+			toast.success(messages.encryptedExportDownloaded);
 		} catch (error) {
 			toast.error(
 				error instanceof Error
 					? error.message
-					: "CinaSeek could not download the encrypted export.",
+					: messages.downloadEncryptedExportFailed,
 			);
 		} finally {
 			setIsDownloadingAsync(false);
@@ -239,26 +262,25 @@ export function PrivacyCenter({
 			});
 			if (!response.ok) throw new Error("Export deletion failed");
 			setAsyncExport(null);
-			toast.success("Encrypted export artifacts deleted.");
+			toast.success(messages.encryptedExportArtifactsDeleted);
 		} catch {
-			toast.error("CinaSeek could not delete the encrypted export.");
+			toast.error(messages.deleteEncryptedExportFailed);
 		}
 	};
 
 	return (
 		<div className="mx-auto w-full max-w-6xl">
 			<DashboardPageHeader
-				title="Privacy Center"
-				description="Export your authentication data and review deletion controls."
+				titleKey="privacyTitle"
+				descriptionKey="privacyDescription"
 			/>
 
 			{recentAuthentication ? null : (
 				<Alert className="mb-6 border-amber-500/40">
 					<AlertTriangle className="h-4 w-4" />
-					<AlertTitle>Recent authentication required</AlertTitle>
+					<AlertTitle>{messages.recentAuthenticationRequired}</AlertTitle>
 					<AlertDescription>
-						Sign out and sign in again before exporting or deleting personal
-						data.
+						{messages.recentAuthenticationPrivacyDescription}
 					</AlertDescription>
 				</Alert>
 			)}
@@ -269,13 +291,14 @@ export function PrivacyCenter({
 						<div className="flex flex-wrap items-start justify-between gap-3">
 							<div>
 								<CardTitle className="flex items-center gap-2">
-									<Database className="h-5 w-5" /> Personal data export
+									<Database className="h-5 w-5" />
+									{messages.personalDataExport}
 								</CardTitle>
 								<CardDescription className="mt-2">
-									Download a structured, machine-readable JSON copy.
+									{messages.downloadStructuredJson}
 								</CardDescription>
 							</div>
-							<Badge variant="secondary">JSON · schema v1</Badge>
+							<Badge variant="secondary">{messages.jsonSchemaBadge}</Badge>
 						</div>
 					</CardHeader>
 					<CardContent className="space-y-5">
@@ -286,17 +309,15 @@ export function PrivacyCenter({
 									className="flex items-start gap-2 rounded-md border p-3 text-sm"
 								>
 									<FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-									{category}
+									{exportCategoryLabels[category]}
 								</li>
 							))}
 						</ul>
 						<Alert>
 							<KeyRound className="h-4 w-4" />
-							<AlertTitle>Credential secrets stay excluded</AlertTitle>
+							<AlertTitle>{messages.credentialSecretsExcluded}</AlertTitle>
 							<AlertDescription>
-								The file never contains passwords, session tokens, OAuth tokens,
-								API key hashes, TOTP secrets, recovery codes, or WebAuthn key
-								material.
+								{messages.credentialSecretsExcludedDescription}
 							</AlertDescription>
 						</Alert>
 						<div className="flex flex-wrap gap-3">
@@ -309,7 +330,7 @@ export function PrivacyCenter({
 								) : (
 									<Download className="mr-2 h-4 w-4" />
 								)}
-								Download now
+								{messages.downloadNow}
 							</Button>
 							<Button
 								variant="outline"
@@ -323,7 +344,7 @@ export function PrivacyCenter({
 								) : (
 									<Clock3 className="mr-2 h-4 w-4" />
 								)}
-								Prepare encrypted export
+								{messages.prepareEncryptedExport}
 							</Button>
 						</div>
 						{asyncExport ? (
@@ -333,9 +354,13 @@ export function PrivacyCenter({
 							>
 								<div className="flex flex-wrap items-center justify-between gap-2">
 									<div>
-										<p className="text-sm font-medium">Encrypted export</p>
+										<p className="text-sm font-medium">
+											{messages.encryptedExport}
+										</p>
 										<p className="text-xs text-muted-foreground">
-											Status: {asyncExport.status}
+											{formatDashboardMessage(messages.exportStatus, {
+												status: exportStatusLabels[asyncExport.status],
+											})}
 											{readableBytes(asyncExport.size)
 												? ` · ${readableBytes(asyncExport.size)}`
 												: ""}
@@ -346,9 +371,11 @@ export function PrivacyCenter({
 									) : null}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									Stored with a per-object customer encryption key and deleted
-									no later than{" "}
-									{new Date(asyncExport.expiresAt).toLocaleString()}.
+									{formatDashboardMessage(messages.encryptedExportStorage, {
+										date: new Date(asyncExport.expiresAt).toLocaleString(
+											locale,
+										),
+									})}
 								</p>
 								<div className="flex flex-wrap gap-2">
 									{asyncExport.status === "ready" ? (
@@ -362,11 +389,11 @@ export function PrivacyCenter({
 											) : (
 												<Download className="mr-2 h-4 w-4" />
 											)}
-											Download encrypted export
+											{messages.downloadEncryptedExport}
 										</Button>
 									) : null}
 									<Button size="sm" variant="ghost" onClick={cancelAsyncExport}>
-										Delete export
+										{messages.deleteExport}
 									</Button>
 								</div>
 							</div>
@@ -378,35 +405,31 @@ export function PrivacyCenter({
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2 text-base">
-								<ShieldCheck className="h-5 w-5" /> Export safeguards
+								<ShieldCheck className="h-5 w-5" />
+								{messages.exportSafeguards}
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-3 text-sm text-muted-foreground">
-							<p>Only records linked to the signed-in subject are selected.</p>
-							<p>
-								Responses are attachments with no-store and nosniff headers.
-							</p>
-							<p>
-								Oversized sections fail instead of being silently truncated.
-							</p>
+							<p>{messages.exportSafeguardSubject}</p>
+							<p>{messages.exportSafeguardHeaders}</p>
+							<p>{messages.exportSafeguardSize}</p>
 						</CardContent>
 					</Card>
 
 					<Card className="border-destructive/40">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2 text-base text-destructive">
-								<Trash2 className="h-5 w-5" /> Delete account
+								<Trash2 className="h-5 w-5" />
+								{messages.deleteAccount}
 							</CardTitle>
 							<CardDescription>
-								Review current retention exceptions and blocking holds before a
-								permanent deletion. CinaSeek downloads a signed JSON receipt
-								after completion.
+								{messages.deleteAccountPrivacyDescription}
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<Button asChild variant="destructive">
 								<Link href="/dashboard/security#delete-account">
-									Review deletion controls
+									{messages.reviewDeletionControls}
 								</Link>
 							</Button>
 						</CardContent>

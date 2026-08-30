@@ -4,7 +4,9 @@ import type { AuthCapabilities } from "@cinaauth/auth-web-contract";
 import { WalletCards } from "lucide-react";
 import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { dashboardMessages } from "@/lib/dashboard-i18n";
 import {
 	isReownWalletReady,
 	normalizeReownProjectId,
@@ -39,6 +41,8 @@ export function ReownWalletEntry({
 	variant = "outline",
 	onSuccess,
 }: ReownWalletEntryProps) {
+	const { locale, messages } = useI18n();
+	const accountMessages = dashboardMessages[locale];
 	const projectId = normalizeReownProjectId(
 		process.env.NEXT_PUBLIC_REOWN_PROJECT_ID,
 	);
@@ -53,10 +57,17 @@ export function ReownWalletEntry({
 
 	const handleSuccess = useCallback(async () => {
 		toast.success(
-			purpose === "sign-in" ? "Successfully signed in" : "Wallet connected",
+			purpose === "sign-in"
+				? messages.signedInSuccessfully
+				: accountMessages.walletConnected,
 		);
 		await onSuccess?.();
-	}, [onSuccess, purpose]);
+	}, [
+		accountMessages.walletConnected,
+		messages.signedInSuccessfully,
+		onSuccess,
+		purpose,
+	]);
 
 	const handleError = useCallback((message: string) => {
 		toast.error(message);
@@ -79,7 +90,7 @@ export function ReownWalletEntry({
 				}}
 			>
 				<WalletCards data-icon="inline-start" aria-hidden />
-				{proofPending ? "Waiting for wallet…" : label}
+				{proofPending ? messages.waitingForWallet : label}
 			</Button>
 			{activation > 0 ? (
 				<Suspense fallback={null}>
@@ -90,6 +101,7 @@ export function ReownWalletEntry({
 						purpose={purpose}
 						getTriggerElement={getTriggerElement}
 						onBusyChange={setProofPending}
+						fallbackErrorMessage={messages.walletAuthenticationFailed}
 						onError={handleError}
 						onSuccess={handleSuccess}
 					/>

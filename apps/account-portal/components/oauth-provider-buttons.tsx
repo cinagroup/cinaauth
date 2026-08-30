@@ -5,6 +5,7 @@ import { createAuthClient } from "cinaauth/react";
 import { Github, KeyRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { FieldSeparator } from "@/components/ui/field";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
@@ -22,6 +23,7 @@ export function OAuthProviderButtons({
 	 */
 	callbackURL?: string;
 }) {
+	const { messages } = useI18n();
 	const googleButtonMeasureRef = useRef<HTMLDivElement>(null);
 	const googleButtonRef = useRef<HTMLDivElement>(null);
 	const [googleButtonWidth, setGoogleButtonWidth] = useState<number>();
@@ -85,23 +87,23 @@ export function OAuthProviderButtons({
 			},
 			fetchOptions: {
 				onError(error) {
-					toast.error(error.error.message || "Google authentication failed");
+					toast.error(error.error.message || messages.googleAuthFailed);
 				},
 			},
 		});
 		return () => container.replaceChildren();
-	}, [callbackURL, googleButtonWidth, googleOneTapClient]);
+	}, [callbackURL, googleButtonWidth, googleOneTapClient, messages]);
 
 	if (visibleProviders.length === 0 && !oneTapReady) return null;
 
 	return (
 		<>
-			<FieldSeparator>Or</FieldSeparator>
+			<FieldSeparator>{messages.or}</FieldSeparator>
 			{oneTapReady ? (
 				<div
 					ref={googleButtonMeasureRef}
 					className="flex min-h-12 w-full items-center justify-center overflow-hidden"
-					aria-label="Continue with Google"
+					aria-label={`${messages.continueWith} Google`}
 				>
 					<div
 						key={googleButtonWidth ?? "pending"}
@@ -136,7 +138,9 @@ export function OAuthProviderButtons({
 					) : (
 						<KeyRound data-icon="inline-start" aria-hidden />
 					)}
-					<span>Continue with {formatOAuthProviderName(provider.id)}</span>
+					<span>
+						{messages.continueWith} {formatOAuthProviderName(provider.id)}
+					</span>
 				</Button>
 			))}
 		</>

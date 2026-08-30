@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AccountSwitcher from "@/components/account-switch";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { auth } from "@/lib/auth";
 import { getBillingUiState } from "@/lib/billing-console";
+import { dashboardMessages } from "@/lib/dashboard-i18n";
+import { getRequestLocale } from "@/lib/request-locale";
 import {
 	requiresPasswordForTwoFactor as getRequiresPasswordForTwoFactor,
 	getWalletOverviewSummary,
@@ -12,6 +15,14 @@ import OrganizationCard from "./_components/organization-card";
 import SubscriptionCard from "./_components/subscription-card";
 import UserCard from "./_components/user-card";
 import { WalletOverviewCard } from "./_components/wallet-overview-card";
+
+export async function generateMetadata(): Promise<Metadata> {
+	const messages = dashboardMessages[await getRequestLocale()];
+	return {
+		title: messages.overviewTitle,
+		description: messages.overviewMetadataDescription,
+	};
+}
 
 export default async function Page() {
 	const requestHeaders = await headers();
@@ -62,8 +73,8 @@ export default async function Page() {
 	return (
 		<div className="w-full">
 			<DashboardPageHeader
-				title="Account overview"
-				description="Manage your profile, active workspace, and subscription from one place."
+				titleKey="overviewTitle"
+				descriptionKey="overviewDescription"
 			/>
 			<div className="flex flex-col gap-4">
 				<AccountSwitcher

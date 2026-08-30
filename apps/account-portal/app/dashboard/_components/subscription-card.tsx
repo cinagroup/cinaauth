@@ -3,6 +3,7 @@
 import type { EntitlementSnapshot } from "@cinaauth/auth-web-contract";
 import { ArrowUpFromLine, CreditCard, RefreshCcw } from "lucide-react";
 import { useId, useState } from "react";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { SubscriptionTierLabel } from "@/components/subscription-tier";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { useSubscriptionCancelMutation } from "@/data/subscription/subscription-
 import { useSubscriptionListQuery } from "@/data/subscription/subscription-list-query";
 import { useSubscriptionRestoreMutation } from "@/data/subscription/subscription-restore-mutation";
 import { useSubscriptionUpgradeMutation } from "@/data/subscription/subscription-upgrade-mutation";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 
 const SubscriptionCard = ({
 	billingEnabled,
@@ -30,6 +32,7 @@ const SubscriptionCard = ({
 	billingEnabled: boolean;
 	entitlements: EntitlementSnapshot | null;
 }) => {
+	const { messages, locale } = useDashboardI18n();
 	const { data: subscriptions, isLoading } =
 		useSubscriptionListQuery(billingEnabled);
 
@@ -44,19 +47,16 @@ const SubscriptionCard = ({
 			<Card className="border-hairline">
 				<CardHeader className="pb-3">
 					<CardTitle className="text-base font-medium text-ink">
-						Subscription
+						{messages.subscription}
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-2 text-sm text-mute">
 					<p>
 						{unavailable
-							? "Entitlement status is temporarily unavailable."
-							: "Current access mode: Unmetered."}
+							? messages.entitlementsUnavailable
+							: messages.unmeteredAccess}
 					</p>
-					<p>
-						No checkout or subscription request will be sent until both the
-						production billing capability and entitlement policy are ready.
-					</p>
+					<p>{messages.billingNotReady}</p>
 				</CardContent>
 			</Card>
 		);
@@ -66,7 +66,7 @@ const SubscriptionCard = ({
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Subscription</CardTitle>
+					<CardTitle>{messages.subscription}</CardTitle>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4">
 					<div className="flex items-center justify-between">
@@ -82,7 +82,7 @@ const SubscriptionCard = ({
 		<Card className="border-hairline">
 			<CardHeader className="pb-3">
 				<CardTitle className="text-base font-medium text-ink">
-					Subscription
+					{messages.subscription}
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
@@ -120,24 +120,28 @@ const SubscriptionCard = ({
 				{currentSubscription && (
 					<div className="space-y-2 text-sm bg-canvas-soft-2 rounded-md p-3 border border-hairline">
 						<div className="flex justify-between items-center">
-							<span className="text-mute">Status:</span>
+							<span className="text-mute">{messages.status}</span>
 							<span className="font-medium text-ink capitalize">
 								{currentSubscription.cancelAtPeriodEnd
-									? "Canceling"
-									: currentSubscription.status}
+									? messages.canceling
+									: currentSubscription.status === "trialing"
+										? messages.trialing
+										: messages.active}
 							</span>
 						</div>
 						{currentSubscription.periodEnd && (
 							<div className="flex justify-between items-center">
 								<span className="text-mute">
 									{currentSubscription.cancelAtPeriodEnd
-										? "Cancels on:"
+										? messages.cancelsOn
 										: currentSubscription.status === "trialing"
-											? "Trial ends:"
-											: "Renews:"}
+											? messages.trialEnds
+											: messages.renews}
 								</span>
 								<span className="font-medium text-ink">
-									{new Date(currentSubscription.periodEnd).toLocaleDateString()}
+									{new Date(currentSubscription.periodEnd).toLocaleDateString(
+										locale,
+									)}
 								</span>
 							</div>
 						)}
@@ -154,6 +158,7 @@ function ChangePlanDialog(props: {
 	isTrial?: boolean;
 	cancelAtPeriodEnd?: boolean;
 }) {
+	const { messages } = useDashboardI18n();
 	const id = useId();
 	const [selectedPlan, setSelectedPlan] = useState("plus");
 
@@ -174,7 +179,7 @@ function ChangePlanDialog(props: {
 					) : (
 						<ArrowUpFromLine size={14} strokeWidth={2} />
 					)}
-					{props.currentPlan ? "Change Plan" : "Upgrade Plan"}
+					{props.currentPlan ? messages.changePlan : messages.upgradePlan}
 				</Button>
 			</DialogTrigger>
 			<DialogContent>
@@ -191,10 +196,12 @@ function ChangePlanDialog(props: {
 					</div>
 					<DialogHeader>
 						<DialogTitle className="text-left">
-							{!props.currentPlan ? "Upgrade" : "Change"} your plan
+							{!props.currentPlan
+								? messages.upgradeYourPlan
+								: messages.changeYourPlan}
 						</DialogTitle>
 						<DialogDescription className="text-left">
-							Pick one of the following plans.
+							{messages.pickPlan}
 						</DialogDescription>
 					</DialogHeader>
 				</div>
@@ -218,7 +225,9 @@ function ChangePlanDialog(props: {
 									Plus
 								</Label>
 								<p id={`${id}-1-description`} className="text-xs text-mute">
-									$20/month
+									{formatDashboardMessage(messages.pricePerMonth, {
+										price: "20",
+									})}
 								</p>
 							</div>
 						</div>
@@ -234,7 +243,9 @@ function ChangePlanDialog(props: {
 									Pro
 								</Label>
 								<p id={`${id}-2-description`} className="text-xs text-mute">
-									$200/month
+									{formatDashboardMessage(messages.pricePerMonth, {
+										price: "200",
+									})}
 								</p>
 							</div>
 						</div>
@@ -250,7 +261,7 @@ function ChangePlanDialog(props: {
 									Enterprise
 								</Label>
 								<p id={`${id}-3-description`} className="text-xs text-mute">
-									Contact our sales team
+									{messages.contactSales}
 								</p>
 							</div>
 						</div>
@@ -258,8 +269,7 @@ function ChangePlanDialog(props: {
 
 					<div className="space-y-3">
 						<p className="text-xs text-mute text-center">
-							note: all upgrades take effect immediately and you'll be charged
-							the new amount on your next billing cycle.
+							{messages.upgradeNote}
 						</p>
 					</div>
 
@@ -292,17 +302,17 @@ function ChangePlanDialog(props: {
 						>
 							{selectedPlan === props.currentPlan?.toLowerCase()
 								? props.isTrial
-									? "Upgrade"
+									? messages.upgrade
 									: props.cancelAtPeriodEnd
-										? "Resume Plan"
-										: "Current Plan"
+										? messages.resumePlan
+										: messages.currentPlan
 								: selectedPlan === "plus"
 									? !props.currentPlan
-										? "Upgrade"
-										: "Downgrade"
+										? messages.upgrade
+										: messages.downgrade
 									: selectedPlan === "pro"
-										? "Upgrade"
-										: "Contact us"}
+										? messages.upgrade
+										: messages.contactUs}
 						</Button>
 						{props.currentPlan && !props.cancelAtPeriodEnd && (
 							<Button
@@ -314,13 +324,12 @@ function ChangePlanDialog(props: {
 									cancelMutation.mutate("/dashboard");
 								}}
 							>
-								Cancel Plan
+								{messages.cancelPlan}
 							</Button>
 						)}
 						{props.cancelAtPeriodEnd && (
 							<p className="text-sm text-center text-body">
-								Your subscription will be canceled at the end of the billing
-								period.
+								{messages.cancelAtPeriodEnd}
 							</p>
 						)}
 					</div>

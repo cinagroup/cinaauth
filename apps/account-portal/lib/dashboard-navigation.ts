@@ -1,16 +1,24 @@
 export const DASHBOARD_NAVIGATION = [
-	{ href: "/dashboard", label: "Account overview", group: null },
-	{ href: "/dashboard/security", label: "Security", group: "My account" },
-	{ href: "/dashboard/privacy", label: "Privacy", group: "My account" },
+	{ href: "/dashboard", labelKey: "navOverview", groupKey: null },
+	{
+		href: "/dashboard/security",
+		labelKey: "navSecurity",
+		groupKey: "groupMyAccount",
+	},
+	{
+		href: "/dashboard/privacy",
+		labelKey: "navPrivacy",
+		groupKey: "groupMyAccount",
+	},
 	{
 		href: "/dashboard/organization",
-		label: "Organization",
-		group: "Workspace",
+		labelKey: "navOrganization",
+		groupKey: "groupWorkspace",
 	},
 	{
 		href: "/dashboard/developer",
-		label: "Developer",
-		group: "Developer",
+		labelKey: "navDeveloper",
+		groupKey: "groupDeveloper",
 	},
 ] as const;
 

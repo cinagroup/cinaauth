@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { dashboardMessages } from "@/lib/dashboard-i18n";
+import { getRequestLocale } from "@/lib/request-locale";
 import { isSessionRecent } from "@/lib/security-center";
 import { PrivacyCenter } from "./privacy-center";
 
-export const metadata: Metadata = {
-	title: "Privacy Center",
-	description: "Export and control your personal CinaSeek account data.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const messages = dashboardMessages[await getRequestLocale()];
+	return {
+		title: messages.privacyTitle,
+		description: messages.privacyMetadataDescription,
+	};
+}
 
 export default async function PrivacyCenterPage() {
 	const requestHeaders = await headers();

@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
 	AlertDialog,
@@ -62,6 +63,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { OAuthClientRecord } from "@/lib/auth";
 import { authClient } from "@/lib/auth-client";
+import type { DashboardMessages } from "@/lib/dashboard-i18n";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type {
 	DeveloperOAuthClient,
 	DeveloperOAuthClientType,
@@ -112,6 +115,30 @@ const EMPTY_DRAFT: ClientDraft = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null;
 
+const localizeDeveloperError = (error: string, messages: DashboardMessages) => {
+	if (error.startsWith("Invalid redirect URI: ")) {
+		return formatDashboardMessage(messages.redirectUriInvalid, {
+			uri: error.slice("Invalid redirect URI: ".length),
+		});
+	}
+	const localizedErrors: Record<string, string> = {
+		"Add at least one redirect URI.": messages.redirectUriRequired,
+		"A client can use at most 10 redirect URIs.": messages.redirectUriLimit,
+		"Each redirect URI must be 2048 characters or less.":
+			messages.redirectUriTooLong,
+		"Redirect URIs cannot contain credentials or URL fragments.":
+			messages.redirectUriCredentials,
+		"Web callbacks require HTTPS, except loopback localhost development.":
+			messages.webCallbackHttps,
+		"Native callbacks require HTTPS, a loopback HTTP URI, or an app-specific custom scheme.":
+			messages.nativeCallbackInvalid,
+		"Application name is required.": messages.applicationNameRequired,
+		"Application name must be 100 characters or less.":
+			messages.applicationNameTooLong,
+	};
+	return localizedErrors[error] ?? error;
+};
+
 const getApiError = (value: unknown, fallback: string) => {
 	if (!isRecord(value)) return fallback;
 	for (const field of ["message", "error_description", "error"] as const) {
@@ -120,7 +147,11 @@ const getApiError = (value: unknown, fallback: string) => {
 	return fallback;
 };
 
-const mutateAuth = async <T,>(path: string, body: unknown): Promise<T> => {
+const mutateAuth = async <T,>(
+	path: string,
+	body: unknown,
+	httpFallback: string,
+): Promise<T> => {
 	const response = await fetch(path, {
 		method: "POST",
 		headers: { "content-type": "application/json" },
@@ -139,18 +170,27 @@ const mutateAuth = async <T,>(path: string, body: unknown): Promise<T> => {
 	}
 	if (!response.ok) {
 		throw new Error(
-			getApiError(payload, `CinaSeek returned HTTP ${response.status}`),
+			getApiError(
+				payload,
+				formatDashboardMessage(httpFallback, {
+					status: String(response.status),
+				}),
+			),
 		);
 	}
 	return payload as T;
 };
 
-const copyValue = async (value: string, label: string) => {
+const copyValue = async (
+	value: string,
+	label: string,
+	messages: DashboardMessages,
+) => {
 	try {
 		await navigator.clipboard.writeText(value);
-		toast.success(`${label} copied`);
+		toast.success(formatDashboardMessage(messages.valueCopied, { label }));
 	} catch {
-		toast.error(`Unable to copy ${label.toLowerCase()}`);
+		toast.error(formatDashboardMessage(messages.unableCopyValue, { label }));
 	}
 };
 
@@ -163,6 +203,7 @@ function ClientEditorFields({
 	onChange: (draft: ClientDraft) => void;
 	editing: boolean;
 }) {
+	const { messages } = useDashboardI18n();
 	const toggleScope = (scope: DeveloperOAuthScope, checked: boolean) => {
 		onChange({
 			...draft,
@@ -176,18 +217,18 @@ function ClientEditorFields({
 		<div className="grid gap-5 py-2">
 			<div className="grid gap-2">
 				<Label htmlFor={editing ? "edit-client-name" : "create-client-name"}>
-					Application name
+					{messages.applicationName}
 				</Label>
 				<Input
 					id={editing ? "edit-client-name" : "create-client-name"}
 					maxLength={100}
-					placeholder="Cina App"
+					placeholder={messages.applicationNamePlaceholder}
 					value={draft.name}
 					onChange={(event) => onChange({ ...draft, name: event.target.value })}
 				/>
 			</div>
 			<div className="grid gap-2">
-				<Label>Application type</Label>
+				<Label>{messages.applicationType}</Label>
 				<Select
 					disabled={editing}
 					value={draft.type}
@@ -199,21 +240,23 @@ function ClientEditorFields({
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="web">Web server application</SelectItem>
-						<SelectItem value="native">Native or device application</SelectItem>
+						<SelectItem value="web">{messages.webServerApplication}</SelectItem>
+						<SelectItem value="native">
+							{messages.nativeDeviceApplication}
+						</SelectItem>
 					</SelectContent>
 				</Select>
 				<p className="text-xs text-muted-foreground">
 					{draft.type === "web"
-						? "Confidential client. Its secret is shown once and must remain server-side."
-						: "Public PKCE client. No client secret is issued; it can also use Device Flow."}
+						? messages.confidentialClientDescription
+						: messages.publicPkceClientDescription}
 				</p>
 			</div>
 			<div className="grid gap-2">
 				<Label
 					htmlFor={editing ? "edit-redirect-uris" : "create-redirect-uris"}
 				>
-					Redirect URIs
+					{messages.redirectUris}
 				</Label>
 				<Textarea
 					id={editing ? "edit-redirect-uris" : "create-redirect-uris"}
@@ -229,12 +272,11 @@ function ClientEditorFields({
 					}
 				/>
 				<p className="text-xs text-muted-foreground">
-					One exact callback per line. URL fragments and embedded credentials
-					are rejected.
+					{messages.redirectUrisHint}
 				</p>
 			</div>
 			<div className="grid gap-3">
-				<Label>Allowed scopes</Label>
+				<Label>{messages.allowedScopes}</Label>
 				<div className="grid gap-3 sm:grid-cols-2">
 					{DEVELOPER_OAUTH_SCOPES.map((scope) => (
 						<label key={scope} className="flex items-start gap-3 text-sm">
@@ -248,7 +290,7 @@ function ClientEditorFields({
 								<span className="font-mono">{scope}</span>
 								{scope === "offline_access" ? (
 									<span className="block text-xs text-muted-foreground">
-										Enables refresh tokens.
+										{messages.refreshTokensEnabled}
 									</span>
 								) : null}
 							</span>
@@ -267,6 +309,7 @@ export function DeveloperConsole({
 	initialConsents,
 	dataUnavailable,
 }: DeveloperConsoleProps) {
+	const { locale, messages } = useDashboardI18n();
 	const router = useRouter();
 	const [clients, setClients] = useState(initialClients);
 	const [consents, setConsents] = useState(initialConsents);
@@ -303,19 +346,23 @@ export function DeveloperConsole({
 				await authClient.signOut();
 				router.push("/sign-in?callbackURL=/dashboard/developer");
 			},
-			"Unable to start a fresh sign-in",
+			messages.unableFreshSignIn,
 		);
 
 	const validateDraft = () => {
 		const nameResult = validateDeveloperClientName(draft.name);
-		if (nameResult.error) throw new Error(nameResult.error);
+		if (nameResult.error) {
+			throw new Error(localizeDeveloperError(nameResult.error, messages));
+		}
 		const redirectResult = parseDeveloperRedirectUris(
 			draft.redirectUris,
 			draft.type,
 		);
-		if (redirectResult.error) throw new Error(redirectResult.error);
+		if (redirectResult.error) {
+			throw new Error(localizeDeveloperError(redirectResult.error, messages));
+		}
 		if (!draft.scopes.includes("openid")) {
-			throw new Error("OpenID Connect clients must include the openid scope.");
+			throw new Error(messages.openidScopeRequired);
 		}
 		return { name: nameResult.name, redirectUris: redirectResult.uris };
 	};
@@ -348,17 +395,18 @@ export function DeveloperConsole({
 						response_types: ["code"],
 						type: draft.type,
 					},
+					messages.httpError,
 				);
 				const client = toDeveloperOAuthClient(response);
 				setClients((current) => [client, ...current]);
 				setCreateOpen(false);
 				setDraft(EMPTY_DRAFT);
-				toast.success("OAuth client created");
+				toast.success(messages.oauthClientCreated);
 				if (response.client_secret) {
 					showSecret(response.client_id, response.client_secret, "created");
 				}
 			},
-			"Unable to create the OAuth client",
+			messages.unableCreateOauthClient,
 		);
 
 	const openEditor = (client: DeveloperOAuthClient) => {
@@ -393,6 +441,7 @@ export function DeveloperConsole({
 							response_types: ["code"],
 						},
 					},
+					messages.httpError,
 				);
 				const updated = toDeveloperOAuthClient(response);
 				setClients((current) =>
@@ -401,9 +450,9 @@ export function DeveloperConsole({
 					),
 				);
 				setEditingClient(null);
-				toast.success("OAuth client updated");
+				toast.success(messages.oauthClientUpdated);
 			},
-			"Unable to update the OAuth client",
+			messages.unableUpdateOauthClient,
 		);
 	};
 
@@ -414,67 +463,75 @@ export function DeveloperConsole({
 				const response = await mutateAuth<OAuthClientRecord>(
 					"/api/auth/oauth2/client/rotate-secret",
 					{ client_id: client.clientId },
+					messages.httpError,
 				);
 				if (!response.client_secret) {
-					throw new Error("CinaSeek did not return the newly rotated secret.");
+					throw new Error(messages.rotatedSecretMissing);
 				}
 				showSecret(client.clientId, response.client_secret, "rotated");
-				toast.success("Client secret rotated");
+				toast.success(messages.clientSecretRotated);
 			},
-			"Unable to rotate the client secret",
+			messages.unableRotateClientSecret,
 		);
 
 	const deleteClient = (client: DeveloperOAuthClient) =>
 		runAction(
 			`client:delete:${client.clientId}`,
 			async () => {
-				await mutateAuth<null>("/api/auth/oauth2/delete-client", {
-					client_id: client.clientId,
-				});
+				await mutateAuth<null>(
+					"/api/auth/oauth2/delete-client",
+					{
+						client_id: client.clientId,
+					},
+					messages.httpError,
+				);
 				setClients((current) =>
 					current.filter((item) => item.clientId !== client.clientId),
 				);
 				setConsents((current) =>
 					current.filter((item) => item.clientId !== client.clientId),
 				);
-				toast.success("OAuth client deleted");
+				toast.success(messages.oauthClientDeleted);
 			},
-			"Unable to delete the OAuth client",
+			messages.unableDeleteOauthClient,
 		);
 
 	const revokeConsent = (consent: DeveloperOAuthConsent) =>
 		runAction(
 			`consent:delete:${consent.id}`,
 			async () => {
-				await mutateAuth<null>("/api/auth/oauth2/delete-consent", {
-					id: consent.id,
-				});
+				await mutateAuth<null>(
+					"/api/auth/oauth2/delete-consent",
+					{
+						id: consent.id,
+					},
+					messages.httpError,
+				);
 				setConsents((current) =>
 					current.filter((item) => item.id !== consent.id),
 				);
-				toast.success("Consent revoked");
+				toast.success(messages.consentRevoked);
 			},
-			"Unable to revoke the consent",
+			messages.unableRevokeConsent,
 		);
 
 	return (
 		<div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
 			<DashboardPageHeader
-				title="Developer Console"
-				description="Register OAuth applications against the authoritative CinaSeek Identity service."
+				titleKey="developerTitle"
+				descriptionKey="developerDescription"
 			>
 				<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 					<DialogTrigger asChild>
 						<Button disabled={!writesAllowed}>
-							<Plus className="mr-2 h-4 w-4" /> Create client
+							<Plus className="mr-2 h-4 w-4" /> {messages.createClient}
 						</Button>
 					</DialogTrigger>
 					<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
 						<DialogHeader>
-							<DialogTitle>Create OAuth client</DialogTitle>
+							<DialogTitle>{messages.createOauthClient}</DialogTitle>
 							<DialogDescription>
-								Choose the smallest client type and scopes your application
-								needs.
+								{messages.createOauthClientDescription}
 							</DialogDescription>
 						</DialogHeader>
 						<ClientEditorFields
@@ -490,7 +547,7 @@ export function DeveloperConsole({
 								{busyAction === "client:create" ? (
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 								) : null}
-								Create client
+								{messages.createClient}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -500,14 +557,14 @@ export function DeveloperConsole({
 			{!emailVerified || !recentAuthentication || dataUnavailable.clients ? (
 				<Alert variant="destructive">
 					<AlertTriangle className="h-4 w-4" />
-					<AlertTitle>OAuth client changes are locked</AlertTitle>
+					<AlertTitle>{messages.oauthChangesLocked}</AlertTitle>
 					<AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<span>
 							{!emailVerified
-								? "Verify your email before registering developer applications."
+								? messages.verifyEmailForDeveloper
 								: !recentAuthentication
-									? "Sign in again to establish a fresh session before changing OAuth credentials."
-									: "The authoritative OAuth client list is unavailable, so writes are disabled."}
+									? messages.freshSessionForOauth
+									: messages.oauthClientListUnavailable}
 						</span>
 						{emailVerified && !recentAuthentication ? (
 							<Button
@@ -517,7 +574,7 @@ export function DeveloperConsole({
 								size="sm"
 								variant="outline"
 							>
-								<RefreshCw className="mr-2 h-4 w-4" /> Sign in again
+								<RefreshCw className="mr-2 h-4 w-4" /> {messages.signInAgain}
 							</Button>
 						) : null}
 					</AlertDescription>
@@ -525,10 +582,9 @@ export function DeveloperConsole({
 			) : (
 				<Alert>
 					<ShieldCheck className="h-4 w-4" />
-					<AlertTitle>Protected developer access</AlertTitle>
+					<AlertTitle>{messages.protectedDeveloperAccess}</AlertTitle>
 					<AlertDescription>
-						Ownership is enforced by CinaSeek. Every write also requires a
-						verified account and a fresh session.
+						{messages.protectedDeveloperAccessDescription}
 					</AlertDescription>
 				</Alert>
 			)}
@@ -537,10 +593,10 @@ export function DeveloperConsole({
 				<CardHeader className="flex flex-row items-start justify-between gap-4">
 					<div>
 						<CardTitle className="flex items-center gap-2">
-							<Boxes className="h-5 w-5" /> OAuth applications
+							<Boxes className="h-5 w-5" /> {messages.oauthApplications}
 						</CardTitle>
 						<CardDescription>
-							Client secrets are never returned by list or read operations.
+							{messages.oauthApplicationsDescription}
 						</CardDescription>
 					</div>
 					<Badge variant="secondary">{clients.length}</Badge>
@@ -549,8 +605,8 @@ export function DeveloperConsole({
 					{clients.length === 0 ? (
 						<div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
 							{dataUnavailable.clients
-								? "OAuth application data is temporarily unavailable."
-								: "No OAuth applications registered yet."}
+								? messages.oauthApplicationDataUnavailable
+								: messages.noOauthApplications}
 						</div>
 					) : (
 						clients.map((client) => (
@@ -563,11 +619,13 @@ export function DeveloperConsole({
 										<div className="flex flex-wrap items-center gap-2">
 											<h3 className="font-medium">{client.name}</h3>
 											<Badge variant={client.public ? "secondary" : "default"}>
-												{client.public ? "Public + PKCE" : "Confidential"}
+												{client.public
+													? messages.publicPkce
+													: messages.confidential}
 											</Badge>
 											<Badge variant="outline">{client.type}</Badge>
 											{client.disabled ? (
-												<Badge variant="destructive">Disabled</Badge>
+												<Badge variant="destructive">{messages.disabled}</Badge>
 											) : null}
 										</div>
 										<div className="mt-2 flex min-w-0 items-center gap-2">
@@ -575,9 +633,13 @@ export function DeveloperConsole({
 												{client.clientId}
 											</code>
 											<Button
-												aria-label="Copy client ID"
+												aria-label={messages.copyClientId}
 												onClick={() =>
-													void copyValue(client.clientId, "Client ID")
+													void copyValue(
+														client.clientId,
+														messages.clientId,
+														messages,
+													)
 												}
 												size="icon"
 												variant="ghost"
@@ -593,7 +655,7 @@ export function DeveloperConsole({
 											size="sm"
 											variant="outline"
 										>
-											<Pencil className="mr-2 h-4 w-4" /> Edit
+											<Pencil className="mr-2 h-4 w-4" /> {messages.edit}
 										</Button>
 										{canRotateDeveloperSecret(client) ? (
 											<AlertDialog>
@@ -603,26 +665,27 @@ export function DeveloperConsole({
 														size="sm"
 														variant="outline"
 													>
-														<KeyRound className="mr-2 h-4 w-4" /> Rotate secret
+														<KeyRound className="mr-2 h-4 w-4" />{" "}
+														{messages.rotateSecret}
 													</Button>
 												</AlertDialogTrigger>
 												<AlertDialogContent>
 													<AlertDialogHeader>
 														<AlertDialogTitle>
-															Rotate this client secret?
+															{messages.rotateClientSecretTitle}
 														</AlertDialogTitle>
 														<AlertDialogDescription>
-															The current secret stops working immediately.
-															Deploy the new value to your server before ending
-															this session.
+															{messages.rotateClientSecretDescription}
 														</AlertDialogDescription>
 													</AlertDialogHeader>
 													<AlertDialogFooter>
-														<AlertDialogCancel>Cancel</AlertDialogCancel>
+														<AlertDialogCancel>
+															{messages.cancel}
+														</AlertDialogCancel>
 														<AlertDialogAction
 															onClick={() => void rotateSecret(client)}
 														>
-															Rotate secret
+															{messages.rotateSecret}
 														</AlertDialogAction>
 													</AlertDialogFooter>
 												</AlertDialogContent>
@@ -635,26 +698,30 @@ export function DeveloperConsole({
 													size="sm"
 													variant="destructive"
 												>
-													<Trash2 className="mr-2 h-4 w-4" /> Delete
+													<Trash2 className="mr-2 h-4 w-4" /> {messages.delete}
 												</Button>
 											</AlertDialogTrigger>
 											<AlertDialogContent>
 												<AlertDialogHeader>
 													<AlertDialogTitle>
-														Delete {client.name}?
+														{formatDashboardMessage(
+															messages.deleteClientTitle,
+															{ name: client.name },
+														)}
 													</AlertDialogTitle>
 													<AlertDialogDescription>
-														Authorization and token requests for this client
-														will stop. This cannot be undone.
+														{messages.deleteClientDescription}
 													</AlertDialogDescription>
 												</AlertDialogHeader>
 												<AlertDialogFooter>
-													<AlertDialogCancel>Cancel</AlertDialogCancel>
+													<AlertDialogCancel>
+														{messages.cancel}
+													</AlertDialogCancel>
 													<AlertDialogAction
 														className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 														onClick={() => void deleteClient(client)}
 													>
-														Delete client
+														{messages.deleteClient}
 													</AlertDialogAction>
 												</AlertDialogFooter>
 											</AlertDialogContent>
@@ -663,7 +730,7 @@ export function DeveloperConsole({
 								</div>
 								<div className="grid gap-3 text-sm lg:grid-cols-2">
 									<div>
-										<p className="font-medium">Redirect URIs</p>
+										<p className="font-medium">{messages.redirectUris}</p>
 										<div className="mt-1 grid gap-1">
 											{client.redirectUris.map((uri) => (
 												<code
@@ -676,7 +743,7 @@ export function DeveloperConsole({
 										</div>
 									</div>
 									<div>
-										<p className="font-medium">Scopes</p>
+										<p className="font-medium">{messages.scopes}</p>
 										<div className="mt-1 flex flex-wrap gap-1">
 											{client.scopes.map((scope) => (
 												<Badge key={scope} variant="outline">
@@ -688,8 +755,10 @@ export function DeveloperConsole({
 								</div>
 								{client.createdAt ? (
 									<p className="flex items-center gap-2 text-xs text-muted-foreground">
-										<CalendarDays className="h-3.5 w-3.5" /> Created{" "}
-										{formatDeveloperDate(client.createdAt)}
+										<CalendarDays className="h-3.5 w-3.5" />
+										{formatDashboardMessage(messages.createdOn, {
+											date: formatDeveloperDate(client.createdAt, locale),
+										})}
 									</p>
 								) : null}
 							</div>
@@ -702,32 +771,33 @@ export function DeveloperConsole({
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							<Smartphone className="h-5 w-5" /> Device Flow
+							<Smartphone className="h-5 w-5" /> {messages.deviceFlow}
 						</CardTitle>
-						<CardDescription>
-							For TVs, command-line tools, and input-constrained devices.
-						</CardDescription>
+						<CardDescription>{messages.deviceFlowDescription}</CardDescription>
 					</CardHeader>
 					<CardContent className="grid gap-4 text-sm">
-						<p>
-							Only registered, enabled native public clients can request device
-							codes.
-						</p>
+						<p>{messages.deviceFlowClientRequirement}</p>
 						<div className="grid gap-2">
 							<div>
-								<span className="text-muted-foreground">Device code</span>
+								<span className="text-muted-foreground">
+									{messages.deviceCode}
+								</span>
 								<code className="mt-1 block break-all rounded bg-muted p-2 text-xs">
 									https://auth.cinaseek.ai/api/auth/device/code
 								</code>
 							</div>
 							<div>
-								<span className="text-muted-foreground">Token exchange</span>
+								<span className="text-muted-foreground">
+									{messages.tokenExchange}
+								</span>
 								<code className="mt-1 block break-all rounded bg-muted p-2 text-xs">
 									https://auth.cinaseek.ai/api/auth/device/token
 								</code>
 							</div>
 							<div>
-								<span className="text-muted-foreground">User verification</span>
+								<span className="text-muted-foreground">
+									{messages.userVerification}
+								</span>
 								<code className="mt-1 block break-all rounded bg-muted p-2 text-xs">
 									https://accounts.cinaseek.ai/device
 								</code>
@@ -736,8 +806,7 @@ export function DeveloperConsole({
 						<Alert>
 							<ShieldCheck className="h-4 w-4" />
 							<AlertDescription>
-								Device Flow issues a user session bearer after approval. Store
-								it like a password and never log it.
+								{messages.deviceFlowSecretWarning}
 							</AlertDescription>
 						</Alert>
 					</CardContent>
@@ -747,10 +816,10 @@ export function DeveloperConsole({
 					<CardHeader className="flex flex-row items-start justify-between gap-4">
 						<div>
 							<CardTitle className="flex items-center gap-2">
-								<Check className="h-5 w-5" /> Your consent grants
+								<Check className="h-5 w-5" /> {messages.yourConsentGrants}
 							</CardTitle>
 							<CardDescription>
-								Applications currently authorized by your account.
+								{messages.yourConsentGrantsDescription}
 							</CardDescription>
 						</div>
 						<Badge variant="secondary">{consents.length}</Badge>
@@ -759,8 +828,8 @@ export function DeveloperConsole({
 						{consents.length === 0 ? (
 							<p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
 								{dataUnavailable.consents
-									? "Consent data is temporarily unavailable."
-									: "No active consent grants."}
+									? messages.consentDataUnavailable
+									: messages.noActiveConsentGrants}
 							</p>
 						) : (
 							consents.map((consent) => {
@@ -775,7 +844,7 @@ export function DeveloperConsole({
 										<div className="flex items-start justify-between gap-3">
 											<div className="min-w-0">
 												<p className="font-medium">
-													{client?.name ?? "OAuth application"}
+													{client?.name ?? messages.oauthApplication}
 												</p>
 												<code className="block truncate text-xs text-muted-foreground">
 													{consent.clientId}
@@ -790,26 +859,26 @@ export function DeveloperConsole({
 														size="sm"
 														variant="outline"
 													>
-														Revoke
+														{messages.revoke}
 													</Button>
 												</AlertDialogTrigger>
 												<AlertDialogContent>
 													<AlertDialogHeader>
 														<AlertDialogTitle>
-															Revoke this consent?
+															{messages.revokeConsentTitle}
 														</AlertDialogTitle>
 														<AlertDialogDescription>
-															The application will need to request authorization
-															again. Existing tokens may remain valid until
-															expiry or revocation.
+															{messages.revokeConsentDescription}
 														</AlertDialogDescription>
 													</AlertDialogHeader>
 													<AlertDialogFooter>
-														<AlertDialogCancel>Cancel</AlertDialogCancel>
+														<AlertDialogCancel>
+															{messages.cancel}
+														</AlertDialogCancel>
 														<AlertDialogAction
 															onClick={() => void revokeConsent(consent)}
 														>
-															Revoke consent
+															{messages.revokeConsent}
 														</AlertDialogAction>
 													</AlertDialogFooter>
 												</AlertDialogContent>
@@ -823,7 +892,9 @@ export function DeveloperConsole({
 											))}
 										</div>
 										<p className="text-xs text-muted-foreground">
-											Granted {formatDeveloperDate(consent.createdAt)}
+											{formatDashboardMessage(messages.grantedOn, {
+												date: formatDeveloperDate(consent.createdAt, locale),
+											})}
 										</p>
 									</div>
 								);
@@ -839,10 +910,9 @@ export function DeveloperConsole({
 			>
 				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
 					<DialogHeader>
-						<DialogTitle>Edit OAuth client</DialogTitle>
+						<DialogTitle>{messages.editOauthClient}</DialogTitle>
 						<DialogDescription>
-							Client type and token authentication method are immutable after
-							registration.
+							{messages.editOauthClientDescription}
 						</DialogDescription>
 					</DialogHeader>
 					<ClientEditorFields draft={draft} onChange={setDraft} editing />
@@ -856,7 +926,7 @@ export function DeveloperConsole({
 							{busyAction?.startsWith("client:update:") ? (
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 							) : null}
-							Save changes
+							{messages.saveChanges}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -881,10 +951,9 @@ export function DeveloperConsole({
 					}
 				>
 					<DialogHeader>
-						<DialogTitle>Copy this client secret now</DialogTitle>
+						<DialogTitle>{messages.copyClientSecretNow}</DialogTitle>
 						<DialogDescription>
-							This value is shown only once. CinaSeek stores a one-way hash and
-							cannot reveal it later.
+							{messages.copyClientSecretDescription}
 						</DialogDescription>
 					</DialogHeader>
 					{secretNotice ? (
@@ -893,20 +962,23 @@ export function DeveloperConsole({
 								<AlertTriangle className="h-4 w-4" />
 								<AlertDescription>
 									{secretNotice.operation === "rotated"
-										? "The previous secret is no longer valid. "
+										? `${messages.previousSecretInvalid} `
 										: ""}
-									Do not place this secret in browser code, source control,
-									logs, or chat.
+									{messages.clientSecretSafety}
 								</AlertDescription>
 							</Alert>
 							<div className="grid gap-2">
-								<Label>Client ID</Label>
+								<Label>{messages.clientId}</Label>
 								<div className="flex gap-2">
 									<Input readOnly value={secretNotice.clientId} />
 									<Button
-										aria-label="Copy client ID"
+										aria-label={messages.copyClientId}
 										onClick={() =>
-											void copyValue(secretNotice.clientId, "Client ID")
+											void copyValue(
+												secretNotice.clientId,
+												messages.clientId,
+												messages,
+											)
 										}
 										size="icon"
 										variant="outline"
@@ -916,7 +988,7 @@ export function DeveloperConsole({
 								</div>
 							</div>
 							<div className="grid gap-2">
-								<Label>Client secret</Label>
+								<Label>{messages.clientSecret}</Label>
 								<div className="flex gap-2">
 									<Input
 										className="font-mono"
@@ -924,9 +996,13 @@ export function DeveloperConsole({
 										value={secretNotice.secret}
 									/>
 									<Button
-										aria-label="Copy client secret"
+										aria-label={messages.copyClientSecret}
 										onClick={() =>
-											void copyValue(secretNotice.secret, "Client secret")
+											void copyValue(
+												secretNotice.secret,
+												messages.clientSecret,
+												messages,
+											)
 										}
 										size="icon"
 										variant="outline"
@@ -942,9 +1018,7 @@ export function DeveloperConsole({
 										setSecretAcknowledged(checked === true)
 									}
 								/>
-								<span>
-									I stored this secret in a secure server-side secret manager.
-								</span>
+								<span>{messages.storedClientSecret}</span>
 							</label>
 						</div>
 					) : null}
@@ -956,7 +1030,7 @@ export function DeveloperConsole({
 								setSecretAcknowledged(false);
 							}}
 						>
-							Done
+							{messages.done}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

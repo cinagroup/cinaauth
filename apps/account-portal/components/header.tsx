@@ -1,45 +1,49 @@
+"use client";
+
 import Link from "next/link";
 import { AccountBrand } from "./account-brand";
+import { useI18n } from "./i18n-provider";
+import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "./ui/button";
 
-// Spec: nav-bar — bg canvas, ink text, h-16, px-4 mobile / md:px-6 desktop.
-// Layout: logo left, nav-link row centre, CTAs right.
+// Marketing-only chrome. The Accounts homepage owns a focused product shell.
 const Header = () => {
+	const { messages } = useI18n();
+
 	return (
-		<header className="h-16 bg-canvas flex items-center justify-between fixed top-0 z-50 w-full px-4 md:px-6 shadow-l1">
-			{/* Product brand */}
-			<Link href="/" className="flex items-center gap-2 shrink-0">
-				<AccountBrand priority />
+		<header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between bg-canvas px-4 shadow-l1 md:px-6">
+			<Link href="/" className="flex shrink-0 items-center gap-2">
+				<AccountBrand tagline={messages.accountTagline} priority />
 			</Link>
 
-			{/* Spec: nav-link row — centre, body-sm, body text, rounded-full.
-			 * Hidden on mobile (tucked behind hamburger later). */}
-			<nav aria-label="Primary" className="hidden md:flex items-center gap-1">
-				<NavLink href="/pricing">Pricing</NavLink>
-				<NavLink href="https://www.cinagroup.com/docs">Docs</NavLink>
-				<NavLink href="https://www.cinagroup.com/blog">Blog</NavLink>
+			<nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
+				<NavLink href="/pricing">{messages.navPricing}</NavLink>
+				<NavLink href="https://www.cinagroup.com/docs">
+					{messages.navDocs}
+				</NavLink>
+				<NavLink href="https://www.cinagroup.com/blog">
+					{messages.navBlog}
+				</NavLink>
 			</nav>
 
-			{/* Spec: nav CTA cluster — right.
-			 * Mobile: theme toggle only. Desktop: full CTA row. */}
 			<div className="flex items-center gap-2">
 				<Link
 					href="/sign-in"
-					className="hidden md:inline-flex items-center justify-center h-7 px-2 text-sm font-medium rounded-sm text-ink bg-canvas shadow-inset-hairline hover:bg-canvas-soft transition-colors"
+					className="hidden h-7 items-center justify-center rounded-sm bg-canvas px-2 text-sm font-medium text-ink shadow-inset-hairline transition-colors hover:bg-canvas-soft md:inline-flex"
 				>
-					Log in
+					{messages.logIn}
 				</Link>
-				<Button asChild size="sm" className="hidden md:inline-flex h-7">
-					<Link href="/sign-in">Get started</Link>
+				<Button asChild size="sm" className="hidden h-7 md:inline-flex">
+					<Link href="/sign-in">{messages.getStarted}</Link>
 				</Button>
-				<ThemeToggle />
+				<LanguageSwitcher className="hidden sm:flex" />
+				<ThemeToggle label={messages.themeToggle} />
 			</div>
 		</header>
 	);
 };
 
-// Spec: nav-link — body text, body-sm, rounded-full, px-2 py-1.
 const NavLink = ({
 	href,
 	children,
@@ -49,7 +53,7 @@ const NavLink = ({
 }) => (
 	<Link
 		href={href}
-		className="px-2 py-1 text-sm text-body hover:text-ink rounded-full transition-colors"
+		className="rounded-full px-2 py-1 text-sm text-body transition-colors hover:text-ink"
 	>
 		{children}
 	</Link>

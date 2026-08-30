@@ -11,15 +11,25 @@ describe("CinaSeek Accounts home shell contract", () => {
 		const homepageSource = readSource("../app/page.tsx");
 
 		expect(layoutSource.match(/<main\b/g) ?? []).toHaveLength(0);
-		// SiteChrome renders exactly one branch per request: the authentication
-		// shell (no Header/Footer) or the marketing shell. Each branch owns one
-		// main landmark with the shared skip-link target.
-		expect(siteChromeSource.match(/<main\b/g) ?? []).toHaveLength(2);
-		expect(siteChromeSource.match(/id="main"/g) ?? []).toHaveLength(2);
+		// SiteChrome renders exactly one branch per request: the dashboard,
+		// authentication shell, standalone Accounts home, or marketing shell.
+		// Every non-dashboard branch owns one main landmark with the skip target.
+		expect(siteChromeSource.match(/<main\b/g) ?? []).toHaveLength(3);
+		expect(siteChromeSource.match(/id="main"/g) ?? []).toHaveLength(3);
 		expect(homepageSource.match(/<main\b/g) ?? []).toHaveLength(0);
 		expect(homepageSource.match(/id="main"/g) ?? []).toHaveLength(0);
-		expect(homepageSource).toContain('aria-labelledby="home-hero-title"');
-		expect(homepageSource).toContain('id="home-hero-title"');
+		expect(homepageSource).toContain("<HomePage");
+	});
+
+	it("keeps the Accounts homepage outside the retired marketing shell", () => {
+		const siteChromeSource = readSource(
+			"../components/site-chrome.tsx",
+		).replace(/\s+/g, " ");
+
+		expect(siteChromeSource).toContain('if (pathname === "/")');
+		expect(siteChromeSource).toMatch(
+			/if \(pathname === "\/"\).*?<main id="main".*?children.*?<\/main>/,
+		);
 	});
 
 	it("uses the canonical Accounts product brand in the fixed Header", () => {
@@ -28,6 +38,8 @@ describe("CinaSeek Accounts home shell contract", () => {
 			" ",
 		);
 
-		expect(headerSource).toContain("<AccountBrand priority />");
+		expect(headerSource).toContain(
+			"<AccountBrand tagline={messages.accountTagline} priority />",
+		);
 	});
 });

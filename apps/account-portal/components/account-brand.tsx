@@ -9,15 +9,17 @@ export function AccountBrand({
 	className,
 	labelClassName,
 	priority = false,
+	tagline = ACCOUNT_PRODUCT_TAGLINE,
 }: {
 	compact?: boolean;
 	className?: string;
 	labelClassName?: string;
 	priority?: boolean;
+	tagline?: string;
 }) {
 	return (
 		<div
-			aria-label={`${ACCOUNT_PRODUCT_NAME} — ${ACCOUNT_PRODUCT_TAGLINE}`}
+			aria-label={`${ACCOUNT_PRODUCT_NAME} — ${tagline}`}
 			className={cn("flex min-w-0 items-center gap-2", className)}
 		>
 			<span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-hairline bg-canvas">
@@ -36,7 +38,7 @@ export function AccountBrand({
 						{ACCOUNT_PRODUCT_NAME}
 					</span>
 					<span className="truncate text-[11px] leading-3 text-mute">
-						{ACCOUNT_PRODUCT_TAGLINE}
+						{tagline}
 					</span>
 				</span>
 			)}

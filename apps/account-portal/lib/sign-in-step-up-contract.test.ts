@@ -7,10 +7,15 @@ describe("account step-up sign-in surface", () => {
 			new URL("../app/(auth)/sign-in/_components/sign-in.tsx", import.meta.url),
 			"utf8",
 		);
+		const i18nSource = readFileSync(
+			new URL("./i18n.ts", import.meta.url),
+			"utf8",
+		);
 
 		expect(source).toContain("signInPolicy.allowFederatedProviders");
 		expect(source).toContain("<OAuthProviderButtons");
-		expect(source).toContain(
+		expect(source).toContain("messages.identityMethodsUnavailable");
+		expect(i18nSource).toContain(
 			"Automatic and social sign-in are unavailable for this identity check.",
 		);
 	});

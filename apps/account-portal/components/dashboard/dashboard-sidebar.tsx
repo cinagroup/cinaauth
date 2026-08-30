@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AccountBrand } from "@/components/account-brand";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import type { DashboardNavigationHref } from "@/lib/dashboard-navigation";
 import {
 	DASHBOARD_NAVIGATION,
@@ -28,9 +29,9 @@ const NAVIGATION_ICONS: Record<DashboardNavigationHref, LucideIcon> = {
 
 const NAVIGATION_GROUPS = [
 	null,
-	"My account",
-	"Workspace",
-	"Developer",
+	"groupMyAccount",
+	"groupWorkspace",
+	"groupDeveloper",
 ] as const;
 
 export function DashboardSidebar({
@@ -43,6 +44,7 @@ export function DashboardSidebar({
 	onActiveNavigate?: () => void;
 }) {
 	const pathname = usePathname();
+	const { messages, baseMessages } = useDashboardI18n();
 
 	return (
 		<aside
@@ -58,35 +60,40 @@ export function DashboardSidebar({
 					collapsed ? "justify-center px-2" : "px-4",
 				)}
 			>
-				<AccountBrand compact={collapsed} priority />
+				<AccountBrand
+					compact={collapsed}
+					tagline={baseMessages.accountTagline}
+					priority
+				/>
 			</div>
 
 			<nav
-				aria-label="Account dashboard"
+				aria-label={messages.navigationLabel}
 				className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3"
 			>
 				{NAVIGATION_GROUPS.map((group) => {
 					const items = DASHBOARD_NAVIGATION.filter(
-						(item) => item.group === group,
+						(item) => item.groupKey === group,
 					);
 					return (
 						<div key={group ?? "overview"}>
 							{group && !collapsed ? (
 								<div className="mb-1 px-2 text-[11px] font-medium text-mute">
-									{group}
+									{messages[group]}
 								</div>
 							) : null}
 							{items.map((item) => {
 								const current = pathname === item.href;
 								const active = isDashboardNavigationActive(pathname, item.href);
 								const Icon = NAVIGATION_ICONS[item.href];
+								const label = messages[item.labelKey];
 								return (
 									<Link
 										key={item.href}
 										href={item.href}
 										onClick={current ? onActiveNavigate : undefined}
-										title={collapsed ? item.label : undefined}
-										aria-label={collapsed ? item.label : undefined}
+										title={collapsed ? label : undefined}
+										aria-label={collapsed ? label : undefined}
 										aria-current={active ? "page" : undefined}
 										className={cn(
 											"relative flex h-9 items-center rounded-sm text-[13px] leading-5 transition-colors before:absolute before:left-0 before:top-2 before:h-5 before:w-0.5 before:rounded-full before:bg-transparent",
@@ -102,7 +109,7 @@ export function DashboardSidebar({
 											className={active ? "text-ink" : "text-mute"}
 										/>
 										{collapsed ? null : (
-											<span className="truncate">{item.label}</span>
+											<span className="truncate">{label}</span>
 										)}
 									</Link>
 								);
@@ -118,11 +125,11 @@ export function DashboardSidebar({
 						"flex h-9 items-center rounded-sm border border-hairline bg-canvas px-3 text-[12px] text-body",
 						collapsed ? "justify-center" : "gap-2",
 					)}
-					title={collapsed ? "Identity service available" : undefined}
+					title={collapsed ? messages.identityServiceAvailable : undefined}
 				>
 					<span className="h-2 w-2 shrink-0 rounded-full bg-success" />
 					{collapsed ? null : (
-						<span className="truncate">Account services</span>
+						<span className="truncate">{messages.accountServices}</span>
 					)}
 				</div>
 			</div>

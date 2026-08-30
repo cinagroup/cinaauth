@@ -5,6 +5,7 @@ import { Loader2, X } from "lucide-react";
 import Image from "next/image";
 import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
@@ -17,16 +18,17 @@ import { useUpdateUserMutation } from "@/data/user/update-user-mutation";
 import { useImagePreview } from "@/hooks/use-image-preview";
 import { convertImageToBase64 } from "@/lib/utils";
 
-const updateUserSchema = z.object({
-	name: z
-		.string()
-		.min(2, "Name must be at least 2 characters")
-		.max(50, "Name must be at most 50 characters")
-		.optional()
-		.or(z.literal("")),
-});
+const createUpdateUserSchema = (nameTooShort: string, nameTooLong: string) =>
+	z.object({
+		name: z
+			.string()
+			.min(2, nameTooShort)
+			.max(50, nameTooLong)
+			.optional()
+			.or(z.literal("")),
+	});
 
-type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
+type UpdateUserFormValues = z.infer<ReturnType<typeof createUpdateUserSchema>>;
 
 interface UpdateUserFormProps {
 	currentName?: string;
@@ -39,6 +41,11 @@ export function UpdateUserForm({
 	onSuccess,
 	onError,
 }: UpdateUserFormProps) {
+	const { messages } = useDashboardI18n();
+	const updateUserSchema = createUpdateUserSchema(
+		messages.nameTooShort,
+		messages.nameTooLong,
+	);
 	const updateUserMutation = useUpdateUserMutation();
 	const { image, imagePreview, handleImageChange, clearImage } =
 		useImagePreview();
@@ -78,7 +85,7 @@ export function UpdateUserForm({
 			);
 		} catch (error) {
 			onError?.(
-				error instanceof Error ? error.message : "Failed to process image",
+				error instanceof Error ? error.message : messages.imageProcessingFailed,
 			);
 		}
 	};
@@ -93,7 +100,7 @@ export function UpdateUserForm({
 					control={control}
 					render={({ field }) => (
 						<Field>
-							<FieldLabel htmlFor="name">Full Name</FieldLabel>
+							<FieldLabel htmlFor="name">{messages.fullName}</FieldLabel>
 							<Input
 								id="name"
 								type="text"
@@ -107,13 +114,13 @@ export function UpdateUserForm({
 				/>
 
 				<Field>
-					<FieldLabel htmlFor="image">Profile Image</FieldLabel>
+					<FieldLabel htmlFor="image">{messages.profileImage}</FieldLabel>
 					<div className="flex items-end gap-4">
 						{imagePreview && (
 							<div className="relative w-16 h-16 rounded-sm overflow-hidden">
 								<Image
 									src={imagePreview}
-									alt="Profile preview"
+									alt={messages.profilePreview}
 									fill
 									className="object-cover"
 								/>
@@ -132,7 +139,7 @@ export function UpdateUserForm({
 								<X
 									className="cursor-pointer"
 									onClick={clearImage}
-									aria-label="Clear image"
+									aria-label={messages.clearImage}
 								/>
 							)}
 						</div>
@@ -146,7 +153,7 @@ export function UpdateUserForm({
 					{updateUserMutation.isPending ? (
 						<Loader2 size={15} className="animate-spin" />
 					) : (
-						"Update"
+						messages.update
 					)}
 				</Button>
 			</FieldGroup>

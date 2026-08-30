@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useTheme } from "next-themes";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { useAuthCapabilities } from "@/hooks/use-auth-capabilities";
 import {
 	getCaptchaRequestHeaders,
@@ -119,6 +120,7 @@ export function TurnstileChallenge({
 }: {
 	challenge: TurnstileChallengeState;
 }) {
+	const { messages } = useI18n();
 	const { resolvedTheme } = useTheme();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [scriptReady, setScriptReady] = useState(false);
@@ -214,8 +216,8 @@ export function TurnstileChallenge({
 				aria-live={scriptFailed ? "assertive" : "polite"}
 			>
 				{scriptFailed
-					? "Human verification could not load. Refresh the page and try again."
-					: "Complete the human verification before continuing."}
+					? messages.humanVerificationFailed
+					: messages.completeHumanVerification}
 			</p>
 		</div>
 	);

@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { EmailOtpForm } from "@/components/forms/email-otp-form";
+import { useI18n } from "@/components/i18n-provider";
 import { OAuthProviderButtons } from "@/components/oauth-provider-buttons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export default function SignIn({
 }: {
 	walletCookie: string | null;
 }) {
+	const { messages } = useI18n();
 	const searchParams = useSearchParams();
 	const callbackURL = getAccountCallbackURL(searchParams);
 	const hasOidcQuery = hasSignedOidcAuthorizationQuery(searchParams);
@@ -62,17 +64,19 @@ export default function SignIn({
 					className="border-link/20 bg-canvas-soft-2 text-body"
 				>
 					<ShieldCheck className="text-link" aria-hidden />
-					<AlertTitle>Identity check required</AlertTitle>
-					<AlertDescription>{stepUpNotice}</AlertDescription>
+					<AlertTitle>{messages.identityCheckRequired}</AlertTitle>
+					<AlertDescription>
+						{messages.identityCheckDescription}
+					</AlertDescription>
 				</Alert>
 			) : null}
 
 			{alert ? (
 				<Alert className="border-error/20 bg-error-soft text-error-deep">
 					<AlertCircle aria-hidden />
-					<AlertTitle>{alert.title}</AlertTitle>
+					<AlertTitle>{messages.signInFailedTitle}</AlertTitle>
 					<AlertDescription className="text-error-deep">
-						{alert.description}
+						{messages.signInFailedDescription}
 					</AlertDescription>
 				</Alert>
 			) : null}
@@ -102,7 +106,7 @@ export default function SignIn({
 			{emailPasswordReady || passkeyReady ? (
 				<div
 					className="flex flex-col gap-3"
-					aria-label="Additional direct sign-in methods"
+					aria-label={messages.additionalSignInMethods}
 				>
 					{emailPasswordReady ? (
 						<Button
@@ -114,7 +118,7 @@ export default function SignIn({
 						>
 							<Link href={passwordHref}>
 								<KeyRound data-icon="inline-start" aria-hidden />
-								Continue with email and password
+								{messages.continueEmailPassword}
 							</Link>
 						</Button>
 					) : null}
@@ -127,26 +131,29 @@ export default function SignIn({
 							onClick={async () => {
 								const result = await authClient.signIn.passkey();
 								if (result.error) {
-									toast.error(result.error.message || "Passkey sign-in failed");
+									toast.error(result.error.message || messages.passkeyFailed);
 									return;
 								}
 								window.location.href = callbackURL;
 							}}
 						>
 							<Fingerprint data-icon="inline-start" aria-hidden />
-							Continue with passkey
+							{messages.continuePasskey}
 						</Button>
 					) : null}
 				</div>
 			) : null}
 
 			{allowFederatedProviders ? (
-				<div className="flex flex-col gap-3" aria-label="Other sign-in methods">
+				<div
+					className="flex flex-col gap-3"
+					aria-label={messages.otherSignInMethods}
+				>
 					<ReownWalletEntry
 						capabilities={capabilities.data}
 						walletCookie={walletCookie}
 						purpose="sign-in"
-						label="Continue with wallet"
+						label={messages.continueWallet}
 						className="relative h-auto min-h-12 w-full whitespace-normal px-3 py-3 text-center"
 						onSuccess={() => {
 							if (!hasOidcQuery) window.location.href = callbackURL;
@@ -154,8 +161,7 @@ export default function SignIn({
 					/>
 					{capabilities.data?.methods.siwe === true ? (
 						<p className="text-center text-xs leading-5 text-body">
-							New wallet? We'll create your account after you verify the
-							signature.
+							{messages.newWalletAccount}
 						</p>
 					) : null}
 				</div>
@@ -171,7 +177,7 @@ export default function SignIn({
 						size={16}
 						aria-hidden
 					/>
-					Checking additional sign-in methods…
+					{messages.checkingSignInMethods}
 				</p>
 			) : null}
 
@@ -179,11 +185,10 @@ export default function SignIn({
 				<Alert className="border-error/20 bg-error-soft text-error-deep">
 					<AlertCircle aria-hidden />
 					<AlertTitle className="line-clamp-none">
-						Secure sign-in configuration could not be loaded
+						{messages.signInConfigErrorTitle}
 					</AlertTitle>
 					<AlertDescription className="text-error-deep">
-						Email code sign-in stays unavailable until the security
-						configuration can be verified.
+						{messages.signInConfigErrorDescription}
 					</AlertDescription>
 					<Button
 						type="button"
@@ -199,7 +204,7 @@ export default function SignIn({
 								aria-hidden
 							/>
 						) : null}
-						Try again
+						{messages.tryAgain}
 					</Button>
 				</Alert>
 			) : null}
@@ -208,10 +213,10 @@ export default function SignIn({
 				<OAuthProviderButtons callbackURL={callbackURL} />
 			) : !hasCreatePrompt ? (
 				<p className="rounded-md bg-canvas-soft-2 px-3 py-2 text-center text-xs leading-5 text-body">
-					Automatic and social sign-in are unavailable for this identity check.
+					{messages.identityMethodsUnavailable}
 					{emailOtpReady
-						? " Request an email code to continue."
-						: " No eligible sign-in method is currently available."}
+						? ` ${messages.requestEmailCode}`
+						: ` ${messages.noEligibleMethod}`}
 				</p>
 			) : null}
 		</div>

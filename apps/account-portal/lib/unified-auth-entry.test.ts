@@ -43,6 +43,8 @@ describe("Accounts unified sign-in and account creation entry", () => {
 		const signUpPage = readSource("../app/(auth)/sign-up/page.tsx");
 		const emailSignUpPage = readSource("../app/(auth)/sign-up/email/page.tsx");
 		const signInPage = readSource("../app/(auth)/sign-in/page.tsx");
+		const signInShell = readSource("../components/auth/sign-in-page-shell.tsx");
+		const i18nSource = readSource("./i18n.ts");
 
 		for (const source of [signUpPage, emailSignUpPage]) {
 			expect(source).toContain("buildUnifiedSignUpRedirect");
@@ -50,8 +52,12 @@ describe("Accounts unified sign-in and account creation entry", () => {
 			expect(source).not.toContain("<AuthShell");
 			expect(source).not.toContain("<EmailOtpForm");
 		}
-		expect(signInPage).toContain('title="Sign in or create your account"');
-		expect(signInPage).toContain("By continuing, you agree to our");
+		expect(signInPage).toContain("<SignInPageShell>");
+		expect(signInShell).toContain("messages.signInPageTitle");
+		expect(signInShell).toContain("messages.continueAgreement");
+		expect(i18nSource).toContain(
+			'signInPageTitle: "Sign in or create your account"',
+		);
 		expect(signInPage).not.toContain("<SignUpLink");
 	});
 
@@ -60,7 +66,9 @@ describe("Accounts unified sign-in and account creation entry", () => {
 		const pricing = readSource("../app/pricing/page.tsx");
 		const sitemap = readSource("../app/sitemap.ts");
 
-		expect(header).toContain('<Link href="/sign-in">Get started</Link>');
+		expect(header).toContain(
+			'<Link href="/sign-in">{messages.getStarted}</Link>',
+		);
 		expect(header).not.toContain('href="/sign-up"');
 		expect(pricing).not.toContain('href: "/sign-up"');
 		expect(sitemap).not.toContain('"/sign-up"');

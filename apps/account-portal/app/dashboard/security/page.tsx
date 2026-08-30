@@ -3,7 +3,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { CORE_AUTH_CAPABILITIES } from "@/lib/auth-capabilities";
+import { dashboardMessages } from "@/lib/dashboard-i18n";
 import { getReownInitialCookie } from "@/lib/reown-wallet-cookie";
+import { getRequestLocale } from "@/lib/request-locale";
 import type {
 	SecurityAccount,
 	SecurityApiKey,
@@ -14,11 +16,13 @@ import type {
 import { getSecurityProviderLinkFailure } from "@/lib/security-center";
 import { SecurityCenter } from "./security-center";
 
-export const metadata: Metadata = {
-	title: "Security Center",
-	description:
-		"Manage CinaSeek sign-in methods, sessions, and linked identities.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const messages = dashboardMessages[await getRequestLocale()];
+	return {
+		title: messages.securityTitle,
+		description: messages.securityMetadataDescription,
+	};
+}
 
 const toIsoString = (value: Date | string) => new Date(value).toISOString();
 

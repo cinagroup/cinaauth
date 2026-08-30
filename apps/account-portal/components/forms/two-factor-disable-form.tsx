@@ -6,6 +6,7 @@ import { useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
@@ -17,11 +18,12 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
 import { getTwoFactorPasswordBody } from "@/lib/security-center";
 
-const disableSchema = z.object({
-	password: z.string().min(8, "Password must be at least 8 characters."),
-});
+const createDisableSchema = (passwordMinEight: string) =>
+	z.object({
+		password: z.string().min(8, passwordMinEight),
+	});
 
-type DisableFormValues = z.infer<typeof disableSchema>;
+type DisableFormValues = z.infer<ReturnType<typeof createDisableSchema>>;
 
 interface TwoFactorDisableFormProps {
 	onSuccess?: () => void;
@@ -32,6 +34,8 @@ export function TwoFactorDisableForm({
 	onSuccess,
 	requiresPassword = true,
 }: TwoFactorDisableFormProps) {
+	const { messages } = useDashboardI18n();
+	const disableSchema = createDisableSchema(messages.passwordMinEight);
 	const [loading, startTransition] = useTransition();
 
 	const form = useForm<DisableFormValues>({
@@ -47,7 +51,7 @@ export function TwoFactorDisableForm({
 				...getTwoFactorPasswordBody(requiresPassword, password),
 				fetchOptions: {
 					onSuccess() {
-						toast.success("2FA disabled successfully");
+						toast.success(messages.twoFactorDisabledSuccess);
 						onSuccess?.();
 					},
 					onError(context) {
@@ -66,7 +70,7 @@ export function TwoFactorDisableForm({
 		return (
 			<div className="flex flex-col gap-4">
 				<p className="text-sm text-muted-foreground">
-					Your recent passwordless sign-in confirms this security change.
+					{messages.passwordlessSecurityConfirmation}
 				</p>
 				<Button
 					type="button"
@@ -77,7 +81,7 @@ export function TwoFactorDisableForm({
 					{loading ? (
 						<Loader2 size={16} className="animate-spin" />
 					) : (
-						"Disable 2FA"
+						messages.disableTwoFactor
 					)}
 				</Button>
 			</div>
@@ -95,11 +99,13 @@ export function TwoFactorDisableForm({
 					control={form.control}
 					render={({ field, fieldState }) => (
 						<Field data-invalid={fieldState.invalid}>
-							<FieldLabel htmlFor="disable-password">Password</FieldLabel>
+							<FieldLabel htmlFor="disable-password">
+								{messages.password}
+							</FieldLabel>
 							<PasswordInput
 								{...field}
 								id="disable-password"
-								placeholder="Enter your password"
+								placeholder={messages.enterPassword}
 								aria-invalid={fieldState.invalid}
 								autoComplete="current-password"
 							/>
@@ -112,7 +118,7 @@ export function TwoFactorDisableForm({
 				{loading ? (
 					<Loader2 size={16} className="animate-spin" />
 				) : (
-					"Disable 2FA"
+					messages.disableTwoFactor
 				)}
 			</Button>
 		</form>

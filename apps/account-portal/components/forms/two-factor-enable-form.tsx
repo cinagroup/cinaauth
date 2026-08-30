@@ -7,6 +7,7 @@ import { Controller, useForm } from "react-hook-form";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Button } from "@/components/ui/button";
 import CopyButton from "@/components/ui/copy-button";
 import {
@@ -21,16 +22,18 @@ import { authClient } from "@/lib/auth-client";
 import { getTwoFactorPasswordBody } from "@/lib/security-center";
 import { formatBackupCodesText } from "@/lib/two-factor-verification";
 
-const passwordSchema = z.object({
-	password: z.string().min(8, "Password must be at least 8 characters."),
-});
+const createPasswordSchema = (passwordMinEight: string) =>
+	z.object({
+		password: z.string().min(8, passwordMinEight),
+	});
 
-const otpSchema = z.object({
-	otp: z.string().min(6, "OTP must be at least 6 characters."),
-});
+const createOtpSchema = (otpMinSix: string) =>
+	z.object({
+		otp: z.string().min(6, otpMinSix),
+	});
 
-type PasswordFormValues = z.infer<typeof passwordSchema>;
-type OtpFormValues = z.infer<typeof otpSchema>;
+type PasswordFormValues = z.infer<ReturnType<typeof createPasswordSchema>>;
+type OtpFormValues = z.infer<ReturnType<typeof createOtpSchema>>;
 type EnrollmentStep = "password" | "verify" | "backupCodes";
 
 interface TwoFactorEnableFormProps {
@@ -44,6 +47,9 @@ export function TwoFactorEnableForm({
 	onBackupCodesPendingChange,
 	requiresPassword = true,
 }: TwoFactorEnableFormProps) {
+	const { messages } = useDashboardI18n();
+	const passwordSchema = createPasswordSchema(messages.passwordMinEight);
+	const otpSchema = createOtpSchema(messages.otpMinSix);
 	const [loading, startTransition] = useTransition();
 	const [totpURI, setTotpURI] = useState<string>("");
 	const [backupCodes, setBackupCodes] = useState<string[]>([]);
@@ -107,7 +113,7 @@ export function TwoFactorEnableForm({
 		onBackupCodesPendingChange?.(false);
 		setBackupCodes([]);
 		setTotpURI("");
-		toast.success("2FA enabled successfully");
+		toast.success(messages.twoFactorEnabledSuccess);
 		onSuccess?.();
 	};
 
@@ -130,11 +136,10 @@ export function TwoFactorEnableForm({
 				<div className="space-y-2" role="status">
 					<div className="flex items-center gap-2 font-medium">
 						<ShieldCheck className="h-5 w-5 text-green-600" />
-						Two-factor authentication is enabled
+						{messages.twoFactorEnabledHeading}
 					</div>
 					<p className="text-sm text-muted-foreground">
-						Save these one-time backup codes now. They will not be shown again
-						in this flow.
+						{messages.saveBackupCodes}
 					</p>
 				</div>
 				<ul className="grid grid-cols-2 gap-2 rounded-md border bg-muted/40 p-4 font-mono text-sm">
@@ -146,16 +151,16 @@ export function TwoFactorEnableForm({
 				</ul>
 				<div className="flex flex-wrap gap-2">
 					<div className="flex items-center gap-1">
-						<span className="text-sm">Copy all codes</span>
+						<span className="text-sm">{messages.copyAllCodes}</span>
 						<CopyButton textToCopy={backupCodesText} />
 					</div>
 					<Button type="button" variant="outline" onClick={downloadBackupCodes}>
 						<Download className="h-4 w-4" />
-						Download .txt
+						{messages.downloadTextFile}
 					</Button>
 				</div>
 				<Button type="button" onClick={finishEnrollment}>
-					I saved these codes
+					{messages.savedBackupCodes}
 				</Button>
 			</div>
 		);
@@ -168,7 +173,9 @@ export function TwoFactorEnableForm({
 					<QRCode value={totpURI} />
 				</div>
 				<div className="flex gap-2 items-center justify-center">
-					<p className="text-sm text-muted-foreground">Copy URI to clipboard</p>
+					<p className="text-sm text-muted-foreground">
+						{messages.copyUriToClipboard}
+					</p>
 					<CopyButton textToCopy={totpURI} />
 				</div>
 				<form
@@ -182,12 +189,12 @@ export function TwoFactorEnableForm({
 							render={({ field, fieldState }) => (
 								<Field data-invalid={fieldState.invalid}>
 									<FieldLabel htmlFor="enable-otp">
-										Scan the QR code with your TOTP app and enter the code
+										{messages.scanQrAndEnterCode}
 									</FieldLabel>
 									<Input
 										{...field}
 										id="enable-otp"
-										placeholder="Enter OTP code"
+										placeholder={messages.enterOtpCode}
 										aria-invalid={fieldState.invalid}
 										autoComplete="one-time-code"
 									/>
@@ -202,7 +209,7 @@ export function TwoFactorEnableForm({
 						{loading ? (
 							<Loader2 size={16} className="animate-spin" />
 						) : (
-							"Verify & Enable"
+							messages.verifyAndEnable
 						)}
 					</Button>
 				</form>
@@ -214,7 +221,7 @@ export function TwoFactorEnableForm({
 		return (
 			<div className="flex flex-col gap-4">
 				<p className="text-sm text-muted-foreground">
-					Your recent passwordless sign-in confirms this security change.
+					{messages.passwordlessSecurityConfirmation}
 				</p>
 				<Button
 					type="button"
@@ -224,7 +231,7 @@ export function TwoFactorEnableForm({
 					{loading ? (
 						<Loader2 size={16} className="animate-spin" />
 					) : (
-						"Continue"
+						messages.continue
 					)}
 				</Button>
 			</div>
@@ -242,11 +249,13 @@ export function TwoFactorEnableForm({
 					control={passwordForm.control}
 					render={({ field, fieldState }) => (
 						<Field data-invalid={fieldState.invalid}>
-							<FieldLabel htmlFor="enable-password">Password</FieldLabel>
+							<FieldLabel htmlFor="enable-password">
+								{messages.password}
+							</FieldLabel>
 							<PasswordInput
 								{...field}
 								id="enable-password"
-								placeholder="Enter your password"
+								placeholder={messages.enterPassword}
 								aria-invalid={fieldState.invalid}
 								autoComplete="current-password"
 							/>
@@ -256,7 +265,11 @@ export function TwoFactorEnableForm({
 				/>
 			</FieldGroup>
 			<Button type="submit" disabled={loading}>
-				{loading ? <Loader2 size={16} className="animate-spin" /> : "Continue"}
+				{loading ? (
+					<Loader2 size={16} className="animate-spin" />
+				) : (
+					messages.continue
+				)}
 			</Button>
 		</form>
 	);

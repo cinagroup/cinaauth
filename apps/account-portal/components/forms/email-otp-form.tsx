@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/i18n-provider";
 import {
 	TurnstileChallenge,
 	useTurnstileChallenge,
@@ -23,7 +24,6 @@ import { authClient } from "@/lib/auth-client";
 import { completeLocalSignInSuccess } from "@/lib/auth-form-response";
 import type { EmailOtpIntent } from "@/lib/email-otp-flow";
 import {
-	getEmailOtpCopy,
 	normalizeEmailOtp,
 	requiresExistingEmailOtpUser,
 	requiresNewEmailOtpUser,
@@ -46,7 +46,21 @@ export function EmailOtpForm({
 	onSuccess,
 	suppressAutomaticRedirect = false,
 }: EmailOtpFormProps) {
-	const copy = getEmailOtpCopy(intent);
+	const { messages } = useI18n();
+	const copy =
+		intent === "signup"
+			? {
+					sendButton: messages.sendSignUpCode,
+					verifyButton: messages.verifyAndContinue,
+					sentMessage: messages.signUpCodeSentTo,
+					successMessage: messages.emailVerifiedSuccessfully,
+				}
+			: {
+					sendButton: messages.sendSignInCode,
+					verifyButton: messages.verifyAndSignIn,
+					sentMessage: messages.signInCodeSentTo,
+					successMessage: messages.signedInSuccessfully,
+				};
 	const [email, setEmail] = useState("");
 	const [otp, setOtp] = useState("");
 	const [step, setStep] = useState<"email" | "otp">("email");
@@ -86,13 +100,11 @@ export function EmailOtpForm({
 			startCooldown();
 			toast.success(
 				nextAction === "resend"
-					? "Verification code resent"
-					: "Verification code sent",
+					? messages.verificationCodeResent
+					: messages.verificationCodeSent,
 			);
 		} catch (error: unknown) {
-			setErrorMessage(
-				getErrorMessage(error, "Unable to send the verification code."),
-			);
+			setErrorMessage(getErrorMessage(error, messages.unableToSendCode));
 		} finally {
 			captcha.reset();
 			setAction(null);
@@ -107,10 +119,7 @@ export function EmailOtpForm({
 			toast.success(copy.successMessage);
 		} catch (error: unknown) {
 			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Your email was verified, but authorization could not continue. Try again.",
-				),
+				getErrorMessage(error, messages.authorizationContinueError),
 			);
 		} finally {
 			setAction(null);
@@ -150,9 +159,7 @@ export function EmailOtpForm({
 			);
 		} catch (error: unknown) {
 			setOtp("");
-			setErrorMessage(
-				getErrorMessage(error, "The verification code is invalid or expired."),
-			);
+			setErrorMessage(getErrorMessage(error, messages.invalidCode));
 			setAction(null);
 			return;
 		}
@@ -176,8 +183,7 @@ export function EmailOtpForm({
 	if (!capabilities.isPending && !emailOtpReady) {
 		return (
 			<p className="text-sm leading-6 text-body" role="status">
-				Email code delivery is temporarily unavailable. Use another configured
-				authentication method.
+				{messages.emailCodeUnavailable}
 			</p>
 		);
 	}
@@ -186,8 +192,7 @@ export function EmailOtpForm({
 		return (
 			<div className="flex flex-col gap-3">
 				<p className="text-sm leading-6 text-body">
-					Your email is verified. Continue to finish authorizing the
-					application.
+					{messages.emailVerifiedContinue}
 				</p>
 				{errorMessage ? <FieldError>{errorMessage}</FieldError> : null}
 				<Button
@@ -199,7 +204,7 @@ export function EmailOtpForm({
 					{action === "continue" ? (
 						<Loader2 size={16} className="animate-spin" aria-hidden />
 					) : null}
-					Continue to application
+					{messages.continueToApplication}
 				</Button>
 			</div>
 		);
@@ -210,7 +215,9 @@ export function EmailOtpForm({
 			<form onSubmit={handleSendOtp} className="flex flex-col gap-4">
 				<FieldGroup>
 					<Field data-invalid={Boolean(errorMessage)}>
-						<FieldLabel htmlFor="email-otp-address">Email</FieldLabel>
+						<FieldLabel htmlFor="email-otp-address">
+							{messages.emailLabel}
+						</FieldLabel>
 						<Input
 							id="email-otp-address"
 							name="email"
@@ -226,9 +233,7 @@ export function EmailOtpForm({
 							autoComplete="email"
 							aria-invalid={Boolean(errorMessage)}
 						/>
-						<FieldDescription>
-							We will send a single-use six-digit code to this address.
-						</FieldDescription>
+						<FieldDescription>{messages.emailDescription}</FieldDescription>
 						{errorMessage ? <FieldError>{errorMessage}</FieldError> : null}
 					</Field>
 				</FieldGroup>
@@ -256,7 +261,9 @@ export function EmailOtpForm({
 		<form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
 			<FieldGroup>
 				<Field data-invalid={Boolean(errorMessage)}>
-					<FieldLabel htmlFor="email-otp-code">Verification code</FieldLabel>
+					<FieldLabel htmlFor="email-otp-code">
+						{messages.verificationCode}
+					</FieldLabel>
 					<FieldDescription>
 						{copy.sentMessage}{" "}
 						<span className="font-medium text-foreground">{email.trim()}</span>.
@@ -307,7 +314,9 @@ export function EmailOtpForm({
 					{action === "resend" ? (
 						<Loader2 size={14} className="animate-spin" aria-hidden />
 					) : null}
-					{isCoolingDown ? `Resend in ${cooldown}s` : "Resend code"}
+					{isCoolingDown
+						? `${messages.resendIn} ${cooldown}s`
+						: messages.resendCode}
 				</Button>
 				<Button
 					type="button"
@@ -322,7 +331,7 @@ export function EmailOtpForm({
 						captcha.reset();
 					}}
 				>
-					Change email
+					{messages.changeEmail}
 				</Button>
 			</div>
 		</form>

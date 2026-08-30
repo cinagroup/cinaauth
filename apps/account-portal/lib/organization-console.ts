@@ -1,4 +1,5 @@
 import type { OrganizationRole } from "./auth-api";
+import type { Locale } from "./i18n";
 
 export type OrganizationMember = {
 	id: string;
@@ -58,6 +59,12 @@ const STATIC_ROLE_LABELS: Record<OrganizationRole, string> = {
 	member: "Member",
 };
 
+const CHINESE_STATIC_ROLE_LABELS: Record<OrganizationRole, string> = {
+	owner: "所有者",
+	admin: "管理员",
+	member: "成员",
+};
+
 const ORGANIZATION_AUDIT_ACTION_LABELS: Record<string, string> = {
 	"org.create": "Organization created",
 	"org.update": "Organization updated",
@@ -79,11 +86,39 @@ const ORGANIZATION_AUDIT_ACTION_LABELS: Record<string, string> = {
 	"org.team_member_remove": "Team member removed",
 };
 
-const organizationDateFormatter = new Intl.DateTimeFormat("en", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-});
+const CHINESE_ORGANIZATION_AUDIT_ACTION_LABELS: Record<string, string> = {
+	"org.create": "组织已创建",
+	"org.update": "组织已更新",
+	"org.delete": "组织已删除",
+	"org.member_invite": "成员已邀请",
+	"org.invitation_cancel": "邀请已取消",
+	"org.invitation_accept": "邀请已接受",
+	"org.invitation_reject": "邀请已拒绝",
+	"org.member_remove": "成员已移除",
+	"org.member_role_update": "成员角色已更新",
+	"org.member_leave": "成员已退出",
+	"org.role_create": "角色已创建",
+	"org.role_update": "角色已更新",
+	"org.role_delete": "角色已删除",
+	"org.team_create": "团队已创建",
+	"org.team_update": "团队已更新",
+	"org.team_delete": "团队已删除",
+	"org.team_member_add": "团队成员已添加",
+	"org.team_member_remove": "团队成员已移除",
+};
+
+const organizationDateFormatters: Record<Locale, Intl.DateTimeFormat> = {
+	en: new Intl.DateTimeFormat("en", {
+		dateStyle: "medium",
+		timeStyle: "short",
+		timeZone: "UTC",
+	}),
+	"zh-CN": new Intl.DateTimeFormat("zh-CN", {
+		dateStyle: "medium",
+		timeStyle: "short",
+		timeZone: "UTC",
+	}),
+};
 
 /** Normalize the comma-separated role representation returned by CinaAuth. */
 export const parseOrganizationRoles = (role: string) => [
@@ -146,30 +181,40 @@ const toTitleCase = (value: string) =>
 		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
 		.join(" ");
 
-export const getOrganizationRoleLabel = (role: string) =>
+export const getOrganizationRoleLabel = (role: string, locale: Locale = "en") =>
 	parseOrganizationRoles(role)
 		.map(
 			(item) =>
-				STATIC_ROLE_LABELS[item as OrganizationRole] ?? toTitleCase(item),
+				(locale === "zh-CN"
+					? CHINESE_STATIC_ROLE_LABELS[item as OrganizationRole]
+					: STATIC_ROLE_LABELS[item as OrganizationRole]) ?? toTitleCase(item),
 		)
-		.join(" + ") || "No role";
+		.join(" + ") || (locale === "zh-CN" ? "无角色" : "No role");
 
-export const getOrganizationAuditActionLabel = (action: string) =>
-	ORGANIZATION_AUDIT_ACTION_LABELS[action] ??
+export const getOrganizationAuditActionLabel = (
+	action: string,
+	locale: Locale = "en",
+) =>
+	(locale === "zh-CN"
+		? CHINESE_ORGANIZATION_AUDIT_ACTION_LABELS[action]
+		: ORGANIZATION_AUDIT_ACTION_LABELS[action]) ??
 	toTitleCase(action.replace(/^org\./, ""));
 
 export const formatOrganizationAuditActor = (
 	actorId: string | null,
 	currentUserId: string,
+	locale: Locale = "en",
 ) => {
-	if (!actorId) return "System";
-	if (actorId === currentUserId) return "You";
-	return `Member ${actorId.slice(-8)}`;
+	if (!actorId) return locale === "zh-CN" ? "系统" : "System";
+	if (actorId === currentUserId) return locale === "zh-CN" ? "您" : "You";
+	return locale === "zh-CN"
+		? `成员 ${actorId.slice(-8)}`
+		: `Member ${actorId.slice(-8)}`;
 };
 
 /** Format organization timestamps identically during SSR and hydration. */
-export const formatOrganizationDate = (value: string) =>
-	`${organizationDateFormatter.format(new Date(value))} UTC`;
+export const formatOrganizationDate = (value: string, locale: Locale = "en") =>
+	`${organizationDateFormatters[locale].format(new Date(value))} UTC`;
 
 export const getOrganizationInvitationUrl = (
 	origin: string,

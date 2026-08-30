@@ -3,6 +3,7 @@
 import { ChevronDown, PlusCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ export default function AccountSwitcher({
 	const { data: currentUser } = useSessionQuery(initialSession);
 	const [open, setOpen] = useState(false);
 	const router = useRouter();
+	const { messages } = useDashboardI18n();
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -43,7 +45,7 @@ export default function AccountSwitcher({
 					variant="outline"
 					role="combobox"
 					aria-expanded={open}
-					aria-label="Select a user"
+					aria-label={messages.selectUser}
 					className="w-[250px] justify-between"
 				>
 					<Avatar className="mr-2 h-6 w-6">
@@ -60,7 +62,7 @@ export default function AccountSwitcher({
 			<PopoverContent className="w-[250px] p-0">
 				<Command>
 					<CommandList>
-						<CommandGroup heading="Current Account">
+						<CommandGroup heading={messages.currentAccount}>
 							<CommandItem
 								onSelect={() => {}}
 								className="text-sm w-full justify-between"
@@ -81,7 +83,7 @@ export default function AccountSwitcher({
 							</CommandItem>
 						</CommandGroup>
 						<CommandSeparator />
-						<CommandGroup heading="Switch Account">
+						<CommandGroup heading={messages.switchAccount}>
 							{deviceSessions
 								.filter((s) => s.user.id !== currentUser?.user.id)
 								.map((u, i) => (
@@ -131,7 +133,7 @@ export default function AccountSwitcher({
 								className="cursor-pointer text-sm"
 							>
 								<PlusCircle className="mr-2 h-5 w-5" />
-								Add Account
+								{messages.addAccount}
 							</CommandItem>
 						</CommandGroup>
 					</CommandList>

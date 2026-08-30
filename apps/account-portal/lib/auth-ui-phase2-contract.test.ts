@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { completeLocalSignInSuccess } from "./auth-form-response";
 import {
 	completeEmailOtpAuthentication,
-	getEmailOtpCopy,
 	normalizeEmailOtp,
 	requiresExistingEmailOtpUser,
 	requiresNewEmailOtpUser,
@@ -67,14 +66,13 @@ describe("Accounts authentication UI phase two contract", () => {
 	});
 
 	it("allows ordinary email sign-in to create a verified user", () => {
-		expect(getEmailOtpCopy("signup")).toMatchObject({
-			sendButton: "Send sign-up code",
-			verifyButton: "Verify and continue",
-		});
-		expect(getEmailOtpCopy("signin")).toMatchObject({
-			sendButton: "Send sign-in code",
-			verifyButton: "Verify and sign in",
-		});
+		const emailOtpFormSource = readSource(
+			"../components/forms/email-otp-form.tsx",
+		);
+		expect(emailOtpFormSource).toContain("messages.sendSignUpCode");
+		expect(emailOtpFormSource).toContain("messages.sendSignInCode");
+		expect(emailOtpFormSource).toContain("messages.verifyAndContinue");
+		expect(emailOtpFormSource).toContain("messages.verifyAndSignIn");
 		expect(requiresNewEmailOtpUser("signup")).toBe(true);
 		expect(requiresNewEmailOtpUser("signin")).toBe(false);
 		expect(requiresExistingEmailOtpUser("signin")).toBe(false);
@@ -197,6 +195,7 @@ describe("Accounts authentication UI phase two contract", () => {
 		const signInSource = readSource(
 			"../app/(auth)/sign-in/_components/sign-in.tsx",
 		);
+		const i18nSource = readSource("./i18n.ts");
 
 		expect(signInSource).toContain("hasSignedOidcCreatePrompt");
 		expect(signInSource).toContain("completeEmailOtpAuthentication");
@@ -206,7 +205,8 @@ describe("Accounts authentication UI phase two contract", () => {
 		expect(signInSource).toContain(
 			'intent={hasCreatePrompt ? "signup" : "signin"}',
 		);
-		expect(signInSource).toContain(
+		expect(signInSource).toContain("messages.newWalletAccount");
+		expect(i18nSource).toContain(
 			"New wallet? We'll create your account after you verify the",
 		);
 		expect(signInPageSource).not.toContain("<SignUpLink />");

@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
 	AlertDialog,
@@ -81,6 +82,8 @@ import {
 	toggleRolePermission,
 	toRolePermissionPayload,
 } from "@/lib/advanced-organization-console";
+import type { DashboardMessages } from "@/lib/dashboard-i18n";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type { OrganizationMember } from "@/lib/organization-console";
 import {
 	getOrganizationRoleLabel,
@@ -113,6 +116,32 @@ type AdvancedOrganizationCardProps = {
 const mutationError = (error: unknown, fallback: string) =>
 	error instanceof Error && error.message ? error.message : fallback;
 
+const localizeAdvancedError = (error: string, messages: DashboardMessages) => {
+	const errorMessages: Record<string, string> = {
+		"Enter a team name.": messages.teamNameRequired,
+		"Team names must be 64 characters or less.": messages.teamNameTooLong,
+		"Team names cannot contain control characters.":
+			messages.teamNameControlCharacters,
+		"Enter a role name.": messages.roleNameRequired,
+		"Owner, admin, and member are reserved roles.": messages.reservedRoleName,
+		"Role names must start with a letter and use lowercase letters, numbers, hyphens, or underscores.":
+			messages.invalidRoleName,
+		"That role name already exists.": messages.duplicateRoleName,
+		"Select at least one permission.": messages.permissionRequired,
+		"Select at least one role.": messages.roleSelectionRequired,
+		"One or more selected roles are no longer available.":
+			messages.staleRoleSelection,
+		"You cannot change organization roles.": messages.roleChangeForbidden,
+		"Only an owner can change another owner role.":
+			messages.ownerRoleChangeForbidden,
+		"Only an owner can assign the owner role.":
+			messages.ownerRoleAssignmentForbidden,
+		"Transfer ownership before removing the final owner role.":
+			messages.finalOwnerRole,
+	};
+	return errorMessages[error] ?? error;
+};
+
 const RoleEditorDialog = ({
 	organizationId,
 	roles,
@@ -126,6 +155,21 @@ const RoleEditorDialog = ({
 	disabled: boolean;
 	onSaved: () => void;
 }) => {
+	const { messages } = useDashboardI18n();
+	const permissionResourceLabels = {
+		organization: messages.permissionResourceOrganization,
+		member: messages.permissionResourceMember,
+		invitation: messages.permissionResourceInvitation,
+		team: messages.permissionResourceTeam,
+		ac: messages.permissionResourceAccessControl,
+	} as const;
+	const permissionActionLabels: Record<string, string> = {
+		create: messages.permissionActionCreate,
+		read: messages.permissionActionRead,
+		update: messages.permissionActionUpdate,
+		delete: messages.permissionActionDelete,
+		cancel: messages.permissionActionCancel,
+	};
 	const [open, setOpen] = useState(false);
 	const [draft, setDraft] = useState<DynamicRoleDraft>(() =>
 		role
@@ -142,7 +186,7 @@ const RoleEditorDialog = ({
 				roles,
 				editingRole: role?.role,
 			});
-			if (error) throw new Error(error);
+			if (error) throw new Error(localizeAdvancedError(error, messages));
 			const permission = toRolePermissionPayload(draft.permission);
 			if (role) {
 				await updateOrganizationRole({
@@ -160,12 +204,12 @@ const RoleEditorDialog = ({
 			});
 		},
 		onSuccess: () => {
-			toast.success(role ? "Role updated" : "Role created");
+			toast.success(role ? messages.roleUpdated : messages.roleCreated);
 			setOpen(false);
 			onSaved();
 		},
 		onError: (error) =>
-			toast.error(mutationError(error, "Unable to save the role")),
+			toast.error(mutationError(error, messages.unableSaveRole)),
 	});
 
 	const onOpenChange = (nextOpen: boolean) => {
@@ -189,28 +233,37 @@ const RoleEditorDialog = ({
 					variant={role ? "outline" : "default"}
 					size={role ? "icon" : "sm"}
 					disabled={disabled}
-					aria-label={role ? `Edit ${role.role}` : undefined}
+					aria-label={
+						role
+							? formatDashboardMessage(messages.editNamedItem, {
+									name: role.role,
+								})
+							: undefined
+					}
 				>
 					{role ? (
 						<Pencil className="h-4 w-4" />
 					) : (
 						<>
-							<Plus className="mr-2 h-4 w-4" /> New role
+							<Plus className="mr-2 h-4 w-4" /> {messages.newRole}
 						</>
 					)}
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
 				<DialogHeader>
-					<DialogTitle>{role ? "Edit role" : "Create role"}</DialogTitle>
+					<DialogTitle>
+						{role ? messages.editRole : messages.createRole}
+					</DialogTitle>
 					<DialogDescription>
-						Permissions are organization-scoped and checked again by the Auth
-						Worker.
+						{messages.rolePermissionsDescription}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-5">
 					<div className="space-y-2">
-						<Label htmlFor={`role-name-${role?.id ?? "new"}`}>Role name</Label>
+						<Label htmlFor={`role-name-${role?.id ?? "new"}`}>
+							{messages.roleName}
+						</Label>
 						<Input
 							id={`role-name-${role?.id ?? "new"}`}
 							value={draft.role}
@@ -220,19 +273,18 @@ const RoleEditorDialog = ({
 									role: event.target.value,
 								}))
 							}
-							placeholder="support_agent"
+							placeholder={messages.roleNamePlaceholder}
 							disabled={mutation.isPending || Boolean(role)}
 						/>
 						<p className="text-xs text-muted-foreground">
-							Use a stable lowercase identifier. Existing role names are
-							immutable so member assignments cannot become stale.
+							{messages.roleNameDescription}
 						</p>
 					</div>
 					<div className="grid gap-3 sm:grid-cols-2">
 						{ORGANIZATION_PERMISSION_RESOURCES.map((resource) => (
 							<div key={resource} className="rounded-lg border p-3">
 								<p className="mb-3 text-sm font-medium capitalize">
-									{resource}
+									{permissionResourceLabels[resource]}
 								</p>
 								<div className="space-y-2">
 									{ORGANIZATION_PERMISSION_STATEMENT[resource].map((action) => {
@@ -257,7 +309,7 @@ const RoleEditorDialog = ({
 													disabled={mutation.isPending}
 												/>
 												<Label htmlFor={id} className="font-normal capitalize">
-													{action}
+													{permissionActionLabels[action] ?? action}
 												</Label>
 											</div>
 										);
@@ -275,7 +327,7 @@ const RoleEditorDialog = ({
 						{mutation.isPending && (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 						)}
-						{role ? "Save role" : "Create role"}
+						{role ? messages.saveRole : messages.createRole}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -294,12 +346,13 @@ const TeamEditorDialog = ({
 	disabled: boolean;
 	onSaved: () => void;
 }) => {
+	const { messages } = useDashboardI18n();
 	const [open, setOpen] = useState(false);
 	const [name, setName] = useState(team?.name ?? "");
 	const mutation = useMutation({
 		mutationFn: async () => {
 			const error = getTeamNameError(name);
-			if (error) throw new Error(error);
+			if (error) throw new Error(localizeAdvancedError(error, messages));
 			if (team) {
 				await updateOrganizationTeam({ teamId: team.id, name });
 				return;
@@ -307,12 +360,12 @@ const TeamEditorDialog = ({
 			await createOrganizationTeam({ organizationId, name });
 		},
 		onSuccess: () => {
-			toast.success(team ? "Team renamed" : "Team created");
+			toast.success(team ? messages.teamRenamed : messages.teamCreated);
 			setOpen(false);
 			onSaved();
 		},
 		onError: (error) =>
-			toast.error(mutationError(error, "Unable to save the team")),
+			toast.error(mutationError(error, messages.unableSaveTeam)),
 	});
 
 	return (
@@ -328,33 +381,40 @@ const TeamEditorDialog = ({
 					variant={team ? "outline" : "default"}
 					size={team ? "icon" : "sm"}
 					disabled={disabled}
-					aria-label={team ? `Rename ${team.name}` : undefined}
+					aria-label={
+						team
+							? formatDashboardMessage(messages.renameNamedItem, {
+									name: team.name,
+								})
+							: undefined
+					}
 				>
 					{team ? (
 						<Pencil className="h-4 w-4" />
 					) : (
 						<>
-							<Plus className="mr-2 h-4 w-4" /> New team
+							<Plus className="mr-2 h-4 w-4" /> {messages.newTeam}
 						</>
 					)}
 				</Button>
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>{team ? "Rename team" : "Create team"}</DialogTitle>
-					<DialogDescription>
-						Teams group existing organization members without changing their
-						organization roles.
-					</DialogDescription>
+					<DialogTitle>
+						{team ? messages.renameTeam : messages.createTeam}
+					</DialogTitle>
+					<DialogDescription>{messages.teamDescription}</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-2">
-					<Label htmlFor={`team-name-${team?.id ?? "new"}`}>Team name</Label>
+					<Label htmlFor={`team-name-${team?.id ?? "new"}`}>
+						{messages.teamName}
+					</Label>
 					<Input
 						id={`team-name-${team?.id ?? "new"}`}
 						value={name}
 						onChange={(event) => setName(event.target.value)}
 						disabled={mutation.isPending}
-						placeholder="Platform"
+						placeholder={messages.teamNamePlaceholder}
 					/>
 				</div>
 				<DialogFooter>
@@ -365,7 +425,7 @@ const TeamEditorDialog = ({
 						{mutation.isPending && (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 						)}
-						{team ? "Save name" : "Create team"}
+						{team ? messages.saveName : messages.createTeam}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -384,6 +444,7 @@ const TeamMembershipDialog = ({
 	members: OrganizationMember[];
 	disabled: boolean;
 }) => {
+	const { messages } = useDashboardI18n();
 	const queryClient = useQueryClient();
 	const [open, setOpen] = useState(false);
 	const [selectedUserId, setSelectedUserId] = useState("");
@@ -411,10 +472,10 @@ const TeamMembershipDialog = ({
 		onSuccess: async () => {
 			setSelectedUserId("");
 			await queryClient.invalidateQueries({ queryKey });
-			toast.success("Team membership updated");
+			toast.success(messages.teamMembershipUpdated);
 		},
 		onError: (error) =>
-			toast.error(mutationError(error, "Unable to update team membership")),
+			toast.error(mutationError(error, messages.unableUpdateTeamMembership)),
 	});
 	const membershipUserIds = new Set(
 		(membershipQuery.data ?? []).map((membership) => membership.userId),
@@ -427,26 +488,30 @@ const TeamMembershipDialog = ({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
 				<Button variant="outline" size="sm">
-					<Users className="mr-2 h-4 w-4" /> Members
+					<Users className="mr-2 h-4 w-4" /> {messages.members}
 				</Button>
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>{team.name} members</DialogTitle>
+					<DialogTitle>
+						{formatDashboardMessage(messages.teamMembersTitle, {
+							name: team.name,
+						})}
+					</DialogTitle>
 					<DialogDescription>
-						Only existing members of this organization can be added.
+						{messages.teamMembersDescription}
 					</DialogDescription>
 				</DialogHeader>
 				{membershipQuery.isPending ? (
 					<div className="flex items-center gap-2 text-sm text-muted-foreground">
-						<Loader2 className="h-4 w-4 animate-spin" /> Loading members
+						<Loader2 className="h-4 w-4 animate-spin" />
+						{messages.loadingMembers}
 					</div>
 				) : membershipQuery.isError ? (
 					<Alert variant="destructive">
-						<AlertTitle>Team membership unavailable</AlertTitle>
+						<AlertTitle>{messages.teamMembershipUnavailable}</AlertTitle>
 						<AlertDescription>
-							No membership changes are allowed until the authoritative list
-							loads.
+							{messages.teamMembershipUnavailableDescription}
 						</AlertDescription>
 					</Alert>
 				) : (
@@ -464,7 +529,7 @@ const TeamMembershipDialog = ({
 										>
 											<div>
 												<p className="text-sm font-medium">
-													{member?.user.name ?? "Unknown member"}
+													{member?.user.name ?? messages.unknownMember}
 												</p>
 												<p className="text-xs text-muted-foreground">
 													{member?.user.email ?? membership.userId}
@@ -481,14 +546,14 @@ const TeamMembershipDialog = ({
 													})
 												}
 											>
-												Remove
+												{messages.remove}
 											</Button>
 										</div>
 									);
 								})
 							) : (
 								<p className="text-sm text-muted-foreground">
-									No members in this team.
+									{messages.noTeamMembers}
 								</p>
 							)}
 						</div>
@@ -499,8 +564,17 @@ const TeamMembershipDialog = ({
 									onValueChange={setSelectedUserId}
 									disabled={disabled || membershipMutation.isPending}
 								>
-									<SelectTrigger aria-label={`Add member to ${team.name}`}>
-										<SelectValue placeholder="Select organization member" />
+									<SelectTrigger
+										aria-label={formatDashboardMessage(
+											messages.addMemberToTeam,
+											{
+												name: team.name,
+											},
+										)}
+									>
+										<SelectValue
+											placeholder={messages.selectOrganizationMember}
+										/>
 									</SelectTrigger>
 									<SelectContent>
 										{eligibleMembers.map((member) => (
@@ -547,6 +621,7 @@ export const AdvancedMemberRoleEditor = ({
 	actorCanManage: boolean;
 	disabled: boolean;
 }) => {
+	const { locale, messages } = useDashboardI18n();
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [selectedRoles, setSelectedRoles] = useState<string[]>(() =>
@@ -576,7 +651,7 @@ export const AdvancedMemberRoleEditor = ({
 			actorCanManage,
 		});
 		if (error) {
-			toast.error(error);
+			toast.error(localizeAdvancedError(error, messages));
 			return;
 		}
 		updateMutation.mutate(
@@ -600,14 +675,18 @@ export const AdvancedMemberRoleEditor = ({
 		>
 			<DialogTrigger asChild>
 				<Button variant="outline" size="sm" disabled={disabled}>
-					Manage roles
+					{messages.manageRoles}
 				</Button>
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Roles for {member.user.name}</DialogTitle>
+					<DialogTitle>
+						{formatDashboardMessage(messages.rolesForMember, {
+							name: member.user.name,
+						})}
+					</DialogTitle>
 					<DialogDescription>
-						A member can hold multiple static or organization-defined roles.
+						{messages.multipleRolesDescription}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-3">
@@ -635,17 +714,18 @@ export const AdvancedMemberRoleEditor = ({
 									}
 								/>
 								<Label htmlFor={id} className="font-normal">
-									{getOrganizationRoleLabel(role)}
+									{getOrganizationRoleLabel(role, locale)}
 								</Label>
 							</div>
 						);
 					})}
 					{staleRoles.length > 0 && (
 						<Alert variant="destructive">
-							<AlertTitle>Unavailable role definitions</AlertTitle>
+							<AlertTitle>{messages.unavailableRoleDefinitions}</AlertTitle>
 							<AlertDescription>
-								Remove these stale assignments before saving:{" "}
-								{staleRoles.join(", ")}
+								{formatDashboardMessage(messages.staleRolesDescription, {
+									roles: staleRoles.join(", "),
+								})}
 							</AlertDescription>
 						</Alert>
 					)}
@@ -655,7 +735,7 @@ export const AdvancedMemberRoleEditor = ({
 						{updateMutation.isPending && (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 						)}
-						Save roles
+						{messages.saveRoles}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -674,6 +754,21 @@ export const AdvancedOrganizationCard = ({
 	authoritativeOrganizationData,
 	dataUnavailable,
 }: AdvancedOrganizationCardProps) => {
+	const { locale, messages } = useDashboardI18n();
+	const permissionResourceLabels = {
+		organization: messages.permissionResourceOrganization,
+		member: messages.permissionResourceMember,
+		invitation: messages.permissionResourceInvitation,
+		team: messages.permissionResourceTeam,
+		ac: messages.permissionResourceAccessControl,
+	} as const;
+	const permissionActionLabels: Record<string, string> = {
+		create: messages.permissionActionCreate,
+		read: messages.permissionActionRead,
+		update: messages.permissionActionUpdate,
+		delete: messages.permissionActionDelete,
+		cancel: messages.permissionActionCancel,
+	};
 	const router = useRouter();
 	const mutationContextUnavailable =
 		!recentAuthentication || !authoritativeOrganizationData;
@@ -681,21 +776,21 @@ export const AdvancedOrganizationCard = ({
 		mutationFn: (teamId: string) =>
 			deleteOrganizationTeam({ organizationId, teamId }),
 		onSuccess: () => {
-			toast.success("Team deleted");
+			toast.success(messages.teamDeleted);
 			router.refresh();
 		},
 		onError: (error) =>
-			toast.error(mutationError(error, "Unable to delete the team")),
+			toast.error(mutationError(error, messages.unableDeleteTeam)),
 	});
 	const deleteRoleMutation = useMutation({
 		mutationFn: (roleName: string) =>
 			deleteOrganizationRole({ organizationId, roleName }),
 		onSuccess: () => {
-			toast.success("Role deleted");
+			toast.success(messages.roleDeleted);
 			router.refresh();
 		},
 		onError: (error) =>
-			toast.error(mutationError(error, "Unable to delete the role")),
+			toast.error(mutationError(error, messages.unableDeleteRole)),
 	});
 
 	return (
@@ -704,11 +799,9 @@ export const AdvancedOrganizationCard = ({
 				<CardHeader className="flex flex-row items-center justify-between gap-4">
 					<div>
 						<CardTitle className="flex items-center gap-2">
-							<FolderKanban className="h-5 w-5" /> Teams
+							<FolderKanban className="h-5 w-5" /> {messages.teams}
 						</CardTitle>
-						<CardDescription>
-							Up to 50 teams and 100 organization members per team.
-						</CardDescription>
+						<CardDescription>{messages.teamsDescription}</CardDescription>
 					</div>
 					<TeamEditorDialog
 						organizationId={organizationId}
@@ -723,9 +816,9 @@ export const AdvancedOrganizationCard = ({
 				<CardContent className="space-y-3">
 					{dataUnavailable.teams ? (
 						<Alert variant="destructive">
-							<AlertTitle>Teams unavailable</AlertTitle>
+							<AlertTitle>{messages.teamsUnavailable}</AlertTitle>
 							<AlertDescription>
-								Team controls remain disabled until authoritative data loads.
+								{messages.teamsUnavailableDescription}
 							</AlertDescription>
 						</Alert>
 					) : initialTeams.length > 0 ? (
@@ -737,7 +830,9 @@ export const AdvancedOrganizationCard = ({
 								<div>
 									<p className="text-sm font-medium">{team.name}</p>
 									<p className="text-xs text-muted-foreground">
-										Team ID {team.id.slice(-8)}
+										{formatDashboardMessage(messages.teamId, {
+											id: team.id.slice(-8),
+										})}
 									</p>
 								</div>
 								<div className="flex items-center gap-2">
@@ -769,7 +864,10 @@ export const AdvancedOrganizationCard = ({
 																mutationContextUnavailable ||
 																deleteTeamMutation.isPending
 															}
-															aria-label={`Delete ${team.name}`}
+															aria-label={formatDashboardMessage(
+																messages.deleteNamedItem,
+																{ name: team.name },
+															)}
 														>
 															<Trash2 className="h-4 w-4" />
 														</Button>
@@ -777,21 +875,27 @@ export const AdvancedOrganizationCard = ({
 													<AlertDialogContent>
 														<AlertDialogHeader>
 															<AlertDialogTitle>
-																Delete {team.name}?
+																{formatDashboardMessage(
+																	messages.deleteNamedItemTitle,
+																	{
+																		name: team.name,
+																	},
+																)}
 															</AlertDialogTitle>
 															<AlertDialogDescription>
-																Memberships in this team will be removed. The
-																final team cannot be deleted.
+																{messages.deleteTeamDescription}
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
-															<AlertDialogCancel>Cancel</AlertDialogCancel>
+															<AlertDialogCancel>
+																{messages.cancel}
+															</AlertDialogCancel>
 															<AlertDialogAction
 																onClick={() =>
 																	deleteTeamMutation.mutate(team.id)
 																}
 															>
-																Delete team
+																{messages.deleteTeam}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
@@ -803,9 +907,7 @@ export const AdvancedOrganizationCard = ({
 							</div>
 						))
 					) : (
-						<p className="text-sm text-muted-foreground">
-							No teams yet. Create the first team to group members.
-						</p>
+						<p className="text-sm text-muted-foreground">{messages.noTeams}</p>
 					)}
 				</CardContent>
 			</Card>
@@ -814,11 +916,9 @@ export const AdvancedOrganizationCard = ({
 				<CardHeader className="flex flex-row items-center justify-between gap-4">
 					<div>
 						<CardTitle className="flex items-center gap-2">
-							<ShieldCheck className="h-5 w-5" /> Custom roles
+							<ShieldCheck className="h-5 w-5" /> {messages.customRoles}
 						</CardTitle>
-						<CardDescription>
-							Up to 25 organization-scoped role definitions.
-						</CardDescription>
+						<CardDescription>{messages.customRolesDescription}</CardDescription>
 					</div>
 					<RoleEditorDialog
 						organizationId={organizationId}
@@ -834,9 +934,9 @@ export const AdvancedOrganizationCard = ({
 				<CardContent className="space-y-3">
 					{dataUnavailable.roles ? (
 						<Alert variant="destructive">
-							<AlertTitle>Role definitions unavailable</AlertTitle>
+							<AlertTitle>{messages.roleDefinitionsUnavailable}</AlertTitle>
 							<AlertDescription>
-								Role controls remain disabled until authoritative data loads.
+								{messages.roleDefinitionsUnavailableDescription}
 							</AlertDescription>
 						</Alert>
 					) : initialDynamicRoles.length > 0 ? (
@@ -845,7 +945,7 @@ export const AdvancedOrganizationCard = ({
 								<div className="flex items-start justify-between gap-3">
 									<div>
 										<p className="text-sm font-medium">
-											{getOrganizationRoleLabel(role.role)}
+											{getOrganizationRoleLabel(role.role, locale)}
 										</p>
 										<p className="text-xs text-muted-foreground">{role.role}</p>
 									</div>
@@ -870,7 +970,10 @@ export const AdvancedOrganizationCard = ({
 																mutationContextUnavailable ||
 																deleteRoleMutation.isPending
 															}
-															aria-label={`Delete ${role.role}`}
+															aria-label={formatDashboardMessage(
+																messages.deleteNamedItem,
+																{ name: role.role },
+															)}
 														>
 															<Trash2 className="h-4 w-4" />
 														</Button>
@@ -878,21 +981,27 @@ export const AdvancedOrganizationCard = ({
 													<AlertDialogContent>
 														<AlertDialogHeader>
 															<AlertDialogTitle>
-																Delete {role.role}?
+																{formatDashboardMessage(
+																	messages.deleteNamedItemTitle,
+																	{
+																		name: role.role,
+																	},
+																)}
 															</AlertDialogTitle>
 															<AlertDialogDescription>
-																Remove this role from members before deleting
-																its definition.
+																{messages.deleteRoleDescription}
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
-															<AlertDialogCancel>Cancel</AlertDialogCancel>
+															<AlertDialogCancel>
+																{messages.cancel}
+															</AlertDialogCancel>
 															<AlertDialogAction
 																onClick={() =>
 																	deleteRoleMutation.mutate(role.role)
 																}
 															>
-																Delete role
+																{messages.deleteRole}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
@@ -905,7 +1014,8 @@ export const AdvancedOrganizationCard = ({
 									{ORGANIZATION_PERMISSION_RESOURCES.flatMap((resource) =>
 										(role.permission[resource] ?? []).map((action) => (
 											<Badge key={`${resource}:${action}`} variant="secondary">
-												{resource}:{action}
+												{permissionResourceLabels[resource]}:
+												{permissionActionLabels[action] ?? action}
 											</Badge>
 										)),
 									)}
@@ -914,8 +1024,7 @@ export const AdvancedOrganizationCard = ({
 						))
 					) : (
 						<p className="text-sm text-muted-foreground">
-							No custom roles. Static owner, admin, and member roles remain
-							available.
+							{messages.noCustomRoles}
 						</p>
 					)}
 				</CardContent>

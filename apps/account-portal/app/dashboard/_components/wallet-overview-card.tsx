@@ -1,5 +1,8 @@
+"use client";
+
 import { ArrowRight, WalletCards } from "lucide-react";
 import Link from "next/link";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +13,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { formatDashboardMessage } from "@/lib/dashboard-i18n";
 import type { WalletOverviewSummary } from "@/lib/security-center";
 import { formatWalletAddress, formatWalletChain } from "@/lib/security-center";
 
@@ -18,30 +22,33 @@ type WalletOverviewCardProps = {
 };
 
 export function WalletOverviewCard({ summary }: WalletOverviewCardProps) {
+	const { messages } = useDashboardI18n();
 	const hasWallet = summary.available && summary.wallet !== null;
-	const actionLabel = hasWallet ? "Manage wallets" : "Bind wallet";
+	const actionLabel = hasWallet ? messages.manageWallets : messages.bindWallet;
 
 	return (
 		<Card>
 			<CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
 				<div>
 					<CardTitle className="flex items-center gap-2">
-						<WalletCards className="h-5 w-5" /> Wallet
+						<WalletCards className="h-5 w-5" /> {messages.walletTitle}
 					</CardTitle>
 					<CardDescription className="mt-1.5">
-						Link an Ethereum wallet for secure wallet sign-in.
+						{messages.walletDescription}
 					</CardDescription>
 				</div>
 				<Badge variant="secondary">
 					{summary.available
-						? `${summary.count} connected`
-						: "Status unavailable"}
+						? formatDashboardMessage(messages.connectedCount, {
+								count: String(summary.count),
+							})
+						: messages.statusUnavailable}
 				</Badge>
 			</CardHeader>
 			<CardContent>
 				{!summary.available ? (
 					<p className="text-sm text-muted-foreground">
-						Wallet status is temporarily unavailable. Open Security to retry.
+						{messages.walletStatusUnavailable}
 					</p>
 				) : summary.wallet ? (
 					<div className="rounded-md border bg-canvas-soft p-4">
@@ -52,20 +59,23 @@ export function WalletOverviewCard({ summary }: WalletOverviewCardProps) {
 							<Badge variant="outline">
 								{formatWalletChain(summary.wallet.chainId)}
 							</Badge>
-							{summary.wallet.isPrimary ? <Badge>Primary</Badge> : null}
+							{summary.wallet.isPrimary ? (
+								<Badge>{messages.primary}</Badge>
+							) : null}
 						</div>
 						<p className="mt-2 text-xs text-muted-foreground">
 							{summary.count === 1
-								? "This wallet can be used to sign in."
-								: `${summary.count - 1} additional wallet${summary.count === 2 ? "" : "s"} linked.`}
+								? messages.walletSignInReady
+								: formatDashboardMessage(messages.additionalWallets, {
+										count: String(summary.count - 1),
+									})}
 						</p>
 					</div>
 				) : (
 					<div className="rounded-md border border-dashed p-4">
-						<p className="text-sm font-medium">No wallet linked</p>
+						<p className="text-sm font-medium">{messages.noWalletLinked}</p>
 						<p className="mt-1 text-sm text-muted-foreground">
-							Connect a wallet once, then use it as an existing-account sign-in
-							method.
+							{messages.noWalletDescription}
 						</p>
 					</div>
 				)}

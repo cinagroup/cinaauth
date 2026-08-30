@@ -79,7 +79,7 @@ const getReownRuntime = (projectId: string, themeMode: ReownThemeMode) => {
 	return runtime;
 };
 
-const getErrorMessage = (error: unknown) => {
+const getErrorMessage = (error: unknown, fallback: string) => {
 	const message =
 		error instanceof Error && error.message
 			? error.message
@@ -88,10 +88,8 @@ const getErrorMessage = (error: unknown) => {
 					"message" in error &&
 					typeof error.message === "string"
 				? error.message
-				: "Unable to complete wallet authentication";
-	return message.length <= 256
-		? message
-		: "Unable to complete wallet authentication";
+				: fallback;
+	return message.length <= 256 ? message : fallback;
 };
 
 type WalletControllerProps = {
@@ -102,6 +100,7 @@ type WalletControllerProps = {
 	onBusyChange: (busy: boolean) => void;
 	onError: (message: string) => void;
 	onSuccess: () => void | Promise<void>;
+	fallbackErrorMessage: string;
 };
 
 function WalletController({
@@ -112,6 +111,7 @@ function WalletController({
 	onBusyChange,
 	onError,
 	onSuccess,
+	fallbackErrorMessage,
 }: WalletControllerProps) {
 	const account = useAccount();
 	const { signMessageAsync } = useSignMessage();
@@ -134,9 +134,9 @@ function WalletController({
 	useEffect(() => {
 		if (account.isConnected) return;
 		void runtime.appKit.open({ view: "Connect" }).catch((error: unknown) => {
-			onError(getErrorMessage(error));
+			onError(getErrorMessage(error, fallbackErrorMessage));
 		});
-	}, [account.isConnected, onError, runtime]);
+	}, [account.isConnected, fallbackErrorMessage, onError, runtime]);
 
 	useEffect(() => {
 		if (
@@ -151,12 +151,18 @@ function WalletController({
 		void runtime.appKit
 			.switchNetwork(mainnet)
 			.catch((error: unknown) => {
-				onError(getErrorMessage(error));
+				onError(getErrorMessage(error, fallbackErrorMessage));
 			})
 			.finally(() => {
 				networkSwitchPending.current = false;
 			});
-	}, [account.chainId, account.isConnected, onError, runtime]);
+	}, [
+		account.chainId,
+		account.isConnected,
+		fallbackErrorMessage,
+		onError,
+		runtime,
+	]);
 
 	useEffect(() => {
 		if (
@@ -183,7 +189,7 @@ function WalletController({
 				await onSuccess();
 			})
 			.catch((error: unknown) => {
-				onError(getErrorMessage(error));
+				onError(getErrorMessage(error, fallbackErrorMessage));
 			})
 			.finally(() => {
 				onBusyChange(false);
@@ -192,6 +198,7 @@ function WalletController({
 		account.address,
 		account.chainId,
 		account.isConnected,
+		fallbackErrorMessage,
 		onBusyChange,
 		onError,
 		onSuccess,
@@ -211,6 +218,7 @@ type ReownWalletRuntimeProps = {
 	onBusyChange: (busy: boolean) => void;
 	onError: (message: string) => void;
 	onSuccess: () => void | Promise<void>;
+	fallbackErrorMessage: string;
 };
 
 export function ReownWalletRuntime({
@@ -221,6 +229,7 @@ export function ReownWalletRuntime({
 	onBusyChange,
 	onError,
 	onSuccess,
+	fallbackErrorMessage,
 }: ReownWalletRuntimeProps) {
 	const { resolvedTheme } = useTheme();
 	const themeMode =
@@ -244,6 +253,7 @@ export function ReownWalletRuntime({
 				purpose={purpose}
 				getTriggerElement={getTriggerElement}
 				onBusyChange={onBusyChange}
+				fallbackErrorMessage={fallbackErrorMessage}
 				onError={onError}
 				onSuccess={onSuccess}
 			/>

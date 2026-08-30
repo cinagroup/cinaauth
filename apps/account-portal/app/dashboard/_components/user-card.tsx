@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import { EmailVerificationOtpForm } from "@/components/forms/email-verification-otp-form";
 import { TwoFactorDisableForm } from "@/components/forms/two-factor-disable-form";
 import { TwoFactorEnableForm } from "@/components/forms/two-factor-enable-form";
@@ -71,11 +72,12 @@ const UserCard = ({
 	const [twoFactorDialog, setTwoFactorDialog] = useState<boolean>(false);
 	const [backupCodesPending, setBackupCodesPending] = useState(false);
 	const [isSignOut, setIsSignOut] = useState<boolean>(false);
+	const { messages } = useDashboardI18n();
 
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>User</CardTitle>
+				<CardTitle>{messages.user}</CardTitle>
 			</CardHeader>
 			<CardContent className="grid gap-8 grid-cols-1">
 				<div className="flex flex-col gap-2">
@@ -84,7 +86,7 @@ const UserCard = ({
 							<Avatar className="hidden h-9 w-9 sm:flex ">
 								<AvatarImage
 									src={session?.user.image || undefined}
-									alt="Avatar"
+									alt={messages.avatar}
 									className="object-cover"
 								/>
 								<AvatarFallback>{session?.user.name.charAt(0)}</AvatarFallback>
@@ -106,28 +108,30 @@ const UserCard = ({
 				)}
 				<div className="border-y py-4 flex items-center flex-wrap justify-between gap-2">
 					<div className="flex flex-col gap-2">
-						<p className="text-sm">Passkeys</p>
+						<p className="text-sm">{messages.passkeys}</p>
 						<div className="flex gap-2 flex-wrap">
 							<AddPasskey />
 							<ListPasskeys />
 						</div>
 					</div>
 					<div className="flex flex-col gap-2">
-						<p className="text-sm">Two Factor</p>
+						<p className="text-sm">{messages.twoFactor}</p>
 						<div className="flex gap-2">
 							{!!session?.user.twoFactorEnabled && (
 								<Dialog>
 									<DialogTrigger asChild>
 										<Button variant="outline" className="gap-2">
 											<QrCode size={16} />
-											<span className="md:text-sm text-xs">Scan QR Code</span>
+											<span className="md:text-sm text-xs">
+												{messages.scanQrCode}
+											</span>
 										</Button>
 									</DialogTrigger>
 									<DialogContent className="sm:max-w-[425px] w-11/12">
 										<DialogHeader>
-											<DialogTitle>Scan QR Code</DialogTitle>
+											<DialogTitle>{messages.scanQrCode}</DialogTitle>
 											<DialogDescription>
-												Scan the QR code with your TOTP app
+												{messages.scanQrDescription}
 											</DialogDescription>
 										</DialogHeader>
 										<TwoFactorQrForm
@@ -157,8 +161,8 @@ const UserCard = ({
 										)}
 										<span className="md:text-sm text-xs">
 											{session?.user.twoFactorEnabled
-												? "Disable 2FA"
-												: "Enable 2FA"}
+												? messages.disableTwoFactor
+												: messages.enableTwoFactor}
 										</span>
 									</Button>
 								</DialogTrigger>
@@ -175,13 +179,13 @@ const UserCard = ({
 									<DialogHeader>
 										<DialogTitle>
 											{session?.user.twoFactorEnabled
-												? "Disable 2FA"
-												: "Enable 2FA"}
+												? messages.disableTwoFactor
+												: messages.enableTwoFactor}
 										</DialogTitle>
 										<DialogDescription>
 											{requiresPasswordForTwoFactor
-												? "A retained legacy credential confirms this sensitive change. It cannot be used to sign in."
-												: "Your recent passwordless sign-in confirms this sensitive change."}
+												? messages.legacyCredentialConfirmation
+												: messages.passwordlessConfirmation}
 										</DialogDescription>
 									</DialogHeader>
 									{session?.user.twoFactorEnabled ? (
@@ -207,19 +211,19 @@ const UserCard = ({
 					<Button asChild className="gap-2 z-10" variant="default" size="sm">
 						<Link href="/dashboard/security">
 							<ShieldCheck size={16} />
-							Security Center
+							{messages.securityTitle}
 						</Link>
 					</Button>
 					<Button asChild className="gap-2 z-10" variant="outline" size="sm">
 						<Link href="/dashboard/privacy">
 							<FileLock2 size={16} />
-							Privacy Center
+							{messages.privacyTitle}
 						</Link>
 					</Button>
 					<Button asChild className="gap-2 z-10" variant="outline" size="sm">
 						<Link href="/dashboard/developer">
 							<Code2 size={16} />
-							Developer Console
+							{messages.developerTitle}
 						</Link>
 					</Button>
 				</div>
@@ -231,7 +235,7 @@ const UserCard = ({
 							setIsSignOut(true);
 							await authClient.admin.stopImpersonating();
 							setIsSignOut(false);
-							toast.info("Impersonation stopped successfully");
+							toast.info(messages.impersonationStopped);
 							router.push("/admin");
 						}}
 						disabled={isSignOut}
@@ -242,7 +246,7 @@ const UserCard = ({
 							) : (
 								<div className="flex items-center gap-2">
 									<StopCircle size={16} color="red" />
-									Stop Impersonation
+									{messages.stopImpersonation}
 								</div>
 							)}
 						</span>
@@ -266,7 +270,7 @@ const UserCard = ({
 							) : (
 								<div className="flex items-center gap-2">
 									<LogOut size={16} />
-									Sign Out
+									{messages.signOut}
 								</div>
 							)}
 						</span>
@@ -279,6 +283,7 @@ const UserCard = ({
 export default UserCard;
 
 function EditUserDialog() {
+	const { messages } = useDashboardI18n();
 	const { data } = useSessionQuery();
 	const [open, setOpen] = useState<boolean>(false);
 
@@ -287,13 +292,13 @@ function EditUserDialog() {
 			<DialogTrigger asChild>
 				<Button size="sm" className="gap-2" variant="default">
 					<Edit size={13} />
-					Edit User
+					{messages.editUser}
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px] w-11/12">
 				<DialogHeader>
-					<DialogTitle>Edit User</DialogTitle>
-					<DialogDescription>Edit user information</DialogDescription>
+					<DialogTitle>{messages.editUser}</DialogTitle>
+					<DialogDescription>{messages.editUserDescription}</DialogDescription>
 				</DialogHeader>
 				<UpdateUserForm
 					currentName={data?.user.name}
@@ -305,13 +310,14 @@ function EditUserDialog() {
 }
 
 function AddPasskey() {
+	const { messages } = useDashboardI18n();
 	const [isOpen, setIsOpen] = useState(false);
 	const [passkeyName, setPasskeyName] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleAddPasskey = async () => {
 		if (!passkeyName) {
-			toast.error("Passkey name is required");
+			toast.error(messages.passkeyNameRequired);
 			return;
 		}
 		setIsLoading(true);
@@ -322,7 +328,7 @@ function AddPasskey() {
 			toast.error(res?.error.message);
 		} else {
 			setIsOpen(false);
-			toast.success("Passkey added successfully. You can now use it to login.");
+			toast.success(messages.passkeyAdded);
 		}
 		setIsLoading(false);
 	};
@@ -331,19 +337,18 @@ function AddPasskey() {
 			<DialogTrigger asChild>
 				<Button variant="outline" className="gap-2 text-xs md:text-sm">
 					<Plus size={15} />
-					Add New Passkey
+					{messages.addNewPasskey}
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px] w-11/12">
 				<DialogHeader>
-					<DialogTitle>Add New Passkey</DialogTitle>
+					<DialogTitle>{messages.addNewPasskey}</DialogTitle>
 					<DialogDescription>
-						Create a new passkey to securely access your account without a
-						password.
+						{messages.addPasskeyDescription}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-2">
-					<Label htmlFor="passkey-name">Passkey Name</Label>
+					<Label htmlFor="passkey-name">{messages.passkeyName}</Label>
 					<Input
 						id="passkey-name"
 						value={passkeyName}
@@ -364,7 +369,7 @@ function AddPasskey() {
 						) : (
 							<>
 								<Fingerprint className="mr-2 h-4 w-4" />
-								Create Passkey
+								{messages.createPasskey}
 							</>
 						)}
 					</Button>
@@ -375,13 +380,14 @@ function AddPasskey() {
 }
 
 function ListPasskeys() {
+	const { messages } = useDashboardI18n();
 	const { data } = authClient.useListPasskeys();
 	const [isOpen, setIsOpen] = useState(false);
 	const [passkeyName, setPasskeyName] = useState("");
 
 	const handleAddPasskey = async () => {
 		if (!passkeyName) {
-			toast.error("Passkey name is required");
+			toast.error(messages.passkeyNameRequired);
 			return;
 		}
 		setIsLoading(true);
@@ -392,7 +398,7 @@ function ListPasskeys() {
 		if (res?.error) {
 			toast.error(res?.error.message);
 		} else {
-			toast.success("Passkey added successfully. You can now use it to login.");
+			toast.success(messages.passkeyAdded);
 		}
 	};
 	const [isLoading, setIsLoading] = useState(false);
@@ -402,19 +408,21 @@ function ListPasskeys() {
 			<DialogTrigger asChild>
 				<Button variant="outline" className="text-xs md:text-sm">
 					<Fingerprint className="mr-2 h-4 w-4" />
-					<span>Passkeys {data?.length ? `[${data?.length}]` : ""}</span>
+					<span>
+						{messages.passkeys} {data?.length ? `[${data?.length}]` : ""}
+					</span>
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px] w-11/12">
 				<DialogHeader>
-					<DialogTitle>Passkeys</DialogTitle>
-					<DialogDescription>List of passkeys</DialogDescription>
+					<DialogTitle>{messages.passkeys}</DialogTitle>
+					<DialogDescription>{messages.passkeyList}</DialogDescription>
 				</DialogHeader>
 				{data?.length ? (
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead>Name</TableHead>
+								<TableHead>{messages.name}</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -423,19 +431,19 @@ function ListPasskeys() {
 									key={passkey.id}
 									className="flex  justify-between items-center"
 								>
-									<TableCell>{passkey.name || "My Passkey"}</TableCell>
+									<TableCell>{passkey.name || messages.myPasskey}</TableCell>
 									<TableCell className="text-right">
 										<button
 											onClick={async () => {
 												setIsDeletePasskey(true);
 												try {
 													await deleteAccountPasskey(authClient, passkey.id);
-													toast.success("Passkey deleted successfully");
+													toast.success(messages.passkeyDeleted);
 												} catch (error) {
 													toast.error(
 														error instanceof Error
 															? error.message
-															: "Unable to remove the passkey",
+															: messages.passkeyDeleteFailed,
 													);
 												} finally {
 													setIsDeletePasskey(false);
@@ -457,13 +465,13 @@ function ListPasskeys() {
 						</TableBody>
 					</Table>
 				) : (
-					<p className="text-sm text-muted-foreground">No passkeys found</p>
+					<p className="text-sm text-muted-foreground">{messages.noPasskeys}</p>
 				)}
 				{!data?.length && (
 					<div className="flex flex-col gap-2">
 						<div className="flex flex-col gap-2">
 							<Label htmlFor="passkey-name" className="text-sm">
-								New Passkey
+								{messages.newPasskey}
 							</Label>
 							<Input
 								id="passkey-name"
@@ -471,7 +479,7 @@ function ListPasskeys() {
 								onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
 									setPasskeyName(e.target.value)
 								}
-								placeholder="My Passkey"
+								placeholder={messages.myPasskey}
 							/>
 						</div>
 						<Button type="submit" onClick={handleAddPasskey} className="w-full">
@@ -480,14 +488,14 @@ function ListPasskeys() {
 							) : (
 								<>
 									<Fingerprint className="mr-2 h-4 w-4" />
-									Create Passkey
+									{messages.createPasskey}
 								</>
 							)}
 						</Button>
 					</div>
 				)}
 				<DialogFooter>
-					<Button onClick={() => setIsOpen(false)}>Close</Button>
+					<Button onClick={() => setIsOpen(false)}>{messages.close}</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

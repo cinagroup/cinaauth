@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
+import { useDashboardI18n } from "@/components/dashboard/use-dashboard-i18n";
 import {
 	Dialog,
 	DialogContent,
@@ -13,6 +14,7 @@ import {
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
+	const { messages } = useDashboardI18n();
 	const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -32,10 +34,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 				onOpenChange={setMobileNavigationOpen}
 			>
 				<DialogContent className="account-dashboard-shell !left-0 !top-0 h-dvh w-[min(20rem,88vw)] max-w-none !translate-x-0 !translate-y-0 overflow-hidden rounded-none border-r border-hairline bg-sidebar p-0">
-					<DialogTitle className="sr-only">Account navigation</DialogTitle>
+					<DialogTitle className="sr-only">
+						{messages.navigationDialogTitle}
+					</DialogTitle>
 					<DialogDescription className="sr-only">
-						Navigate between your account, security, privacy, organization, and
-						developer settings.
+						{messages.navigationDialogDescription}
 					</DialogDescription>
 					<DashboardSidebar
 						className="w-full border-r-0"

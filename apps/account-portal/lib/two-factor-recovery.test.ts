@@ -48,13 +48,15 @@ describe("two-factor recovery responses", () => {
 describe("two-factor recovery UI contract", () => {
 	it("keeps recovery codes until the user explicitly confirms saving them", () => {
 		const source = readSource("../components/forms/two-factor-enable-form.tsx");
+		const dashboardI18n = readSource("./dashboard-i18n.ts");
 		const overview = readSource("../app/dashboard/_components/user-card.tsx");
 		const securityCenter = readSource(
 			"../app/dashboard/security/security-center.tsx",
 		);
 		expect(source).toContain("setBackupCodes(ctx.data.backupCodes)");
 		expect(source).toContain('setStep("backupCodes")');
-		expect(source).toContain("I saved these codes");
+		expect(source).toContain("messages.savedBackupCodes");
+		expect(dashboardI18n).toContain('savedBackupCodes: "I saved these codes"');
 		expect(source).toContain("onBackupCodesPendingChange?.(true)");
 		for (const parentSource of [overview, securityCenter]) {
 			expect(parentSource).toContain("backupCodesPending");
