@@ -52,3 +52,5 @@ elif
 zitadel
 anthropics
 nextjs
+botid
+eusend

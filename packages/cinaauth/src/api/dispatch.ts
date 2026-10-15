@@ -8,7 +8,7 @@ import {
 	ATTR_HOOK_TYPE,
 	ATTR_HTTP_ROUTE,
 	ATTR_OPERATION_ID,
-	withSpan,
+	createWithSpan,
 } from "@cinaauth/core/instrumentation";
 import type { Endpoint, EndpointContext, InputContext } from "better-call";
 import { kAPIErrorHeaderSymbol, toResponse } from "better-call";
@@ -151,6 +151,7 @@ async function runBeforeHooks(
 	endpoint: Endpoint,
 	operationId: string,
 ) {
+	const withSpan = createWithSpan(context.context.options);
 	let modifiedContext: Partial<InternalContext> = {};
 
 	for (const hook of hooks) {
@@ -235,6 +236,7 @@ async function runAfterHooks(
 	endpoint: Endpoint,
 	operationId: string,
 ) {
+	const withSpan = createWithSpan(context.context.options);
 	for (const hook of hooks) {
 		if (!hook.matcher(context as HookEndpointContext)) continue;
 
@@ -337,6 +339,7 @@ export async function dispatchAuthEndpoint(
 	endpoint: Endpoint,
 	input: DispatchContext,
 ): Promise<unknown> {
+	const withSpan = createWithSpan(input.context.options);
 	const operationId = input.operationId ?? getOperationId(endpoint);
 	const route = endpoint.path ?? "/:virtual";
 	const endpointMethod = endpoint.options?.method;

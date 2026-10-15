@@ -77,7 +77,7 @@ const OIDC_IDENTITY_BOUNDARY_FIELDS = [
 	"tokenEndpoint",
 	"userInfoEndpoint",
 ] as const;
-const SAML_IDENTITY_BOUNDARY_FIELDS = ["audience", "callbackUrl"] as const;
+const SAML_IDENTITY_BOUNDARY_FIELDS = ["audience"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -119,10 +119,16 @@ function oidcIdentityBoundaryChanged(
 	return hasChangedField(current, updated, OIDC_IDENTITY_BOUNDARY_FIELDS);
 }
 
-function samlIdentityBoundaryChanged(
+/**
+ * Signing certificates are reported apart from the identity boundary: they
+ * change who can sign assertions, so the mutation guard treats them as an
+ * authentication-boundary change, but they do not change which IdP identities
+ * linked accounts belong to.
+ */
+function samlBoundaryChanges(
 	current: SAMLConfig,
 	updated: SAMLConfig,
-): boolean {
+): { identity: boolean; trustAnchors: boolean } {
 	const currentIdentityProvider = createIdP(current).entityMeta;
 	const updatedIdentityProvider = createIdP(updated).entityMeta;
 	let currentServiceProvider: ReturnType<
@@ -139,7 +145,7 @@ function samlIdentityBoundaryChanged(
 			? parseSAMLServiceProviderMetadata(updated.spMetadata.metadata)
 			: null;
 	} catch {
-		return true;
+		return { identity: true, trustAnchors: true };
 	}
 	const effectiveIdentityBoundary = (config: SAMLConfig) => {
 		const identityProvider =
@@ -156,11 +162,10 @@ function samlIdentityBoundaryChanged(
 				config.issuer,
 			spNameIDFormat:
 				serviceProvider?.nameIDFormats.at(0) ?? config.identifierFormat,
+			// Without SP metadata, the ACS is always the providerId-derived route.
 			spPostServices: serviceProvider
 				? getSAMLPostAssertionConsumerServiceUrls(config.spMetadata?.metadata)
-				: config.callbackUrl
-					? [config.callbackUrl]
-					: [],
+				: [],
 			wantAssertionsSigned:
 				serviceProvider?.wantAssertionsSigned ??
 				config.wantAssertionsSigned === true,
@@ -180,17 +185,18 @@ function samlIdentityBoundaryChanged(
 			.map((certificate) => normalizePem(certificate) ?? certificate)
 			.sort();
 	};
-	return (
-		hasChangedField(current, updated, SAML_IDENTITY_BOUNDARY_FIELDS) ||
-		identityValueChanged(
+	return {
+		identity:
+			hasChangedField(current, updated, SAML_IDENTITY_BOUNDARY_FIELDS) ||
+			identityValueChanged(
+				effectiveIdentityBoundary(current),
+				effectiveIdentityBoundary(updated),
+			),
+		trustAnchors: identityValueChanged(
 			trustAnchors(currentIdentityProvider),
 			trustAnchors(updatedIdentityProvider),
-		) ||
-		identityValueChanged(
-			effectiveIdentityBoundary(current),
-			effectiveIdentityBoundary(updated),
-		)
-	);
+		),
+	};
 }
 
 function parseConfigSnapshot<T>(
@@ -206,7 +212,7 @@ function parseConfigSnapshot<T>(
 	return config;
 }
 
-function ssoProviderIdentityBoundaryChanged(
+function ssoProviderAuthBoundaryChanged(
 	current: ProviderIdentitySnapshot,
 	updated: ProviderIdentitySnapshot,
 ): boolean {
@@ -222,12 +228,17 @@ function ssoProviderIdentityBoundaryChanged(
 		updated.samlConfig,
 		"SAML",
 	);
-	if (
-		currentSamlConfig &&
-		(!updatedSamlConfig ||
-			samlIdentityBoundaryChanged(currentSamlConfig, updatedSamlConfig))
-	) {
-		return true;
+	if (currentSamlConfig) {
+		if (!updatedSamlConfig) {
+			return true;
+		}
+		// An unchanged config skips the metadata parses on every sign-in.
+		if (identityValueChanged(currentSamlConfig, updatedSamlConfig)) {
+			const changes = samlBoundaryChanges(currentSamlConfig, updatedSamlConfig);
+			if (changes.identity || changes.trustAnchors) {
+				return true;
+			}
+		}
 	}
 
 	const currentOidcConfig = parseConfigSnapshot<OIDCConfig>(
@@ -345,7 +356,7 @@ export async function lockSSOProviderForAccountLink(
 		});
 	}
 
-	if (ssoProviderIdentityBoundaryChanged(provider, lockedProvider)) {
+	if (ssoProviderAuthBoundaryChanged(provider, lockedProvider)) {
 		throw new APIError("CONFLICT", {
 			code: "SSO_PROVIDER_CHANGED",
 			message: "SSO provider changed while account linking was in progress",
@@ -813,7 +824,7 @@ export const updateSSOProvider = (options: SSOOptions) => {
 					operationId: "updateSSOProvider",
 					summary: "Update SSO provider",
 					description:
-						"Partially update an SSO provider. Only provided fields are updated. If domain changes, domainVerified is reset to false.",
+						"Partially update an SSO provider. A supplied OIDC or SAML mapping replaces the entire previous mapping. If the domain changes, domainVerified is reset to false.",
 					responses: {
 						"200": {
 							description:
@@ -875,6 +886,7 @@ export const updateSSOProvider = (options: SSOOptions) => {
 					let providerIdentityBoundaryChanged =
 						body.issuer !== undefined &&
 						body.issuer !== existingProvider.issuer;
+					let trustAnchorsChanged = false;
 
 					if (body.issuer !== undefined) {
 						updateData.issuer = body.issuer;
@@ -930,11 +942,14 @@ export const updateSSOProvider = (options: SSOOptions) => {
 						validateCertSources(updatedSamlConfig);
 						assertSAMLIdentityProviderAuthority(updatedSamlConfig);
 						assertSAMLServiceProviderMetadataPolicy(updatedSamlConfig);
-						if (
-							samlIdentityBoundaryChanged(currentSamlConfig, updatedSamlConfig)
-						) {
+						const changes = samlBoundaryChanges(
+							currentSamlConfig,
+							updatedSamlConfig,
+						);
+						if (changes.identity) {
 							providerIdentityBoundaryChanged = true;
 						}
+						trustAnchorsChanged = changes.trustAnchors;
 
 						updateData.samlConfig = JSON.stringify(updatedSamlConfig);
 					}
@@ -1006,7 +1021,8 @@ export const updateSSOProvider = (options: SSOOptions) => {
 						options,
 						{
 							action: "update",
-							isAuthenticationBoundaryChange: providerIdentityBoundaryChanged,
+							isAuthenticationBoundaryChange:
+								providerIdentityBoundaryChanged || trustAnchorsChanged,
 						},
 						existingProvider,
 						trx,

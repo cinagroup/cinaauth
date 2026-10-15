@@ -11,7 +11,7 @@ import {
 	ATTR_HOOK_TYPE,
 	ATTR_HTTP_RESPONSE_STATUS_CODE,
 	ATTR_HTTP_ROUTE,
-	withSpan,
+	createWithSpan,
 } from "@cinaauth/core/instrumentation";
 import { normalizePathname } from "@cinaauth/core/utils/url";
 import type { Endpoint, Middleware } from "better-call";
@@ -174,6 +174,7 @@ export function getEndpoints<Option extends CinaAuthOptions>(
 	ctx: Awaitable<AuthContext>,
 	options: Option,
 ) {
+	const withSpan = createWithSpan(options);
 	const pluginEndpoints =
 		options.plugins?.reduce<Record<string, Endpoint>>((acc, plugin) => {
 			return {
@@ -274,6 +275,7 @@ export const router = <Option extends CinaAuthOptions>(
 	ctx: AuthContext,
 	options: Option,
 ) => {
+	const withSpan = createWithSpan(options);
 	const { api, middlewares } = getEndpoints(ctx, options);
 	const basePath = new URL(ctx.baseURL).pathname;
 
@@ -350,7 +352,7 @@ export const router = <Option extends CinaAuthOptions>(
 			}
 			return res;
 		},
-		onError(e) {
+		async onError(e) {
 			if (isAPIError(e) && e.status === "FOUND") {
 				return;
 			}
@@ -358,7 +360,11 @@ export const router = <Option extends CinaAuthOptions>(
 				throw e;
 			}
 			if (options.onAPIError?.onError) {
-				options.onAPIError.onError(e, ctx);
+				try {
+					await options.onAPIError.onError(e, ctx);
+				} catch (hookError) {
+					ctx.logger.error("onAPIError.onError threw", hookError);
+				}
 				return;
 			}
 

@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/electron",
-  "version": "1.7.3",
+  "version": "1.7.8",
   "description": "CinaAuth integration for Electron applications.",
   "type": "module",
   "license": "MIT",
@@ -94,7 +94,7 @@
   },
   "peerDependencies": {
     "@cinaauth/core": "workspace:^",
-    "@better-auth/utils": "catalog:",
+    "@better-auth/utils": "catalog:peer",
     "@better-fetch/fetch": "catalog:",
     "cinaauth": "workspace:^",
     "better-call": "catalog:",

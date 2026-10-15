@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/cimd",
-  "version": "1.7.3",
+  "version": "1.7.8",
   "description": "Client ID Metadata Document plugin for CinaAuth",
   "type": "module",
   "license": "MIT",

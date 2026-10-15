@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/drizzle-adapter",
-  "version": "1.7.3",
+  "version": "1.7.8",
   "bugs": {
     "url": "https://github.com/cinagroup/cinaauth/issues"
   },
@@ -53,7 +53,7 @@
   },
   "peerDependencies": {
     "@cinaauth/core": "workspace:^",
-    "@better-auth/utils": "catalog:",
+    "@better-auth/utils": "catalog:peer",
     "drizzle-orm": "^0.45.2 || >=1.0.0-rc.1 <2.0.0"
   },
   "peerDependenciesMeta": {

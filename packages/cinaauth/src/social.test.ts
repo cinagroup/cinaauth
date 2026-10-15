@@ -696,6 +696,133 @@ describe("Disable implicit signup", async () => {
 });
 
 describe("Disable signup", async () => {
+	/**
+	 * @see https://github.com/better-auth/better-auth/issues/11480
+	 */
+	describe("ID-token sign-in", () => {
+		const googleIdTokenOptions = (email: string) => {
+			const profile: GoogleProfile = {
+				aud: "test",
+				azp: "test",
+				email,
+				email_verified: true,
+				exp: 2_000_000_000,
+				family_name: "User",
+				given_name: "Google",
+				iat: 1_900_000_000,
+				iss: "https://accounts.google.com",
+				name: "Google User",
+				picture: "https://example.com/avatar.png",
+				sub: "google-id-token-user",
+			};
+			return {
+				clientId: "test",
+				clientSecret: "test",
+				verifyIdToken: async () => true,
+				getUserInfo: async () => ({
+					user: { email, name: profile.name, emailVerified: true },
+					data: profile,
+				}),
+			};
+		};
+
+		it.each([
+			{ requestSignUp: undefined, scenario: "without requestSignUp" },
+			{ requestSignUp: true, scenario: "with requestSignUp" },
+		])(
+			"rejects ID-token sign-in for a new user $scenario",
+			async ({ requestSignUp }) => {
+				const email = "new-id-token-user@example.com";
+				const { client, auth } = await getTestInstance(
+					{
+						socialProviders: {
+							google: {
+								...googleIdTokenOptions(email),
+								disableSignUp: true,
+							},
+						},
+					},
+					{ disableTestUser: true },
+				);
+
+				const response = await client.signIn.social({
+					provider: "google",
+					idToken: { token: "a.b.c" },
+					requestSignUp,
+				});
+
+				const user = await (await auth.$context).adapter.findOne({
+					model: "user",
+					where: [{ field: "email", value: email }],
+				});
+				expect(user).toBeNull();
+				expect(response.error).toMatchObject({
+					status: 401,
+					code: "OAUTH_LINK_ERROR",
+					message: "signup disabled",
+				});
+			},
+		);
+
+		it("allows an existing ID-token user to sign in when provider sign-up is disabled", async () => {
+			const email = "existing-id-token-user@example.com";
+			const { client, auth } = await getTestInstance(
+				{ socialProviders: { google: googleIdTokenOptions(email) } },
+				{ disableTestUser: true },
+			);
+			const signIn = () =>
+				client.signIn.social({
+					provider: "google",
+					idToken: { token: "a.b.c" },
+				});
+
+			const firstResponse = await signIn();
+			expect(firstResponse.error).toBeNull();
+
+			const provider = (await auth.$context).socialProviders.find(
+				(provider) => provider.id === "google",
+			);
+			expect(provider).toBeDefined();
+			provider!.options!.disableSignUp = true;
+
+			const response = await signIn();
+			expect(response.error).toBeNull();
+			expect(response.data).toMatchObject({
+				redirect: false,
+				user: { email },
+			});
+		});
+
+		it("keeps the top-level provider sign-up restriction for ID-token sign-in", async () => {
+			const { client, auth } = await getTestInstance(
+				{
+					socialProviders: {
+						google: {
+							...googleIdTokenOptions("top-level-id-token-user@example.com"),
+							disableSignUp: false,
+						},
+					},
+				},
+				{ disableTestUser: true },
+			);
+			const provider = (await auth.$context).socialProviders.find(
+				(provider) => provider.id === "google",
+			);
+			expect(provider).toBeDefined();
+			provider!.disableSignUp = true;
+
+			const response = await client.signIn.social({
+				provider: "google",
+				idToken: { token: "a.b.c" },
+			});
+			expect(response.error).toMatchObject({
+				status: 401,
+				code: "OAUTH_LINK_ERROR",
+				message: "signup disabled",
+			});
+		});
+	});
+
 	it("Should not create user when sign up is disabled", async () => {
 		const headers = new Headers();
 		const { client, cookieSetter } = await getTestInstance({
@@ -1419,37 +1546,43 @@ describe("Multi-client ID support — other widened providers", () => {
 		["apple", appleConfig, "apple-web"],
 		["facebook", facebookConfig, "fb-web"],
 		["cognito", cognitoConfig, "cog-web"],
-	] as const)("%s uses the first entry of the clientId array for the auth URL", async (provider, config, firstId) => {
-		const { client } = await getTestInstance(
-			{ socialProviders: { [provider]: config } },
-			{ disableTestUser: true },
-		);
+	] as const)(
+		"%s uses the first entry of the clientId array for the auth URL",
+		async (provider, config, firstId) => {
+			const { client } = await getTestInstance(
+				{ socialProviders: { [provider]: config } },
+				{ disableTestUser: true },
+			);
 
-		const res = await client.signIn.social({
-			provider,
-			callbackURL: "/callback",
-		});
+			const res = await client.signIn.social({
+				provider,
+				callbackURL: "/callback",
+			});
 
-		expect(res.data?.url).toContain(firstId);
-	});
+			expect(res.data?.url).toContain(firstId);
+		},
+	);
 
 	it.each([
 		["apple", { ...appleConfig, clientId: [] as string[] }],
 		["facebook", { ...facebookConfig, clientId: [] as string[] }],
 		["cognito", { ...cognitoConfig, clientId: [] as string[] }],
-	] as const)("%s rejects an empty clientId array", async (provider, config) => {
-		const { client } = await getTestInstance(
-			{ socialProviders: { [provider]: config } },
-			{ disableTestUser: true },
-		);
+	] as const)(
+		"%s rejects an empty clientId array",
+		async (provider, config) => {
+			const { client } = await getTestInstance(
+				{ socialProviders: { [provider]: config } },
+				{ disableTestUser: true },
+			);
 
-		const res = await client.signIn.social({
-			provider,
-			callbackURL: "/callback",
-		});
+			const res = await client.signIn.social({
+				provider,
+				callbackURL: "/callback",
+			});
 
-		expect(res.error?.status).toBe(500);
-	});
+			expect(res.error?.status).toBe(500);
+		},
+	);
 });
 
 describe("Apple Provider", async () => {
@@ -1616,7 +1749,7 @@ describe("Apple Provider", async () => {
 			},
 		});
 
-		expect(session.data?.user.name).toBe("Better Auth");
+		expect(session.data?.user.name).toBe("CinaAuth");
 	});
 
 	it("should pass user name via idToken body for Apple sign-in", async () => {

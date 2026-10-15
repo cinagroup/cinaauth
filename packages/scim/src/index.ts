@@ -1,8 +1,12 @@
 import { statusCodes } from "better-call";
 import type { CinaAuthPlugin, Status } from "cinaauth";
 import { CinaAuthError } from "cinaauth";
-import { createAuthMiddleware } from "cinaauth/api";
+import { createAuthMiddleware, isAPIError } from "cinaauth/api";
 import { normalizeSCIMUserEntraCompatibilityRequestBody } from "./active-normalization";
+import {
+	canonicalizeSCIMPatchRequestBody,
+	canonicalizeSCIMResourceAttributeNames,
+} from "./attribute-names";
 import type { SCIMOptions } from "./configuration";
 import {
 	areValidSCIMScopes,
@@ -19,6 +23,7 @@ import {
 	getSCIMServiceProviderConfig,
 } from "./discovery";
 import {
+	canonicalizeSCIMGroupPatchValue,
 	createSCIMGroup,
 	deleteSCIMGroup,
 	getSCIMGroup,
@@ -37,6 +42,7 @@ import {
 	resolveManagedConnectionOptions,
 	SCIM_MANAGED_CONNECTION_ID_PREFIX,
 } from "./managed-connections";
+import { stripSCIMResourceNullAttributes } from "./null-attributes";
 import {
 	createReconcileSCIMProjectionEndpoint,
 	createSCIMProjectionCoordinator,
@@ -44,6 +50,7 @@ import {
 import { createSCIMError } from "./scim-error";
 import { SCIM_MEDIA_TYPE } from "./scim-metadata";
 import { assertNativeSCIMTransactions } from "./transaction";
+import { canonicalizeSCIMUserPatchValue } from "./user-patch";
 import {
 	createSCIMUser,
 	deleteSCIMUser,
@@ -309,6 +316,33 @@ function createSCIMPlugin(options: SCIMOptions) {
 					(["PUT", "PATCH"].includes(request.method) &&
 						!path.endsWith("/Groups")));
 			let normalizedBody = body;
+			if (isUserMutation || isGroupMutation) {
+				try {
+					normalizedBody =
+						request.method === "PATCH"
+							? canonicalizeSCIMPatchRequestBody(
+									body,
+									isUserMutation
+										? canonicalizeSCIMUserPatchValue
+										: canonicalizeSCIMGroupPatchValue,
+								)
+							: stripSCIMResourceNullAttributes(
+									canonicalizeSCIMResourceAttributeNames(
+										isUserMutation ? "User" : "Group",
+										body,
+									),
+								);
+				} catch (error) {
+					if (!isAPIError(error)) throw error;
+					return {
+						response: createSCIMErrorResponse(
+							"BAD_REQUEST",
+							error.message,
+							"invalidSyntax",
+						),
+					};
+				}
+			}
 			if (isGroupMutation) {
 				const groupNormalization = normalizeMicrosoftEntraGroupSchema(
 					normalizedBody,

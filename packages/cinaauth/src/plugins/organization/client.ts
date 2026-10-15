@@ -3,6 +3,7 @@ import type { CinaAuthClientPlugin } from "@cinaauth/core";
 import type { DBFieldAttribute } from "@cinaauth/core/db";
 import { atom } from "nanostores";
 import { useAuthQuery } from "../../client";
+import { matchesSessionSignal } from "../../client/config";
 import type {
 	InferInvitation,
 	InferMember,
@@ -249,7 +250,7 @@ export const organizationClient = <CO extends OrganizationClientOptions>(
 			},
 			{
 				matcher(path) {
-					return path === "/sign-out" || path.startsWith("/organization");
+					return matchesSessionSignal(path) || path.startsWith("/organization");
 				},
 				signal: "$activeOrgSignal",
 			},

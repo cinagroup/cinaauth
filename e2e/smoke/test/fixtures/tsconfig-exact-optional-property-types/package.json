@@ -9,6 +9,8 @@
   "dependencies": {
     "cinaauth": "workspace:*",
     "@cinaauth/sso": "workspace:*",
-    "@cinaauth/passkey": "workspace:*"
+    "@cinaauth/passkey": "workspace:*",
+    "@cinaauth/oauth-provider": "workspace:*",
+    "@cinaauth/mcp": "workspace:*"
   }
 }

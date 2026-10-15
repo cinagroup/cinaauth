@@ -2,7 +2,7 @@
 import { runClient, setup } from "./utils";
 
 const { ref, start, clean } = setup();
-test.describe("cross domain", async () => {
+test.describe("cross domain", () => {
 	test.beforeEach(async () => start());
 	test.afterEach(async () => clean());
 

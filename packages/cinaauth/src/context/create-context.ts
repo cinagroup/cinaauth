@@ -6,7 +6,10 @@ import type {
 import { getCinaAuthVersion } from "@cinaauth/core/context";
 import { getAuthTables } from "@cinaauth/core/db";
 import type { DBAdapter } from "@cinaauth/core/db/adapter";
-import { schemaCheckFor } from "@cinaauth/core/db/internal";
+import {
+	runtimeSchemaCheckFor,
+	schemaCheckFor,
+} from "@cinaauth/core/db/internal";
 import { createLogger, env, isProduction, isTest } from "@cinaauth/core/env";
 import { CinaAuthError } from "@cinaauth/core/error";
 import type { OAuthProvider } from "@cinaauth/core/oauth2";
@@ -433,6 +436,7 @@ Most of the features of CinaAuth will not work correctly.`,
 		await initOrPromise;
 	}
 
-	ctx.checkSchema = schemaCheckFor(ctx.adapter);
+	ctx.checkSchema = runtimeSchemaCheckFor(ctx.adapter);
+	ctx.explicitSchemaCheck = schemaCheckFor(ctx.adapter);
 	return ctx as unknown as AuthContext<Options>;
 }

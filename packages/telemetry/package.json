@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/telemetry",
-  "version": "1.7.3",
+  "version": "1.7.8",
   "description": "Telemetry package for CinaAuth",
   "type": "module",
   "license": "MIT",
@@ -55,7 +55,7 @@
   },
   "peerDependencies": {
     "@cinaauth/core": "workspace:^",
-    "@better-auth/utils": "catalog:",
+    "@better-auth/utils": "catalog:peer",
     "@better-fetch/fetch": "catalog:"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/cli",
-  "version": "1.7.3",
+  "version": "1.7.8",
   "description": "The CLI for CinaAuth",
   "type": "module",
   "license": "MIT",

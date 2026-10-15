@@ -1,0 +1,11 @@
+{
+  "name": "@cinaauth-test/fixtures-tsconfig-skip-lib-check-false",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "cinaauth": "workspace:*"
+  }
+}

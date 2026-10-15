@@ -36,6 +36,20 @@ const resolvePublicAuthUrl = (basePath?: string) => {
 	return undefined;
 };
 
+export const matchesSessionSignal = (path: string) =>
+	path === "/sign-out" ||
+	path === "/update-user" ||
+	path === "/update-session" ||
+	path === "/sign-up/email" ||
+	path === "/sign-in/email" ||
+	path === "/delete-user" ||
+	path === "/verify-email" ||
+	path === "/revoke-sessions" ||
+	path === "/revoke-session" ||
+	path === "/revoke-other-sessions" ||
+	path === "/change-email" ||
+	path === "/change-password";
+
 export const getClientConfig = (
 	options?: CinaAuthClientOptions | undefined,
 	loadEnv?: boolean | undefined,
@@ -115,23 +129,7 @@ export const getClientConfig = (
 	const atomListeners: ClientAtomListener[] = [
 		{
 			signal: "$sessionSignal",
-			matcher(path) {
-				const matchesCommonPaths =
-					path === "/sign-out" ||
-					path === "/update-user" ||
-					path === "/update-session" ||
-					path === "/sign-up/email" ||
-					path === "/sign-in/email" ||
-					path === "/delete-user" ||
-					path === "/verify-email" ||
-					path === "/revoke-sessions" ||
-					path === "/revoke-session" ||
-					path === "/revoke-other-sessions" ||
-					path === "/change-email" ||
-					path === "/change-password";
-
-				return matchesCommonPaths;
-			},
+			matcher: matchesSessionSignal,
 			callback(path) {
 				if (path === "/sign-out") {
 					broadcastSessionUpdate("signout");

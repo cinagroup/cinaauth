@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/redis-storage",
-  "version": "1.7.3",
+  "version": "1.7.8",
   "description": "Redis storage for CinaAuth secondary storage",
   "type": "module",
   "license": "MIT",

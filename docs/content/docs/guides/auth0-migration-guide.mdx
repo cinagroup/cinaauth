@@ -640,7 +640,7 @@ Before starting the migration process, set up CinaAuth in your project. Follow t
     Now that the data is migrated, update your components to use CinaAuth. Here's an example for the sign-in component:
 
     ```tsx title="components/auth/sign-in.tsx"
-    import { authClient } from "cinaauth/client";
+    import { authClient } from "@/lib/auth-client";
 
     export const SignIn = () => {
       const handleSignIn = async () => {

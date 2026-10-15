@@ -31,7 +31,7 @@ import type {
 	Scope,
 	VerificationValue,
 } from "./types";
-import { authorizationQuerySchema } from "./types/zod";
+import { authorizationQuerySchema, SafeUrlSchema } from "./types/zod";
 
 import {
 	authorizeOAuthClient,
@@ -337,11 +337,20 @@ function findRegisteredRedirectUri(
 	});
 }
 
+/** Keep URI syntax and credential checks outside the custom trust decision. */
+function isSafeCustomRedirectUri(uri: string): boolean {
+	if (!SafeUrlSchema.safeParse(uri).success) return false;
+	const parsed = new URL(uri);
+	return parsed.username.length === 0 && parsed.password.length === 0;
+}
+
 /**
  * Loads the client, verifies it's enabled, and returns the requested
- * redirect_uri when it matches a registered entry. Returns null whenever the
- * RP cannot be safely reached, so callers can fall back to the server error
- * page (avoiding open-redirect risk on validation failures).
+ * redirect_uri when it matches a registered entry (or is accepted by the
+ * custom `validateRedirectUri` option, mirroring the authorize endpoint's
+ * validation). Returns null whenever the RP cannot be safely reached, so
+ * callers can fall back to the server error page (avoiding open-redirect
+ * risk on validation failures).
  */
 async function resolveTrustedRedirectUri(
 	ctx: GenericEndpointContext,
@@ -357,7 +366,21 @@ async function resolveTrustedRedirectUri(
 		return null;
 	}
 	if (!client || client.disabled) return null;
-	const matched = findRegisteredRedirectUri(client.redirectUris, redirectUri);
+	const registeredUris = client.redirectUris ?? [];
+	const matched = findRegisteredRedirectUri(registeredUris, redirectUri);
+	if (opts.validateRedirectUri) {
+		if (!isSafeCustomRedirectUri(redirectUri)) return null;
+		try {
+			const isValid = await opts.validateRedirectUri(
+				redirectUri,
+				registeredUris,
+				Boolean(matched),
+			);
+			return isValid ? redirectUri : null;
+		} catch {
+			return null;
+		}
+	}
 	return matched ? redirectUri : null;
 }
 
@@ -406,6 +429,7 @@ export function authorizeRedirectOnError(
 export type AuthorizeEndpointSettings = {
 	isAuthorize?: boolean;
 	postLogin?: boolean;
+	isPostLoginContinuation?: boolean;
 };
 
 export async function authorizeEndpoint(
@@ -574,11 +598,33 @@ export async function authorizeEndpoint(
 		);
 	}
 
-	const redirectUri = findRegisteredRedirectUri(
-		client.redirectUris,
-		query.redirect_uri,
-	);
-	if (!redirectUri || !query.redirect_uri) {
+	const registeredUris = client.redirectUris ?? [];
+	let isValidRedirectUri = false;
+	if (query.redirect_uri) {
+		// Default validation: exact match + native loopback port variance
+		const defaultResult = Boolean(
+			findRegisteredRedirectUri(registeredUris, query.redirect_uri),
+		);
+		if (
+			opts.validateRedirectUri &&
+			isSafeCustomRedirectUri(query.redirect_uri)
+		) {
+			try {
+				// Custom validator receives defaultResult for composition
+				isValidRedirectUri = await opts.validateRedirectUri(
+					query.redirect_uri,
+					registeredUris,
+					defaultResult,
+				);
+			} catch {
+				// Fail closed: a throwing validator rejects the request
+				isValidRedirectUri = false;
+			}
+		} else if (!opts.validateRedirectUri) {
+			isValidRedirectUri = defaultResult;
+		}
+	}
+	if (!isValidRedirectUri) {
 		return handleRedirect(
 			ctx,
 			getErrorURL(ctx, "invalid_redirect", "invalid redirect uri"),
@@ -849,6 +895,7 @@ export async function authorizeEndpoint(
 			user: session.user,
 			session: session.session,
 			scopes: requestedScopes,
+			isContinuation: settings?.isPostLoginContinuation ?? false,
 		});
 		if (postLoginRedirect) {
 			if (promptNone) {

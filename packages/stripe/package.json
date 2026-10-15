@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/stripe",
-  "version": "1.7.3",
+  "version": "1.7.8",
   "description": "Stripe plugin for CinaAuth",
   "type": "module",
   "license": "MIT",
