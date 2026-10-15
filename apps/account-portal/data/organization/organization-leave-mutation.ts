@@ -22,7 +22,7 @@ export const useOrganizationLeaveMutation = () => {
 	return useMutation({
 		mutationFn: leaveOrganization,
 		onSuccess: () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: organizationKeys.all(),
 			});
 			toast.success("You left the organization");

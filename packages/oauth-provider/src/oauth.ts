@@ -1,5 +1,4 @@
 import type { GenericEndpointContext } from "@cinaauth/core";
-import type { AuthEndpointContext } from "@cinaauth/core/context";
 import { defineRequestState } from "@cinaauth/core/context";
 import { CinaAuthError } from "@cinaauth/core/error";
 import type { DispatchContext } from "cinaauth/api";
@@ -658,7 +657,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 						create: {
 							async after(
 								verification: Verification,
-								context: AuthEndpointContext | null,
+								context: GenericEndpointContext | null,
 							) {
 								const authContext = context?.context;
 								if (
@@ -684,7 +683,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 						delete: {
 							async after(
 								verification: Verification,
-								context: AuthEndpointContext | null,
+								context: GenericEndpointContext | null,
 							) {
 								const authContext = context?.context;
 								if (
@@ -712,7 +711,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 						create: {
 							async after(
 								user: { id: string },
-								context: AuthEndpointContext | null,
+								context: GenericEndpointContext | null,
 							) {
 								const createdUsers = getCreatedUsersForRegistrationRequest(
 									context?.context ?? null,
@@ -727,7 +726,7 @@ export const oauthProvider = <O extends OAuthOptions<Scope[]>>(options: O) => {
 						create: {
 							async after(
 								session: { id: string; userId: string },
-								context: AuthEndpointContext | null,
+								context: GenericEndpointContext | null,
 							) {
 								const authContext = context?.context;
 								if (!authContext) return;

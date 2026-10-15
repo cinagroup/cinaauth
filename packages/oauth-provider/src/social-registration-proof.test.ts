@@ -5,6 +5,7 @@ import { genericOAuth } from "cinaauth/plugins/generic-oauth";
 import { jwt } from "cinaauth/plugins/jwt";
 import { getTestInstance } from "cinaauth/test";
 import { describe, expect, it } from "vitest";
+import { getAuthStateVerificationIdentifier } from "../../cinaauth/src/state";
 import { oauthProvider } from "./oauth";
 import { consumeRegistrationProof } from "./registration-proof";
 import {
@@ -163,7 +164,7 @@ describe("social OAuth prompt=create registration proof", () => {
 				},
 			});
 			const forgedState = await context.internalAdapter.findVerificationValue(
-				forged.state,
+				getAuthStateVerificationIdentifier(forged.state),
 			);
 			expect(forgedState).toBeTruthy();
 			const forgedPayload = JSON.parse(forgedState!.value) as Record<
@@ -187,7 +188,7 @@ describe("social OAuth prompt=create registration proof", () => {
 			});
 			const protectedState =
 				await context.internalAdapter.findVerificationValue(
-					protectedStart.state,
+					getAuthStateVerificationIdentifier(protectedStart.state),
 				);
 			expect(protectedState).toBeTruthy();
 			const protectedPayload = JSON.parse(protectedState!.value) as Record<

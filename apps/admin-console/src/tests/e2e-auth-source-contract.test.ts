@@ -16,20 +16,21 @@ const authenticatedContext = require("../../e2e/authenticated-context.cjs") as {
 };
 
 describe("Admin E2E authentication source contract", () => {
-	it.each(
-		legacyScriptPaths,
-	)("%s never embeds credentials or calls the deleted password sign-in proxy", (scriptPath) => {
-		const source = readFileSync(scriptPath, "utf8");
+	it.each(legacyScriptPaths)(
+		"%s never embeds credentials or calls the deleted password sign-in proxy",
+		(scriptPath) => {
+			const source = readFileSync(scriptPath, "utf8");
 
-		expect(source).not.toContain("/api/auth/sign-in");
-		expect(source).not.toMatch(/\b(?:EMAIL|PASSWORD)\s*=/);
-		expect(source).not.toMatch(
-			/["'`][A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}["'`]/i,
-		);
-		expect(source).not.toMatch(/\bpassword\s*:/i);
-		expect(source).toContain("storageState");
-		expect(source).toContain("createAuthenticatedContext");
-	});
+			expect(source).not.toContain("/api/auth/sign-in");
+			expect(source).not.toMatch(/\b(?:EMAIL|PASSWORD)\s*=/);
+			expect(source).not.toMatch(
+				/["'`][A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}["'`]/i,
+			);
+			expect(source).not.toMatch(/\bpassword\s*:/i);
+			expect(source).toContain("storageState");
+			expect(source).toContain("createAuthenticatedContext");
+		},
+	);
 
 	it("requires an existing external storageState file before launching a context", () => {
 		expect(() => authenticatedContext.resolveStorageStatePath({})).toThrow(

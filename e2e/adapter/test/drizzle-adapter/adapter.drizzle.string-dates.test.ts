@@ -88,7 +88,7 @@ function stringDateSuite(
 stringDateSuite(
 	'PostgreSQL timestamp({ mode: "string" }) with postgres-js',
 	async () => {
-		const url = "postgres://user:password@localhost:5432/better_auth";
+		const url = "postgres://user:password@localhost:5432/cinaauth";
 		const admin = postgres(url);
 		await admin.unsafe("DROP SCHEMA IF EXISTS string_dates CASCADE");
 		await admin.unsafe("CREATE SCHEMA string_dates");

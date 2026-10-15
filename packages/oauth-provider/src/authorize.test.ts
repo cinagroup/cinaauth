@@ -2159,7 +2159,7 @@ describe("oauth authorize - custom redirect URI safety", async () => {
 		expect(location).toContain("error=request_not_supported");
 	});
 
-	it("rejects userinfo in a parsed authorization request", async () => {
+	it("rejects userinfo during authorization query validation", async () => {
 		const uri = "https://user@pr-123.preview.example.com/api/auth/callback";
 		const authUrl = new URL(`${authServerBaseUrl}/api/auth/oauth2/authorize`);
 		authUrl.searchParams.set("client_id", clientId);
@@ -2179,6 +2179,11 @@ describe("oauth authorize - custom redirect URI safety", async () => {
 		});
 
 		expect(location).toContain(`${authServerBaseUrl}/api/auth/error`);
-		expect(location).toContain("error=invalid_redirect");
+		const errorURL = new URL(location);
+		expect(errorURL.searchParams.get("error")).toBe("invalid_request");
+		expect(errorURL.searchParams.get("error_description")).toContain(
+			"Redirect URI must not contain embedded credentials",
+		);
+		expect(location).not.toContain(uri);
 	});
 });

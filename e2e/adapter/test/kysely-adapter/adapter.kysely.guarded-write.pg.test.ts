@@ -7,7 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 const pool = new Pool({
 	connectionString:
 		process.env.CINAAUTH_ADAPTER_TEST_DATABASE_URL ??
-		"postgres://user:password@localhost:5433/better_auth",
+		"postgres://user:password@localhost:5433/cinaauth",
 	max: 4,
 });
 // Report dropped idle connections without an unhandled pool error.

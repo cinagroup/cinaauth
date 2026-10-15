@@ -298,32 +298,32 @@ describe("retired high-risk admin capabilities", () => {
 		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		"approve",
-		"deny",
-	] as const)("does not proxy device %s to the end-user authorization endpoint", async (action) => {
-		const { POST } =
-			action === "approve"
-				? await import("@/app/api/admin/device/approve/route")
-				: await import("@/app/api/admin/device/deny/route");
-		const res = await POST(
-			postReq(`/api/admin/device/${action}`, {
-				userCode: "ABCD-EFGH",
-				action: "lookup",
-			}),
-		);
+	it.each(["approve", "deny"] as const)(
+		"does not proxy device %s to the end-user authorization endpoint",
+		async (action) => {
+			const { POST } =
+				action === "approve"
+					? await import("@/app/api/admin/device/approve/route")
+					: await import("@/app/api/admin/device/deny/route");
+			const res = await POST(
+				postReq(`/api/admin/device/${action}`, {
+					userCode: "ABCD-EFGH",
+					action: "lookup",
+				}),
+			);
 
-		expect(res.status).toBe(410);
-		expect(await res.json()).toEqual({
-			ok: false,
-			error: {
-				code: "ADMIN_DEVICE_AUTHORIZATION_DISABLED",
-				message: "Device authorization must be completed by the end user",
-				status: 410,
-			},
-		});
-		expect(mockFetch).not.toHaveBeenCalled();
-	});
+			expect(res.status).toBe(410);
+			expect(await res.json()).toEqual({
+				ok: false,
+				error: {
+					code: "ADMIN_DEVICE_AUTHORIZATION_DISABLED",
+					message: "Device authorization must be completed by the end user",
+					status: 410,
+				},
+			});
+			expect(mockFetch).not.toHaveBeenCalled();
+		},
+	);
 
 	it("still authenticates before reporting device authorization retirement", async () => {
 		mockSession.mockResolvedValue(null);
@@ -363,36 +363,36 @@ describe("user lookup response semantics", () => {
 });
 
 describe("POST /api/admin/users/[id]/send-verification", () => {
-	it.each([
-		"email-otp",
-		"phone-number",
-	] as const)("delegates %s to the authoritative Admin endpoint with the path user id", async (type) => {
-		mockFetch.mockResolvedValueOnce({
-			ok: true,
-			data: { sent: true },
-		});
-		const { POST } = await import(
-			"@/app/api/admin/users/[id]/send-verification/route"
-		);
-		const res = await POST(
-			postReq("/api/admin/users/u2/send-verification", {
-				type,
-				userId: "victim",
-			}),
-			params({ id: "u2" }),
-		);
+	it.each(["email-otp", "phone-number"] as const)(
+		"delegates %s to the authoritative Admin endpoint with the path user id",
+		async (type) => {
+			mockFetch.mockResolvedValueOnce({
+				ok: true,
+				data: { sent: true },
+			});
+			const { POST } = await import(
+				"@/app/api/admin/users/[id]/send-verification/route"
+			);
+			const res = await POST(
+				postReq("/api/admin/users/u2/send-verification", {
+					type,
+					userId: "victim",
+				}),
+				params({ id: "u2" }),
+			);
 
-		expect(res.status).toBe(200);
-		expect(mockRecentAuthentication).toHaveBeenCalledTimes(1);
-		expect(mockFetch).toHaveBeenCalledTimes(1);
-		expect(mockFetch).toHaveBeenCalledWith(
-			"/admin/send-verification",
-			expect.objectContaining({
-				method: "POST",
-				body: { userId: "u2", type },
-			}),
-		);
-	});
+			expect(res.status).toBe(200);
+			expect(mockRecentAuthentication).toHaveBeenCalledTimes(1);
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+			expect(mockFetch).toHaveBeenCalledWith(
+				"/admin/send-verification",
+				expect.objectContaining({
+					method: "POST",
+					body: { userId: "u2", type },
+				}),
+			);
+		},
+	);
 
 	it("rejects the disabled magic-link channel before upstream delivery", async () => {
 		const { POST } = await import(
@@ -443,26 +443,25 @@ describe("POST /api/admin/users/[id]/send-verification", () => {
 		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		{},
-		{ type: "push" },
-		{ type: "EMAIL-OTP" },
-	])("rejects a non-whitelisted verification type %#", async (body) => {
-		const { POST } = await import(
-			"@/app/api/admin/users/[id]/send-verification/route"
-		);
-		const res = await POST(
-			postReq("/api/admin/users/u2/send-verification", body),
-			params({ id: "u2" }),
-		);
-		expect(res.status).toBe(400);
-		expect(await res.json()).toMatchObject({
-			ok: false,
-			error: { code: "INVALID_VERIFICATION_TYPE" },
-		});
-		expect(mockRecentAuthentication).not.toHaveBeenCalled();
-		expect(mockFetch).not.toHaveBeenCalled();
-	});
+	it.each([{}, { type: "push" }, { type: "EMAIL-OTP" }])(
+		"rejects a non-whitelisted verification type %#",
+		async (body) => {
+			const { POST } = await import(
+				"@/app/api/admin/users/[id]/send-verification/route"
+			);
+			const res = await POST(
+				postReq("/api/admin/users/u2/send-verification", body),
+				params({ id: "u2" }),
+			);
+			expect(res.status).toBe(400);
+			expect(await res.json()).toMatchObject({
+				ok: false,
+				error: { code: "INVALID_VERIFICATION_TYPE" },
+			});
+			expect(mockRecentAuthentication).not.toHaveBeenCalled();
+			expect(mockFetch).not.toHaveBeenCalled();
+		},
+	);
 
 	it("rejects malformed JSON before looking up the user", async () => {
 		const { POST } = await import(
@@ -821,17 +820,18 @@ describe("admin list routes preserve upstream failures", () => {
 		],
 	];
 
-	it.each(
-		cases,
-	)("returns 502 for %s instead of a silent empty result", async (_name, invoke) => {
-		mockFetch.mockResolvedValue({
-			ok: false,
-			error: { code: "UPSTREAM", message: "unavailable" },
-		});
-		const response = await invoke();
-		expect(response.status).toBe(502);
-		expect(await response.json()).toMatchObject({ ok: false });
-	});
+	it.each(cases)(
+		"returns 502 for %s instead of a silent empty result",
+		async (_name, invoke) => {
+			mockFetch.mockResolvedValue({
+				ok: false,
+				error: { code: "UPSTREAM", message: "unavailable" },
+			});
+			const response = await invoke();
+			expect(response.status).toBe(502);
+			expect(await response.json()).toMatchObject({ ok: false });
+		},
+	);
 
 	it("rejects integration lists without an explicit organization selector", async () => {
 		const sso = await import("@/app/api/admin/sso/providers/route");

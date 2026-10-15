@@ -22,7 +22,7 @@ export const useInvitationCancelMutation = () => {
 	return useMutation({
 		mutationFn: cancelInvitation,
 		onSuccess: () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: organizationKeys.detail(),
 			});
 			toast.success("Invitation revoked successfully");

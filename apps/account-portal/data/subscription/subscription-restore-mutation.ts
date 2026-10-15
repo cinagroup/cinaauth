@@ -19,7 +19,7 @@ export const useSubscriptionRestoreMutation = () => {
 	return useMutation({
 		mutationFn: restoreSubscription,
 		onSuccess: () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: subscriptionKeys.all(),
 			});
 		},

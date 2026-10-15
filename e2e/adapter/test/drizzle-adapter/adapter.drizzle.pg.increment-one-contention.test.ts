@@ -44,7 +44,7 @@ describe("drizzle adapter (pg): incrementOne under contention", () => {
 	const pool = new Pool({
 		connectionString:
 			process.env.CINAAUTH_ADAPTER_TEST_DATABASE_URL ??
-			"postgres://user:password@localhost:5432/better_auth",
+			"postgres://user:password@localhost:5432/cinaauth",
 		max: CONCURRENT_CALLS,
 	});
 	// The server can drop an idle client between queries; without a handler

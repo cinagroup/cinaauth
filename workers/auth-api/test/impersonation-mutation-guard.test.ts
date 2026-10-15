@@ -17,9 +17,12 @@ describe("impersonated session mutation guard", () => {
 		["/api/auth/email-otp/check-verification-otp", "POST"],
 		["/api/auth/example", "PUT"],
 		["/api/auth/example", "PATCH"],
-	])("classifies %s %s as a potentially mutating request", (pathname, method) => {
-		expect(requiresImpersonationMutationGuard(pathname, method)).toBe(true);
-	});
+	])(
+		"classifies %s %s as a potentially mutating request",
+		(pathname, method) => {
+			expect(requiresImpersonationMutationGuard(pathname, method)).toBe(true);
+		},
+	);
 
 	it.each([
 		["/api/auth/callback/google", "GET"],
@@ -66,9 +69,12 @@ describe("impersonated session mutation guard", () => {
 		["/api/auth/organization/list", "HEAD"],
 		["/api/auth/organization/update", "OPTIONS"],
 		["/api/ready", "POST"],
-	])("keeps the recovery or read request %s %s available", (pathname, method) => {
-		expect(requiresImpersonationMutationGuard(pathname, method)).toBe(false);
-	});
+	])(
+		"keeps the recovery or read request %s %s available",
+		(pathname, method) => {
+			expect(requiresImpersonationMutationGuard(pathname, method)).toBe(false);
+		},
+	);
 
 	it("matches recovery paths exactly instead of allowing suffix bypasses", () => {
 		expect(

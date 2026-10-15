@@ -25,7 +25,7 @@ export const useInviteMemberMutation = () => {
 	return useMutation({
 		mutationFn: inviteMember,
 		onSuccess: () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: organizationKeys.detail(),
 			});
 			toast.success("Member invited successfully");

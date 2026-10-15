@@ -14,20 +14,19 @@ describe("batch user action permissions", () => {
 		{ role: "security_admin", ban: true, remove: false },
 		{ role: "user, super_admin", ban: true, remove: true },
 		{ role: "user", ban: false, remove: false },
-	])("matches the control-plane permissions for $role", ({
-		role,
-		ban,
-		remove,
-	}) => {
-		session.role = role;
-		render(
-			<QueryClientProvider client={new QueryClient()}>
-				<BatchActionBar selectedIds={["user-1"]} onClear={vi.fn()} />
-			</QueryClientProvider>,
-		);
-		expect(Boolean(screen.queryByRole("button", { name: "封禁" }))).toBe(ban);
-		expect(Boolean(screen.queryByRole("button", { name: "删除" }))).toBe(
-			remove,
-		);
-	});
+	])(
+		"matches the control-plane permissions for $role",
+		({ role, ban, remove }) => {
+			session.role = role;
+			render(
+				<QueryClientProvider client={new QueryClient()}>
+					<BatchActionBar selectedIds={["user-1"]} onClear={vi.fn()} />
+				</QueryClientProvider>,
+			);
+			expect(Boolean(screen.queryByRole("button", { name: "封禁" }))).toBe(ban);
+			expect(Boolean(screen.queryByRole("button", { name: "删除" }))).toBe(
+				remove,
+			);
+		},
+	);
 });

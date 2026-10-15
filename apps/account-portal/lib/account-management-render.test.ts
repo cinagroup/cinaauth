@@ -156,93 +156,97 @@ describe("management pages after a server refresh", () => {
 		{ operation: "save", initialOffline: false, toggle: false },
 		{ operation: "enable offline access", initialOffline: false, toggle: true },
 		{ operation: "disable offline access", initialOffline: true, toggle: true },
-	])("preserves unrelated grants when editing a client: $operation", async ({
-		initialOffline,
-		toggle,
-	}) => {
-		const client = {
-			client_id: "mixed-grants",
-			client_name: "Mixed grants",
-			redirect_uris: ["https://example.com/callback"],
-			scope: initialOffline ? "openid offline_access" : "openid",
-			token_endpoint_auth_method: "client_secret_basic",
-			grant_types: ["authorization_code", "client_credentials"],
-			response_types: ["code"],
-			application_type: "web",
-		};
-		const request = vi
-			.fn()
-			.mockResolvedValue(
-				Response.json({ ...client, client_name: "Saved application" }),
-			);
-		vi.stubGlobal("fetch", request);
-		const props: ComponentProps<typeof DeveloperConsole> = {
-			...developerProps,
-			currentSessionCreatedAt: new Date().toISOString(),
-			initialClients: [
-				{
-					clientId: client.client_id,
-					name: client.client_name,
-					createdAt: date,
-					redirectUris: client.redirect_uris,
-					scopes: client.scope.split(" "),
-					tokenEndpointAuthMethod: "client_secret_basic",
-					grantTypes: initialOffline
-						? ["authorization_code", "client_credentials", "refresh_token"]
-						: ["authorization_code", "client_credentials"],
-					responseTypes: ["code"],
-					public: false,
-					type: "web",
-					disabled: false,
-				},
-			],
-		};
-		await act(async () => root.render(createElement(DeveloperConsole, props)));
-		const edit = Array.from(container.querySelectorAll("button")).find(
-			(button) => button.textContent?.trim() === dashboardMessages.en.edit,
-		)!;
-		await act(async () => edit.click());
-		if (toggle) {
-			const offlineScope = Array.from(document.querySelectorAll("label"))
-				.find((label) => label.textContent?.includes("offline_access"))!
-				.querySelector<HTMLButtonElement>("[role=checkbox]")!;
-			await act(async () => offlineScope.click());
-		}
-		const save = Array.from(document.querySelectorAll("button")).find(
-			(button) =>
-				button.textContent?.trim() === dashboardMessages.en.saveChanges,
-		)!;
-		await act(async () => save.click());
-		expect(request).toHaveBeenCalledTimes(1);
-		const body = JSON.parse(request.mock.calls[0]![1].body) as {
-			update: {
-				scope: string;
-				grant_types?: string[];
-				response_types?: string[];
+	])(
+		"preserves unrelated grants when editing a client: $operation",
+		async ({ initialOffline, toggle }) => {
+			const client = {
+				client_id: "mixed-grants",
+				client_name: "Mixed grants",
+				redirect_uris: ["https://example.com/callback"],
+				scope: initialOffline ? "openid offline_access" : "openid",
+				token_endpoint_auth_method: "client_secret_basic",
+				grant_types: ["authorization_code", "client_credentials"],
+				response_types: ["code"],
+				application_type: "web",
 			};
-		};
-		if (body.update.grant_types)
-			expect(body.update.grant_types).toContain("client_credentials");
-		expect(body.update.response_types).toBeUndefined();
-		if (toggle) {
-			expect(body.update.grant_types?.includes("refresh_token")).toBe(
-				!initialOffline,
+			const request = vi
+				.fn()
+				.mockResolvedValue(
+					Response.json({ ...client, client_name: "Saved application" }),
+				);
+			vi.stubGlobal("fetch", request);
+			const props: ComponentProps<typeof DeveloperConsole> = {
+				...developerProps,
+				currentSessionCreatedAt: new Date().toISOString(),
+				initialClients: [
+					{
+						clientId: client.client_id,
+						name: client.client_name,
+						createdAt: date,
+						redirectUris: client.redirect_uris,
+						scopes: client.scope.split(" "),
+						tokenEndpointAuthMethod: "client_secret_basic",
+						grantTypes: initialOffline
+							? ["authorization_code", "client_credentials", "refresh_token"]
+							: ["authorization_code", "client_credentials"],
+						responseTypes: ["code"],
+						public: false,
+						type: "web",
+						disabled: false,
+					},
+				],
+			};
+			await act(async () =>
+				root.render(createElement(DeveloperConsole, props)),
 			);
-			expect(body.update.scope.split(" ").includes("offline_access")).toBe(
-				!initialOffline,
+			const edit = Array.from(container.querySelectorAll("button")).find(
+				(button) => button.textContent?.trim() === dashboardMessages.en.edit,
+			)!;
+			await act(async () => edit.click());
+			if (toggle) {
+				const offlineScope = Array.from(document.querySelectorAll("label"))
+					.find((label) => label.textContent?.includes("offline_access"))!
+					.querySelector<HTMLButtonElement>("[role=checkbox]")!;
+				await act(async () => offlineScope.click());
+			}
+			const save = Array.from(document.querySelectorAll("button")).find(
+				(button) =>
+					button.textContent?.trim() === dashboardMessages.en.saveChanges,
+			)!;
+			await act(async () => save.click());
+			expect(request).toHaveBeenCalledTimes(1);
+			const body = JSON.parse(request.mock.calls[0]![1].body) as {
+				update: {
+					scope: string;
+					grant_types?: string[];
+					response_types?: string[];
+				};
+			};
+			if (body.update.grant_types)
+				expect(body.update.grant_types).toContain("client_credentials");
+			expect(body.update.response_types).toBeUndefined();
+			if (toggle) {
+				expect(body.update.grant_types?.includes("refresh_token")).toBe(
+					!initialOffline,
+				);
+				expect(body.update.scope.split(" ").includes("offline_access")).toBe(
+					!initialOffline,
+				);
+			} else {
+				expect(body.update.grant_types).toBeUndefined();
+			}
+			await act(async () =>
+				root.render(createElement(DeveloperConsole, props)),
 			);
-		} else {
-			expect(body.update.grant_types).toBeUndefined();
-		}
-		await act(async () => root.render(createElement(DeveloperConsole, props)));
-		expect(container.textContent).toContain("Saved application");
-		await act(async () =>
-			root.render(
-				createElement(DeveloperConsole, { ...props, initialClients: [] }),
-			),
-		);
-		expect(container.textContent).not.toContain("Saved application");
-	});
+			expect(container.textContent).toContain("Saved application");
+			await act(async () =>
+				root.render(
+					createElement(DeveloperConsole, { ...props, initialClients: [] }),
+				),
+			);
+			expect(container.textContent).not.toContain("Saved application");
+		},
+	);
 
 	it("replaces developer clients and consent grants with the new server snapshot", async () => {
 		await act(async () =>
@@ -379,60 +383,58 @@ describe("management pages after a server refresh", () => {
 
 /** @see https://github.com/cinagroup/cinaauth/blob/main/apps/account-portal/lib/client-api.ts */
 describe("explicit security reauthentication", () => {
-	it.each([
-		"security",
-		"developer",
-		"organization",
-	] as const)("stays on %s and reports a failed sign-out", async (page) => {
-		mocks.signOut.mockResolvedValue({
-			data: null,
-			error: { message: "Sign-out unavailable" },
-		});
-		const assign = vi
-			.spyOn(window.location, "assign")
-			.mockImplementation(() => {});
-		await act(async () => root.render(managementPage(page)));
-		const button = Array.from(container.querySelectorAll("button")).find(
-			(candidate) =>
-				candidate.textContent?.includes(
-					page === "security"
-						? dashboardMessages.en.reauthenticate
-						: dashboardMessages.en.signInAgain,
-				),
-		);
-		expect(button).toBeTruthy();
-		await act(async () => button!.click());
-		expect(mocks.error).toHaveBeenCalled();
-		expect(mocks.push).not.toHaveBeenCalled();
-		expect(assign).not.toHaveBeenCalled();
-	});
-	it.each([
-		"security",
-		"developer",
-		"organization",
-	] as const)("starts explicit step-up from %s after successful sign-out", async (page) => {
-		mocks.signOut.mockResolvedValue({ data: { success: true }, error: null });
-		window.history.replaceState(
-			null,
-			"",
-			`/dashboard/${page}?section=credentials`,
-		);
-		const assign = vi
-			.spyOn(window.location, "assign")
-			.mockImplementation(() => {});
-		await act(async () => root.render(managementPage(page)));
-		const button = Array.from(container.querySelectorAll("button")).find(
-			(candidate) =>
-				candidate.textContent?.includes(
-					page === "security"
-						? dashboardMessages.en.reauthenticate
-						: dashboardMessages.en.signInAgain,
-				),
-		);
-		await act(async () => button!.click());
-		expect(assign).toHaveBeenCalledWith(
-			`/sign-in?mode=step-up&callbackURL=${encodeURIComponent(`/dashboard/${page}?section=credentials`)}`,
-		);
-		expect(mocks.signOut).toHaveBeenCalledTimes(1);
-	});
+	it.each(["security", "developer", "organization"] as const)(
+		"stays on %s and reports a failed sign-out",
+		async (page) => {
+			mocks.signOut.mockResolvedValue({
+				data: null,
+				error: { message: "Sign-out unavailable" },
+			});
+			const assign = vi
+				.spyOn(window.location, "assign")
+				.mockImplementation(() => {});
+			await act(async () => root.render(managementPage(page)));
+			const button = Array.from(container.querySelectorAll("button")).find(
+				(candidate) =>
+					candidate.textContent?.includes(
+						page === "security"
+							? dashboardMessages.en.reauthenticate
+							: dashboardMessages.en.signInAgain,
+					),
+			);
+			expect(button).toBeTruthy();
+			await act(async () => button!.click());
+			expect(mocks.error).toHaveBeenCalled();
+			expect(mocks.push).not.toHaveBeenCalled();
+			expect(assign).not.toHaveBeenCalled();
+		},
+	);
+	it.each(["security", "developer", "organization"] as const)(
+		"starts explicit step-up from %s after successful sign-out",
+		async (page) => {
+			mocks.signOut.mockResolvedValue({ data: { success: true }, error: null });
+			window.history.replaceState(
+				null,
+				"",
+				`/dashboard/${page}?section=credentials`,
+			);
+			const assign = vi
+				.spyOn(window.location, "assign")
+				.mockImplementation(() => {});
+			await act(async () => root.render(managementPage(page)));
+			const button = Array.from(container.querySelectorAll("button")).find(
+				(candidate) =>
+					candidate.textContent?.includes(
+						page === "security"
+							? dashboardMessages.en.reauthenticate
+							: dashboardMessages.en.signInAgain,
+					),
+			);
+			await act(async () => button!.click());
+			expect(assign).toHaveBeenCalledWith(
+				`/sign-in?mode=step-up&callbackURL=${encodeURIComponent(`/dashboard/${page}?section=credentials`)}`,
+			);
+			expect(mocks.signOut).toHaveBeenCalledTimes(1);
+		},
+	);
 });

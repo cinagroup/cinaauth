@@ -187,22 +187,21 @@ describe("Admin scoped subscription BFF", () => {
 		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		"",
-		" ",
-		"o".repeat(256),
-	])("rejects an invalid organization id: %j", async (organizationId) => {
-		const { GET } = await import("@/app/api/admin/subscriptions/route");
+	it.each(["", " ", "o".repeat(256)])(
+		"rejects an invalid organization id: %j",
+		async (organizationId) => {
+			const { GET } = await import("@/app/api/admin/subscriptions/route");
 
-		const response = await GET(
-			request(
-				`/api/admin/subscriptions?scope=organization&organizationId=${encodeURIComponent(organizationId)}`,
-			),
-		);
+			const response = await GET(
+				request(
+					`/api/admin/subscriptions?scope=organization&organizationId=${encodeURIComponent(organizationId)}`,
+				),
+			);
 
-		expect(response.status).toBe(400);
-		expect(mockFetch).not.toHaveBeenCalled();
-	});
+			expect(response.status).toBe(400);
+			expect(mockFetch).not.toHaveBeenCalled();
+		},
+	);
 
 	it("rejects an organization id attached to user scope", async () => {
 		const { GET } = await import("@/app/api/admin/subscriptions/route");
@@ -497,20 +496,23 @@ describe("Admin scoped subscription BFF", () => {
 		"https://attacker.example/steal",
 		"//attacker.example/steal",
 		"javascript:alert(1)",
-	])("rejects a non-local returnUrl before recent auth: %s", async (returnUrl) => {
-		const { POST } = await import("@/app/api/admin/subscriptions/route");
+	])(
+		"rejects a non-local returnUrl before recent auth: %s",
+		async (returnUrl) => {
+			const { POST } = await import("@/app/api/admin/subscriptions/route");
 
-		const response = await POST(
-			request("/api/admin/subscriptions", "POST", {
-				action: "portal",
-				returnUrl,
-			}),
-		);
+			const response = await POST(
+				request("/api/admin/subscriptions", "POST", {
+					action: "portal",
+					returnUrl,
+				}),
+			);
 
-		expect(response.status).toBe(400);
-		expect(mocks.recent).not.toHaveBeenCalled();
-		expect(mockFetch).not.toHaveBeenCalled();
-	});
+			expect(response.status).toBe(400);
+			expect(mocks.recent).not.toHaveBeenCalled();
+			expect(mockFetch).not.toHaveBeenCalled();
+		},
+	);
 
 	it("rejects an arbitrary upstream redirect URL", async () => {
 		mockFetch.mockResolvedValueOnce({

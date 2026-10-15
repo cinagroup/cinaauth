@@ -258,46 +258,52 @@ describe("Admin Agent Auth control plane", () => {
 		["host", "host-1", "revoke"],
 		["grant", "grant-1", "revoke"],
 		["approval", "approval-1", "deny"],
-	] as const)("mutates and audits a governed %s resource", async (resource, id, action) => {
-		const fixture = makeDependencies();
-		const result = await handleAdminAgentAuthMutation(
-			fixture.dependencies,
-			ADMIN_ORIGIN,
-			ADMIN_ORIGIN,
-			{ resource, id },
-		);
+	] as const)(
+		"mutates and audits a governed %s resource",
+		async (resource, id, action) => {
+			const fixture = makeDependencies();
+			const result = await handleAdminAgentAuthMutation(
+				fixture.dependencies,
+				ADMIN_ORIGIN,
+				ADMIN_ORIGIN,
+				{ resource, id },
+			);
 
-		expect(result.status).toBe(200);
-		expect(fixture.connect).toHaveBeenCalledOnce();
-		expect(fixture.dependencies.writeAuditEvent).toHaveBeenCalledWith(
-			expect.objectContaining({
-				action: `integration.agent-auth.${resource}.${action}`,
-				phase: "outcome",
-				result: "success",
-				actorId: "admin-1",
-				metadata: { resource, targetId: id },
-			}),
-		);
-	});
+			expect(result.status).toBe(200);
+			expect(fixture.connect).toHaveBeenCalledOnce();
+			expect(fixture.dependencies.writeAuditEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					action: `integration.agent-auth.${resource}.${action}`,
+					phase: "outcome",
+					result: "success",
+					actorId: "admin-1",
+					metadata: { resource, targetId: id },
+				}),
+			);
+		},
+	);
 
 	it.each([
 		["agent", "agent-1", "'active', 'pending', 'claimed'"],
 		["host", "host-1", "'active', 'pending', 'pending_enrollment'"],
 		["grant", "grant-1", "'active', 'pending'"],
-	] as const)("revokes only an actionable %s", async (resource, id, statuses) => {
-		const fixture = makeDependencies();
-		await handleAdminAgentAuthMutation(
-			fixture.dependencies,
-			ADMIN_ORIGIN,
-			ADMIN_ORIGIN,
-			{ resource, id },
-		);
+	] as const)(
+		"revokes only an actionable %s",
+		async (resource, id, statuses) => {
+			const fixture = makeDependencies();
+			await handleAdminAgentAuthMutation(
+				fixture.dependencies,
+				ADMIN_ORIGIN,
+				ADMIN_ORIGIN,
+				{ resource, id },
+			);
 
-		const mutationQuery = fixture.clientQuery.mock.calls
-			.map(([text]) => text)
-			.find((text) => text.includes("RETURNING"));
-		expect(mutationQuery).toContain(`"status" IN (${statuses})`);
-	});
+			const mutationQuery = fixture.clientQuery.mock.calls
+				.map(([text]) => text)
+				.find((text) => text.includes("RETURNING"));
+			expect(mutationQuery).toContain(`"status" IN (${statuses})`);
+		},
+	);
 
 	it("rejects malformed resource identifiers before touching the database", async () => {
 		const fixture = makeDependencies();

@@ -67,25 +67,28 @@ describe("Admin upstream status boundary", () => {
 	it.each([
 		[401, "UNAUTHORIZED"],
 		[403, "SESSION_NOT_FRESH"],
-	] as const)("preserves an authoritative %s response for the browser", async (status, code) => {
-		mockFetch.mockResolvedValue({
-			ok: false,
-			error: {
-				code,
-				message: "Authentication boundary rejected the request",
-				status,
-			},
-		});
-		const { POST } = await import("@/app/api/admin/sso/providers/route");
+	] as const)(
+		"preserves an authoritative %s response for the browser",
+		async (status, code) => {
+			mockFetch.mockResolvedValue({
+				ok: false,
+				error: {
+					code,
+					message: "Authentication boundary rejected the request",
+					status,
+				},
+			});
+			const { POST } = await import("@/app/api/admin/sso/providers/route");
 
-		const response = await POST(request());
+			const response = await POST(request());
 
-		expect(response.status).toBe(status);
-		expect(await response.json()).toMatchObject({
-			ok: false,
-			error: { code, status },
-		});
-	});
+			expect(response.status).toBe(status);
+			expect(await response.json()).toMatchObject({
+				ok: false,
+				error: { code, status },
+			});
+		},
+	);
 
 	it("continues to hide unrelated upstream failures behind 502", async () => {
 		mockFetch.mockResolvedValue({

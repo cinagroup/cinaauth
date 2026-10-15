@@ -97,28 +97,27 @@ describe("Docker Compose test databases", () => {
 		expect(healthcheck).not.toContain("mysqladmin");
 	});
 
-	it.each(
-		postgresServices,
-	)("maps $name to its dedicated PostgreSQL port and database", ({
-		name,
-		port,
-	}) => {
-		expect(readServiceContract(name, "POSTGRES_DB")).toEqual({
-			database: "cinaauth",
-			healthcheck: "postgres-healthcheck",
-			port,
-		});
-	});
+	it.each(postgresServices)(
+		"maps $name to its dedicated PostgreSQL port and database",
+		({ name, port }) => {
+			expect(readServiceContract(name, "POSTGRES_DB")).toEqual({
+				database: "cinaauth",
+				healthcheck: "postgres-healthcheck",
+				port,
+			});
+		},
+	);
 
-	it.each(
-		mysqlServices,
-	)("maps $name to its dedicated MySQL port and database", ({ name, port }) => {
-		expect(readServiceContract(name, "MYSQL_DATABASE")).toEqual({
-			database: "cinaauth",
-			healthcheck: "mysql-healthcheck",
-			port,
-		});
-	});
+	it.each(mysqlServices)(
+		"maps $name to its dedicated MySQL port and database",
+		({ name, port }) => {
+			expect(readServiceContract(name, "MYSQL_DATABASE")).toEqual({
+				database: "cinaauth",
+				healthcheck: "mysql-healthcheck",
+				port,
+			});
+		},
+	);
 
 	it("does not retain the legacy database name", () => {
 		expect(compose).not.toContain("cina_auth");

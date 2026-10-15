@@ -21,7 +21,7 @@ export const useOrganizationActiveMutation = () => {
 	return useMutation({
 		mutationFn: setOrganizationActive,
 		onSuccess: () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: organizationKeys.detail(),
 			});
 		},

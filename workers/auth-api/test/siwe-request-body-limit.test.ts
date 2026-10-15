@@ -155,29 +155,35 @@ describe("SIWE raw request body limits", () => {
 	it.each([
 		["without Content-Length", undefined],
 		["with a forged small Content-Length", "1"],
-	])("allows a maximum signed OAuth challenge %s", async (_label, declaredLength) => {
-		const { body, bodyBytes, oauthQueryBytes } =
-			createMaximumSignedOAuthChallengeBody();
-		const headers = new Headers({ "Content-Type": "application/json" });
-		if (declaredLength !== undefined) {
-			headers.set("Content-Length", declaredLength);
-		}
-		const request = new Request(
-			"https://auth.cinaseek.ai/api/auth/siwe/challenge",
-			{
-				method: "POST",
-				headers,
-				body,
-			},
-		);
+	])(
+		"allows a maximum signed OAuth challenge %s",
+		async (_label, declaredLength) => {
+			const { body, bodyBytes, oauthQueryBytes } =
+				createMaximumSignedOAuthChallengeBody();
+			const headers = new Headers({ "Content-Type": "application/json" });
+			if (declaredLength !== undefined) {
+				headers.set("Content-Length", declaredLength);
+			}
+			const request = new Request(
+				"https://auth.cinaseek.ai/api/auth/siwe/challenge",
+				{
+					method: "POST",
+					headers,
+					body,
+				},
+			);
 
-		expect(oauthQueryBytes).toBe(SIWE_OAUTH_QUERY_MAX_LENGTH);
-		expect(bodyBytes).toBe(16_514);
-		await expect(
-			inspectSiweRequestBody(request, SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES),
-		).resolves.toBe("allowed");
-		await expect(request.text()).resolves.toBe(body);
-	});
+			expect(oauthQueryBytes).toBe(SIWE_OAUTH_QUERY_MAX_LENGTH);
+			expect(bodyBytes).toBe(16_514);
+			await expect(
+				inspectSiweRequestBody(
+					request,
+					SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES,
+				),
+			).resolves.toBe("allowed");
+			await expect(request.text()).resolves.toBe(body);
+		},
+	);
 
 	it("counts a chunked body instead of trusting a forged small length", async () => {
 		const stream = createStreamRequest({

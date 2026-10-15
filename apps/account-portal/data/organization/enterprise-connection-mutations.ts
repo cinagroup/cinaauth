@@ -354,7 +354,7 @@ const useEnterpriseMutation = <TVariables, TData>(
 	return useMutation({
 		mutationFn,
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: organizationKeys.all() });
+			void queryClient.invalidateQueries({ queryKey: organizationKeys.all() });
 		},
 		onError: (error) => {
 			toast.error(error.message || fallbackError);

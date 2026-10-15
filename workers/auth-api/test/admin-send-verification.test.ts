@@ -298,42 +298,42 @@ describe("Admin verification delivery boundary", () => {
 		expect(sendEmailOtp).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		"super_admin",
-		"security_admin",
-	])("allows %s to send an email verification OTP through the server API", async (role) => {
-		const {
-			dependencies,
-			findUserById,
-			sendEmailOtp,
-			consumeRateLimit,
-			writeAuditEvent,
-		} = makeDependencies(role);
+	it.each(["super_admin", "security_admin"])(
+		"allows %s to send an email verification OTP through the server API",
+		async (role) => {
+			const {
+				dependencies,
+				findUserById,
+				sendEmailOtp,
+				consumeRateLimit,
+				writeAuditEvent,
+			} = makeDependencies(role);
 
-		const result = await handleAdminSendVerification(dependencies, {
-			userId: "user-2",
-			type: "email-otp",
-		});
+			const result = await handleAdminSendVerification(dependencies, {
+				userId: "user-2",
+				type: "email-otp",
+			});
 
-		expect(result).toEqual({
-			status: 200,
-			body: { ok: true, data: { sent: true } },
-		});
-		expect(findUserById).toHaveBeenCalledWith("user-2");
-		expect(consumeRateLimit).toHaveBeenCalledWith(
-			getAdminVerificationRateLimitKey("admin-1", "user-2", "email-otp"),
-			ADMIN_VERIFICATION_RATE_LIMIT_RULE,
-		);
-		expect(sendEmailOtp).toHaveBeenCalledWith({
-			email: "user@example.com",
-			type: "email-verification",
-		});
-		expect(writeAuditEvent).toHaveBeenCalledWith({
-			actorId: "admin-1",
-			targetId: "user-2",
-			channel: "email-otp",
-		});
-	});
+			expect(result).toEqual({
+				status: 200,
+				body: { ok: true, data: { sent: true } },
+			});
+			expect(findUserById).toHaveBeenCalledWith("user-2");
+			expect(consumeRateLimit).toHaveBeenCalledWith(
+				getAdminVerificationRateLimitKey("admin-1", "user-2", "email-otp"),
+				ADMIN_VERIFICATION_RATE_LIMIT_RULE,
+			);
+			expect(sendEmailOtp).toHaveBeenCalledWith({
+				email: "user@example.com",
+				type: "email-verification",
+			});
+			expect(writeAuditEvent).toHaveBeenCalledWith({
+				actorId: "admin-1",
+				targetId: "user-2",
+				channel: "email-otp",
+			});
+		},
+	);
 
 	it("rejects malformed JSON after authentication but before rate limiting", async () => {
 		const { dependencies, consumeRateLimit, findUserById } = makeDependencies();
@@ -351,21 +351,20 @@ describe("Admin verification delivery boundary", () => {
 		expect(findUserById).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		{},
-		{ userId: "user-2" },
-		{ userId: "user-2", type: "push" },
-	])("rejects an invalid body before target lookup %#", async (body) => {
-		const { dependencies, findUserById } = makeDependencies();
+	it.each([{}, { userId: "user-2" }, { userId: "user-2", type: "push" }])(
+		"rejects an invalid body before target lookup %#",
+		async (body) => {
+			const { dependencies, findUserById } = makeDependencies();
 
-		const result = await handleAdminSendVerification(dependencies, body);
+			const result = await handleAdminSendVerification(dependencies, body);
 
-		expect(result.status).toBe(400);
-		expect(result.body).toMatchObject({
-			error: { code: "INVALID_VERIFICATION_REQUEST" },
-		});
-		expect(findUserById).not.toHaveBeenCalled();
-	});
+			expect(result.status).toBe(400);
+			expect(result.body).toMatchObject({
+				error: { code: "INVALID_VERIFICATION_REQUEST" },
+			});
+			expect(findUserById).not.toHaveBeenCalled();
+		},
+	);
 
 	it("returns 404 when the path-selected target does not exist", async () => {
 		const { dependencies, findUserById } = makeDependencies();

@@ -148,16 +148,19 @@ describe("impersonation mutation Hono middleware", () => {
 		["/api/auth/token", "GET"],
 		["/api/auth/token", "HEAD"],
 		["/api/auth/change-password///", "POST"],
-	])("blocks canonicalized state changes at %s %s", async (pathname, method) => {
-		const { app, downstream } = makeApp(impersonatedSession);
+	])(
+		"blocks canonicalized state changes at %s %s",
+		async (pathname, method) => {
+			const { app, downstream } = makeApp(impersonatedSession);
 
-		const response = await app.request(`https://auth.test${pathname}`, {
-			method,
-		});
+			const response = await app.request(`https://auth.test${pathname}`, {
+				method,
+			});
 
-		expect(response.status).toBe(403);
-		expect(downstream).not.toHaveBeenCalled();
-	});
+			expect(response.status).toBe(403);
+			expect(downstream).not.toHaveBeenCalled();
+		},
+	);
 
 	it("fails closed when the durable audit write fails", async () => {
 		const { app, downstream, logEvent } = makeApp(impersonatedSession, {

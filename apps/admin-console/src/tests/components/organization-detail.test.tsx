@@ -69,38 +69,37 @@ it.each([
 		action: "organizations.addMember",
 		error: "toast.actionFailed",
 	},
-])("retains $input on transport failure and prevents duplicate submissions", async ({
-	input,
-	action,
-	error,
-}) => {
-	let rejectRequest: (reason: Error) => void = () => {};
-	mocks.request.mockImplementationOnce(
-		() =>
-			new Promise<Response>((_resolve, reject) => {
-				rejectRequest = reject;
-			}),
-	);
-	renderPage();
-	await screen.findByText("Platform");
-	fireEvent.change(screen.getByPlaceholderText(input), {
-		target: { value: "draft-value" },
-	});
-	fireEvent.click(screen.getByRole("button", { name: action }));
-	await waitFor(() =>
-		expect(screen.getByRole("button", { name: action })).toBeDisabled(),
-	);
-	await act(async () => rejectRequest(new Error("Network unavailable")));
-	await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(error));
-	expect(screen.getByPlaceholderText(input)).toHaveValue("draft-value");
-	expect(screen.getByRole("button", { name: action })).toBeEnabled();
-	mocks.request.mockResolvedValueOnce(new Response("{}", { status: 200 }));
-	fireEvent.click(screen.getByRole("button", { name: action }));
-	await waitFor(() =>
-		expect(screen.getByPlaceholderText(input)).toHaveValue(""),
-	);
-	expect(mocks.request).toHaveBeenCalledTimes(2);
-});
+])(
+	"retains $input on transport failure and prevents duplicate submissions",
+	async ({ input, action, error }) => {
+		let rejectRequest: (reason: Error) => void = () => {};
+		mocks.request.mockImplementationOnce(
+			() =>
+				new Promise<Response>((_resolve, reject) => {
+					rejectRequest = reject;
+				}),
+		);
+		renderPage();
+		await screen.findByText("Platform");
+		fireEvent.change(screen.getByPlaceholderText(input), {
+			target: { value: "draft-value" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: action }));
+		await waitFor(() =>
+			expect(screen.getByRole("button", { name: action })).toBeDisabled(),
+		);
+		await act(async () => rejectRequest(new Error("Network unavailable")));
+		await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(error));
+		expect(screen.getByPlaceholderText(input)).toHaveValue("draft-value");
+		expect(screen.getByRole("button", { name: action })).toBeEnabled();
+		mocks.request.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+		fireEvent.click(screen.getByRole("button", { name: action }));
+		await waitFor(() =>
+			expect(screen.getByPlaceholderText(input)).toHaveValue(""),
+		);
+		expect(mocks.request).toHaveBeenCalledTimes(2);
+	},
+);
 
 it("keeps an organization edit open after a network failure so it can be retried", async () => {
 	let rejectRequest: (reason: Error) => void = () => {};

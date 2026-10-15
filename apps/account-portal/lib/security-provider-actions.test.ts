@@ -15,27 +15,27 @@ const makeClient = () => ({
 });
 
 describe("security provider link actions", () => {
-	it.each([
-		"google",
-		"github",
-	] as const)("uses linkSocial for the %s social provider", async (providerId) => {
-		const client = makeClient();
+	it.each(["google", "github"] as const)(
+		"uses linkSocial for the %s social provider",
+		async (providerId) => {
+			const client = makeClient();
 
-		await expect(
-			getSecurityProviderLinkURL(client, {
-				id: providerId,
-				type: "social",
-			}),
-		).resolves.toBe("https://social.example.com/authorize");
+			await expect(
+				getSecurityProviderLinkURL(client, {
+					id: providerId,
+					type: "social",
+				}),
+			).resolves.toBe("https://social.example.com/authorize");
 
-		expect(client.linkSocial).toHaveBeenCalledWith({
-			provider: providerId,
-			callbackURL: "/dashboard/security",
-			errorCallbackURL: "/dashboard/security?link=failed",
-			disableRedirect: true,
-		});
-		expect(client.oauth2.link).not.toHaveBeenCalled();
-	});
+			expect(client.linkSocial).toHaveBeenCalledWith({
+				provider: providerId,
+				callbackURL: "/dashboard/security",
+				errorCallbackURL: "/dashboard/security?link=failed",
+				disableRedirect: true,
+			});
+			expect(client.oauth2.link).not.toHaveBeenCalled();
+		},
+	);
 
 	it("uses the unified linkSocial API for a Generic OAuth provider", async () => {
 		const client = makeClient();

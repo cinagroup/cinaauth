@@ -114,22 +114,25 @@ describe("super-admin deployment governance", () => {
 		["/api/auth/delete-user/callback", "GET"],
 		["/api/auth/delete-anonymous-user", "POST"],
 		["/api/auth/admin/set-role/", "POST"],
-	] as const)("does not acquire governance storage for an unauthenticated %s request", async (path, method) => {
-		const openDatabase = vi.fn(() => {
-			throw new Error("must not open");
-		});
-		const upstream = Response.json({ code: "UNAUTHORIZED" }, { status: 401 });
+	] as const)(
+		"does not acquire governance storage for an unauthenticated %s request",
+		async (path, method) => {
+			const openDatabase = vi.fn(() => {
+				throw new Error("must not open");
+			});
+			const upstream = Response.json({ code: "UNAUTHORIZED" }, { status: 401 });
 
-		const response = await handleSuperAdminGovernedRequest({
-			request: request(path, method),
-			openDatabase,
-			getSession: async () => null,
-			handle: async () => upstream,
-		});
+			const response = await handleSuperAdminGovernedRequest({
+				request: request(path, method),
+				openDatabase,
+				getSession: async () => null,
+				handle: async () => upstream,
+			});
 
-		expect(response).toBe(upstream);
-		expect(openDatabase).not.toHaveBeenCalled();
-	});
+			expect(response).toBe(upstream);
+			expect(openDatabase).not.toHaveBeenCalled();
+		},
+	);
 
 	it("fails closed before storage when authoritative session lookup fails", async () => {
 		const openDatabase = vi.fn(() => {
@@ -150,28 +153,28 @@ describe("super-admin deployment governance", () => {
 		expect(handle).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		null,
-		"Bearer definitely-not-base64!",
-	])("does not acquire governance storage for a missing or malformed SCIM bearer", async (authorization) => {
-		const openDatabase = vi.fn(() => {
-			throw new Error("must not open");
-		});
-		const upstream = Response.json(
-			{ detail: "Invalid SCIM token" },
-			{ status: 401 },
-		);
+	it.each([null, "Bearer definitely-not-base64!"])(
+		"does not acquire governance storage for a missing or malformed SCIM bearer",
+		async (authorization) => {
+			const openDatabase = vi.fn(() => {
+				throw new Error("must not open");
+			});
+			const upstream = Response.json(
+				{ detail: "Invalid SCIM token" },
+				{ status: 401 },
+			);
 
-		const response = await handleSuperAdminGovernedRequest({
-			request: scimDeleteRequest(authorization),
-			openDatabase,
-			getSession: async () => null,
-			handle: async () => upstream,
-		});
+			const response = await handleSuperAdminGovernedRequest({
+				request: scimDeleteRequest(authorization),
+				openDatabase,
+				getSession: async () => null,
+				handle: async () => upstream,
+			});
 
-		expect(response).toBe(upstream);
-		expect(openDatabase).not.toHaveBeenCalled();
-	});
+			expect(response).toBe(upstream);
+			expect(openDatabase).not.toHaveBeenCalled();
+		},
+	);
 
 	it("rate limits plausible SCIM deletion before opening governance storage", async () => {
 		const openDatabase = vi.fn(() => {

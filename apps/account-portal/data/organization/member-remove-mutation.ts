@@ -24,7 +24,7 @@ export const useMemberRemoveMutation = () => {
 	return useMutation({
 		mutationFn: removeMember,
 		onSuccess: () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: organizationKeys.detail(),
 			});
 			toast.success("Member removed successfully");

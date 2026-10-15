@@ -159,32 +159,33 @@ describe("delivery configuration BFF", () => {
 		).toBe(415);
 	});
 
-	it.each([
-		401, 403, 409, 429, 503,
-	])("preserves upstream %s", async (status) => {
-		mocks.fetch.mockResolvedValueOnce({
-			ok: false,
-			error: { code: `UPSTREAM_${status}`, message: "failed", status },
-		});
-		const { POST } = await import(
-			"@/app/api/admin/configuration/delivery/stage/route"
-		);
-		const response = await POST(
-			request("/api/admin/configuration/delivery/stage", "POST", {
-				expectedVersion: 0,
-				idempotencyKey: "stage-resend-20260811",
-				channel: "email",
-				config: {
-					provider: "resend",
-					apiKey: "re_example-secret-value",
-					from: "identity@example.com",
-				},
-			}),
-		);
+	it.each([401, 403, 409, 429, 503])(
+		"preserves upstream %s",
+		async (status) => {
+			mocks.fetch.mockResolvedValueOnce({
+				ok: false,
+				error: { code: `UPSTREAM_${status}`, message: "failed", status },
+			});
+			const { POST } = await import(
+				"@/app/api/admin/configuration/delivery/stage/route"
+			);
+			const response = await POST(
+				request("/api/admin/configuration/delivery/stage", "POST", {
+					expectedVersion: 0,
+					idempotencyKey: "stage-resend-20260811",
+					channel: "email",
+					config: {
+						provider: "resend",
+						apiKey: "re_example-secret-value",
+						from: "identity@example.com",
+					},
+				}),
+			);
 
-		expect(response.status).toBe(status);
-		expect(response.headers.get("cache-control")).toBe("no-store");
-	});
+			expect(response.status).toBe(status);
+			expect(response.headers.get("cache-control")).toBe("no-store");
+		},
+	);
 
 	it("returns only a validated operation acknowledgement", async () => {
 		mocks.fetch.mockResolvedValueOnce({
@@ -360,29 +361,30 @@ describe("configuration mutation perimeter", () => {
 		],
 	] as const;
 
-	it.each(
-		cases,
-	)("requires recent authentication for %s", async (_name, load, path, body) => {
-		mocks.recentAuth.mockRejectedValueOnce(
-			new Response(
-				JSON.stringify({
-					ok: false,
-					error: {
-						code: "SESSION_NOT_FRESH",
-						message: "Recent authentication is required",
-						status: 403,
-					},
-				}),
-				{ status: 403 },
-			),
-		);
-		const { POST } = await load();
-		const response = await POST(request(path, "POST", body));
+	it.each(cases)(
+		"requires recent authentication for %s",
+		async (_name, load, path, body) => {
+			mocks.recentAuth.mockRejectedValueOnce(
+				new Response(
+					JSON.stringify({
+						ok: false,
+						error: {
+							code: "SESSION_NOT_FRESH",
+							message: "Recent authentication is required",
+							status: 403,
+						},
+					}),
+					{ status: 403 },
+				),
+			);
+			const { POST } = await load();
+			const response = await POST(request(path, "POST", body));
 
-		expect(response.status).toBe(403);
-		expect(response.headers.get("cache-control")).toBe("no-store");
-		expect(mocks.fetch).not.toHaveBeenCalled();
-	});
+			expect(response.status).toBe(403);
+			expect(response.headers.get("cache-control")).toBe("no-store");
+			expect(mocks.fetch).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe("erasure configuration BFF", () => {

@@ -26,7 +26,7 @@ export const useMemberRoleUpdateMutation = () => {
 	return useMutation({
 		mutationFn: updateMemberRole,
 		onSuccess: () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: organizationKeys.detail(),
 			});
 			toast.success("Member role updated successfully");

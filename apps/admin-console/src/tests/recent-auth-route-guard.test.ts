@@ -340,26 +340,28 @@ describe("high-risk Admin BFF routes", () => {
 		],
 	] as const;
 
-	it.each(
-		cases,
-	)("requires recent authentication for %s", async (_name, invoke) => {
-		const response = await invoke();
+	it.each(cases)(
+		"requires recent authentication for %s",
+		async (_name, invoke) => {
+			const response = await invoke();
 
-		await expectSessionNotFresh(response);
-		expect(mockFetch).not.toHaveBeenCalled();
-		expect(mockFetchWithResponse).not.toHaveBeenCalled();
-	});
+			await expectSessionNotFresh(response);
+			expect(mockFetch).not.toHaveBeenCalled();
+			expect(mockFetchWithResponse).not.toHaveBeenCalled();
+		},
+	);
 
-	it.each(
-		cases,
-	)("accepts a valid subject-bound proof for %s", async (_name, invoke) => {
-		const response = await invoke(await sealProof());
+	it.each(cases)(
+		"accepts a valid subject-bound proof for %s",
+		async (_name, invoke) => {
+			const response = await invoke(await sealProof());
 
-		expect(response.status).toBe(200);
-		expect(
-			mockFetch.mock.calls.length + mockFetchWithResponse.mock.calls.length,
-		).toBeGreaterThan(0);
-	});
+			expect(response.status).toBe(200);
+			expect(
+				mockFetch.mock.calls.length + mockFetchWithResponse.mock.calls.length,
+			).toBeGreaterThan(0);
+		},
+	);
 
 	it("checks permission before opening the proof", async () => {
 		mockSession.mockResolvedValue(SECURITY_ADMIN);

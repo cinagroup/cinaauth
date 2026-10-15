@@ -8,11 +8,12 @@ const accountPasskeyCallSites = [
 ];
 
 describe("account passkey deletion call sites", () => {
-	it.each(
-		accountPasskeyCallSites,
-	)("routes %s through the shared step-up-aware helper", (file) => {
-		const source = readFileSync(fileURLToPath(file), "utf8");
-		expect(source).toContain("deleteAccountPasskey");
-		expect(source).not.toContain("authClient.passkey.deletePasskey");
-	});
+	it.each(accountPasskeyCallSites)(
+		"routes %s through the shared step-up-aware helper",
+		(file) => {
+			const source = readFileSync(fileURLToPath(file), "utf8");
+			expect(source).toContain("deleteAccountPasskey");
+			expect(source).not.toContain("authClient.passkey.deletePasskey");
+		},
+	);
 });
