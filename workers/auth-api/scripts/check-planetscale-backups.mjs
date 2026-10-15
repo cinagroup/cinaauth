@@ -88,6 +88,18 @@ export const evaluateBackupEvidence = ({
 		if (!backup.expires_at || Number.isNaN(Date.parse(backup.expires_at))) {
 			failures.push(`Backup ${backup.id ?? "unknown"} has no valid expiry`);
 		}
+		const startedAt = Date.parse(backupTimestamp(backup) ?? "");
+		const expiresAt = Date.parse(backup.expires_at ?? "");
+		if (Number.isNaN(startedAt)) {
+			failures.push(`Backup ${backup.id ?? "unknown"} has no valid start time`);
+		} else if (
+			!Number.isNaN(expiresAt) &&
+			expiresAt - startedAt > maximumRetentionDays * 24 * 60 * 60 * 1_000
+		) {
+			failures.push(
+				`Backup ${backup.id ?? "unknown"} expiry exceeds the ${maximumRetentionDays}-day retention limit`,
+			);
+		}
 		const policy = backup.backup_policy;
 		if (
 			policy &&
@@ -196,7 +208,7 @@ const fetchPages = async ({ authorization, path, query }) => {
 
 const parseArguments = (values) => {
 	const options = {
-		organization: "cinagroup",
+		organization: "cinaseek",
 		database: "cinaauth",
 		branch: "main",
 		maximumRetentionDays: 2,

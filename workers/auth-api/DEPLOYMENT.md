@@ -294,7 +294,7 @@ included 12-hour/two-day schedule. This is point-in-time UI evidence only; it
 does not replace the automated audit below or prove later `deleted_at` state.
 
 Create a PlanetScale service token with only `read_backups` access to the
-`cinaauth` database, expose it to the operator process as
+`cinaseek/cinaauth` database, expose it to the operator process as
 `PLANETSCALE_SERVICE_TOKEN_ID` and `PLANETSCALE_SERVICE_TOKEN`, then run:
 
 ```powershell
@@ -304,7 +304,10 @@ pnpm --dir workers/auth-api run check:planetscale-backups
 The script reads the production policies and every successful `main` backup,
 including deleted records. It fails if a policy exceeds two days, the included
 12-hour policy is absent, a live backup is protected, or an expiry timestamp is
-missing. It never prints the service token.
+missing, or the actual backup expiry exceeds two days from its start. Manual
+backups must explicitly set `retention_value: 2` and `retention_unit: "day"`
+through the PlanetScale Create backup API; the CLI's default can retain them
+longer than the included schedule. It never prints the service token.
 
 After a user's signed deletion-receipt deadline has passed, run the same check
 with the downloaded JSON receipt:
@@ -1043,8 +1046,10 @@ sixth request in a 60-second window must return HTTP 429 and `X-Retry-After`.
 `.github/workflows/deploy-cloudflare.yml` expects these GitHub secrets:
 
 - `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
-- `PLANETSCALE_SERVICE_TOKEN_ID` and `PLANETSCALE_SERVICE_TOKEN`, scoped to
-  `cinagroup/cinaauth` with only `read_backups`
+- `PLANETSCALE_CINASEEK_SERVICE_TOKEN_ID` and
+  `PLANETSCALE_CINASEEK_SERVICE_TOKEN`, scoped to `cinaseek/cinaauth` with only
+  `read_backups`; workflows map these to the audit script's
+  `PLANETSCALE_SERVICE_TOKEN_ID` and `PLANETSCALE_SERVICE_TOKEN` process variables
 - `CINAAUTH_HYPERDRIVE_ID`
 - `CINAAUTH_MIGRATION_TOKEN`; among the four core Worker secrets discussed in
   this section, this is the only value supplied by the GitHub `production`
@@ -1078,6 +1083,13 @@ manually from the default branch and provide all four inputs:
   selected for rollback
 - `operator_attestation`: exactly `DEPLOY CINAAUTH PRODUCTION`, authorizing the
   Cloudflare writes and the production migration POST in this run
+
+The [2026-10-15 restore rehearsal evidence](evidence/2026-10-15-restore-rehearsal.json)
+records the isolated physical restore and 1.7.8 migration/readiness checks,
+expected outbox backfill, repeated apply, and completed temporary-resource
+cleanup. It also records a separate atomic refresh rehearsal with all 98
+business tables and their permissions verified. This evidence does not replace
+the final source write fence, final snapshot comparison, or production acceptance.
 
 The `authorize-production` job runs before any Cloudflare write. It fails closed
 unless the inputs are present, the production environment has released the job,

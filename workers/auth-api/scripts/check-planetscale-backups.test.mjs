@@ -53,6 +53,26 @@ test("fails closed for protected or over-retained production backups", () => {
 	assert.match(result.failures.join("\n"), /retention/);
 });
 
+/**
+ * @see https://planetscale.com/docs/api/reference/create_backup
+ */
+test("rejects a manual backup whose actual expiry exceeds the retention limit", () => {
+	const result = evaluateBackupEvidence({
+		backups: [
+			{
+				...activeBackup,
+				backup_policy: null,
+				expires_at: "2026-09-09T00:00:00.000Z",
+			},
+		],
+		policies: [includedPolicy],
+		maximumRetentionDays: 2,
+		now: new Date("2026-08-10T00:00:00.000Z"),
+	});
+	assert.equal(result.status, "failed");
+	assert.match(result.failures.join("\n"), /expiry.*2-day retention/);
+});
+
 test("confirms control-plane deletion after the signed receipt deadline", () => {
 	const receipt = {
 		issuedAt: "2026-08-09T12:00:00.000Z",

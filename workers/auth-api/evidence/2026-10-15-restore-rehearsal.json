@@ -1,0 +1,565 @@
+{
+  "schemaVersion": 1,
+  "outcome": "current-runtime-restore-rehearsal-passed",
+  "candidateCommit": "ced3ec31dde81bc47bba3cff653c271286bf6d7c",
+  "frameworkVersion": "1.7.8",
+  "bundleSHA256": "0f60209ef91b369ac0bc995c2f419defd8bfb6ae40ba3e31e9268fe4891dbace",
+  "backup": {
+    "organization": "cinaseek",
+    "database": "cinaauth",
+    "branch": "main",
+    "id": "udg5i4wx599c",
+    "stateAtRestore": "success",
+    "retentionCorrectionPending": false,
+    "deletedAfterRehearsal": true,
+    "replacementTwoDayBackupId": "4e30rrc2xsst"
+  },
+  "restoredBranch": {
+    "id": "es6p8m8awiiq",
+    "name": "cinaauth-rehearsal-20261015-0739-2f3e",
+    "state": "ready",
+    "ready": true,
+    "deletedAfterRehearsal": true
+  },
+  "temporaryWorker": {
+    "name": "cinaauth-rehearsal-20261015-0739-2f3e",
+    "initialVersion": "6ecee3b7-879a-4cc9-a812-487dc8fc7c03",
+    "finalVersion": "9fdedfad-a0d9-49ec-a9c1-7342d3f37527"
+  },
+  "isolation": {
+    "separatePhysicalRestoreBranch": true,
+    "freshTemporaryHyperdrive": "4459b5974bc047e4a30759e9ac4fe65a",
+    "freshD1R2QueuesStoreRecordsAndSecrets": true,
+    "denyOnlyExternalServices": true,
+    "noProductionSecretsReused": true,
+    "noProductionBindingsOrRoutes": true,
+    "queueConsumers": 0,
+    "cronTriggers": 0,
+    "onlyMigrationAndReadinessEndpointsExposed": true
+  },
+  "restoredData": {
+    "tables": 98,
+    "rows": 930,
+    "sequenceCount": 1,
+    "exactNativeCopyFingerprintMatch": true
+  },
+  "migrationDataComparison": {
+    "tablesBefore": 98,
+    "tablesAfter": 98,
+    "rowsBefore": 930,
+    "rowsAfter": 937,
+    "sequencesMatch": false,
+    "changedTables": [
+      "public.cinaauth_cinatoken_identity_clock (aggregate_key, last_occurred_at)",
+      "public.cinaauth_cinatoken_identity_outbox (id, event_id, event_type, aggregate_key, payload, occurred_at, available_at, locked_until, lock_token, attempts, last_error, queued_at, created_at, dedupe_key, replay_count)"
+    ],
+    "dataExactMatch": false,
+    "businessTablesUnchanged": 96,
+    "expectedInvariantBackfill": {
+      "outboxRowsAdded": 7,
+      "clockRowsUnchangedCount": 7,
+      "outboxSequenceBefore": 105,
+      "outboxSequenceAfter": 112
+    },
+    "unexpectedChangedTables": [],
+    "verifiedExpectedChanges": true
+  },
+  "repeatedApplyComparison": {
+    "verified": true,
+    "outboxRows": 7,
+    "outboxRowsAndHashUnchanged": true,
+    "clockRows": 7,
+    "clockValuesAdvanceAsImplemented": true,
+    "sequenceBefore": 112,
+    "sequenceAfter": 119,
+    "expectedSequenceGap": 7,
+    "source": "organization-identity-outbox-invariant.ts updates logical clock and calls nextval before ON CONFLICT DO NOTHING"
+  },
+  "bindingPatchCanary": {
+    "all37BindingsPreserved": true,
+    "durableObjectNamespacePreserved": true,
+    "explicitExistingExportsRequired": true,
+    "maintenanceReadinessStatus": 503,
+    "liveReadinessStatus": 200
+  },
+  "probes": [
+    {
+      "name": "missing-ready",
+      "method": "GET",
+      "path": "/api/ready",
+      "status": 403,
+      "recordedAt": "2026-10-15T08:13:34.174840+00:00",
+      "success": null,
+      "pendingCount": null,
+      "invariants": null,
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "wrong-ready",
+      "method": "GET",
+      "path": "/api/ready",
+      "status": 403,
+      "recordedAt": "2026-10-15T08:13:35.946689+00:00",
+      "success": null,
+      "pendingCount": null,
+      "invariants": null,
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "missing-migrate",
+      "method": "GET",
+      "path": "/api/migrate",
+      "status": 403,
+      "recordedAt": "2026-10-15T08:13:37.609125+00:00",
+      "success": null,
+      "pendingCount": null,
+      "invariants": null,
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "wrong-migrate-post",
+      "method": "POST",
+      "path": "/api/migrate",
+      "status": 403,
+      "recordedAt": "2026-10-15T08:13:39.609900+00:00",
+      "success": null,
+      "pendingCount": null,
+      "invariants": null,
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "blocked-auth",
+      "method": "POST",
+      "path": "/api/auth/sign-in/email",
+      "status": 403,
+      "recordedAt": "2026-10-15T08:13:41.041998+00:00",
+      "success": null,
+      "pendingCount": null,
+      "invariants": null,
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "preview-base-before",
+      "method": "GET",
+      "path": "/api/migrate",
+      "status": 200,
+      "recordedAt": "2026-10-15T08:13:43.480462+00:00",
+      "success": true,
+      "pendingCount": 0,
+      "invariants": {
+        "ok": true,
+        "required": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "installed": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "missing": []
+      },
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "preview-advanced-before",
+      "method": "GET",
+      "path": "/api/migrate?feature=organization-advanced",
+      "status": 200,
+      "recordedAt": "2026-10-15T08:13:46.732428+00:00",
+      "success": true,
+      "pendingCount": 0,
+      "invariants": {
+        "ok": true,
+        "required": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "installed": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "missing": []
+      },
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "apply-advanced",
+      "method": "POST",
+      "path": "/api/migrate?feature=organization-advanced",
+      "status": 200,
+      "recordedAt": "2026-10-15T08:15:28.234499+00:00",
+      "success": true,
+      "pendingCount": 0,
+      "invariants": {
+        "ok": true,
+        "required": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "installed": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "missing": []
+      },
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "preview-base-after",
+      "method": "GET",
+      "path": "/api/migrate",
+      "status": 200,
+      "recordedAt": "2026-10-15T08:19:20.130723+00:00",
+      "success": true,
+      "pendingCount": 0,
+      "invariants": {
+        "ok": true,
+        "required": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "installed": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "missing": []
+      },
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "preview-advanced-after",
+      "method": "GET",
+      "path": "/api/migrate?feature=organization-advanced",
+      "status": 200,
+      "recordedAt": "2026-10-15T08:16:06.488126+00:00",
+      "success": true,
+      "pendingCount": 0,
+      "invariants": {
+        "ok": true,
+        "required": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "installed": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "missing": []
+      },
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "apply-idempotent",
+      "method": "POST",
+      "path": "/api/migrate?feature=organization-advanced",
+      "status": 200,
+      "recordedAt": "2026-10-15T08:19:08.579554+00:00",
+      "success": true,
+      "pendingCount": 0,
+      "invariants": {
+        "ok": true,
+        "required": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "installed": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "missing": []
+      },
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    },
+    {
+      "name": "ready-maintenance",
+      "method": "GET",
+      "path": "/api/ready",
+      "status": 503,
+      "recordedAt": "2026-10-15T08:18:25.560509+00:00",
+      "success": false,
+      "pendingCount": null,
+      "invariants": null,
+      "version": {
+        "id": "efa6ffe3-2b4e-4212-8c21-15a170cdee35",
+        "tag": "",
+        "timestamp": "2026-10-15T08:17:51.717408Z"
+      },
+      "runtimeConfig": {
+        "ok": true,
+        "issues": []
+      },
+      "secretsStore": {
+        "active": true,
+        "source": "secrets-store-v2",
+        "ok": true,
+        "issues": []
+      },
+      "database": {
+        "ok": true,
+        "cutoverMarker": true,
+        "requiredTables": [
+          "user",
+          "session",
+          "account",
+          "verification",
+          "agentHost",
+          "agent",
+          "agentCapabilityGrant",
+          "approvalRequest",
+          "cinaauth_cutover_history"
+        ],
+        "presentTables": [
+          "account",
+          "agent",
+          "agentCapabilityGrant",
+          "agentHost",
+          "approvalRequest",
+          "cinaauth_cutover_history",
+          "member",
+          "organization",
+          "scimProvider",
+          "session",
+          "ssoProvider",
+          "user",
+          "verification"
+        ],
+        "missingTables": [],
+        "invariants": {
+          "ok": true,
+          "required": [
+            "super-admin-governance-v1",
+            "provider-namespace-registry-v1",
+            "social-sign-in-config-v1",
+            "cinatoken-organization-identity-outbox-v1"
+          ],
+          "installed": [
+            "super-admin-governance-v1",
+            "provider-namespace-registry-v1",
+            "social-sign-in-config-v1",
+            "cinatoken-organization-identity-outbox-v1"
+          ],
+          "missing": []
+        }
+      },
+      "cutover": {
+        "state": "maintenance"
+      }
+    },
+    {
+      "name": "ready-final",
+      "method": "GET",
+      "path": "/api/ready",
+      "status": 200,
+      "recordedAt": "2026-10-15T08:22:26.537007+00:00",
+      "success": true,
+      "pendingCount": null,
+      "invariants": null,
+      "version": {
+        "id": "9fdedfad-a0d9-49ec-a9c1-7342d3f37527",
+        "tag": "",
+        "timestamp": "2026-10-15T08:18:46.772973Z"
+      },
+      "runtimeConfig": {
+        "ok": true,
+        "issues": []
+      },
+      "secretsStore": {
+        "active": true,
+        "source": "secrets-store-v2",
+        "ok": true,
+        "issues": []
+      },
+      "database": {
+        "ok": true,
+        "cutoverMarker": true,
+        "requiredTables": [
+          "user",
+          "session",
+          "account",
+          "verification",
+          "agentHost",
+          "agent",
+          "agentCapabilityGrant",
+          "approvalRequest",
+          "cinaauth_cutover_history"
+        ],
+        "presentTables": [
+          "account",
+          "agent",
+          "agentCapabilityGrant",
+          "agentHost",
+          "approvalRequest",
+          "cinaauth_cutover_history",
+          "member",
+          "organization",
+          "scimProvider",
+          "session",
+          "ssoProvider",
+          "user",
+          "verification"
+        ],
+        "missingTables": [],
+        "invariants": {
+          "ok": true,
+          "required": [
+            "super-admin-governance-v1",
+            "provider-namespace-registry-v1",
+            "social-sign-in-config-v1",
+            "cinatoken-organization-identity-outbox-v1"
+          ],
+          "installed": [
+            "super-admin-governance-v1",
+            "provider-namespace-registry-v1",
+            "social-sign-in-config-v1",
+            "cinatoken-organization-identity-outbox-v1"
+          ],
+          "missing": []
+        }
+      },
+      "cutover": {
+        "state": "live"
+      }
+    },
+    {
+      "name": "advanced-final",
+      "method": "GET",
+      "path": "/api/migrate?feature=organization-advanced",
+      "status": 200,
+      "recordedAt": "2026-10-15T08:22:29.318705+00:00",
+      "success": true,
+      "pendingCount": 0,
+      "invariants": {
+        "ok": true,
+        "required": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "installed": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "missing": []
+      },
+      "version": null,
+      "runtimeConfig": null,
+      "secretsStore": null,
+      "database": null,
+      "cutover": null
+    }
+  ],
+  "observedRetries": [
+    {
+      "operation": "first migration apply",
+      "status": 500,
+      "context": "A native pg_dump was still running; apply succeeded after the dump completed. Lock contention is a possibility, not an established cause."
+    },
+    {
+      "operation": "post-canary read-only preview",
+      "client": "response read timeout",
+      "remoteTail": "HTTP 200, no runtime exceptions",
+      "retry": "Final ready and advanced preview both returned 200."
+    }
+  ],
+  "scopeLimits": [
+    "Service interfaces were deny-only stubs.",
+    "D1 and R2 were empty structural bindings.",
+    "Optional providers, full login and downstream service acceptance were outside this rehearsal.",
+    "Initial restore ownership was reassigned to a fresh temporary API role."
+  ],
+  "cleanup": {
+    "state": "complete",
+    "completedAt": "2026-10-15T09:11:36.579087+00:00",
+    "runtimeAndDenyWorkersDeleted": true,
+    "freshDurableObjectNamespaceDeleted": true,
+    "temporaryHyperdriveD1QueuesR2AndStoreRecordsDeleted": true,
+    "physicalRestoreBranchAndTemporaryRolesDeleted": true,
+    "sharedSecretsStorePreserved": true,
+    "productionCutoverPerformedByRehearsal": false
+  },
+  "atomicRefreshRehearsal": {
+    "separateLogicalDatabaseOnNewTarget": true,
+    "productionTargetBusinessDatabaseUntouched": true,
+    "fullNativeCopyRefreshCommitted": true,
+    "transactionSeconds": 104.109,
+    "tables": 98,
+    "rows": 930,
+    "sequenceCount": 1,
+    "exactNativeCopyFingerprintMatch": true,
+    "businessCatalogComparison": "pass",
+    "businessCatalogDifferences": 0,
+    "databaseIdentityAndDatabaseACLExcludedForIsolatedLogicalDatabase": true,
+    "temporaryDatabaseDeleted": true
+  }
+}

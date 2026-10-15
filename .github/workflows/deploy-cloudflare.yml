@@ -87,8 +87,8 @@ jobs:
 
       - name: Validate PlanetScale audit credentials
         env:
-          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_ID }}
-          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN }}
+          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_CINASEEK_SERVICE_TOKEN_ID }}
+          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_CINASEEK_SERVICE_TOKEN }}
         run: |
           test -n "$PLANETSCALE_SERVICE_TOKEN_ID" || (echo "Missing PLANETSCALE_SERVICE_TOKEN_ID" && exit 1)
           test -n "$PLANETSCALE_SERVICE_TOKEN" || (echo "Missing PLANETSCALE_SERVICE_TOKEN" && exit 1)
@@ -96,8 +96,8 @@ jobs:
       - name: Audit PlanetScale production backups
         env:
           BACKUP_REFERENCE: ${{ inputs.backup_reference }}
-          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_ID }}
-          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN }}
+          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_CINASEEK_SERVICE_TOKEN_ID }}
+          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_CINASEEK_SERVICE_TOKEN }}
         run: |
           report_file="$RUNNER_TEMP/planetscale-backups.json"
           node workers/auth-api/scripts/check-planetscale-backups.mjs > "$report_file"

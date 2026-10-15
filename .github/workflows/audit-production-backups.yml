@@ -23,6 +23,6 @@ jobs:
 
       - name: Audit active production backups
         env:
-          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_SERVICE_TOKEN_ID }}
-          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_SERVICE_TOKEN }}
+          PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_CINASEEK_SERVICE_TOKEN_ID }}
+          PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_CINASEEK_SERVICE_TOKEN }}
         run: node workers/auth-api/scripts/check-planetscale-backups.mjs
