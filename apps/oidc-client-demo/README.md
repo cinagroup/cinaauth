@@ -1,10 +1,10 @@
 # CinaSeek OIDC Lab
 
-Production acceptance client for the CinaSeek OpenID Connect provider. It is a browser-based public client deployed independently at `https://oidc-demo.cinaseek.ai`.
+Production acceptance client for the CinaSeek OpenID Connect provider. It is a browser-based public client deployed independently at `https://oidc-demo.cinaseek.si`.
 
 ## Protocol profile
 
-- OIDC Discovery from `https://auth.cinaseek.ai/.well-known/openid-configuration`
+- OIDC Discovery from `https://auth.cinaseek.si/.well-known/openid-configuration`
 - Authorization Code flow with mandatory PKCE S256
 - Public client authentication (`token_endpoint_auth_method=none`)
 - Per-request cryptographic `state`, `nonce`, and code verifier
@@ -26,7 +26,7 @@ pnpm --dir apps/oidc-client-demo typecheck
 pnpm --dir apps/oidc-client-demo test
 pnpm --dir apps/oidc-client-demo build
 pnpm --dir apps/oidc-client-demo deploy
-CINAAUTH_OIDC_DEMO_TARGET_ORIGIN=https://oidc-demo.cinaseek.ai pnpm --dir apps/oidc-client-demo check:production
+CINAAUTH_OIDC_DEMO_TARGET_ORIGIN=https://oidc-demo.cinaseek.si pnpm --dir apps/oidc-client-demo check:production
 ```
 
 Deploy the Auth Worker before the SPA when the client contract or CORS allow-list changes.

@@ -23,10 +23,10 @@ const createStorage = (): Storage => {
 };
 
 const config: OidcClientConfig = {
-	issuer: "https://auth.cinaseek.ai",
+	issuer: "https://auth.cinaseek.si",
 	clientId: "cinaauth-oidc-demo",
-	redirectUri: "https://oidc-demo.cinaseek.ai/callback",
-	postLogoutRedirectUri: "https://oidc-demo.cinaseek.ai",
+	redirectUri: "https://oidc-demo.cinaseek.si/callback",
+	postLogoutRedirectUri: "https://oidc-demo.cinaseek.si",
 	scope: "openid profile email",
 };
 

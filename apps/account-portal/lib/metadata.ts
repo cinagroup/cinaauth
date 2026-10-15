@@ -6,8 +6,8 @@ export function createMetadata(override: Metadata): Metadata {
 		openGraph: {
 			title: override.title ?? undefined,
 			description: override.description ?? undefined,
-			url: "https://accounts.cinaseek.ai",
-			images: "https://accounts.cinaseek.ai/og.png",
+			url: "https://accounts.cinaseek.si",
+			images: "https://accounts.cinaseek.si/og.png",
 			siteName: "CinaSeek",
 			...override.openGraph,
 		},
@@ -16,7 +16,7 @@ export function createMetadata(override: Metadata): Metadata {
 			creator: "@cinagroup",
 			title: override.title ?? undefined,
 			description: override.description ?? undefined,
-			images: "https://accounts.cinaseek.ai/og.png",
+			images: "https://accounts.cinaseek.si/og.png",
 			...override.twitter,
 		},
 	};
@@ -30,9 +30,9 @@ export const baseUrl =
 				try {
 					return new URL(
 						process.env.NEXT_PUBLIC_CINAAUTH_API_URL ||
-							"https://accounts.cinaseek.ai",
+							"https://accounts.cinaseek.si",
 					);
 				} catch {
-					return new URL("https://accounts.cinaseek.ai");
+					return new URL("https://accounts.cinaseek.si");
 				}
 			})();

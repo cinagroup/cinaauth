@@ -5,7 +5,7 @@ import {
 	parseProductionGenericOAuthConfig,
 } from "../src/oauth-config";
 
-const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
+const ACCOUNT_ORIGIN = "https://accounts.cinaseek.si";
 
 const provider = {
 	providerId: "github",
@@ -55,7 +55,7 @@ describe("production Generic OAuth configuration", () => {
 			"cross-origin callback",
 			{
 				...provider,
-				redirectURI: "https://auth.cinaseek.ai/api/auth/oauth2/callback/github",
+				redirectURI: "https://auth.cinaseek.si/api/auth/oauth2/callback/github",
 			},
 		],
 		["insecure discovery", { ...provider, discoveryUrl: "http://idp.test" }],
@@ -87,7 +87,7 @@ describe("production Generic OAuth configuration", () => {
 	});
 
 	it("pins provider callbacks to the configured Accounts origin", () => {
-		const stagingOrigin = "https://accounts-siwe-staging.cinaseek.ai";
+		const stagingOrigin = "https://accounts-siwe-staging.cinaseek.si";
 		const stagingProvider = {
 			...provider,
 			redirectURI: genericOAuthRedirectURI("github", stagingOrigin),

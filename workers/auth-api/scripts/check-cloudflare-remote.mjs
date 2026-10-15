@@ -121,7 +121,7 @@ const fail = (message) => failures.push(message);
 const warn = (message) => warnings.push(message);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const getAuthOrigin = () =>
-	new URL(config.vars?.CINAAUTH_URL || "https://auth.cinaseek.ai");
+	new URL(config.vars?.CINAAUTH_URL || "https://auth.cinaseek.si");
 
 const requireEnv = () => {
 	if (!token) {

@@ -7,23 +7,23 @@ import {
 
 const productionProfile = {
 	environment: "production",
-	applicationOrigin: "https://oidc-demo.cinaseek.ai",
-	issuer: "https://auth.cinaseek.ai",
-	accountOrigin: "https://accounts.cinaseek.ai",
+	applicationOrigin: "https://oidc-demo.cinaseek.si",
+	issuer: "https://auth.cinaseek.si",
+	accountOrigin: "https://accounts.cinaseek.si",
 	clientId: "cinaauth-oidc-demo",
 };
 
 describe("OIDC production acceptance profile", () => {
 	it("requires an explicit canonical target origin", () => {
 		assert.equal(
-			resolveProductionTargetOrigin("https://oidc-demo.cinaseek.ai"),
-			"https://oidc-demo.cinaseek.ai",
+			resolveProductionTargetOrigin("https://oidc-demo.cinaseek.si"),
+			"https://oidc-demo.cinaseek.si",
 		);
 		for (const value of [
 			undefined,
-			"http://oidc-demo.cinaseek.ai",
-			"https://oidc-demo.cinaseek.ai/",
-			"https://OIDC-DEMO.cinaseek.ai",
+			"http://oidc-demo.cinaseek.si",
+			"https://oidc-demo.cinaseek.si/",
+			"https://OIDC-DEMO.cinaseek.si",
 		]) {
 			assert.throws(
 				() => resolveProductionTargetOrigin(value),
@@ -40,8 +40,8 @@ describe("OIDC production acceptance profile", () => {
 			}),
 			{
 				...productionProfile,
-				redirectUri: "https://oidc-demo.cinaseek.ai/callback",
-				postLogoutRedirectUri: "https://oidc-demo.cinaseek.ai",
+				redirectUri: "https://oidc-demo.cinaseek.si/callback",
+				postLogoutRedirectUri: "https://oidc-demo.cinaseek.si",
 				scope: "openid profile email",
 			},
 		);
@@ -51,7 +51,7 @@ describe("OIDC production acceptance profile", () => {
 		assert.throws(
 			() =>
 				resolveProductionAcceptanceProfile({
-					targetOrigin: "https://oidc-demo.cinaseek.ai",
+					targetOrigin: "https://oidc-demo.cinaseek.si",
 					profileInput: {
 						environment: "staging",
 						applicationOrigin: "https://oidc-demo-staging.example.com",

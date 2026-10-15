@@ -1,6 +1,6 @@
 # CinaAuth 完整功能设计
 
-> 文档状态：基于当前仓库与 `auth.cinaseek.ai` 生产部署的产品蓝图。
+> 文档状态：基于当前仓库的产品蓝图，计划生产域名为 `auth.cinaseek.si`。第 12 节的历史上线记录保留当时的 `.ai` 域名；新域名上线需单独完成恢复演练与部署验收。
 >
 > 设计原则：保持 CinaAuth 品牌、域名、产品体验与运营体系自主；兼容 OAuth 2.0、OpenID Connect、WebAuthn、SAML 2.0、SCIM 2.0 等开放标准；明确区分“后端已实现”“需要配置”“需要产品界面”和“规划能力”。
 
@@ -9,7 +9,7 @@
 CinaAuth 不应只被定义为一个登录 SDK，也不应只是一组 Better Auth 上游能力的品牌替换。完整产品由四部分组成：
 
 1. **身份框架**：供 TypeScript 应用自托管的核心库、插件、适配器、客户端 SDK 和 CLI。
-2. **托管身份服务**：运行在 `auth.cinaseek.ai` 的统一认证 API、OAuth/OIDC Issuer 和企业身份网关。
+2. **托管身份服务**：运行在 `auth.cinaseek.si` 的统一认证 API、OAuth/OIDC Issuer 和企业身份网关。
 3. **身份管理产品**：面向终端用户、组织管理员、开发者和安全管理员的完整控制台。
 4. **运营安全平台**：限流、审计、通知、迁移、健康检查、保留策略和事件响应能力。
 
@@ -39,7 +39,7 @@ flowchart LR
   U["终端用户"] --> UX["账户与登录中心"]
   OA["组织管理员"] --> CONSOLE["组织与开发者控制台"]
   SA["安全管理员"] --> ADMIN["安全运营控制台"]
-  APP["Web / Mobile / Desktop / CLI / Agent"] --> API["auth.cinaseek.ai"]
+  APP["Web / Mobile / Desktop / CLI / Agent"] --> API["auth.cinaseek.si"]
   UX --> API
   CONSOLE --> API
   ADMIN --> API
@@ -247,7 +247,7 @@ flowchart LR
 
 ### 5.1 托管登录中心
 
-建议产品域名为 `accounts.cinaseek.ai`，`auth.cinaseek.ai` 保持纯 API/Issuer；如果继续复用现有域名，也应保持页面与 API 路由清晰分层。
+建议产品域名为 `accounts.cinaseek.si`，`auth.cinaseek.si` 保持纯 API/Issuer；如果继续复用现有域名，也应保持页面与 API 路由清晰分层。
 
 ```text
 /sign-in                 登录方式选择
@@ -398,7 +398,7 @@ flowchart LR
 
 ### 9.1 当前生产基线
 
-- `auth.cinaseek.ai` 使用显式可信 Origin，不使用通配子域。
+- `auth.cinaseek.si` 使用显式可信 Origin，不使用通配子域。
 - 登录路径默认每个限流键 60 秒最多 5 次；其他认证请求默认 60 秒最多 300 次。
 - OAuth Token、Authorize、Introspect、Revoke、Register 和 UserInfo 有独立限流。
 - Durable Objects 把限流键分散到 256 个稳定分片并串行化计数变更。
@@ -425,7 +425,7 @@ flowchart LR
 
 ### 10.1 当前部署
 
-- Auth Worker：`cinaauth-api`，自定义域名 `auth.cinaseek.ai`。
+- Auth Worker：`cinaauth-api`，自定义域名 `auth.cinaseek.si`。
 - 数据库：PlanetScale PostgreSQL，经 Hyperdrive `374f6da17aff4c968cadd8d6aa454c22`。
 - Hyperdrive 上游连接上限：15；Worker 本地 Pool 最大 5，并快速释放空闲连接。
 - 限流：`RateLimitDurableObject`。

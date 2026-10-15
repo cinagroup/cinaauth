@@ -204,7 +204,7 @@ describe("enterprise connection mutations", () => {
 				certificate: "",
 				idpMetadataXml: "<EntityDescriptor />",
 				callbackUrl:
-					"https://auth.cinaseek.ai/api/auth/sso/saml2/sp/acs/acme-saml",
+					"https://auth.cinaseek.si/api/auth/sso/saml2/sp/acs/acme-saml",
 				idpInitiatedCallbackUrl: "/dashboard",
 				audience: "",
 				wantAssertionsSigned: true,
@@ -221,7 +221,7 @@ describe("enterprise connection mutations", () => {
 					entryPoint: "",
 					cert: "",
 					callbackUrl:
-						"https://auth.cinaseek.ai/api/auth/sso/saml2/sp/acs/acme-saml",
+						"https://auth.cinaseek.si/api/auth/sso/saml2/sp/acs/acme-saml",
 					idpInitiatedCallbackUrl: "/dashboard",
 					idpMetadata: { metadata: "<EntityDescriptor />" },
 					spMetadata: {},
@@ -288,7 +288,7 @@ describe("enterprise connection mutations", () => {
 				certificate: "",
 				idpMetadataXml: "",
 				callbackUrl:
-					"https://auth.cinaseek.ai/api/auth/sso/saml2/sp/acs/acme-saml",
+					"https://auth.cinaseek.si/api/auth/sso/saml2/sp/acs/acme-saml",
 				idpInitiatedCallbackUrl: "/dashboard",
 				audience: "urn:acme:sp",
 				wantAssertionsSigned: true,
@@ -303,7 +303,7 @@ describe("enterprise connection mutations", () => {
 				samlConfig: {
 					entryPoint: "https://idp.acme.example/sso",
 					callbackUrl:
-						"https://auth.cinaseek.ai/api/auth/sso/saml2/sp/acs/acme-saml",
+						"https://auth.cinaseek.si/api/auth/sso/saml2/sp/acs/acme-saml",
 					idpInitiatedCallbackUrl: "/dashboard",
 					audience: "urn:acme:sp",
 					wantAssertionsSigned: true,

@@ -52,7 +52,7 @@ const createSerialDatabaseDouble = (
 };
 
 const request = (path: string, method = "POST") =>
-	new Request(`https://auth.cinaseek.ai${path}`, { method });
+	new Request(`https://auth.cinaseek.si${path}`, { method });
 
 const getAuthenticatedAdminSession = async () => ({
 	user: { id: "admin", role: "super_admin" },
@@ -61,7 +61,7 @@ const getAuthenticatedAdminSession = async () => ({
 const scimDeleteRequest = (
 	authorization: string | null = `Bearer ${btoa("secret:provider")}`,
 ) =>
-	new Request("https://auth.cinaseek.ai/api/auth/scim/v2/Users/user-id", {
+	new Request("https://auth.cinaseek.si/api/auth/scim/v2/Users/user-id", {
 		method: "DELETE",
 		headers: {
 			...(authorization ? { Authorization: authorization } : {}),

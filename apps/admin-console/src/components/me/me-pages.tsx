@@ -124,7 +124,7 @@ export function MeAreaPage({ sectionKey }: { sectionKey: MeSectionKey }) {
 				<CardContent className="flex flex-col gap-4 border-t border-hairline pt-4 sm:flex-row sm:items-center sm:justify-between">
 					<div className="min-w-0">
 						<p className="text-[13px] font-medium leading-5 text-ink">
-							accounts.cinaseek.ai
+							accounts.cinaseek.si
 						</p>
 						<p className="mt-0.5 text-[12px] leading-4 text-mute">
 							{t("me.handoffSafety")}

@@ -361,7 +361,7 @@ describe("account build readiness target", () => {
 			() =>
 				resolveAccountBuildReadinessTarget({
 					targetOrigin: "https://accounts-staging.example.com",
-					readinessUrl: "https://accounts.cinaseek.ai/api/build-readiness",
+					readinessUrl: "https://accounts.cinaseek.si/api/build-readiness",
 				}),
 			/deployment target/,
 		);

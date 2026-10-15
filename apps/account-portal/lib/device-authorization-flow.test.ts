@@ -55,7 +55,7 @@ describe("Accounts device authorization flow", () => {
 		});
 		const path = new URL(
 			buildDeviceFlowPath("/device/approve", params, "TEST-5678"),
-			"https://accounts.cinaseek.ai",
+			"https://accounts.cinaseek.si",
 		);
 
 		expect(path.pathname).toBe("/device/approve");

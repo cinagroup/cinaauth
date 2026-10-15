@@ -10,15 +10,15 @@ import {
 } from "../src/origin-config";
 
 const productionEnv = {
-	CINAAUTH_URL: "https://auth.cinaseek.ai",
-	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.ai",
-	CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.ai",
+	CINAAUTH_URL: "https://auth.cinaseek.si",
+	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.si",
+	CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.si",
 	CINAAUTH_CINATOKEN_ORIGIN: "https://cinatoken.com",
 	CINAAUTH_CINATOKEN_CLIENT_ID: "cinatoken-admin",
-	CINAAUTH_PASSKEY_RP_ID: "cinaseek.ai",
+	CINAAUTH_PASSKEY_RP_ID: "cinaseek.si",
 	CINAAUTH_LEGACY_ACCOUNT_ORIGIN: "https://demo-auth.cinagroup.com",
 	CINAAUTH_OIDC_DEMO_ENVIRONMENT: "production",
-	CINAAUTH_OIDC_DEMO_ORIGIN: "https://oidc-demo.cinaseek.ai",
+	CINAAUTH_OIDC_DEMO_ORIGIN: "https://oidc-demo.cinaseek.si",
 	CINAAUTH_OIDC_DEMO_CLIENT_ID: OIDC_DEMO_CLIENT_ID,
 };
 
@@ -27,10 +27,10 @@ describe("Auth Worker origin configuration", () => {
 		expect(parseAuthOriginConfig(productionEnv)).toEqual({
 			ok: true,
 			value: {
-				authOrigin: "https://auth.cinaseek.ai",
-				accountOrigin: "https://accounts.cinaseek.ai",
-				adminOrigin: "https://admin.cinaseek.ai",
-				passkeyRpId: "cinaseek.ai",
+				authOrigin: "https://auth.cinaseek.si",
+				accountOrigin: "https://accounts.cinaseek.si",
+				adminOrigin: "https://admin.cinaseek.si",
+				passkeyRpId: "cinaseek.si",
 				legacyAccountOrigin: "https://demo-auth.cinagroup.com",
 				oidcDemoProfile: resolveOidcDemoProfile(
 					OIDC_DEMO_PRODUCTION_PROFILE_INPUT,
@@ -40,19 +40,19 @@ describe("Auth Worker origin configuration", () => {
 					clientId: "cinatoken-admin",
 				},
 				trustedOrigins: [
-					"https://auth.cinaseek.ai",
-					"https://accounts.cinaseek.ai",
-					"https://admin.cinaseek.ai",
+					"https://auth.cinaseek.si",
+					"https://accounts.cinaseek.si",
+					"https://admin.cinaseek.si",
 					"https://demo-auth.cinagroup.com",
-					"https://oidc-demo.cinaseek.ai",
+					"https://oidc-demo.cinaseek.si",
 					"https://cinatoken.com",
 				],
 				trustedHostnames: [
-					"auth.cinaseek.ai",
-					"accounts.cinaseek.ai",
-					"admin.cinaseek.ai",
+					"auth.cinaseek.si",
+					"accounts.cinaseek.si",
+					"admin.cinaseek.si",
 					"demo-auth.cinagroup.com",
-					"oidc-demo.cinaseek.ai",
+					"oidc-demo.cinaseek.si",
 					"cinatoken.com",
 				],
 			},
@@ -61,10 +61,10 @@ describe("Auth Worker origin configuration", () => {
 
 	it("keeps omitted optional origins disabled in staging", () => {
 		const result = parseAuthOriginConfig({
-			CINAAUTH_URL: "https://auth-siwe-staging.cinaseek.ai",
-			CINAAUTH_ACCOUNT_ORIGIN: "https://accounts-siwe-staging.cinaseek.ai",
-			CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.ai",
-			CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.ai",
+			CINAAUTH_URL: "https://auth-siwe-staging.cinaseek.si",
+			CINAAUTH_ACCOUNT_ORIGIN: "https://accounts-siwe-staging.cinaseek.si",
+			CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.si",
+			CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.si",
 		});
 
 		expect(result).toMatchObject({
@@ -73,9 +73,9 @@ describe("Auth Worker origin configuration", () => {
 				legacyAccountOrigin: null,
 				oidcDemoProfile: null,
 				trustedOrigins: [
-					"https://auth-siwe-staging.cinaseek.ai",
-					"https://accounts-siwe-staging.cinaseek.ai",
-					"https://admin-siwe-staging.cinaseek.ai",
+					"https://auth-siwe-staging.cinaseek.si",
+					"https://accounts-siwe-staging.cinaseek.si",
+					"https://admin-siwe-staging.cinaseek.si",
 				],
 			},
 		});
@@ -109,37 +109,37 @@ describe("Auth Worker origin configuration", () => {
 		],
 		[
 			"non-canonical Auth origin",
-			{ CINAAUTH_URL: "https://auth.cinaseek.ai/" },
+			{ CINAAUTH_URL: "https://auth.cinaseek.si/" },
 			"invalid_cinaauth_url",
 		],
 		[
 			"Auth origin with credentials",
-			{ CINAAUTH_URL: "https://user:secret@auth.cinaseek.ai" },
+			{ CINAAUTH_URL: "https://user:secret@auth.cinaseek.si" },
 			"invalid_cinaauth_url",
 		],
 		[
 			"non-canonical uppercase Auth origin",
-			{ CINAAUTH_URL: "https://AUTH.cinaseek.ai" },
+			{ CINAAUTH_URL: "https://AUTH.cinaseek.si" },
 			"invalid_cinaauth_url",
 		],
 		[
 			"Accounts origin with an explicit port",
-			{ CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.ai:8443" },
+			{ CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.si:8443" },
 			"invalid_cinaauth_account_origin",
 		],
 		[
 			"Accounts origin with a query",
-			{ CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.ai?flow=sign-in" },
+			{ CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.si?flow=sign-in" },
 			"invalid_cinaauth_account_origin",
 		],
 		[
 			"Admin origin with a path",
-			{ CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.ai/login" },
+			{ CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.si/login" },
 			"invalid_cinaauth_admin_origin",
 		],
 		[
 			"Admin origin with a fragment",
-			{ CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.ai#settings" },
+			{ CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.si#settings" },
 			"invalid_cinaauth_admin_origin",
 		],
 		[
@@ -149,7 +149,7 @@ describe("Auth Worker origin configuration", () => {
 		],
 		[
 			"insecure optional OIDC demo origin",
-			{ CINAAUTH_OIDC_DEMO_ORIGIN: "http://oidc-demo.cinaseek.ai" },
+			{ CINAAUTH_OIDC_DEMO_ORIGIN: "http://oidc-demo.cinaseek.si" },
 			"invalid_cinaauth_oidc_demo_profile",
 		],
 	] as const)("rejects %s", (_name, override, issue) => {
@@ -187,16 +187,16 @@ describe("Auth Worker origin configuration", () => {
 	it("resolves an isolated staging OIDC demo profile", () => {
 		const stagingProfileInput = {
 			environment: "staging",
-			applicationOrigin: "https://oidc-demo-siwe-staging.cinaseek.ai",
-			issuer: "https://auth-siwe-staging.cinaseek.ai",
-			accountOrigin: "https://accounts-siwe-staging.cinaseek.ai",
+			applicationOrigin: "https://oidc-demo-siwe-staging.cinaseek.si",
+			issuer: "https://auth-siwe-staging.cinaseek.si",
+			accountOrigin: "https://accounts-siwe-staging.cinaseek.si",
 			clientId: "cinaauth-oidc-demo-siwe-staging",
 		} as const;
 		const result = parseAuthOriginConfig({
 			CINAAUTH_URL: stagingProfileInput.issuer,
 			CINAAUTH_ACCOUNT_ORIGIN: stagingProfileInput.accountOrigin,
-			CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.ai",
-			CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.ai",
+			CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.si",
+			CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.si",
 			CINAAUTH_OIDC_DEMO_ENVIRONMENT: stagingProfileInput.environment,
 			CINAAUTH_OIDC_DEMO_ORIGIN: stagingProfileInput.applicationOrigin,
 			CINAAUTH_OIDC_DEMO_CLIENT_ID: stagingProfileInput.clientId,
@@ -212,12 +212,12 @@ describe("Auth Worker origin configuration", () => {
 
 	it("rejects a production client retained in a staging OIDC profile", () => {
 		const result = parseAuthOriginConfig({
-			CINAAUTH_URL: "https://auth-siwe-staging.cinaseek.ai",
-			CINAAUTH_ACCOUNT_ORIGIN: "https://accounts-siwe-staging.cinaseek.ai",
-			CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.ai",
-			CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.ai",
+			CINAAUTH_URL: "https://auth-siwe-staging.cinaseek.si",
+			CINAAUTH_ACCOUNT_ORIGIN: "https://accounts-siwe-staging.cinaseek.si",
+			CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.si",
+			CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.si",
 			CINAAUTH_OIDC_DEMO_ENVIRONMENT: "staging",
-			CINAAUTH_OIDC_DEMO_ORIGIN: "https://oidc-demo-siwe-staging.cinaseek.ai",
+			CINAAUTH_OIDC_DEMO_ORIGIN: "https://oidc-demo-siwe-staging.cinaseek.si",
 			CINAAUTH_OIDC_DEMO_CLIENT_ID: OIDC_DEMO_CLIENT_ID,
 		});
 
@@ -229,8 +229,8 @@ describe("Auth Worker origin configuration", () => {
 	it("rejects an unrelated or non-canonical Passkey RP ID", () => {
 		for (const passkeyRpId of [
 			"example.com",
-			"https://cinaseek.ai",
-			"CINASEEK.AI",
+			"https://cinaseek.si",
+			"CINASEEK.SI",
 		]) {
 			const result = parseAuthOriginConfig({
 				...productionEnv,
@@ -257,8 +257,8 @@ describe("Auth Worker origin configuration", () => {
 		const result = parseAuthOriginConfig({
 			...productionEnv,
 			CINAAUTH_SIWE_ENABLED: "true",
-			CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
-			CINAAUTH_SIWE_RP_URI: "https://other.cinaseek.ai",
+			CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.si",
+			CINAAUTH_SIWE_RP_URI: "https://other.cinaseek.si",
 		});
 
 		expect(result).toMatchObject({ ok: false });
@@ -271,13 +271,13 @@ describe("Auth Worker origin configuration", () => {
 		if (!result.ok) throw new Error("Expected production origin configuration");
 
 		expect(
-			isExactTrustedOrigin("https://accounts.cinaseek.ai", result.value),
+			isExactTrustedOrigin("https://accounts.cinaseek.si", result.value),
 		).toBe(true);
 		expect(
-			isExactTrustedOrigin("https://accounts.cinaseek.ai:8443", result.value),
+			isExactTrustedOrigin("https://accounts.cinaseek.si:8443", result.value),
 		).toBe(false);
 		expect(
-			isExactTrustedOrigin("http://accounts.cinaseek.ai", result.value),
+			isExactTrustedOrigin("http://accounts.cinaseek.si", result.value),
 		).toBe(false);
 	});
 });

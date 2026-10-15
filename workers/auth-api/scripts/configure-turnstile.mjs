@@ -7,10 +7,10 @@ const API_BASE_URL = "https://api.cloudflare.com/client/v4";
 
 export const DEFAULT_TURNSTILE_WIDGET_NAME = "CinaAuth Production";
 export const DEFAULT_TURNSTILE_DOMAINS = [
-	"auth.cinaseek.ai",
-	"accounts.cinaseek.ai",
+	"auth.cinaseek.si",
+	"accounts.cinaseek.si",
 	"demo-auth.cinagroup.com",
-	"admin.cinaseek.ai",
+	"admin.cinaseek.si",
 ];
 
 const fail = (message) => {

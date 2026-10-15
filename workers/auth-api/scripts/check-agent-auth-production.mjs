@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_ORIGIN = "https://auth.cinaseek.ai";
+const DEFAULT_ORIGIN = "https://auth.cinaseek.si";
 const PROFILE_CAPABILITY = "identity.profile.read";
 
 const sameValues = (actual, expected) =>

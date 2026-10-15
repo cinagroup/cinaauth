@@ -11,10 +11,10 @@ import {
 import type { CinaAuthDatabase } from "../src/database";
 import type { CloudflareBindings } from "../src/env";
 
-const ADMIN_ORIGIN = "https://admin.cinaseek.ai";
+const ADMIN_ORIGIN = "https://admin.cinaseek.si";
 
 const env = {
-	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.ai",
+	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.si",
 } as CloudflareBindings;
 
 const makeDatabase = () => {

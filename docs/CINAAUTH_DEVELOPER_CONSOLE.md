@@ -1,6 +1,6 @@
 # CinaAuth Developer Console
 
-`https://accounts.cinaseek.ai/dashboard/developer` is the self-service control plane for OAuth applications owned by an individual CinaAuth account. `auth.cinaseek.ai` remains the authoritative API and issuer; the account portal uses its same-origin `/api/auth/*` proxy and Cloudflare Service Binding.
+`https://accounts.cinaseek.si/dashboard/developer` is the self-service control plane for OAuth applications owned by an individual CinaAuth account. `auth.cinaseek.si` remains the authoritative API and issuer; the account portal uses its same-origin `/api/auth/*` proxy and Cloudflare Service Binding.
 
 ## Supported client profiles
 
@@ -23,7 +23,7 @@ Both profiles use Authorization Code. Native/device clients are public clients a
 
 ## Endpoint contract
 
-The account portal calls these endpoints through `https://accounts.cinaseek.ai/api/auth/*` so its session Cookie stays on the relying-party origin:
+The account portal calls these endpoints through `https://accounts.cinaseek.si/api/auth/*` so its session Cookie stays on the relying-party origin:
 
 | Operation                   | Endpoint                                     |
 | --------------------------- | -------------------------------------------- |
@@ -37,9 +37,9 @@ The account portal calls these endpoints through `https://accounts.cinaseek.ai/a
 
 Device clients use the public production endpoints:
 
-* Device code: `POST https://auth.cinaseek.ai/api/auth/device/code`
-* Token polling: `POST https://auth.cinaseek.ai/api/auth/device/token`
-* User verification: `https://accounts.cinaseek.ai/device`
+* Device code: `POST https://auth.cinaseek.si/api/auth/device/code`
+* Token polling: `POST https://auth.cinaseek.si/api/auth/device/token`
+* User verification: `https://accounts.cinaseek.si/device`
 
 The production Worker validates both device-code creation and token polling against its authoritative `oauthClient` table. Only registered, enabled, public clients are accepted.
 

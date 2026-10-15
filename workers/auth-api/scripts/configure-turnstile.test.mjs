@@ -15,9 +15,9 @@ test("uses a unique and sorted production hostname allow-list", () => {
 	);
 	assert.deepEqual(
 		parseTurnstileDomains(
-			"demo-auth.cinagroup.com,AUTH.CINASEEK.AI,demo-auth.cinagroup.com",
+			"demo-auth.cinagroup.com,AUTH.CINASEEK.SI,demo-auth.cinagroup.com",
 		),
-		["auth.cinaseek.ai", "demo-auth.cinagroup.com"],
+		["auth.cinaseek.si", "demo-auth.cinagroup.com"],
 	);
 });
 
@@ -66,7 +66,7 @@ test("never chooses between duplicate widget names", () => {
 });
 
 test("updates only when managed widget policy drifts", () => {
-	const domains = ["auth.cinaseek.ai", "demo-auth.cinagroup.com"];
+	const domains = ["auth.cinaseek.si", "demo-auth.cinagroup.com"];
 	assert.equal(
 		turnstileWidgetNeedsUpdate(
 			{

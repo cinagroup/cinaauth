@@ -1,9 +1,9 @@
 # CinaSeek Admin confidential OIDC client
 
-`admin.cinaseek.ai` is a separate, confidential OIDC relying party. It does not
+`admin.cinaseek.si` is a separate, confidential OIDC relying party. It does not
 collect a CinaSeek password and it does not persist OAuth tokens in browser
-storage. Authentication remains owned by `accounts.cinaseek.ai`, issuance and
-role policy remain owned by `auth.cinaseek.ai`, and the Admin Console keeps its
+storage. Authentication remains owned by `accounts.cinaseek.si`, issuance and
+role policy remain owned by `auth.cinaseek.si`, and the Admin Console keeps its
 independent deployment and session boundary.
 
 ## Fixed client contract
@@ -11,14 +11,14 @@ independent deployment and session boundary.
 | Field                   | Value                                              |
 | ----------------------- | -------------------------------------------------- |
 | Client ID               | `cinaseek-admin-console`                           |
-| Issuer                  | `https://auth.cinaseek.ai`                         |
-| Redirect URI            | `https://admin.cinaseek.ai/api/auth/oidc/callback` |
-| Post-logout URI         | `https://admin.cinaseek.ai/login`                  |
+| Issuer                  | `https://auth.cinaseek.si`                         |
+| Redirect URI            | `https://admin.cinaseek.si/api/auth/oidc/callback` |
+| Post-logout URI         | `https://admin.cinaseek.si/login`                  |
 | Grant                   | `authorization_code`                               |
 | Client authentication   | `client_secret_basic`                              |
 | PKCE                    | required, `S256`                                   |
 | Scopes                  | `openid profile email`                             |
-| Access-token resource   | `https://admin.cinaseek.ai`                        |
+| Access-token resource   | `https://admin.cinaseek.si`                        |
 | ID/access-token signing | `ES256`                                            |
 
 The Auth Worker reconciles this exact client immediately before resolving its
@@ -34,11 +34,11 @@ PKCE policy are not accepted from browser input.
    cookie.
 3. The browser is redirected to the discovered authorization endpoint. If
    authentication is required, CinaAuth sends the user to
-   `accounts.cinaseek.ai` with its signed authorization request intact.
+   `accounts.cinaseek.si` with its signed authorization request intact.
 4. The callback validates state, exchanges the code with
    `client_secret_basic` and PKCE, validates issuer/audience/expiry/nonce, then
    explicitly validates the ID-token ES256 signature and UserInfo `sub`.
-5. The access token has `aud=https://admin.cinaseek.ai` and
+5. The access token has `aud=https://admin.cinaseek.si` and
    `azp=cinaseek-admin-console`. It is sent only over the `AUTH_WORKER` Service
    Binding to the private session bridge; it is never returned to browser code.
 6. The Auth Worker verifies the JWT from its local PostgreSQL JWKS records,
@@ -93,10 +93,10 @@ Admin deployment uses `apps/admin-console/scripts/provision-secrets.mjs`.
 
 After both Workers have the matching secrets and are deployed:
 
-1. Open `https://admin.cinaseek.ai/login` and confirm there are no local email
+1. Open `https://admin.cinaseek.si/login` and confirm there are no local email
    or password fields.
 2. Continue with CinaSeek and verify the browser reaches
-   `accounts.cinaseek.ai` when authentication is required.
+   `accounts.cinaseek.si` when authentication is required.
 3. Inspect the authorization request: client ID, exact redirect URI, state,
    nonce, and `code_challenge_method=S256` must be present.
 4. Sign in as `super_admin` or `security_admin`; callback must land on the

@@ -84,8 +84,11 @@ The same validated profile must control:
 
 When SIWE is enabled, its RP URI must equal the configured Accounts origin and
 its RP domain must equal the Accounts hostname. The Passkey RP ID must equal
-the Accounts hostname or a parent domain. Production continues to use
-`cinaseek.ai`; changing it would invalidate existing Passkeys.
+the Accounts hostname or a parent domain. The production target now uses
+`cinaseek.si`; Passkeys registered under the previous `cinaseek.ai` RP ID need
+re-enrollment after signing in through another verified method. See the
+[production domain migration](../workers/auth-api/DEPLOYMENT.md#production-domain-migration)
+for the cutover prerequisites.
 
 ### Account Portal
 
@@ -100,7 +103,7 @@ the Accounts hostname or a parent domain. Production continues to use
   public fallback.
 
 Server-side Auth URLs are required in binding-required mode. Missing or invalid
-configuration must not fall back to `https://auth.cinaseek.ai`.
+configuration must not fall back to `https://auth.cinaseek.si`.
 
 ## Phase B external resources
 

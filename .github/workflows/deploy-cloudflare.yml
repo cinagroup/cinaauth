@@ -203,8 +203,8 @@ jobs:
 
       - name: Validate planned SIWE and Reown build parity
         env:
-          CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.ai/api/build-readiness
-          CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities
+          CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.si/api/build-readiness
+          CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.si/api/auth/capabilities
           CINAAUTH_EMAIL_AUTH_GATE: portal-compatible
           CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json
           REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
@@ -215,8 +215,8 @@ jobs:
       - name: Build planned Account Portal bundle
         run: pnpm run build:cf
         env:
-          CINAAUTH_URL: https://auth.cinaseek.ai
-          NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai
+          CINAAUTH_URL: https://auth.cinaseek.si
+          NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.si
           NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}
 
   deploy-delivery:
@@ -420,7 +420,7 @@ jobs:
         run: |
           curl --fail-with-body --show-error --silent \
             --retry 5 --retry-all-errors --retry-delay 5 \
-            'https://auth.cinaseek.ai/api/migrate?feature=organization-advanced' \
+            'https://auth.cinaseek.si/api/migrate?feature=organization-advanced' \
             -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN"
 
       - name: Apply Worker migrations
@@ -428,7 +428,7 @@ jobs:
           CINAAUTH_MIGRATION_TOKEN: ${{ secrets.CINAAUTH_MIGRATION_TOKEN }}
         run: |
           curl --fail-with-body --show-error --silent \
-            -X POST 'https://auth.cinaseek.ai/api/migrate?feature=organization-advanced' \
+            -X POST 'https://auth.cinaseek.si/api/migrate?feature=organization-advanced' \
             -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN"
 
       - name: Check Worker readiness
@@ -437,7 +437,7 @@ jobs:
         run: |
           curl --fail-with-body --show-error --silent \
             --retry 10 --retry-all-errors --retry-delay 6 \
-            https://auth.cinaseek.ai/api/ready \
+            https://auth.cinaseek.si/api/ready \
             -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN"
 
       - name: Verify deployed Cloudflare resources and bindings

@@ -239,7 +239,7 @@ export function EnterpriseConnectionsCard({
 												{provider.providerId}
 											</p>
 											<p className="mt-2 break-all text-xs text-muted-foreground">
-												https://auth.cinaseek.ai/api/auth/scim/v2
+												https://auth.cinaseek.si/api/auth/scim/v2
 											</p>
 											<p className="mt-1 text-xs text-muted-foreground">
 												{messages.scimTokenHashed}
@@ -414,7 +414,7 @@ export function EnterpriseConnectionsCard({
 					<div className="rounded-lg border p-4 text-sm">
 						<p className="font-medium">{messages.scimBaseUrl}</p>
 						<p className="mt-1 break-all text-xs text-muted-foreground">
-							https://auth.cinaseek.ai/api/auth/scim/v2
+							https://auth.cinaseek.si/api/auth/scim/v2
 						</p>
 					</div>
 					<DialogFooter>

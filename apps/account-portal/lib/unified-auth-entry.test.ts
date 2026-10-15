@@ -7,7 +7,7 @@ const readSource = (path: string) =>
 
 const signedCreateInput = {
 	client_id: "cinaauth-oidc-demo",
-	redirect_uri: "https://oidc-demo.cinaseek.ai/callback",
+	redirect_uri: "https://oidc-demo.cinaseek.si/callback",
 	prompt: "consent create",
 	ba_param: ["client_id", "redirect_uri", "prompt"],
 	sig: "signature",
@@ -17,7 +17,7 @@ describe("Accounts unified sign-in and account creation entry", () => {
 	it("redirects legacy sign-up routes to sign-in without dropping signed OIDC context", () => {
 		const target = new URL(
 			buildUnifiedSignUpRedirect(signedCreateInput),
-			"https://accounts.cinaseek.ai",
+			"https://accounts.cinaseek.si",
 		);
 
 		expect(target.pathname).toBe("/sign-in");

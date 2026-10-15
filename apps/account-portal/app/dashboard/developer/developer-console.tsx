@@ -801,7 +801,7 @@ export function DeveloperConsole({
 									{messages.deviceCode}
 								</span>
 								<code className="mt-1 block break-all rounded bg-muted p-2 text-xs">
-									https://auth.cinaseek.ai/api/auth/device/code
+									https://auth.cinaseek.si/api/auth/device/code
 								</code>
 							</div>
 							<div>
@@ -809,7 +809,7 @@ export function DeveloperConsole({
 									{messages.tokenExchange}
 								</span>
 								<code className="mt-1 block break-all rounded bg-muted p-2 text-xs">
-									https://auth.cinaseek.ai/api/auth/device/token
+									https://auth.cinaseek.si/api/auth/device/token
 								</code>
 							</div>
 							<div>
@@ -817,7 +817,7 @@ export function DeveloperConsole({
 									{messages.userVerification}
 								</span>
 								<code className="mt-1 block break-all rounded bg-muted p-2 text-xs">
-									https://accounts.cinaseek.ai/device
+									https://accounts.cinaseek.si/device
 								</code>
 							</div>
 						</div>

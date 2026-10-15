@@ -6,7 +6,7 @@ import {
 
 const signedQuery = new URLSearchParams([
 	["client_id", "cinaauth-oidc-demo"],
-	["redirect_uri", "https://oidc-demo.cinaseek.ai/callback"],
+	["redirect_uri", "https://oidc-demo.cinaseek.si/callback"],
 	["state", "state"],
 	["ba_param", "client_id"],
 	["ba_param", "redirect_uri"],
@@ -24,7 +24,7 @@ describe("OIDC authentication navigation", () => {
 	it("preserves duplicate signed parameters through an auth method page", () => {
 		const target = new URL(
 			buildPreservedAuthPath("/sign-in/password", signedQuery, "/dashboard"),
-			"https://accounts.cinaseek.ai",
+			"https://accounts.cinaseek.si",
 		);
 
 		expect(target.pathname).toBe("/sign-in/password");

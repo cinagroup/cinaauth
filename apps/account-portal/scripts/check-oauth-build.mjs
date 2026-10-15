@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_CAPABILITIES_URL =
-	"https://auth.cinaseek.ai/api/auth/capabilities";
+	"https://auth.cinaseek.si/api/auth/capabilities";
 
 const hasNoStore = (cacheControl) =>
 	/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cacheControl ?? "");

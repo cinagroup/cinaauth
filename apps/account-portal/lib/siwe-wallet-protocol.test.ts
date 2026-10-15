@@ -9,7 +9,7 @@ import {
 const challenge = {
 	challengeId: "A".repeat(32),
 	nonce: "B".repeat(32),
-	message: "accounts.cinaseek.ai asks you to sign this server message",
+	message: "accounts.cinaseek.si asks you to sign this server message",
 	expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
 	purpose: "link-wallet" as const,
 	walletAddress: "0x000000000000000000000000000000000000dEaD",
@@ -77,7 +77,7 @@ describe("CinaAuth SIWE protocol client", () => {
 		);
 		const signedChallenge = {
 			...challenge,
-			message: "accounts.cinaseek.ai asks you to sign: 登录验证 🔐",
+			message: "accounts.cinaseek.si asks you to sign: 登录验证 🔐",
 			walletAddress: account.address,
 		};
 		let submittedSignature: `0x${string}` | undefined;

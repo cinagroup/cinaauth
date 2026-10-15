@@ -857,7 +857,7 @@ const parseAndUpsertGenericProvider = async (
 	}
 
 	const accountOrigin = new URL(
-		dependencies.env.CINAAUTH_ACCOUNT_ORIGIN ?? "https://accounts.cinaseek.ai",
+		dependencies.env.CINAAUTH_ACCOUNT_ORIGIN ?? "https://accounts.cinaseek.si",
 	).origin;
 	const providerId = body.providerId;
 	const extras: Record<string, unknown> = {};

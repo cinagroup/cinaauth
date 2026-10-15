@@ -84,8 +84,8 @@ beforeEach(() => {
 	mockFetchWithResponse.mockResolvedValue({
 		result: { ok: true, data: {} },
 		response: upstreamResponseWithCookies(
-			"__Secure-cinaauth.admin_session=actor; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
-			"__Secure-cinaauth.session_token=target; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
+			"__Secure-cinaauth.admin_session=actor; Path=/; Domain=.cinaseek.si; HttpOnly; Secure; SameSite=Lax",
+			"__Secure-cinaauth.session_token=target; Path=/; Domain=.cinaseek.si; HttpOnly; Secure; SameSite=Lax",
 		),
 	});
 	mockRecentAuthentication.mockResolvedValue(undefined);
@@ -115,8 +115,8 @@ describe("POST /api/admin/users/impersonate/stop", () => {
 		mockFetchWithResponse.mockResolvedValueOnce({
 			result: { ok: true, data: {} },
 			response: upstreamResponseWithCookies(
-				"__Secure-cinaauth.session_token=actor; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
-				"__Secure-cinaauth.admin_session=; Path=/; Domain=.cinaseek.ai; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+				"__Secure-cinaauth.session_token=actor; Path=/; Domain=.cinaseek.si; HttpOnly; Secure; SameSite=Lax",
+				"__Secure-cinaauth.admin_session=; Path=/; Domain=.cinaseek.si; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
 			),
 		});
 		const { POST } = await import(

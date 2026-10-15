@@ -13,12 +13,12 @@ import {
 const CLIENT_SECRET_PAYLOAD =
 	"cinaadmin-client-secret-with-at-least-32-characters";
 const CLIENT_SECRET = `${ADMIN_OIDC_CLIENT_SECRET_PREFIX}${CLIENT_SECRET_PAYLOAD}`;
-const ADMIN_ORIGIN = "https://admin.cinaseek.ai";
+const ADMIN_ORIGIN = "https://admin.cinaseek.si";
 
 describe("Admin OIDC client bootstrap", () => {
 	it("recognizes only authorize requests for the fixed Admin client", () => {
 		const authorizeUrl = new URL(
-			"https://auth.cinaseek.ai/api/auth/oauth2/authorize",
+			"https://auth.cinaseek.si/api/auth/oauth2/authorize",
 		);
 		authorizeUrl.searchParams.set("client_id", ADMIN_OIDC_CLIENT_ID);
 
@@ -72,7 +72,7 @@ describe("Admin OIDC client bootstrap", () => {
 
 	it("derives the registered redirect URIs from the configured Admin origin", async () => {
 		const query = vi.fn(async () => ({ rows: [] }));
-		const stagingOrigin = "https://admin-siwe-staging.cinaseek.ai";
+		const stagingOrigin = "https://admin-siwe-staging.cinaseek.si";
 
 		await ensureAdminOidcClient({ query }, CLIENT_SECRET, stagingOrigin);
 

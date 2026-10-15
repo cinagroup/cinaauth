@@ -1,7 +1,7 @@
 import { hasAdminControlPermission } from "@cinaauth/auth-web-contract";
 import type { AdminSession } from "@/lib/cinaauth/types";
 
-const ACCOUNTS_DASHBOARD_ORIGIN = "https://accounts.cinaseek.ai";
+const ACCOUNTS_DASHBOARD_ORIGIN = "https://accounts.cinaseek.si";
 
 export type MeSectionKey =
 	| "security"

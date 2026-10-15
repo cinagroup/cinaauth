@@ -280,14 +280,14 @@ describe("provider requests", () => {
 				kind: "magic-link",
 				payload: {
 					email: "user@example.com",
-					url: "https://accounts.cinaseek.ai/sign-in/magic-link",
+					url: "https://accounts.cinaseek.si/sign-in/magic-link",
 				},
 			},
 			{
 				kind: "password-reset",
 				payload: {
 					email: "user@example.com",
-					url: "https://accounts.cinaseek.ai/reset-password",
+					url: "https://accounts.cinaseek.si/reset-password",
 				},
 			},
 		];
@@ -435,7 +435,7 @@ describe("provider requests", () => {
 describe("delivery worker", () => {
 	it("identifies the public health endpoint as CinaSeek Delivery Worker", async () => {
 		const response = await fetchWorker(
-			new Request("https://delivery.cinaseek.ai/"),
+			new Request("https://delivery.cinaseek.si/"),
 			makeEnv(),
 		);
 

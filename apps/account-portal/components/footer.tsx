@@ -92,7 +92,7 @@ const Footer = () => {
 				<p className="text-sm text-mute">
 					&copy; {new Date().getFullYear()} CinaSeek. {messages.footerService}
 				</p>
-				<p className="font-mono text-xs text-mute">accounts.cinaseek.ai</p>
+				<p className="font-mono text-xs text-mute">accounts.cinaseek.si</p>
 			</div>
 		</footer>
 	);

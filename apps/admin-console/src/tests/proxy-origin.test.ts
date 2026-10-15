@@ -5,18 +5,18 @@ describe("isAllowedProxyOrigin", () => {
 	it("allows the configured admin origin", () => {
 		expect(
 			isAllowedProxyOrigin(
-				"https://admin.cinaseek.ai",
-				"https://admin.cinaseek.ai",
+				"https://admin.cinaseek.si",
+				"https://admin.cinaseek.si",
 			),
 		).toBe(true);
 	});
 
 	it("rejects missing and cross-site origins", () => {
-		expect(isAllowedProxyOrigin(null, "https://admin.cinaseek.ai")).toBe(false);
+		expect(isAllowedProxyOrigin(null, "https://admin.cinaseek.si")).toBe(false);
 		expect(
 			isAllowedProxyOrigin(
 				"https://attacker.example",
-				"https://admin.cinaseek.ai",
+				"https://admin.cinaseek.si",
 			),
 		).toBe(false);
 	});

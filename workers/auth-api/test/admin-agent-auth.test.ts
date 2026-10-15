@@ -9,7 +9,7 @@ import {
 } from "../src/admin-agent-auth";
 import type { CinaAuthDatabase } from "../src/database";
 
-const ADMIN_ORIGIN = "https://admin.cinaseek.ai";
+const ADMIN_ORIGIN = "https://admin.cinaseek.si";
 
 type QueryResult = {
 	rows?: Record<string, unknown>[];

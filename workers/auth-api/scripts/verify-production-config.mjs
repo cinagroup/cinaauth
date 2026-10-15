@@ -2162,8 +2162,8 @@ checkIncludesAll(
 		"messages.copyClientSecretNow",
 		"messages.copyClientSecretDescription",
 		"secretAcknowledged",
-		"https://auth.cinaseek.ai/api/auth/device/code",
-		"https://auth.cinaseek.ai/api/auth/device/token",
+		"https://auth.cinaseek.si/api/auth/device/code",
+		"https://auth.cinaseek.si/api/auth/device/token",
 	],
 	developerConsoleComponentFile,
 	"the Developer Console must keep mutations same-origin, gate writes on recent authentication, and protect one-time secrets",
@@ -2191,6 +2191,21 @@ checkIncludesAll(
 		"u.password",
 		'val.includes("#")',
 		"isLoopbackHost",
+		"NON_PRIVATE_USE_SCHEMES.has(uri.protocol)",
+		"isReverseDomainPrivateUseRedirectUri(uri)",
+		"isHostBearingPrivateUseRedirectUri(uri)",
+		'uri.pathname.startsWith("/")',
+		'"ws:"',
+		'"wss:"',
+		'"file:"',
+		'"ftp:"',
+		'"mailto:"',
+		'"javascript:"',
+		'"data:"',
+		'"vbscript:"',
+		'"blob:"',
+		'"about:"',
+		'"view-source:"',
 	],
 	coreRedirectUriFile,
 	"the shared server redirect-URI schema must reject dangerous schemes, credentials, fragments, and external HTTP callbacks",
@@ -2203,11 +2218,11 @@ checkIncludesAll(
 		"!isHttps || isRedirectLoopback",
 		"web clients require https redirect URIs on non-loopback hosts",
 		"!isAllowedNativeHttpLoopback",
-		"FORBIDDEN_NATIVE_REDIRECT_SCHEMES.has(url.protocol)",
-		"!isReverseDomainPrivateUseRedirectUri(url)",
+		'import { isNativePrivateUseRedirectUri } from "@cinaauth/core/utils/redirect-uri"',
+		"!isNativePrivateUseRedirectUri(url)",
 	],
 	oauthRegisterFile,
-	"the OAuth server must enforce web HTTPS and restrict native callbacks to valid reverse-domain schemes or exact HTTP loopback hosts",
+	"the OAuth server must enforce web HTTPS and native HTTPS, exact HTTP loopback hosts, or the shared non-reserved private-use redirect policy",
 );
 checkIncludesAll(
 	pluginsTs,
@@ -2240,7 +2255,7 @@ checkIncludesAll(
 checkIncludesAll(
 	developerConsoleDoc,
 	[
-		"https://accounts.cinaseek.ai/dashboard/developer",
+		"https://accounts.cinaseek.si/dashboard/developer",
 		"client_secret_basic",
 		"public clients and must use PKCE",
 		"created within the last 15 minutes",
@@ -2514,15 +2529,15 @@ checkIncludesAll(
 checkIncludesAll(
 	oauthProductionDoc,
 	[
-		"https://accounts.cinaseek.ai",
+		"https://accounts.cinaseek.si",
 		"oneTapClientId",
 		"Authorized JavaScript origin",
 		"权威能力响应启用 One Tap",
 		"只有 `/sign-in` 一个“登录或创建账号”入口",
 		"disableImplicitSignUp: false",
 		"disableSignUp: false",
-		"https://accounts.cinaseek.ai/api/auth/callback/google",
-		"https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>",
+		"https://accounts.cinaseek.si/api/auth/callback/google",
+		"https://accounts.cinaseek.si/api/auth/oauth2/callback/<providerId>",
 		"GENERIC_OAUTH_CONFIG",
 		"requireIssuerValidation",
 		"Wrangler stdin",
@@ -2565,7 +2580,7 @@ checkIncludesAll(
 checkIncludesAll(
 	accountOAuthBuildCheck,
 	[
-		"https://auth.cinaseek.ai/api/auth/capabilities",
+		"https://auth.cinaseek.si/api/auth/capabilities",
 		"evaluateGoogleAuthenticationBuild",
 		"evaluateReownBuild",
 		"evaluatePlannedReownBuild",
@@ -2742,7 +2757,10 @@ checkIncludesAll(
 );
 checkIncludesAll(
 	customSessionTs,
-	["getSetCookieHeaders", "getSetCookieHeaders(session.headers)"],
+	[
+		"const { headers, response } = await getSession",
+		"getSetCookieHeaders(headers)",
+	],
 	customSessionFile,
 	"custom sessions must read refreshed cookies through the runtime-safe adapter",
 );
@@ -3206,18 +3224,18 @@ check(
 );
 
 check(
-	wrangler.vars?.CINAAUTH_URL === "https://auth.cinaseek.ai",
-	"CINAAUTH_URL must point at https://auth.cinaseek.ai",
+	wrangler.vars?.CINAAUTH_URL === "https://auth.cinaseek.si",
+	"CINAAUTH_URL must point at https://auth.cinaseek.si",
 );
 check(
-	wrangler.vars?.CINAAUTH_ACCOUNT_ORIGIN === "https://accounts.cinaseek.ai" &&
-		wrangler.vars?.CINAAUTH_ADMIN_ORIGIN === "https://admin.cinaseek.ai" &&
-		wrangler.vars?.CINAAUTH_PASSKEY_RP_ID === "cinaseek.ai" &&
+	wrangler.vars?.CINAAUTH_ACCOUNT_ORIGIN === "https://accounts.cinaseek.si" &&
+		wrangler.vars?.CINAAUTH_ADMIN_ORIGIN === "https://admin.cinaseek.si" &&
+		wrangler.vars?.CINAAUTH_PASSKEY_RP_ID === "cinaseek.si" &&
 		wrangler.vars?.CINAAUTH_LEGACY_ACCOUNT_ORIGIN ===
 			"https://demo-auth.cinagroup.com" &&
 		wrangler.vars?.CINAAUTH_OIDC_DEMO_ENVIRONMENT === "production" &&
 		wrangler.vars?.CINAAUTH_OIDC_DEMO_ORIGIN ===
-			"https://oidc-demo.cinaseek.ai" &&
+			"https://oidc-demo.cinaseek.si" &&
 		wrangler.vars?.CINAAUTH_OIDC_DEMO_CLIENT_ID === "cinaauth-oidc-demo",
 	"Tracked production browser origins, Passkey RP ID, and OIDC demo profile must remain explicit and exact",
 );
@@ -3228,8 +3246,8 @@ check(
 check(
 	wrangler.vars?.CINAAUTH_SIWE_ENABLED === "true" &&
 		wrangler.vars?.CINAAUTH_SIWE_ALLOWED_CHAIN_IDS === "1" &&
-		wrangler.vars?.CINAAUTH_SIWE_RP_DOMAIN === "accounts.cinaseek.ai" &&
-		wrangler.vars?.CINAAUTH_SIWE_RP_URI === "https://accounts.cinaseek.ai" &&
+		wrangler.vars?.CINAAUTH_SIWE_RP_DOMAIN === "accounts.cinaseek.si" &&
+		wrangler.vars?.CINAAUTH_SIWE_RP_URI === "https://accounts.cinaseek.si" &&
 		wrangler.vars?.CINAAUTH_SIWE_ALLOW_LEGACY === "false" &&
 		wrangler.vars?.CINAAUTH_SIWE_AUTO_SIGNUP === "true",
 	"Tracked production SIWE config must enable the governed Stage Two rollout, bind Accounts as RP, allow only Ethereum mainnet, forbid legacy requests, and enable verified-wallet account creation",
@@ -3391,11 +3409,11 @@ check(
 );
 
 const route = wrangler.routes?.find(
-	(item) => item.pattern === "auth.cinaseek.ai" && item.custom_domain === true,
+	(item) => item.pattern === "auth.cinaseek.si" && item.custom_domain === true,
 );
 check(
 	Boolean(route),
-	"wrangler.json must expose auth.cinaseek.ai as a Custom Domain",
+	"wrangler.json must expose auth.cinaseek.si as a Custom Domain",
 );
 
 checkIncludesAll(
@@ -4091,9 +4109,9 @@ checkIncludesAll(
 		"https://cinaauth-delivery.cinagroup.com/cinaauth/delivery",
 		"Provision Auth Worker mutable and configured optional secrets",
 		"run: pnpm run provision:secrets",
-		"https://auth.cinaseek.ai/api/migrate",
-		"-X POST 'https://auth.cinaseek.ai/api/migrate?feature=organization-advanced'",
-		"https://auth.cinaseek.ai/api/ready",
+		"https://auth.cinaseek.si/api/migrate",
+		"-X POST 'https://auth.cinaseek.si/api/migrate?feature=organization-advanced'",
+		"https://auth.cinaseek.si/api/ready",
 	],
 	workflowFile,
 	"backend CI must require manual recovery evidence and a live backup audit before deploying child Workers, Auth migrations, and reusable frontends",
@@ -4154,8 +4172,8 @@ checkIncludesAll(
 		"environment: production",
 		"working-directory: apps/account-portal",
 		"CINAAUTH_PLANNED_WORKER_CONFIG: ../../workers/auth-api/wrangler.json",
-		"CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.ai/api/build-readiness",
-		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities",
+		"CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https://accounts.cinaseek.si/api/build-readiness",
+		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.si/api/auth/capabilities",
 		"CINAAUTH_EMAIL_AUTH_GATE: portal-compatible",
 		"REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
@@ -4306,8 +4324,8 @@ checkIncludesAll(
 		"workflow_call",
 		"environment: production",
 		"apps/account-portal",
-		"accounts.cinaseek.ai",
-		"NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.ai",
+		"accounts.cinaseek.si",
+		"NEXT_PUBLIC_CINAAUTH_API_URL: https://accounts.cinaseek.si",
 		"REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"NEXT_PUBLIC_REOWN_PROJECT_ID: ${{ secrets.REOWN_PROJECT_ID }}",
 		"Configure wallet UI rollout from tracked Auth config",
@@ -4315,7 +4333,7 @@ checkIncludesAll(
 		"pnpm run test:oauth-build",
 		"pnpm run check:oauth-build",
 		"Verify live configurable authentication contract",
-		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.ai/api/auth/capabilities",
+		"CINAAUTH_CAPABILITIES_URL: https://accounts.cinaseek.si/api/auth/capabilities",
 		"CINAAUTH_EMAIL_AUTH_GATE: runtime-configurable",
 		"lib/auth-runtime-config.test.ts",
 		"lib/auth-runtime-routes.test.ts",
@@ -4433,12 +4451,12 @@ check(
 checkIncludesAll(
 	accountWrangler,
 	[
-		'pattern = "accounts.cinaseek.ai"',
+		'pattern = "accounts.cinaseek.si"',
 		'pattern = "demo-auth.cinagroup.com"',
 		'binding = "AUTH_WORKER"',
 		'service = "cinaauth-api"',
 		'CINAAUTH_REQUIRE_AUTH_WORKER_BINDING = "true"',
-		'NEXT_PUBLIC_CINAAUTH_API_URL = "https://accounts.cinaseek.ai"',
+		'NEXT_PUBLIC_CINAAUTH_API_URL = "https://accounts.cinaseek.si"',
 	],
 	accountWranglerFile,
 	"account portal must keep Service Binding and the legacy redirect host",
@@ -4447,7 +4465,7 @@ checkIncludesAll(
 	accountMiddleware,
 	[
 		"demo-auth.cinagroup.com",
-		"accounts.cinaseek.ai",
+		"accounts.cinaseek.si",
 		"NextResponse.redirect(accountURL, 308)",
 		"buildAccountSignInPath",
 		"ACCOUNT_RETURN_PATH_HEADER",
@@ -4463,7 +4481,7 @@ checkIncludesAll(
 		"callbackURL: sanitizeAccountCallbackURL(callbackURL)",
 		'params.get("callbackURL") ?? params.get("callbackUrl")',
 		'value.startsWith("//")',
-		"https://accounts.cinaseek.ai",
+		"https://accounts.cinaseek.si",
 	],
 	accountSignInExperienceFile,
 	"account sign-in return targets must use the canonical callback key, retain the legacy device alias, and stay on the Accounts origin",
@@ -4525,17 +4543,17 @@ for (const [file, source] of [
 }
 checkIncludesAll(
 	legacyAdminPage,
-	["permanentRedirect", "https://admin.cinaseek.ai"],
+	["permanentRedirect", "https://admin.cinaseek.si"],
 	legacyAdminPageFile,
 	"the account portal must not retain a second admin console",
 );
 checkIncludesAll(
 	adminWrangler,
 	[
-		'"pattern": "admin.cinaseek.ai"',
+		'"pattern": "admin.cinaseek.si"',
 		'"binding": "AUTH_WORKER"',
 		'"service": "cinaauth-api"',
-		'"CINAUTH_AUTH_URL": "https://accounts.cinaseek.ai"',
+		'"CINAUTH_AUTH_URL": "https://accounts.cinaseek.si"',
 	],
 	adminWranglerFile,
 	"admin console must call the authoritative Auth Worker through Service Binding",
@@ -4619,7 +4637,7 @@ checkIncludesAll(
 		"workflow_call",
 		"environment: production",
 		"apps/admin-console",
-		"admin.cinaseek.ai",
+		"admin.cinaseek.si",
 		"pnpm run cf-typegen",
 		"pnpm run typecheck",
 		"pnpm run test",
@@ -4950,10 +4968,10 @@ checkIncludesAll(
 	configureTurnstile,
 	[
 		"CinaAuth Production",
-		"auth.cinaseek.ai",
-		"accounts.cinaseek.ai",
+		"auth.cinaseek.si",
+		"accounts.cinaseek.si",
 		"demo-auth.cinagroup.com",
-		"admin.cinaseek.ai",
+		"admin.cinaseek.si",
 		'widget.mode !== "managed"',
 		'widget.clearance_level !== "no_clearance"',
 		"CLOUDFLARE_API_TOKEN",
@@ -5217,7 +5235,7 @@ checkIncludesAll(
 		"configure:turnstile",
 		"Turnstile Sites Write",
 		"pnpm --dir workers/auth-api run provision:secrets",
-		"auth.cinaseek.ai",
+		"auth.cinaseek.si",
 		"env.HYPERDRIVE.connectionString",
 		"RateLimitDurableObject",
 		"CINAAUTH_REQUIRE_ALL_PLUGIN_INPUTS=1",
@@ -5226,8 +5244,8 @@ checkIncludesAll(
 		"`CINAAUTH_SIWE_ENABLED=true` is the planned Stage Two activation configuration.",
 		"CINAAUTH_SIWE_ENABLED=false",
 		"CINAAUTH_SIWE_ALLOWED_CHAIN_IDS",
-		"CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.ai",
-		"CINAAUTH_SIWE_RP_URI=https://accounts.cinaseek.ai",
+		"CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.si",
+		"CINAAUTH_SIWE_RP_URI=https://accounts.cinaseek.si",
 		"CINAAUTH_SIWE_ALLOW_LEGACY=false",
 		"CINAAUTH_SIWE_AUTO_SIGNUP=true",
 		"Production enables account creation for an unknown",
@@ -5287,7 +5305,7 @@ checkIncludesAll(
 checkIncludesAll(
 	chineseDeploymentDoc,
 	[
-		"auth.cinaseek.ai",
+		"auth.cinaseek.si",
 		"CINAAUTH_HYPERDRIVE_ID",
 		"Hyperdrive",
 		"PostgreSQL",
@@ -5304,7 +5322,7 @@ checkIncludesAll(
 		"CINAAUTH_REQUIRE_ALL_PLUGIN_INPUTS=1",
 		"VERSION_METADATA",
 		"X-CinaAuth-Delivery-Signature",
-		"accounts.cinaseek.ai/api/auth/get-session",
+		"accounts.cinaseek.si/api/auth/get-session",
 	],
 	chineseDeploymentDocFile,
 	"Cloudflare deployment guide must document the same production gates",

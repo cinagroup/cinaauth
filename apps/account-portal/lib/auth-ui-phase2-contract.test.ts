@@ -19,7 +19,7 @@ const readSource = (path: string) =>
 
 const signedSignUpQuery = new URLSearchParams([
 	["client_id", "cinaauth-oidc-demo"],
-	["redirect_uri", "https://oidc-demo.cinaseek.ai/callback"],
+	["redirect_uri", "https://oidc-demo.cinaseek.si/callback"],
 	["state", "state"],
 	["code_challenge", "challenge"],
 	["code_challenge_method", "S256"],
@@ -41,7 +41,7 @@ describe("Accounts authentication UI phase two contract", () => {
 	it("preserves signed OIDC context through unified email authentication", () => {
 		const target = new URL(
 			buildPreservedAuthPath("/sign-in", signedSignUpQuery, "/dashboard"),
-			"https://accounts.cinaseek.ai",
+			"https://accounts.cinaseek.si",
 		);
 
 		expect(hasSignedOidcAuthorizationQuery(target.searchParams)).toBe(true);

@@ -10,9 +10,9 @@ describe("CinaSeek runtime brand contract", () => {
 		);
 
 		expect(plugin?.options).toMatchObject({
-			rpID: "cinaseek.ai",
+			rpID: "cinaseek.si",
 			rpName: "CinaSeek",
-			origin: ["https://accounts.cinaseek.ai"],
+			origin: ["https://accounts.cinaseek.si"],
 		});
 	});
 

@@ -57,7 +57,7 @@ describe("Agent Auth production policy", () => {
 			modes: ["delegated"],
 			approvalMethods: ["device_authorization"],
 			deviceAuthorizationPage:
-				"https://accounts.cinaseek.ai/device/capabilities",
+				"https://accounts.cinaseek.si/device/capabilities",
 			allowDynamicHostRegistration: true,
 			freshSessionWindow: 15 * 60,
 			maxAgentsPerUser: 10,
@@ -301,8 +301,8 @@ describe("OIDC signing and social provider configuration", () => {
 
 		expect(plugins.some((plugin) => plugin.id === "one-tap")).toBe(false);
 		expect(oauthProviderPlugin?.options).toMatchObject({
-			loginPage: "https://accounts.cinaseek.ai/sign-in",
-			signup: { page: "https://accounts.cinaseek.ai/sign-in" },
+			loginPage: "https://accounts.cinaseek.si/sign-in",
+			signup: { page: "https://accounts.cinaseek.si/sign-in" },
 		});
 	});
 
@@ -345,13 +345,13 @@ describe("OIDC signing and social provider configuration", () => {
 	it("trusts only the configured staging demo client", async () => {
 		const plugin = createAuthPlugins(
 			makeOriginEnv({
-				CINAAUTH_URL: "https://auth-siwe-staging.cinaseek.ai",
-				CINAAUTH_ACCOUNT_ORIGIN: "https://accounts-siwe-staging.cinaseek.ai",
-				CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.ai",
-				CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.ai",
+				CINAAUTH_URL: "https://auth-siwe-staging.cinaseek.si",
+				CINAAUTH_ACCOUNT_ORIGIN: "https://accounts-siwe-staging.cinaseek.si",
+				CINAAUTH_ADMIN_ORIGIN: "https://admin-siwe-staging.cinaseek.si",
+				CINAAUTH_PASSKEY_RP_ID: "accounts-siwe-staging.cinaseek.si",
 				CINAAUTH_LEGACY_ACCOUNT_ORIGIN: undefined,
 				CINAAUTH_OIDC_DEMO_ENVIRONMENT: "staging",
-				CINAAUTH_OIDC_DEMO_ORIGIN: "https://oidc-demo-siwe-staging.cinaseek.ai",
+				CINAAUTH_OIDC_DEMO_ORIGIN: "https://oidc-demo-siwe-staging.cinaseek.si",
 				CINAAUTH_OIDC_DEMO_CLIENT_ID: "cinaauth-oidc-demo-siwe-staging",
 			}),
 		).find((candidate) => candidate.id === "oauth-provider");
@@ -400,7 +400,7 @@ describe("OIDC signing and social provider configuration", () => {
 				rotationInterval: JWT_ROTATION_INTERVAL_SECONDS,
 				gracePeriod: JWT_GRACE_PERIOD_SECONDS,
 			},
-			jwt: { issuer: "https://auth.cinaseek.ai" },
+			jwt: { issuer: "https://auth.cinaseek.si" },
 		});
 	});
 
@@ -427,14 +427,14 @@ describe("OIDC signing and social provider configuration", () => {
 			google: {
 				clientId: "google-client-id",
 				clientSecret: "google-secret",
-				redirectURI: "https://accounts.cinaseek.ai/api/auth/callback/google",
+				redirectURI: "https://accounts.cinaseek.si/api/auth/callback/google",
 				disableImplicitSignUp: false,
 				disableSignUp: false,
 			},
 			github: {
 				clientId: "github-client-id",
 				clientSecret: "github-secret",
-				redirectURI: "https://accounts.cinaseek.ai/api/auth/callback/github",
+				redirectURI: "https://accounts.cinaseek.si/api/auth/callback/github",
 				disableImplicitSignUp: false,
 				disableSignUp: false,
 			},
@@ -497,8 +497,8 @@ describe("SIWE production gate", () => {
 	const enabledSiweEnv = makeOriginEnv({
 		CINAAUTH_SIWE_ENABLED: "true",
 		CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1,11155111",
-		CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
-		CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
+		CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.si",
+		CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.si",
 		CINAAUTH_SIWE_ALLOW_LEGACY: "false",
 		CINAAUTH_SIWE_AUTO_SIGNUP: "true",
 	});
@@ -517,8 +517,8 @@ describe("SIWE production gate", () => {
 		);
 
 		expect(plugin?.options).toMatchObject({
-			domain: "accounts.cinaseek.ai",
-			uri: "https://accounts.cinaseek.ai",
+			domain: "accounts.cinaseek.si",
+			uri: "https://accounts.cinaseek.si",
 			enabled: true,
 			allowedChainIds: [1, 11155111],
 			legacyNonce: false,

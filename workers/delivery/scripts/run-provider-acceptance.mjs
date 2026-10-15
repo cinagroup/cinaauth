@@ -102,14 +102,14 @@ const main = async () => {
 			kind: "magic-link",
 			payload: {
 				email,
-				url: "https://accounts.cinaseek.ai/sign-in?acceptance=magic-link",
+				url: "https://accounts.cinaseek.si/sign-in?acceptance=magic-link",
 			},
 		},
 		{
 			kind: "password-reset",
 			payload: {
 				email,
-				url: "https://accounts.cinaseek.ai/reset-password?acceptance=true",
+				url: "https://accounts.cinaseek.si/reset-password?acceptance=true",
 			},
 		},
 		{

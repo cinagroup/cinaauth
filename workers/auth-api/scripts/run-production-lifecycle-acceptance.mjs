@@ -1,10 +1,10 @@
 import { pathToFileURL } from "node:url";
 
-const DEFAULT_BASE_URL = "https://auth.cinaseek.ai";
-const ADMIN_ORIGIN = "https://admin.cinaseek.ai";
+const DEFAULT_BASE_URL = "https://auth.cinaseek.si";
+const ADMIN_ORIGIN = "https://admin.cinaseek.si";
 const ALLOWED_BASE_URLS = new Set([
 	DEFAULT_BASE_URL,
-	"https://accounts.cinaseek.ai",
+	"https://accounts.cinaseek.si",
 ]);
 
 const isRecord = (value) =>

@@ -28,7 +28,7 @@ describe("administrator account handoff", () => {
 
 		expect(screen.getByRole("link", { name: "打开 Accounts" })).toHaveAttribute(
 			"href",
-			"https://accounts.cinaseek.ai/dashboard/security",
+			"https://accounts.cinaseek.si/dashboard/security",
 		);
 	});
 
@@ -53,7 +53,7 @@ describe("administrator account handoff", () => {
 			screen.getByText("模拟用户期间暂停 Accounts 跳转"),
 		).toBeInTheDocument();
 		expect(
-			container.querySelector('a[href^="https://accounts.cinaseek.ai"]'),
+			container.querySelector('a[href^="https://accounts.cinaseek.si"]'),
 		).toBeNull();
 		expect(
 			screen.getByRole("button", { name: /停止模拟后继续/ }),

@@ -10,7 +10,7 @@ const {
 	createAuthenticatedContext,
 } = require("./authenticated-context.cjs");
 
-const BASE = "https://admin.cinaseek.ai";
+const BASE = "https://admin.cinaseek.si";
 
 const results = [];
 function log(name, pass, detail) {

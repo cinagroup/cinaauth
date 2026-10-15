@@ -82,7 +82,7 @@ describe("Admin SSO BFF contract", () => {
 				...validSsoBody,
 				domainVerified: false,
 				domainVerificationToken: "dns-token",
-				redirectURI: "https://auth.cinaseek.ai/api/auth/sso/callback/acme-oidc",
+				redirectURI: "https://auth.cinaseek.si/api/auth/sso/callback/acme-oidc",
 			},
 		});
 		const { POST } = await import("@/app/api/admin/sso/providers/route");

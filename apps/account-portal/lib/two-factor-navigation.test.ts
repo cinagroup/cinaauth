@@ -7,7 +7,7 @@ import {
 
 const signedQuery = new URLSearchParams([
 	["client_id", "cinaauth-oidc-demo"],
-	["redirect_uri", "https://oidc-demo.cinaseek.ai/callback"],
+	["redirect_uri", "https://oidc-demo.cinaseek.si/callback"],
 	["state", "opaque-state"],
 	["resource", "https://api-one.example"],
 	["resource", "https://api-two.example"],
@@ -28,7 +28,7 @@ describe("two-factor authentication navigation", () => {
 		);
 		const target = new URL(
 			buildTwoFactorAuthPath("/two-factor", params),
-			"https://accounts.cinaseek.ai",
+			"https://accounts.cinaseek.si",
 		);
 
 		expect(target.pathname).toBe("/two-factor");
@@ -42,7 +42,7 @@ describe("two-factor authentication navigation", () => {
 		for (const pathname of ["/two-factor", "/two-factor/backup"] as const) {
 			const target = new URL(
 				buildTwoFactorAuthPath(pathname, signedQuery),
-				"https://accounts.cinaseek.ai",
+				"https://accounts.cinaseek.si",
 			);
 
 			expect(target.pathname).toBe(pathname);
@@ -68,7 +68,7 @@ describe("two-factor authentication navigation", () => {
 			const params = new URLSearchParams({ callbackURL });
 			const target = new URL(
 				buildTwoFactorAuthPath("/two-factor", params),
-				"https://accounts.cinaseek.ai",
+				"https://accounts.cinaseek.si",
 			);
 
 			expect(target.searchParams.get("callbackURL")).toBe("/dashboard");

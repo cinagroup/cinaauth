@@ -19,7 +19,7 @@ describe("GET /api/auth/oidc/callback", () => {
 			const headers = new Headers();
 			headers.append(
 				"set-cookie",
-				"__Secure-cinaauth.session_token=session-token; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
+				"__Secure-cinaauth.session_token=session-token; Path=/; Domain=.cinaseek.si; HttpOnly; Secure; SameSite=Lax",
 			);
 			return Promise.resolve(
 				new Response(
@@ -202,7 +202,7 @@ describe("GET /api/auth/oidc/callback", () => {
 				const headers = new Headers();
 				headers.append(
 					"set-cookie",
-					"__Secure-cinaauth.session_token=session-token; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
+					"__Secure-cinaauth.session_token=session-token; Path=/; Domain=.cinaseek.si; HttpOnly; Secure; SameSite=Lax",
 				);
 				return Promise.resolve(
 					new Response(

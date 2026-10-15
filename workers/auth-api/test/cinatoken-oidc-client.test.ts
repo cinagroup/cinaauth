@@ -13,7 +13,7 @@ const APPLICATION_ORIGIN = "https://cinatoken.com";
 
 describe("cinatoken OIDC client bootstrap", () => {
 	it("recognizes only fixed-client GET authorization requests", () => {
-		const url = new URL("https://auth.cinaseek.ai/api/auth/oauth2/authorize");
+		const url = new URL("https://auth.cinaseek.si/api/auth/oauth2/authorize");
 		url.searchParams.set("client_id", CINATOKEN_OIDC_CLIENT_ID);
 		expect(isCinatokenOidcAuthorizationRequest(new Request(url))).toBe(true);
 		expect(

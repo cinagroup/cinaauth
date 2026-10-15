@@ -11,7 +11,7 @@ export const runtime = "experimental-edge";
 export function middleware(request: NextRequest) {
 	if (request.nextUrl.hostname === "demo-auth.cinagroup.com") {
 		const accountURL = request.nextUrl.clone();
-		accountURL.hostname = "accounts.cinaseek.ai";
+		accountURL.hostname = "accounts.cinaseek.si";
 		accountURL.protocol = "https:";
 		accountURL.port = "";
 		return NextResponse.redirect(accountURL, 308);

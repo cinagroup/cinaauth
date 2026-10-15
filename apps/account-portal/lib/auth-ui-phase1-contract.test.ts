@@ -33,7 +33,7 @@ describe("Accounts authentication UI phase one contract", () => {
 				ba_param: ["client_id", "redirect_uri", "resource"],
 				sig: "signature",
 			}),
-			"https://accounts.cinaseek.ai",
+			"https://accounts.cinaseek.si",
 		);
 
 		expect(target.pathname).toBe("/two-factor");

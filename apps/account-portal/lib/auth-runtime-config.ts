@@ -1,4 +1,4 @@
-export const DEFAULT_CINAAUTH_API_URL = "https://auth.cinaseek.ai";
+export const DEFAULT_CINAAUTH_API_URL = "https://auth.cinaseek.si";
 
 /** A reserved, non-routable origin used only to construct fail-closed requests. */
 export const UNAVAILABLE_CINAAUTH_API_URL = "https://cinaauth.invalid";

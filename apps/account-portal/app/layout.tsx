@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 			default: "CinaSeek Accounts",
 		},
 		description: homeMessages[locale].metadataDescription,
-		metadataBase: new URL("https://accounts.cinaseek.ai"),
+		metadataBase: new URL("https://accounts.cinaseek.si"),
 	});
 }
 

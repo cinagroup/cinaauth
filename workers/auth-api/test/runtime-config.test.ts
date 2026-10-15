@@ -39,7 +39,7 @@ const makeEnv = (
 		CINATOKEN_IDENTITY_EVENTS_URL:
 			"https://cinatoken.com/api/integrations/cinaauth/organization-events",
 		CINATOKEN_IDENTITY_EVENTS_SECRET: strong("identity-events"),
-		CINAAUTH_URL: "https://auth.cinaseek.ai",
+		CINAAUTH_URL: "https://auth.cinaseek.si",
 		HYPERDRIVE: {
 			connectionString: "postgres://hyperdrive.local/cinaauth",
 		} as Hyperdrive,
@@ -106,7 +106,7 @@ describe("runtime config guardrails", () => {
 			pkce: true,
 			discoveryUrl: "https://idp.example.com/.well-known/openid-configuration",
 			redirectURI:
-				"https://accounts.cinaseek.ai/api/auth/oauth2/callback/enterprise-idp",
+				"https://accounts.cinaseek.si/api/auth/oauth2/callback/enterprise-idp",
 		};
 		expect(
 			getConfiguredAccountProviderIds(
@@ -178,12 +178,12 @@ describe("runtime config guardrails", () => {
 				CINAAUTH_DELIVERY_WEBHOOK_URL: "http://delivery.example.com",
 				CINAAUTH_DELIVERY_WEBHOOK_SECRET: "",
 				CINAAUTH_CUTOVER_STATE: undefined,
-				CINAAUTH_URL: "http://auth.cinaseek.ai",
+				CINAAUTH_URL: "http://auth.cinaseek.si",
 				CINAAUTH_ACCOUNT_ORIGIN: "",
-				CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.ai/login",
+				CINAAUTH_ADMIN_ORIGIN: "https://admin.cinaseek.si/login",
 				CINAAUTH_PASSKEY_RP_ID: "example.com",
 				CINAAUTH_LEGACY_ACCOUNT_ORIGIN: "",
-				CINAAUTH_OIDC_DEMO_ORIGIN: "http://oidc-demo.cinaseek.ai",
+				CINAAUTH_OIDC_DEMO_ORIGIN: "http://oidc-demo.cinaseek.si",
 			}),
 		);
 
@@ -306,7 +306,7 @@ describe("SCIM ownership migration route boundary", () => {
 		try {
 			const response = await worker.fetch(
 				new Request(
-					"https://auth.cinaseek.ai/api/migrate/scim-provider-ownership",
+					"https://auth.cinaseek.si/api/migrate/scim-provider-ownership",
 					{
 						method: "POST",
 						headers: { "content-type": "application/json" },
@@ -334,7 +334,7 @@ describe("SCIM ownership migration route boundary", () => {
 		const env = makeEnv();
 		const response = await worker.fetch(
 			new Request(
-				"https://auth.cinaseek.ai/api/migrate/scim-provider-ownership",
+				"https://auth.cinaseek.si/api/migrate/scim-provider-ownership",
 				{
 					method: "POST",
 					headers: {
@@ -359,7 +359,7 @@ describe("SCIM ownership migration route boundary", () => {
 		});
 		const response = await worker.fetch(
 			new Request(
-				"https://auth.cinaseek.ai/api/migrate/scim-provider-ownership",
+				"https://auth.cinaseek.si/api/migrate/scim-provider-ownership",
 				{
 					method: "POST",
 					headers: {
@@ -387,7 +387,7 @@ describe("migration authorization", () => {
 	it("protects and validates the identity outbox replay operation before database access", async () => {
 		const env = makeEnv();
 		const url =
-			"https://auth.cinaseek.ai/api/operations/cinatoken-identity-outbox/replay";
+			"https://auth.cinaseek.si/api/operations/cinatoken-identity-outbox/replay";
 		const forbidden = await worker.fetch(
 			new Request(url, {
 				method: "POST",
@@ -418,25 +418,25 @@ describe("migration authorization", () => {
 	it("accepts only the explicit advanced-organization migration feature", () => {
 		expect(
 			getMigrationFeatureSelection(
-				new URL("https://auth.cinaseek.ai/api/migrate"),
+				new URL("https://auth.cinaseek.si/api/migrate"),
 			),
 		).toEqual({ feature: undefined });
 		expect(
 			getMigrationFeatureSelection(
 				new URL(
-					"https://auth.cinaseek.ai/api/migrate?feature=organization-advanced",
+					"https://auth.cinaseek.si/api/migrate?feature=organization-advanced",
 				),
 			),
 		).toEqual({ feature: "organization-advanced" });
 		expect(
 			getMigrationFeatureSelection(
-				new URL("https://auth.cinaseek.ai/api/migrate?feature=unknown"),
+				new URL("https://auth.cinaseek.si/api/migrate?feature=unknown"),
 			),
 		).toEqual({ error: "invalid_migration_feature" });
 		expect(
 			getMigrationFeatureSelection(
 				new URL(
-					"https://auth.cinaseek.ai/api/migrate?feature=organization-advanced&feature=organization-advanced",
+					"https://auth.cinaseek.si/api/migrate?feature=organization-advanced&feature=organization-advanced",
 				),
 			),
 		).toEqual({ error: "invalid_migration_feature" });

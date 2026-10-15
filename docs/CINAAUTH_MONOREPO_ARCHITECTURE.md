@@ -12,10 +12,10 @@ the other frontend's routing or deployment authority.
 ```text
 cinaauth/
   apps/
-    account-portal/       # accounts.cinaseek.ai
-    admin-console/        # admin.cinaseek.ai
+    account-portal/       # accounts.cinaseek.si
+    admin-console/        # admin.cinaseek.si
   workers/
-    auth-api/             # auth.cinaseek.ai
+    auth-api/             # auth.cinaseek.si
     delivery/             # queued email/SMS delivery
     privacy-erasure/      # fail-closed downstream data erasure orchestration
   packages/
@@ -33,15 +33,15 @@ migration.
 
 | Deployment                        | Audience                                 | Authority                                                          | Cloudflare dependency                                                                 |
 | --------------------------------- | ---------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `accounts.cinaseek.ai`            | normal users                             | login, recovery, account and organization self-service             | `AUTH_WORKER -> cinaauth-api`                                                         |
-| `admin.cinaseek.ai`               | `super_admin`, `security_admin`          | privileged operational workflows                                   | `AUTH_WORKER -> cinaauth-api`                                                         |
-| `auth.cinaseek.ai`                | applications and internal frontends      | session issuance, policy enforcement, OAuth/OIDC and identity data | Hyperdrive, Durable Objects, Queues, `CINAAUTH_DELIVERY_SERVICE -> cinaauth-delivery` |
+| `accounts.cinaseek.si`            | normal users                             | login, recovery, account and organization self-service             | `AUTH_WORKER -> cinaauth-api`                                                         |
+| `admin.cinaseek.si`               | `super_admin`, `security_admin`          | privileged operational workflows                                   | `AUTH_WORKER -> cinaauth-api`                                                         |
+| `auth.cinaseek.si`                | applications and internal frontends      | session issuance, policy enforcement, OAuth/OIDC and identity data | Hyperdrive, Durable Objects, Queues, `CINAAUTH_DELIVERY_SERVICE -> cinaauth-delivery` |
 | `cinaauth-delivery.cinagroup.com` | Auth Worker and provider acceptance only | signed email/SMS dispatch and per-channel readiness                | Resend or Cloudflare Email, Twilio, replay-prevention KV                              |
 | `cinaauth-erasure.cinagroup.com`  | Auth Worker only                         | idempotent downstream privacy erasure coordination                 | SQLite Durable Objects, signed HTTPS targets                                          |
 
 Browser authentication stays same-origin on each frontend. Server route
 handlers rebuild the upstream request and call the Auth Worker through Service
-Binding. Public `auth.cinaseek.ai` fetch is only the local-development fallback.
+Binding. Public `auth.cinaseek.si` fetch is only the local-development fallback.
 Every proxy response preserves separate `Set-Cookie` headers and disables
 caching for authentication responses.
 
@@ -70,9 +70,9 @@ unavailable readiness as disabled, while Auth independently returns a fail-close
 ## Entry-point policy
 
 * `/admin` on the account portal permanently redirects to
-  `https://admin.cinaseek.ai`.
+  `https://admin.cinaseek.si`.
 * `demo-auth.cinagroup.com` remains temporarily attached to the account Worker
-  only to issue a permanent redirect to `accounts.cinaseek.ai`.
+  only to issue a permanent redirect to `accounts.cinaseek.si`.
 * The legacy hostname remains in the explicit Auth/Turnstile allow-list during
   the redirect window. It can be removed after traffic and OAuth callback logs
   show no remaining clients.

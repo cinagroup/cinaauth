@@ -14,7 +14,7 @@ const record = {
 	result: "success",
 	actorId: "user-1",
 	actorRole: "owner",
-	actorSite: "accounts.cinaseek.ai",
+	actorSite: "accounts.cinaseek.si",
 	targetType: "organization",
 	targetId: "organization-1",
 	metadata: '{"source":"console"}',

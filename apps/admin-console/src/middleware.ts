@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
 			);
 		}
 		// Redirect to the local OIDC entry page. Credentials are collected only by
-		// accounts.cinaseek.ai; the Admin Console remains a confidential client.
+		// accounts.cinaseek.si; the Admin Console remains a confidential client.
 		const loginUrl = new URL("/login", request.url);
 		loginUrl.searchParams.set(
 			"callbackURL",

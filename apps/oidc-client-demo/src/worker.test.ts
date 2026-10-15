@@ -4,9 +4,9 @@ import { handleRequest } from "./worker";
 
 const productionProfile = {
 	environment: "production",
-	applicationOrigin: "https://oidc-demo.cinaseek.ai",
-	issuer: "https://auth.cinaseek.ai",
-	accountOrigin: "https://accounts.cinaseek.ai",
+	applicationOrigin: "https://oidc-demo.cinaseek.si",
+	issuer: "https://auth.cinaseek.si",
+	accountOrigin: "https://accounts.cinaseek.si",
 	clientId: "cinaauth-oidc-demo",
 } as const;
 
@@ -32,7 +32,7 @@ describe("OIDC demo asset worker", () => {
 
 	it("publishes non-secret runtime configuration", async () => {
 		const response = await handleRequest(
-			new Request("https://oidc-demo.cinaseek.ai/config.json"),
+			new Request("https://oidc-demo.cinaseek.si/config.json"),
 			async () => new Response("unused"),
 			productionProfile,
 		);
@@ -40,15 +40,15 @@ describe("OIDC demo asset worker", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
 		await expect(response.json()).resolves.toMatchObject({
-			issuer: "https://auth.cinaseek.ai",
+			issuer: "https://auth.cinaseek.si",
 			clientId: "cinaauth-oidc-demo",
-			redirectUri: "https://oidc-demo.cinaseek.ai/callback",
+			redirectUri: "https://oidc-demo.cinaseek.si/callback",
 		});
 	});
 
 	it("adds security headers to SPA assets", async () => {
 		const response = await handleRequest(
-			new Request("https://oidc-demo.cinaseek.ai/dashboard"),
+			new Request("https://oidc-demo.cinaseek.si/dashboard"),
 			async () =>
 				new Response("<!doctype html>", {
 					headers: { "Content-Type": "text/html" },
@@ -80,8 +80,8 @@ describe("OIDC demo asset worker", () => {
 		expect(csp).toContain(
 			`form-action 'self' ${stagingProfile.issuer} ${stagingProfile.accountOrigin}`,
 		);
-		expect(csp).not.toContain("auth.cinaseek.ai");
-		expect(csp).not.toContain("accounts.cinaseek.ai");
+		expect(csp).not.toContain("auth.cinaseek.si");
+		expect(csp).not.toContain("accounts.cinaseek.si");
 	});
 
 	it("fails closed before fetching assets when the profile is absent", async () => {

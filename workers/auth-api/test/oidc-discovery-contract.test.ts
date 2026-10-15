@@ -9,7 +9,7 @@ describe("OIDC discovery contract", () => {
 		);
 
 		expect(plugin?.options?.selectAccount?.page).toBe(
-			"https://accounts.cinaseek.ai/oauth/select-account",
+			"https://accounts.cinaseek.si/oauth/select-account",
 		);
 	});
 

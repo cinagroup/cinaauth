@@ -39,7 +39,7 @@ describe("auth capability discovery", () => {
 
 		const capabilities = await fetchAuthCapabilities(
 			fetcher,
-			"https://accounts.cinaseek.ai",
+			"https://accounts.cinaseek.si",
 		);
 
 		expect(capabilities.oauthProviders).toEqual(response.oauthProviders);
@@ -52,7 +52,7 @@ describe("auth capability discovery", () => {
 		expect(capabilities.oneTap).toBe(true);
 		expect(capabilities.oneTapClientId).toBe("google-client-id");
 		expect(fetcher).toHaveBeenCalledWith(
-			"https://accounts.cinaseek.ai/api/auth/capabilities",
+			"https://accounts.cinaseek.si/api/auth/capabilities",
 			expect.objectContaining({ credentials: "include" }),
 		);
 	});

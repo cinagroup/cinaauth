@@ -78,7 +78,7 @@ describe("OAuth consent shell safety", () => {
 			scope: "openid offline_access",
 			sig: "signature",
 		});
-		const url = new URL(path, "https://accounts.cinaseek.ai");
+		const url = new URL(path, "https://accounts.cinaseek.si");
 
 		expect(url.pathname).toBe("/sign-in");
 		expect(url.searchParams.getAll("ba_param")).toEqual([
@@ -131,7 +131,7 @@ describe("OAuth consent shell safety", () => {
 	it("shows return hosts only for contract-defined first-party clients", () => {
 		expect(
 			getOfficialCinaSeekOAuthClientReturnHost("cinaseek-admin-console"),
-		).toBe("admin.cinaseek.ai");
+		).toBe("admin.cinaseek.si");
 		expect(
 			getOfficialCinaSeekOAuthClientReturnHost("third-party-client"),
 		).toBeUndefined();

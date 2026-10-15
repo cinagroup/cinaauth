@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { checkAuthReadiness } from "./check-auth-readiness.mjs";
 
-const READY_URL = "https://auth.cinaseek.ai/api/ready";
+const READY_URL = "https://auth.cinaseek.si/api/ready";
 const MIGRATION_TOKEN = "test-migration-token";
 
 const validReadinessBody = {
@@ -29,7 +29,7 @@ const runCheck = async ({ responses, migrationToken = MIGRATION_TOKEN }) => {
 	const warnings = [];
 	const calls = [];
 	await checkAuthReadiness({
-		origin: new URL("https://auth.cinaseek.ai"),
+		origin: new URL("https://auth.cinaseek.si"),
 		migrationToken,
 		publicFetch: async (url, init) => {
 			calls.push({ url, init });

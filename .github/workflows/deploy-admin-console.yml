@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy admin.cinaseek.ai
+    name: Deploy admin.cinaseek.si
     runs-on: ubuntu-latest
     environment: production
     defaults:
@@ -70,7 +70,7 @@ jobs:
           for attempt in $(seq 1 30); do
             echo "Readiness check attempt $attempt"
             if curl --fail-with-body --show-error --silent \
-              https://auth.cinaseek.ai/api/ready \
+              https://auth.cinaseek.si/api/ready \
               -H "Authorization: Bearer $CINAAUTH_MIGRATION_TOKEN" \
               --output "$ready_file"; then
               if node -e '
@@ -105,4 +105,4 @@ jobs:
           command: deploy
 
       - name: Smoke test admin console
-        run: curl --fail-with-body --show-error --silent --retry 10 --retry-all-errors --retry-delay 6 https://admin.cinaseek.ai/login
+        run: curl --fail-with-body --show-error --silent --retry 10 --retry-all-errors --retry-delay 6 https://admin.cinaseek.si/login

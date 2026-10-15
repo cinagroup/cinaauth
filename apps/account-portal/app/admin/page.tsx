@@ -1,5 +1,5 @@
 import { permanentRedirect } from "next/navigation";
 
 export default function LegacyAdminPage() {
-	permanentRedirect("https://admin.cinaseek.ai");
+	permanentRedirect("https://admin.cinaseek.si");
 }

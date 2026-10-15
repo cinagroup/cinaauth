@@ -11,22 +11,22 @@ import {
 	normalizeOidcDemoAuthorizationResponse,
 } from "../src/oidc-demo-client";
 
-const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
+const ACCOUNT_ORIGIN = "https://accounts.cinaseek.si";
 const PRODUCTION_PROFILE = resolveOidcDemoProfile(
 	OIDC_DEMO_PRODUCTION_PROFILE_INPUT,
 );
 const STAGING_PROFILE = resolveOidcDemoProfile({
 	environment: "staging",
-	applicationOrigin: "https://oidc-demo-siwe-staging.cinaseek.ai",
-	issuer: "https://auth-siwe-staging.cinaseek.ai",
-	accountOrigin: "https://accounts-siwe-staging.cinaseek.ai",
+	applicationOrigin: "https://oidc-demo-siwe-staging.cinaseek.si",
+	issuer: "https://auth-siwe-staging.cinaseek.si",
+	accountOrigin: "https://accounts-siwe-staging.cinaseek.si",
 	clientId: "cinaauth-oidc-demo-siwe-staging",
 });
 
 describe("OIDC demo client bootstrap", () => {
 	it("recognizes only authorize requests for the configured first-party client", () => {
 		const authorizeUrl = new URL(
-			"https://auth.cinaseek.ai/api/auth/oauth2/authorize",
+			"https://auth.cinaseek.si/api/auth/oauth2/authorize",
 		);
 		authorizeUrl.searchParams.set("client_id", OIDC_DEMO_CLIENT_ID);
 
@@ -56,7 +56,7 @@ describe("OIDC demo client bootstrap", () => {
 
 	it("recognizes the staging client and rejects the production client", () => {
 		const authorizeUrl = new URL(
-			"https://auth-siwe-staging.cinaseek.ai/api/auth/oauth2/authorize",
+			"https://auth-siwe-staging.cinaseek.si/api/auth/oauth2/authorize",
 		);
 		authorizeUrl.searchParams.set("client_id", STAGING_PROFILE.clientId);
 		expect(
@@ -88,7 +88,7 @@ describe("OIDC demo client bootstrap", () => {
 		expect(sql).toContain('ON CONFLICT ("clientId") DO UPDATE');
 		expect(values).toContain(OIDC_DEMO_CLIENT_ID);
 		expect(values).toContain("CinaSeek OIDC 标准客户端");
-		expect(values).toContain("https://oidc-demo.cinaseek.ai/favicon.ico");
+		expect(values).toContain("https://oidc-demo.cinaseek.si/favicon.ico");
 		expect(values).toContain(JSON.stringify([OIDC_DEMO_REDIRECT_URI]));
 		expect(values).toContain(JSON.stringify(["openid", "profile", "email"]));
 		expect(values).toContain("none");
@@ -96,7 +96,7 @@ describe("OIDC demo client bootstrap", () => {
 	});
 
 	it("converts the fixed client's trusted JSON navigation into an HTTP redirect", async () => {
-		const target = "https://accounts.cinaseek.ai/sign-in?state=opaque";
+		const target = "https://accounts.cinaseek.si/sign-in?state=opaque";
 		const response = await normalizeOidcDemoAuthorizationResponse(
 			Response.json({ redirect: true, url: target }),
 			ACCOUNT_ORIGIN,

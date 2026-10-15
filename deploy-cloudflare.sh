@@ -31,6 +31,6 @@ pnpm --dir apps/admin-console run test
 pnpm --dir apps/admin-console run build:cf
 pnpm --dir apps/admin-console run deploy
 
-echo "Auth API:       https://auth.cinaseek.ai"
-echo "Account portal: https://accounts.cinaseek.ai"
-echo "Admin console:  https://admin.cinaseek.ai"
+echo "Auth API:       https://auth.cinaseek.si"
+echo "Account portal: https://accounts.cinaseek.si"
+echo "Admin console:  https://admin.cinaseek.si"

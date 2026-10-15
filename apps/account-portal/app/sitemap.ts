@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://accounts.cinaseek.ai";
+const SITE_URL = "https://accounts.cinaseek.si";
 
 export default function sitemap(): MetadataRoute.Sitemap {
 	// Public marketing routes only — auth/dashboard/admin excluded.

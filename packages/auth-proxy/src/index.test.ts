@@ -10,24 +10,24 @@ import {
 describe("auth proxy contracts", () => {
 	it("preserves the request path while replacing only the authority", () => {
 		const request = createAuthProxyRequest(
-			new Request("https://accounts.cinaseek.ai/api/auth/get-session?fresh=1"),
-			"https://auth.cinaseek.ai",
+			new Request("https://accounts.cinaseek.si/api/auth/get-session?fresh=1"),
+			"https://auth.cinaseek.si",
 		);
 		expect(request.url).toBe(
-			"https://auth.cinaseek.ai/api/auth/get-session?fresh=1",
+			"https://auth.cinaseek.si/api/auth/get-session?fresh=1",
 		);
 		expect(request.redirect).toBe("manual");
 	});
 
 	it("preserves request bodies while keeping upstream redirects visible", async () => {
 		const request = createAuthProxyRequest(
-			new Request("https://accounts.cinaseek.ai/api/auth/sign-in/social", {
+			new Request("https://accounts.cinaseek.si/api/auth/sign-in/social", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ provider: "github" }),
 				redirect: "follow",
 			}),
-			"https://auth.cinaseek.ai",
+			"https://auth.cinaseek.si",
 		);
 
 		expect(request.method).toBe("POST");
@@ -52,14 +52,14 @@ describe("auth proxy contracts", () => {
 	it("matches proxy origins exactly", () => {
 		expect(
 			isAllowedProxyOrigin(
-				"https://admin.cinaseek.ai",
-				"https://admin.cinaseek.ai",
+				"https://admin.cinaseek.si",
+				"https://admin.cinaseek.si",
 			),
 		).toBe(true);
 		expect(
 			isAllowedProxyOrigin(
-				"https://admin.cinaseek.ai.attacker.example",
-				"https://admin.cinaseek.ai",
+				"https://admin.cinaseek.si.attacker.example",
+				"https://admin.cinaseek.si",
 			),
 		).toBe(false);
 	});

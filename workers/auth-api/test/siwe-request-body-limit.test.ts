@@ -14,7 +14,7 @@ const SIWE_OAUTH_QUERY_MAX_LENGTH = 16_384;
 
 const createMaximumSignedOAuthChallengeBody = () => {
 	const signedQueryPrefix =
-		"client_id=cinaseek&redirect_uri=https%3A%2F%2Fcinaseek.ai%2Fapi%2Fauth%2Fcallback&custom_authorization_context=";
+		"client_id=cinaseek&redirect_uri=https%3A%2F%2Fcinaseek.si%2Fapi%2Fauth%2Fcallback&custom_authorization_context=";
 	const signedQuerySuffix = `&ba_param=client_id&ba_param=redirect_uri&ba_param=custom_authorization_context&ba_param=sig&sig=${"a".repeat(64)}`;
 	const oauthQuery = `${signedQueryPrefix}${"a".repeat(
 		SIWE_OAUTH_QUERY_MAX_LENGTH -
@@ -63,7 +63,7 @@ const createStreamRequest = ({
 	if (declaredLength !== undefined) {
 		headers.set("Content-Length", declaredLength);
 	}
-	const request = new Request(`https://auth.cinaseek.ai${pathname}`, {
+	const request = new Request(`https://auth.cinaseek.si${pathname}`, {
 		method: "POST",
 		headers,
 		body,
@@ -136,7 +136,7 @@ describe("SIWE raw request body limits", () => {
 			Math.floor(SIWE_CHALLENGE_REQUEST_BODY_LIMIT_BYTES / 3) + 1,
 		);
 		const request = new Request(
-			"https://auth.cinaseek.ai/api/auth/siwe/challenge",
+			"https://auth.cinaseek.si/api/auth/siwe/challenge",
 			{
 				method: "POST",
 				body,
@@ -165,7 +165,7 @@ describe("SIWE raw request body limits", () => {
 				headers.set("Content-Length", declaredLength);
 			}
 			const request = new Request(
-				"https://auth.cinaseek.ai/api/auth/siwe/challenge",
+				"https://auth.cinaseek.si/api/auth/siwe/challenge",
 				{
 					method: "POST",
 					headers,
@@ -221,7 +221,7 @@ describe("SIWE raw request body limits", () => {
 	it("preserves an accepted body for the Auth handler", async () => {
 		const body = JSON.stringify({ walletAddress: "0xabc", chainId: 1 });
 		const request = new Request(
-			"https://auth.cinaseek.ai/api/auth/siwe/challenge",
+			"https://auth.cinaseek.si/api/auth/siwe/challenge",
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -237,7 +237,7 @@ describe("SIWE raw request body limits", () => {
 
 	it("allows an absent body to reach endpoint validation", async () => {
 		const request = new Request(
-			"https://auth.cinaseek.ai/api/auth/siwe/challenge",
+			"https://auth.cinaseek.si/api/auth/siwe/challenge",
 			{ method: "POST" },
 		);
 

@@ -18,8 +18,8 @@ export const getSignInAlert = (error: string | null): SignInAlert | null =>
 export const sanitizeAccountCallbackURL = (value: string | null) => {
 	if (!value?.startsWith("/") || value.startsWith("//")) return "/dashboard";
 	try {
-		const url = new URL(value, "https://accounts.cinaseek.ai");
-		if (url.origin !== "https://accounts.cinaseek.ai") return "/dashboard";
+		const url = new URL(value, "https://accounts.cinaseek.si");
+		if (url.origin !== "https://accounts.cinaseek.si") return "/dashboard";
 		return `${url.pathname}${url.search}${url.hash}`;
 	} catch {
 		return "/dashboard";

@@ -33,14 +33,14 @@ describe("Ethereum wallet helpers", () => {
 		const provider: EthereumProvider = { request };
 		const identity = await requestEthereumWalletIdentity(provider);
 		const message = buildSiweMessage({
-			domain: "auth.cinaseek.ai",
-			uri: "https://auth.cinaseek.ai",
+			domain: "auth.cinaseek.si",
+			uri: "https://auth.cinaseek.si",
 			...identity,
 			nonce: "A1b2C3d4E5f6G7h8J",
 			issuedAt: new Date("2026-08-09T00:00:00.000Z"),
 		});
 		expect(message).toContain(
-			"auth.cinaseek.ai wants you to sign in with your Ethereum account",
+			"auth.cinaseek.si wants you to sign in with your Ethereum account",
 		);
 		expect(message).toContain("Chain ID: 1");
 		expect(message).toContain("Nonce: A1b2C3d4E5f6G7h8J");

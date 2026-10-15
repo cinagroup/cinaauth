@@ -33,7 +33,7 @@ describe("sign-in experience copy", () => {
 	it("uses the canonical callbackURL parameter and accepts the legacy device-flow alias", () => {
 		const deviceSignInURL = new URL(
 			buildAccountSignInPath("/device"),
-			"https://accounts.cinaseek.ai",
+			"https://accounts.cinaseek.si",
 		);
 		expect(deviceSignInURL.pathname).toBe("/sign-in");
 		expect(deviceSignInURL.searchParams.get("callbackURL")).toBe("/device");
@@ -41,7 +41,7 @@ describe("sign-in experience copy", () => {
 		expect(
 			new URL(
 				buildAccountSignInPath("https://attacker.example/collect"),
-				"https://accounts.cinaseek.ai",
+				"https://accounts.cinaseek.si",
 			).searchParams.get("callbackURL"),
 		).toBe("/dashboard");
 

@@ -12,7 +12,7 @@ Use a temporary file outside the repository. In PowerShell:
 
 ```powershell
 $statePath = Join-Path ([System.IO.Path]::GetTempPath()) "cinaseek-admin-$([guid]::NewGuid()).json"
-pnpm --filter @cinaauth/admin-console exec playwright open --save-storage="$statePath" https://admin.cinaseek.ai/api/auth/oidc/login
+pnpm --filter @cinaauth/admin-console exec playwright open --save-storage="$statePath" https://admin.cinaseek.si/api/auth/oidc/login
 ```
 
 Complete the interactive OIDC login in the opened browser and close that

@@ -29,9 +29,9 @@ describe("Admin OIDC authorization request", () => {
 		};
 		const url = await createAdminAuthorizationUrl(
 			{
-				issuer: "https://auth.cinaseek.ai",
+				issuer: "https://auth.cinaseek.si",
 				authorization_endpoint:
-					"https://auth.cinaseek.ai/api/auth/oauth2/authorize",
+					"https://auth.cinaseek.si/api/auth/oauth2/authorize",
 			},
 			transaction,
 		);
@@ -61,9 +61,9 @@ describe("Admin OIDC authorization request", () => {
 		};
 		const url = await createAdminAuthorizationUrl(
 			{
-				issuer: "https://auth.cinaseek.ai",
+				issuer: "https://auth.cinaseek.si",
 				authorization_endpoint:
-					"https://auth.cinaseek.ai/api/auth/oauth2/authorize",
+					"https://auth.cinaseek.si/api/auth/oauth2/authorize",
 				prompt_values_supported: ["login"],
 			},
 			transaction,
@@ -88,9 +88,9 @@ describe("Admin OIDC authorization request", () => {
 		await expect(
 			createAdminAuthorizationUrl(
 				{
-					issuer: "https://auth.cinaseek.ai",
+					issuer: "https://auth.cinaseek.si",
 					authorization_endpoint:
-						"https://auth.cinaseek.ai/api/auth/oauth2/authorize",
+						"https://auth.cinaseek.si/api/auth/oauth2/authorize",
 					prompt_values_supported: ["consent"],
 				},
 				transaction,

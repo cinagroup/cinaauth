@@ -1,6 +1,6 @@
 /** Canonical CinaAdmin origin and confidential OIDC client contract. */
-export const ADMIN_OIDC_ORIGIN = "https://admin.cinaseek.ai";
-export const ADMIN_OIDC_ISSUER = "https://auth.cinaseek.ai";
+export const ADMIN_OIDC_ORIGIN = "https://admin.cinaseek.si";
+export const ADMIN_OIDC_ISSUER = "https://auth.cinaseek.si";
 export const ADMIN_OIDC_CLIENT_ID = "cinaseek-admin-console";
 /** Prefix enforced by the CinaAuth OAuth Provider for confidential client secrets. */
 export const ADMIN_OIDC_CLIENT_SECRET_PREFIX = "cina_cs_";

@@ -46,6 +46,43 @@ const productionWorkflows = [
 	["deploy-oidc-client-demo.yml", oidcClient],
 ];
 
+/**
+ * @see https://github.com/cinagroup/cinaauth/blob/main/workers/auth-api/DEPLOYMENT.md#production-domain-migration
+ */
+test("production origins deploy and probe the canonical .si hosts", () => {
+	const auth = JSON.parse(
+		readFileSync(
+			new URL("../../workers/auth-api/wrangler.json", import.meta.url),
+			"utf8",
+		),
+	);
+	assert.equal(auth.vars.CINAAUTH_URL, "https://auth.cinaseek.si");
+	assert.equal(
+		auth.vars.CINAAUTH_ACCOUNT_ORIGIN,
+		"https://accounts.cinaseek.si",
+	);
+	assert.equal(auth.vars.CINAAUTH_ADMIN_ORIGIN, "https://admin.cinaseek.si");
+	assert.equal(auth.vars.CINAAUTH_PASSKEY_RP_ID, "cinaseek.si");
+	assert.equal(
+		auth.vars.CINAAUTH_OIDC_DEMO_ORIGIN,
+		"https://oidc-demo.cinaseek.si",
+	);
+	assert.ok(
+		auth.routes.some(
+			(route) =>
+				route.custom_domain === true &&
+				route.pattern === new URL(auth.vars.CINAAUTH_URL).hostname,
+		),
+	);
+	for (const [name, workflow] of productionWorkflows) {
+		assert.doesNotMatch(workflow, /https:\/\/[^\s'"/]*cinaseek\.ai\b/, name);
+	}
+	assert.ok(central.includes(`${auth.vars.CINAAUTH_URL}/api/ready`));
+	assert.ok(account.includes(`${auth.vars.CINAAUTH_ACCOUNT_ORIGIN}/`));
+	assert.ok(admin.includes(`${auth.vars.CINAAUTH_ADMIN_ORIGIN}/login`));
+	assert.ok(oidcClient.includes(auth.vars.CINAAUTH_OIDC_DEMO_ORIGIN));
+});
+
 const jobBlock = (source, job, nextJob) => {
 	const start = source.indexOf(`  ${job}:`);
 	assert.notEqual(start, -1, `missing ${job} job`);
@@ -88,7 +125,7 @@ test("central deployment migrates the enabled organization schema before checkin
 		central.slice(applyStart, readyStart),
 	]) {
 		const migrationURL = step.match(
-			/https:\/\/auth\.cinaseek\.ai\/api\/migrate[^\s"']*/,
+			/https:\/\/auth\.cinaseek\.si\/api\/migrate[^\s"']*/,
 		)?.[0];
 		assert.ok(
 			migrationURL,
@@ -314,7 +351,7 @@ test("Account Portal smoke verifies the legacy custom domain across Cloudflare b
 	assert.match(smoke, /legacy_status" = "308"/);
 	assert.match(
 		smoke,
-		/legacy_location" = "https:\/\/accounts\.cinaseek\.ai\/sign-in\?callbackURL=%2Fdashboard"/,
+		/legacy_location" = "https:\/\/accounts\.cinaseek\.si\/sign-in\?callbackURL=%2Fdashboard"/,
 	);
 	assert.match(smoke, /cf-mitigated:\[\[:space:\]\]\*challenge/);
 	assert.match(smoke, /\^cf-ray:/);
@@ -468,12 +505,12 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 	assert.match(preflight, /CINAAUTH_EMAIL_AUTH_GATE: portal-compatible/);
 	assert.match(
 		preflight,
-		/CINAAUTH_CAPABILITIES_URL: https:\/\/accounts\.cinaseek\.ai\/api\/auth\/capabilities/,
+		/CINAAUTH_CAPABILITIES_URL: https:\/\/accounts\.cinaseek\.si\/api\/auth\/capabilities/,
 	);
 	assert.match(account, /CINAAUTH_EMAIL_AUTH_GATE: runtime-configurable/);
 	assert.match(
 		account,
-		/CINAAUTH_CAPABILITIES_URL: https:\/\/accounts\.cinaseek\.ai\/api\/auth\/capabilities/,
+		/CINAAUTH_CAPABILITIES_URL: https:\/\/accounts\.cinaseek\.si\/api\/auth\/capabilities/,
 	);
 	assert.match(preflight, /pnpm run build:cf/);
 	assert.match(
@@ -483,7 +520,7 @@ test("planned SIWE and the Accounts bundle are verified before Worker deployment
 	assert.match(preflight, /NEXT_PUBLIC_SIWE_WALLET_UI_ENABLED/);
 	assert.match(
 		preflight,
-		/CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https:\/\/accounts\.cinaseek\.ai\/api\/build-readiness/,
+		/CINAAUTH_ACCOUNT_BUILD_READINESS_URL: https:\/\/accounts\.cinaseek\.si\/api\/build-readiness/,
 	);
 	for (const contract of [
 		"lib/auth-runtime-config.test.ts",
@@ -783,7 +820,7 @@ test("frontends rely on Auth readiness and configured bindings", () => {
 test("OIDC acceptance validates its explicit production target", () => {
 	assert.match(
 		oidcClient,
-		/CINAAUTH_OIDC_DEMO_TARGET_ORIGIN: https:\/\/oidc-demo\.cinaseek\.ai/,
+		/CINAAUTH_OIDC_DEMO_TARGET_ORIGIN: https:\/\/oidc-demo\.cinaseek\.si/,
 	);
 	assert.match(oidcClient, /pnpm run check:production/);
 	assert.doesNotMatch(oidcClient, /env\.staging|deploy-siwe-staging/);

@@ -85,16 +85,16 @@ describe("organization console policy helpers", () => {
 	it("builds invitation links only from web origins and opaque identifiers", () => {
 		expect(
 			getOrganizationInvitationUrl(
-				"https://auth.cinaseek.ai",
+				"https://auth.cinaseek.si",
 				"invitation_123456",
 			),
-		).toBe("https://auth.cinaseek.ai/accept-invitation/invitation_123456");
+		).toBe("https://auth.cinaseek.si/accept-invitation/invitation_123456");
 		expect(
 			getOrganizationInvitationUrl("javascript:alert(1)", "invitation_123456"),
 		).toBeNull();
 		expect(
 			getOrganizationInvitationUrl(
-				"https://auth.cinaseek.ai",
+				"https://auth.cinaseek.si",
 				"../../security",
 			),
 		).toBeNull();

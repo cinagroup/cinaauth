@@ -15,7 +15,7 @@ vi.mock("../src/database", () => ({
 
 const createDatabaseMock = vi.mocked(createDatabase);
 
-const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
+const ACCOUNT_ORIGIN = "https://accounts.cinaseek.si";
 
 const baseEnv = {
 	GOOGLE_CLIENT_ID: "env-google-id",

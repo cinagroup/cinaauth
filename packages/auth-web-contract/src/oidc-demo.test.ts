@@ -74,7 +74,7 @@ describe("OIDC demo deployment profile", () => {
 		for (const override of [
 			{ issuer: OIDC_DEMO_ISSUER },
 			{ applicationOrigin: OIDC_DEMO_ORIGIN },
-			{ accountOrigin: "https://accounts.cinaseek.ai" },
+			{ accountOrigin: "https://accounts.cinaseek.si" },
 			{ clientId: OIDC_DEMO_CLIENT_ID },
 		]) {
 			expect(() =>
@@ -90,5 +90,20 @@ describe("OIDC demo deployment profile", () => {
 				environment: "production",
 			}),
 		).toThrow(/production/);
+	});
+
+	it("rejects a production profile that retains an old web origin", () => {
+		for (const override of [
+			{ applicationOrigin: "https://oidc-demo.cinaseek.ai" },
+			{ issuer: "https://auth.cinaseek.ai" },
+			{ accountOrigin: "https://accounts.cinaseek.ai" },
+		]) {
+			expect(() =>
+				resolveOidcDemoProfile({
+					...OIDC_DEMO_PRODUCTION_PROFILE_INPUT,
+					...override,
+				}),
+			).toThrow(/production/);
+		}
 	});
 });

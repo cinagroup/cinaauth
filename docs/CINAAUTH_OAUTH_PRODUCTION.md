@@ -1,7 +1,7 @@
 # CinaAuth OAuth 生产接入手册
 
-本文只覆盖 `accounts.cinaseek.ai` 的登录连接器。CinaAuth 仍以
-`auth.cinaseek.ai` 的 Auth Worker 作为权威身份服务，但浏览器始终通过账号中心的
+本文只覆盖 `accounts.cinaseek.si` 的登录连接器。CinaAuth 仍以
+`auth.cinaseek.si` 的 Auth Worker 作为权威身份服务，但浏览器始终通过账号中心的
 同源 `/api/auth/*` 入口发起请求，再由 Cloudflare Service Binding 转发。不要把
 Generic OAuth 回调改到 Auth Worker 域名，否则 `state` 与登录会话 Cookie 会跨域丢失。
 
@@ -9,10 +9,10 @@ Generic OAuth 回调改到 Auth Worker 域名，否则 `state` 与登录会话 C
 
 | 能力                                         | 供应商控制台配置                     | 生产值                                                                  |
 | ------------------------------------------ | ---------------------------- | -------------------------------------------------------------------- |
-| Google Social OAuth                        | Redirect URI                 | `https://accounts.cinaseek.ai/api/auth/callback/google`              |
-| Google One Tap（启用时）                    | Authorized JavaScript origin | `https://accounts.cinaseek.ai`                                      |
-| GitHub OAuth App                           | Authorization callback URL   | `https://accounts.cinaseek.ai/api/auth/callback/github`              |
-| Generic OAuth/OIDC，供应商 ID 为 `<providerId>` | Redirect URI / Callback URL  | `https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>` |
+| Google Social OAuth                        | Redirect URI                 | `https://accounts.cinaseek.si/api/auth/callback/google`              |
+| Google One Tap（启用时）                    | Authorized JavaScript origin | `https://accounts.cinaseek.si`                                      |
+| GitHub OAuth App                           | Authorization callback URL   | `https://accounts.cinaseek.si/api/auth/callback/github`              |
+| Generic OAuth/OIDC，供应商 ID 为 `<providerId>` | Redirect URI / Callback URL  | `https://accounts.cinaseek.si/api/auth/oauth2/callback/<providerId>` |
 
 Google 默认使用重定向 OAuth。管理员可在认证设置中启用 One Tap；只有 Google Provider
 有效、其 Client ID 可用且 Google 仍在公开登录列表中时，Worker 才注册 One Tap，公开
@@ -27,8 +27,8 @@ Google 默认使用重定向 OAuth。管理员可在认证设置中启用 One Ta
   `GOOGLE_CLIENT_SECRET`；任一缺失时失败关闭，不注册 Provider，也不显示登录按钮。
 * GitHub 登录需要同时配置 `GITHUB_CLIENT_ID` 与 `GITHUB_CLIENT_SECRET`；任一缺失时
   失败关闭，不注册 Provider，也不显示登录按钮。
-* 两个供应商的回调都固定在 `accounts.cinaseek.ai`，由账号中心的 Service Binding
-  转发到 Auth Worker。不要改成 `auth.cinaseek.ai`，否则发起登录时写入账号中心的
+* 两个供应商的回调都固定在 `accounts.cinaseek.si`，由账号中心的 Service Binding
+  转发到 Auth Worker。不要改成 `auth.cinaseek.si`，否则发起登录时写入账号中心的
   state Cookie 不会随跨域回调返回。
 * Google 和 GitHub 控制台都只登记各自的精确回调。不要使用通配符或旧 Demo 域名。
 * 账号中心根据 `oauthProviders[].type === "social"` 调用 `signIn.social`；Generic OAuth
@@ -51,7 +51,7 @@ state 不匹配、已有用户登录、首次用户建号、会话建立、注�
 * `<providerId>` 必须是 1–64 位小写字母、数字、点、下划线或连字符，首尾必须是字母或
   数字；一个生产配置中不得重复。
 * 在供应商控制台登记且仅登记精确回调：
-  `https://accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>`。
+  `https://accounts.cinaseek.si/api/auth/oauth2/callback/<providerId>`。
 * 优先使用 HTTPS OIDC discovery URL，并启用 PKCE。能提供 issuer identification 的
   供应商应配置 `issuer` 并启用 `requireIssuerValidation`。
 * 只申请登录所需的最小 scopes。不要把业务 API 的高权限授权与身份登录混在一起。
@@ -71,7 +71,7 @@ HTTPS authorization、token 和 user-info endpoint。
     "requireIssuerValidation": true,
     "clientId": "replace-in-secret-store",
     "clientSecret": "replace-in-secret-store",
-    "redirectURI": "https://accounts.cinaseek.ai/api/auth/oauth2/callback/enterprise-idp",
+    "redirectURI": "https://accounts.cinaseek.si/api/auth/oauth2/callback/enterprise-idp",
     "scopes": ["openid", "email", "profile"],
     "pkce": true
   }
@@ -80,7 +80,7 @@ HTTPS authorization、token 和 user-info endpoint。
 
 代码会对整个数组执行失败关闭校验。任一供应商的 JSON、ID、HTTPS endpoint 或回调不合法
 时，整个 Generic OAuth 能力不会启用，公开 capabilities 也不会展示这些供应商。不要使用
-默认的 `https://auth.cinaseek.ai/api/auth/oauth2/callback/...` 回调。
+默认的 `https://auth.cinaseek.si/api/auth/oauth2/callback/...` 回调。
 
 ### 安全写入与发布
 
@@ -98,9 +98,9 @@ pnpm --dir workers/auth-api run check:cloudflare
 1. `/api/auth/capabilities` 只公开预期的 `providerId`；除 One Tap 启用时所需的公开 Google
    Client ID 外，不含其他 Client ID、任何 Client Secret 或 endpoint。
 2. 账号中心只显示 capabilities 中已经启用的连接器。
-3. 浏览器从 `accounts.cinaseek.ai/api/auth/sign-in/oauth2` 开始流程，供应商收到的
+3. 浏览器从 `accounts.cinaseek.si/api/auth/sign-in/oauth2` 开始流程，供应商收到的
    `redirect_uri` 与控制台配置逐字符相同。
-4. 回调返回 `accounts.cinaseek.ai/api/auth/oauth2/callback/<providerId>`，state 校验成功，
+4. 回调返回 `accounts.cinaseek.si/api/auth/oauth2/callback/<providerId>`，state 校验成功，
    会话 Cookie 只写入账号中心 origin。
 5. 一次性账号可以登录、刷新页面保留会话、退出并重新登录；拒绝授权、state 不匹配和
    无效 code 都必须失败且不得建立会话。

@@ -90,8 +90,8 @@ export const getAdminOidcTransactionMode = (
 export const sanitizeAdminCallbackPath = (value: string | null | undefined) => {
 	if (!value?.startsWith("/") || value.startsWith("//")) return "/dashboard";
 	try {
-		const url = new URL(value, "https://admin.cinaseek.ai");
-		if (url.origin !== "https://admin.cinaseek.ai") return "/dashboard";
+		const url = new URL(value, "https://admin.cinaseek.si");
+		if (url.origin !== "https://admin.cinaseek.si") return "/dashboard";
 		return `${url.pathname}${url.search}${url.hash}`;
 	} catch {
 		return "/dashboard";

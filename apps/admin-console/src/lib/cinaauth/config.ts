@@ -22,7 +22,7 @@ export const cinaauthConfig = {
 	/** API host — session check + admin API calls. */
 	baseUrl: required("CINAUTH_BASE_URL", "http://localhost:2025"),
 	/** Frontend host (demo-auth.cinagroup.com) — login/sign-out page redirects. */
-	authUrl: required("CINAUTH_AUTH_URL", "https://accounts.cinaseek.ai"),
+	authUrl: required("CINAUTH_AUTH_URL", "https://accounts.cinaseek.si"),
 	allowedRoles: (
 		process.env.CINAADMIN_ALLOWED_ROLES ?? ADMIN_CONSOLE_ROLES.join(",")
 	)

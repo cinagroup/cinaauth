@@ -34,7 +34,7 @@ const SECURITY_ADMIN: AdminSession = {
 };
 
 const request = (path: string, method: "GET" | "POST" = "GET") =>
-	new NextRequest(new URL(`https://admin.cinaseek.ai${path}`), {
+	new NextRequest(new URL(`https://admin.cinaseek.si${path}`), {
 		method,
 		headers: { cookie: "session=valid" },
 	});

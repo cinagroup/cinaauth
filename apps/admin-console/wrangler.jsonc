@@ -7,7 +7,7 @@
 	"workers_dev": false,
 	"routes": [
 		{
-			"pattern": "admin.cinaseek.ai",
+			"pattern": "admin.cinaseek.si",
 			"custom_domain": true
 		}
 	],
@@ -43,12 +43,12 @@
 	},
 	"vars": {
 		"NEXT_PUBLIC_APP_NAME": "CinaSeek Admin",
-		"CINAADMIN_ORIGIN": "https://admin.cinaseek.ai",
-		"CINAUTH_REQUEST_ORIGIN": "https://admin.cinaseek.ai",
-		"NEXT_PUBLIC_CINAUTH_BASE_URL": "https://auth.cinaseek.ai",
-		"CINAUTH_BASE_URL": "https://auth.cinaseek.ai",
-		"NEXT_PUBLIC_CINAUTH_AUTH_URL": "https://accounts.cinaseek.ai",
-		"CINAUTH_AUTH_URL": "https://accounts.cinaseek.ai",
+		"CINAADMIN_ORIGIN": "https://admin.cinaseek.si",
+		"CINAUTH_REQUEST_ORIGIN": "https://admin.cinaseek.si",
+		"NEXT_PUBLIC_CINAUTH_BASE_URL": "https://auth.cinaseek.si",
+		"CINAUTH_BASE_URL": "https://auth.cinaseek.si",
+		"NEXT_PUBLIC_CINAUTH_AUTH_URL": "https://accounts.cinaseek.si",
+		"CINAUTH_AUTH_URL": "https://accounts.cinaseek.si",
 		"CINAADMIN_ALLOWED_ROLES": "super_admin,security_admin"
 	}
 }

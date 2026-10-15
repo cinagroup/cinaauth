@@ -24,7 +24,7 @@ const createOversizedStreamRequest = (declaredLength?: string) => {
 	if (declaredLength !== undefined) {
 		headers.set("Content-Length", declaredLength);
 	}
-	const request = new Request("https://auth.cinaseek.ai/test", {
+	const request = new Request("https://auth.cinaseek.si/test", {
 		method: "POST",
 		headers,
 		body,
@@ -50,7 +50,7 @@ describe("bounded JSON request bodies", () => {
 	});
 
 	it("preserves an ordinary empty JSON object", async () => {
-		const request = new Request("https://auth.cinaseek.ai/test", {
+		const request = new Request("https://auth.cinaseek.si/test", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: "{}",

@@ -33,7 +33,7 @@ describe("Auth issuer routing", () => {
 		[AGENT_CONFIGURATION_PATH, AGENT_CONFIGURATION_API_PATH],
 	])("rewrites %s to %s", (input, expected) => {
 		const request = createCanonicalDiscoveryRequest(
-			new Request(`https://auth.cinaseek.ai${input}?client=cloudflare`, {
+			new Request(`https://auth.cinaseek.si${input}?client=cloudflare`, {
 				headers: { Accept: "application/json" },
 			}),
 		);
@@ -45,20 +45,20 @@ describe("Auth issuer routing", () => {
 
 	it("leaves canonical discovery requests unchanged", () => {
 		const request = new Request(
-			`https://auth.cinaseek.ai${OPENID_CONFIGURATION_PATH}`,
+			`https://auth.cinaseek.si${OPENID_CONFIGURATION_PATH}`,
 		);
 		expect(createCanonicalDiscoveryRequest(request)).toBe(request);
 	});
 
 	it("leaves the Agent Auth API endpoint unchanged", () => {
 		const request = new Request(
-			`https://auth.cinaseek.ai${AGENT_CONFIGURATION_API_PATH}`,
+			`https://auth.cinaseek.si${AGENT_CONFIGURATION_API_PATH}`,
 		);
 		expect(createCanonicalDiscoveryRequest(request)).toBe(request);
 	});
 
 	it("serves equivalent ES256 OIDC metadata and JWKS through both paths", async () => {
-		const issuer = "https://auth.cinaseek.ai";
+		const issuer = "https://auth.cinaseek.si";
 		const { auth } = await getTestInstance({
 			baseURL: issuer,
 			plugins: [
@@ -67,8 +67,8 @@ describe("Auth issuer routing", () => {
 					jwt: { issuer },
 				}),
 				oauthProvider({
-					loginPage: "https://accounts.cinaseek.ai/sign-in",
-					consentPage: "https://accounts.cinaseek.ai/oauth/consent",
+					loginPage: "https://accounts.cinaseek.si/sign-in",
+					consentPage: "https://accounts.cinaseek.si/oauth/consent",
 					silenceWarnings: {
 						oauthAuthServerConfig: true,
 						openidConfig: true,

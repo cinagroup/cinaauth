@@ -1,6 +1,6 @@
 # CinaAuth Cloudflare production deployment
 
-This Worker serves `https://auth.cinaseek.ai` with three production primitives:
+This Worker serves `https://auth.cinaseek.si` with three production primitives:
 
 - Cloudflare Hyperdrive connects CinaAuth to PostgreSQL.
 - `RateLimitDurableObject` provides 256 deterministic SQLite-backed shards.
@@ -44,7 +44,7 @@ An audit-write failure is logged but never permits the rejected mutation.
 
 - Node.js 22+ and pnpm 11+
 - Wrangler 4.x authenticated to the target Cloudflare account
-- an active `cinaseek.ai` zone
+- an active `cinaseek.si` zone
 - a PostgreSQL database reachable by Cloudflare Hyperdrive
 - `cinaauth-delivery` and `cinaauth-delivery-dlq` Queues
 - permission to manage R2 and Queues for privacy-export provisioning
@@ -59,9 +59,42 @@ redirect URI. `CINATOKEN_OIDC_CLIENT_SECRET` (with the `cina_cs_` prefix) and
 the cinatoken Admin Worker. Bootstrap or rotate them through Wrangler stdin;
 never add them to mutable bulk-provisioning inputs or tracked configuration.
 
+## Production domain migration
+
+The tracked production target is now `cinaseek.si`: Auth uses
+`https://auth.cinaseek.si`, Accounts uses `https://accounts.cinaseek.si`, Admin
+uses `https://admin.cinaseek.si`, and the acceptance client uses
+`https://oidc-demo.cinaseek.si`. Deploy and verify these exact origins; a
+redirect from an old `.ai` hostname is not an API or OAuth acceptance result.
+Changing the tracked configuration alone does not complete the production
+cutover. The isolated restore rehearsal and central deployment gates below
+still apply.
+
+Before cutover, update Google/GitHub and Generic OAuth callback allowlists to
+the Accounts `.si` callbacks. Organization SSO uses the Auth origin instead:
+OIDC callbacks use `https://auth.cinaseek.si/api/auth/sso/callback/<providerId>`
+(or the configured shared SSO callback), and SAML ACS uses
+`https://auth.cinaseek.si/api/auth/sso/saml2/sp/acs/<providerId>`. Update the
+enterprise IdP metadata and SCIM client base URLs accordingly. Allow the new
+origins in Reown and Turnstile, and update relying parties to the new OIDC
+issuer. Review persisted Generic OAuth callback configuration through the
+authenticated configuration control plane. CinaToken keeps its own
+`https://cinatoken.com` callback and resource; its relying-party issuer
+configuration must follow the Auth origin change.
+
+Users must sign in again on the new domain. The Passkey RP ID changes from
+`cinaseek.ai` to `cinaseek.si`, so existing `.ai` Passkeys cannot authenticate
+under the new RP ID. Keep another verified sign-in method available for
+re-enrollment. Restart in-flight OAuth, SIWE, and device browser transactions
+on the new origin. Email sender domains require separate provider verification;
+the web domain migration does not change configured mailboxes.
+
+Historical deployment and restore evidence retains the origins used when it
+was captured. Record new `.si` readiness and protocol results after deployment.
+
 ## Unified sign-in and first-time account creation
 
-Accounts exposes one user-facing entry at `https://accounts.cinaseek.ai/sign-in`.
+Accounts exposes one user-facing entry at `https://accounts.cinaseek.si/sign-in`.
 There is no separate registration choice: an existing email signs in, while an
 unknown email creates a verified user only after the six-digit OTP passes its
 atomic single-use check. The production Email OTP plugin therefore keeps
@@ -101,8 +134,9 @@ profile, and production/staging mixtures fail closed. Every configured origin
 is an exact HTTPS origin without credentials, port, path, query, fragment,
 wildcard, or trailing slash. Missing required values and malformed optional
 values fail closed. Omitting an optional origin disables that trust
-relationship. The production Passkey RP ID remains `cinaseek.ai`; changing it
-would invalidate existing credentials.
+relationship. The production Passkey RP ID is `cinaseek.si`; the domain
+migration requires re-enrollment of existing `.ai` credentials as described
+above.
 
 SIWE is a non-secret, fail-closed rollout in `wrangler.json`.
 `CINAAUTH_SIWE_ENABLED=true` is the planned Stage Two activation configuration.
@@ -119,8 +153,8 @@ An enabled configuration requires all of the following exact inputs:
   passes it to the public build as `NEXT_PUBLIC_REOWN_PROJECT_ID`);
 - `CINAAUTH_SIWE_ENABLED=true`;
 - a canonical comma-separated `CINAAUTH_SIWE_ALLOWED_CHAIN_IDS` allowlist;
-- `CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.ai`;
-- `CINAAUTH_SIWE_RP_URI=https://accounts.cinaseek.ai`;
+- `CINAAUTH_SIWE_RP_DOMAIN=accounts.cinaseek.si`;
+- `CINAAUTH_SIWE_RP_URI=https://accounts.cinaseek.si`;
 - `CINAAUTH_SIWE_ALLOW_LEGACY=false`;
 - `CINAAUTH_SIWE_AUTO_SIGNUP=true`.
 
@@ -186,7 +220,7 @@ restore procedure. The Stage Two change must remain switch-only; if unrelated
 migrations are present, stop and review their recovery plan separately.
 
 The Project ID is a public client identifier, not an authentication secret.
-Configure `https://accounts.cinaseek.ai` as an allowed Reown origin. The
+Configure `https://accounts.cinaseek.si` as an allowed Reown origin. The
 Accounts deployment gate refuses to build a production UI when the live Auth
 Worker advertises SIWE without a valid Project ID.
 
@@ -331,7 +365,7 @@ $headers = @{
 }
 $body = @{ eventIds = @("cinaauth-outbox-123") } | ConvertTo-Json
 Invoke-RestMethod `
-  https://auth.cinaseek.ai/api/operations/cinatoken-identity-outbox/replay `
+  https://auth.cinaseek.si/api/operations/cinatoken-identity-outbox/replay `
   -Method Post -Headers $headers -Body $body
 ```
 
@@ -672,7 +706,7 @@ email-code attempt.
 
 Google/GitHub social OAuth and Generic OAuth must follow the production callback/origin
 matrix in [`docs/CINAAUTH_OAUTH_PRODUCTION.md`](../../docs/CINAAUTH_OAUTH_PRODUCTION.md).
-In particular, Generic OAuth callbacks stay on `accounts.cinaseek.ai` so the
+In particular, Generic OAuth callbacks stay on `accounts.cinaseek.si` so the
 same-origin state and session cookies survive the Service Binding hop. The
 account deployment runs `check:oauth-build` against the live capabilities
 endpoint and fails if One Tap is advertised without an enabled Google Provider
@@ -681,8 +715,8 @@ through the redirect-based social provider contract.
 Google Social OAuth is registered only when both `GOOGLE_CLIENT_ID` and
 `GOOGLE_CLIENT_SECRET` are present. GitHub is registered only when both
 `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are present. Their callbacks are
-fixed to `https://accounts.cinaseek.ai/api/auth/callback/google` and
-`https://accounts.cinaseek.ai/api/auth/callback/github`, preserving the
+fixed to `https://accounts.cinaseek.si/api/auth/callback/google` and
+`https://accounts.cinaseek.si/api/auth/callback/github`, preserving the
 same-origin state Cookie across the Service Binding proxy.
 
 Stripe billing is atomic and fail-closed. Configure all of
@@ -797,7 +831,7 @@ password, OAuth, email, SMS, or privacy-erasure E2E acceptance.
 DNS target and certificate lifecycle; do not replace it with a route-only
 hostname that has no proxied DNS record.
 
-Wrangler creates the `auth.cinaseek.ai` Custom Domain and reconciles the
+Wrangler creates the `auth.cinaseek.si` Custom Domain and reconciles the
 SQLite-backed `RateLimitDurableObject` declaration. It does not receive the
 PostgreSQL password; the Worker sees only `env.HYPERDRIVE.connectionString`.
 
@@ -821,8 +855,8 @@ Preview before applying:
 
 ```powershell
 $headers = @{ Authorization = "Bearer $env:CINAAUTH_MIGRATION_TOKEN" }
-Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Headers $headers
-Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Method Post -Headers $headers
+Invoke-RestMethod https://auth.cinaseek.si/api/migrate -Headers $headers
+Invoke-RestMethod https://auth.cinaseek.si/api/migrate -Method Post -Headers $headers
 ```
 
 The POST applies the framework schema and then installs all deployment-owned
@@ -853,7 +887,7 @@ feature schema through the Hyperdrive database role:
 
 ```powershell
 $advancedMigration =
-  "https://auth.cinaseek.ai/api/migrate?feature=organization-advanced"
+  "https://auth.cinaseek.si/api/migrate?feature=organization-advanced"
 Invoke-RestMethod $advancedMigration -Headers $headers
 Invoke-RestMethod $advancedMigration -Method Post -Headers $headers
 Invoke-RestMethod $advancedMigration -Headers $headers
@@ -872,9 +906,9 @@ with the one-time token. Responses contain only per-table row counts:
 $cutoverHeaders = @{
   Authorization = "Bearer $env:CINAAUTH_D1_MIGRATION_TOKEN"
 }
-Invoke-RestMethod https://auth.cinaseek.ai/api/migrate/d1 `
+Invoke-RestMethod https://auth.cinaseek.si/api/migrate/d1 `
   -Headers $cutoverHeaders
-Invoke-RestMethod https://auth.cinaseek.ai/api/migrate/d1 `
+Invoke-RestMethod https://auth.cinaseek.si/api/migrate/d1 `
   -Method Post -Headers $cutoverHeaders
 ```
 
@@ -910,7 +944,7 @@ $claim = @{
 
 # Preview is the default and does not modify the provider.
 $preview = Invoke-RestMethod `
-  https://auth.cinaseek.ai/api/migrate/scim-provider-ownership `
+  https://auth.cinaseek.si/api/migrate/scim-provider-ownership `
   -Method Post -Headers $headers -ContentType "application/json" -Body $claim
 $preview
 ```
@@ -947,7 +981,7 @@ $apply = @{
 } | ConvertTo-Json
 
 $result = Invoke-RestMethod `
-  https://auth.cinaseek.ai/api/migrate/scim-provider-ownership `
+  https://auth.cinaseek.si/api/migrate/scim-provider-ownership `
   -Method Post -Headers $headers -ContentType "application/json" -Body $apply
 $newSCIMToken = $result.scimToken
 ```
@@ -967,13 +1001,13 @@ the ownership claim expecting the token to be revealed again.
 
 ```powershell
 $headers = @{ Authorization = "Bearer $env:CINAAUTH_MIGRATION_TOKEN" }
-Invoke-RestMethod https://auth.cinaseek.ai/api/ready -Headers $headers
-Invoke-WebRequest https://auth.cinaseek.ai/ -Headers @{ Accept = "application/json" }
-Invoke-WebRequest https://auth.cinaseek.ai/.well-known/openid-configuration -Headers @{ Accept = "application/json" }
-Invoke-WebRequest https://auth.cinaseek.ai/api/auth/.well-known/openid-configuration -Headers @{ Accept = "application/json" }
+Invoke-RestMethod https://auth.cinaseek.si/api/ready -Headers $headers
+Invoke-WebRequest https://auth.cinaseek.si/ -Headers @{ Accept = "application/json" }
+Invoke-WebRequest https://auth.cinaseek.si/.well-known/openid-configuration -Headers @{ Accept = "application/json" }
+Invoke-WebRequest https://auth.cinaseek.si/api/auth/.well-known/openid-configuration -Headers @{ Accept = "application/json" }
 ```
 
-`/api/ready` returns 200 only when Auth runtime inputs, all four active Secrets
+`/api/ready` returns 200 only when Auth runtime inputs, all five active Secrets
 Store bindings, Hyperdrive, PostgreSQL base tables, the D1 cutover marker,
 every database invariant and its current data coverage, Queue and Service
 Bindings, and the Durable Object limiter binding are structurally ready. It

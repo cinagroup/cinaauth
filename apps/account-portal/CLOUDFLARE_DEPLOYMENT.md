@@ -22,7 +22,7 @@ Next.js 开发可以显式设置为精确的 `false` 并使用公网 Auth URL；
 ### 问题 1：CINAAUTH_URL 配置错误
 **症状**：Worker 部署成功但页面无法访问
 **原因**：`wrangler.toml` 中的 `CINAAUTH_URL` 设置为 demo 自己的域名 `https://demo-auth.cinagroup.com`，导致无限循环
-**解决方案**：修改为指向实际的认证 Worker API：`https://auth.cinaseek.ai`
+**解决方案**：修改为指向实际的认证 Worker API：`https://auth.cinaseek.si`
 
 ### 问题 2：OpenNext middleware-manifest.json 动态 require 错误
 **症状**：访问页面返回 500 Internal Server Error
@@ -35,7 +35,7 @@ Next.js 开发可以显式设置为精确的 `false` 并使用公网 Auth URL；
 ### 1. 修复 wrangler.toml 配置
 ```toml
 [vars]
-CINAAUTH_URL = "https://auth.cinaseek.ai"  # 指向实际的认证 API
+CINAAUTH_URL = "https://auth.cinaseek.si"  # 指向实际的认证 API
 CINAAUTH_REQUIRE_AUTH_WORKER_BINDING = "true"  # 部署环境禁止公网回退
 ```
 
@@ -66,7 +66,7 @@ execSync("node post-build-patch.js", {
 从 Next.js 16.2.6 降级到 15.0.0 以获得更好的 OpenNext 兼容性
 
 ### 5. Worker 间通信：使用 Service Binding
-**问题**：demo-auth.cinagroup.com 不应依赖公网回源访问 auth.cinaseek.ai
+**问题**：demo-auth.cinagroup.com 不应依赖公网回源访问 auth.cinaseek.si
 **原因**：Cloudflare Workers 不能通过公网域名互相访问，会导致循环检测
 **解决方案**：使用 Cloudflare Service Binding 实现 Worker 间内部通信
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { evaluateOidcProtocol } from "./check-oidc-production.mjs";
 
-const origin = "https://auth.cinaseek.ai";
+const origin = "https://auth.cinaseek.si";
 const metadata = {
 	issuer: origin,
 	jwks_uri: `${origin}/api/auth/jwks`,

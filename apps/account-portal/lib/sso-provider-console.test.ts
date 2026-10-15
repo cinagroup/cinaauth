@@ -17,7 +17,7 @@ const oidcProvider: SSOProviderSummary = {
 	domain: "acme.example",
 	organizationId: "organization-1",
 	domainVerified: true,
-	spMetadataUrl: "https://auth.cinaseek.ai/api/auth/sso/saml2/sp/metadata",
+	spMetadataUrl: "https://auth.cinaseek.si/api/auth/sso/saml2/sp/metadata",
 	oidcConfig: {
 		clientIdLastFour: "****1234",
 		discoveryEndpoint:
@@ -146,13 +146,13 @@ describe("SSO provider console policy", () => {
 
 	it("builds exact public callback and metadata URLs", () => {
 		expect(getOIDCCallbackURL("acme oidc")).toBe(
-			"https://auth.cinaseek.ai/api/auth/sso/callback/acme%20oidc",
+			"https://auth.cinaseek.si/api/auth/sso/callback/acme%20oidc",
 		);
 		expect(getSAMLCallbackURL("acme-saml")).toBe(
-			"https://auth.cinaseek.ai/api/auth/sso/saml2/sp/acs/acme-saml",
+			"https://auth.cinaseek.si/api/auth/sso/saml2/sp/acs/acme-saml",
 		);
 		expect(getSAMLMetadataURL("acme-saml")).toBe(
-			"https://auth.cinaseek.ai/api/auth/sso/saml2/sp/metadata?providerId=acme-saml",
+			"https://auth.cinaseek.si/api/auth/sso/saml2/sp/metadata?providerId=acme-saml",
 		);
 	});
 

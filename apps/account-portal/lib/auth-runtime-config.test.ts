@@ -28,7 +28,7 @@ describe("Account Auth runtime configuration", () => {
 		});
 		expect(
 			resolveAuthRuntimeConfiguration(
-				"https://auth.siwe-staging.cinaseek.ai/path",
+				"https://auth.siwe-staging.cinaseek.si/path",
 				"true",
 			),
 		).toEqual({
@@ -37,8 +37,8 @@ describe("Account Auth runtime configuration", () => {
 			publicFallbackAllowed: false,
 		});
 		for (const origin of [
-			"https://auth.siwe-staging.cinaseek.ai:443",
-			"https://auth.siwe-staging.cinaseek.ai:8443",
+			"https://auth.siwe-staging.cinaseek.si:443",
+			"https://auth.siwe-staging.cinaseek.si:8443",
 		]) {
 			expect(resolveAuthRuntimeConfiguration(origin, "true")).toEqual({
 				baseURL: null,
@@ -48,11 +48,11 @@ describe("Account Auth runtime configuration", () => {
 		}
 		expect(
 			resolveAuthRuntimeConfiguration(
-				"https://auth.siwe-staging.cinaseek.ai/",
+				"https://auth.siwe-staging.cinaseek.si/",
 				"true",
 			),
 		).toEqual({
-			baseURL: "https://auth.siwe-staging.cinaseek.ai",
+			baseURL: "https://auth.siwe-staging.cinaseek.si",
 			failure: null,
 			publicFallbackAllowed: false,
 		});
@@ -86,11 +86,11 @@ describe("Account Auth runtime configuration", () => {
 		);
 		expect(
 			resolveAuthClientRuntimeBaseURL(
-				"https://accounts.siwe-staging.cinaseek.ai",
+				"https://accounts.siwe-staging.cinaseek.si",
 				undefined,
 				"true",
 			),
-		).toBe("https://accounts.siwe-staging.cinaseek.ai");
+		).toBe("https://accounts.siwe-staging.cinaseek.si");
 		expect(resolveAuthClientRuntimeBaseURL(undefined, undefined, "false")).toBe(
 			DEFAULT_CINAAUTH_API_URL,
 		);

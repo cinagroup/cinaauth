@@ -8,8 +8,8 @@ vi.mock("@opennextjs/cloudflare", () => ({
 	getCloudflareContext: mocks.getCloudflareContext,
 }));
 
-const STAGING_AUTH_ORIGIN = "https://auth.siwe-staging.cinaseek.ai";
-const STAGING_ACCOUNT_ORIGIN = "https://accounts.siwe-staging.cinaseek.ai";
+const STAGING_AUTH_ORIGIN = "https://auth.siwe-staging.cinaseek.si";
+const STAGING_ACCOUNT_ORIGIN = "https://accounts.siwe-staging.cinaseek.si";
 
 const loadAuth = async () => {
 	vi.resetModules();

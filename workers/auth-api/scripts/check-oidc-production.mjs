@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_ORIGIN = "https://auth.cinaseek.ai";
+const DEFAULT_ORIGIN = "https://auth.cinaseek.si";
 
 export const evaluateOidcProtocol = ({ origin, canonical, alias, jwks }) => {
 	const failures = [];

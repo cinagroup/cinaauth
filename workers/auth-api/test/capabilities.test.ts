@@ -5,7 +5,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { getAuthCapabilities } from "../src/capabilities";
 
-const ACCOUNT_ORIGIN = "https://accounts.cinaseek.ai";
+const ACCOUNT_ORIGIN = "https://accounts.cinaseek.si";
 
 const entitlementConfig = () =>
 	JSON.stringify({
@@ -62,7 +62,7 @@ describe("public auth capabilities", () => {
 				CINAAUTH_ACCOUNT_ORIGIN: ACCOUNT_ORIGIN,
 				CINAAUTH_SIWE_ENABLED: "true",
 				CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1",
-				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
+				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.si",
 				CINAAUTH_SIWE_RP_URI: ACCOUNT_ORIGIN,
 				CINAAUTH_SIWE_ALLOW_LEGACY: "false",
 				CINAAUTH_SIWE_AUTO_SIGNUP: "true",
@@ -101,8 +101,8 @@ describe("public auth capabilities", () => {
 				CINAAUTH_ACCOUNT_ORIGIN: ACCOUNT_ORIGIN,
 				CINAAUTH_SIWE_ENABLED: "true",
 				CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1",
-				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
-				CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
+				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.si",
+				CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.si",
 				CINAAUTH_SIWE_ALLOW_LEGACY: "false",
 				CINAAUTH_SIWE_AUTO_SIGNUP: "false",
 			}).methods.siwe,
@@ -112,8 +112,8 @@ describe("public auth capabilities", () => {
 				CINAAUTH_ACCOUNT_ORIGIN: ACCOUNT_ORIGIN,
 				CINAAUTH_SIWE_ENABLED: "true",
 				CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1",
-				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
-				CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
+				CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.si",
+				CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.si",
 				CINAAUTH_SIWE_ALLOW_LEGACY: "true",
 				CINAAUTH_SIWE_AUTO_SIGNUP: "false",
 			}).methods.siwe,
@@ -167,7 +167,7 @@ describe("public auth capabilities", () => {
 						discoveryUrl:
 							"https://github.example/.well-known/openid-configuration",
 						redirectURI:
-							"https://accounts.cinaseek.ai/api/auth/oauth2/callback/github-enterprise",
+							"https://accounts.cinaseek.si/api/auth/oauth2/callback/github-enterprise",
 					},
 				]),
 				GOOGLE_CLIENT_ID: "google-client-id",
@@ -254,7 +254,7 @@ describe("public auth capabilities", () => {
 						discoveryUrl:
 							"https://github.example/.well-known/openid-configuration",
 						redirectURI:
-							"https://accounts.cinaseek.ai/api/auth/oauth2/callback/github",
+							"https://accounts.cinaseek.si/api/auth/oauth2/callback/github",
 					},
 					{
 						providerId: "github",
@@ -263,7 +263,7 @@ describe("public auth capabilities", () => {
 						discoveryUrl:
 							"https://github.example/.well-known/openid-configuration",
 						redirectURI:
-							"https://accounts.cinaseek.ai/api/auth/oauth2/callback/github",
+							"https://accounts.cinaseek.si/api/auth/oauth2/callback/github",
 					},
 				]),
 			}).oauthProviders,

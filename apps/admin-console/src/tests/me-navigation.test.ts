@@ -37,7 +37,7 @@ describe("administrator /me navigation contract", () => {
 	it("pins every self-service handoff to the canonical Accounts origin", () => {
 		for (const section of ME_SECTIONS) {
 			const url = new URL(section.accountsHref);
-			expect(url.origin).toBe("https://accounts.cinaseek.ai");
+			expect(url.origin).toBe("https://accounts.cinaseek.si");
 			expect(url.pathname.startsWith("/dashboard")).toBe(true);
 		}
 	});

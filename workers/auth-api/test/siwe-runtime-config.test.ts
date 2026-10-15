@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getSiweRuntimeConfig } from "../src/siwe-runtime-config";
 
 const enabledConfiguration = {
-	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.ai",
+	CINAAUTH_ACCOUNT_ORIGIN: "https://accounts.cinaseek.si",
 	CINAAUTH_SIWE_ENABLED: "true",
 	CINAAUTH_SIWE_ALLOWED_CHAIN_IDS: "1,11155111",
-	CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai",
-	CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai",
+	CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.si",
+	CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.si",
 	CINAAUTH_SIWE_ALLOW_LEGACY: "false",
 	CINAAUTH_SIWE_AUTO_SIGNUP: "false",
 } as const;
@@ -34,8 +34,8 @@ describe("SIWE runtime configuration", () => {
 	it("accepts a strict link-first EOA-only configuration", () => {
 		expect(getSiweRuntimeConfig(enabledConfiguration)).toEqual({
 			enabled: true,
-			rpDomain: "accounts.cinaseek.ai",
-			rpUri: "https://accounts.cinaseek.ai",
+			rpDomain: "accounts.cinaseek.si",
+			rpUri: "https://accounts.cinaseek.si",
 			allowedChainIds: [1, 11155111],
 			allowLegacy: false,
 			autoSignup: false,
@@ -51,8 +51,8 @@ describe("SIWE runtime configuration", () => {
 			}),
 		).toEqual({
 			enabled: true,
-			rpDomain: "accounts.cinaseek.ai",
-			rpUri: "https://accounts.cinaseek.ai",
+			rpDomain: "accounts.cinaseek.si",
+			rpUri: "https://accounts.cinaseek.si",
 			allowedChainIds: [1, 11155111],
 			allowLegacy: false,
 			autoSignup: true,
@@ -72,21 +72,21 @@ describe("SIWE runtime configuration", () => {
 		],
 		[
 			"domain with a scheme",
-			{ CINAAUTH_SIWE_RP_DOMAIN: "https://accounts.cinaseek.ai" },
+			{ CINAAUTH_SIWE_RP_DOMAIN: "https://accounts.cinaseek.si" },
 		],
 		[
 			"domain with a port",
-			{ CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.ai:443" },
+			{ CINAAUTH_SIWE_RP_DOMAIN: "accounts.cinaseek.si:443" },
 		],
-		["non-HTTPS URI", { CINAAUTH_SIWE_RP_URI: "http://accounts.cinaseek.ai" }],
-		["URI host mismatch", { CINAAUTH_SIWE_RP_URI: "https://auth.cinaseek.ai" }],
+		["non-HTTPS URI", { CINAAUTH_SIWE_RP_URI: "http://accounts.cinaseek.si" }],
+		["URI host mismatch", { CINAAUTH_SIWE_RP_URI: "https://auth.cinaseek.si" }],
 		[
 			"URI with a path",
-			{ CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.ai/dashboard" },
+			{ CINAAUTH_SIWE_RP_URI: "https://accounts.cinaseek.si/dashboard" },
 		],
 		[
 			"Accounts origin mismatch",
-			{ CINAAUTH_ACCOUNT_ORIGIN: "https://other.cinaseek.ai" },
+			{ CINAAUTH_ACCOUNT_ORIGIN: "https://other.cinaseek.si" },
 		],
 		["legacy mode", { CINAAUTH_SIWE_ALLOW_LEGACY: "true" }],
 		["invalid signup switch", { CINAAUTH_SIWE_AUTO_SIGNUP: "TRUE" }],

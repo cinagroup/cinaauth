@@ -40,8 +40,8 @@ const stage = (dependencies: AdminConfigurationDependencies) =>
 		dependencies,
 		service: "delivery",
 		action: "stage",
-		origin: "https://admin.cinaseek.ai",
-		allowedOrigin: "https://admin.cinaseek.ai",
+		origin: "https://admin.cinaseek.si",
+		allowedOrigin: "https://admin.cinaseek.si",
 		readBody: async () => ({ ok: true, value: stageBody }),
 	});
 

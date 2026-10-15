@@ -28,7 +28,7 @@ describe("Agent authorization flow", () => {
 		const path = buildAgentApprovalStepUpPath(
 			"/device/capabilities?agent_id=agent_123&code=ABCD-2345",
 		);
-		const target = new URL(path, "https://accounts.cinaseek.ai");
+		const target = new URL(path, "https://accounts.cinaseek.si");
 		expect(target.pathname).toBe("/sign-in");
 		expect(target.searchParams.get("mode")).toBe("step-up");
 		expect(target.searchParams.get("callbackURL")).toBe(
@@ -37,7 +37,7 @@ describe("Agent authorization flow", () => {
 		expect(
 			new URL(
 				buildAgentApprovalStepUpPath("https://attacker.example/collect"),
-				"https://accounts.cinaseek.ai",
+				"https://accounts.cinaseek.si",
 			).searchParams.get("callbackURL"),
 		).toBe("/device/capabilities");
 	});

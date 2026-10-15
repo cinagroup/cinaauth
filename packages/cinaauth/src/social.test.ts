@@ -1707,8 +1707,8 @@ describe("Apple Provider", async () => {
 		const state = new URL(signInRes.data!.url!).searchParams.get("state") || "";
 		const userData = JSON.stringify({
 			name: {
-				firstName: "Better",
-				lastName: "Auth",
+				firstName: "Ada",
+				lastName: "Lovelace",
 			},
 			email: "user2@privaterelay.appleid.com",
 		});
@@ -1749,7 +1749,7 @@ describe("Apple Provider", async () => {
 			},
 		});
 
-		expect(session.data?.user.name).toBe("CinaAuth");
+		expect(session.data?.user.name).toBe("Ada Lovelace");
 	});
 
 	it("should pass user name via idToken body for Apple sign-in", async () => {

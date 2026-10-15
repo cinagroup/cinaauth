@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy oidc-demo.cinaseek.ai
+    name: Deploy oidc-demo.cinaseek.si
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -64,7 +64,7 @@ jobs:
 
       - name: Run production protocol acceptance
         env:
-          CINAAUTH_OIDC_DEMO_TARGET_ORIGIN: https://oidc-demo.cinaseek.ai
+          CINAAUTH_OIDC_DEMO_TARGET_ORIGIN: https://oidc-demo.cinaseek.si
         run: |
           for attempt in $(seq 1 40); do
             echo "Readiness check attempt $attempt"

@@ -23,31 +23,31 @@ describe("server auth API", () => {
 		expect(shouldSkipOAuthProxy("/api/auth/sign-in/social")).toBe(false);
 
 		const signIn = createAuthProxyRequest(
-			new Request("https://accounts.cinaseek.ai/api/auth/sign-in/oauth2"),
+			new Request("https://accounts.cinaseek.si/api/auth/sign-in/oauth2"),
 			DEFAULT_CINAAUTH_API_URL,
 		);
-		expect(signIn.url).toBe("https://auth.cinaseek.ai/api/auth/sign-in/oauth2");
+		expect(signIn.url).toBe("https://auth.cinaseek.si/api/auth/sign-in/oauth2");
 		expect(signIn.headers.get("x-skip-oauth-proxy")).toBe("1");
 
 		const callback = createAuthProxyRequest(
 			new Request(
-				"https://accounts.cinaseek.ai/api/auth/oauth2/callback/enterprise-idp?code=code&state=state",
+				"https://accounts.cinaseek.si/api/auth/oauth2/callback/enterprise-idp?code=code&state=state",
 			),
 			DEFAULT_CINAAUTH_API_URL,
 		);
 		expect(callback.headers.get("x-skip-oauth-proxy")).toBe("1");
 		expect(callback.url).toContain(
-			"https://auth.cinaseek.ai/api/auth/oauth2/callback/enterprise-idp",
+			"https://auth.cinaseek.si/api/auth/oauth2/callback/enterprise-idp",
 		);
 	});
 
 	it("keeps browser authentication on the relying-party origin", () => {
 		expect(
 			resolveAuthClientBaseURL(
-				"https://accounts.cinaseek.ai",
-				"https://auth.cinaseek.ai",
+				"https://accounts.cinaseek.si",
+				"https://auth.cinaseek.si",
 			),
-		).toBe("https://accounts.cinaseek.ai");
+		).toBe("https://accounts.cinaseek.si");
 		expect(resolveAuthClientBaseURL(undefined, "https://auth.internal")).toBe(
 			"https://auth.internal",
 		);
@@ -69,7 +69,7 @@ describe("server auth API", () => {
 		expect(session?.user.id).toBe("user-1");
 		const request = fetch.mock.calls[0]?.[0];
 		expect(request).toBeInstanceOf(Request);
-		expect(request?.url).toBe("https://auth.cinaseek.ai/api/auth/get-session");
+		expect(request?.url).toBe("https://auth.cinaseek.si/api/auth/get-session");
 		expect(request?.headers.get("cookie")).toBe(
 			"cinaauth.session_token=signed",
 		);
@@ -137,7 +137,7 @@ describe("server auth API", () => {
 		});
 
 		expect(okFetch.mock.calls[0]?.[0].url).toBe(
-			"https://auth.cinaseek.ai/api/auth/oauth2/public-client?client_id=client-1",
+			"https://auth.cinaseek.si/api/auth/oauth2/public-client?client_id=client-1",
 		);
 
 		const failedApi = createServerAuthApi(
@@ -164,7 +164,7 @@ describe("server auth API", () => {
 
 		const request = fetch.mock.calls[0]?.[0];
 		expect(request?.url).toBe(
-			"https://auth.cinaseek.ai/api/auth/audit/organization?limit=20&organizationId=organization-1",
+			"https://auth.cinaseek.si/api/auth/audit/organization?limit=20&organizationId=organization-1",
 		);
 		expect(request?.headers.get("cookie")).toBe(
 			"cinaauth.session_token=signed",
@@ -194,14 +194,14 @@ describe("server auth API", () => {
 
 	it("builds a same-contract proxy request for the Service Binding", async () => {
 		const incoming = new Request(
-			"https://accounts.cinaseek.ai/api/auth/sign-in/email?callbackURL=%2Fdashboard",
+			"https://accounts.cinaseek.si/api/auth/sign-in/email?callbackURL=%2Fdashboard",
 			{
 				method: "POST",
 				headers: {
 					cookie: "cinaauth.session_token=signed",
 					"content-type": "application/json",
-					host: "accounts.cinaseek.ai",
-					origin: "https://accounts.cinaseek.ai",
+					host: "accounts.cinaseek.si",
+					origin: "https://accounts.cinaseek.si",
 				},
 				body: JSON.stringify({ email: "user@cinaseek.ai" }),
 			},
@@ -210,12 +210,12 @@ describe("server auth API", () => {
 		const proxied = createAuthProxyRequest(incoming, DEFAULT_CINAAUTH_API_URL);
 
 		expect(proxied.url).toBe(
-			"https://auth.cinaseek.ai/api/auth/sign-in/email?callbackURL=%2Fdashboard",
+			"https://auth.cinaseek.si/api/auth/sign-in/email?callbackURL=%2Fdashboard",
 		);
 		expect(proxied.method).toBe("POST");
 		expect(proxied.headers.get("host")).toBeNull();
 		expect(proxied.headers.get("cookie")).toBe("cinaauth.session_token=signed");
-		expect(proxied.headers.get("origin")).toBe("https://accounts.cinaseek.ai");
+		expect(proxied.headers.get("origin")).toBe("https://accounts.cinaseek.si");
 		expect(await proxied.json()).toEqual({ email: "user@cinaseek.ai" });
 	});
 

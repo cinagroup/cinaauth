@@ -66,7 +66,7 @@ const createSerialDatabaseDouble = (
 };
 
 const request = (pathname: string, body?: unknown, method = "POST") =>
-	new Request(`https://auth.cinaseek.ai${pathname}`, {
+	new Request(`https://auth.cinaseek.si${pathname}`, {
 		method,
 		...(body === undefined
 			? {}

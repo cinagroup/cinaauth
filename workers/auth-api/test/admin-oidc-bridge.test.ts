@@ -23,20 +23,20 @@ describe("Admin OIDC session bridge policy", () => {
 	it("requires both the Admin audience and authorized party", () => {
 		expect(
 			isAdminAccessToken(
-				{ aud: "https://admin.cinaseek.ai", azp: ADMIN_OIDC_CLIENT_ID },
-				"https://admin.cinaseek.ai",
+				{ aud: "https://admin.cinaseek.si", azp: ADMIN_OIDC_CLIENT_ID },
+				"https://admin.cinaseek.si",
 			),
 		).toBe(true);
 		expect(
 			isAdminAccessToken(
 				{ aud: "https://other.example", azp: ADMIN_OIDC_CLIENT_ID },
-				"https://admin.cinaseek.ai",
+				"https://admin.cinaseek.si",
 			),
 		).toBe(false);
 		expect(
 			isAdminAccessToken(
-				{ aud: "https://admin.cinaseek.ai", azp: "other-client" },
-				"https://admin.cinaseek.ai",
+				{ aud: "https://admin.cinaseek.si", azp: "other-client" },
+				"https://admin.cinaseek.si",
 			),
 		).toBe(false);
 	});

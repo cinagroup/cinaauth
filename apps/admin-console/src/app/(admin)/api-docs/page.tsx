@@ -120,7 +120,7 @@ export default function ApiDocsPage() {
 	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 	const deferredSearch = useDeferredValue(search);
 	const cinaauthUrl =
-		process.env.NEXT_PUBLIC_CINAUTH_BASE_URL ?? "https://auth.cinaseek.ai";
+		process.env.NEXT_PUBLIC_CINAUTH_BASE_URL ?? "https://auth.cinaseek.si";
 	const { data, isPending, isError, refetch } = useQuery({
 		queryKey: ["admin-openapi-schema"],
 		queryFn: async ({ signal }) => {

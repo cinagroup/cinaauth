@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { evaluateAgentAuthProtocol } from "./check-agent-auth-production.mjs";
 
-const origin = "https://auth.cinaseek.ai";
+const origin = "https://auth.cinaseek.si";
 const issuer = `${origin}/api/auth`;
 const configuration = {
 	version: "1.0-draft",

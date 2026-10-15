@@ -32,11 +32,11 @@ describe("POST /api/auth/sign-out", () => {
 		const headers = new Headers();
 		headers.append(
 			"set-cookie",
-			"__Secure-cinaauth.session_token=; Max-Age=0; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
+			"__Secure-cinaauth.session_token=; Max-Age=0; Path=/; Domain=.cinaseek.si; HttpOnly; Secure; SameSite=Lax",
 		);
 		headers.append(
 			"set-cookie",
-			"__Secure-cinaauth.session_data=; Max-Age=0; Path=/; Domain=.cinaseek.ai; HttpOnly; Secure; SameSite=Lax",
+			"__Secure-cinaauth.session_data=; Max-Age=0; Path=/; Domain=.cinaseek.si; HttpOnly; Secure; SameSite=Lax",
 		);
 		const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
 			new Response(JSON.stringify({ success: true }), {

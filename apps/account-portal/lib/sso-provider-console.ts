@@ -29,7 +29,7 @@ export type ProviderDraft = {
 	authnRequestsSigned: boolean;
 };
 
-const AUTH_BASE_URL = "https://auth.cinaseek.ai/api/auth";
+const AUTH_BASE_URL = "https://auth.cinaseek.si/api/auth";
 const MAX_SAML_METADATA_BYTES = 100 * 1024;
 const PROVIDER_ID_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 

@@ -5,9 +5,9 @@
 </p>
 
 This is the user-facing CinaSeek sign-in and account center deployed at
-[`accounts.cinaseek.ai`](https://accounts.cinaseek.ai). It is a separately
+[`accounts.cinaseek.si`](https://accounts.cinaseek.si). It is a separately
 deployed Next.js frontend backed by the authoritative CinaAuth Worker at
-`auth.cinaseek.ai`.
+`auth.cinaseek.si`.
 
 ## Getting Started
 

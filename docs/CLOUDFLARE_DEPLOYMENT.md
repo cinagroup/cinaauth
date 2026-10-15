@@ -1,13 +1,13 @@
 # CinaAuth Cloudflare 部署指南
 
-生产认证入口为 `https://auth.cinaseek.ai`。认证数据写入 PostgreSQL，Cloudflare
+生产认证入口为 `https://auth.cinaseek.si`。认证数据写入 PostgreSQL，Cloudflare
 Worker 只能通过 Hyperdrive 连接；登录限流由 SQLite Durable Object 分片原子执行，
 不再使用 D1 热行或 isolate 内存计数。
 
 ## 架构
 
 ```text
-auth.cinaseek.ai (Custom Domain)
+auth.cinaseek.si (Custom Domain)
   -> cinaauth-api Worker
      -> HYPERDRIVE -> PostgreSQL
      -> RATE_LIMITER -> 256 个 RateLimitDurableObject 分片
@@ -71,9 +71,9 @@ pnpm --dir workers/auth-api run configure:turnstile
 
 ```powershell
 $headers = @{ Authorization = "Bearer $env:CINAAUTH_MIGRATION_TOKEN" }
-Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Headers $headers
-Invoke-RestMethod https://auth.cinaseek.ai/api/migrate -Method Post -Headers $headers
-Invoke-RestMethod https://auth.cinaseek.ai/api/ready -Headers $headers
+Invoke-RestMethod https://auth.cinaseek.si/api/migrate -Headers $headers
+Invoke-RestMethod https://auth.cinaseek.si/api/migrate -Method Post -Headers $headers
+Invoke-RestMethod https://auth.cinaseek.si/api/ready -Headers $headers
 ```
 
 `/api/ready` 检查 Hyperdrive、PostgreSQL 必需表、Queue、投递 webhook、
@@ -102,7 +102,7 @@ E2E 标记为通过。
 投递密钥写入日志或响应。
 
 Durable Object 使用 `exports.RateLimitDurableObject` 声明 SQLite 存储，首次
-`wrangler deploy` 自动创建命名空间。`auth.cinaseek.ai` 使用 Custom Domain，
+`wrangler deploy` 自动创建命名空间。`auth.cinaseek.si` 使用 Custom Domain，
 Cloudflare 自动管理 DNS 记录和证书；如果已有同名 CNAME，需要先处理冲突。
 
 GitHub Actions 还需要 `CINAAUTH_HYPERDRIVE_ID`、`CLOUDFLARE_API_TOKEN`、
@@ -111,7 +111,7 @@ GitHub Actions 还需要 `CINAAUTH_HYPERDRIVE_ID`、`CLOUDFLARE_API_TOKEN`、
 `CINAAUTH_ERASURE_STORAGE_SECRET`；投递共享密钥与提供商凭据按各自的 Secrets Store
 或部署后控制面流程管理。
 流水线只有在迁移与 `/api/ready` 都成功后，才继续检查
-`accounts.cinaseek.ai/api/auth/get-session`。
+`accounts.cinaseek.si/api/auth/get-session`。
 
 完整运维说明见 `workers/auth-api/DEPLOYMENT.md`。
 

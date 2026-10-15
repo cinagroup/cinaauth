@@ -125,7 +125,7 @@ overrides:
   sharp: '>=0.35.3 <0.36'
   better-sqlite3@>=12 <12.10.0: '>=12.10.0 <13'
 
-packageExtensionsChecksum: sha256-B5BNnVAemBx5dAlfjMmEdmZ37Bws/pvorn2Zwe6076Q=
+packageExtensionsChecksum: sha256-5utlBL9YSxhSn9tnqgVSOD9p3eCoi1NWiCKV+TaoF+w=
 
 patchedDependencies:
   '@changesets/assemble-release-plan': 0599486e3d3f68b6f30d0f55a524ccac93e7fe24b273f0f5691b59685498605f
@@ -440,13 +440,13 @@ importers:
         version: 2.1.1
       geist:
         specifier: ^1.7.2
-        version: 1.7.2(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+        version: 1.7.2(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       lucide-react:
         specifier: ^1.21.0
         version: 1.30.0(react@19.2.4)
       next:
         specifier: ^15.5.2
-        version: 15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -474,7 +474,7 @@ importers:
         version: 5.20260804.1
       '@opennextjs/cloudflare':
         specifier: 1.20.2
-        version: 1.20.2(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(supports-color@10.2.2)(wrangler@4.120.0(@cloudflare/workers-types@5.20260804.1)(@types/node@22.19.13)(bufferutil@4.1.0)(utf-8-validate@5.0.10))
+        version: 1.20.2(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(supports-color@10.2.2)(wrangler@4.120.0(@cloudflare/workers-types@5.20260804.1)(@types/node@22.19.13)(bufferutil@4.1.0)(utf-8-validate@5.0.10))
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.58.2
@@ -17966,6 +17966,8 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
       '@playwright/test': ^1.51.1
+      '@types/react': '>=18.2.0'
+      '@types/react-dom': '>=18.2.0'
       babel-plugin-react-compiler: '*'
       react: ^18.2.0 || 19.0.0-rc-de68d2f4-20241204 || ^19.0.0
       react-dom: ^18.2.0 || 19.0.0-rc-de68d2f4-20241204 || ^19.0.0
@@ -29336,7 +29338,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/aws@4.1.0(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(supports-color@10.2.2)':
+  '@opennextjs/aws@4.1.0(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(supports-color@10.2.2)':
     dependencies:
       '@ast-grep/napi': 0.40.5
       '@aws-sdk/client-cloudfront': 3.984.0
@@ -29352,7 +29354,7 @@ snapshots:
       cookie: 1.1.1
       esbuild: 0.28.1
       express: 5.2.1(supports-color@10.2.2)
-      next: 15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next: 15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       path-to-regexp: 6.3.0
       urlpattern-polyfill: 10.1.0
       yaml: 2.9.0
@@ -29395,17 +29397,17 @@ snapshots:
       - encoding
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.2(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(supports-color@10.2.2)(wrangler@4.120.0(@cloudflare/workers-types@5.20260804.1)(@types/node@22.19.13)(bufferutil@4.1.0)(utf-8-validate@5.0.10))':
+  '@opennextjs/cloudflare@1.20.2(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(supports-color@10.2.2)(wrangler@4.120.0(@cloudflare/workers-types@5.20260804.1)(@types/node@22.19.13)(bufferutil@4.1.0)(utf-8-validate@5.0.10))':
     dependencies:
       '@ast-grep/napi': 0.40.5
       '@dotenvx/dotenvx': 1.31.0
-      '@opennextjs/aws': 4.1.0(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(supports-color@10.2.2)
+      '@opennextjs/aws': 4.1.0(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(supports-color@10.2.2)
       ci-info: 4.4.0
       cloudflare: 4.5.0
       comment-json: 4.5.1
       enquirer: 2.4.1
       glob: 12.0.0
-      next: 15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next: 15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       ts-tqdm: 0.8.6
       wrangler: 4.120.0(@cloudflare/workers-types@5.20260804.1)(@types/node@22.19.13)(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       yargs: 18.0.0
@@ -41984,9 +41986,9 @@ snapshots:
     dependencies:
       next: 16.3.4(@babel/core@8.0.1)(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@25.9.4)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  geist@1.7.2(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)):
+  geist@1.7.2(next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)):
     dependencies:
-      next: 15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next: 15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   geist@1.7.2(next@16.3.4(@babel/core@8.0.1)(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@25.9.4)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)):
     dependencies:
@@ -45240,10 +45242,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  next@15.5.23(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.19.13)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       '@next/env': 15.5.23
       '@swc/helpers': 0.5.15
+      '@types/react': 19.2.14
+      '@types/react-dom': 19.2.3(@types/react@19.2.14)
       caniuse-lite: 1.0.30001793
       postcss: 8.5.26
       react: 19.2.4
