@@ -81,7 +81,14 @@ if (process.platform === "win32") {
 
 execFileSync(
 	process.execPath,
-	[pnpmCli, "--config.verify-deps-before-run=false", "exec", "next", "build"],
+	[
+		pnpmCli,
+		"--config.verify-deps-before-run=false",
+		"exec",
+		"next",
+		"build",
+		"--webpack",
+	],
 	{
 		cwd: appDir,
 		env: childEnv,
