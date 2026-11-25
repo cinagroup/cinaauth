@@ -59,6 +59,11 @@ redirect URI. `CINATOKEN_OIDC_CLIENT_SECRET` (with the `cina_cs_` prefix) and
 the cinatoken Admin Worker. Bootstrap or rotate them through Wrangler stdin;
 never add them to mutable bulk-provisioning inputs or tracked configuration.
 
+The fixed-client bootstrap also reconciles the resource row and the
+`oauthClientResource` link for that exact origin. Existing resource policy,
+including an intentional disablement, is preserved. The link is required by
+the provider's per-client resource enforcement before sign-in can begin.
+
 ## Production domain migration
 
 The tracked production target is now `cinaseek.si`: Auth uses

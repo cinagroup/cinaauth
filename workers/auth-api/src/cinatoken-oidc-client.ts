@@ -109,4 +109,29 @@ export const ensureCinatokenOidcClient = async (
 			"softwareVersion" = EXCLUDED."softwareVersion"`,
 		values,
 	);
+
+	// The provider enforces per-client resource links. Preserve existing resource
+	// policy, including deliberate disablement, while restoring the fixed link.
+	await database.query(
+		`INSERT INTO "oauthResource" ("id", "identifier", "name", "createdAt", "updatedAt")
+		 VALUES ($1, $2, $3, $4, $4)
+		 ON CONFLICT ("identifier") DO NOTHING`,
+		[
+			`first-party:${applicationOrigin}`,
+			applicationOrigin,
+			"CinaToken Gateway",
+			now,
+		],
+	);
+	await database.query(
+		`INSERT INTO "oauthClientResource" ("id", "clientId", "resourceId", "createdAt")
+		 VALUES ($1, $2, $3, $4)
+		 ON CONFLICT DO NOTHING`,
+		[
+			`${CINATOKEN_OIDC_CLIENT_ID}:${applicationOrigin}`,
+			CINATOKEN_OIDC_CLIENT_ID,
+			applicationOrigin,
+			now,
+		],
+	);
 };

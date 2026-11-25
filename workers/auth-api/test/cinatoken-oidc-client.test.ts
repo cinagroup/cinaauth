@@ -61,4 +61,36 @@ describe("cinatoken OIDC client bootstrap", () => {
 		).rejects.toThrow(/strong payload/i);
 		expect(query).not.toHaveBeenCalled();
 	});
+
+	it("links the fixed client to its exact resource without replacing operator policy", async () => {
+		const query = vi.fn(async (_sql: string, _values: readonly unknown[]) => ({
+			rows: [],
+		}));
+		await ensureCinatokenOidcClient(
+			{ query },
+			CLIENT_SECRET,
+			APPLICATION_ORIGIN,
+		);
+		const resource = query.mock.calls.find(([sql]) =>
+			sql.includes('INSERT INTO "oauthResource"'),
+		);
+		expect(resource?.[0]).toContain('ON CONFLICT ("identifier") DO NOTHING');
+		expect(resource?.[0]).not.toContain("DO UPDATE");
+		expect(resource?.[1]).toEqual([
+			`first-party:${APPLICATION_ORIGIN}`,
+			APPLICATION_ORIGIN,
+			"CinaToken Gateway",
+			expect.any(Date),
+		]);
+		const link = query.mock.calls.find(([sql]) =>
+			sql.includes('INSERT INTO "oauthClientResource"'),
+		);
+		expect(link?.[0]).toContain("ON CONFLICT DO NOTHING");
+		expect(link?.[1]).toEqual([
+			`${CINATOKEN_OIDC_CLIENT_ID}:${APPLICATION_ORIGIN}`,
+			CINATOKEN_OIDC_CLIENT_ID,
+			APPLICATION_ORIGIN,
+			expect.any(Date),
+		]);
+	});
 });
