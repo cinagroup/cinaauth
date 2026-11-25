@@ -46,6 +46,26 @@ const productionWorkflows = [
 	["deploy-oidc-client-demo.yml", oidcClient],
 ];
 
+test("central Auth release HTTP probes identify the deployment client", () => {
+	for (const [name, source] of productionWorkflows.slice(0, 3)) {
+		assert.match(
+			source,
+			/^env:\n  CINAAUTH_DEPLOYMENT_USER_AGENT: "CinaAuth-Deployment\/1\.0 \(\+https:\/\/github\.com\/cinagroup\/cinaauth\)"$/m,
+			name,
+		);
+		const commands = source.replace(/\\\r?\n\s*/g, " ");
+		const probes = [...commands.matchAll(/\bcurl\b[^\n]*/g)];
+		assert.ok(probes.length > 0, `${name} must contain HTTP probes`);
+		for (const [probe] of probes) {
+			assert.match(
+				probe,
+				/--user-agent "\$CINAAUTH_DEPLOYMENT_USER_AGENT"/,
+				`${name}: ${probe}`,
+			);
+		}
+	}
+});
+
 /**
  * @see https://github.com/cinagroup/cinaauth/blob/main/workers/auth-api/DEPLOYMENT.md#production-domain-migration
  */
