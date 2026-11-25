@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { deploymentFetch } from "../../../scripts/deployment-http.mjs";
 
 const DEFAULT_ORIGIN = "https://auth.cinaseek.si";
 const PROFILE_CAPABILITY = "identity.profile.read";
@@ -83,7 +84,7 @@ export const evaluateAgentAuthProtocol = ({
 };
 
 const fetchJson = async (url) => {
-	const response = await fetch(url, {
+	const response = await deploymentFetch(url, {
 		headers: { Accept: "application/json" },
 		signal: AbortSignal.timeout(10_000),
 	});

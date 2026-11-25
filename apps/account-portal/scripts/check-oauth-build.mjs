@@ -1,11 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { deploymentFetch } from "../../../scripts/deployment-http.mjs";
 
 const DEFAULT_CAPABILITIES_URL =
 	"https://auth.cinaseek.si/api/auth/capabilities";
-const DEPLOYMENT_USER_AGENT =
-	"CinaAuth-Deployment/1.0 (+https://github.com/cinagroup/cinaauth)";
 
 const hasNoStore = (cacheControl) =>
 	/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cacheControl ?? "");
@@ -315,10 +314,9 @@ export const fetchCapabilities = async (url) => {
 	let lastError;
 	for (let attempt = 1; attempt <= 3; attempt += 1) {
 		try {
-			const response = await fetch(url, {
+			const response = await deploymentFetch(url, {
 				headers: {
 					Accept: "application/json",
-					"User-Agent": DEPLOYMENT_USER_AGENT,
 				},
 				signal: AbortSignal.timeout(10_000),
 			});
@@ -345,11 +343,10 @@ export const fetchBuildReadiness = async (url) => {
 	let lastError;
 	for (let attempt = 1; attempt <= 3; attempt += 1) {
 		try {
-			const response = await fetch(url, {
+			const response = await deploymentFetch(url, {
 				cache: "no-store",
 				headers: {
 					Accept: "application/json",
-					"User-Agent": DEPLOYMENT_USER_AGENT,
 				},
 				signal: AbortSignal.timeout(10_000),
 			});
