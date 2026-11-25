@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const DEFAULT_CAPABILITIES_URL =
 	"https://auth.cinaseek.si/api/auth/capabilities";
+const DEPLOYMENT_USER_AGENT =
+	"CinaAuth-Deployment/1.0 (+https://github.com/cinagroup/cinaauth)";
 
 const hasNoStore = (cacheControl) =>
 	/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cacheControl ?? "");
@@ -309,12 +311,15 @@ const readPlannedSiweEnabled = (configPath) => {
 	return config?.vars?.CINAAUTH_SIWE_ENABLED;
 };
 
-const fetchCapabilities = async (url) => {
+export const fetchCapabilities = async (url) => {
 	let lastError;
 	for (let attempt = 1; attempt <= 3; attempt += 1) {
 		try {
 			const response = await fetch(url, {
-				headers: { Accept: "application/json" },
+				headers: {
+					Accept: "application/json",
+					"User-Agent": DEPLOYMENT_USER_AGENT,
+				},
 				signal: AbortSignal.timeout(10_000),
 			});
 			if (!response.ok) {
@@ -336,13 +341,16 @@ const fetchCapabilities = async (url) => {
 	throw lastError;
 };
 
-const fetchBuildReadiness = async (url) => {
+export const fetchBuildReadiness = async (url) => {
 	let lastError;
 	for (let attempt = 1; attempt <= 3; attempt += 1) {
 		try {
 			const response = await fetch(url, {
 				cache: "no-store",
-				headers: { Accept: "application/json" },
+				headers: {
+					Accept: "application/json",
+					"User-Agent": DEPLOYMENT_USER_AGENT,
+				},
 				signal: AbortSignal.timeout(10_000),
 			});
 			if (!response.ok) {
