@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
+import { createServer } from "node:http";
 import { describe, it } from "node:test";
 import {
 	evaluateConfigurableAuthenticationRelease,
@@ -8,8 +10,54 @@ import {
 	evaluatePlannedSiweRelease,
 	evaluatePortalCompatibility,
 	evaluateReownBuild,
+	fetchBuildReadiness,
+	fetchCapabilities,
 	resolveAccountBuildReadinessTarget,
 } from "./check-oauth-build.mjs";
+
+describe("deployment identity HTTP probes", () => {
+	for (const [name, probe, payloadKey] of [
+		["capabilities", fetchCapabilities, "capabilities"],
+		["build readiness", fetchBuildReadiness, "deployedReadiness"],
+	]) {
+		it(`identifies the ${name} probe to the production edge`, async (t) => {
+			const payload = { ready: true };
+			const server = createServer((request, response) => {
+				if (
+					!request.headers["user-agent"]?.startsWith("CinaAuth-Deployment/")
+				) {
+					response.writeHead(403).end("error code: 1010");
+					return;
+				}
+				response.writeHead(200, {
+					"content-type": "application/json",
+					"cache-control": "no-store",
+				});
+				response.end(JSON.stringify(payload));
+			});
+			server.listen(0, "127.0.0.1");
+			await once(server, "listening");
+			t.after(() => new Promise((resolve) => server.close(resolve)));
+			const result = await probe(
+				`http://127.0.0.1:${server.address().port}/probe`,
+			);
+			assert.deepEqual(result[payloadKey], payload);
+			assert.equal(result.cacheControl, "no-store");
+		});
+		it(`still rejects a forbidden ${name} response`, async (t) => {
+			const server = createServer((_request, response) => {
+				response.writeHead(403).end("Forbidden");
+			});
+			server.listen(0, "127.0.0.1");
+			await once(server, "listening");
+			t.after(() => new Promise((resolve) => server.close(resolve)));
+			await assert.rejects(
+				probe(`http://127.0.0.1:${server.address().port}/probe`),
+				/HTTP 403/,
+			);
+		});
+	}
+});
 
 const capabilities = (methods, overrides = {}) => ({
 	version: 5,
