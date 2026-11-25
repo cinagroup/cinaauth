@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { deploymentFetch } from "../../../scripts/deployment-http.mjs";
 import { checkAuthReadiness } from "./check-auth-readiness.mjs";
 import {
 	evaluateDeliveryCapabilityParity,
@@ -210,7 +211,7 @@ const publicFetch = async (url, init = {}) => {
 	let lastError;
 	for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 		try {
-			const response = await fetch(url, {
+			const response = await deploymentFetch(url, {
 				...init,
 				signal: AbortSignal.timeout(10_000),
 			});

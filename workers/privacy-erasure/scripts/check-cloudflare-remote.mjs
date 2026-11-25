@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { classifyCloudflareEdgeMitigation } from "../../../scripts/cloudflare-edge-mitigation.mjs";
+import { deploymentFetch } from "../../../scripts/deployment-http.mjs";
 
 const API_BASE = "https://api.cloudflare.com/client/v4";
 const ORIGIN = "https://cinaauth-erasure.cinagroup.com";
@@ -138,7 +138,7 @@ const publicFetch = async (url, init = {}) => {
 	let lastError;
 	for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 		try {
-			const response = await fetch(url, {
+			const response = await deploymentFetch(url, {
 				...init,
 				signal: AbortSignal.timeout(10_000),
 			});

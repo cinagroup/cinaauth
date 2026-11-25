@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { deploymentFetch } from "../../../scripts/deployment-http.mjs";
 
 const DEFAULT_ORIGIN = "https://auth.cinaseek.si";
 
@@ -76,7 +77,7 @@ export const evaluateOidcProtocol = ({ origin, canonical, alias, jwks }) => {
 };
 
 const fetchJson = async (url) => {
-	const response = await fetch(url, {
+	const response = await deploymentFetch(url, {
 		headers: { Accept: "application/json" },
 		signal: AbortSignal.timeout(10_000),
 	});
