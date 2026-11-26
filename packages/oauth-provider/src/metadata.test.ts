@@ -230,7 +230,7 @@ describe("oauth metadata", async () => {
 			]);
 		});
 
-		it("should keep deriving public-client support from registration when unset", async () => {
+		it("should advertise public clients with anonymous registration when unset", async () => {
 			const { auth } = await createTestInstance({
 				oauthProviderConfig: { allowUnauthenticatedClientRegistration: true },
 			});
@@ -568,6 +568,7 @@ describe("oauth metadata", async () => {
 		expect(oauthMetadata.registration_endpoint).toBeUndefined();
 	});
 
+	/** @see https://datatracker.ietf.org/doc/html/rfc8414#section-2 */
 	it("should advertise public client token authentication independently of anonymous registration", async () => {
 		const { auth } = await createTestInstance({
 			oauthProviderConfig: {

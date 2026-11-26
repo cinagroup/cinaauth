@@ -1484,19 +1484,16 @@ export interface OAuthOptions<
 		 * metadata is built, because companion plugins register their methods
 		 * after this plugin is created.
 		 *
-		 * Use it when the server accepts public clients at the token endpoint but
-		 * registers them itself, so `allowUnauthenticatedClientRegistration` is
-		 * `false` and discovery would otherwise leave `"none"` out. Clients that
-		 * follow RFC 8414 read that omission as "public clients are unsupported".
+		 * Public clients are advertised by default, including when dynamic
+		 * registration is protected or disabled. An explicit list can omit
+		 * `"none"` to hide that support from discovery.
 		 *
 		 * Changes only what discovery advertises. It does not change which
 		 * clients the token endpoint accepts, and it does not open
 		 * `POST /oauth2/register`. The introspection and revocation lists are
 		 * not affected.
 		 *
-		 * @default derived: `"none"` is listed when
-		 * `allowUnauthenticatedClientRegistration` is `true` or an extension
-		 * contributes a `clientDiscovery`
+		 * @default All supported methods, including `"none"` for public clients.
 		 */
 		token_endpoint_auth_methods_supported?: TokenEndpointAuthMethod[];
 	};

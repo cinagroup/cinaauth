@@ -124,19 +124,13 @@ function buildAuthServerMetadata(
 		? undefined
 		: getJwtPlugin(ctx.context).options;
 	const clientDiscoveries = getClientDiscoveries(opts);
-	// Any contributed `clientDiscovery` implicitly produces public clients
-	// (CIMD, wallet attestation, etc.), so it flips `public_client_supported`
-	// and the advertised `"none"` auth method alongside unauthenticated DCR.
-	// `advertisedMetadata.token_endpoint_auth_methods_supported` overrides the
-	// derivation, so a provider with protected DCR can still advertise that its
-	// token endpoint accepts public clients.
+	// Pre-registered public clients remain supported when dynamic registration
+	// is protected or disabled. An explicit advertised list can hide "none"
+	// without changing token authentication or registration policy.
 	assertAdvertisedAuthMethodsSupported(opts);
 	const advertisedAuthMethods =
 		opts.advertisedMetadata?.token_endpoint_auth_methods_supported;
-	const publicClientSupported = advertisedAuthMethods
-		? advertisedAuthMethods.includes("none")
-		: opts.allowUnauthenticatedClientRegistration ||
-			clientDiscoveries.length > 0;
+	const publicClientSupported = advertisedAuthMethods?.includes("none") ?? true;
 	const authMetadata = authServerMetadata(ctx, jwtPluginOptions, {
 		scopes_supported: opts.advertisedMetadata?.scopes_supported ?? opts.scopes,
 		dynamic_client_registration_supported: opts.allowDynamicClientRegistration,

@@ -312,6 +312,7 @@ describe("http redirect URIs on private networks", () => {
 });
 
 describe("allowInsecureRedirectUri boundaries", () => {
+	/** @see https://github.com/better-auth/better-auth/blob/fcd3cbf4a71f8d19b295383b10a44f829e3e80c5/packages/core/src/utils/redirect-uri.ts */
 	it.each([
 		"http://user:pass@192.168.1.50:8000/logged-out",
 		"http://user:pass@localhost:8000/logged-out",
@@ -326,7 +327,15 @@ describe("allowInsecureRedirectUri boundaries", () => {
 				redirect_uris: [lanRedirect],
 				post_logout_redirect_uris: [uri],
 			}),
-		).rejects.toMatchObject({ body: { error: "invalid_redirect_uri" } });
+		).rejects.toMatchObject({
+			status: "BAD_REQUEST",
+			body: {
+				code: "VALIDATION_ERROR",
+				message: expect.stringContaining(
+					"Redirect URI must not contain embedded credentials",
+				),
+			},
+		});
 	});
 
 	/**

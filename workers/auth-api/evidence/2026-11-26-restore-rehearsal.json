@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "outcome": "current-runtime-restore-rehearsal-passed",
+  "outcome": "node-runtime-restore-checks-passed-cloudflare-rehearsal-pending",
   "candidateCommit": "42c42c4664471f7fd74643bfefb74ff4c799a320",
   "frameworkVersion": "1.7.28",
   "runtimeMode": "node-runtime-with-deny-only-cloudflare-binding-stubs",
@@ -99,5 +99,7 @@
     "deploymentContractTestsPassed": 87,
     "nativeNodeES256Authentication": "passed",
     "packageBuildsSucceeded": 23
-  }
+  },
+  "productionDeploymentAttestationEligible": false,
+  "requiredCloudflareRehearsalPending": true
 }
