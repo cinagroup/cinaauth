@@ -465,6 +465,9 @@
       "plugins/anonymous": [
         "./dist/plugins/anonymous/index.d.mts"
       ],
+      "plugins/audit-log": [
+        "./dist/plugins/audit-log/index.d.mts"
+      ],
       "plugins/bearer": [
         "./dist/plugins/bearer/index.d.mts"
       ],
