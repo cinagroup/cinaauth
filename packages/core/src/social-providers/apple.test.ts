@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-
 import type { JWK } from "jose";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GenericEndpointContext } from "../types";
 
@@ -17,12 +17,12 @@ import { apple } from "./apple";
 const mockedBetterFetch = vi.mocked(betterFetch);
 
 async function createSignedAppleToken(payloadNonce: string) {
-	const { publicKey, privateKey } = await generateKeyPair("ES256", {
+	const { publicKey, privateKey } = await generateKeyPair("RS256", {
 		extractable: true,
 	});
 	const publicJWK = await exportJWK(publicKey);
 	publicJWK.kid = "test-apple-key";
-	publicJWK.alg = "ES256";
+	publicJWK.alg = "RS256";
 	publicJWK.use = "sig";
 
 	const token = await new SignJWT({
@@ -31,7 +31,7 @@ async function createSignedAppleToken(payloadNonce: string) {
 		email_verified: true,
 		nonce: payloadNonce,
 	})
-		.setProtectedHeader({ alg: "ES256", kid: "test-apple-key" })
+		.setProtectedHeader({ alg: "RS256", kid: "test-apple-key" })
 		.setIssuer("https://appleid.apple.com")
 		.setAudience("com.example.app")
 		.setIssuedAt()

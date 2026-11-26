@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/api-key",
-  "version": "1.7.8",
+  "version": "1.7.28",
   "description": "API Key plugin for CinaAuth.",
   "type": "module",
   "license": "MIT",
@@ -69,6 +69,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@better-auth/utils": "catalog:",
     "@cinaauth/core": "workspace:*",
     "cinaauth": "workspace:*",
     "tsdown": "catalog:"
@@ -77,6 +78,6 @@
     "@cinaauth/core": "workspace:^",
     "@better-auth/utils": "catalog:peer",
     "cinaauth": "workspace:^",
-    "better-call": "catalog:"
+    "better-call": "catalog:peer"
   }
 }

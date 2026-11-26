@@ -1,6 +1,6 @@
+import { APIError } from "@cinaauth/core/error";
 import { statusCodes } from "better-call";
 import type { Status } from "cinaauth";
-import { APIError } from "cinaauth";
 import { isAPIError } from "cinaauth/api";
 import { createSCIMOpenAPIContent } from "./scim-metadata";
 
@@ -122,6 +122,11 @@ export const SCIMErrorOpenAPISchemas = {
 	"500": {
 		description:
 			"Internal Server Error. This is a problem with the server that you cannot fix.",
+		content: createSCIMOpenAPIContent(SCIMErrorOpenAPISchema),
+	},
+	"501": {
+		description:
+			"Not Implemented. The database adapter has no native transaction support.",
 		content: createSCIMOpenAPIContent(SCIMErrorOpenAPISchema),
 	},
 };

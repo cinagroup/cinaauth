@@ -125,6 +125,31 @@ export interface ClientDiscovery {
 	 */
 	fetchClientMetadataResource?: ClientMetadataResourceFetch;
 	/**
+	 * Allows a client owned by this discovery to use a `jwks_uri` whose origin
+	 * is neither a trusted origin nor the `client_id` URL's origin, which the
+	 * provider rejects by default.
+	 *
+	 * Consulted only for such a `jwks_uri`, when the client is registered or
+	 * refreshed and before each of its client assertions is verified. Only a
+	 * resolved `true` allows it; `false`, a throw, or a rejection keeps the
+	 * rejection. Every other `jwks_uri` check still applies first, and the keys
+	 * are still fetched through {@link fetchClientMetadataResource}.
+	 */
+	isCrossOriginJwksUriAllowed?: (
+		input: { clientId: string; jwksUri: string },
+		context: GenericEndpointContext,
+	) => Awaitable<boolean>;
+	/**
+	 * Seconds after the last successful fetch that cached `jwks_uri` keys of
+	 * this discovery's clients keep verifying assertions while refetching them
+	 * fails transiently: a timeout after DNS resolution, a connection failure
+	 * with a known error code, or HTTP 500, 502, 503, or 504. Capped at 24
+	 * hours. Values under the default 10-minute fallback do not shorten it.
+	 *
+	 * @see https://www.better-auth.com/docs/plugins/oauth-provider/clients#private-key-jwt
+	 */
+	jwksStaleIfError?: number;
+	/**
 	 * Fields merged into `/.well-known/oauth-authorization-server` and
 	 * `/.well-known/openid-configuration` responses. Useful for advertising
 	 * RFC-registered discovery flags like
@@ -280,6 +305,11 @@ export interface OAuthProviderApi {
 	/**
 	 * Validates an access token for a protected resource and throws the OAuth
 	 * bearer challenge when the token is inactive or unknown.
+	 *
+	 * Checks the token, not the request: a DPoP-bound token returns `cnf.jkt`
+	 * without a proof check. Call `enforceDpopBinding` from `cinaauth/oauth2`
+	 * with a shared replay store, as the UserInfo endpoint does, and reject a
+	 * DPoP-bound token when there is no HTTP request (RFC 9449 §6.2, §7.1).
 	 */
 	requireActiveAccessToken: (
 		token: string,
@@ -383,7 +413,7 @@ export interface OAuthClaimExtensionInput {
 	 * Session the tokens are issued for, when one is available. Best-effort:
 	 * set on the session-backed grants (authorization_code, refresh_token),
 	 * undefined otherwise (client_credentials, introspection, or a session that
-	 * was deleted or unlinked). Treat as possibly undefined.
+	 * has expired, was deleted, or was unlinked). Treat as possibly undefined.
 	 */
 	sessionId?: string;
 	resources?: string[];
@@ -424,7 +454,8 @@ export interface OAuthUserInfoExtensionInput {
  *   would otherwise be silently unreachable.
  * - Additive kinds (`metadata`, `claims`) never override authorization-server
  *   core; a key already owned by the provider is kept, and a key two extensions
- *   both contribute resolves to the first-registered extension.
+ *   both contribute resolves to the first-registered extension, with a
+ *   logged warning.
  */
 export interface OAuthProviderExtension {
 	/**
@@ -514,6 +545,27 @@ export interface OAuthOptions<
 	 */
 	scopes?: Scopes;
 	/**
+	 * Require every request to `/oauth2/authorize` to include the `openid`
+	 * scope, so the provider only serves OpenID Connect requests there.
+	 *
+	 * Once the client and `redirect_uri` are validated, a request without
+	 * `openid`, including one with no `scope` parameter at all, is redirected to
+	 * the `redirect_uri` with `invalid_scope`. Without this option, a request
+	 * without `openid` is served as plain OAuth, unless it carries the OpenID
+	 * Connect `claims` parameter, which is rejected without `openid`. A request
+	 * with no `scope` falls back to the client's registered `scopes`, then to the provider's
+	 * `scopes`.
+	 *
+	 * The option does not apply to a device authorization request at
+	 * `/device/code`.
+	 *
+	 * Requires `openid` to be in `scopes`.
+	 *
+	 * @see https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+	 * @default false
+	 */
+	requireOpenId?: boolean;
+	/**
 	 * Validates an OAuth authorization request's redirect URI. Without this
 	 * option, the URI must match one registered for the client, except that
 	 * a registered native HTTP loopback URI may use a different port.
@@ -557,7 +609,7 @@ export interface OAuthOptions<
 	 * Accept only callback hosts you control. For pairwise subject identifiers,
 	 * custom-validated URIs use the sector of the client's first registered URI.
 	 *
-	 * @see https://www.better-auth.com/docs/plugins/oauth-provider#custom-redirect-uri-validation
+	 * @see https://www.better-auth.com/docs/plugins/oauth-provider/clients#custom-redirect-uri-validation
 	 *
 	 * @param redirectUri - The redirect_uri from the authorization request
 	 * @param registeredUris - Registered redirect URIs for the client
@@ -569,6 +621,33 @@ export interface OAuthOptions<
 		registeredUris: readonly string[],
 		defaultResult: boolean,
 	) => Awaitable<boolean>;
+	/**
+	 * Allows `http:` redirect URIs that the default policy rejects.
+	 *
+	 * By default, `http:` redirect and post-logout redirect URIs are accepted
+	 * only on loopback hosts, and web clients cannot use loopback hosts at all.
+	 * When the default policy rejects an `http:` URI, this callback decides:
+	 * return `true` to accept it. It applies to client registration and
+	 * updates, the authorize endpoint, and the end-session endpoint. A callback
+	 * that throws rejects the URI, and URIs with credentials are always
+	 * rejected. Web clients on loopback hosts must match the registered port.
+	 *
+	 * Use it for deployments served over plain HTTP on a private network, or
+	 * for web clients on `localhost` during development. Plain HTTP exposes
+	 * authorization codes to anyone on the network path, so accept only origins
+	 * you control.
+	 *
+	 * @example
+	 * ```ts
+	 * oauthProvider({
+	 *   allowInsecureRedirectUri: (url) => url.origin === "http://192.168.1.50:8000",
+	 * })
+	 * ```
+	 *
+	 * @param url - The parsed `http:` redirect URI
+	 * @returns `true` to accept the URI
+	 */
+	allowInsecureRedirectUri?: (url: URL) => boolean;
 	/**
 	 * Protected resources the AS issues access tokens for. Promotes the
 	 * resource model into a first-class persisted entity with per-resource
@@ -610,6 +689,28 @@ export interface OAuthOptions<
 	 * @default "insertOnly"
 	 */
 	resourceSeedMode?: "insertOnly" | "merge" | "overwrite";
+	/**
+	 * How long a finished `resources` seed is remembered, so later requests
+	 * skip its database read.
+	 *
+	 * - `"adapter"` (default): per database adapter object. An instance built
+	 *   once and reused seeds once.
+	 * - `"process"`: for the life of the process, per seeded entry. Use it
+	 *   when CinaAuth is built per request with a new database client each
+	 *   time (for example on Cloudflare Workers), where `"adapter"` reads the
+	 *   table on every request. Only safe when every instance in the process
+	 *   uses the same database: an instance on another database with the same
+	 *   `resources` skips its seed.
+	 *
+	 * This option is a stopgap. It is superseded by the planned change that
+	 * stops `init` from accessing the database to seed configured resources,
+	 * and can be removed when that ships. The `next` branch (1.8) carries the
+	 * same option with the same name, type, and default.
+	 *
+	 * @see https://github.com/better-auth/better-auth/issues/11725
+	 * @default "adapter"
+	 */
+	resourceSeedScope?: "adapter" | "process";
 	/**
 	 * Opt-in cache membership for resources by `identifier`. Mirrors the
 	 * {@link OAuthOptions.cachedTrustedClients} pattern.
@@ -752,8 +853,38 @@ export interface OAuthOptions<
 	 */
 	assertionMaxLifetime?: number;
 	/**
+	 * Seconds of clock skew accepted on a `private_key_jwt` assertion's `nbf`,
+	 * `exp`, and `iat`, and added to how long its `jti` is remembered.
+	 *
+	 * Set this when a client's clock runs a few seconds ahead of or behind this
+	 * server and its assertions fail with `client assertion signature
+	 * verification failed`. The default of `0` accepts no skew.
+	 *
+	 * Values above `60` are treated as `60`. Negative and non-finite values are
+	 * treated as `0`.
+	 *
+	 * @default 0
+	 */
+	assertionClockTolerance?: number;
+	/**
+	 * Lets a confidential `private_key_jwt` client replace its own inline `jwks`
+	 * at `POST /oauth2/client/rotate-keys`, authenticated by a client assertion
+	 * signed with one of its current keys. No user session is involved.
+	 *
+	 * Clients that publish their keys at a `jwks_uri` rotate them there, so they
+	 * cannot use this endpoint.
+	 *
+	 * Each rotation assertion must be single-use, so the provider refuses to
+	 * start with this enabled on the memory adapter or with
+	 * `advanced.database.generateId: "serial"`, neither of which enforces it.
+	 *
+	 * @default false
+	 */
+	allowClientKeyRotation?: boolean;
+	/**
 	 * Allows /oauth2/public-client-prelogin endpoint to be
 	 * requestable prior to login via a valid oauth_query.
+	 * The requested `client_id` must match the signed query's.
 	 */
 	allowPublicClientPrelogin?: boolean;
 	/**
@@ -869,14 +1000,16 @@ export interface OAuthOptions<
 	 * field.
 	 *
 	 * - `"web"`: the OIDC Registration §2 default. Omitted `application_type` is
-	 *   treated as `web`, so custom-scheme redirect URIs are rejected.
+	 *   treated as `web`, so custom-scheme and loopback redirect URIs are
+	 *   rejected.
 	 * - `"native"`: omitted `application_type` is treated as `native`.
 	 * - `"infer"`: omitted `application_type` is treated as `native` when any
-	 *   `redirect_uris` entry uses a non-http(s) scheme; otherwise `web`. Every
-	 *   redirect URI is then validated against the native rules. Lets native MCP
-	 *   clients that omit `application_type` (for example Cursor, which also
-	 *   registers https and loopback callbacks) register without loosening
-	 *   web-client redirect policy.
+	 *   `redirect_uris` entry uses a non-http(s) scheme or is `http` on
+	 *   `localhost`, `127.0.0.1`, or `[::1]`; otherwise `web`. Every redirect URI
+	 *   of an inferred native client is then validated against the native rules.
+	 *   Lets native MCP clients that omit `application_type` (for example Cursor,
+	 *   or older Claude Code releases with an `http://127.0.0.1` callback)
+	 *   register without loosening web-client redirect policy.
 	 *
 	 * An `application_type` the client actually sends is never overridden.
 	 * Applies only to dynamic client registration; managed clients and Client ID
@@ -1093,7 +1226,8 @@ export interface OAuthOptions<
 		 */
 		page: string;
 		/**
-		 * A value to tie to the consent reference_id.
+		 * A value to tie to the consent reference_id. Consent is stored
+		 * per reference; `undefined` or `""` uses consent given without one.
 		 *
 		 * Note that YOU must fail in this function if the requested
 		 * scope doesn't have a reference id and it should.
@@ -1146,6 +1280,14 @@ export interface OAuthOptions<
 		encrypt: (token: string, sessionId?: string) => Awaitable<string>;
 		/**
 		 * Decodes the custom session token.
+		 *
+		 * Introspection and revocation also pass values that are not refresh
+		 * tokens, such as an access token or an unknown string. Throw a JOSE
+		 * error, as `compactDecrypt` does, for a value the format cannot decode.
+		 * The endpoint then treats it as an unknown token. A key set failure
+		 * (`JWKSTimeout`, `JWKSInvalid`, or `JWKSMultipleMatchingKeys`) and any
+		 * other error are treated as a failure of the decoder and return a
+		 * server error.
 		 *
 		 * @returns {string | undefined} sessionId - if returned,
 		 * should be same as the one received in `encode`.
@@ -1307,9 +1449,11 @@ export interface OAuthOptions<
 		verificationValue?: VerificationValue;
 	}) => Awaitable<Record<string, unknown>>;
 	/**
-	 * Overwrite specific /.well-known/openid-configuration
-	 * values so they are not available publicly.
-	 * This may be important if not all clients need specific scopes.
+	 * Overrides values in the /.well-known/openid-configuration and
+	 * /.well-known/oauth-authorization-server discovery documents. It can hide
+	 * values, such as scopes not every client needs, and add values the
+	 * provider would not derive on its own. It does not change what the server
+	 * accepts.
 	 */
 	advertisedMetadata?: {
 		/**
@@ -1325,6 +1469,36 @@ export interface OAuthOptions<
 		 * ["sub", "iss", "aud", "exp", "iat", "sid", "scope", "azp"]
 		 */
 		claims_supported?: string[];
+		/**
+		 * Advertised token_endpoint_auth_methods_supported located at
+		 * /.well-known/oauth-authorization-server and
+		 * /.well-known/openid-configuration
+		 *
+		 * Lists exactly these methods, in this order, and advertises public-client
+		 * support when the list includes `"none"`. Every method must be one the
+		 * server supports: the built-in confidential methods, `"none"`, or a
+		 * method contributed through `clientAuthentication` by an entry in
+		 * `extensions` or by a companion plugin via `extendOAuthProvider`. The
+		 * list cannot be empty or repeat a method, and the plugin throws at
+		 * startup when it does. An unsupported method throws when discovery
+		 * metadata is built, because companion plugins register their methods
+		 * after this plugin is created.
+		 *
+		 * Use it when the server accepts public clients at the token endpoint but
+		 * registers them itself, so `allowUnauthenticatedClientRegistration` is
+		 * `false` and discovery would otherwise leave `"none"` out. Clients that
+		 * follow RFC 8414 read that omission as "public clients are unsupported".
+		 *
+		 * Changes only what discovery advertises. It does not change which
+		 * clients the token endpoint accepts, and it does not open
+		 * `POST /oauth2/register`. The introspection and revocation lists are
+		 * not affected.
+		 *
+		 * @default derived: `"none"` is listed when
+		 * `allowUnauthenticatedClientRegistration` is `true` or an extension
+		 * contributes a `clientDiscovery`
+		 */
+		token_endpoint_auth_methods_supported?: TokenEndpointAuthMethod[];
 	};
 	/**
 	 * Attach prefixes to returned token types.
@@ -1423,6 +1597,7 @@ export interface OAuthOptions<
 	 *   introspect: { window: 60, max: 100 },
 	 *   revoke: { window: 60, max: 30 },
 	 *   register: { window: 60, max: 5 },
+	 *   rotateClientKeys: { window: 60, max: 5 },
 	 *   userinfo: { window: 60, max: 60 },
 	 * }
 	 * ```
@@ -1453,6 +1628,11 @@ export interface OAuthOptions<
 		 * @default { window: 60, max: 5 }
 		 */
 		register?: { window: number; max: number } | false;
+		/**
+		 * Rate limit for /oauth2/client/rotate-keys endpoint
+		 * @default { window: 60, max: 5 }
+		 */
+		rotateClientKeys?: { window: number; max: number } | false;
 		/**
 		 * Rate limit for /oauth2/userinfo endpoint
 		 * @default { window: 60, max: 60 }
@@ -1899,8 +2079,11 @@ export interface SchemaClient<
 	referenceId?: string;
 	/**
 	 * Additional metadata about the client.
+	 *
+	 * Written as an object. Rows stored by earlier versions may hold a JSON
+	 * string, which is still read.
 	 */
-	metadata?: string; // in JSON format
+	metadata?: Record<string, unknown> | string;
 }
 
 export interface OAuthOpaqueAccessToken<

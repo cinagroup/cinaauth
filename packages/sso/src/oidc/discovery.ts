@@ -10,8 +10,10 @@
 
 import type { BetterFetchOption } from "@better-fetch/fetch";
 import { betterFetch } from "@better-fetch/fetch";
+import { verifyIdToken } from "@cinaauth/core/oauth2/internal";
 import { classifyHost, isPublicRoutableHost } from "@cinaauth/core/utils/host";
-import { createRemoteJWKSet, customFetch, jwtVerify } from "jose";
+
+import { createRemoteJWKSet, customFetch } from "jose";
 import type { OIDCConfig } from "../types";
 import type {
 	DiscoverOIDCConfigParams,
@@ -422,8 +424,8 @@ export async function validateOIDCIdToken(
 	token: string,
 	jwksEndpoint: string,
 	options: {
-		audience?: string | string[];
-		issuer?: string | string[];
+		audience: string;
+		issuer: string;
 	},
 	isTrustedOrigin: (url: string) => boolean,
 ) {
@@ -431,13 +433,12 @@ export async function validateOIDCIdToken(
 		[customFetch]: (url, init) =>
 			fetchOIDCEndpointResponse("jwksEndpoint", url, init, isTrustedOrigin),
 	});
-	const verified = await jwtVerify(token, jwks, {
+	const verified = await verifyIdToken(token, {
+		jwks,
 		audience: options.audience,
 		issuer: options.issuer,
 	});
-	if (typeof options.audience === "string") {
-		assertOIDCAuthorizedParty(verified.payload, options.audience);
-	}
+	assertOIDCAuthorizedParty(verified.payload, options.audience);
 	return verified;
 }
 

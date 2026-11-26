@@ -6,7 +6,7 @@ import * as z from "zod";
 import { APIError, sessionMiddleware } from "../../api";
 import { mergeSchema } from "../../db/schema";
 import { PACKAGE_VERSION } from "../../version";
-import { getJwksAdapter } from "./adapter";
+import { getDefaultKeyAlg, getJwksAdapter } from "./adapter";
 import { createCookieCacheSigner } from "./cookie-cache";
 import { schema } from "./schema";
 import { getJwtToken, signJWT } from "./sign";
@@ -233,10 +233,7 @@ export const jwt = <O extends JwtOptions>(options?: O) => {
 					return ctx.json({
 						keys: keys.map((keySet) => {
 							return {
-								alg:
-									getJwkAlgorithm(keySet) ??
-									options?.jwks?.keyPairConfig?.alg ??
-									"EdDSA",
+								alg: getJwkAlgorithm(keySet) ?? getDefaultKeyAlg(options),
 								crv: keySet.crv ?? defaultCrv,
 								...JSON.parse(keySet.publicKey),
 								kid: keySet.id,

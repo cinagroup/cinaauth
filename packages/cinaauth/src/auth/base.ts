@@ -1,6 +1,5 @@
 import type { AuthContext, CinaAuthOptions } from "@cinaauth/core";
 import { runWithAdapter } from "@cinaauth/core/context";
-import { SchemaMismatchError } from "@cinaauth/core/db/internal";
 import { BASE_ERROR_CODES, CinaAuthError } from "@cinaauth/core/error";
 import { getEndpoints, router } from "../api";
 import {
@@ -23,16 +22,6 @@ export const createCinaAuth = <Options extends CinaAuthOptions>(
 			ctx.logger[level](
 				`Schema validation is not available for adapter "${ctx.adapter.id}". Skipping schema validation. Database operations will proceed normally.`,
 			);
-		}
-		const pendingSchemaCheck = ctx.checkSchema?.();
-		if (pendingSchemaCheck) {
-			void pendingSchemaCheck.catch((error: unknown) => {
-				ctx.logger.error(
-					error instanceof SchemaMismatchError
-						? error.message
-						: "Could not validate the database schema. Check your database connection.",
-				);
-			});
 		}
 		return ctx;
 	});

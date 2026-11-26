@@ -3,6 +3,19 @@ import { getCurrentAdapter } from "@cinaauth/core/context";
 import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import type { Jwk, JwtOptions } from "./types";
 
+/**
+ * Algorithm of the key the plugin generates when `jwks.keyPairConfig` is unset.
+ */
+export const DEFAULT_JWK_ALG = "EdDSA";
+
+/**
+ * Algorithm for new keys, and for stored keys saved before the `alg` column
+ * existed.
+ */
+export function getDefaultKeyAlg(options?: JwtOptions | undefined) {
+	return options?.jwks?.keyPairConfig?.alg ?? DEFAULT_JWK_ALG;
+}
+
 export const getJwksAdapter = (
 	baseAdapter: DBAdapter<CinaAuthOptions>,
 	options?: JwtOptions,
@@ -66,7 +79,7 @@ export const getJwksAdapter = (
 		 *
 		 * Legacy rows persisted before the `alg` column existed have
 		 * `alg: null`. Per `schema.ts`, those rows are treated as the
-		 * configured default alg (`options.jwks.keyPairConfig.alg ?? "EdDSA"`),
+		 * configured default alg ({@link getDefaultKeyAlg}),
 		 * so deployments that have only legacy rows can still satisfy an
 		 * audience-pinned `signingAlgorithm` matching the default.
 		 *
@@ -83,7 +96,7 @@ export const getJwksAdapter = (
 						model: "jwks",
 					});
 			if (!candidates) return undefined;
-			const configAlg = options?.jwks?.keyPairConfig?.alg ?? "EdDSA";
+			const configAlg = getDefaultKeyAlg(options);
 			const now = new Date();
 			return candidates
 				.filter((k) => k.alg === alg || (k.alg == null && configAlg === alg))

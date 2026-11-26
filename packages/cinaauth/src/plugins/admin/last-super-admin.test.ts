@@ -449,7 +449,7 @@ describe("admin last super_admin invariant", async () => {
 			{ headers: rootHeaders },
 		);
 
-		expect(result.error).toBeNull();
+		expect(result.error?.code).toBe("FAILED_TO_DELETE_USER");
 		expect(userDeleteBefore).toHaveBeenCalledOnce();
 		expect(
 			await context.internalAdapter.findUserById(operatorUser.id),

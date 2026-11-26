@@ -9,6 +9,7 @@ import { stripe } from "@cinaauth/stripe";
 import { LibsqlDialect } from "@libsql/kysely-libsql";
 import type { CinaAuthOptions, CinaAuthPlugin } from "cinaauth";
 import { APIError, CinaAuth } from "cinaauth";
+
 import { nextCookies } from "cinaauth/next-js";
 import type { Organization } from "cinaauth/plugins";
 import {
@@ -25,9 +26,12 @@ import {
 	organization,
 	twoFactor,
 } from "cinaauth/plugins";
+
 import { MysqlDialect } from "kysely";
 import { createPool } from "mysql2/promise";
 import { Stripe } from "stripe";
+import { baseURL, mcpResource, organizationClaim } from "./demo-url.ts";
+import { deviceClients } from "./device-clients.ts";
 import {
 	createSCIMDemoPlugin,
 	isSCIMDemoEmployeePortalEnabled,
@@ -37,7 +41,6 @@ import { resolveSCIMDemoSSOUser } from "./scim-demo-employee.ts";
 import { getSCIMDemoOIDCProvider } from "./scim-demo-oidc.ts";
 
 const DEMO_SQLITE_CONTENTION_TIMEOUT_MS = 5_000;
-const mcpResource = `${process.env.CINAAUTH_URL || "https://demo.better-auth.com"}/api/mcp`;
 
 const database = (() => {
 	if (process.env.DEMO_SQLITE_PATH) {
@@ -213,7 +216,7 @@ const authOptions = {
 						inviteLink:
 							process.env.NODE_ENV === "development"
 								? `http://localhost:3000/accept-invitation/${data.id}`
-								: `${process.env.CINAAUTH_URL || "https://demo.better-auth.com"}/accept-invitation/${data.id}`,
+								: `${baseURL}/accept-invitation/${data.id}`,
 					},
 				});
 			},
@@ -241,7 +244,7 @@ const authOptions = {
 		admin(),
 		multiSession(),
 		oAuthProxy({
-			productionURL: process.env.CINAAUTH_URL || "https://demo.better-auth.com",
+			productionURL: baseURL,
 		}),
 		nextCookies(),
 		oneTap(),
@@ -397,13 +400,14 @@ const authOptions = {
 		}),
 		...scimDemoPlugins,
 		deviceAuthorization({
+			validateClient: (clientId) => deviceClients.has(clientId),
 			expiresIn: "3min",
 			interval: "5s",
 		}),
 		lastLoginMethod(),
 		jwt({
 			jwt: {
-				issuer: process.env.CINAAUTH_URL,
+				issuer: baseURL,
 			},
 		}),
 		oauthProvider({
@@ -418,10 +422,7 @@ const authOptions = {
 				"offline_access",
 				"read:organization",
 			],
-			resources: [
-				process.env.CINAAUTH_URL || "https://demo.better-auth.com",
-				mcpResource,
-			],
+			resources: [baseURL, mcpResource],
 			// DCR clients omit `resources`; link them to the MCP server like `mcp()` does.
 			clientRegistrationDefaultResources: [mcpResource],
 			selectAccount: {
@@ -433,10 +434,8 @@ const authOptions = {
 			},
 			customAccessTokenClaims({ referenceId, scopes }) {
 				if (referenceId && scopes.includes("read:organization")) {
-					const baseUrl =
-						process.env.CINAAUTH_URL || "https://demo.better-auth.com";
 					return {
-						[`${baseUrl}/org`]: referenceId,
+						[organizationClaim]: referenceId,
 					};
 				}
 				return {};

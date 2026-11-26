@@ -1,8 +1,9 @@
 import type { ClientDiscovery } from "@cinaauth/oauth-provider";
 import { extendOAuthProvider } from "@cinaauth/oauth-provider";
+
 import type { CinaAuthPlugin } from "cinaauth";
 import { CIMD_CLIENT_DISCOVERY_ID } from "./client-store";
-import { createCimdResolver } from "./resolver";
+import { createCimdResolver, resolveMetadataStaleIfErrorMs } from "./resolver";
 import type { CimdOptions } from "./types";
 import { isCimdClientIdUrlCandidate } from "./validate-metadata-document";
 import { PACKAGE_VERSION } from "./version";
@@ -27,11 +28,17 @@ export function createCimdClientDiscovery(
 	options: CimdOptions,
 ): ClientDiscovery {
 	const resolver = createCimdResolver(options);
+	const staleIfErrorMs = resolveMetadataStaleIfErrorMs(
+		options.metadataStaleIfError,
+	);
 	return {
 		id: CIMD_CLIENT_DISCOVERY_ID,
 		matches: isCimdClientIdUrlCandidate,
 		resolve: resolver,
 		fetchClientMetadataResource: options.fetchClientMetadataResource,
+		isCrossOriginJwksUriAllowed: options.isCrossOriginJwksUriAllowed,
+		jwksStaleIfError:
+			staleIfErrorMs === null ? undefined : staleIfErrorMs / 1000,
 		discoveryMetadata: { client_id_metadata_document_supported: true },
 	};
 }

@@ -6,6 +6,7 @@ import type {
 	TokenEndpointSecretAuthentication,
 } from "./token-endpoint-auth";
 import { applyTokenEndpointAuth } from "./token-endpoint-auth";
+
 import { parseScopeField } from "./utils";
 
 interface RefreshAccessTokenRequestInput {
@@ -16,6 +17,11 @@ interface RefreshAccessTokenRequestInput {
 	tokenEndpoint?: string | undefined;
 	extraParams?: Record<string, string> | undefined;
 	resource?: (string | string[]) | undefined;
+	/**
+	 * Extra headers to send to the token endpoint. Client authentication
+	 * headers are applied after these and take precedence.
+	 */
+	headers?: Record<string, string> | undefined;
 }
 
 interface RefreshAccessTokenRequestBaseInput {
@@ -23,6 +29,7 @@ interface RefreshAccessTokenRequestBaseInput {
 	options: ProviderOptions;
 	extraParams?: Record<string, string> | undefined;
 	resource?: (string | string[]) | undefined;
+	headers?: Record<string, string> | undefined;
 }
 
 interface RefreshAccessTokenInput extends RefreshAccessTokenRequestInput {
@@ -53,6 +60,7 @@ export async function refreshAccessTokenRequest({
 	tokenEndpoint,
 	extraParams,
 	resource,
+	headers,
 }: RefreshAccessTokenRequestInput) {
 	options = typeof options === "function" ? await options() : options;
 	const request = buildRefreshAccessTokenRequest({
@@ -60,6 +68,7 @@ export async function refreshAccessTokenRequest({
 		options,
 		extraParams,
 		resource,
+		headers,
 	});
 
 	await applyTokenEndpointAuth({
@@ -91,12 +100,17 @@ function buildRefreshAccessTokenRequest({
 	options,
 	extraParams,
 	resource,
+	headers: extraHeaders,
 }: RefreshAccessTokenRequestBaseInput) {
 	const body = new URLSearchParams();
 	const headers: Record<string, string> = {
 		"content-type": "application/x-www-form-urlencoded",
 		accept: "application/json",
 	};
+	// Lowercase keys so client authentication, written lowercase, replaces any caller value.
+	for (const [key, value] of Object.entries(extraHeaders ?? {})) {
+		headers[key.toLowerCase()] = value;
+	}
 
 	body.set("grant_type", "refresh_token");
 	body.set("refresh_token", refreshToken);
@@ -127,6 +141,7 @@ export async function refreshAccessToken({
 	tokenEndpointAuth,
 	extraParams,
 	resource,
+	headers: extraHeaders,
 }: RefreshAccessTokenInput): Promise<OAuth2Tokens> {
 	const { body, headers } = await refreshAccessTokenRequest({
 		refreshToken,
@@ -136,10 +151,11 @@ export async function refreshAccessToken({
 		tokenEndpoint,
 		extraParams,
 		resource,
+		headers: extraHeaders,
 	});
 
 	const { data, error } = await fetchRefusingRedirects<{
-		access_token: string;
+		access_token?: string | undefined;
 		refresh_token?: string | undefined;
 		expires_in?: number | undefined;
 		refresh_token_expires_in?: number | undefined;
@@ -153,6 +169,10 @@ export async function refreshAccessToken({
 	});
 	if (error) {
 		throw error;
+	}
+	// A response without an access token is not a successful one, even with a 200 status.
+	if (typeof data.access_token !== "string" || !data.access_token) {
+		throw data;
 	}
 	const tokens: OAuth2Tokens = {
 		accessToken: data.access_token,

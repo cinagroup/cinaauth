@@ -5,8 +5,15 @@
     "typecheck:consumer": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
+    "@cinaauth/api-key": "workspace:*",
+    "@cinaauth/electron": "workspace:*",
+    "@cinaauth/expo": "workspace:*",
     "@cinaauth/kysely-adapter": "workspace:*",
-    "cinaauth": "workspace:*"
+    "@cinaauth/scim": "workspace:*",
+    "@cinaauth/sso": "workspace:*",
+    "@cinaauth/stripe": "workspace:*",
+    "cinaauth": "workspace:*",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",

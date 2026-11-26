@@ -7,6 +7,7 @@ import type { BASE_ERROR_CODES } from "@cinaauth/core/error";
 import { capitalizeFirstLetter } from "@cinaauth/core/utils/string";
 import type { DeepReadonly, Ref, WatchSource } from "vue";
 import type { PrettifyDeep, UnionToIntersection } from "../../types/helper";
+import { trimTrailingSlashes } from "../../utils/url";
 import { getClientConfig } from "../config";
 import { createDynamicPathProxy } from "../proxy";
 import type {
@@ -143,12 +144,21 @@ export function createAuthClient<Option extends CinaAuthClientOptions>(
 		atomListeners,
 	} = getClientConfig(options, false);
 
-	const sessionCacheKey = [
-		"cinaauth",
-		"session",
-		options?.baseURL || "inferred", // Treat an empty URL as unset.
-		options?.basePath ?? "/api/auth", // Preserve an empty root path.
-	].join(":");
+	const baseURLKey = options?.baseURL || "inferred"; // Treat an empty URL as unset.
+	const basePath = options?.basePath ?? "/api/auth"; // Preserve an empty root path.
+	const sessionCacheKey = `cinaauth:session:${baseURLKey}:${basePath}`;
+
+	const sessionPath = trimTrailingSlashes(
+		basePath.startsWith("/") ? basePath : `/${basePath}`,
+	);
+
+	/**
+	 * Stays relative without an explicit `baseURL` so the SSR session fetch
+	 * forwards the incoming cookies.
+	 *
+	 * @see https://nuxt.com/docs/4.x/getting-started/data-fetching
+	 */
+	const sessionURL = `${options?.baseURL ? baseURL : sessionPath}/get-session`;
 
 	const resolvedHooks: Record<string, any> = {};
 	for (const [key, value] of Object.entries(pluginsAtoms)) {
@@ -163,7 +173,7 @@ export function createAuthClient<Option extends CinaAuthClientOptions>(
 		// Passing `useFetch` opts into Nuxt-managed session fetching and hydration.
 		if (useFetch) {
 			const sessionSignal = useStore($sessionSignal);
-			return useFetch(`${baseURL}/get-session`, {
+			return useFetch(sessionURL, {
 				headers: toHeadersInit(options?.fetchOptions?.headers),
 				key: sessionCacheKey,
 				watch: [sessionSignal],

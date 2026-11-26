@@ -1,14 +1,15 @@
 import { Buffer } from "node:buffer";
 import { base64 } from "@better-auth/utils/base64";
 import type { BetterFetch } from "@better-fetch/fetch";
+import { isDevelopment, isTest } from "@cinaauth/core/env";
 import type { CinaAuthClientPlugin, ClientStore } from "cinaauth";
-import { isDevelopment, isTest } from "cinaauth";
 import electron from "electron";
 import type {
 	ElectronAuthenticateOptions,
 	ElectronRequestAuthOptions,
 } from "./authenticate";
 import { authenticate, requestAuth } from "./authenticate";
+
 import { setupMain, withGetWindowFallback } from "./browser";
 import {
 	getCookie,

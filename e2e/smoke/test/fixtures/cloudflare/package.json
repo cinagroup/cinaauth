@@ -4,9 +4,11 @@
   "dependencies": {
     "@cinaauth/core": "workspace:*",
     "@cinaauth/kysely-adapter": "workspace:*",
+    "@cinaauth/oauth-provider": "workspace:*",
+    "@cinaauth/scim": "workspace:*",
     "@cinaauth/sso": "workspace:*",
     "cinaauth": "workspace:*",
-    "hono": "^4.13.7"
+    "hono": "^4.13.19"
   },
   "devDependencies": {
     "kysely-029": "npm:kysely@0.29.6",

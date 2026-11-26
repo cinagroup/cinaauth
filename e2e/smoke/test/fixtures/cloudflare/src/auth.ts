@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { scim } from "@cinaauth/scim";
 import { sso } from "@cinaauth/sso";
 import { CinaAuth } from "cinaauth";
 import { jwt } from "cinaauth/plugins/jwt";
@@ -12,5 +13,18 @@ export const auth = CinaAuth({
 	logger: {
 		level: "debug",
 	},
-	plugins: [jwt(), sso()],
+	plugins: [
+		jwt(),
+		sso(),
+		scim({
+			connections: [
+				{
+					id: "workforce",
+					credentials: [
+						{ type: "bearer", id: "scim-token", token: "scim-token" },
+					],
+				},
+			],
+		}),
+	],
 });

@@ -7,6 +7,7 @@ import type {
 	Where,
 } from "@cinaauth/core/db/adapter";
 import { createAdapterFactory } from "@cinaauth/core/db/adapter";
+
 import {
 	checksSchema,
 	createSchemaCheck,
@@ -33,12 +34,14 @@ import {
 	or,
 	sql,
 } from "drizzle-orm";
+
 import { fromDriverDate, toDriverDate } from "../date-columns";
 import type { RelationKeysByModel } from "../join-relation-key";
 import {
 	buildRelationKeysByModel,
 	getOneToOneRelationKey,
 } from "../join-relation-key";
+
 import {
 	escapedLike,
 	insensitiveEq,
@@ -891,9 +894,11 @@ export const drizzleAdapter = (db: DB, config: DrizzleAdapterConfig) => {
 							}
 
 							const query = db.query[queryModel].findMany({
-								where: where
-									? convertNewWhereClause(where, model, modelKey)
-									: undefined,
+								// drizzle-orm 1.0.0-rc.5+ throws on an explicit `undefined`
+								// filter, so leave the key out when there is no `where`.
+								...(where
+									? { where: convertNewWhereClause(where, model, modelKey) }
+									: {}),
 								with: includes,
 								columns:
 									select?.length && select.length > 0

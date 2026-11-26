@@ -1,6 +1,9 @@
 import type { GenericEndpointContext, StateData } from "cinaauth";
-import { generateGenericState, parseGenericState } from "cinaauth";
-import { APIError } from "cinaauth/api";
+import {
+	APIError,
+	generateGenericState,
+	parseGenericState,
+} from "cinaauth/api";
 import { generateRandomString } from "cinaauth/crypto";
 import type { SSOProviderReference } from "./provider-reference";
 import { SSO_PROVIDER_STATE_KEY } from "./provider-reference";

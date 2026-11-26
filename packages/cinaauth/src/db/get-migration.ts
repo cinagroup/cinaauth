@@ -10,6 +10,7 @@ import {
 	getPortableDatabaseIdentifierKey,
 	invalidateSchemaChecks,
 } from "@cinaauth/core/db/internal";
+
 import { createLogger } from "@cinaauth/core/env";
 import { CinaAuthError } from "@cinaauth/core/error";
 import type {
@@ -22,6 +23,7 @@ import {
 	createKyselyAdapter,
 	getMssqlSchema,
 	getPostgresSchema,
+	introspectPostgresTables,
 	toIntrospectedTables,
 	toPhysicalSchema,
 } from "@cinaauth/kysely-adapter";
@@ -33,14 +35,17 @@ import type {
 	CreateTableBuilder,
 	Kysely,
 	RawBuilder,
+	TableMetadata,
 } from "kysely";
 import { sql } from "kysely";
+
 import { buildSchema } from "./get-schema";
 
 const postgresMap = {
 	string: ["character varying", "varchar", "text", "uuid"],
 	number: [
 		"int4",
+		"int8",
 		"integer",
 		"bigint",
 		"smallint",
@@ -547,10 +552,10 @@ export function matchType(
 	if (fieldType === "string[]" || fieldType === "number[]") {
 		return columnDataType.toLowerCase().includes("json");
 	}
-	const types = map[dbType]!;
+	const types = map[dbType];
 	const expected = Array.isArray(fieldType)
 		? types["string"].map((t) => t.toLowerCase())
-		: types[fieldType]!.map((t) => t.toLowerCase());
+		: types[fieldType].map((t) => t.toLowerCase());
 	return expected.includes(normalize(columnDataType));
 }
 
@@ -605,9 +610,8 @@ export async function getMigrations(
 		process.exit(1);
 	}
 
-	const allTableMetadata = await db.introspection.getTables();
 	let target: MigrationTarget;
-	let tableMetadata = allTableMetadata;
+	let tableMetadata: TableMetadata[];
 	switch (dbType) {
 		case "postgres": {
 			const schema = schemaName ?? (await getPostgresSchema(db));
@@ -635,15 +639,8 @@ export async function getMigrations(
 				);
 			}
 
-			/**
-			 * Kysely 0.28 does not expose `isForeign`, while 0.29 adds foreign table metadata.
-			 * @see https://github.com/kysely-org/kysely/pull/1494
-			 */
-			tableMetadata = allTableMetadata.filter(
-				(table) =>
-					table.schema === schema &&
-					!table.isView &&
-					!("isForeign" in table && table.isForeign),
+			tableMetadata = (await introspectPostgresTables(db, [schema])).filter(
+				(table) => !table.isView && !table.isForeign,
 			);
 			logger.debug(
 				`Found ${tableMetadata.length} table(s) in schema '${schema}': ${tableMetadata.map((table) => table.name).join(", ") || "(none)"}`,
@@ -656,23 +653,25 @@ export async function getMigrations(
 			logger.debug(
 				`SQL Server migration: Using schema '${schema}' (from the current user's default schema)`,
 			);
-			tableMetadata = allTableMetadata.filter(
+			tableMetadata = (await db.introspection.getTables()).filter(
 				(table) => table.schema === schema,
 			);
 			break;
 		}
 		case "mysql":
 			target = { type: "mysql" };
+			tableMetadata = await db.introspection.getTables();
 			break;
 		case "sqlite":
 			target = { type: "sqlite" };
+			tableMetadata = await db.introspection.getTables();
 			break;
 	}
 
 	const databaseIndexMap = await getDatabaseIndexMap(
 		db,
 		target,
-		allTableMetadata.map((table) => table.name),
+		tableMetadata.map((table) => table.name),
 		introspectIndexes,
 	);
 	const databaseColumnBounds = await getDatabaseColumnBounds(db, target);

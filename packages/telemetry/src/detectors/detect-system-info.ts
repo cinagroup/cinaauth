@@ -1,14 +1,10 @@
-import { env } from "@cinaauth/core/env";
+import { env, isWorkerd } from "@cinaauth/core/env";
 
 function getVendor() {
 	const hasAny = (...keys: string[]) =>
 		keys.some((k) => Boolean((env as any)[k]));
 
-	if (
-		hasAny("CF_PAGES", "CF_PAGES_URL", "CF_ACCOUNT_ID") ||
-		(typeof navigator !== "undefined" &&
-			navigator.userAgent === "Cloudflare-Workers")
-	) {
+	if (hasAny("CF_PAGES", "CF_PAGES_URL", "CF_ACCOUNT_ID") || isWorkerd()) {
 		return "cloudflare";
 	}
 

@@ -4,7 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import { betterFetch } from "@better-fetch/fetch";
 import type { CinaAuthOptions } from "@cinaauth/core";
-import { ENV, getBooleanEnvVar, isTest, logger } from "@cinaauth/core/env";
+import {
+	ENV,
+	getBooleanEnvVar,
+	isTest,
+	isWorkerd,
+	logger,
+} from "@cinaauth/core/env";
+
 import type { PackageJson } from "type-fest";
 import { getTelemetryAuthConfig } from "./detectors/detect-auth-config";
 import { detectPackageManager } from "./detectors/detect-project-info";
@@ -114,11 +121,7 @@ function getVendor() {
 	const env = process.env as Record<string, string | undefined>;
 	const hasAny = (...keys: string[]) => keys.some((k) => Boolean(env[k]));
 
-	if (
-		hasAny("CF_PAGES", "CF_PAGES_URL", "CF_ACCOUNT_ID") ||
-		(typeof navigator !== "undefined" &&
-			navigator.userAgent === "Cloudflare-Workers")
-	) {
+	if (hasAny("CF_PAGES", "CF_PAGES_URL", "CF_ACCOUNT_ID") || isWorkerd()) {
 		return "cloudflare";
 	}
 
@@ -347,10 +350,13 @@ export async function createTelemetry(
 	let anonymousId: string | undefined;
 
 	if (enabled) {
+		// Workers forbid random values outside a request, so `publish` retries.
 		anonymousId = await getProjectId(
 			typeof options.baseURL === "string" ? options.baseURL : undefined,
-		);
+		).catch(() => undefined);
+	}
 
+	if (anonymousId) {
 		const payload = {
 			config: await getTelemetryAuthConfig(options, context),
 			runtime: detectRuntime(),

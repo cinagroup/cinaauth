@@ -33,15 +33,17 @@ export const ALL: APIRoute = async (ctx) => {
 			importPath: "cinaauth/react",
 		},
 		routeHandler: {
-			path: "app/lib/auth.server.ts",
-			code: `import { CinaAuth } from "cinaauth"
+			path: "app/routes/api.auth.$.ts",
+			code: `import { auth } from "~/lib/auth.server";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 
-export const auth = CinaAuth({
-    database: {
-        provider: "postgres", //change this to your database provider
-        url: process.env.DATABASE_URL, // path to your database or connection string
-    }
-})`,
+export async function loader({ request }: LoaderFunctionArgs) {
+	return auth.handler(request);
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+	return auth.handler(request);
+}`,
 		},
 		configPaths: ["remix.config.js"],
 	},
@@ -53,15 +55,18 @@ export const auth = CinaAuth({
 			importPath: "cinaauth/react",
 		},
 		routeHandler: {
-			path: "app/lib/auth.server.ts",
-			code: `import { CinaAuth } from "cinaauth"
+			path: "app/routes/api.auth.$.ts",
+			code: `import { auth } from "~/lib/auth.server";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
-export const auth = CinaAuth({
-    database: {
-        provider: "postgres", //change this to your database provider
-        url: process.env.DATABASE_URL, // path to your database or connection string
-    }
-})`,
+export async function loader({ request }: LoaderFunctionArgs) {
+	return auth.handler(request);
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+	return auth.handler(request);
+}`,
+			nextStep: `Register the route in app/routes.ts unless it uses flatRoutes()`,
 		},
 		configPaths: ["react-router.config.ts"],
 	},
@@ -226,6 +231,7 @@ export const Route = createFileRoute('/api/auth/$')({
 	routeHandler: {
 		path: string;
 		code: string;
+		nextStep?: string;
 	} | null;
 	configPaths: string[] | null;
 }[];

@@ -9,6 +9,7 @@ import { PACKAGE_VERSION } from "../../version";
 import type { AccessControl, ArrayElement } from "../access";
 import type { defaultStatements } from "./access";
 import { defaultRoles } from "./access";
+
 import { getOrgAdapter } from "./adapter";
 import { orgSessionMiddleware } from "./call";
 import { ORGANIZATION_ERROR_CODES } from "./error-codes";
@@ -114,9 +115,7 @@ export interface OrganizationCreator {
 	): DefaultOrganizationPlugin<Options>;
 }
 
-export function parseRoles(roles: string | string[]): string {
-	return Array.isArray(roles) ? roles.join(",") : roles;
-}
+export { parseRoles } from "./roles";
 
 export type DynamicAccessControlEndpoints<O extends OrganizationOptions> = {
 	createOrgRole: ReturnType<typeof createOrgRole<O>>;

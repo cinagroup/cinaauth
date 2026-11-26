@@ -1,10 +1,13 @@
 import { getCurrentAdapter, runWithTransaction } from "@cinaauth/core/context";
+import { parseStringBoolean } from "@cinaauth/core/oauth2";
 import { isAPIError } from "@cinaauth/core/utils/is-api-error";
+import type { Element as XMLElement } from "@xmldom/xmldom";
+import { DOMParser } from "@xmldom/xmldom";
+
 import type { User } from "cinaauth";
 import { APIError } from "cinaauth/api";
 import { setAccountCookie, setSessionCookie } from "cinaauth/cookies";
 import { handleOAuthUserInfo } from "cinaauth/oauth2";
-import { XMLParser } from "fast-xml-parser";
 import type { FlowResult } from "samlify/types/src/flow";
 
 import * as constants from "../constants";
@@ -18,7 +21,6 @@ import {
 import {
 	getSAMLPostAssertionConsumerServiceUrls,
 	hasSAMLEncryptedAssertion,
-	SAML_HTTP_POST_BINDING,
 	validateAudience,
 	validateInResponseTo,
 	validateSAMLAlgorithms,
@@ -28,6 +30,7 @@ import {
 } from "../saml";
 import type { SAMLConditions } from "../saml/timestamp";
 import { validateSAMLTimestamp } from "../saml/timestamp";
+
 import { parseRelayState } from "../saml-state";
 import { saml } from "../samlify";
 import type {
@@ -48,7 +51,6 @@ import {
 } from "../user-resolution";
 import {
 	isSafeSAMLRedirectPath,
-	parseProviderEmailVerified,
 	safeJsonParse,
 	validateEmailDomain,
 } from "../utils";
@@ -199,19 +201,11 @@ export function getSAMLRedirectCandidates(
 	];
 }
 
-function toArray<T>(value: T | T[] | undefined): T[] {
-	if (Array.isArray(value)) {
-		return value;
-	}
-	return value ? [value] : [];
-}
-
 function getExpectedSAMLRecipients(
 	config: SAMLConfig,
 	baseURL: string,
 	providerId: string,
 	currentCallbackPath: string,
-	assertionConsumerServiceUrl: string | string[] | undefined,
 ): string[] {
 	const configuredPostAssertionConsumerServiceUrls =
 		getSAMLPostAssertionConsumerServiceUrls(config.spMetadata?.metadata);
@@ -220,7 +214,6 @@ function getExpectedSAMLRecipients(
 		currentCallbackPath,
 		`${baseURL}/sso/saml2/sp/acs/${providerId}`,
 		...configuredPostAssertionConsumerServiceUrls,
-		...toArray(assertionConsumerServiceUrl),
 	];
 }
 
@@ -242,26 +235,24 @@ async function getSAMLResponseBindingContent(
 /**
  * Extracts the Assertion ID from a SAML response XML.
  * Used for replay protection per SAML 2.0 Core section 2.3.3.
+ *
+ * Reads the ID through the DOM so character references are decoded the same
+ * way the signature check decodes them: re-spelling the ID keeps the
+ * signature valid, so it must not change the replay key.
  */
 function extractAssertionId(samlContent: string): string | null {
 	try {
-		const parser = new XMLParser({
-			ignoreAttributes: false,
-			attributeNamePrefix: "@_",
-			removeNSPrefix: true,
-		});
-		const parsed = parser.parse(samlContent);
+		const response = new DOMParser().parseFromString(
+			samlContent,
+			"text/xml",
+		).documentElement;
+		if (response?.localName !== "Response") return null;
 
-		const response = parsed.Response || parsed["samlp:Response"];
-		if (!response) return null;
-
-		const rawAssertion = response.Assertion || response["saml:Assertion"];
-		const assertion = Array.isArray(rawAssertion)
-			? rawAssertion[0]
-			: rawAssertion;
-		if (!assertion) return null;
-
-		return assertion["@_ID"] || null;
+		const assertion = Array.from(response.childNodes).find(
+			(node): node is XMLElement =>
+				node.nodeType === 1 && node.localName === "Assertion",
+		);
+		return assertion?.getAttribute("ID") || null;
 	} catch {
 		return null;
 	}
@@ -415,7 +406,7 @@ export async function processSAMLResponse(
 		});
 	}
 
-	const { extract } = parsedResponse!;
+	const { extract } = parsedResponse;
 	const samlContent = parsedResponse.samlContent;
 
 	// Destination validation (SAML Core §3.2.2) is handled by samlify's
@@ -437,15 +428,11 @@ export async function processSAMLResponse(
 		sp.entityMeta.getEntityID(),
 		parsedSamlConfig.audience,
 	];
-	const assertionConsumerServiceUrl = sp.entityMeta.getAssertionConsumerService(
-		SAML_HTTP_POST_BINDING,
-	);
 	const expectedRecipients = getExpectedSAMLRecipients(
 		parsedSamlConfig,
 		ctx.context.baseURL,
 		providerId,
 		currentCallbackPath,
-		assertionConsumerServiceUrl,
 	);
 	const serviceProviderPolicy =
 		deriveSAMLServiceProviderPolicy(parsedSamlConfig);
@@ -647,7 +634,7 @@ export async function processSAMLResponse(
 			extract.nameID,
 		emailVerified:
 			options?.trustEmailVerified && mapping.emailVerified
-				? parseProviderEmailVerified(attr(mapping.emailVerified))
+				? (parseStringBoolean(attr(mapping.emailVerified)) ?? false)
 				: false,
 	};
 	if (!userInfo.id || !userInfo.email) {

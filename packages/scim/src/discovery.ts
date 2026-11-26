@@ -1,4 +1,4 @@
-import { HIDE_METADATA } from "cinaauth";
+import { HIDE_METADATA } from "@cinaauth/core/api";
 import { createAuthEndpoint } from "cinaauth/api";
 import { SCIM_MAX_PAGE_SIZE } from "./collection-query";
 import {

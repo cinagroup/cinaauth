@@ -5,9 +5,11 @@ import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import type { OAuth2Tokens } from "@cinaauth/core/oauth2";
 import {
 	additionalAuthorizationParamsSchema,
+	parseStringBoolean,
 	supportsIdTokenSignIn,
 	verifyProviderIdToken,
 } from "@cinaauth/core/oauth2";
+
 import { SocialProviderListEnum } from "@cinaauth/core/social-providers";
 
 import * as z from "zod";
@@ -17,7 +19,10 @@ import {
 	getAccountCookie,
 	setAccountCookie,
 } from "../../cookies/session-store";
+import { symmetricEncrypt } from "../../crypto";
+import { derivePurposeKey } from "../../crypto/purpose";
 import { parseAccountOutput } from "../../db/schema";
+import { resolveOAuthAccountFields } from "../../oauth2/account-fields";
 import { resolveOAuthAccountKeyForAPI } from "../../oauth2/account-key";
 import { missingEmailLogMessage } from "../../oauth2/errors";
 import { applyUpdateUserInfoOnLink } from "../../oauth2/link-account";
@@ -31,6 +36,7 @@ import {
 	freshSessionMiddleware,
 	getSessionFromCtx,
 	isStateful,
+	sensitiveSessionMiddleware,
 	sessionMiddleware,
 } from "./session";
 
@@ -212,7 +218,7 @@ export const linkSocialAccount = createAuthEndpoint(
 			 */
 			additionalData: z.record(z.string(), z.any()).optional(),
 		}),
-		use: [sessionMiddleware],
+		use: [sensitiveSessionMiddleware],
 		metadata: {
 			openapi: {
 				description: "Link a social account to the user",
@@ -288,11 +294,14 @@ export const linkSocialAccount = createAuthEndpoint(
 				throw APIError.from("UNAUTHORIZED", BASE_ERROR_CODES.INVALID_TOKEN);
 			}
 
-			const linkingUserInfo = await provider.getUserInfo({
+			const oauthTokens = {
 				idToken: token,
 				accessToken: c.body.idToken.accessToken,
 				refreshToken: c.body.idToken.refreshToken,
-			});
+			};
+			const linkingUserInfo = provider.getUserInfoFromIdToken
+				? await provider.getUserInfoFromIdToken(token)
+				: await provider.getUserInfo(oauthTokens);
 
 			if (!linkingUserInfo || !linkingUserInfo?.user) {
 				c.context.logger.error("Failed to get user info", {
@@ -329,8 +338,15 @@ export const linkSocialAccount = createAuthEndpoint(
 				await c.context.internalAdapter.findAccountByKey(accountKey);
 
 			if (linkedAccount?.userId === session.user.id) {
+				const accountFields = await resolveOAuthAccountFields(
+					c,
+					provider,
+					oauthTokens,
+					linkingUserInfo.user,
+				);
 				const updateData = Object.fromEntries(
 					Object.entries({
+						...accountFields,
 						providerId: provider.id,
 						accessToken: await setTokenUtil(
 							c.body.idToken.accessToken,
@@ -368,8 +384,10 @@ export const linkSocialAccount = createAuthEndpoint(
 			const isTrustedProvider = c.context.trustedProviders.includes(
 				provider.id,
 			);
+			const emailVerified =
+				parseStringBoolean(linkingUserInfo.user.emailVerified) ?? false;
 			if (
-				(!isTrustedProvider && !linkingUserInfo.user.emailVerified) ||
+				(!isTrustedProvider && !emailVerified) ||
 				c.context.options.account?.accountLinking?.enabled === false
 			) {
 				throw APIError.from("UNAUTHORIZED", {
@@ -389,8 +407,15 @@ export const linkSocialAccount = createAuthEndpoint(
 				});
 			}
 
+			const accountFields = await resolveOAuthAccountFields(
+				c,
+				provider,
+				oauthTokens,
+				linkingUserInfo.user,
+			);
 			try {
 				await c.context.internalAdapter.createAccount({
+					...accountFields,
 					userId: session.user.id,
 					...accountKey,
 					accessToken: await setTokenUtil(
@@ -425,6 +450,13 @@ export const linkSocialAccount = createAuthEndpoint(
 			link: {
 				userId: session.user.id,
 				email: session.user.email,
+				encryptedSessionToken: await symmetricEncrypt({
+					key: derivePurposeKey(
+						c.context.secretConfig,
+						"oauth-link-session-token",
+					),
+					data: session.session.token,
+				}),
 			},
 			additionalData: c.body.additionalData,
 			idTokenNonce,

@@ -8,6 +8,7 @@ import { toSnakeCase } from "@cinaauth/core/utils/string";
 import { initGetFieldName, initGetModelName } from "cinaauth/adapters";
 import type { CinaAuthDBSchema, DBFieldAttribute } from "cinaauth/db";
 import { getAuthTables } from "cinaauth/db";
+
 import type { CinaAuthOptions } from "cinaauth/types";
 import prettier from "prettier";
 import type { SchemaGenerator } from "./types";
@@ -97,17 +98,16 @@ export const generateDrizzleSchema: SchemaGenerator = async ({
 			);
 		});
 	const resolvedIndexesByTable = resolveDatabaseSchemaIndexes(
-		Object.keys(tables)
-			.filter((tableKey) => !isMigrationDisabled(tableKey))
-			.map((tableKey) => ({
-				fields: tables[tableKey]!.fields,
-				indexes: tables[tableKey]!.indexes,
+		Object.entries(tables)
+			.filter(([tableKey]) => !isMigrationDisabled(tableKey))
+			.map(([tableKey, table]) => ({
+				fields: table.fields,
+				indexes: table.indexes,
 				tableName: getModelName(tableKey),
 			})),
 	);
 
-	for (const tableKey in tables) {
-		const table = tables[tableKey]!;
+	for (const [tableKey, table] of Object.entries(tables)) {
 		if (isMigrationDisabled(tableKey)) {
 			continue;
 		}
@@ -392,8 +392,7 @@ export const generateDrizzleSchema: SchemaGenerator = async ({
 	}
 
 	let relationsString: string = "";
-	for (const tableKey in tables) {
-		const table = tables[tableKey]!;
+	for (const [tableKey, table] of Object.entries(tables)) {
 		if (isMigrationDisabled(tableKey)) {
 			continue;
 		}

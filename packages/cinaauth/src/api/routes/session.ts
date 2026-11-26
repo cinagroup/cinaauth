@@ -28,6 +28,8 @@ export const getSession = <Option extends CinaAuthOptions>() =>
 			operationId: "getSession",
 			query: getSessionQuerySchema,
 			requireHeaders: true,
+			// POST only triggers a refresh, so a bodyless one must not hit the media type check.
+			disableBody: true,
 			metadata: {
 				openapi: {
 					operationId: "getSession",
@@ -65,6 +67,8 @@ export const getSession = <Option extends CinaAuthOptions>() =>
 		} | null> => {
 			ctx.setHeader("cache-control", "no-store");
 			ctx.setHeader("pragma", "no-cache");
+			// Hooks may read the session only when this request returns one.
+			ctx.context.session = null;
 
 			const deferSessionRefresh =
 				ctx.context.options.session?.deferSessionRefresh;
@@ -280,7 +284,6 @@ export const getSession = <Option extends CinaAuthOptions>() =>
 
 				const session =
 					await ctx.context.internalAdapter.findSession(sessionCookieToken);
-				ctx.context.session = session;
 				if (!session || session.session.expiresAt < new Date()) {
 					deleteSessionCookie(ctx);
 					if (session) {
@@ -296,6 +299,7 @@ export const getSession = <Option extends CinaAuthOptions>() =>
 					}
 					return ctx.json(null);
 				}
+				ctx.context.session = session;
 				/**
 				 * We don't need to update the session if the user doesn't want to be remembered
 				 * or if the session refresh is disabled
@@ -419,6 +423,7 @@ export const getSession = <Option extends CinaAuthOptions>() =>
 					user: User<Option["user"], Option["plugins"]>;
 				});
 			} catch (error) {
+				ctx.context.session = null;
 				if (isAPIError(error)) {
 					throw error;
 				}
@@ -426,6 +431,7 @@ export const getSession = <Option extends CinaAuthOptions>() =>
 				throw APIError.from(
 					"INTERNAL_SERVER_ERROR",
 					BASE_ERROR_CODES.FAILED_TO_GET_SESSION,
+					{ cause: error },
 				);
 			}
 		},
@@ -753,6 +759,15 @@ export const revokeSession = createAuthEndpoint(
 					code: "INTERNAL_SERVER_ERROR",
 				});
 			}
+			const remaining = await ctx.context.internalAdapter.findSession(token);
+			if (remaining) {
+				return ctx.json({
+					status: false,
+				});
+			}
+		}
+		if (token === ctx.context.session.session.token) {
+			deleteSessionCookie(ctx);
 		}
 		return ctx.json({
 			status: true,
@@ -811,6 +826,7 @@ export const revokeSessions = createAuthEndpoint(
 				code: "INTERNAL_SERVER_ERROR",
 			});
 		}
+		deleteSessionCookie(ctx);
 		return ctx.json({
 			status: true,
 		});

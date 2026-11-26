@@ -1,6 +1,8 @@
 import { base64 } from "@better-auth/utils/base64";
+import { isAPIError } from "@cinaauth/core/utils/is-api-error";
 import type { Element as XMLElement } from "@xmldom/xmldom";
 import { DOMParser } from "@xmldom/xmldom";
+
 import { APIError } from "cinaauth/api";
 import { saml } from "../samlify";
 import { countAllNodes, xmlParser } from "./parser";
@@ -153,7 +155,7 @@ export function verifySAMLAssertionSignature(
 		}
 	} catch (error) {
 		if (
-			error instanceof APIError &&
+			isAPIError(error) &&
 			error.body?.code === "SAML_ASSERTION_SIGNATURE_REQUIRED"
 		) {
 			throw error;

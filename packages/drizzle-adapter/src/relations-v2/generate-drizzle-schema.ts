@@ -5,6 +5,7 @@ import type { CinaAuthDBSchema, DBFieldAttribute } from "@cinaauth/core/db";
 import { getAuthTables } from "@cinaauth/core/db";
 import type { DBAdapterSchemaCreation } from "@cinaauth/core/db/adapter";
 import { initGetFieldName, initGetModelName } from "@cinaauth/core/db/adapter";
+
 import {
 	getDatabaseFieldIndexName,
 	getDatabaseIndexStringLength,
@@ -119,17 +120,16 @@ export const generateDrizzleSchema: SchemaGenerator = async ({
 		usePlural: adapterConfig?.usePlural,
 	});
 	const resolvedIndexesByTable = resolveDatabaseSchemaIndexes(
-		Object.keys(tables)
-			.filter((tableKey) => !tables[tableKey]!.disableMigrations)
-			.map((tableKey) => ({
-				fields: tables[tableKey]!.fields,
-				indexes: tables[tableKey]!.indexes,
+		Object.entries(tables)
+			.filter(([, table]) => !table.disableMigrations)
+			.map(([tableKey, table]) => ({
+				fields: table.fields,
+				indexes: table.indexes,
 				tableName: getModelName(tableKey),
 			})),
 	);
 
-	for (const tableKey in tables) {
-		const table = tables[tableKey]!;
+	for (const [tableKey, table] of Object.entries(tables)) {
 		if (table.disableMigrations) continue;
 		const modelName = getModelName(tableKey);
 		const fields = table.fields;
@@ -413,8 +413,8 @@ export const generateDrizzleSchema: SchemaGenerator = async ({
 
 	// Build schema object import for defineRelationsPart
 	const schemaObjectKeys: string[] = [];
-	for (const tableKey in tables) {
-		if (tables[tableKey]!.disableMigrations) continue;
+	for (const [tableKey, table] of Object.entries(tables)) {
+		if (table.disableMigrations) continue;
 		const modelName = getModelName(tableKey);
 		schemaObjectKeys.push(modelName);
 	}
@@ -434,8 +434,7 @@ export const generateDrizzleSchema: SchemaGenerator = async ({
 	const relationsMap = new Map<string, RelationDef[]>();
 
 	// Process all tables to build relations
-	for (const tableKey in tables) {
-		const table = tables[tableKey]!;
+	for (const [tableKey, table] of Object.entries(tables)) {
 		if (table.disableMigrations) continue;
 		const modelName = getModelName(tableKey);
 		const modelRelations: RelationDef[] = [];

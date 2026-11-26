@@ -4,10 +4,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { SidebarProvider } from "fumadocs-ui/components/sidebar/base";
 import type { SidebarTabWithProps } from "fumadocs-ui/components/sidebar/tabs/dropdown";
 import { SidebarTabsDropdown } from "fumadocs-ui/components/sidebar/tabs/dropdown";
+
 import { Check } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { useDocsVersions, useVersionAvailability } from "@/app/docs/provider";
 import type { DocsVersion } from "@/lib/docs-versions";
 import {
@@ -49,6 +51,7 @@ function useDismissablePopover(
 
 function getVersionTitle(version: DocsVersion) {
 	if (version.id === "latest") return "Latest Version";
+	if (version.id === "beta") return "Beta Version";
 	return `Version ${version.id}`;
 }
 

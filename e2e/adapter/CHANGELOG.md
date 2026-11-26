@@ -1,1 +1,0 @@
-# @cinaauth-test/adapter-base

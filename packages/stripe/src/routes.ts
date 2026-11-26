@@ -1,12 +1,12 @@
-import { createAuthEndpoint } from "@cinaauth/core/api";
+import { createAuthEndpoint, HIDE_METADATA } from "@cinaauth/core/api";
 import { APIError } from "@cinaauth/core/error";
 import type { GenericEndpointContext, User } from "cinaauth";
-import { HIDE_METADATA } from "cinaauth";
 import { getSessionFromCtx, originCheck } from "cinaauth/api";
 import type { Organization } from "cinaauth/plugins/organization";
 import { defu } from "defu";
 import type Stripe from "stripe";
 import type { Stripe as StripeType } from "stripe";
+
 import * as z from "zod";
 import { STRIPE_ERROR_CODES } from "./error-codes";
 import {
@@ -25,9 +25,12 @@ import type {
 	WithStripeCustomerId,
 } from "./types";
 import {
+	activeOrTrialingStatusWhere,
 	escapeStripeSearchValue,
+	findActiveOrTrialingSubscription,
 	getPlanByName,
 	getPlans,
+	hasReferenceEverTrialed,
 	isActiveOrTrialing,
 	isPendingCancel,
 	resolvePlanItem,
@@ -280,7 +283,7 @@ export const upgradeSubscription = (options: StripeOptions) => {
 		},
 		async (ctx) => {
 			const { user, session } = ctx.context.session;
-			const customerType = ctx.body.customerType || "user";
+			const customerType = ctx.context.customerType;
 			const referenceId = ctx.context.referenceId;
 
 			if (!user.emailVerified && subscriptionOptions.requireEmailVerification) {
@@ -536,21 +539,36 @@ export const upgradeSubscription = (options: StripeOptions) => {
 				}
 			}
 
-			const subscriptions = subscriptionToUpdate
-				? [subscriptionToUpdate]
-				: await ctx.context.adapter.findMany<Subscription>({
-						model: "subscription",
-						where: [
-							{
-								field: "referenceId",
-								value: referenceId,
-							},
-						],
-					});
-
-			const activeOrTrialingSubscription = subscriptions.find((sub) =>
-				isActiveOrTrialing(sub),
-			);
+			let activeOrTrialingSubscription: Subscription | null | undefined;
+			let incompleteSubscription: Subscription | null | undefined;
+			if (subscriptionToUpdate) {
+				if (isActiveOrTrialing(subscriptionToUpdate)) {
+					activeOrTrialingSubscription = subscriptionToUpdate;
+				} else if (subscriptionToUpdate.status === "incomplete") {
+					incompleteSubscription = subscriptionToUpdate;
+				}
+			} else {
+				activeOrTrialingSubscription = await findActiveOrTrialingSubscription(
+					ctx.context.adapter,
+					referenceId,
+				);
+				if (!activeOrTrialingSubscription) {
+					incompleteSubscription =
+						await ctx.context.adapter.findOne<Subscription>({
+							model: "subscription",
+							where: [
+								{
+									field: "referenceId",
+									value: referenceId,
+								},
+								{
+									field: "status",
+									value: "incomplete",
+								},
+							],
+						});
+				}
+			}
 
 			const activeSubscriptions = await client.subscriptions
 				.list({
@@ -582,11 +600,6 @@ export const upgradeSubscription = (options: StripeOptions) => {
 				: undefined;
 			const planItem = resolvedPlan?.item;
 			const stripeSubscriptionPriceId = planItem?.price.id;
-
-			// Also find any incomplete subscription that we can reuse
-			const incompleteSubscription = subscriptions.find(
-				(sub) => sub.status === "incomplete",
-			);
 
 			const priceId = ctx.body.annual
 				? plan.annualDiscountPriceId
@@ -1008,7 +1021,7 @@ export const upgradeSubscription = (options: StripeOptions) => {
 			}
 
 			let subscription: Subscription | undefined =
-				activeOrTrialingSubscription || incompleteSubscription;
+				activeOrTrialingSubscription || incompleteSubscription || undefined;
 
 			if (incompleteSubscription && !activeOrTrialingSubscription) {
 				const updated = await ctx.context.adapter.update<Subscription>({
@@ -1060,19 +1073,12 @@ export const upgradeSubscription = (options: StripeOptions) => {
 				ctx,
 			);
 
-			const allSubscriptions = await ctx.context.adapter.findMany<Subscription>(
-				{
-					model: "subscription",
-					where: [{ field: "referenceId", value: referenceId }],
-				},
+			// Check if user has ever had a trial for any plan (not just the same plan)
+			// This prevents users from getting multiple trials by switching plans
+			const hasEverTrialed = await hasReferenceEverTrialed(
+				ctx.context.adapter,
+				referenceId,
 			);
-			const hasEverTrialed = allSubscriptions.some((s) => {
-				// Check if user has ever had a trial for any plan (not just the same plan)
-				// This prevents users from getting multiple trials by switching plans
-				const hadTrial =
-					!!(s.trialStart || s.trialEnd) || s.status === "trialing";
-				return hadTrial;
-			});
 
 			const freeTrial =
 				!hasEverTrialed && plan.freeTrial
@@ -1278,18 +1284,16 @@ export const cancelSubscription = (options: StripeOptions) => {
 							},
 						],
 					})
-				: await ctx.context.adapter
-						.findMany<Subscription>({
-							model: "subscription",
-							where: [{ field: "referenceId", value: referenceId }],
-						})
-						.then((subs) => subs.find((sub) => isActiveOrTrialing(sub)));
+				: await findActiveOrTrialingSubscription(
+						ctx.context.adapter,
+						referenceId,
+					);
 			if (
 				ctx.body.subscriptionId &&
 				subscription &&
 				subscription.referenceId !== referenceId
 			) {
-				subscription = undefined;
+				subscription = null;
 			}
 
 			if (!subscription || !subscription.stripeCustomerId) {
@@ -1437,23 +1441,16 @@ export const restoreSubscription = (options: StripeOptions) => {
 							},
 						],
 					})
-				: await ctx.context.adapter
-						.findMany<Subscription>({
-							model: "subscription",
-							where: [
-								{
-									field: "referenceId",
-									value: referenceId,
-								},
-							],
-						})
-						.then((subs) => subs.find((sub) => isActiveOrTrialing(sub)));
+				: await findActiveOrTrialingSubscription(
+						ctx.context.adapter,
+						referenceId,
+					);
 			if (
 				ctx.body.subscriptionId &&
 				subscription &&
 				subscription.referenceId !== referenceId
 			) {
-				subscription = undefined;
+				subscription = null;
 			}
 			if (!subscription || !subscription.stripeCustomerId) {
 				throw APIError.from(
@@ -1646,6 +1643,7 @@ export const listActiveSubscriptions = (options: StripeOptions) => {
 						field: "referenceId",
 						value: referenceId,
 					},
+					activeOrTrialingStatusWhere,
 				],
 			});
 			if (!subscriptions.length) {
@@ -1655,28 +1653,39 @@ export const listActiveSubscriptions = (options: StripeOptions) => {
 			if (!plans) {
 				return [];
 			}
-			const subs = subscriptions
-				.map((sub) => {
-					const plan = plans.find(
-						(p) => p.name.toLowerCase() === sub.plan.toLowerCase(),
-					);
-					const priceId =
-						sub.billingInterval === "year"
-							? (plan?.annualDiscountPriceId ?? plan?.priceId)
-							: plan?.priceId;
-					return {
-						...sub,
-						limits: plan?.limits,
-						priceId,
-					};
-				})
-				.filter((sub) => isActiveOrTrialing(sub));
+			const subs = subscriptions.map((sub) => {
+				const plan = plans.find(
+					(p) => p.name.toLowerCase() === sub.plan.toLowerCase(),
+				);
+				const priceId =
+					sub.billingInterval === "year"
+						? (plan?.annualDiscountPriceId ?? plan?.priceId)
+						: plan?.priceId;
+				return {
+					...sub,
+					limits: plan?.limits,
+					priceId,
+				};
+			});
 			return ctx.json(subs);
 		},
 	);
 };
 
-const subscriptionSuccessQuerySchema = z.record(z.string(), z.any()).optional();
+const subscriptionSuccessQuerySchema = z
+	.object({
+		callbackURL: z.string().optional(),
+		checkoutSessionId: z.string().optional(),
+	})
+	.optional();
+
+/**
+ * Fill the Stripe "{CHECKOUT_SESSION_ID}" template variable in callbackURL.
+ * @see https://docs.stripe.com/payments/checkout/custom-success-page?payment-ui=stripe-hosted#modify-the-success-url
+ */
+function fillCheckoutSessionId(callbackURL: string, checkoutSessionId: string) {
+	return callbackURL.replaceAll("{CHECKOUT_SESSION_ID}", checkoutSessionId);
+}
 
 export const subscriptionSuccess = (options: StripeOptions) => {
 	const client = options.stripeClient;
@@ -1690,7 +1699,19 @@ export const subscriptionSuccess = (options: StripeOptions) => {
 					operationId: "handleSubscriptionSuccess",
 				},
 			},
-			use: [originCheck((ctx) => ctx.query.callbackURL)],
+			use: [
+				originCheck((ctx) => {
+					const { callbackURL, checkoutSessionId } = ctx.query ?? {};
+					if (!callbackURL || !checkoutSessionId) {
+						return callbackURL;
+					}
+					// The handler redirects to the filled value, so check it too.
+					return [
+						callbackURL,
+						fillCheckoutSessionId(callbackURL, checkoutSessionId),
+					];
+				}),
+			],
 		},
 		async (ctx) => {
 			let callbackURL = ctx.query?.callbackURL || "/";
@@ -1706,12 +1727,8 @@ export const subscriptionSuccess = (options: StripeOptions) => {
 				throw ctx.redirect(getUrl(ctx, callbackURL));
 			}
 
-			/**
-			 * Replace the Stripe {CHECKOUT_SESSION_ID} template variable in callbackURL.
-			 * @see https://docs.stripe.com/payments/checkout/custom-success-page?payment-ui=stripe-hosted#modify-the-success-url
-			 */
-			callbackURL = callbackURL.replaceAll(
-				"{CHECKOUT_SESSION_ID}",
+			callbackURL = fillCheckoutSessionId(
+				callbackURL,
 				ctx.query.checkoutSessionId,
 			);
 
@@ -1912,7 +1929,7 @@ export const createBillingPortal = (options: StripeOptions) => {
 		},
 		async (ctx) => {
 			const { user } = ctx.context.session;
-			const customerType = ctx.body.customerType || "user";
+			const customerType = ctx.context.customerType;
 			const referenceId = ctx.context.referenceId;
 
 			let customerId: string | undefined;
@@ -1929,29 +1946,20 @@ export const createBillingPortal = (options: StripeOptions) => {
 
 				if (!customerId) {
 					// Fallback to subscription's stripeCustomerId
-					const subscription = await ctx.context.adapter
-						.findMany<Subscription>({
-							model: "subscription",
-							where: [{ field: "referenceId", value: referenceId }],
-						})
-						.then((subs) => subs.find((sub) => isActiveOrTrialing(sub)));
+					const subscription = await findActiveOrTrialingSubscription(
+						ctx.context.adapter,
+						referenceId,
+					);
 					customerId = subscription?.stripeCustomerId;
 				}
 			} else {
 				// User billing portal
 				customerId = user.stripeCustomerId;
 				if (!customerId) {
-					const subscription = await ctx.context.adapter
-						.findMany<Subscription>({
-							model: "subscription",
-							where: [
-								{
-									field: "referenceId",
-									value: referenceId,
-								},
-							],
-						})
-						.then((subs) => subs.find((sub) => isActiveOrTrialing(sub)));
+					const subscription = await findActiveOrTrialingSubscription(
+						ctx.context.adapter,
+						referenceId,
+					);
 
 					customerId = subscription?.stripeCustomerId;
 				}

@@ -1,5 +1,57 @@
 ﻿# @cinaauth/drizzle-adapter
 
+## 1.7.28
+
+### Patch Changes
+
+- [#12940](https://github.com/better-auth/better-auth/pull/12940) [`35df753`](https://github.com/better-auth/better-auth/commit/35df7535de4064fa7b5a116eacd08aa97a41fb28) Thanks [@elango5292](https://github.com/elango5292)! - The `relations-v2` Drizzle adapter no longer throws `Unexpected 'undefined' in filter value` on drizzle-orm 1.0.0-rc.5 and later when a joined `findMany` has no `where`, such as listing an organization's members or invitations. The query now returns the rows unfiltered.
+
+## 1.7.27
+
+## 1.7.26
+
+## 1.7.25
+
+## 1.7.24
+
+## 1.7.23
+
+## 1.7.22
+
+### Patch Changes
+
+- [#12333](https://github.com/better-auth/better-auth/pull/12333) [`6536174`](https://github.com/better-auth/better-auth/commit/6536174213f63a8d544cd0d018659515bab5f8ad) Thanks [@bytaesu](https://github.com/bytaesu)! - Fix `getSession` failing with "Failed to get session" when a `user.additionalFields` entry references a table outside the Better Auth schema, including with database joins enabled on Drizzle and Prisma. Join resolution now matches `references.model` against schema keys only.
+
+## 1.7.21
+
+## 1.7.20
+
+## 1.7.19
+
+## 1.7.18
+
+## 1.7.17
+
+## 1.7.16
+
+### Patch Changes
+
+- [#12198](https://github.com/better-auth/better-auth/pull/12198) [`f25081a`](https://github.com/better-auth/better-auth/commit/f25081ac0476a9a4295f7a9736ae7239974c7b1e) Thanks [@bytaesu](https://github.com/bytaesu)! - On MySQL with `generateId: "serial"`, the default adapter now uses the ID returned by the insert to retrieve the created row correctly on connection pools. Existing lookup fallbacks are preserved when Drizzle does not return a generated ID.
+
+## 1.7.15
+
+## 1.7.14
+
+## 1.7.13
+
+## 1.7.12
+
+## 1.7.11
+
+## 1.7.10
+
+## 1.7.9
+
 ## 1.7.8
 
 ### Patch Changes

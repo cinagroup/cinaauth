@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/sso",
-  "version": "1.7.8",
+  "version": "1.7.28",
   "description": "SSO plugin for CinaAuth",
   "type": "module",
   "license": "MIT",
@@ -75,6 +75,7 @@
   "devDependencies": {
     "@cinaauth/core": "workspace:*",
     "@cinaauth/kysely-adapter": "workspace:*",
+    "@cinaauth/oauth-provider": "workspace:*",
     "@types/body-parser": "^1.19.6",
     "@types/express": "^5.0.6",
     "cinaauth": "workspace:*",
@@ -90,6 +91,6 @@
     "@better-auth/utils": "catalog:peer",
     "@better-fetch/fetch": "catalog:",
     "cinaauth": "workspace:^",
-    "better-call": "catalog:"
+    "better-call": "catalog:peer"
   }
 }

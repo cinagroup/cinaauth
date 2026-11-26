@@ -1,10 +1,10 @@
 import type { CinaAuthPlugin } from "@cinaauth/core";
 import { createAuthEndpoint, createAuthMiddleware } from "@cinaauth/core/api";
+import { getCurrentAdapter } from "@cinaauth/core/context";
 import type { User } from "@cinaauth/core/db";
 import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import * as z from "zod";
 import { createEmailVerificationToken } from "../../api";
-import { getSessionFromCtx } from "../../api/routes/session";
 import { setSessionCookie } from "../../cookies";
 import { mergeSchema, parseUserOutput } from "../../db";
 import type { InferOptionSchema } from "../../types/plugins";
@@ -256,7 +256,7 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 											await validateUsername(
 												username,
 												displayUsername,
-												ctx.adapter,
+												await getCurrentAdapter(ctx.adapter),
 											);
 										}
 
@@ -302,6 +302,41 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 										currentPath &&
 										pathsWithHttpHookValidation.includes(currentPath);
 
+									// The username arrives normalized, and that can be an empty string.
+									if (
+										typeof username === "string" &&
+										currentPath === "/update-user"
+									) {
+										const session = context?.context?.session;
+										const normalizedUsername = normalizer(username);
+										if (
+											options?.immutableUsername &&
+											session?.user.username &&
+											session.user.username !== normalizedUsername
+										) {
+											throw APIError.from(
+												"BAD_REQUEST",
+												ERROR_CODES.USERNAME_IS_IMMUTABLE,
+											);
+										}
+										const adapter = await getCurrentAdapter(ctx.adapter);
+										const existingUser = await adapter.findOne<User>({
+											model: "user",
+											where: [
+												{
+													field: "username",
+													value: normalizedUsername,
+												},
+											],
+										});
+										if (existingUser && existingUser.id !== session?.user.id) {
+											throw APIError.from(
+												"BAD_REQUEST",
+												ERROR_CODES.USERNAME_IS_ALREADY_TAKEN,
+											);
+										}
+									}
+
 									if (username) {
 										if (!skipValidation) {
 											const currentUserId =
@@ -310,7 +345,7 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 											await validateUsername(
 												username,
 												displayUsername,
-												ctx.adapter,
+												await getCurrentAdapter(ctx.adapter),
 												currentUserId,
 											);
 										}
@@ -418,39 +453,11 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 						);
 					}
 
-					const username =
-						options?.validationOrder?.username === "pre-normalization"
-							? normalizer(ctx.body.username)
-							: ctx.body.username;
-
-					const minUsernameLength = options?.minUsernameLength || 3;
-					const maxUsernameLength = options?.maxUsernameLength || 30;
-
-					if (username.length < minUsernameLength) {
-						ctx.context.logger.warn("Username too short");
-						throw APIError.from(
-							"UNPROCESSABLE_ENTITY",
-							ERROR_CODES.USERNAME_TOO_SHORT,
-						);
-					}
-
-					if (username.length > maxUsernameLength) {
-						ctx.context.logger.warn("Username too long");
-						throw APIError.from(
-							"UNPROCESSABLE_ENTITY",
-							ERROR_CODES.USERNAME_TOO_LONG,
-						);
-					}
-
-					const validator =
-						options?.usernameValidator || defaultUsernameValidator;
-
-					const valid = await validator(username);
-					if (!valid) {
-						throw APIError.from(
-							"UNPROCESSABLE_ENTITY",
-							ERROR_CODES.INVALID_USERNAME,
-						);
+					const validationError = await validateUsernameValue(
+						ctx.body.username,
+					);
+					if (validationError) {
+						throw APIError.from("UNPROCESSABLE_ENTITY", validationError);
 					}
 
 					assertPasswordNotTooLong(ctx, ctx.body.password);
@@ -462,7 +469,7 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 						where: [
 							{
 								field: "username",
-								value: normalizer(username),
+								value: normalizer(ctx.body.username),
 							},
 						],
 					});
@@ -521,6 +528,7 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 								user.email,
 								undefined,
 								ctx.context.options.emailVerification?.expiresIn,
+								{ userId: user.id },
 							);
 							const url = `${ctx.context.baseURL}/verify-email?token=${token}&callbackURL=${encodeURIComponent(
 								ctx.body.callbackURL || "/",
@@ -581,32 +589,9 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 						);
 					}
 
-					const minUsernameLength = options?.minUsernameLength || 3;
-					const maxUsernameLength = options?.maxUsernameLength || 30;
-
-					if (username.length < minUsernameLength) {
-						throw APIError.from(
-							"UNPROCESSABLE_ENTITY",
-							ERROR_CODES.USERNAME_TOO_SHORT,
-						);
-					}
-
-					if (username.length > maxUsernameLength) {
-						throw APIError.from(
-							"UNPROCESSABLE_ENTITY",
-							ERROR_CODES.USERNAME_TOO_LONG,
-						);
-					}
-
-					const validator =
-						options?.usernameValidator || defaultUsernameValidator;
-
-					const valid = await validator(username);
-					if (!valid) {
-						throw APIError.from(
-							"UNPROCESSABLE_ENTITY",
-							ERROR_CODES.INVALID_USERNAME,
-						);
+					const validationError = await validateUsernameValue(username);
+					if (validationError) {
+						throw APIError.from("UNPROCESSABLE_ENTITY", validationError);
 					}
 					const user = await ctx.context.adapter.findOne<User>({
 						model: "user",
@@ -647,7 +632,7 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 					},
 					handler: createAuthMiddleware(async (ctx) => {
 						if (
-							typeof ctx.body.displayUsername !== "string" ||
+							typeof ctx.body?.displayUsername !== "string" ||
 							ctx.body.username !== undefined
 						) {
 							return;
@@ -668,50 +653,26 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 						);
 					},
 					handler: createAuthMiddleware(async (ctx) => {
-						const username = ctx.body.username;
+						const username = ctx.body?.username;
 
 						if (username !== undefined && typeof username === "string") {
 							const validationError = await validateUsernameValue(username);
 							if (validationError) {
 								throw APIError.from("BAD_REQUEST", validationError);
 							}
-							const normalizedUsername = normalizer(username);
-							const session =
-								ctx.path === "/update-user"
-									? await getSessionFromCtx(ctx)
-									: null;
-
-							if (ctx.path === "/update-user" && options?.immutableUsername) {
-								const hasUsername = !!session?.user.username;
-								const usernamesDiffer =
-									session?.user.username !== normalizedUsername;
-								if (hasUsername && usernamesDiffer) {
-									throw APIError.from(
-										"BAD_REQUEST",
-										ERROR_CODES.USERNAME_IS_IMMUTABLE,
-									);
-								}
-							}
-
-							const existingUser = await ctx.context.adapter.findOne<User>({
-								model: "user",
-								where: [
-									{
-										field: "username",
-										value: normalizedUsername,
-									},
-								],
-							});
-
-							if (ctx.path === "/sign-up/email" && existingUser) {
-								throw APIError.from(
-									"BAD_REQUEST",
-									ERROR_CODES.USERNAME_IS_ALREADY_TAKEN,
-								);
-							}
-
-							if (ctx.path === "/update-user" && existingUser) {
-								if (!session || existingUser.id !== session.user.id) {
+							// `/update-user` checks the username against the session in the
+							// user update hook, where the endpoint has already resolved it.
+							if (ctx.path === "/sign-up/email") {
+								const existingUser = await ctx.context.adapter.findOne<User>({
+									model: "user",
+									where: [
+										{
+											field: "username",
+											value: normalizer(username),
+										},
+									],
+								});
+								if (existingUser) {
 									throw APIError.from(
 										"BAD_REQUEST",
 										ERROR_CODES.USERNAME_IS_ALREADY_TAKEN,
@@ -725,10 +686,10 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 						}
 
 						const displayUsername =
-							typeof ctx.body.displayUsername === "string" &&
+							typeof ctx.body?.displayUsername === "string" &&
 							options?.validationOrder?.displayUsername === "post-normalization"
 								? displayUsernameNormalizer(ctx.body.displayUsername)
-								: ctx.body.displayUsername;
+								: ctx.body?.displayUsername;
 
 						if (
 							displayUsername !== undefined &&
@@ -755,7 +716,7 @@ const usernameImpl = <IncludeDisplayUsername extends boolean>(
 						if (!includeDisplayUsername) {
 							return;
 						}
-						if (ctx.body.username && !ctx.body.displayUsername) {
+						if (ctx.body?.username && !ctx.body.displayUsername) {
 							ctx.body.displayUsername = ctx.body.username;
 						}
 					}),

@@ -6,6 +6,7 @@ import type {
 } from "@cinaauth/core";
 import type { InternalLogger } from "@cinaauth/core/env";
 import { logger } from "@cinaauth/core/env";
+
 import {
 	ATTR_CONTEXT,
 	ATTR_HOOK_TYPE,
@@ -16,6 +17,7 @@ import {
 import { normalizePathname } from "@cinaauth/core/utils/url";
 import type { Endpoint, Middleware } from "better-call";
 import { createRouter } from "better-call";
+
 import type { OverrideMerge, UnionToIntersection } from "../types";
 import { isAPIError } from "../utils/is-api-error";
 import { originCheckMiddleware } from "./middlewares";
@@ -420,6 +422,7 @@ export {
 } from "@cinaauth/core/api";
 export { APIError } from "@cinaauth/core/error";
 export { getIP } from "@cinaauth/core/utils/ip";
+export { generateGenericState, parseGenericState } from "../state";
 export { isAPIError } from "../utils/is-api-error";
 export { type DispatchContext, dispatchAuthEndpoint } from "./dispatch";
 export * from "./middlewares";
@@ -429,6 +432,7 @@ export {
 	hasPendingAuthenticationGate,
 	markAuthenticationGatePending,
 } from "./state/pending-authentication-gates";
+export { markSessionOutsideStore } from "./state/session-source";
 export {
 	getShouldSkipSessionRefresh,
 	setShouldSkipSessionRefresh,

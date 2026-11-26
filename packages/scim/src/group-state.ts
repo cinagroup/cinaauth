@@ -1,6 +1,6 @@
 import { getCurrentAdapter, runWithTransaction } from "@cinaauth/core/context";
+import { CinaAuthError } from "@cinaauth/core/error";
 import type { DBAdapter, DBTransactionAdapter } from "cinaauth";
-import { CinaAuthError } from "cinaauth";
 import type { SCIMConnection } from "./configuration";
 import { isSCIMIdentityMutationConflict } from "./identity";
 import type { SCIMGroup } from "./persistence";

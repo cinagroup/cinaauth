@@ -49,6 +49,9 @@ export const ADMIN_ERROR_CODES = defineErrorCodes({
 		"You are not allowed to update user passkeys",
 	TARGET_USER_PASSKEY_NOT_FOUND: "Passkey not found for the target user",
 	YOU_ARE_NOT_ALLOWED_TO_READ_STATS: "You are not allowed to read stats",
+	YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PHONE_NUMBER:
+		"You are not allowed to update users phone number",
 	PASSWORD_CANNOT_BE_UPDATED_VIA_UPDATE_USER:
 		"Password cannot be updated through update-user. Use the set-user-password endpoint instead",
+	USER_ID_CANNOT_BE_UPDATED: "User id cannot be updated",
 });

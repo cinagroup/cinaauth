@@ -6,7 +6,19 @@ import {
 } from "@cinaauth/core/context";
 import type { SecondaryStorage } from "@cinaauth/core/db";
 import { safeJSONParse } from "@cinaauth/core/utils/json";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { kyselyAdapter } from "@cinaauth/kysely-adapter";
+import { NodeSqliteDialect } from "@cinaauth/kysely-adapter/node-sqlite-dialect";
+import { memoryAdapter } from "@cinaauth/memory-adapter";
+import { Kysely } from "kysely";
+import {
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	onTestFinished,
+	vi,
+} from "vitest";
 import { CinaAuth } from "../auth/full";
 import { init } from "../context/init";
 import { getTestInstance } from "../test-utils/test-instance";
@@ -365,6 +377,71 @@ describe("internal adapter test", async () => {
 		expect(session.data?.session).toBeDefined();
 	});
 
+	it("deletes expired verification values at most once a minute", async () => {
+		const opts = {
+			database: new DatabaseSync(":memory:"),
+		} satisfies CinaAuthOptions;
+		await (await getMigrations(opts)).runMigrations();
+		const ctx = await init(opts);
+		const expire = (identifier: string) =>
+			ctx.internalAdapter.createVerificationValue({
+				identifier,
+				value: "stale",
+				expiresAt: new Date(Date.now() - 1_000),
+			});
+		const remaining = (identifier: string) =>
+			ctx.adapter.count({
+				model: "verification",
+				where: [{ field: "identifier", value: identifier }],
+			});
+
+		await expire("cleanup:first");
+		await ctx.internalAdapter.findVerificationValue("cleanup:lookup");
+		expect(await remaining("cleanup:first")).toBe(0);
+
+		await expire("cleanup:second");
+		await ctx.internalAdapter.findVerificationValue("cleanup:lookup");
+		expect(await remaining("cleanup:second")).toBe(1);
+
+		vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 61_000 });
+		try {
+			await ctx.internalAdapter.findVerificationValue("cleanup:lookup");
+		} finally {
+			vi.useRealTimers();
+		}
+		expect(await remaining("cleanup:second")).toBe(0);
+	});
+
+	/**
+	 * @see https://github.com/better-auth/better-auth/pull/12593
+	 */
+	it("returns an expired verification value to only the first of sequential lookups between cleanups", async () => {
+		const opts = {
+			database: new DatabaseSync(":memory:"),
+		} satisfies CinaAuthOptions;
+		await (await getMigrations(opts)).runMigrations();
+		const ctx = await init(opts);
+		// The first lookup runs the minute's cleanup.
+		await ctx.internalAdapter.findVerificationValue("cleanup:lookup");
+		const add = (value: string, createdAgo: number, expiresIn: number) =>
+			ctx.internalAdapter.createVerificationValue({
+				identifier: "expired:challenge",
+				value,
+				createdAt: new Date(Date.now() - createdAgo),
+				expiresAt: new Date(Date.now() + expiresIn),
+			});
+		await add("valid", 3_000, 60_000);
+		await add("older", 2_000, -2_000);
+		await add("stale", 1_000, -1_000);
+
+		expect(
+			await ctx.internalAdapter.findVerificationValue("expired:challenge"),
+		).toMatchObject({ value: "stale" });
+		expect(
+			await ctx.internalAdapter.findVerificationValue("expired:challenge"),
+		).toMatchObject({ value: "valid" });
+	});
+
 	it("should delete expired verification values on find", async () => {
 		await internalAdapter.createVerificationValue({
 			identifier: `test-id-1`,
@@ -418,7 +495,7 @@ describe("internal adapter test", async () => {
 		});
 
 		await internalAdapter.deleteVerificationByIdentifier(
-			verification.identifier,
+			verification!.identifier,
 		);
 		expect(hookVerificationDeleteBefore).toHaveBeenCalledOnce();
 		expect(hookVerificationDeleteAfter).toHaveBeenCalledOnce();
@@ -434,7 +511,7 @@ describe("internal adapter test", async () => {
 		// Remove the DB record so the entity no longer exists
 		await authContext.adapter.deleteMany({
 			model: "verification",
-			where: [{ field: "identifier", value: verification.identifier }],
+			where: [{ field: "identifier", value: verification!.identifier }],
 		});
 
 		const deleteSpy = vi.spyOn(authContext.adapter, "delete");
@@ -448,6 +525,57 @@ describe("internal adapter test", async () => {
 		);
 		expect(verificationDeleteCalls.length).toBe(0);
 		deleteSpy.mockRestore();
+	});
+
+	/**
+	 * @see https://github.com/better-auth/better-auth/pull/12806
+	 */
+	it("deletes a user that a concurrent request removes after the lookup", async () => {
+		const user = await internalAdapter.createUser(
+			{
+				name: "Concurrently Removed",
+				email: "concurrently-removed@email.com",
+			},
+			{ method: "test" },
+		);
+		const session = await internalAdapter.createSession(user.id);
+		let removedConcurrently = false;
+		const userDeletes: unknown[] = [];
+		const transaction = authContext.adapter.transaction.bind(
+			authContext.adapter,
+		);
+		const transactionSpy = vi
+			.spyOn(authContext.adapter, "transaction")
+			.mockImplementation(async (callback) =>
+				transaction(async (trx) => {
+					const findMany = trx.findMany.bind(trx);
+					vi.spyOn(trx, "findMany").mockImplementation(async (args) => {
+						const rows = await findMany(args);
+						if (args.model === "user" && !removedConcurrently) {
+							removedConcurrently = true;
+							await trx.deleteMany({
+								model: "user",
+								where: [{ field: "id", value: user.id }],
+							});
+						}
+						return rows;
+					});
+					// Prisma's delete throws P2025 when the row is already gone.
+					vi.spyOn(trx, "delete").mockImplementation(async (args) => {
+						if (args.model === "user") userDeletes.push(args);
+						throw new Error("record not found");
+					});
+					return callback(trx);
+				}),
+			);
+
+		await expect(internalAdapter.deleteUser(user.id)).resolves.toBeUndefined();
+		transactionSpy.mockRestore();
+
+		expect(removedConcurrently).toBe(true);
+		expect(userDeletes).toHaveLength(0);
+		expect(await internalAdapter.findUserById(user.id)).toBeNull();
+		expect(map.has(session.token)).toBe(false);
 	});
 
 	describe("verification token storage", () => {
@@ -470,7 +598,7 @@ describe("internal adapter test", async () => {
 			});
 
 			// Stored identifier should be hashed (not equal to original)
-			expect(verification.identifier).not.toBe("reset-password:my-token-123");
+			expect(verification!.identifier).not.toBe("reset-password:my-token-123");
 
 			// Should be able to find by original identifier
 			const found = await hashedAdapter.findVerificationValue(
@@ -512,7 +640,7 @@ describe("internal adapter test", async () => {
 				value: "user-1",
 				expiresAt: new Date(Date.now() + 60000),
 			});
-			expect(hashedVerification.identifier).not.toBe(
+			expect(hashedVerification!.identifier).not.toBe(
 				"reset-password:token-abc",
 			);
 
@@ -522,7 +650,7 @@ describe("internal adapter test", async () => {
 				value: "user-2",
 				expiresAt: new Date(Date.now() + 60000),
 			});
-			expect(plainVerification.identifier).toBe("magic-link:token-xyz");
+			expect(plainVerification!.identifier).toBe("magic-link:token-xyz");
 		});
 
 		it("should fallback to plain lookup for old tokens", async () => {
@@ -838,6 +966,45 @@ describe("internal adapter test", async () => {
 		expect(actualTokenExp! - expectedTokenExp).toBeGreaterThanOrEqual(0);
 	});
 
+	it("keeps the creation time an override passes", async () => {
+		const user = await internalAdapter.createUser(
+			{
+				name: "created-at-override",
+				email: "created-at-override@email.com",
+			},
+			{ method: "test" },
+		);
+		const createdAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+		const session = await internalAdapter.createSession(user.id, false, {
+			createdAt,
+		});
+
+		expect(session.createdAt).toEqual(createdAt);
+		const found = await internalAdapter.findSession(session.token);
+		expect(found?.session.createdAt).toEqual(createdAt);
+	});
+
+	it("sets the creation time when an override leaves it undefined", async () => {
+		const user = await internalAdapter.createUser(
+			{
+				name: "created-at-undefined",
+				email: "created-at-undefined@email.com",
+			},
+			{ method: "test" },
+		);
+
+		const session = await internalAdapter.createSession(user.id, false, {
+			createdAt: undefined,
+		});
+
+		const found = await internalAdapter.findSession(session.token);
+		expect(found?.session.createdAt.getTime()).toBeGreaterThan(0);
+		expect(found?.session.createdAt.getTime()).toBe(
+			session.createdAt.getTime(),
+		);
+	});
+
 	it("should delete on secondary storage", async () => {
 		// Create multiple sessions in past and future
 		const now = Date.now();
@@ -897,6 +1064,51 @@ describe("internal adapter test", async () => {
 		);
 		expect(actualExp! - expectedExp).toBeLessThanOrEqual(1); // max 1s clock drift between check and set
 		expect(actualExp! - expectedExp).toBeGreaterThanOrEqual(0); // max 1s clock drift between check and set
+	});
+
+	/**
+	 * @see https://github.com/better-auth/better-auth/issues/10992
+	 */
+	it("does not store the active-sessions list with a zero ttl", async () => {
+		const store = new Map<string, string>();
+		const ttls = new Map<string, number>();
+		const { client, testUser, signInWithTestUser, sessionSetter } =
+			await getTestInstance({
+				secondaryStorage: createStringSecondaryStorage(store, ttls),
+				session: {
+					expiresIn: 7200,
+				},
+			});
+		const { user } = await signInWithTestUser();
+		const listKey = `active-sessions-${user.id}`;
+		const [{ expiresAt: firstExpiry }] = JSON.parse(store.get(listKey)!) as [
+			{ expiresAt: number },
+		];
+
+		vi.useFakeTimers({ toFake: ["Date"] });
+		onTestFinished(() => {
+			vi.useRealTimers();
+		});
+		vi.setSystemTime(firstExpiry - 3_600_000);
+		const headers = new Headers();
+		const second = await client.signIn.email({
+			email: testUser.email,
+			password: testUser.password,
+			fetchOptions: {
+				onSuccess: sessionSetter(headers),
+			},
+		});
+
+		// The surviving session has less than a second left, so its ttl floors to 0.
+		vi.setSystemTime(firstExpiry - 300);
+		await client.revokeSession({
+			token: second.data!.token,
+			fetchOptions: {
+				headers,
+			},
+		});
+
+		expect(ttls.get(listKey)).toBeUndefined();
 	});
 
 	it("should delete a single account", async () => {
@@ -1721,8 +1933,10 @@ describe("internal adapter test", async () => {
 				expiresAt: new Date(Date.now() + 60000),
 			});
 
-			expect(dataMap.has(`verification:${verification.identifier}`)).toBe(true);
-			expect(ttlMap.has(`verification:${verification.identifier}`)).toBe(true);
+			expect(dataMap.has(`verification:${verification!.identifier}`)).toBe(
+				true,
+			);
+			expect(ttlMap.has(`verification:${verification!.identifier}`)).toBe(true);
 		});
 
 		it("should find verification from secondary storage", async () => {
@@ -1880,6 +2094,262 @@ describe("internal adapter test", async () => {
 			expect(ttl).toBeDefined();
 			expect(ttl).toBeGreaterThanOrEqual(298);
 			expect(ttl).toBeLessThanOrEqual(300);
+		});
+
+		/**
+		 * @see https://better-auth.com/docs/concepts/database#database-hooks
+		 */
+		it.for([
+			{ mode: "database", secondary: false, storeInDatabase: false },
+			{ mode: "secondary storage", secondary: true, storeInDatabase: false },
+			{ mode: "both", secondary: true, storeInDatabase: true },
+		])(
+			"keeps the stored value when an update.before hook vetoes an update ($mode)",
+			async ({ secondary, storeInDatabase }) => {
+				const { dataMap, storage } = createMockStorage();
+				const veto = vi.fn().mockReturnValue(false);
+				const opts = {
+					database: new DatabaseSync(":memory:"),
+					verification: { storeInDatabase },
+					secondaryStorage: secondary ? storage : undefined,
+					databaseHooks: { verification: { update: { before: veto } } },
+				} satisfies CinaAuthOptions;
+				await (await getMigrations(opts)).runMigrations();
+				const ctx = await init(opts);
+				await ctx.internalAdapter.createVerificationValue({
+					identifier: "veto-update",
+					value: "stored",
+					expiresAt: new Date(Date.now() + 60_000),
+				});
+
+				const updated =
+					await ctx.internalAdapter.updateVerificationByIdentifier(
+						"veto-update",
+						{ value: "replacement" },
+					);
+
+				expect(veto).toHaveBeenCalledTimes(1);
+				expect(updated).toBeNull();
+				const found =
+					await ctx.internalAdapter.findVerificationValue("veto-update");
+				expect(found?.value).toBe("stored");
+				if (storeInDatabase) {
+					dataMap.clear();
+					const fromDatabase =
+						await ctx.internalAdapter.findVerificationValue("veto-update");
+					expect(fromDatabase?.value).toBe("stored");
+				}
+			},
+		);
+
+		/**
+		 * @see https://better-auth.com/docs/concepts/database#database-hooks
+		 */
+		it.for([{ transaction: false }, { transaction: true }])(
+			"shows an update.after hook the updated value in both stores (transaction: $transaction)",
+			async ({ transaction }) => {
+				const { storage } = createMockStorage();
+				const seen: (string | undefined)[] = [];
+				let readVerification: () => Promise<void> = async () => {};
+				const opts = {
+					database: new DatabaseSync(":memory:"),
+					verification: { storeInDatabase: true },
+					secondaryStorage: storage,
+					databaseHooks: {
+						verification: { update: { after: () => readVerification() } },
+					},
+				} satisfies CinaAuthOptions;
+				await (await getMigrations(opts)).runMigrations();
+				const ctx = await init(opts);
+				readVerification = async () => {
+					const found =
+						await ctx.internalAdapter.findVerificationValue("after-update");
+					seen.push(found?.value);
+				};
+				await ctx.internalAdapter.createVerificationValue({
+					identifier: "after-update",
+					value: "stored",
+					expiresAt: new Date(Date.now() + 60_000),
+				});
+				const update = () =>
+					ctx.internalAdapter.updateVerificationByIdentifier("after-update", {
+						value: "replacement",
+					});
+
+				if (transaction) {
+					await runWithTransaction(ctx.adapter, update);
+				} else {
+					await update();
+				}
+
+				expect(seen).toEqual(["replacement"]);
+			},
+		);
+
+		it("updates the secondary storage copy when an update.after hook throws (both)", async () => {
+			const { dataMap, storage } = createMockStorage();
+			const opts = {
+				database: new DatabaseSync(":memory:"),
+				verification: { storeInDatabase: true },
+				secondaryStorage: storage,
+				databaseHooks: {
+					verification: {
+						update: {
+							async after() {
+								throw new Error("after hook failed");
+							},
+						},
+					},
+				},
+			} satisfies CinaAuthOptions;
+			await (await getMigrations(opts)).runMigrations();
+			const ctx = await init(opts);
+			await ctx.internalAdapter.createVerificationValue({
+				identifier: "throwing-after",
+				value: "stored",
+				expiresAt: new Date(Date.now() + 60_000),
+			});
+
+			await expect(
+				ctx.internalAdapter.updateVerificationByIdentifier("throwing-after", {
+					value: "replacement",
+				}),
+			).rejects.toThrow("after hook failed");
+
+			const cached = safeJSONParse<{ value: string }>(
+				dataMap.get("verification:throwing-after") ?? "",
+			);
+			expect(cached?.value).toBe("replacement");
+		});
+
+		it.for([
+			{ mode: "secondary storage", secondary: true },
+			{ mode: "database", secondary: false },
+		])(
+			"does not run update.after hooks when no verification value was updated ($mode)",
+			async ({ secondary }) => {
+				const { storage } = createMockStorage();
+				const after = vi.fn();
+				const opts = {
+					database: new DatabaseSync(":memory:"),
+					secondaryStorage: secondary ? storage : undefined,
+					databaseHooks: { verification: { update: { after } } },
+				} satisfies CinaAuthOptions;
+				await (await getMigrations(opts)).runMigrations();
+				const ctx = await init(opts);
+
+				const updated =
+					await ctx.internalAdapter.updateVerificationByIdentifier(
+						"no-such-verification",
+						{ value: "replacement" },
+					);
+
+				expect(updated).toBeNull();
+				expect(after).not.toHaveBeenCalled();
+			},
+		);
+
+		it("does not run user update.after hooks when no user was updated", async () => {
+			const after = vi.fn();
+			const opts = {
+				database: new DatabaseSync(":memory:"),
+				databaseHooks: { user: { update: { after } } },
+			} satisfies CinaAuthOptions;
+			await (await getMigrations(opts)).runMigrations();
+			const ctx = await init(opts);
+
+			const updated = await ctx.internalAdapter.updateUser("no-such-user", {
+				name: "renamed",
+			});
+
+			expect(updated).toBeNull();
+			expect(after).not.toHaveBeenCalled();
+		});
+
+		it("runs update.after hooks and rejects when the cache write fails after the database update (both)", async () => {
+			const { storage } = createMockStorage();
+			let failWrites = false;
+			const after = vi.fn();
+			const opts = {
+				database: new DatabaseSync(":memory:"),
+				verification: { storeInDatabase: true },
+				secondaryStorage: {
+					...storage,
+					set(key, value, ttl) {
+						if (failWrites) throw new Error("cache write failed");
+						return storage.set(key, value, ttl);
+					},
+				},
+				databaseHooks: { verification: { update: { after } } },
+			} satisfies CinaAuthOptions;
+			await (await getMigrations(opts)).runMigrations();
+			const ctx = await init(opts);
+			await ctx.internalAdapter.createVerificationValue({
+				identifier: "cache-write-fails",
+				value: "stored",
+				expiresAt: new Date(Date.now() + 60_000),
+			});
+			failWrites = true;
+
+			await expect(
+				ctx.internalAdapter.updateVerificationByIdentifier(
+					"cache-write-fails",
+					{ value: "replacement" },
+				),
+			).rejects.toThrow("cache write failed");
+
+			expect(after).toHaveBeenCalledTimes(1);
+			expect(after.mock.calls[0]![0]).toMatchObject({ value: "replacement" });
+		});
+
+		it("does not report an update to a secondary storage value that is gone", async () => {
+			const { storage } = createMockStorage();
+			const opts = {
+				database: new DatabaseSync(":memory:"),
+				secondaryStorage: storage,
+			} satisfies CinaAuthOptions;
+			await (await getMigrations(opts)).runMigrations();
+			const ctx = await init(opts);
+
+			const updated = await ctx.internalAdapter.updateVerificationByIdentifier(
+				"missing-update",
+				{ value: "replacement" },
+			);
+
+			expect(updated).toBeNull();
+			expect(
+				await ctx.internalAdapter.findVerificationValue("missing-update"),
+			).toBeNull();
+		});
+
+		it("keeps the secondary storage copy when the database row is gone (both)", async () => {
+			const { storage } = createMockStorage();
+			const opts = {
+				database: new DatabaseSync(":memory:"),
+				verification: { storeInDatabase: true },
+				secondaryStorage: storage,
+			} satisfies CinaAuthOptions;
+			await (await getMigrations(opts)).runMigrations();
+			const ctx = await init(opts);
+			await ctx.internalAdapter.createVerificationValue({
+				identifier: "gone-from-database",
+				value: "stored",
+				expiresAt: new Date(Date.now() + 60_000),
+			});
+			await ctx.adapter.deleteMany({
+				model: "verification",
+				where: [{ field: "identifier", value: "gone-from-database" }],
+			});
+
+			const updated = await ctx.internalAdapter.updateVerificationByIdentifier(
+				"gone-from-database",
+				{ value: "replacement" },
+			);
+
+			expect(updated).toBeNull();
+			const cached =
+				await ctx.internalAdapter.findVerificationValue("gone-from-database");
+			expect(cached?.value).toBe("stored");
 		});
 	});
 
@@ -2084,6 +2554,119 @@ describe("internal adapter test", async () => {
 			const winners = results.filter((r) => r !== null);
 			expect(winners).toHaveLength(1);
 			expect(winners[0]!.value).toBe("user-2");
+		});
+
+		it("does not wait on a consume that never settles on Cloudflare Workers", async () => {
+			vi.stubGlobal("navigator", { userAgent: "Cloudflare-Workers" });
+			onTestFinished(() => {
+				vi.unstubAllGlobals();
+			});
+			// The first consume stalls like I/O owned by a request that has ended.
+			const before = vi
+				.fn()
+				.mockReturnValueOnce(new Promise(() => {}))
+				.mockReturnValue(true);
+			// Memory transactions never block each other, so only the lock orders consumes.
+			const { internalAdapter: adapter } = await init({
+				database: memoryAdapter({ verification: [] }),
+				databaseHooks: { verification: { delete: { before } } },
+			});
+			await adapter.createVerificationValue({
+				identifier: "consume:stalled",
+				value: "user-stalled",
+				expiresAt: new Date(Date.now() + 60_000),
+			});
+
+			void adapter.consumeVerificationValue("consume:stalled");
+			await vi.waitFor(() => expect(before).toHaveBeenCalledOnce());
+
+			const consumed =
+				await adapter.consumeVerificationValue("consume:stalled");
+			expect(consumed?.value).toBe("user-stalled");
+		});
+
+		/** A store without transactions whose first verification cleanup waits for `release`. */
+		async function makeHeldAdapter() {
+			vi.stubGlobal("navigator", { userAgent: "Cloudflare-Workers" });
+			onTestFinished(() => {
+				vi.unstubAllGlobals();
+			});
+			const database = new DatabaseSync(":memory:");
+			await (await getMigrations({ database })).runMigrations();
+			const db = new Kysely<Record<string, never>>({
+				dialect: new NodeSqliteDialect({ database }),
+			});
+			let release = () => {};
+			const held = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			let holding = false;
+			const { internalAdapter: adapter } = await init({
+				database: (options) => {
+					const base = kyselyAdapter(db, {
+						type: "sqlite",
+						transaction: false,
+					})(options);
+					const withoutTransaction: typeof base = {
+						...base,
+						transaction: (callback) => callback(withoutTransaction),
+						deleteMany: async (data) => {
+							if (data.model === "verification" && !holding) {
+								holding = true;
+								await held;
+							}
+							return base.deleteMany(data);
+						},
+					};
+					return withoutTransaction;
+				},
+			});
+			const create = async (identifier: string, value: string) => {
+				await adapter.createVerificationValue({
+					identifier,
+					value,
+					expiresAt: new Date(Date.now() + 60_000),
+				});
+				// The newest row is picked by `createdAt`.
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			};
+			return {
+				adapter,
+				create,
+				release,
+				untilHeld: () => vi.waitFor(() => expect(holding).toBe(true)),
+			};
+		}
+
+		it("never consumes a superseded row on Cloudflare Workers without transactions", async () => {
+			const { adapter, create, release, untilHeld } = await makeHeldAdapter();
+			await create("consume:superseded", "old");
+			await create("consume:superseded", "new");
+
+			const first = adapter.consumeVerificationValue("consume:superseded");
+			await untilHeld();
+			const second =
+				await adapter.consumeVerificationValue("consume:superseded");
+			release();
+
+			const values = [(await first)?.value, second?.value];
+			expect(values).toContain("new");
+			expect(values).not.toContain("old");
+			expect(values.filter(Boolean)).toHaveLength(1);
+		});
+
+		it("keeps a row created while a consume is in flight", async () => {
+			const { adapter, create, release, untilHeld } = await makeHeldAdapter();
+			await create("consume:reissued", "first");
+
+			const consumed = adapter.consumeVerificationValue("consume:reissued");
+			await untilHeld();
+			await create("consume:reissued", "second");
+			release();
+
+			expect((await consumed)?.value).toBe("first");
+			const remaining = await adapter.findVerificationValue("consume:reissued");
+			expect(remaining?.value).toBe("second");
 		});
 
 		it("returns null for an unknown identifier", async () => {

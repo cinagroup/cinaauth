@@ -6,7 +6,9 @@
     "e2e:integration": "vitest run"
   },
   "devDependencies": {
+    "@cinaauth/cimd": "workspace:*",
     "@cinaauth/core": "workspace:*",
+    "@cinaauth/oauth-provider": "workspace:*",
     "@cinaauth/scim": "workspace:*",
     "@cinaauth/test-utils": "workspace:*",
     "cinaauth": "workspace:*"

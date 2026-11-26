@@ -1,6 +1,6 @@
 {
   "name": "@cinaauth/test-utils",
-  "version": "1.7.8",
+  "version": "1.7.28",
   "description": "Testing utilities for CinaAuth adapter development",
   "type": "module",
   "license": "MIT",
@@ -31,13 +31,13 @@
   "exports": {
     "./adapter": {
       "dev-source": "./src/adapter/index.ts",
-      "default": "./dist/adapter.mjs",
-      "types": "./dist/adapter.d.mts"
+      "types": "./dist/adapter.d.mts",
+      "default": "./dist/adapter.mjs"
     },
     "./scim": {
       "dev-source": "./src/scim-lifecycle.ts",
-      "default": "./dist/scim.mjs",
-      "types": "./dist/scim.d.mts"
+      "types": "./dist/scim.d.mts",
+      "default": "./dist/scim.mjs"
     }
   },
   "devDependencies": {

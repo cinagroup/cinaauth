@@ -1,6 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { NodeSqliteDialect } from "@cinaauth/kysely-adapter/node-sqlite-dialect";
 import { runSCIMLifecycle } from "@cinaauth/test-utils/scim";
+import type { CinaAuthOptions } from "cinaauth";
+import { CinaAuth } from "cinaauth";
+
 import { getMigrations } from "cinaauth/db/migration";
 import { getHttpTestInstance } from "cinaauth/test";
 import { describe, expect, it } from "vitest";
@@ -19,13 +22,18 @@ describe("SCIM HTTP end-to-end", () => {
 				},
 			],
 		});
+		const options: CinaAuthOptions = {
+			baseURL: "https://example.com",
+			plugins: [plugin],
+		};
+		const context = await CinaAuth(options).$context;
 		const request = new Request("https://example.com/scim/v2/Users/user-1", {
 			method: "DELETE",
 			headers: { authorization: "Bearer streaming-token" },
 			body: new Blob([]),
 		});
 
-		const result = await plugin.onRequest?.(request);
+		const result = await plugin.onRequest?.(request, context);
 		if (!result || !("request" in result) || !result.request) {
 			throw new Error("Expected SCIM DELETE normalization to return a request");
 		}

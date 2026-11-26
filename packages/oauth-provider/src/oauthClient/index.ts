@@ -1,10 +1,12 @@
 import { createAuthEndpoint, sessionMiddleware } from "cinaauth/api";
 import * as z from "zod";
 import { publicSessionMiddleware } from "../middleware";
+import { createOAuthEndpoint } from "../oauth-endpoint";
 import { createOAuthClientEndpoint } from "../register";
 import type { OAuthOptions, Scope } from "../types";
 import {
 	clientJwksSchema,
+	RedirectUriSyntaxSchema,
 	ResourceUriSchema,
 	SafeUrlSchema,
 } from "../types/zod";
@@ -13,6 +15,7 @@ import {
 	getClientEndpoint,
 	getClientPublicEndpoint,
 	getClientsEndpoint,
+	rotateClientKeysEndpoint,
 	rotateClientSecretEndpoint,
 	updateClientEndpoint,
 } from "./endpoints";
@@ -26,7 +29,7 @@ export const adminCreateOAuthClient = (opts: OAuthOptions<Scope[]>) =>
 		{
 			method: "POST",
 			body: z.object({
-				redirect_uris: z.array(SafeUrlSchema).min(1).optional(),
+				redirect_uris: z.array(RedirectUriSyntaxSchema).min(1).optional(),
 				scope: z.string().optional(),
 				client_name: z.string().optional(),
 				client_uri: z.string().optional(),
@@ -37,7 +40,10 @@ export const adminCreateOAuthClient = (opts: OAuthOptions<Scope[]>) =>
 				software_id: z.string().optional(),
 				software_version: z.string().optional(),
 				software_statement: z.string().optional(),
-				post_logout_redirect_uris: z.array(SafeUrlSchema).min(1).optional(),
+				post_logout_redirect_uris: z
+					.array(RedirectUriSyntaxSchema)
+					.min(1)
+					.optional(),
 				backchannel_logout_uri: SafeUrlSchema.optional(),
 				backchannel_logout_session_required: z.boolean().optional(),
 				token_endpoint_auth_method: tokenEndpointAuthMethodSchema.optional(),
@@ -232,7 +238,7 @@ export const createOAuthClient = (opts: OAuthOptions<Scope[]>) =>
 			method: "POST",
 			use: [sessionMiddleware],
 			body: z.object({
-				redirect_uris: z.array(SafeUrlSchema).min(1).optional(),
+				redirect_uris: z.array(RedirectUriSyntaxSchema).min(1).optional(),
 				scope: z.string().optional(),
 				client_name: z.string().optional(),
 				client_uri: z.string().optional(),
@@ -243,7 +249,10 @@ export const createOAuthClient = (opts: OAuthOptions<Scope[]>) =>
 				software_id: z.string().optional(),
 				software_version: z.string().optional(),
 				software_statement: z.string().optional(),
-				post_logout_redirect_uris: z.array(SafeUrlSchema).min(1).optional(),
+				post_logout_redirect_uris: z
+					.array(RedirectUriSyntaxSchema)
+					.min(1)
+					.optional(),
 				backchannel_logout_uri: SafeUrlSchema.optional(),
 				backchannel_logout_session_required: z.boolean().optional(),
 				token_endpoint_auth_method: tokenEndpointAuthMethodSchema.optional(),
@@ -496,7 +505,7 @@ export const adminUpdateOAuthClient = (opts: OAuthOptions<Scope[]>) =>
 			body: z.object({
 				client_id: z.string(),
 				update: z.object({
-					redirect_uris: z.array(SafeUrlSchema).min(1).optional(),
+					redirect_uris: z.array(RedirectUriSyntaxSchema).min(1).optional(),
 					scope: z.string().optional(),
 					client_name: z.string().optional(),
 					client_uri: z.string().optional(),
@@ -507,7 +516,10 @@ export const adminUpdateOAuthClient = (opts: OAuthOptions<Scope[]>) =>
 					software_id: z.string().optional(),
 					software_version: z.string().optional(),
 					software_statement: z.string().optional(),
-					post_logout_redirect_uris: z.array(SafeUrlSchema).min(1).optional(),
+					post_logout_redirect_uris: z
+						.array(RedirectUriSyntaxSchema)
+						.min(1)
+						.optional(),
 					backchannel_logout_uri: SafeUrlSchema.optional(),
 					backchannel_logout_session_required: z.boolean().optional(),
 					// token_endpoint_auth_method is immutable because changing the
@@ -551,7 +563,7 @@ export const updateOAuthClient = (opts: OAuthOptions<Scope[]>) =>
 			body: z.object({
 				client_id: z.string(),
 				update: z.object({
-					redirect_uris: z.array(SafeUrlSchema).min(1).optional(),
+					redirect_uris: z.array(RedirectUriSyntaxSchema).min(1).optional(),
 					scope: z.string().optional(),
 					client_name: z.string().optional(),
 					client_uri: z.string().optional(),
@@ -562,7 +574,10 @@ export const updateOAuthClient = (opts: OAuthOptions<Scope[]>) =>
 					software_id: z.string().optional(),
 					software_version: z.string().optional(),
 					software_statement: z.string().optional(),
-					post_logout_redirect_uris: z.array(SafeUrlSchema).min(1).optional(),
+					post_logout_redirect_uris: z
+						.array(RedirectUriSyntaxSchema)
+						.min(1)
+						.optional(),
 					backchannel_logout_uri: SafeUrlSchema.optional(),
 					backchannel_logout_session_required: z.boolean().optional(),
 					// token_endpoint_auth_method is immutable because changing the
@@ -601,6 +616,38 @@ export const rotateClientSecret = (opts: OAuthOptions<Scope[]>) =>
 		},
 		async (ctx) => {
 			return rotateClientSecretEndpoint(ctx, opts);
+		},
+	);
+
+/**
+ * Replaces a `private_key_jwt` client's own signing keys. The client proves it
+ * holds a current key with a client assertion, so no session is needed.
+ */
+export const rotateClientKeys = (opts: OAuthOptions<Scope[]>) =>
+	createOAuthEndpoint(
+		"/oauth2/client/rotate-keys",
+		{
+			method: "POST",
+			body: z.object({
+				client_assertion: z.string(),
+				client_assertion_type: z.string(),
+				jwks: clientJwksSchema,
+			}),
+			errorCodesByField: {
+				client_assertion: "invalid_client",
+				client_assertion_type: "invalid_client",
+				jwks: "invalid_client_metadata",
+			},
+			metadata: {
+				noStore: true,
+				openapi: {
+					description:
+						"Replaces the signing keys of a private_key_jwt client. The request is authenticated by a client assertion signed with one of the client's current keys and addressed to this endpoint. Keys left out of the new set stop verifying at once.",
+				},
+			},
+		},
+		async (ctx) => {
+			return rotateClientKeysEndpoint(ctx, opts);
 		},
 	);
 

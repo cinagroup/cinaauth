@@ -23,6 +23,8 @@ import type {
 	SCIMSubject,
 	SCIMUser,
 } from "./persistence";
+import { SCIM_UNBOUNDED_ROW_LIMIT } from "./persistence";
+
 import { createSCIMUserExternalIdKey } from "./resource-key";
 import { createSCIMError, runSCIMApplicationCallback } from "./scim-error";
 
@@ -465,6 +467,7 @@ export function createSCIMIdentityCoordinator(options: SCIMOptions) {
 			const scimUsers = await input.database.findMany<SCIMUser>({
 				model: "scimUser",
 				where: [{ field: "userId", value: input.subject.userId }],
+				limit: SCIM_UNBOUNDED_ROW_LIMIT,
 			});
 			const connectionIds = [
 				...new Set(scimUsers.map((scimUser) => scimUser.connectionId)),

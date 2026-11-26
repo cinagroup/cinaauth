@@ -9,7 +9,7 @@
     "@cinaauth/core": "workspace:*",
     "@cinaauth/mongo-adapter": "workspace:*",
     "@cinaauth/test-utils": "workspace:*",
-    "@prisma/client": "^7.8.0",
+    "@prisma/client": "^7.10.1",
     "cinaauth": "workspace:*"
   }
 }

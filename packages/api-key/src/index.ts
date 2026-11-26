@@ -2,14 +2,16 @@ import { base64Url } from "@better-auth/utils/base64";
 import { createHash } from "@better-auth/utils/hash";
 import type { CinaAuthPlugin, HookEndpointContext } from "@cinaauth/core";
 import { createAuthMiddleware } from "@cinaauth/core/api";
+import { CinaAuthError } from "@cinaauth/core/error";
 import { getIP } from "@cinaauth/core/utils/ip";
-import { CinaAuthError } from "cinaauth";
-import { APIError } from "cinaauth/api";
+import { APIError, markSessionOutsideStore } from "cinaauth/api";
+
 import { generateRandomString } from "cinaauth/crypto";
 import { mergeSchema } from "cinaauth/db";
 import { API_KEY_ERROR_CODES } from "./error-codes";
 import type { PredefinedApiKeyOptions } from "./routes";
 import { createApiKeyRoutes, deleteAllExpiredApiKeys } from "./routes";
+
 import { validateApiKey } from "./routes/verify-api-key";
 import { apiKeySchema } from "./schema";
 import type { ApiKeyConfigurationOptions, ApiKeyOptions } from "./types";
@@ -259,6 +261,7 @@ export function apiKey(
 							},
 						};
 
+						await markSessionOutsideStore(key);
 						ctx.context.session = session;
 
 						if (ctx.path === "/get-session") {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AuthQueryAtom } from "../../../client";
 import { createAuthClient } from "../../../client";
+
 import { getTestInstance } from "../../../test-utils/test-instance";
 import { organizationClient } from "../client";
 import { ORGANIZATION_ERROR_CODES } from "../error-codes";
@@ -285,6 +286,44 @@ describe("listMembers", async () => {
 			ORGANIZATION_ERROR_CODES.YOU_ARE_NOT_A_MEMBER_OF_THIS_ORGANIZATION
 				.message,
 		);
+	});
+});
+
+/**
+ * @see https://github.com/better-auth/better-auth/issues/10508
+ */
+describe("listMembers on postgres", async () => {
+	const { auth, signInWithTestUser } = await getTestInstance(
+		{
+			plugins: [organization()],
+		},
+		{
+			testWith: "postgres",
+		},
+	);
+	const { headers } = await signInWithTestUser();
+
+	it("returns an empty page when the filter matches nobody", async () => {
+		const org = await auth.api.createOrganization({
+			body: {
+				name: "empty-filter",
+				slug: "empty-filter",
+			},
+			headers,
+		});
+		await expect(
+			auth.api.listMembers({
+				query: {
+					organizationId: org.id,
+					filterField: "role",
+					filterValue: "admin",
+				},
+				headers,
+			}),
+		).resolves.toMatchObject({
+			members: [],
+			total: 0,
+		});
 	});
 });
 

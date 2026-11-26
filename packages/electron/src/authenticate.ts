@@ -2,8 +2,12 @@ import { base64Url } from "@better-auth/utils/base64";
 import type { BetterFetch, CreateFetchOption } from "@better-fetch/fetch";
 import type { CinaAuthClientOptions } from "@cinaauth/core";
 import type { User } from "@cinaauth/core/db";
-import { CinaAuthError } from "@cinaauth/core/error";
-import { APIError, getBaseURL, safeJSONParse } from "cinaauth";
+import { APIError, CinaAuthError } from "@cinaauth/core/error";
+import { safeJSONParse } from "@cinaauth/core/utils/json";
+
+// Still imported from the root, which pulls in the Kysely adapter. Remove once
+// client plugins receive the base URL resolved by the client.
+import { getBaseURL } from "cinaauth";
 import { signInSocial } from "cinaauth/api";
 import { generateRandomString } from "cinaauth/crypto";
 import { generateCodeChallenge } from "cinaauth/oauth2";

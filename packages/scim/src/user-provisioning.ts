@@ -1,3 +1,4 @@
+import { HIDE_METADATA } from "@cinaauth/core/api";
 import type {
 	AuthContext,
 	DBAdapter,
@@ -5,7 +6,6 @@ import type {
 	User,
 	Where,
 } from "cinaauth";
-import { HIDE_METADATA } from "cinaauth";
 import { createAuthEndpoint } from "cinaauth/api";
 import type {
 	SCIMAttributeProjection,
@@ -19,6 +19,7 @@ import {
 	scimAttributeProjectionQuerySchema,
 	scimCollectionQuerySchema,
 } from "./collection-query";
+
 import type { SCIMConnection } from "./configuration";
 import type { SCIMConnectionMiddleware } from "./connection-authentication";
 import { fenceActiveSCIMConnection } from "./connection-state";
@@ -39,6 +40,8 @@ import type {
 	SCIMSubject,
 	SCIMUser,
 } from "./persistence";
+import { SCIM_UNBOUNDED_ROW_LIMIT } from "./persistence";
+
 import type { SCIMProjectionCoordinator } from "./projection";
 import { projectSCIMResourceAttributes } from "./resource-attribute-projection";
 import {
@@ -1311,6 +1314,7 @@ export function deleteSCIMUser(
 						},
 						{ field: "scimUserId", value: sourceBeforeLocks.id },
 					],
+					limit: SCIM_UNBOUNDED_ROW_LIMIT,
 				});
 				const lockedGroups = await acquireSCIMGroupMutationLocks(
 					trx,
@@ -1347,6 +1351,7 @@ export function deleteSCIMUser(
 						},
 						{ field: "scimUserId", value: currentSource.id },
 					],
+					limit: SCIM_UNBOUNDED_ROW_LIMIT,
 				});
 				if (!areMembershipGroupsLocked(lockedMemberships, lockedGroups)) {
 					throwConcurrentSCIMGroupMutation();

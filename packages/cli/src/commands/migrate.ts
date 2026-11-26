@@ -5,10 +5,10 @@ import chalk from "chalk";
 import { getAdapter } from "cinaauth/db/adapter";
 import { getMigrations, UnsafeMigrationError } from "cinaauth/db/migration";
 import { Command } from "commander";
-import prompts from "prompts";
 import yoctoSpinner from "yocto-spinner";
 import * as z from "zod";
 import { getConfig } from "../utils/get-config";
+import { prompt } from "../utils/prompt";
 
 /** @internal */
 export async function migrateAction(opts: any) {
@@ -35,7 +35,7 @@ export async function migrateAction(opts: any) {
 		console.error(
 			"No configuration file found. Add a `auth.ts` file to your project or pass the path to the configuration file using the `--config` flag.",
 		);
-		return;
+		process.exit(1);
 	}
 
 	const db = await getAdapter(config);
@@ -193,12 +193,18 @@ export async function migrateAction(opts: any) {
 
 	let migrate = options.yes;
 	if (!migrate) {
-		const response = await prompts({
-			type: "confirm",
-			name: "migrate",
-			message: "Are you sure you want to run these migrations?",
-			initial: false,
-		});
+		const response = await prompt(
+			{
+				type: "confirm",
+				name: "migrate",
+				message: "Are you sure you want to run these migrations?",
+				initial: false,
+			},
+			{
+				action: "run these migrations",
+				input: "--yes",
+			},
+		);
 		migrate = response.migrate;
 	}
 
@@ -214,7 +220,7 @@ export async function migrateAction(opts: any) {
 				},
 			});
 		} catch {}
-		process.exit(0);
+		process.exit(130);
 	}
 
 	spinner?.start("migrating...");

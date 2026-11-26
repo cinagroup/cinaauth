@@ -2,9 +2,14 @@ import { createAuthEndpoint } from "@cinaauth/core/api";
 import { APIError, BASE_ERROR_CODES } from "@cinaauth/core/error";
 import { safeJSONParse } from "@cinaauth/core/utils/json";
 import * as z from "zod";
-import { sessionMiddleware } from "../../../api";
+import {
+	getAuthoritativeSessionFromCtx,
+	sessionMiddleware,
+} from "../../../api";
+import { isSessionOutsideStore } from "../../../api/state/session-source";
 import type { SecretConfig } from "../../../crypto";
 import { symmetricDecrypt, symmetricEncrypt } from "../../../crypto";
+
 import { generateRandomString } from "../../../crypto/random";
 import { parseUserOutput } from "../../../db/schema";
 import { shouldRequirePassword } from "../../../utils/password";
@@ -479,7 +484,20 @@ export const backupCode2fa = (opts: BackupCodeOptions) => {
 					},
 				},
 				async (ctx) => {
-					let user = ctx.context.session.user as UserWithTwoFactor;
+					// A cached session can predate enrollment, so read the user from the
+					// store. Sessions built outside the store have no row to re-read.
+					const session = (await isSessionOutsideStore(
+						ctx.context.session.session.token,
+					))
+						? ctx.context.session
+						: await getAuthoritativeSessionFromCtx(ctx);
+					if (!session) {
+						throw APIError.from("UNAUTHORIZED", {
+							message: "Unauthorized",
+							code: "UNAUTHORIZED",
+						});
+					}
+					let user = session.user as UserWithTwoFactor;
 					const requirePassword = await shouldRequirePassword(
 						ctx,
 						user.id,

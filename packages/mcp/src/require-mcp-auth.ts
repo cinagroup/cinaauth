@@ -1,12 +1,11 @@
-import type { Awaitable } from "@cinaauth/core";
-import type { DpopReplayReservations, DpopReplayStore } from "cinaauth/oauth2";
+import type { AuthContext, Awaitable } from "@cinaauth/core";
+import { getLocalJwksSource } from "@cinaauth/oauth-provider/internal";
+import type { DpopReplayAuthContext, DpopReplayStore } from "cinaauth/oauth2";
 import { createDpopReplayStore } from "cinaauth/oauth2";
+
 import type { CinaAuthOptions } from "cinaauth/types";
 import type { JWTPayload } from "jose";
-import {
-	createMcpProtectedRequestHandler,
-	validateMcpResource,
-} from "./handler";
+import { createProtectedRequestHandler, validateMcpResource } from "./handler";
 
 export interface RequireMcpAuthOptions {
 	/**
@@ -20,8 +19,9 @@ export interface RequireMcpAuthOptions {
 	 */
 	issuer?: string;
 	/**
-	 * URL of the authorization server's JWKS. Defaults to `/jwks` under the
-	 * server's resolved base URL.
+	 * URL of the authorization server's JWKS. When unset, the signing keys are
+	 * read from the auth instance in-process, without an HTTP request, or
+	 * fetched from the JWT plugin's `jwks.remoteUrl` when it sets one.
 	 */
 	jwksUrl?: string;
 	/**
@@ -75,10 +75,9 @@ export interface RequireMcpAuthOptions {
 export const requireMcpAuth = <
 	Auth extends {
 		options: CinaAuthOptions;
-		$context: Promise<{
-			baseURL: string;
-			internalAdapter: DpopReplayReservations;
-		}>;
+		$context: Promise<
+			Pick<AuthContext, "baseURL" | "getPlugin"> & DpopReplayAuthContext
+		>;
 	},
 >(
 	auth: Auth,
@@ -97,7 +96,8 @@ export const requireMcpAuth = <
 		// the auth context so the verified issuer and audience match what the
 		// provider issued. Override via `opts` for a custom `jwt.issuer`, a
 		// distinct resource, or a non-default JWKS location.
-		const { baseURL, internalAdapter } = await auth.$context;
+		const authContext = await auth.$context;
+		const { baseURL } = authContext;
 		if (!baseURL) {
 			throw new Error(
 				"requireMcpAuth requires a resolvable base URL. For dynamic base URLs use `createMcpProtectedRequestHandler` with explicit verification options.",
@@ -105,11 +105,28 @@ export const requireMcpAuth = <
 		}
 		const issuer = opts?.issuer ?? baseURL;
 		const resource = opts?.resource ?? baseURL;
-		const jwksUrl = opts?.jwksUrl ?? `${baseURL}/jwks`;
-		return createMcpProtectedRequestHandler(
+		// A JWT plugin that serves its own keys lets this process verify without
+		// requesting its own `/jwks`, which fails on runtimes that block
+		// requests to their own hostname.
+		const jwtPlugin = authContext.getPlugin("jwt");
+		const localJwks = opts?.jwksUrl
+			? undefined
+			: getLocalJwksSource(
+					authContext as Parameters<typeof getLocalJwksSource>[0],
+					req,
+				);
+		// The JWT plugin disables its `/jwks` endpoint when keys are published at
+		// `jwks.remoteUrl`.
+		const jwksUrl =
+			opts?.jwksUrl ?? jwtPlugin?.options?.jwks?.remoteUrl ?? `${baseURL}/jwks`;
+		return createProtectedRequestHandler(
 			{
+				...localJwks,
 				issuer,
 				audience: resource,
+				// Every access token the provider issues names its client in `azp`.
+				// Session JWTs signed with the same keys do not.
+				jwtVerifyOptions: { requiredClaims: ["azp"] },
 				requiredScopes: opts?.requiredScopes,
 				challengeScopes: opts?.challengeScopes,
 				isScopeSatisfied: opts?.isScopeSatisfied,
@@ -117,10 +134,10 @@ export const requireMcpAuth = <
 				dpop: {
 					proofMaxAgeSeconds: opts?.dpop?.proofMaxAgeSeconds,
 					signingAlgorithms: opts?.dpop?.signingAlgorithms,
-					// Default to the database-backed store so proof replay is
+					// Default to the auth instance's shared store so proof replay is
 					// rejected across instances, not just within one process.
 					replayStore:
-						opts?.dpop?.replayStore ?? createDpopReplayStore(internalAdapter),
+						opts?.dpop?.replayStore ?? createDpopReplayStore(authContext),
 				},
 			},
 			handler,

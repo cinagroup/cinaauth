@@ -1,6 +1,7 @@
 // cspell:ignore workerd
 import type { BetterFetchOption } from "@better-fetch/fetch";
 import { betterFetch } from "@better-fetch/fetch";
+
 import { CinaAuthError } from "../error";
 
 const httpRedirectStatuses = new Set([301, 302, 303, 307, 308]);
@@ -26,27 +27,6 @@ function redirectRefused(endpoint: string): CinaAuthError {
 }
 
 /**
- * Fetch option that refuses HTTP redirects portably.
- *
- * Cloudflare Workers (workerd) rejects `redirect: "error"`, so manual mode is
- * used and the resolved response is checked with {@link assertResponseNotRedirect}
- * (or, for betterFetch, with {@link fetchRefusingRedirects}).
- */
-export const noFollowRedirect = { redirect: "manual" } as const;
-
-/**
- * Throw when a native-`fetch` response (e.g. jose's JWKS loader) resolved to a
- * redirect, so an attacker-influenced endpoint cannot bounce a server-side
- * request to an internal address.
- */
-export function assertResponseNotRedirect(
-	endpoint: string,
-	response: Response,
-): void {
-	if (isRedirectResponse(response)) throw redirectRefused(endpoint);
-}
-
-/**
  * betterFetch that refuses HTTP redirects on a server-side OAuth fetch.
  *
  * Returns the betterFetch result and throws if the endpoint redirected, on both
@@ -61,7 +41,7 @@ export async function fetchRefusingRedirects<T>(
 	const onError = options?.onError;
 	const result = await betterFetch<T>(url, {
 		...options,
-		...noFollowRedirect,
+		redirect: "manual",
 		async onError(context) {
 			if (isRedirectResponse(context.response)) redirected = true;
 			await onError?.(context);

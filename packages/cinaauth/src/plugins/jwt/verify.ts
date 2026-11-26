@@ -3,7 +3,8 @@ import type { GenericEndpointContext } from "@cinaauth/core";
 import { getCurrentAuthEndpointContext } from "@cinaauth/core/context";
 import type { JWTPayload } from "jose";
 import { importJWK, jwtVerify } from "jose";
-import { getJwksAdapter } from "./adapter";
+
+import { getDefaultKeyAlg, getJwksAdapter } from "./adapter";
 import type { JwtOptions } from "./types";
 import { getJwkAlgorithm } from "./utils";
 
@@ -47,20 +48,24 @@ export async function verifyJWT<T extends JWTPayload = JWTPayload>(
 		}
 
 		const publicKey = JSON.parse(key.publicKey);
-		const alg =
-			getJwkAlgorithm(key) ??
-			(typeof header.alg === "string" ? header.alg : undefined) ??
-			options?.jwks?.keyPairConfig?.alg ??
-			"EdDSA";
+		const alg = getJwkAlgorithm(key) ?? getDefaultKeyAlg(options);
 		const cryptoKey = await importJWK(publicKey, alg);
 
 		const baseURLOrigin =
 			typeof ctx.context.options.baseURL === "string"
 				? ctx.context.options.baseURL
 				: undefined;
+		const issuer = options?.jwt?.issuer ?? baseURLOrigin;
+		const audience = options?.jwt?.audience ?? baseURLOrigin;
+		if (!issuer || !audience) {
+			ctx.context.logger.warn(
+				"[cinaauth] The JWT plugin is verifying a JWT without checking its issuer or audience because no base URL was resolved for this call. Set `baseURL`, or `jwt.issuer` and `jwt.audience` in the JWT plugin options.",
+			);
+		}
 		const { payload } = await jwtVerify(token, cryptoKey, {
-			issuer: options?.jwt?.issuer ?? baseURLOrigin,
-			audience: options?.jwt?.audience ?? baseURLOrigin,
+			issuer,
+			audience,
+			algorithms: [alg],
 		});
 
 		if (!payload.sub || !payload.aud) {

@@ -1,11 +1,13 @@
 import type { GenericEndpointContext } from "@cinaauth/core";
 import { logger } from "@cinaauth/core/env";
 import { APIError } from "better-call";
+import { isAPIError } from "cinaauth/api";
 import { getJwks, stripAccessTokenAuthorizationScheme } from "cinaauth/oauth2";
-import type { JSONWebKeySet, JWTPayload } from "jose";
-import { createLocalJWKSet, jwtVerify } from "jose";
+import type { JWTPayload } from "jose";
+import { createLocalJWKSet, errors as joseErrors, jwtVerify } from "jose";
+
 import { isAudienceClaimAllowed } from "./resources";
-import { decodeRefreshToken, invalidateRefreshFamily } from "./token";
+import { decodeRefreshTokenForLookup, invalidateRefreshFamily } from "./token";
 import type {
 	OAuthOpaqueAccessToken,
 	OAuthOptions,
@@ -13,10 +15,15 @@ import type {
 	Scope,
 } from "./types";
 import {
+	BASIC_CHALLENGE,
+	challengeHeaders,
 	destructureCredentials,
 	extractClientCredentials,
+	getAuthEndpointUrl,
+	getJwksSource,
 	getJwtPlugin,
 	getStoredToken,
+	isInvalidJwtError,
 	validateClientCredentials,
 } from "./utils";
 
@@ -45,29 +52,22 @@ async function revokeJwtAccessToken(
 	opts: OAuthOptions<Scope[]>,
 	token: string,
 ) {
-	const jwtPlugin = opts.disableJwtPlugin
-		? undefined
-		: getJwtPlugin(ctx.context);
-	const jwtPluginOptions = jwtPlugin?.options;
+	// Without the JWT plugin, this server issues only opaque access tokens.
+	if (opts.disableJwtPlugin) {
+		throw new APIError("BAD_REQUEST", {
+			error_description: "JWT access tokens are disabled",
+			error: "invalid_request",
+		});
+	}
+	const jwtPluginOptions = getJwtPlugin(ctx.context).options;
 
 	// Verify signature + issuer first, then validate `aud` against the OAuth
 	// resource model. Do not pass jose's `audience` option here: access-token
 	// audiences are resource identifiers, not a single global authorization-server
 	// audience.
+	let jwtPayload: JWTPayload & { azp?: string };
 	try {
-		const jwksFetch = jwtPluginOptions?.jwks?.remoteUrl
-			? jwtPluginOptions.jwks.remoteUrl
-			: async (): Promise<JSONWebKeySet | undefined> => {
-					const jwksRes = await jwtPlugin?.endpoints.getJwks(ctx);
-					// @ts-expect-error response is a JSONWebKeySet but within the response field
-					return jwksRes?.response as JSONWebKeySet | undefined;
-				};
-		const jwks = await getJwks(token, {
-			jwksFetch,
-			// The plugin instance is stable across requests, so the key set
-			// fetched by the per-request closure above is cached under it.
-			jwksCacheKey: jwtPlugin,
-		});
+		const jwks = await getJwks(token, getJwksSource(ctx));
 		const verified = await jwtVerify<JWTPayload & { azp?: string }>(
 			token,
 			createLocalJWKSet(jwks),
@@ -75,32 +75,39 @@ async function revokeJwtAccessToken(
 				issuer: jwtPluginOptions?.jwt?.issuer ?? ctx.context.baseURL,
 			},
 		);
-		const userInfoAudience = `${ctx.context.baseURL}/oauth2/userinfo`;
+		jwtPayload = verified.payload;
+	} catch (error) {
+		// jose raises these only after the signature verifies: an expired token,
+		// or a malformed claims set. Check them before `isInvalidJwtError`, which
+		// also matches them.
 		if (
-			!verified.payload.azp ||
-			!(await isAudienceClaimAllowed(ctx, opts, verified.payload.aud, [
-				userInfoAudience,
-			]))
+			error instanceof joseErrors.JWTExpired ||
+			error instanceof joseErrors.JWTInvalid
 		) {
 			return null;
 		}
-	} catch (error) {
-		if (error instanceof Error) {
-			if (error.name === "TypeError" || error.name === "JWSInvalid") {
-				// likely an opaque token
-				throw new APIError("BAD_REQUEST", {
-					error_description: "invalid JWT signature",
-					error: "invalid_request",
-				});
-			} else if (error.name === "JWTExpired") {
-				return null;
-			} else if (error.name === "JWTInvalid") {
-				// issuer or other JWT claim validation failure
-				return null;
-			}
-			throw error;
+		// likely an opaque token, or a JWT this server cannot verify (bad
+		// signature, unknown key, failed claim checks such as `iss`), which
+		// may still be a stored opaque token (`generateOpaqueAccessToken`)
+		if (error instanceof TypeError || isInvalidJwtError(error)) {
+			throw new APIError("BAD_REQUEST", {
+				error_description: "invalid JWT signature",
+				error: "invalid_request",
+			});
 		}
-		throw new Error(error as unknown as string);
+		throw error;
+	}
+
+	// Outside the try: a database failure here is a server error, not a sign
+	// that the token is opaque.
+	const userInfoAudience = `${ctx.context.baseURL}/oauth2/userinfo`;
+	if (
+		!jwtPayload.azp ||
+		!(await isAudienceClaimAllowed(ctx, opts, jwtPayload.aud, [
+			userInfoAudience,
+		]))
+	) {
+		return null;
 	}
 
 	// Verified: a valid JWT access token for this server. It is self-contained
@@ -198,7 +205,10 @@ async function revokeRefreshToken(
 		});
 	}
 	if (refreshToken.revoked) {
-		await invalidateRefreshFamily(ctx, clientId, refreshToken.userId);
+		// A different client's token must not revoke the presenting client's grants.
+		if (refreshToken.clientId === clientId) {
+			await invalidateRefreshFamily(ctx, clientId, refreshToken.userId);
+		}
 		// RFC 7009: acknowledging an inactive token does not restore it.
 		return null;
 	}
@@ -251,7 +261,7 @@ async function revokeAccessToken(
 	try {
 		return await revokeJwtAccessToken(ctx, opts, token);
 	} catch (err) {
-		if (err instanceof APIError) {
+		if (isAPIError(err)) {
 			// A confirmed JWT access token cannot be revoked: surface that rather
 			// than falling through to the opaque-token lookup.
 			if (err.body?.error === "unsupported_token_type") {
@@ -267,7 +277,7 @@ async function revokeAccessToken(
 	try {
 		return await revokeOpaqueAccessToken(ctx, opts, token, clientId);
 	} catch (err) {
-		if (err instanceof APIError) {
+		if (isAPIError(err)) {
 			// nothing
 		} else if (err instanceof Error) {
 			throw err;
@@ -302,7 +312,7 @@ export async function revokeEndpoint(
 	const credentials = await extractClientCredentials(
 		ctx,
 		opts,
-		`${ctx.context.baseURL}/oauth2/revoke`,
+		getAuthEndpointUrl(ctx, "/oauth2/revoke"),
 	);
 	const {
 		clientId: client_id,
@@ -312,10 +322,14 @@ export async function revokeEndpoint(
 	} = destructureCredentials(credentials);
 
 	if (!client_id) {
-		throw new APIError("UNAUTHORIZED", {
-			error_description: "missing required credentials",
-			error: "invalid_client",
-		});
+		throw new APIError(
+			"UNAUTHORIZED",
+			{
+				error_description: "missing required credentials",
+				error: "invalid_client",
+			},
+			challengeHeaders(BASIC_CHALLENGE),
+		);
 	}
 
 	// Check token
@@ -346,7 +360,7 @@ export async function revokeEndpoint(
 			try {
 				return await revokeAccessToken(ctx, opts, client.clientId, token);
 			} catch (error) {
-				if (error instanceof APIError) {
+				if (isAPIError(error)) {
 					if (
 						token_type_hint === "access_token" ||
 						error.body?.error === "unsupported_token_type"
@@ -363,7 +377,7 @@ export async function revokeEndpoint(
 
 		if (token_type_hint === undefined || token_type_hint === "refresh_token") {
 			try {
-				const refreshToken = await decodeRefreshToken(opts, token);
+				const refreshToken = await decodeRefreshTokenForLookup(opts, token);
 				return await revokeRefreshToken(
 					ctx,
 					opts,
@@ -371,7 +385,7 @@ export async function revokeEndpoint(
 					client.clientId,
 				);
 			} catch (error) {
-				if (error instanceof APIError) {
+				if (isAPIError(error)) {
 					if (token_type_hint === "refresh_token") {
 						throw error;
 					} // else continue
@@ -388,7 +402,7 @@ export async function revokeEndpoint(
 			error: "invalid_request",
 		});
 	} catch (error) {
-		if (error instanceof APIError) {
+		if (isAPIError(error)) {
 			// RFC 7009 §2.2.1: an explicit protocol error (unsupported_token_type)
 			// must surface; an unknown or already-invalid token still succeeds.
 			if (error.body?.error === "unsupported_token_type") {

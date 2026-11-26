@@ -2,8 +2,9 @@ import type { GenericEndpointContext } from "@cinaauth/core";
 import { CinaAuthError } from "@cinaauth/core/error";
 import type { JWTPayload } from "jose";
 import { importJWK, SignJWT } from "jose";
+
 import { symmetricDecrypt } from "../../crypto";
-import { getJwksAdapter } from "./adapter";
+import { getDefaultKeyAlg, getJwksAdapter } from "./adapter";
 import type { JWSAlgorithms, JwtOptions, ResolvedSigningKey } from "./types";
 import { createJwk, getOrCreateCurrentJwk, toExpJWT } from "./utils";
 
@@ -128,7 +129,7 @@ export async function resolveSigningKey(
 			// the same fallback adapter.getLatestKeyByAlg uses so a pinned
 			// (kid, alg) pair where the row matches the configured default
 			// algorithm doesn't spuriously throw.
-			const configAlg = options?.jwks?.keyPairConfig?.alg ?? "EdDSA";
+			const configAlg = getDefaultKeyAlg(options);
 			const effectiveAlg = key.alg ?? configAlg;
 			if (effectiveAlg !== overrides.signingAlgorithm) {
 				throw new CinaAuthError(
@@ -157,7 +158,7 @@ export async function resolveSigningKey(
 		// transactional mint primitive on the adapter.
 		key = await adapter.getLatestKeyByAlg(ctx, overrides.signingAlgorithm);
 		if (!key) {
-			const primaryAlg = options?.jwks?.keyPairConfig?.alg ?? "EdDSA";
+			const primaryAlg = getDefaultKeyAlg(options);
 			const preconfig = options?.jwks?.keyPairConfigs?.find(
 				(c) => c.alg === overrides.signingAlgorithm,
 			);
@@ -180,9 +181,40 @@ export async function resolveSigningKey(
 				);
 			}
 		}
-	} else {
-		// Rotate before the first signature after a primary algorithm change.
+	} else if (
+		options?.jwks?.keyPairConfig &&
+		(!options.adapter?.getJwks || options.adapter.createJwk)
+	) {
 		key = await getOrCreateCurrentJwk(ctx, options);
+	} else {
+		// Unpinned tokens (ID tokens, session-bound access tokens issued
+		// without a `signingAlgorithm` override) must stay on the configured
+		// primary alg. Using the generic `getLatestKey()` here would let a
+		// lazy-minted `keyPairConfigs` row become the "newest" key once it's
+		// provisioned and silently flip unpinned tokens onto a different alg
+		// — race-dependent because access tokens and ID tokens issue in
+		// parallel in the OAuth provider flow. Pinning to
+		// `keyPairConfig.alg` keeps unpinned token alg stable across the
+		// lifetime of the deployment regardless of how many extra algs are
+		// provisioned for audience pinning. Falls back to `getLatestKey()`
+		// when no key with the primary alg exists yet (fresh deploy).
+		const primaryAlg = getDefaultKeyAlg(options);
+		key = await adapter.getLatestKeyByAlg(ctx, primaryAlg);
+		if (!key) {
+			const latest = await adapter.getLatestKey(ctx);
+			// A key lazy-minted for a pinned `keyPairConfigs` alg must not
+			// stand in for the primary key, or the first pinned call on an
+			// empty JWKS moves every unpinned token onto that alg. Falling
+			// through mints the primary key below. A custom `getJwks` keyring
+			// is operator-managed and may never return a minted key, so it
+			// keeps reusing its newest key.
+			const mintedForPinning =
+				!options?.adapter?.getJwks &&
+				latest?.alg !== undefined &&
+				latest.alg !== primaryAlg &&
+				options?.jwks?.keyPairConfigs?.some((c) => c.alg === latest.alg);
+			key = mintedForPinning ? undefined : latest;
+		}
 	}
 
 	if (!key || (key.expiresAt && key.expiresAt < new Date())) {
@@ -211,7 +243,7 @@ export async function resolveSigningKey(
 				);
 			})
 		: key.privateKey;
-	const alg = key.alg ?? options?.jwks?.keyPairConfig?.alg ?? "EdDSA";
+	const alg = key.alg ?? getDefaultKeyAlg(options);
 	const privateKey = await importJWK(JSON.parse(privateWebKey), alg);
 	return { alg, kid: key.id, privateKey };
 }
@@ -274,7 +306,7 @@ export async function signJWT(
 	// Nbf
 	const nbf = payload.nbf!;
 
-	// At handler-time, options.baseURL is always a resolved string origin
+	// Empty only for a direct `auth.api` call when no baseURL is configured
 	const baseURLOrigin =
 		typeof ctx.context.options.baseURL === "string"
 			? ctx.context.options.baseURL
@@ -287,6 +319,12 @@ export async function signJWT(
 	// Aud
 	const aud = payload.aud;
 	const defaultAud = options?.jwt?.audience ?? baseURLOrigin;
+
+	if (!(iss ?? defaultIss) || !(aud ?? defaultAud)) {
+		ctx.context.logger.warn(
+			"[cinaauth] The JWT plugin signed a JWT without an issuer or audience because no base URL was resolved for this call. Set `baseURL`, or `jwt.issuer` and `jwt.audience` in the JWT plugin options.",
+		);
+	}
 
 	// Custom/remote signing function
 	if (options?.jwt?.sign) {

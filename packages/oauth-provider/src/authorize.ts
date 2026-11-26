@@ -1,9 +1,11 @@
 import type { GenericEndpointContext } from "@cinaauth/core";
 import { isBrowserFetchRequest } from "@cinaauth/core/utils/fetch-metadata";
-import { isLoopbackHost, isLoopbackIP } from "@cinaauth/core/utils/host";
+import { isLoopbackIP } from "@cinaauth/core/utils/host";
+import { INSECURE_REDIRECT_URI_MESSAGE } from "@cinaauth/core/utils/redirect-uri";
 import { appendQueryParams } from "@cinaauth/core/utils/url";
 import { APIError } from "better-call";
-import { getSessionFromCtx } from "cinaauth/api";
+import { getSessionFromCtx, isAPIError } from "cinaauth/api";
+
 import { generateRandomString, makeSignature } from "cinaauth/crypto";
 import type { Verification } from "cinaauth/db";
 import { LEVEL_0_ACR } from "./authentication-context";
@@ -15,6 +17,7 @@ import {
 import { oAuthState } from "./oauth";
 import type { OAuthErrorCode, OAuthRedirectOnError } from "./oauth-endpoint";
 import { mapIssuesToOAuthError } from "./oauth-endpoint";
+
 import { resolveResourcePolicy } from "./resources";
 import {
 	canonicalizeOAuthQueryParams,
@@ -26,19 +29,21 @@ import {
 import { getSupportedClaims } from "./standard-claims";
 import type {
 	OAuthAuthorizationQuery,
-	OAuthConsent,
 	OAuthOptions,
 	Scope,
 	VerificationValue,
 } from "./types";
-import { authorizationQuerySchema, SafeUrlSchema } from "./types/zod";
+import { authorizationQuerySchema, RedirectUriSyntaxSchema } from "./types/zod";
 
 import {
 	authorizeOAuthClient,
 	clientAllowsGrant,
+	findConsent,
 	getClient,
+	getConsentReferenceId,
 	getJwtPlugin,
 	isPKCERequired,
+	isRedirectUriTransportAllowed,
 	parsePrompt,
 	storeToken,
 	toResourceList,
@@ -180,21 +185,15 @@ function redirectWithPromptNoneError(
 }
 
 /**
- * Validates that the issuer URL
- * - MUST use HTTPS scheme (HTTP allowed for localhost in dev)
- * - MUST NOT contain query components
- * - MUST NOT contain fragment components
+ * Normalizes the issuer URL by removing query and fragment components, which
+ * RFC 8414 §2 forbids. The scheme is kept as configured: the issuer must match
+ * the `iss` claim of issued tokens exactly (RFC 9207 §2.4).
  *
- * @returns The validated issuer URL, or a sanitized version if invalid
+ * @returns The issuer URL without query, fragment, or trailing slash
  */
 export function validateIssuerUrl(issuer: string): string {
 	try {
 		const url = new URL(issuer);
-
-		if (url.protocol !== "https:" && !isLoopbackHost(url.host)) {
-			url.protocol = "https:";
-		}
-
 		url.search = "";
 		url.hash = "";
 
@@ -205,6 +204,19 @@ export function validateIssuerUrl(issuer: string): string {
 	}
 }
 
+function getConfiguredIssuer(
+	ctx: GenericEndpointContext,
+	opts: OAuthOptions<Scope[]>,
+): string {
+	if (opts.disableJwtPlugin) return ctx.context.baseURL;
+	try {
+		const jwtPluginOptions = getJwtPlugin(ctx.context).options;
+		return jwtPluginOptions?.jwt?.issuer ?? ctx.context.baseURL;
+	} catch {
+		return ctx.context.baseURL;
+	}
+}
+
 /**
  * Gets the issuer identifier
  */
@@ -212,27 +224,28 @@ export function getIssuer(
 	ctx: GenericEndpointContext,
 	opts: OAuthOptions<Scope[]>,
 ): string {
-	let issuer: string;
+	return validateIssuerUrl(getConfiguredIssuer(ctx, opts));
+}
 
-	if (opts.disableJwtPlugin) {
-		issuer = ctx.context.baseURL;
-	} else {
-		try {
-			const jwtPluginOptions = getJwtPlugin(ctx.context).options;
-			issuer = jwtPluginOptions?.jwt?.issuer ?? ctx.context.baseURL;
-		} catch {
-			issuer = ctx.context.baseURL;
-		}
-	}
-
-	return validateIssuerUrl(issuer);
+/**
+ * Gets every `iss` value this server's own tokens can carry: the published
+ * issuer and, when it differs, the configured value that issued tokens
+ * carry, such as a base URL with a trailing slash.
+ */
+export function getAcceptedIssuers(
+	ctx: GenericEndpointContext,
+	opts: OAuthOptions<Scope[]>,
+): string[] {
+	const configured = getConfiguredIssuer(ctx, opts);
+	const issuer = validateIssuerUrl(configured);
+	return configured === issuer ? [issuer] : [issuer, configured];
 }
 
 /**
  * Error page url if redirect_uri has not been verified yet
  * Generates Url for custom error page
  */
-function getErrorURL(
+export function getErrorURL(
 	ctx: GenericEndpointContext,
 	error: OAuthErrorCode,
 	description: string,
@@ -298,9 +311,10 @@ function stripLoopbackRedirectPort(uri: string): string | undefined {
 /**
  * Finds the matching entry in a client's registered redirect URIs.
  *
- * Registration limits loopback redirects to native-compatible HTTP forms.
- * Within that boundary, only the port may vary; every other character must
- * match the registered URI.
+ * For clients that are not `web`, registration limits loopback redirects to
+ * native-compatible HTTP forms. Within that boundary, only the port may vary;
+ * every other character must match the registered URI. Web clients, which
+ * reach loopback only through `allowInsecureRedirectUri`, must match exactly.
  *
  * @see https://www.rfc-editor.org/rfc/rfc9700.html#section-4.1.3
  * @see https://www.rfc-editor.org/rfc/rfc8252.html#section-8.3
@@ -308,6 +322,7 @@ function stripLoopbackRedirectPort(uri: string): string | undefined {
 function findRegisteredRedirectUri(
 	registered: readonly string[] | undefined,
 	requested: string | undefined,
+	isWebClient: boolean,
 ): string | undefined {
 	if (!registered || !requested) return undefined;
 
@@ -328,7 +343,9 @@ function findRegisteredRedirectUri(
 	if (hasFragment || hasUserinfo) {
 		return undefined;
 	}
-	const requestedWithoutPort = stripLoopbackRedirectPort(requested);
+	const requestedWithoutPort = isWebClient
+		? undefined
+		: stripLoopbackRedirectPort(requested);
 
 	return registered.find((url) => {
 		if (url === requested) return true;
@@ -337,9 +354,12 @@ function findRegisteredRedirectUri(
 	});
 }
 
-/** Keep URI syntax and credential checks outside the custom trust decision. */
+/**
+ * Keep URI syntax and credential checks outside the custom trust decision.
+ * Callers apply the HTTPS policy first.
+ */
 function isSafeCustomRedirectUri(uri: string): boolean {
-	if (!SafeUrlSchema.safeParse(uri).success) return false;
+	if (!RedirectUriSyntaxSchema.safeParse(uri).success) return false;
 	const parsed = new URL(uri);
 	return parsed.username.length === 0 && parsed.password.length === 0;
 }
@@ -352,7 +372,7 @@ function isSafeCustomRedirectUri(uri: string): boolean {
  * callers can fall back to the server error page (avoiding open-redirect
  * risk on validation failures).
  */
-async function resolveTrustedRedirectUri(
+export async function resolveTrustedRedirectUri(
 	ctx: GenericEndpointContext,
 	opts: OAuthOptions<Scope[]>,
 	clientId: string | undefined,
@@ -366,8 +386,16 @@ async function resolveTrustedRedirectUri(
 		return null;
 	}
 	if (!client || client.disabled) return null;
+	const isWebClient = client.applicationType === "web";
+	if (!isRedirectUriTransportAllowed(opts, redirectUri, isWebClient)) {
+		return null;
+	}
 	const registeredUris = client.redirectUris ?? [];
-	const matched = findRegisteredRedirectUri(registeredUris, redirectUri);
+	const matched = findRegisteredRedirectUri(
+		registeredUris,
+		redirectUri,
+		isWebClient,
+	);
 	if (opts.validateRedirectUri) {
 		if (!isSafeCustomRedirectUri(redirectUri)) return null;
 		try {
@@ -442,13 +470,13 @@ export async function authorizeEndpoint(
 		throw new APIError("NOT_FOUND");
 	}
 
-	if (!ctx.request) {
+	const headers = ctx.request?.headers ?? ctx.headers;
+	if (!headers) {
 		throw new APIError("UNAUTHORIZED", {
 			error_description: "request not found",
 			error: "invalid_request",
 		});
 	}
-	const request = ctx.request;
 
 	// Normalize GET query serialization and POST form serialization through one
 	// authorization-request path (OIDC Core §3.1.2.1).
@@ -568,7 +596,7 @@ export async function authorizeEndpoint(
 	if (!client) {
 		return handleRedirect(
 			ctx,
-			getErrorURL(ctx, "invalid_client", "client_id is required"),
+			getErrorURL(ctx, "invalid_client", "client not found"),
 		);
 	}
 	if (client.disabled) {
@@ -599,11 +627,22 @@ export async function authorizeEndpoint(
 	}
 
 	const registeredUris = client.redirectUris ?? [];
+	const isWebClient = client.applicationType === "web";
 	let isValidRedirectUri = false;
 	if (query.redirect_uri) {
+		if (!isRedirectUriTransportAllowed(opts, query.redirect_uri, isWebClient)) {
+			return handleRedirect(
+				ctx,
+				getErrorURL(ctx, "invalid_request", INSECURE_REDIRECT_URI_MESSAGE),
+			);
+		}
 		// Default validation: exact match + native loopback port variance
 		const defaultResult = Boolean(
-			findRegisteredRedirectUri(registeredUris, query.redirect_uri),
+			findRegisteredRedirectUri(
+				registeredUris,
+				query.redirect_uri,
+				isWebClient,
+			),
 		);
 		if (
 			opts.validateRedirectUri &&
@@ -649,6 +688,18 @@ export async function authorizeEndpoint(
 				),
 			);
 		}
+	}
+	if (opts.requireOpenId && !requestedScopes?.includes("openid")) {
+		return handleRedirect(
+			ctx,
+			formatErrorURL(
+				query.redirect_uri,
+				"invalid_scope",
+				"the openid scope is required",
+				query.state,
+				getIssuer(ctx, opts),
+			),
+		);
 	}
 	// Always set default scopes if not originally sent
 	if (!requestedScopes) {
@@ -712,7 +763,7 @@ export async function authorizeEndpoint(
 				requestedScopes,
 			});
 		} catch (err) {
-			if (err instanceof APIError) {
+			if (isAPIError(err)) {
 				const error =
 					(err.body as { error?: string })?.error ?? "invalid_target";
 				const description =
@@ -845,7 +896,7 @@ export async function authorizeEndpoint(
 		opts.selectAccount
 	) {
 		const selectedAccountRedirect = await opts.selectAccount.shouldRedirect({
-			headers: request.headers,
+			headers,
 			user: session.user,
 			session: session.session,
 			scopes: requestedScopes,
@@ -867,7 +918,7 @@ export async function authorizeEndpoint(
 	// Redirect to complete registration steps
 	if (opts.signup?.shouldRedirect) {
 		const signupRedirect = await opts.signup.shouldRedirect({
-			headers: request.headers,
+			headers,
 			user: session.user,
 			session: session.session,
 			scopes: requestedScopes,
@@ -891,7 +942,7 @@ export async function authorizeEndpoint(
 
 	if (!settings?.postLogin && opts.postLogin) {
 		const postLoginRedirect = await opts.postLogin.shouldRedirect({
-			headers: request.headers,
+			headers,
 			user: session.user,
 			session: session.session,
 			scopes: requestedScopes,
@@ -918,7 +969,7 @@ export async function authorizeEndpoint(
 		});
 	}
 
-	const referenceId = await opts.postLogin?.consentReferenceId?.({
+	const referenceId = await getConsentReferenceId(opts, {
 		user: session.user,
 		session: session.session,
 		scopes: requestedScopes,
@@ -936,27 +987,12 @@ export async function authorizeEndpoint(
 			resource: requestedResources,
 		});
 	}
-	const consent = await ctx.context.adapter.findOne<OAuthConsent<Scope[]>>({
-		model: "oauthConsent",
-		where: [
-			{
-				field: "clientId",
-				value: client.clientId,
-			},
-			{
-				field: "userId",
-				value: session.user.id,
-			},
-			...(referenceId
-				? [
-						{
-							field: "referenceId",
-							value: referenceId,
-						},
-					]
-				: []),
-		],
-	});
+	const consent = await findConsent(
+		ctx,
+		client.clientId,
+		session.user.id,
+		referenceId,
+	);
 
 	if (
 		!consent ||
@@ -1059,10 +1095,23 @@ async function redirectWithAuthorizationCode(
 			resource: verificationValue.resource,
 		} satisfies VerificationValue),
 	};
-	await ctx.context.internalAdapter.createVerificationValue({
+	const stored = await ctx.context.internalAdapter.createVerificationValue({
 		...data,
 		createdAt: new Date(iat * 1000),
 	});
+	// A verification.create.before hook can veto the create by returning false.
+	if (!stored) {
+		return handleRedirect(
+			ctx,
+			formatErrorURL(
+				verificationValue.query.redirect_uri,
+				"server_error",
+				"unable to issue an authorization code",
+				verificationValue.query.state,
+				getIssuer(ctx, opts),
+			),
+		);
+	}
 
 	const redirectUriWithCode = new URL(verificationValue.query.redirect_uri);
 	redirectUriWithCode.searchParams.set("code", code);

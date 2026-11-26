@@ -13,18 +13,22 @@ export const subscriptions = {
 				type: "string",
 				required: true,
 				index: true,
+				input: false,
 			},
 			stripeCustomerId: {
 				type: "string",
 				required: false,
+				input: false,
 			},
 			stripeSubscriptionId: {
 				type: "string",
 				required: false,
+				input: false,
 			},
 			status: {
 				type: "string",
 				defaultValue: "incomplete",
+				input: false,
 			},
 			periodStart: {
 				type: "date",
@@ -70,6 +74,7 @@ export const subscriptions = {
 			stripeScheduleId: {
 				type: "string",
 				required: false,
+				input: false,
 			},
 		},
 	},
@@ -81,6 +86,7 @@ export const user = {
 			stripeCustomerId: {
 				type: "string",
 				required: false,
+				input: false,
 			},
 		},
 	},
@@ -92,6 +98,7 @@ export const organization = {
 			stripeCustomerId: {
 				type: "string",
 				required: false,
+				input: false,
 			},
 		},
 	},

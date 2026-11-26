@@ -4,6 +4,7 @@ import type {
 	CinaAuthOptions,
 	CinaAuthPlugin,
 } from "@cinaauth/core";
+import { redactSecondaryStorageErrors } from "@cinaauth/core/db/internal";
 import { env } from "@cinaauth/core/env";
 import { CinaAuthError } from "@cinaauth/core/error";
 import { isLoopbackHost } from "@cinaauth/core/utils/host";
@@ -85,6 +86,19 @@ export async function runPluginInit(context: AuthContext) {
 	// Add the global database hooks last
 	if (options.databaseHooks) {
 		dbHooks.push({ source: "user", hooks: options.databaseHooks });
+	}
+
+	// A plugin can supply the storage through `init`, after the context wrapped
+	// the configured one.
+	if (options.secondaryStorage) {
+		options.secondaryStorage = redactSecondaryStorageErrors(
+			options.secondaryStorage,
+		);
+	}
+	if (context.secondaryStorage) {
+		context.secondaryStorage = redactSecondaryStorageErrors(
+			context.secondaryStorage,
+		);
 	}
 
 	context.internalAdapter = createInternalAdapter(context.adapter, {

@@ -1,4 +1,4 @@
-import type { APIError } from "@cinaauth/core/error";
+import { APIError } from "@cinaauth/core/error";
 import { memoryAdapter } from "@cinaauth/memory-adapter";
 import type { Prettify } from "better-call";
 import {
@@ -15,6 +15,7 @@ import type {
 	PreinitializedWritableAtom,
 } from "../../client";
 import { createAuthClient } from "../../client";
+
 import { parseSetCookieHeader } from "../../cookies";
 import { nextCookies } from "../../integrations/next-js";
 import { getTestInstance } from "../../test-utils/test-instance";
@@ -362,6 +363,22 @@ describe("organization", async () => {
 			},
 		});
 		expect(organization.data?.metadata?.test).toBe("test2");
+	});
+
+	it("should allow updating organization metadata with a constructor key", async () => {
+		const { headers } = await signInWithTestUser();
+		const organization = await auth.api.updateOrganization({
+			body: {
+				organizationId,
+				data: {
+					metadata: {
+						constructor: "acme",
+					},
+				},
+			},
+			headers,
+		});
+		expect(organization?.metadata).toEqual({ constructor: "acme" });
 	});
 
 	it("should prevent updating organization to empty slug", async () => {
@@ -1390,7 +1407,8 @@ describe("organization", async () => {
 				headers: headers,
 			},
 		});
-		expect(invitations.data?.length).toBe(5);
+		// The caller was demoted to admin above, so the owner invitation is hidden.
+		expect(invitations.data?.length).toBe(4);
 	});
 
 	it("should allow listing invitations for a user using authClient", async () => {
@@ -3715,6 +3733,49 @@ describe("organization delete hooks receive endpoint context", async () => {
 		expect(seen.beforeDeleteOrganization?.hasRequest).toBe(true);
 		expect(seen.afterDeleteOrganization?.hasCtx).toBe(true);
 		expect(seen.afterDeleteOrganization?.hasRequest).toBe(true);
+	});
+});
+
+/**
+ * @see https://github.com/better-auth/better-auth/issues/10590
+ */
+describe("organization delete rejected by beforeDeleteOrganization", async () => {
+	const { auth, signInWithTestUser } = await getTestInstance({
+		plugins: [
+			organization({
+				organizationHooks: {
+					beforeDeleteOrganization: async () => {
+						throw new APIError("BAD_REQUEST", {
+							message: "deletion refused",
+						});
+					},
+				},
+			}),
+		],
+	});
+
+	const { headers } = await signInWithTestUser();
+
+	it("keeps the active organization", async () => {
+		const org = await auth.api.createOrganization({
+			headers,
+			body: {
+				name: "Kept Org",
+				slug: "kept-org",
+			},
+		});
+
+		await expect(
+			auth.api.deleteOrganization({
+				headers,
+				body: {
+					organizationId: org.id,
+				},
+			}),
+		).rejects.toThrow("deletion refused");
+
+		const session = await auth.api.getSession({ headers });
+		expect(session?.session.activeOrganizationId).toBe(org.id);
 	});
 });
 

@@ -3,7 +3,15 @@ title: CinaAuth 1.7 migration
 description: Upstream 1.7 APIs and compatibility entries for existing CinaAuth deployments.
 ---
 
-This release incorporates the upstream Better Auth 1.7.3 updates. CinaAuth keeps its package names, production authorization hooks, session deletion safeguards, and private JWKS transport support.
+This release incorporates the upstream Better Auth 1.7.28 updates. CinaAuth keeps its package names, production authorization hooks, session deletion safeguards, and private JWKS transport support.
+
+The repository retains its pnpm 11 build configuration. Use the committed lockfile when installing this fork.
+
+Schema validation now runs on the first request, allowing a module-scope auth instance to initialize on Cloudflare Workers. Requests still fail when the database schema does not match. Run [`npx auth@latest check schema`](/docs/concepts/cli#schema) for an explicit preflight check.
+
+User deletion still fails before removing the identity when cached sessions cannot be revoked. In this case, user `delete.after` hooks do not run. Configuring a new primary JWT signing algorithm rotates managed keys immediately; declared additional signing algorithms remain available for resource-specific tokens, and retired keys remain verifiable during the configured grace period.
+
+When a deletion hook vetoes a user deletion, the endpoint now reports `FAILED_TO_DELETE_USER` instead of reporting success. The user's identities and sessions remain intact.
 
 ## SCIM
 

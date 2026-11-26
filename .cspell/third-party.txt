@@ -54,3 +54,5 @@ anthropics
 nextjs
 botid
 eusend
+workerd
+sendora

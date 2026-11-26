@@ -7,6 +7,7 @@ import { getCinaAuthVersion } from "@cinaauth/core/context";
 import { getAuthTables } from "@cinaauth/core/db";
 import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import {
+	redactSecondaryStorageErrors,
 	runtimeSchemaCheckFor,
 	schemaCheckFor,
 } from "@cinaauth/core/db/internal";
@@ -15,6 +16,7 @@ import { CinaAuthError } from "@cinaauth/core/error";
 import type { OAuthProvider } from "@cinaauth/core/oauth2";
 import type { SocialProviders } from "@cinaauth/core/social-providers";
 import { socialProviders } from "@cinaauth/core/social-providers";
+
 import { generateId } from "@cinaauth/core/utils/id";
 import { findInvalidTrustedProxies } from "@cinaauth/core/utils/ip";
 import { createTelemetry } from "@cinaauth/telemetry";
@@ -198,6 +200,9 @@ Most of the features of CinaAuth will not work correctly.`,
 				: "",
 		basePath: options.basePath || "/api/auth",
 		plugins: plugins.concat(internalPlugins),
+		secondaryStorage:
+			options.secondaryStorage &&
+			redactSecondaryStorageErrors(options.secondaryStorage),
 	};
 
 	checkEndpointConflicts(options, logger);

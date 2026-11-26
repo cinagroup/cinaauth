@@ -1,18 +1,18 @@
 ---
-title: "The account change in Better Auth 1.7"
+title: "The account change in CinaAuth 1.7"
 description: "Why a database change broke upgrades, what changes in 1.7.3, and what to do if you already migrated."
 date: 2026-09-07
 author:
-  name: "Better Auth Maintainers"
+  name: "CinaAuth Maintainers"
   avatar: ""
 tags: ["1.7", "migration", "OAuth", "SSO", "database"]
 ---
 
-# The account change in Better Auth 1.7
+# The account change in CinaAuth 1.7
 
-Better Auth 1.7.0 added a required field, `issuer`, to the account table. That meant even apps with only password or GitHub sign-in had to update their databases. Version 1.7.3 removes that requirement, but users who already added the field still need to clean up their databases.
+CinaAuth 1.7.0 added a required field, `issuer`, to the account table. That meant even apps with only password or GitHub sign-in had to update their databases. Version 1.7.3 removes that requirement, but users who already added the field still need to clean up their databases.
 
-We're sorry for the failed sign-ins and the extra database work this caused. You should be able to upgrade within 1.x without having to migrate Better Auth's core tables. We did not meet that expectation in 1.7, and people who followed our earlier instructions now face a second change.
+We're sorry for the failed sign-ins and the extra database work this caused. You should be able to upgrade within 1.x without having to migrate CinaAuth's core tables. We did not meet that expectation in 1.7, and people who followed our earlier instructions now face a second change.
 
 ## Do I need to change my database?
 
@@ -28,11 +28,11 @@ A proposed compatibility option preserved the old account matching but still req
 
 ## Why we reversed the schema change
 
-The 1.x commitment has not changed: upgrades should not require a migration of Better Auth's core tables. Changes that require a core migration belong in 2.0. Plugins and optional features can still have their own upgrade requirements.
+The 1.x commitment has not changed: upgrades should not require a migration of CinaAuth's core tables. Changes that require a core migration belong in 2.0. Plugins and optional features can still have their own upgrade requirements.
 
 Version 1.7.3 restores the account schema used before 1.7, identifying accounts by the configured provider ID (`providerId`) and that provider's user ID (`accountId`). Token issuer verification remains in place; it does not depend on storing `issuer` in the account table.
 
-Because 1.7.3 no longer writes `issuer`, databases that still require it can reject new accounts. Schema validation starts when Better Auth initializes. If it detects an incompatible schema, authentication requests are blocked.
+Because 1.7.3 no longer writes `issuer`, databases that still require it can reject new accounts. Schema validation starts when CinaAuth initializes. If it detects an incompatible schema, authentication requests are blocked.
 
 ## How do I clean up a database that already migrated?
 
@@ -42,7 +42,7 @@ Pause authentication and background writes during the cutover, then restart ever
 
 ## What if several company logins shared an account?
 
-If several single sign-on (SSO) connections shared one account, column cleanup alone may leave a connection unable to sign in. Review how each connection reaches the existing user before upgrading. The [SSO user resolver](/docs/plugins/sso) can preserve that link using a trusted identity; do not link accounts by email alone.
+If several single sign-on (SSO) connections shared one account, column cleanup alone may leave a connection unable to sign in. Review how each connection reaches the existing user before upgrading. The [SSO user resolver](/docs/plugins/sso/provisioning#resolve-sso-users) can preserve that link using a trusted identity; do not link accounts by email alone.
 
 ## How do I know the cleanup worked?
 

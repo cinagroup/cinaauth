@@ -6,11 +6,19 @@ import {
 } from "node:crypto";
 import type { createServer } from "node:http";
 import { DatabaseSync } from "node:sqlite";
+import { inflateRawSync } from "node:zlib";
 import { betterFetch } from "@better-fetch/fetch";
+import type { DBAdapter } from "@cinaauth/core/db/adapter";
 import { NodeSqliteDialect } from "@cinaauth/kysely-adapter/node-sqlite-dialect";
 import bodyParser from "body-parser";
-import type { Account, DBTransactionAdapter, User } from "cinaauth";
+import type {
+	Account,
+	DBTransactionAdapter,
+	User,
+	Verification,
+} from "cinaauth";
 import { CinaAuth } from "cinaauth";
+
 import { memoryAdapter } from "cinaauth/adapters/memory";
 import { APIError } from "cinaauth/api";
 import { createAuthClient } from "cinaauth/client";
@@ -23,6 +31,7 @@ import type {
 	Response as ExpressResponse,
 } from "express";
 import express from "express";
+
 import { Kysely } from "kysely";
 import type { RequestInfo } from "samlify/types/src/types";
 import {
@@ -45,7 +54,7 @@ import { findSAMLProvider } from "./routes/helpers";
 import { getSafeRedirectUrl } from "./routes/saml-pipeline";
 import { saml } from "./samlify";
 import type { SSOOptions, SSOUserResolutionInput } from "./types";
-import { normalizePem } from "./utils";
+import { normalizePem, safeJsonParse } from "./utils";
 
 const spMetadata = `
 <md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="http://localhost:3001/api/sso/saml2/sp/metadata">
@@ -1717,6 +1726,64 @@ describe("SAML SSO", async () => {
 		});
 	});
 
+	it("should enforce the provider cap when more providers exist than findMany returns", async () => {
+		const { auth, signInWithTestUser } = await getTestInstance({
+			plugins: [sso({ providersLimit: 2 })],
+			advanced: { database: { defaultFindManyLimit: 1 } },
+		});
+		const { headers, user } = await signInWithTestUser();
+
+		const registerBody = (providerId: string) => ({
+			providerId,
+			issuer: "http://localhost:8081",
+			domain: "http://localhost:8081",
+			samlConfig: {
+				entryPoint: sharedMockIdP.metadataUrl,
+				cert: certificate,
+				idpMetadata: mockIdentityProviderMetadata,
+				wantAssertionsSigned: false,
+				signatureAlgorithm: "sha256",
+				digestAlgorithm: "sha256",
+				spMetadata: {
+					metadata: spMetadata,
+				},
+			},
+		});
+
+		await auth.api.registerSSOProvider({
+			body: registerBody("saml-provider-1"),
+			headers,
+		});
+		await auth.api.registerSSOProvider({
+			body: registerBody("saml-provider-2"),
+			headers,
+		});
+
+		const context = await auth.$context;
+		const listedProviders = await context.adapter.findMany({
+			model: "ssoProvider",
+			where: [{ field: "userId", value: user.id }],
+		});
+		const providerCount = await context.adapter.count({
+			model: "ssoProvider",
+			where: [{ field: "userId", value: user.id }],
+		});
+		expect(listedProviders).toHaveLength(1);
+		expect(providerCount).toBe(2);
+
+		await expect(
+			auth.api.registerSSOProvider({
+				body: registerBody("saml-provider-3"),
+				headers,
+			}),
+		).rejects.toMatchObject({
+			status: "FORBIDDEN",
+			body: {
+				message: "You have reached the maximum number of SSO providers",
+			},
+		});
+	});
+
 	it("should reject registration when no cert source is provided", async () => {
 		const { auth, signInWithTestUser } = await getTestInstance({
 			plugins: [sso()],
@@ -3338,8 +3405,6 @@ describe("SAML SSO with custom fields", () => {
 	});
 });
 
-import { safeJsonParse } from "./utils";
-
 describe("safeJsonParse", () => {
 	it("returns object as-is when value is already an object", () => {
 		const obj = { a: 1, nested: { b: 2 } };
@@ -4829,6 +4894,77 @@ describe("SAML SSO - Assertion Replay Protection", () => {
 		expect(replayLocation).toContain("error=replay_detected");
 	});
 
+	/**
+	 * A character reference spells the same attribute value, so the signature
+	 * still verifies and the replay key must not change.
+	 * @see https://www.w3.org/TR/xml/#sec-references
+	 */
+	it("should reject a replay that re-spells the assertion ID with character references", async () => {
+		const { auth, signInWithTestUser } = await getTestInstance({
+			plugins: [sso({ saml: { enableInResponseToValidation: false } })],
+		});
+		const { headers } = await signInWithTestUser();
+		await auth.api.registerSSOProvider({
+			body: {
+				providerId: "respelled-replay-provider",
+				issuer: "http://localhost:8081",
+				domain: "http://localhost:8081",
+				samlConfig: {
+					entryPoint: "http://localhost:8081/api/sso/saml2/idp/post",
+					cert: certificate,
+					wantAssertionsSigned: false,
+					signatureAlgorithm: "sha256",
+					digestAlgorithm: "sha256",
+					idpMetadata: { metadata: idpMetadata },
+					spMetadata: { metadata: spMetadata },
+					identifierFormat:
+						"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+				},
+			},
+			headers,
+		});
+
+		const { data } = await betterFetch<{ samlResponse: string }>(
+			"http://localhost:8081/api/sso/saml2/idp/post",
+		);
+		if (!data) throw new Error("mock IdP returned no SAML response");
+		const xml = Buffer.from(data.samlResponse, "base64").toString();
+		const respelled = xml.replace(
+			/(<saml:Assertion ID=")(.)/,
+			(_, prefix: string, first: string) =>
+				`${prefix}&#${first.charCodeAt(0)};`,
+		);
+		expect(respelled).not.toBe(xml);
+
+		const submit = (body: string) =>
+			auth.handler(
+				new Request(
+					"http://localhost:3000/api/auth/sso/saml2/sp/acs/respelled-replay-provider",
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/x-www-form-urlencoded" },
+						body: new URLSearchParams({
+							SAMLResponse: Buffer.from(body).toString("base64"),
+						}),
+					},
+				),
+			);
+
+		const first = await submit(xml);
+		expect(first.status).toBe(302);
+		expect(first.headers.get("location")).not.toContain("error");
+		expect(
+			parseSetCookieHeader(first.headers.get("set-cookie") ?? "").get(
+				"cinaauth.session_token",
+			)?.value,
+		).toBeDefined();
+
+		const replay = await submit(respelled);
+		expect(replay.headers.get("location") || "").toContain(
+			"error=replay_detected",
+		);
+	});
+
 	it("should reject replayed SAML assertion on ACS endpoint", async () => {
 		const { auth, signInWithTestUser } = await getTestInstance({
 			plugins: [sso({ saml: { enableInResponseToValidation: false } })],
@@ -6029,7 +6165,7 @@ describe("SAML Single Logout (SLO)", () => {
 			const logoutRequest = idp.createLogoutRequest(
 				sp,
 				saml.Constants.wording.binding.redirect,
-				{ nameID: "test@email.com" },
+				{ logoutNameID: "test@email.com" },
 				"http://localhost:8081/after-logout",
 			) as { context: string };
 
@@ -6625,6 +6761,10 @@ describe("SAML user resolution HTTP", () => {
 		return { response, body: (await response.json()) as ResponseBody };
 	}
 
+	type SAMLConfiguration = NonNullable<
+		NonNullable<SSOOptions["defaultSSO"]>[number]["samlConfig"]
+	>;
+
 	function persistedSAMLConfiguration() {
 		return {
 			issuer: "https://service.example.com/saml",
@@ -6638,15 +6778,14 @@ describe("SAML user resolution HTTP", () => {
 			},
 			identifierFormat:
 				"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
-		} satisfies NonNullable<
-			NonNullable<SSOOptions["defaultSSO"]>[number]["samlConfig"]
-		>;
+		} satisfies SAMLConfiguration;
 	}
 
 	async function createSAMLUserResolutionInstance(
 		options: SSOOptions,
 		authOptions: Record<string, unknown> = {},
-		samlConfiguration = persistedSAMLConfiguration(),
+		samlConfiguration: SAMLConfiguration = persistedSAMLConfiguration(),
+		adapter: "kysely" | "memory" | "mongodb" = "kysely",
 	) {
 		const sqlite = new DatabaseSync(":memory:");
 		const database = new Kysely({
@@ -6658,11 +6797,22 @@ describe("SAML user resolution HTTP", () => {
 		const instance = await getHttpTestInstance(
 			{
 				...authOptions,
-				database: {
-					db: database,
-					type: "sqlite",
-					transaction: true,
-				},
+				...(adapter === "kysely" && {
+					database: {
+						db: database,
+						type: "sqlite",
+						transaction: true,
+					},
+				}),
+				...(adapter === "memory" && {
+					database: memoryAdapter({
+						user: [],
+						session: [],
+						account: [],
+						verification: [],
+						ssoProvider: [],
+					}),
+				}),
 				plugins: [
 					sso({
 						...options,
@@ -6671,11 +6821,16 @@ describe("SAML user resolution HTTP", () => {
 				],
 				trustedOrigins: ["http://localhost:8081"],
 			},
-			{ disableTestUser: true, testWith: "sqlite" },
+			{
+				disableTestUser: true,
+				testWith: adapter === "mongodb" ? "mongodb" : "sqlite",
+			},
 		);
 		deferredCleanups.push(() => instance.server.close());
-		const migrations = await getMigrations(instance.auth.options);
-		await migrations.runMigrations();
+		if (adapter === "kysely") {
+			const migrations = await getMigrations(instance.auth.options);
+			await migrations.runMigrations();
+		}
 
 		const context = await instance.auth.$context;
 		const providerOwner = await context.adapter.create<User>({
@@ -7729,6 +7884,361 @@ describe("SAML user resolution HTTP", () => {
 		expect(await instance.db.count({ model: "account", where: [] })).toBe(0);
 		expect(await instance.db.count({ model: "session", where: [] })).toBe(0);
 	});
+
+	/**
+	 * @see https://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf SAML Profiles §4.4 (Single Logout Profile)
+	 */
+	describe("SAML Single Logout without a stored SAML session record", () => {
+		// The IdP metadata XML advertises a Redirect SingleLogoutService.
+		const sloSAMLConfiguration = () => ({
+			...persistedSAMLConfiguration(),
+			idpMetadata: { metadata: idpMetadata },
+		});
+
+		it("identifies the principal by the assertion's NameID, not the user's email", async () => {
+			let selectedUserId = "";
+			const instance = await createSAMLUserResolutionInstance(
+				{
+					saml: { enableSingleLogout: true },
+					resolveUser: () => ({
+						action: "link",
+						userId: selectedUserId,
+						profile: "preserve",
+					}),
+				},
+				{},
+				sloSAMLConfiguration(),
+			);
+			const context = await instance.auth.$context;
+			const directoryUser = await context.adapter.create<User>({
+				model: "user",
+				data: {
+					email: "directory-user@example.com",
+					emailVerified: false,
+					name: "Directory User",
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			selectedUserId = directoryUser.id;
+			// An older link to the same provider must not win over the current one.
+			const staleDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+			await context.adapter.create({
+				model: "account",
+				data: {
+					userId: directoryUser.id,
+					providerId: "workforce-saml",
+					accountId: "stale-name-id",
+					createdAt: staleDate,
+					updatedAt: staleDate,
+				},
+			});
+			const signIn = await completeSAMLSignIn(instance.baseURL);
+			expect(signIn.callback.status).toBe(302);
+
+			// The record is best-effort: its write can fail and it expires.
+			await context.adapter.deleteMany({ model: "verification", where: [] });
+
+			const logout = await fetch(
+				`${instance.baseURL}/api/auth/sso/saml2/logout/workforce-saml`,
+				{
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						origin: instance.baseURL,
+						cookie: cookieHeader(signIn.cookies),
+					},
+					body: JSON.stringify({}),
+					redirect: "manual",
+				},
+			);
+
+			expect(logout.status).toBe(302);
+			const samlRequest = new URL(
+				logout.headers.get("location")!,
+			).searchParams.get("SAMLRequest")!;
+			const logoutRequest = inflateRawSync(
+				Buffer.from(samlRequest, "base64"),
+			).toString("utf8");
+			expect(logoutRequest).toMatch(/<saml:NameID[^>]*>test@email\.com</);
+			expect(logoutRequest).not.toContain("directory-user@example.com");
+		});
+
+		it("revokes a session refreshed past its original expiry on IdP-initiated logout", async () => {
+			const instance = await createSAMLUserResolutionInstance(
+				{ saml: { enableSingleLogout: true } },
+				{},
+				sloSAMLConfiguration(),
+			);
+			const signIn = await completeSAMLSignIn(instance.baseURL);
+			expect(signIn.callback.status).toBe(302);
+
+			vi.useFakeTimers({ toFake: ["Date"] });
+			deferredCleanups.push(async () => {
+				vi.useRealTimers();
+			});
+			const hour = 60 * 60 * 1000;
+			// Default session: 7 days, refreshed once it is older than 1 day.
+			vi.setSystemTime(Date.now() + 7 * 24 * hour - hour);
+			const refreshed = await fetch(
+				`${instance.baseURL}/api/auth/get-session`,
+				{
+					headers: { cookie: cookieHeader(signIn.cookies) },
+				},
+			);
+			expect(refreshed.status).toBe(200);
+			expect((await refreshed.json())?.session).toBeTruthy();
+
+			vi.setSystemTime(Date.now() + 2 * hour);
+			// Any verification read deletes expired rows.
+			const context = await instance.auth.$context;
+			await context.internalAdapter.findVerificationValue("unrelated");
+
+			const sloLocation = `${instance.baseURL}/api/auth/sso/saml2/sp/slo/workforce-saml`;
+			const identityProvider = saml.IdentityProvider({
+				metadata: idpMetadata,
+				privateKey: idPk,
+				privateKeyPass: "jXmKf9By6ruLnUdRo90G",
+			});
+			const serviceProvider = saml.ServiceProvider({
+				entityID: "http://localhost:8081",
+				singleLogoutService: [
+					{
+						Binding: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+						Location: sloLocation,
+					},
+				],
+			});
+			const logoutRequest = identityProvider.createLogoutRequest(
+				serviceProvider,
+				saml.Constants.wording.binding.redirect,
+				{ logoutNameID: "test@email.com" },
+			) as { context: string };
+			const samlRequest = new URL(logoutRequest.context).searchParams.get(
+				"SAMLRequest",
+			)!;
+
+			const slo = await fetch(
+				`${sloLocation}?SAMLRequest=${encodeURIComponent(samlRequest)}`,
+				{ redirect: "manual" },
+			);
+
+			expect(slo.status).toBe(302);
+			expect(await instance.db.count({ model: "session", where: [] })).toBe(0);
+		});
+	});
+
+	/**
+	 * @see https://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf SAML Profiles §4.4 (Single Logout Profile)
+	 */
+	describe("SAML Single Logout after refreshing one of several sessions for a NameID", () => {
+		function createExpiringStorage() {
+			const entries = new Map<string, { value: string; expiresAt?: number }>();
+			return {
+				get(key: string) {
+					const entry = entries.get(key);
+					if (!entry) return null;
+					if (entry.expiresAt !== undefined && entry.expiresAt <= Date.now()) {
+						entries.delete(key);
+						return null;
+					}
+					return entry.value;
+				},
+				set(key: string, value: string, ttl?: number) {
+					entries.set(key, {
+						value,
+						expiresAt: ttl ? Date.now() + ttl * 1000 : undefined,
+					});
+				},
+				delete(key: string) {
+					entries.delete(key);
+				},
+				getAndDelete(key: string) {
+					const value = this.get(key);
+					entries.delete(key);
+					return value;
+				},
+			};
+		}
+
+		// The adapter contract updates one row; Prisma and MongoDB write only the
+		// first match, while the Kysely and memory adapters write every match.
+		function updateOnlyFirstMatch(
+			adapter: Pick<DBAdapter, "findMany" | "update">,
+		) {
+			const update = adapter.update;
+			adapter.update = async <T>(data: Parameters<DBAdapter["update"]>[0]) => {
+				const [first] = await adapter.findMany<{ id: string }>({
+					model: data.model,
+					where: data.where,
+					limit: 1,
+				});
+				if (!first) return null;
+				return update<T>({
+					...data,
+					where: [{ field: "id", value: first.id }],
+				});
+			};
+		}
+
+		const storages = [
+			{ name: "Kysely", adapter: "kysely" },
+			{ name: "the memory adapter", adapter: "memory" },
+			{ name: "MongoDB", adapter: "mongodb" },
+			{
+				name: "a first-match-only update",
+				adapter: "kysely",
+				singleRowUpdate: true,
+			},
+			{
+				name: "secondary storage and the database",
+				adapter: "kysely",
+				secondaryStorage: true,
+				storeInDatabase: true,
+				singleRowUpdate: true,
+			},
+			{
+				name: "more records for the NameID than one page",
+				adapter: "kysely",
+				singleRowUpdate: true,
+				newerRecords: 100,
+			},
+		] as const satisfies ReadonlyArray<{
+			name: string;
+			adapter: "kysely" | "memory" | "mongodb";
+			singleRowUpdate?: boolean;
+			secondaryStorage?: boolean;
+			storeInDatabase?: boolean;
+			newerRecords?: number;
+		}>;
+
+		it.each(storages)(
+			"revokes the refreshed session on IdP-initiated logout with $name",
+			async (storage) => {
+				const instance = await createSAMLUserResolutionInstance(
+					{ saml: { enableSingleLogout: true } },
+					{
+						...("secondaryStorage" in storage && {
+							secondaryStorage: createExpiringStorage(),
+						}),
+						...("storeInDatabase" in storage && {
+							verification: { storeInDatabase: true },
+						}),
+					},
+					{
+						...persistedSAMLConfiguration(),
+						idpMetadata: { metadata: idpMetadata },
+					},
+					storage.adapter,
+				);
+				const context = await instance.auth.$context;
+				if ("singleRowUpdate" in storage) {
+					updateOnlyFirstMatch(context.adapter);
+				}
+
+				// Both sign-ins share the NameID, so they share the SLO record key.
+				const firstSignIn = await completeSAMLSignIn(instance.baseURL);
+				expect(firstSignIn.callback.status).toBe(302);
+				const recordIdentifier = "saml-session:workforce-saml:test@email.com";
+				if ("newerRecords" in storage) {
+					// Rows inserted after the first record and dated after the second one
+					// push the second record past the first page in either order.
+					for (let index = 0; index < storage.newerRecords; index++) {
+						await context.adapter.create({
+							model: "verification",
+							data: {
+								identifier: recordIdentifier,
+								value: JSON.stringify({ sessionId: `other-${index}` }),
+								expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+								createdAt: new Date(Date.now() + 60 * 60 * 1000 + index),
+								updatedAt: new Date(),
+							},
+						});
+					}
+				}
+				const secondSignIn = await completeSAMLSignIn(instance.baseURL);
+				expect(secondSignIn.callback.status).toBe(302);
+				const current = await fetch(
+					`${instance.baseURL}/api/auth/get-session`,
+					{
+						headers: { cookie: cookieHeader(secondSignIn.cookies) },
+					},
+				);
+				const refreshedSessionId: string = (await current.json()).session.id;
+
+				async function otherRecordExpiries() {
+					const records = await context.adapter.findMany<Verification>({
+						model: "verification",
+						where: [{ field: "identifier", value: recordIdentifier }],
+						limit: 1000,
+					});
+					return records
+						.filter(
+							(record) =>
+								JSON.parse(record.value).sessionId !== refreshedSessionId,
+						)
+						.map((record) => [record.id, new Date(record.expiresAt).getTime()])
+						.sort(([a], [b]) => String(a).localeCompare(String(b)));
+				}
+				const otherExpiriesBeforeRefresh = await otherRecordExpiries();
+				expect(otherExpiriesBeforeRefresh.length).toBeGreaterThan(0);
+
+				vi.useFakeTimers({ toFake: ["Date"] });
+				deferredCleanups.push(async () => {
+					vi.useRealTimers();
+				});
+				const hour = 60 * 60 * 1000;
+				// Default session: 7 days, refreshed once it is older than 1 day.
+				vi.setSystemTime(Date.now() + 7 * 24 * hour - hour);
+				const refreshed = await fetch(
+					`${instance.baseURL}/api/auth/get-session`,
+					{ headers: { cookie: cookieHeader(secondSignIn.cookies) } },
+				);
+				expect((await refreshed.json())?.session).toBeTruthy();
+				// Refreshing one session leaves the other sessions' records alone.
+				expect(await otherRecordExpiries()).toEqual(otherExpiriesBeforeRefresh);
+
+				vi.setSystemTime(Date.now() + 2 * hour);
+				// Any verification read deletes expired rows.
+				await context.internalAdapter.findVerificationValue("unrelated");
+
+				const sloLocation = `${instance.baseURL}/api/auth/sso/saml2/sp/slo/workforce-saml`;
+				const identityProvider = saml.IdentityProvider({
+					metadata: idpMetadata,
+					privateKey: idPk,
+					privateKeyPass: "jXmKf9By6ruLnUdRo90G",
+				});
+				const serviceProvider = saml.ServiceProvider({
+					entityID: "http://localhost:8081",
+					singleLogoutService: [
+						{
+							Binding: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+							Location: sloLocation,
+						},
+					],
+				});
+				const logoutRequest = identityProvider.createLogoutRequest(
+					serviceProvider,
+					saml.Constants.wording.binding.redirect,
+					{ logoutNameID: "test@email.com" },
+				) as { context: string };
+				const samlRequest = new URL(logoutRequest.context).searchParams.get(
+					"SAMLRequest",
+				)!;
+				const slo = await fetch(
+					`${sloLocation}?SAMLRequest=${encodeURIComponent(samlRequest)}`,
+					{ redirect: "manual" },
+				);
+				expect(slo.status).toBe(302);
+
+				const afterLogout = await fetch(
+					`${instance.baseURL}/api/auth/get-session`,
+					{ headers: { cookie: cookieHeader(secondSignIn.cookies) } },
+				);
+				expect(await afterLogout.json()).toBeNull();
+			},
+		);
+	});
 });
 
 describe("PEM normalization", () => {
@@ -8760,5 +9270,56 @@ describe("SAML SSO Hardening", () => {
 			expect(redirectUrl.pathname).toBe("/global-idp-redirect");
 			expect(redirectUrl.searchParams.get("error")).toBe("saml_error");
 		});
+	});
+});
+
+/**
+ * @see https://better-auth.com/docs/concepts/database#database-hooks
+ */
+describe("SAML AuthnRequest vetoed by a verification hook", () => {
+	it("does not redirect to the IdP when the AuthnRequest was not stored", async () => {
+		const veto = { active: false };
+		const { auth, signInWithTestUser } = await getTestInstance({
+			databaseHooks: {
+				verification: {
+					create: {
+						async before(verification) {
+							const isAuthnRequest = verification.identifier.startsWith(
+								"saml-authn-request:",
+							);
+							return veto.active && isAuthnRequest ? false : undefined;
+						},
+					},
+				},
+			},
+			plugins: [sso()],
+		});
+		const { headers } = await signInWithTestUser();
+		await auth.api.registerSSOProvider({
+			body: {
+				providerId: "vetoed-authn-request",
+				issuer: "http://localhost:8081",
+				domain: "vetoed-authn-request.com",
+				samlConfig: {
+					entryPoint: "http://localhost:8081/api/sso/saml2/idp/post",
+					cert: certificate,
+					idpMetadata: { metadata: idpMetadata },
+					spMetadata: { metadata: spMetadata },
+				},
+			},
+			headers,
+		});
+		veto.active = true;
+
+		const res = await auth.api.signInSSO({
+			body: {
+				providerId: "vetoed-authn-request",
+				callbackURL: "http://localhost:3000/dashboard",
+			},
+			asResponse: true,
+		});
+
+		expect(res.status).toBe(500);
+		expect((await res.json()).code).toBe("FAILED_TO_CREATE_VERIFICATION");
 	});
 });

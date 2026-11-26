@@ -1,5 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { NodeSqliteDialect } from "@cinaauth/kysely-adapter/node-sqlite-dialect";
+import type { CinaAuthOptions } from "cinaauth";
+import { CinaAuth } from "cinaauth";
+
 import { getMigrations } from "cinaauth/db/migration";
 import { getHttpTestInstance } from "cinaauth/test";
 import { describe, expect, it } from "vitest";
@@ -156,6 +159,11 @@ describe("SCIM User active ingress helper", () => {
 				},
 			],
 		});
+		const options: CinaAuthOptions = {
+			baseURL: "https://example.com",
+			plugins: [plugin],
+		};
+		const context = await CinaAuth(options).$context;
 		const controller = new AbortController();
 		const request = new Request("https://example.com/api/auth/scim/v2/Users", {
 			method: "POST",
@@ -172,7 +180,7 @@ describe("SCIM User active ingress helper", () => {
 			}),
 			signal: controller.signal,
 		});
-		const result = await plugin.onRequest?.(request);
+		const result = await plugin.onRequest?.(request, context);
 		if (!result || !("request" in result) || !result.request) {
 			throw new Error("Expected a normalized SCIM User request");
 		}
@@ -210,7 +218,7 @@ describe("SCIM User active ingress helper", () => {
 			signal: requestAcrossRuntimeBoundary.signal,
 			clone: () => requestAcrossRuntimeBoundary.clone(),
 		} as Request;
-		const boundaryResult = await plugin.onRequest?.(requestLike);
+		const boundaryResult = await plugin.onRequest?.(requestLike, context);
 		if (
 			!boundaryResult ||
 			!("request" in boundaryResult) ||
@@ -232,7 +240,7 @@ describe("SCIM User active ingress helper", () => {
 				}),
 			},
 		);
-		expect(await plugin.onRequest?.(unchangedUser)).toBeUndefined();
+		expect(await plugin.onRequest?.(unchangedUser, context)).toBeUndefined();
 
 		const group = new Request("https://example.com/api/auth/scim/v2/Groups", {
 			method: "POST",
@@ -243,7 +251,7 @@ describe("SCIM User active ingress helper", () => {
 				active: "False",
 			}),
 		});
-		expect(await plugin.onRequest?.(group)).toBeUndefined();
+		expect(await plugin.onRequest?.(group, context)).toBeUndefined();
 	});
 });
 

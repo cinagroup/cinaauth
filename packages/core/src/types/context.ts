@@ -259,10 +259,15 @@ export interface InternalAdapter<
 
 	updateAccount(id: string, data: Partial<Account>): Promise<Account>;
 
+	/**
+	 * Store a verification value. Resolves to `null` when a
+	 * `verification.create.before` database hook returns `false`, in which case
+	 * nothing was stored.
+	 */
 	createVerificationValue(
 		data: Omit<Verification, "createdAt" | "id" | "updatedAt"> &
 			Partial<Verification>,
-	): Promise<Verification>;
+	): Promise<Verification | null>;
 
 	findVerificationValue(identifier: string): Promise<Verification | null>;
 
@@ -301,10 +306,16 @@ export interface InternalAdapter<
 		expiresAt: Date;
 	}): Promise<boolean>;
 
+	/**
+	 * Update the verification value stored under `identifier`. Resolves to
+	 * `null` when a `verification.update.before` database hook returns `false`,
+	 * in which case neither storage was changed, or when no value is stored for
+	 * `identifier`.
+	 */
 	updateVerificationByIdentifier(
 		identifier: string,
 		data: Partial<Verification>,
-	): Promise<Verification>;
+	): Promise<Verification | null>;
 
 	refreshUserSessions(user: User): Promise<void>;
 }

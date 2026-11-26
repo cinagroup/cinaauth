@@ -15,16 +15,20 @@ import { toNodeHandler } from "cinaauth/node";
 import { emailOTP } from "cinaauth/plugins/email-otp";
 import type { GenericOAuthConfig } from "cinaauth/plugins/generic-oauth";
 import { genericOAuth } from "cinaauth/plugins/generic-oauth";
+
 import { jwt } from "cinaauth/plugins/jwt";
 import { magicLink } from "cinaauth/plugins/magic-link";
 import { multiSession } from "cinaauth/plugins/multi-session";
+import { openAPI } from "cinaauth/plugins/open-api";
 import type { Organization } from "cinaauth/plugins/organization";
 import { organization } from "cinaauth/plugins/organization";
+
 import { twoFactor } from "cinaauth/plugins/two-factor";
 import { getTestInstance } from "cinaauth/test";
 import { createLocalJWKSet, jwtVerify } from "jose";
 import type { Listener } from "listhen";
 import { listen } from "listhen";
+
 import {
 	afterAll,
 	afterEach,
@@ -365,6 +369,45 @@ describe("oauth - init", () => {
 			}),
 		).rejects.toThrowError("Invalid URL");
 	});
+});
+
+/**
+ * @see https://github.com/better-auth/better-auth/issues/10880
+ */
+describe("oauth - OpenAPI response schemas", () => {
+	it.for(["/oauth2/consent", "/oauth2/continue"])(
+		"documents the redirect response for POST %s",
+		async (path, { expect }) => {
+			const { auth } = await getTestInstance(
+				{
+					plugins: [
+						jwt(),
+						oauthProvider({
+							loginPage: "/login",
+							consentPage: "/consent",
+						}),
+						openAPI(),
+					],
+				},
+				{ disableTestUser: true },
+			);
+			const document = await auth.api.generateOpenAPISchema();
+			const schema =
+				document.paths[path]?.post?.responses?.["200"]?.content?.[
+					"application/json"
+				]?.schema;
+
+			expect(schema).toMatchObject({
+				type: "object",
+				properties: {
+					redirect: { type: "boolean", enum: [true] },
+					url: { type: "string", format: "uri-reference" },
+				},
+				required: expect.arrayContaining(["redirect", "url"]),
+			});
+			expect(schema).not.toHaveProperty("properties.redirect_uri");
+		},
+	);
 });
 
 describe("oauth", async () => {
@@ -4309,7 +4352,7 @@ describe("oauth - rate limiting", () => {
 
 		const plugin = auth.options.plugins?.find((p) => p.id === "oauth-provider");
 		expect(plugin?.rateLimit).toBeDefined();
-		expect(plugin?.rateLimit?.length).toBe(6);
+		expect(plugin?.rateLimit?.length).toBe(7);
 
 		// Check token endpoint default
 		const tokenRule = plugin?.rateLimit?.find((r) =>
@@ -4317,6 +4360,13 @@ describe("oauth - rate limiting", () => {
 		);
 		expect(tokenRule?.window).toBe(60);
 		expect(tokenRule?.max).toBe(20);
+
+		// Credential-replacing endpoints are limited like registration
+		const rotateKeysRule = plugin?.rateLimit?.find((r) =>
+			r.pathMatcher("/oauth2/client/rotate-keys"),
+		);
+		expect(rotateKeysRule?.window).toBe(60);
+		expect(rotateKeysRule?.max).toBe(5);
 
 		// Check authorize endpoint default
 		const authorizeRule = plugin?.rateLimit?.find((r) =>
@@ -4411,7 +4461,7 @@ describe("oauth - rate limiting", () => {
 		const plugin = auth.options.plugins?.find((p) => p.id === "oauth-provider");
 
 		// Token and introspect should be disabled (not in array)
-		expect(plugin?.rateLimit?.length).toBe(4);
+		expect(plugin?.rateLimit?.length).toBe(5);
 
 		const tokenRule = plugin?.rateLimit?.find((r) =>
 			r.pathMatcher("/oauth2/token"),

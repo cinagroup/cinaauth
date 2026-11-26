@@ -1,20 +1,24 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
+
 import { AIChat, AIChatPanel, AIChatTrigger } from "@/components/ai-chat";
 import { DocsSidebar } from "@/components/docs/docs-sidebar";
 import type { DocsVersion, VersionAvailability } from "@/lib/docs-versions";
 import { docsVersions, stripVersionPrefix } from "@/lib/docs-versions";
+
 import { loadDocsVersions } from "@/lib/release-versions";
 import { getSourceFor } from "@/lib/source";
 import type { PageTreesByVersion } from "./provider";
 import { DocsProvider } from "./provider";
+
 import { DocsShell } from "./shell";
 
-const [latestVersion, version16] = docsVersions;
+const [betaVersion, latestVersion, version16] = docsVersions;
 
 const pageTreesByVersion = {
 	latest: getSourceFor(latestVersion.id).getPageTree(),
 	"1.6": getSourceFor(version16.id).getPageTree(),
+	beta: getSourceFor(betaVersion.id).getPageTree(),
 } satisfies PageTreesByVersion;
 
 function getAvailablePaths(version: DocsVersion) {
@@ -27,6 +31,7 @@ function getAvailablePaths(version: DocsVersion) {
 const versionAvailability = {
 	latest: getAvailablePaths(latestVersion),
 	"1.6": getAvailablePaths(version16),
+	beta: getAvailablePaths(betaVersion),
 } satisfies VersionAvailability;
 const resolvedDocsVersions = loadDocsVersions();
 export default function Layout({ children }: { children: ReactNode }) {

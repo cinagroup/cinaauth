@@ -46,9 +46,11 @@ export type CinaAuthPlugin = CinaAuthPluginErrorCodePart & {
 	init?:
 		| ((ctx: AuthContext) =>
 				| Awaitable<{
-						context?: DeepPartial<Omit<AuthContext, "options">> &
-							Record<string, unknown>;
-						options?: Partial<CinaAuthOptions>;
+						context?:
+							| (DeepPartial<Omit<AuthContext, "options">> &
+									Record<string, unknown>)
+							| undefined;
+						options?: Partial<CinaAuthOptions> | undefined;
 				  }>
 				| void
 				| Promise<void>)

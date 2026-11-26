@@ -4,6 +4,7 @@ import { Command } from "commander";
 
 export const generateSecret = new Command("secret").action(() => {
 	const secret = Crypto.randomBytes(32).toString("hex");
-	console.log(`\nAdd the following to your .env file:
-${chalk.gray("# Auth Secret") + chalk.green(`\nCINAAUTH_SECRET=${secret}`)}`);
+	console.error(chalk.gray("Add the following to your .env file:"));
+	// Scripts parse this exact line from stdout, so it stays alone and unstyled.
+	console.log(`CINAAUTH_SECRET=${secret}`);
 });

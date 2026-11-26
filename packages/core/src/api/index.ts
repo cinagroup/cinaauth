@@ -9,6 +9,7 @@ import {
 	createMiddleware,
 	kAPIErrorHeaderSymbol,
 } from "better-call";
+
 import { runWithEndpointContext } from "../context";
 import type { AuthContext } from "../types";
 import { isAPIError } from "../utils/is-api-error";
@@ -30,6 +31,10 @@ import { isAPIError } from "../utils/is-api-error";
 export const NO_STORE_HEADERS = {
 	"Cache-Control": "no-store",
 	Pragma: "no-cache",
+} as const;
+
+export const HIDE_METADATA = {
+	scope: "server",
 } as const;
 
 /**
