@@ -18,7 +18,7 @@
     "@expo/vector-icons": "^15.1.1",
     "@nanostores/react": "^1.0.0",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-navigation/native": "^7.5.2",
+    "@react-navigation/native": "^7.1.33",
     "@rn-primitives/avatar": "^1.2.0",
     "@rn-primitives/dialog": "^1.5.2",
     "@rn-primitives/separator": "^1.2.0",

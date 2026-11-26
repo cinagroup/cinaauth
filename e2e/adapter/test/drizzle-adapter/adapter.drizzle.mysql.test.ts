@@ -49,7 +49,7 @@ const { execute } = await testAdapter({
 				import.meta.dirname,
 				"mysql",
 				`${fileName}.ts`,
-				"mysql://user:password@localhost:3306/better_auth",
+				"mysql://user:password@localhost:3306/cinaauth",
 			);
 		} catch (error) {
 			console.error("Failed to push drizzle schema (mysql):", error);

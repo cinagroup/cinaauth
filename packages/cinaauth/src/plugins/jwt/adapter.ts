@@ -6,7 +6,7 @@ import type { Jwk, JwtOptions } from "./types";
 /**
  * Algorithm of the key the plugin generates when `jwks.keyPairConfig` is unset.
  */
-export const DEFAULT_JWK_ALG = "EdDSA";
+const DEFAULT_JWK_ALG = "EdDSA";
 
 /**
  * Algorithm for new keys, and for stored keys saved before the `alg` column

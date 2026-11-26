@@ -8,6 +8,8 @@ packages:
   - test
 
 overrides:
+  # Match the ESM schema registry used by SimpleWebAuthn's signature parser.
+  '@simplewebauthn/server>@peculiar/asn1-ecc': 2.8.0
   '@base-org/account>@coinbase/cdp-sdk': 1.52.0
   '@reown/appkit-adapter-wagmi>@wagmi/connectors': 6.2.0
   kysely: 0.28.17
@@ -48,7 +50,7 @@ packageExtensions:
       drizzle-orm: '*'
   # The new Kit migration API requires a modern libSQL client, not the legacy
   # 0.8 client used by the separate Kysely adapter fixture.
-  'drizzle-kit@1.0.0-rc.3':
+  'drizzle-kit@1.0.0-rc.6':
     dependencies:
       '@libsql/client': 0.17.4
   'next@>=16.2.11 <17':

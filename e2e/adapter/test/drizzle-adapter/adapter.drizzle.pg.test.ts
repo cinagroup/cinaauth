@@ -49,7 +49,7 @@ const { execute } = await testAdapter({
 				import.meta.dirname,
 				"postgresql",
 				`${fileName}.ts`,
-				"postgres://user:password@localhost:5432/better_auth",
+				"postgres://user:password@localhost:5432/cinaauth",
 			);
 		} catch (error) {
 			console.error("Failed to push drizzle schema (pg):", error);

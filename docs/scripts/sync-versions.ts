@@ -15,6 +15,7 @@ const docsRoot = fileURLToPath(new URL("..", import.meta.url));
 const repositoryRoot = dirname(docsRoot);
 const remotePath = "docs/content/docs";
 const packagePath = "packages/cinaauth/package.json";
+const remotePackagePath = "packages/better-auth/package.json";
 const tempRoot = join(docsRoot, ".docs-sync-tmp");
 const repositoryDirectory = join(tempRoot, "repository");
 const releaseVersionsPath = join(
@@ -91,7 +92,7 @@ async function prepareWorktree(version: (typeof versionsToSync)[number]) {
 		"sparse-checkout",
 		"set",
 		remotePath,
-		"packages/cinaauth",
+		dirname(remotePackagePath),
 	]);
 	await git([
 		"-C",
@@ -127,7 +128,10 @@ async function syncVersion({
 	}
 
 	const releaseVersion = await readPackageVersion(
-		join(checkoutDirectory, packagePath),
+		join(
+			checkoutDirectory,
+			checkoutDirectory === repositoryRoot ? packagePath : remotePackagePath,
+		),
 	);
 	if (!releaseVersion.startsWith(`${version.releaseLine}.`)) {
 		throw new Error(

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveOidcDemoProfile } from "../../../packages/auth-web-contract/src/oidc-demo.ts";
+import { deploymentFetch } from "../../../scripts/deployment-http.mjs";
 
 export const resolveProductionTargetOrigin = (value) => {
 	if (typeof value !== "string" || !value || value.trim() !== value) {
@@ -52,7 +53,7 @@ export const resolveProductionAcceptanceProfile = ({
 
 export const runProductionAcceptance = async ({
 	targetOrigin,
-	fetchImpl = fetch,
+	fetchImpl = deploymentFetch,
 	log = console.log,
 }) => {
 	const fetchOk = async (url, init) => {

@@ -38,7 +38,7 @@ function renderReleaseRewrites(
 		writeFileSync(
 			manifestPath,
 			JSON.stringify({
-				repository: "cinaauth/cinaauth",
+				repository: "cinagroup/cinaauth",
 				version: "1.6.28",
 				commitRef: "86faaee",
 				previousTag: "v1.6.27",
@@ -97,7 +97,7 @@ function renderReleaseRewrites(
 describe("AI release-note rewrites", () => {
 	it("neutralizes unsupported Markdown in deterministic copy", () => {
 		const output = formatReleaseBody({
-			repository: "cinaauth/cinaauth",
+			repository: "cinagroup/cinaauth",
 			version: "2.0.0",
 			commitRef: "0123456789abcdef0123456789abcdef01234567",
 			previousTag: "v1.9.0",
@@ -148,10 +148,10 @@ describe("AI release-note rewrites", () => {
 		// A breaking change stays in the action list even when its changeset
 		// cannot be shown, and otherwise its changeset explains it.
 		expect(output).toContain(
-			"> - `Read [the migration guide](https://example.com) and notify @maintainers` ([#42](https://github.com/better-auth/better-auth/pull/42))\n",
+			"> - `Read [the migration guide](https://example.com) and notify @maintainers` ([#42](https://github.com/cinagroup/cinaauth/pull/42))\n",
 		);
 		expect(output).toContain(
-			"> - Changed session refresh behavior Injected paragraph ([#43](https://github.com/better-auth/better-auth/pull/43))\n>\n>   Update custom session refresh integrations.",
+			"> - Changed session refresh behavior Injected paragraph ([#43](https://github.com/cinagroup/cinaauth/pull/43))\n>\n>   Update custom session refresh integrations.",
 		);
 		expect(output).toContain(
 			"- Changed session refresh behavior Injected paragraph",
@@ -270,7 +270,7 @@ describe("AI release-note rewrites", () => {
 			/^> \[!IMPORTANT\]\n> \*\*Action required\*\*\n>\n> - Set `clientId` on the provider\. \(\[#10769\]/,
 		);
 		expect(result.output).toContain(
-			"- Fixed duplicate requests ([#10769](https://github.com/better-auth/better-auth/pull/10769))\n",
+			"- Fixed duplicate requests ([#10769](https://github.com/cinagroup/cinaauth/pull/10769))\n",
 		);
 	});
 
@@ -394,7 +394,7 @@ describe("AI release-note rewrites", () => {
 		} as const;
 		const output = formatReleaseBody(
 			{
-				repository: "cinaauth/cinaauth",
+				repository: "cinagroup/cinaauth",
 				version: "1.9.1",
 				commitRef: "0123456789abcdef0123456789abcdef01234567",
 				previousTag: "v1.9.0",
@@ -426,7 +426,7 @@ describe("AI release-note rewrites", () => {
 	it("credits commit authors alongside the pull request author", () => {
 		const output = formatReleaseBody(
 			{
-				repository: "cinaauth/cinaauth",
+				repository: "cinagroup/cinaauth",
 				version: "1.9.1",
 				commitRef: "0123456789abcdef0123456789abcdef01234567",
 				previousTag: "v1.9.0",
