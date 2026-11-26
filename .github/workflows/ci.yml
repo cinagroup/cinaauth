@@ -194,7 +194,7 @@ jobs:
         wait: docker
 
       - name: Test
-        run: pnpm coverage
+        run: pnpm coverage --continue
 
       - name: Docker Compose Diagnostics
         if: failure() && hashFiles('docker-compose.yml') != ''

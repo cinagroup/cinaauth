@@ -328,7 +328,7 @@ describe("allowInsecureRedirectUri boundaries", () => {
 				post_logout_redirect_uris: [uri],
 			}),
 		).rejects.toMatchObject({
-			status: "BAD_REQUEST",
+			status: 400,
 			body: {
 				code: "VALIDATION_ERROR",
 				message: expect.stringContaining(
