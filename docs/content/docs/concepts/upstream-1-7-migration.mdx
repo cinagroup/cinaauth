@@ -7,6 +7,8 @@ This release incorporates the upstream Better Auth 1.7.28 updates. CinaAuth keep
 
 The repository retains its pnpm 11 build configuration. Use the committed lockfile when installing this fork.
 
+Canceling an interactive CLI operation now exits with code `130`, including the final infrastructure connection prompt in `npx auth@latest init`. Scripts should treat this as a canceled setup rather than success.
+
 Schema validation now runs on the first request, allowing a module-scope auth instance to initialize on Cloudflare Workers. Requests still fail when the database schema does not match. Run [`npx auth@latest check schema`](/docs/concepts/cli#schema) for an explicit preflight check.
 
 User deletion still fails before removing the identity when cached sessions cannot be revoked. In this case, user `delete.after` hooks do not run. Configuring a new primary JWT signing algorithm rotates managed keys immediately; declared additional signing algorithms remain available for resource-specific tokens, and retired keys remain verifiable during the configured grace period.

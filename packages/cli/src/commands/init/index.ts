@@ -1557,15 +1557,6 @@ export const auth = CinaAuth({
 	// If the user cancels the prompt, `connect` will be undefined.
 	// Treat this as a cancellation of the remaining init flow.
 	if (connectResponse.connect === undefined) {
-		console.log(
-			chalk.yellow("\n✖ ") +
-				"Setup cancelled before connecting to CinaAuth infrastructure.\n",
-		);
-		return;
-	}
-	// If the user cancels the prompt, `connect` will be undefined.
-	// Treat this as a cancellation of the remaining init flow.
-	if (connectResponse.connect === undefined) {
 		cancel(
 			chalk.yellow("\n✖ ") +
 				"Setup cancelled before connecting to CinaAuth infrastructure.\n",

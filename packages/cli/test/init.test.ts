@@ -1601,6 +1601,7 @@ describe("initAction", () => {
 			},
 		);
 
+		/** @see https://github.com/better-auth/better-auth/pull/12275 */
 		testWithTmpDir(
 			"exits 130 when the connect prompt is canceled",
 			async ({ tmp }) => {
