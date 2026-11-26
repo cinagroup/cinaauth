@@ -15,6 +15,7 @@ const productionProfile = {
 };
 
 describe("OIDC production acceptance profile", () => {
+	/** @see https://developers.cloudflare.com/waf/tools/browser-integrity-check/ */
 	it("identifies every production probe while preserving protocol checks", async (t) => {
 		let requests = 0;
 		t.mock.method(globalThis, "fetch", async (input, init) => {

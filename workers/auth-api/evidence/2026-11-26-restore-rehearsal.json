@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "outcome": "current-runtime-restore-rehearsal-passed",
+  "candidateCommit": "42c42c4664471f7fd74643bfefb74ff4c799a320",
+  "frameworkVersion": "1.7.28",
+  "runtimeMode": "node-runtime-with-deny-only-cloudflare-binding-stubs",
+  "runtimeSourceSHA256": "4bd01de85c3f9f893381519b5841ceeef997a935042b65ac4e86eed92d3fa133",
+  "workerSourceTreeSHA256": "532f232b2c092b8a6e1152a973b72a57e7d3bfbcfc243a982127185384ec0e3d",
+  "backup": {
+    "organization": "cinaseek",
+    "database": "cinaauth",
+    "branch": "main",
+    "id": "c863fxjiij6b",
+    "stateAtRestore": "success",
+    "retentionCorrectionPending": true,
+    "deletedAfterRehearsal": false,
+    "replacementTwoDayBackupId": "acpki8zvqry8",
+    "retentionCorrectionStatus": "Old source backup deletion awaits explicit operator authorization; replacement rollback backup is successful and retained for two days."
+  },
+  "restoredBranch": {
+    "id": "n7udlhis64r5",
+    "name": "codex-restore-20261126",
+    "ready": true,
+    "deletedAfterRehearsal": true
+  },
+  "isolation": {
+    "separatePhysicalRestoreBranch": true,
+    "freshTemporaryRole": true,
+    "temporaryRoleRemovedWithBranch": true,
+    "denyOnlyExternalServices": true,
+    "noProductionSecretsReused": true,
+    "productionBindingsOrRoutesUsed": false,
+    "cloudflareTemporaryResourcesCreated": false,
+    "externalSideEffects": 0,
+    "localTemporaryCredentialFileRemoved": true
+  },
+  "ownershipRepair": {
+    "initialApplyStatus": 500,
+    "error": "must be owner of restored governance function",
+    "failedApplyPreservedBaseline": true,
+    "resolution": "Reassigned restored objects from the copied production role to the temporary role only on the isolated branch."
+  },
+  "restoredData": {
+    "schemas": ["public", "cinatoken_gateway"],
+    "tables": 104,
+    "rows": 515,
+    "preMigrationFingerprintMatchesBaseline": true
+  },
+  "migrationDataComparison": {
+    "tablesBefore": 104,
+    "tablesAfter": 104,
+    "rowsBefore": 515,
+    "rowsAfter": 515,
+    "unchangedTables": 103,
+    "changedTables": ["public.cinaauth_cinatoken_identity_clock"],
+    "unexpectedChangedTables": [],
+    "expectedChange": "Existing identity aggregate logical clocks advance during idempotent invariant backfill; outbox dedupe keys preserve existing events.",
+    "businessDataUnchanged": true
+  },
+  "repeatedApplyComparison": {
+    "success": true,
+    "status": 200,
+    "allRowCountsUnchanged": true,
+    "outboxRowsAndHashUnchanged": true,
+    "unexpectedChangedTables": [],
+    "recordedAt": "2026-11-26T18:46:17.870Z"
+  },
+  "probes": {
+    "unauthorizedReadinessStatus": 403,
+    "migrationPreviewStatus": 200,
+    "pendingSchemaChangesBefore": 0,
+    "migrationApplyStatus": 200,
+    "pendingSchemaChangesAfter": 0,
+    "readinessStatus": 200,
+    "requiredInvariants": [
+      "super-admin-governance-v1",
+      "provider-namespace-registry-v1",
+      "social-sign-in-config-v1",
+      "cinatoken-organization-identity-outbox-v1"
+    ],
+    "allInvariantsInstalled": true
+  },
+  "limitations": [
+    "Actual Auth Worker HTTP handler and built 1.7.28 workspace libraries executed in Node with deny-only Cloudflare binding stubs, not a deployed rehearsal Worker.",
+    "Production secrets were replaced with fresh random dummy values; no external delivery, identity synchronization, object storage, rate-limit, or queue side effects were exercised.",
+    "This rehearsal validates native backup recovery, migration behavior, data preservation and database readiness; production Cloudflare bindings and protocol acceptance remain deployment workflow checks."
+  ],
+  "completedAt": "2026-11-26T18:42:08.489Z",
+  "cleanupVerifiedAt": "2026-11-26T18:54:24.181615+00:00",
+  "validationFollowupCommit": "3977a3b835571e8d77e1b5ff648ebc32b910a62d",
+  "migrationHandlerUnchangedByValidationFollowup": true,
+  "validation": {
+    "rootTypecheck": "passed",
+    "workerTypecheck": "passed",
+    "workerDeploymentDryRun": "passed",
+    "workerRuntimeTests": 467,
+    "focusedMergeRuntimeTestsPassed": 894,
+    "focusedCICompatibilityTestsPassed": 23,
+    "deploymentContractTestsPassed": 87,
+    "nativeNodeES256Authentication": "passed",
+    "packageBuildsSucceeded": 23
+  }
+}
