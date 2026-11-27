@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { oauthProviderClient } from "@cinaauth/oauth-provider/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { completeLocalSignInSuccess } from "./auth-form-response";
 import {
 	completeEmailOtpAuthentication,
@@ -38,6 +39,10 @@ signedCreateQuery.set("prompt", "consent create");
 signedCreateQuery.append("ba_param", "prompt");
 
 describe("Accounts authentication UI phase two contract", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
 	it("preserves signed OIDC context through unified email authentication", () => {
 		const target = new URL(
 			buildPreservedAuthPath("/sign-in", signedSignUpQuery, "/dashboard"),
@@ -170,25 +175,39 @@ describe("Accounts authentication UI phase two contract", () => {
 		expect(onSuccess).toHaveBeenCalledOnce();
 	});
 
-	it("forwards the complete signed OIDC query through email OTP requests", () => {
-		const accountClientSource = readSource("./auth-client.ts");
-		const oauthClientSource = readSource(
-			"../../../packages/oauth-provider/src/client.ts",
-		);
-		const signedQuerySource = readSource(
-			"../../../packages/oauth-provider/src/signed-query.ts",
-		);
+	it.each(["/email-otp/send-verification-otp", "/sign-in/email-otp"])(
+		"forwards the complete signed OIDC query through %s requests",
+		async (path) => {
+			const accountClientSource = readSource("./auth-client.ts");
+			expect(accountClientSource).toContain("oauthProviderClient()");
+			const signedQuery = new URLSearchParams(signedCreateQuery);
+			signedQuery.append("ba_param", "state");
+			const pageQuery = new URLSearchParams(signedQuery);
+			pageQuery.set("tab", "profile");
+			vi.stubGlobal("window", { location: { search: `?${pageQuery}` } });
 
-		expect(accountClientSource).toContain("oauthProviderClient()");
-		expect(oauthClientSource).toContain(
-			"oauth_query: buildSignedOAuthQuery(window.location.search)",
-		);
-		expect(signedQuerySource).toContain(
-			"for (const [key, value] of params.entries())",
-		);
-		expect(signedQuerySource).toContain("signedParams.append(key, value)");
-		expect(signedQuerySource).not.toContain("Object.fromEntries(params)");
-	});
+			const onRequest = oauthProviderClient().fetchPlugins[0].hooks.onRequest;
+			const body = { email: "user@example.com", otp: "123456" };
+			const ctx = {
+				url: new URL(`/api/auth${path}`, "https://accounts.cinaseek.si"),
+				method: "POST",
+				headers: new Headers({ "content-type": "application/json" }),
+				body: JSON.stringify(body),
+			};
+			await onRequest(ctx as Parameters<typeof onRequest>[0]);
+
+			const sent = JSON.parse(ctx.body) as Record<string, unknown>;
+			expect(sent).toMatchObject(body);
+			expect(typeof sent.oauth_query).toBe("string");
+			const forwarded = new URLSearchParams(String(sent.oauth_query));
+			expect([...forwarded]).toEqual([...signedQuery]);
+			expect(forwarded.getAll("resource")).toEqual([
+				"https://api-one.example",
+				"https://api-two.example",
+			]);
+			expect(forwarded.has("tab")).toBe(false);
+		},
+	);
 
 	it("wires the unified sign-in page through the preserved auth context", () => {
 		const signInPageSource = readSource("../app/(auth)/sign-in/page.tsx");
