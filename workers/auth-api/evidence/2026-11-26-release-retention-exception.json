@@ -30,6 +30,111 @@
     "publicDeletionPolicyAndReceiptsUnchanged": true,
     "providerRetentionRemediationStillOutstanding": true
   },
-  "productionReleaseCompleted": false,
-  "operatorTimezone": "America/Los_Angeles"
+  "productionReleaseCompleted": true,
+  "operatorTimezone": "America/Los_Angeles",
+  "productionRelease": {
+    "workflowRun": "https://github.com/cinagroup/cinaauth/actions/runs/45929598995",
+    "deployedCommit": "996068a87fd0fb0496547695ed1fcd1e7c16a7b0",
+    "completedAt": "2026-11-27T02:57:26Z",
+    "rollbackBackupId": "acpki8zvqry8",
+    "authWorkerVersionId": "ae5d45ae-f13e-44c4-a9d2-d592f8eb1a38",
+    "jobs": [
+      {
+        "name": "Validate deployment workflow contract",
+        "jobId": 140278900952,
+        "conclusion": "success",
+        "completedAt": "2026-11-27T02:39:27Z"
+      },
+      {
+        "name": "Authorize production deployment",
+        "jobId": 140278948193,
+        "conclusion": "success",
+        "completedAt": "2026-11-27T02:39:39Z"
+      },
+      {
+        "name": "Preflight Account Portal for planned Auth capabilities",
+        "jobId": 140279005995,
+        "conclusion": "success",
+        "completedAt": "2026-11-27T02:45:10Z"
+      },
+      {
+        "name": "Deploy Delivery Worker",
+        "jobId": 140280709820,
+        "conclusion": "success",
+        "completedAt": "2026-11-27T02:46:28Z"
+      },
+      {
+        "name": "Deploy Privacy Erasure Worker",
+        "jobId": 140280709874,
+        "conclusion": "success",
+        "completedAt": "2026-11-27T02:46:20Z"
+      },
+      {
+        "name": "Deploy Worker API",
+        "jobId": 140281111753,
+        "conclusion": "success",
+        "completedAt": "2026-11-27T02:50:57Z"
+      },
+      {
+        "name": "Deploy Account Portal / Deploy accounts.cinaseek.si",
+        "jobId": 140282477541,
+        "conclusion": "success",
+        "completedAt": "2026-11-27T02:57:26Z"
+      },
+      {
+        "name": "Deploy Admin Console / Deploy admin.cinaseek.si",
+        "jobId": 140282477590,
+        "conclusion": "success",
+        "completedAt": "2026-11-27T02:55:50Z"
+      }
+    ],
+    "migration": {
+      "feature": "organization-advanced",
+      "previewSucceeded": true,
+      "productionPostAttempts": 1,
+      "applySucceeded": true,
+      "pendingCountBefore": 0,
+      "pendingCountAfter": 0,
+      "tablesCreated": [],
+      "columnsAdded": []
+    },
+    "readiness": {
+      "success": true,
+      "cutoverState": "live",
+      "databaseOk": true,
+      "invariants": {
+        "ok": true,
+        "required": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "installed": [
+          "super-admin-governance-v1",
+          "provider-namespace-registry-v1",
+          "social-sign-in-config-v1",
+          "cinatoken-organization-identity-outbox-v1"
+        ],
+        "missing": []
+      }
+    },
+    "verification": {
+      "cloudflareResourcesAndBindings": "passed",
+      "oidcDiscoveryAndEs256Jwks": "passed",
+      "agentAuthDiscoveryAndCapabilityPolicy": "passed",
+      "accountPortalWalletBuildParityAndSmokeChecks": "passed",
+      "adminConsoleSmokeCheck": "passed"
+    },
+    "temporaryBotFightModeWindow": {
+      "account": "CinaGroup",
+      "zone": "cinaseek.si",
+      "operatorApprovedMaximumMinutes": 30,
+      "openedAt": "2026-11-27T02:44:35.024477+00:00",
+      "restoreDeadline": "2026-11-27T03:14:35.024477+00:00",
+      "restoredAt": "2026-11-27T02:59:29.543300+00:00",
+      "restoredBeforeDeadline": true,
+      "finalState": "on"
+    }
+  }
 }
