@@ -1,50 +1,144 @@
 {
-  "schemaVersion": 1,
-  "outcome": "node-runtime-restore-checks-passed-cloudflare-rehearsal-pending",
-  "candidateCommit": "42c42c4664471f7fd74643bfefb74ff4c799a320",
+  "schemaVersion": 2,
+  "outcome": "cloudflare-native-restore-rehearsal-passed-production-backup-retention-blocked",
   "frameworkVersion": "1.7.28",
-  "runtimeMode": "node-runtime-with-deny-only-cloudflare-binding-stubs",
-  "runtimeSourceSHA256": "4bd01de85c3f9f893381519b5841ceeef997a935042b65ac4e86eed92d3fa133",
-  "workerSourceTreeSHA256": "532f232b2c092b8a6e1152a973b72a57e7d3bfbcfc243a982127185384ec0e3d",
+  "candidateCommit": "f705c395e0741125cbbee9a377c52d35e19361db",
+  "runtimeMode": "deployed-cloudflare-worker-with-native-hyperdrive-postgres",
+  "bundle": {
+    "sourceCommit": "db22735173b0377860e61f3a49070d4afdf2fbcc",
+    "sha256": "5fd5b32746eaae0fd382d2eab4bb0a38a26441070f4e7f098a7a0e9dbb10fb02",
+    "guardEntrySHA256": "44ac5f5bf07673f26a11be110c07b19483d54dfa027037f66f43b858b8ae2c50",
+    "lockfileSHA256": "669121ef5564074e33a5a48aee13b846debe0bcbae147932ac773792d3c8165e",
+    "candidateFollowupChanges": [
+      "packages/cinaauth/package.json",
+      "packages/cinaauth/tsdown.config.ts"
+    ],
+    "followupImpact": "Adds standalone public build entries and type mapping; Worker runtime source unchanged."
+  },
   "backup": {
     "organization": "cinaseek",
     "database": "cinaauth",
     "branch": "main",
     "id": "c863fxjiij6b",
     "stateAtRestore": "success",
+    "protected": false,
+    "expiresAtAfterRestore": "2026-11-30T00:53:52.044Z",
     "retentionCorrectionPending": true,
-    "deletedAfterRehearsal": false,
-    "replacementTwoDayBackupId": "acpki8zvqry8",
-    "retentionCorrectionStatus": "Old source backup deletion awaits explicit operator authorization; replacement rollback backup is successful and retained for two days."
+    "operatorAuthorizedDeletion": true,
+    "deletionSucceeded": false,
+    "deletionRejection": {
+      "code": "invalid_params",
+      "message": "Required daily backups cannot be deleted."
+    },
+    "rollbackBackup": {
+      "id": "acpki8zvqry8",
+      "state": "success",
+      "expiresAt": "2026-11-28T17:52:42.553Z"
+    },
+    "otherBackupsRetained": true
   },
   "restoredBranch": {
-    "id": "n7udlhis64r5",
-    "name": "codex-restore-20261126",
+    "id": "5d7g0bwcd40i",
+    "name": "codex-cf-restore-20261126",
+    "region": "AWS ap-southeast-1 (Singapore)",
+    "cluster": "PS_5_AWS_X86",
+    "replicas": 0,
     "ready": true,
-    "deletedAfterRehearsal": true
+    "deletedAfterRehearsal": true,
+    "temporaryRoleId": "4mq1jdc5u06a",
+    "temporaryRoleRemovedWithBranch": true,
+    "ownershipRepair": "Reassigned only restored objects from the copied application role to the fresh temporary role before capturing the baseline."
+  },
+  "cloudflare": {
+    "accountId": "7ea8e46d8210bad342fa7595f7935fea",
+    "worker": {
+      "name": "cinaauth-rehearsal-20261126-cf",
+      "url": "https://cinaauth-rehearsal-20261126-cf.cinagroup.workers.dev",
+      "initialVersionId": "4e306b17-c38a-43bf-a1c9-fb0f72c610ce",
+      "readyVersion": {
+        "id": "712a06ca-8413-4db9-8bed-f748360b1a37",
+        "tag": "",
+        "timestamp": "2026-11-27T01:06:22.965512Z"
+      },
+      "deleted": true
+    },
+    "hyperdrive": {
+      "id": "9655805d5d7b4417a0703e067c506be2",
+      "originIsolatedBranchId": "5d7g0bwcd40i",
+      "queryCachingDisabled": true,
+      "tls": "Encrypted origin connection with certificate validation (Hyperdrive default require).",
+      "deleted": true
+    },
+    "durableObject": {
+      "class": "RateLimitDurableObject",
+      "storage": "sqlite",
+      "created": true,
+      "retiredUsingDeletedExportState": true,
+      "absenceVerified": true,
+      "productionNamespacePreserved": true
+    },
+    "temporaryD1": {
+      "id": "aaa92e30-ff01-46ce-9715-05d6a46d05f9",
+      "deleted": true
+    },
+    "temporaryR2": {
+      "name": "cinaauth-rehearsal-20261126-cf-exports",
+      "deleted": true
+    },
+    "temporaryQueues": [
+      {
+        "id": "d6ec7cc7943b454b86945ae333be0fe8",
+        "name": "cinaauth-rehearsal-20261126-cf-q0",
+        "consumers": 0,
+        "deleted": true
+      },
+      {
+        "id": "7712a43670be482dbaecb63e196e92f2",
+        "name": "cinaauth-rehearsal-20261126-cf-q1",
+        "consumers": 0,
+        "deleted": true
+      },
+      {
+        "id": "e3b00bc728bd4374856f75d0a6a46c56",
+        "name": "cinaauth-rehearsal-20261126-cf-q2",
+        "consumers": 0,
+        "deleted": true
+      }
+    ],
+    "secretStore": {
+      "existingStoreId": "346e2b4b86334bc29083c064116e91cf",
+      "reasonSharedContainer": "Account rejected an additional store with maximum_stores_exceeded. Only fresh prefixed records were added to the existing container.",
+      "temporaryRecords": 5,
+      "temporaryRecordPrefix": "CINAAUTH_REHEARSAL_20261126_CF_",
+      "temporaryRecordsDeleted": true,
+      "all11OriginalRecordsPreserved": true,
+      "existingStorePreserved": true
+    },
+    "denyOnlyServiceWorkerDeleted": true,
+    "temporaryOAuthRevoked": true,
+    "originalOAuthScopesRestored": true
   },
   "isolation": {
     "separatePhysicalRestoreBranch": true,
-    "freshTemporaryRole": true,
-    "temporaryRoleRemovedWithBranch": true,
-    "denyOnlyExternalServices": true,
+    "freshTemporaryRoleAndSecrets": true,
     "noProductionSecretsReused": true,
     "productionBindingsOrRoutesUsed": false,
-    "cloudflareTemporaryResourcesCreated": false,
-    "externalSideEffects": 0,
-    "localTemporaryCredentialFileRemoved": true
-  },
-  "ownershipRepair": {
-    "initialApplyStatus": 500,
-    "error": "must be owner of restored governance function",
-    "failedApplyPreservedBaseline": true,
-    "resolution": "Reassigned restored objects from the copied production role to the temporary role only on the isolated branch."
+    "freshTemporaryHyperdriveD1R2QueuesAndDurableObject": true,
+    "allowedIngress": "Only token-protected advanced migration GET/POST and readiness GET; all other paths and methods return 403.",
+    "noQueueConsumersOrCronTriggers": true,
+    "externalServiceBindings": "Fresh deny-only Worker; no production service bindings.",
+    "ingressGuardRequestsRejected": 5,
+    "localTemporaryCredentialFilesRemoved": true,
+    "existingCloudflareResourcesPreserved": true
   },
   "restoredData": {
     "schemas": ["public", "cinatoken_gateway"],
     "tables": 104,
     "rows": 515,
-    "preMigrationFingerprintMatchesBaseline": true
+    "sequences": 1,
+    "preApplyPreviewPreservedBaseline": true,
+    "catalogSHA256": "6db68cf68e1462ac1988578f4cdd5d73208c70de935a13f5f115ff22f1622a71",
+    "columnsIndexesOwnersACLAndRLSFlagsUnchanged": true
   },
   "migrationDataComparison": {
     "tablesBefore": 104,
@@ -54,7 +148,9 @@
     "unchangedTables": 103,
     "changedTables": ["public.cinaauth_cinatoken_identity_clock"],
     "unexpectedChangedTables": [],
-    "expectedChange": "Existing identity aggregate logical clocks advance during idempotent invariant backfill; outbox dedupe keys preserve existing events.",
+    "expectedChange": "Existing aggregate clocks advance during idempotent invariant backfill; outbox row count and hash remain unchanged.",
+    "sequenceBefore": 213,
+    "sequenceAfter": 220,
     "businessDataUnchanged": true
   },
   "repeatedApplyComparison": {
@@ -62,11 +158,15 @@
     "status": 200,
     "allRowCountsUnchanged": true,
     "outboxRowsAndHashUnchanged": true,
+    "catalogAndACLUnchanged": true,
+    "sequenceAfter": 227,
     "unexpectedChangedTables": [],
-    "recordedAt": "2026-11-26T18:46:17.870Z"
+    "recordedAt": "2026-11-27T01:08:13.682330+00:00"
   },
   "probes": {
     "unauthorizedReadinessStatus": 403,
+    "unauthorizedMigrationPostStatus": 403,
+    "unallowedAuthPostStatus": 403,
     "migrationPreviewStatus": 200,
     "pendingSchemaChangesBefore": 0,
     "migrationApplyStatus": 200,
@@ -78,28 +178,48 @@
       "social-sign-in-config-v1",
       "cinatoken-organization-identity-outbox-v1"
     ],
-    "allInvariantsInstalled": true
+    "allInvariantsInstalled": true,
+    "runtimeConfigOK": true,
+    "secretsStoreOK": true
+  },
+  "validation": {
+    "ci": {
+      "url": "https://github.com/cinagroup/cinaauth/actions/runs/45887841302",
+      "head": "f705c395e0741125cbbee9a377c52d35e19361db",
+      "typecheck": "passed",
+      "lint": "passed",
+      "node22": "passed",
+      "node24": "passed",
+      "node26": "passed"
+    },
+    "e2e": {
+      "url": "https://github.com/cinagroup/cinaauth/actions/runs/45887841269",
+      "jobsPassed": 12
+    },
+    "demo": {
+      "url": "https://github.com/cinagroup/cinaauth/actions/runs/45887841146",
+      "jobsPassed": 5
+    },
+    "workerRuntimeTestsPassed": 467,
+    "deploymentContractTestsPassed": 87,
+    "workerProductionStaticChecksPassed": 2062,
+    "publicSubpathTestsPassed": 64
+  },
+  "previousNodePreflight": {
+    "reference": "https://github.com/cinagroup/cinaauth/blob/636f86a716b4d830de7dabed4cc8c018989bfefa/workers/auth-api/evidence/2026-11-26-restore-rehearsal.json",
+    "scope": "Node runtime preflight only; this later native Cloudflare rehearsal fulfills the Worker and Hyperdrive requirement."
   },
   "limitations": [
-    "Actual Auth Worker HTTP handler and built 1.7.28 workspace libraries executed in Node with deny-only Cloudflare binding stubs, not a deployed rehearsal Worker.",
-    "Production secrets were replaced with fresh random dummy values; no external delivery, identity synchronization, object storage, rate-limit, or queue side effects were exercised.",
-    "This rehearsal validates native backup recovery, migration behavior, data preservation and database readiness; production Cloudflare bindings and protocol acceptance remain deployment workflow checks."
+    "Production protocol acceptance, preserved production binding checks, and the production migration remain release-workflow checks.",
+    "Fresh dummy credentials replace production secrets; external delivery, privacy export/erasure and identity synchronization are not exercised.",
+    "PlanetScale rejected deletion of the mandatory daily source backup. Its extended expiry still violates the unchanged two-day retention gate; production release remains blocked."
   ],
-  "completedAt": "2026-11-26T18:42:08.489Z",
-  "cleanupVerifiedAt": "2026-11-26T18:54:24.181615+00:00",
-  "validationFollowupCommit": "3977a3b835571e8d77e1b5ff648ebc32b910a62d",
-  "migrationHandlerUnchangedByValidationFollowup": true,
-  "validation": {
-    "rootTypecheck": "passed",
-    "workerTypecheck": "passed",
-    "workerDeploymentDryRun": "passed",
-    "workerRuntimeTests": 467,
-    "focusedMergeRuntimeTestsPassed": 894,
-    "focusedCICompatibilityTestsPassed": 23,
-    "deploymentContractTestsPassed": 87,
-    "nativeNodeES256Authentication": "passed",
-    "packageBuildsSucceeded": 23
-  },
+  "completedAt": "2026-11-27T01:07:24.389270+00:00",
+  "cleanupVerifiedAt": "2026-11-27T01:22:10.359055+00:00",
+  "operatorTimezone": "America/Los_Angeles",
+  "restoreRehearsalCompleted": true,
+  "requiredCloudflareRehearsalPending": false,
   "productionDeploymentAttestationEligible": false,
-  "requiredCloudflareRehearsalPending": true
+  "productionReleaseBlocker": "Provider-managed source backup exceeds two days and cannot be manually deleted; resolve provider retention before release.",
+  "backupAuditRun": "https://github.com/cinagroup/cinaauth/actions/runs/45922291003"
 }

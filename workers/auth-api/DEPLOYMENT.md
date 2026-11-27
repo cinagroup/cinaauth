@@ -314,6 +314,15 @@ backups must explicitly set `retention_value: 2` and `retention_unit: "day"`
 through the PlanetScale Create backup API; the CLI's default can retain them
 longer than the included schedule. It never prints the service token.
 
+Before selecting a restore source, verify its deletion behavior and its expiry
+after restoration. The [2026-11-26 rehearsal](evidence/2026-11-26-restore-rehearsal.json)
+passed on an isolated Cloudflare Worker and Hyperdrive, but PlanetScale extended
+the source backup's expiry and rejected its deletion with `Required daily
+backups cannot be deleted.` Its `protected: false` flag did not make this
+required daily backup deletable. That release remains blocked by the unchanged
+two-day expiry check until the provider corrects the expiry or removes the
+backup. Temporary rehearsal resources and credentials have been removed.
+
 After a user's signed deletion-receipt deadline has passed, run the same check
 with the downloaded JSON receipt:
 
