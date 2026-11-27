@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "outcome": "operator-authorized-bounded-production-release-exception",
+  "frameworkVersion": "1.7.28",
+  "operatorAuthorized": true,
+  "reason": "The operator explicitly requested removal of the known release blocker and immediate deployment after the provider rejected deletion of the mandatory daily backup.",
+  "restoreRehearsalReference": "https://github.com/cinagroup/cinaauth/blob/0d94e4a16f445410257beda6ad487370fe0fc9c9/workers/auth-api/evidence/2026-11-26-restore-rehearsal.json",
+  "previousBlockedProductionRun": "https://github.com/cinagroup/cinaauth/actions/runs/45923539148",
+  "exception": {
+    "requiresExplicitWorkflowInput": "allow_restore_backup_retention_deviation: true",
+    "scope": {
+      "organization": "cinaseek",
+      "database": "cinaauth",
+      "branch": "main"
+    },
+    "backupId": "c863fxjiij6b",
+    "exactAllowedExpiry": "2026-11-30T00:53:52.044Z",
+    "onlyAllowedFailure": "Backup c863fxjiij6b expiry exceeds the 2-day retention limit",
+    "releaseAuthorizationExpiresAt": "2026-11-27T12:00:00.000Z",
+    "sourceMustRemainUnprotected": true,
+    "otherAuditFailuresRemainBlocking": true,
+    "separateActiveSuccessfulRollbackBackupRequired": true,
+    "rollbackMaximumRetentionDays": 2
+  },
+  "reporting": {
+    "backupAuditStatusRemainsFailed": true,
+    "releaseWarningRequired": true,
+    "doesNotClaimBackupDeletion": true,
+    "standaloneBackupAuditUnchanged": true,
+    "publicDeletionPolicyAndReceiptsUnchanged": true,
+    "providerRetentionRemediationStillOutstanding": true
+  },
+  "productionReleaseCompleted": false,
+  "operatorTimezone": "America/Los_Angeles"
+}

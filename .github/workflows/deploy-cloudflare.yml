@@ -1,3 +1,4 @@
+# cspell:ignore fxjiij
 name: Deploy to Cloudflare
 
 on:
@@ -16,6 +17,11 @@ on:
         description: Active PlanetScale main backup ID approved for rollback
         required: true
         type: string
+      allow_restore_backup_retention_deviation:
+        description: Allow the known c863fxjiij6b expiry deviation for 1.7.28 before 2026-11-27 12:00 UTC
+        required: false
+        default: false
+        type: boolean
       operator_attestation:
         description: Type DEPLOY CINAAUTH PRODUCTION to authorize writes and migration
         required: true
@@ -56,6 +62,7 @@ jobs:
           workers/delivery/scripts/provision-secrets.test.mjs
           workers/privacy-erasure/scripts/provision-secrets.test.mjs
           apps/account-portal/deploy-cf.test.mjs
+          .github/workflows/production-backup-gate.test.mjs
 
   authorize-production:
     name: Authorize production deployment
@@ -100,27 +107,55 @@ jobs:
       - name: Audit PlanetScale production backups
         env:
           BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          ALLOW_RESTORE_BACKUP_RETENTION_DEVIATION: ${{ inputs.allow_restore_backup_retention_deviation }}
           PLANETSCALE_SERVICE_TOKEN_ID: ${{ secrets.PLANETSCALE_CINASEEK_SERVICE_TOKEN_ID }}
           PLANETSCALE_SERVICE_TOKEN: ${{ secrets.PLANETSCALE_CINASEEK_SERVICE_TOKEN }}
         run: |
           report_file="$RUNNER_TEMP/planetscale-backups.json"
-          node workers/auth-api/scripts/check-planetscale-backups.mjs > "$report_file"
+          audit_exit=0
+          node workers/auth-api/scripts/check-planetscale-backups.mjs > "$report_file" || audit_exit=$?
+          test "$audit_exit" -le 1 || (echo "Backup audit did not return a releasable result" && exit 1)
           # JavaScript template literals must reach Node.js unchanged.
           # shellcheck disable=SC2016
           node -e '
             const fs = require("node:fs");
             const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
             const backupReference = process.env.BACKUP_REFERENCE;
-            if (report.status !== "verified") {
-              console.error("PlanetScale backup audit is not verified");
+            const now = Date.now();
+            const scope = report.scope;
+            if (scope?.organization !== "cinaseek" || scope?.database !== "cinaauth" || scope?.branch !== "main") {
+              console.error("Unexpected backup audit scope");
               process.exit(1);
             }
-            if (!report.activeBackups?.some(({ id }) => id === backupReference)) {
-              console.error("Attested backup is not an active successful main backup");
+            const heldBackup = report.activeBackups?.find(({ id }) => id === "c863fxjiij6b");
+            const retentionExceptionApplied =
+              process.env.ALLOW_RESTORE_BACKUP_RETENTION_DEVIATION === "true" &&
+              JSON.parse(fs.readFileSync("packages/cinaauth/package.json", "utf8")).version === "1.7.28" &&
+              now < Date.parse("2026-11-27T12:00:00.000Z") &&
+              report.status === "failed" &&
+              report.failures?.length === 1 &&
+              report.failures[0] === "Backup c863fxjiij6b expiry exceeds the 2-day retention limit" &&
+              heldBackup?.expiresAt === "2026-11-30T00:53:52.044Z" &&
+              heldBackup.protected === false && !heldBackup.deletedAt;
+            if (report.status !== "verified" && !retentionExceptionApplied) {
+              console.error("PlanetScale backup audit blocks release: " + JSON.stringify(report.failures));
               process.exit(1);
+            }
+            const rollback = report.activeBackups?.find(({ id }) => id === backupReference);
+            if (!rollback || rollback.protected || rollback.deletedAt ||
+                !(Date.parse(rollback.expiresAt) > now) ||
+                !(Date.parse(rollback.startedAt) <= now) ||
+                Date.parse(rollback.expiresAt) - Date.parse(rollback.startedAt) > 2 * 24 * 60 * 60 * 1000) {
+              console.error("Attested rollback backup is not active, successful and within two-day retention");
+              process.exit(1);
+            }
+            if (retentionExceptionApplied) {
+              console.error("::warning title=Operator-approved release exception::Backup c863fxjiij6b remains over-retained by PlanetScale until 2026-11-30T00:53:52.044Z; the backup audit remains failed. Only this known deviation is accepted for the 1.7.28 release before 2026-11-27T12:00:00Z.");
             }
             console.log(JSON.stringify({
-              status: report.status,
+              releaseAuthorized: true,
+              backupAuditStatus: report.status,
+              retentionExceptionApplied,
               backupReference,
               reportDigest: report.reportDigest,
             }));

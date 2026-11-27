@@ -319,9 +319,21 @@ after restoration. The [2026-11-26 rehearsal](evidence/2026-11-26-restore-rehear
 passed on an isolated Cloudflare Worker and Hyperdrive, but PlanetScale extended
 the source backup's expiry and rejected its deletion with `Required daily
 backups cannot be deleted.` Its `protected: false` flag did not make this
-required daily backup deletable. That release remains blocked by the unchanged
-two-day expiry check until the provider corrects the expiry or removes the
-backup. Temporary rehearsal resources and credentials have been removed.
+required daily backup deletable. The ordinary two-day audit continues to fail
+until the provider corrects the expiry or removes the backup. Temporary
+rehearsal resources and credentials have been removed.
+
+<!-- cspell:ignore fxjiij -->
+The operator subsequently authorized a bounded release exception, recorded in
+[the release evidence](evidence/2026-11-26-release-retention-exception.json).
+For this 1.7.28 release, the central workflow accepts
+`allow_restore_backup_retention_deviation: true` only before
+`2026-11-27T12:00:00Z`, and only when the sole audit failure is backup
+`c863fxjiij6b` expiring at exactly `2026-11-30T00:53:52.044Z`. An independent,
+active successful rollback backup within two-day retention is still required.
+The workflow records the failed audit and an operator-exception warning;
+other audit failures remain blocking. This does not delete the held backup,
+extend the backup schedule, or change the public deletion policy and receipts.
 
 After a user's signed deletion-receipt deadline has passed, run the same check
 with the downloaded JSON receipt:
